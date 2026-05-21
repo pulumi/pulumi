@@ -309,20 +309,22 @@ func TestFormatAgentLoginRequiredInstruction(t *testing.T) {
 	expiresAt := now.Add(2*24*time.Hour + 3*time.Hour + 9*time.Minute)
 
 	assert.Equal(t,
-		"PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED\n"+
+		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
 			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=2d3h9m\n"+
 			"ACTION_REQUIRED=Tell the user to run pulumi login.\n"+
 			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate "+
 			"even though local access had not expired. The account was likely claimed or revoked. "+
-			"Ask the user to run pulumi login before retrying.\n",
+			"The stacks the agent was working with may have moved to the user's Pulumi account, so the agent's "+
+			"existing access to those stacks may have changed. Ask the user to run pulumi login before retrying.\n",
 		FormatAgentLoginRequiredInstruction(AgentLoginTokenRejected, &expiresAt, now))
 	assert.Equal(t,
-		"PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED\n"+
+		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
 			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=2d3h9m\n"+
 			"ACTION_REQUIRED=Tell the user to run pulumi login.\n"+
 			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate, "+
 			"and its claim URL is no longer claimable. The account was likely already claimed, expired, "+
-			"or revoked. Ask the user to run pulumi login before retrying.\n",
+			"or revoked. If it was claimed, the stacks the agent was working with moved to the user's Pulumi account, "+
+			"so the agent's existing access to those stacks changed. Ask the user to run pulumi login before retrying.\n",
 		FormatAgentLoginRequiredInstruction(AgentLoginClaimUnavailable, &expiresAt, now))
 }
 

@@ -67,7 +67,7 @@ func TestProcessCmdErrorsPrintsAgentAuthRequiredInstruction(t *testing.T) {
 	err = processCmdErrors(backenderr.LoginRequiredError{}, &output)
 
 	assert.True(t, result.IsBail(err))
-	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
+	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, output.String(), "ACTION_REQUIRED=Tell the user to run pulumi login.")
 	expectedInstruction := "INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate"
 	assert.Contains(t, output.String(), expectedInstruction)
@@ -172,7 +172,7 @@ func TestProcessCmdErrorsDoesNotPrintClaimURLForUnauthorizedClaimedAccount(t *te
 	err = processCmdErrors(httpstate.ErrUnauthorized, &output)
 
 	assert.True(t, result.IsBail(err))
-	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
+	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.NotContains(t, output.String(), "CLAIM_URL=")
 	assert.Contains(t, output.String(), "claim URL is no longer claimable")
 }

@@ -442,7 +442,7 @@ func FormatAgentLoginRequiredInstruction(
 	now time.Time,
 ) string {
 	var message strings.Builder
-	message.WriteString("PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED\n")
+	message.WriteString("PULUMI_EPHEMERAL_AGENT_ACCOUNT\n")
 	if accessTokenExpiresAt != nil {
 		message.WriteString(fmt.Sprintf(
 			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=%s\n",
@@ -454,10 +454,12 @@ func FormatAgentLoginRequiredInstruction(
 	switch reason {
 	case AgentLoginTokenRejected:
 		message.WriteString(" even though local access had not expired. The account was likely claimed or revoked. " +
-			"Ask the user to run pulumi login before retrying.\n")
+			"The stacks the agent was working with may have moved to the user's Pulumi account, so the agent's " +
+			"existing access to those stacks may have changed. Ask the user to run pulumi login before retrying.\n")
 	case AgentLoginClaimUnavailable:
 		message.WriteString(", and its claim URL is no longer claimable. The account was likely already claimed, expired, " +
-			"or revoked. Ask the user to run pulumi login before retrying.\n")
+			"or revoked. If it was claimed, the stacks the agent was working with moved to the user's Pulumi account, " +
+			"so the agent's existing access to those stacks changed. Ask the user to run pulumi login before retrying.\n")
 	default:
 		contract.Failf("unknown agent login required reason %v", reason)
 	}

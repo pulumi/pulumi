@@ -145,7 +145,7 @@ func TestAuthRequiredMessagePrintsClaimInstructionWhenTokenExpiredButClaimValid(
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/expired-token-valid-claim")
 	assert.Contains(t, message, "CLAIM_URL_VALID_FOR=1h")
-	assert.NotContains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
+	assert.NotContains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 }
 
 //nolint:paralleltest // mutates env vars, shared temporary agent credentials, and package global
@@ -190,7 +190,7 @@ func TestAuthRequiredMessageChecksClaimWhenTokenLocallyValidButRejected(t *testi
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/locally-valid-token")
 	assert.Contains(t, message, "EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=1h")
-	assert.NotContains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
+	assert.NotContains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 }
 
 //nolint:paralleltest // mutates env vars, shared temporary agent credentials, and package global
@@ -232,7 +232,7 @@ func TestAuthRequiredMessageOmitsClaimURLWhenClaimIsNotClaimable(t *testing.T) {
 	})
 
 	message := AuthRequiredMessage(now)
-	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
+	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 	assert.NotContains(t, message, "CLAIM_URL=")
 	assert.Contains(t, message, "claim URL is no longer claimable")
@@ -282,7 +282,7 @@ func TestAuthRequiredMessageSkipsValidationWhenClaimMarkedUnavailable(t *testing
 	})
 
 	message := AuthRequiredMessage(now)
-	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
+	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.NotContains(t, message, "CLAIM_URL=")
 	assert.Contains(t, message, "claim URL is no longer claimable")
 }
