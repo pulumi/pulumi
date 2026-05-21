@@ -68,6 +68,10 @@ func DeleteAccount(key string) error {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	return StoreCredentials(deleteAccountFromCredentials(creds, key))
+}
+
+func deleteAccountFromCredentials(creds Credentials, key string) Credentials {
 	if creds.AccessTokens != nil {
 		delete(creds.AccessTokens, key)
 	}
@@ -77,7 +81,7 @@ func DeleteAccount(key string) error {
 	if creds.Current == key {
 		creds.Current = ""
 	}
-	return StoreCredentials(creds)
+	return creds
 }
 
 func DeleteAllAccounts() error {
@@ -557,6 +561,33 @@ func StoreAgentAccount(key string, account Account, current bool) error {
 	return StoreAgentCredentials(creds)
 }
 
+// DeleteAgentAccount deletes an account from the shared temporary agent
+// credentials file and removes matching claim and backend config metadata.
+func DeleteAgentAccount(key string) error {
+	creds, err := GetAgentStoredCredentials()
+	if err != nil {
+		return err
+	}
+	if err = StoreAgentCredentials(deleteAccountFromCredentials(creds, key)); err != nil {
+		return err
+	}
+
+	var result error
+	claim, err := GetAgentClaim()
+	if err != nil {
+		result = errors.Join(result, err)
+	} else if claim.CloudURL == key {
+		claimFile := getAgentClaimFilePathNoEnsure()
+		if err = os.Remove(claimFile); err != nil && !os.IsNotExist(err) {
+			result = errors.Join(result, fmt.Errorf("removing '%s': %w", claimFile, err))
+		}
+	}
+	if err = deleteAgentBackendConfig(key); err != nil {
+		result = errors.Join(result, err)
+	}
+	return result
+}
+
 // StoreAgentCredentials replaces the shared temporary agent credentials file.
 func StoreAgentCredentials(creds Credentials) error {
 	credsFile, err := getAgentCredsFilePath()
@@ -653,6 +684,30 @@ func StoreAgentClaim(claim AgentClaim) error {
 		return fmt.Errorf("marshalling agent claim object: %w", err)
 	}
 	return lockedfile.Write(claimFile, bytes.NewReader(raw), 0o600)
+}
+
+func deleteAgentBackendConfig(key string) error {
+	configFile := getAgentConfigFilePathNoEnsure()
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("reading '%s': %w", configFile, err)
+	}
+
+	var config PulumiConfig
+	if err = json.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("failed to read Pulumi agent config file '%s': %w", configFile, err)
+	}
+	delete(config.BackendConfig, key)
+	if len(config.BackendConfig) == 0 {
+		if err = os.Remove(configFile); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("removing '%s': %w", configFile, err)
+		}
+		return nil
+	}
+	return writePulumiConfigFile(configFile, config)
 }
 
 type BackendConfig struct {

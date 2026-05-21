@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -389,6 +390,54 @@ func TestDeleteExpiredAgentCredentialsDoesNotReuseUnrelatedValidAccount(t *testi
 	account, err := GetAgentAccount("https://api.example.com")
 	require.NoError(t, err)
 	assert.Empty(t, account.AccessToken)
+}
+
+//nolint:paralleltest // mutates package global
+func TestDeleteAgentAccount(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	err := StoreAgentAccount("https://api.example.com", Account{AccessToken: "token-value"}, true)
+	require.NoError(t, err)
+	err = StoreAgentAccount("https://api.other.example.com", Account{AccessToken: "other-token"}, false)
+	require.NoError(t, err)
+	err = StoreAgentClaim(AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
+		ValidUntil: time.Now().Add(time.Hour),
+		CloudURL:   "https://api.example.com",
+	})
+	require.NoError(t, err)
+	agentDir, err := getAgentPulumiDir()
+	require.NoError(t, err)
+	err = writePulumiConfigFile(filepath.Join(agentDir, "config.json"), PulumiConfig{
+		BackendConfig: map[string]BackendConfig{
+			"https://api.example.com":       {DefaultOrg: "agent-org"},
+			"https://api.other.example.com": {DefaultOrg: "other-org"},
+		},
+	})
+	require.NoError(t, err)
+
+	err = DeleteAgentAccount("https://api.example.com")
+	require.NoError(t, err)
+
+	account, err := GetAgentAccount("https://api.example.com")
+	require.NoError(t, err)
+	assert.Empty(t, account.AccessToken)
+	account, err = GetAgentAccount("https://api.other.example.com")
+	require.NoError(t, err)
+	assert.Equal(t, "other-token", account.AccessToken)
+	claim, err := GetAgentClaim()
+	require.NoError(t, err)
+	assert.Empty(t, claim.ClaimURL)
+	data, err := os.ReadFile(getAgentConfigFilePathNoEnsure())
+	require.NoError(t, err)
+	var config PulumiConfig
+	require.NoError(t, json.Unmarshal(data, &config))
+	assert.NotContains(t, config.BackendConfig, "https://api.example.com")
+	assert.Equal(t, "other-org", config.BackendConfig["https://api.other.example.com"].DefaultOrg)
 }
 
 //nolint:paralleltest // mutates package global
