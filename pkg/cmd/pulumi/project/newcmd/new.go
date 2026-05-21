@@ -62,7 +62,7 @@ type chooseTemplateFunc func(templates []cmdTemplates.Template, opts display.Opt
 type runtimeOptionsFunc func(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
 	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]any, error)
 
-type languageTemplateFunc func(language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
+type languageTemplateFunc func(ctx context.Context, language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
 	projectName tokens.PackageName) error
 
 type promptForAIProjectURLFunc func(ctx context.Context,
@@ -445,7 +445,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 
 		// Let the language runtime do some templating
-		if err := args.languageTemplate(lang, programInfo, proj.Name); err != nil {
+		if err := args.languageTemplate(pluginCtx.Request(), lang, programInfo, proj.Name); err != nil {
 			return fmt.Errorf("language template: %w", err)
 		}
 	}
@@ -518,10 +518,10 @@ func NewNewCmd() *cobra.Command {
 		prompt:               ui.PromptForValue,
 		chooseTemplate:       ChooseTemplate,
 		promptRuntimeOptions: promptRuntimeOptions,
-		languageTemplate: func(language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
+		languageTemplate: func(ctx context.Context, language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
 			projectName tokens.PackageName,
 		) error {
-			return language.Template(programInfo, projectName)
+			return language.Template(ctx, programInfo, projectName)
 		},
 		promptForAIProjectURL: promptForAIProjectURL,
 	}
@@ -766,7 +766,7 @@ func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, 
 	for {
 		// Update the program info with the latest runtime options.
 		programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, options)
-		prompts, err := language.RuntimeOptionsPrompts(programInfo)
+		prompts, err := language.RuntimeOptionsPrompts(ctx.Request(), programInfo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get runtime options prompts: %w", err)
 		}

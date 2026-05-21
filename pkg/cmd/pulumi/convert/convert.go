@@ -264,7 +264,7 @@ func runConvert(
 			projectJSON := string(projectBytes)
 
 			var diags hcl.Diagnostics
-			ds, err := languagePlugin.GenerateProject(
+			ds, err := languagePlugin.GenerateProject(ctx,
 				sourceDirectory, targetDirectory, projectJSON,
 				strict, grpcServer.Addr(), nil /*localDependencies*/)
 			diags = append(diags, ds...)

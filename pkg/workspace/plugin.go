@@ -181,7 +181,7 @@ func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, st
 	}
 	entryPoint := "." // Plugin's are not able to set a non-standard entry point.
 	pInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, entryPoint, proj.Runtime.Options())
-	return cmdutil.InstallDependencies(runtime, plugin.InstallDependenciesRequest{
+	return cmdutil.InstallDependencies(pctx.Request(), runtime, plugin.InstallDependenciesRequest{
 		Info:                    pInfo,
 		UseLanguageVersionTools: false,
 		IsPlugin:                true,

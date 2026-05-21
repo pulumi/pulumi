@@ -297,7 +297,7 @@ func (iter *evalSourceIterator) forkRun(
 				/* options */ rtopts)
 
 			// Now run the actual program.
-			progerr, bail, err := langhost.Run(plugin.RunInfo{
+			progerr, bail, err := langhost.Run(iter.src.plugctx.Request(), plugin.RunInfo{
 				MonitorAddress:   iter.mon.Address(),
 				Stack:            iter.src.runinfo.Target.Name.String(),
 				Project:          string(iter.src.runinfo.Proj.Name),

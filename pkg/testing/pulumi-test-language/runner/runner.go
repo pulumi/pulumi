@@ -94,12 +94,13 @@ func NewLanguageTestServer(testdata fs.FS, languageTests map[string]tests.Langua
 }
 
 func installDependencies(
+	ctx context.Context,
 	languageClient plugin.LanguageRuntime,
 	programInfo plugin.ProgramInfo,
 	isPlugin bool,
 ) *testingrpc.RunLanguageTestResponse {
 	installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
-		plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: isPlugin},
+		ctx, plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: isPlugin},
 	)
 	programOrPlugin := "program"
 	if isPlugin {
@@ -546,7 +547,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	}
 
 	languageClient := plugin.NewLanguageRuntimeClient(
-		pctx, req.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
+		req.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	// Setup the artifacts directory
 	err = os.MkdirAll(filepath.Join(req.TemporaryDirectory, "artifacts"), 0o755)
@@ -556,7 +557,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 	var coreArtifact string
 	if req.CoreSdkDirectory != "" {
-		coreArtifact, err = languageClient.Pack(
+		coreArtifact, err = languageClient.Pack(ctx,
 			req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
 		if err != nil {
 			return nil, fmt.Errorf("pack core SDK: %w", err)
@@ -721,7 +722,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	languageClient := plugin.NewLanguageRuntimeClient(
-		pctx, token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
+		token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	// And now replace the context host with our own test host
 	host := &testHost{
@@ -805,12 +806,12 @@ func (eng *languageTestServer) RunLanguageTest(
 						},
 					},
 				}}
-				_, err = languageClient.Link(providerInfo, linkDeps, grpcServer.Addr())
+				_, err = languageClient.Link(ctx, providerInfo, linkDeps, grpcServer.Addr())
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
 				}
 
-				resp := installDependencies(languageClient, providerInfo, true /* isPlugin */)
+				resp := installDependencies(ctx, languageClient, providerInfo, true /* isPlugin */)
 				if resp != nil {
 					return resp, nil
 				}
@@ -951,7 +952,7 @@ func (eng *languageTestServer) RunLanguageTest(
 					return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
 				}
 
-				diags, err := languageClient.GeneratePackage(
+				diags, err := languageClient.GeneratePackage(ctx,
 					sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, false)
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
@@ -985,7 +986,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
 				// any intermediate build files don't end up getting captured in the snapshot folder.
-				sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
+				sdkArtifact, err = languageClient.Pack(ctx, sdkTempDir, artifactsDir)
 				if err != nil {
 					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
 				}
@@ -1224,7 +1225,7 @@ func runLanguageTests(
 						return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
 					}
 
-					diags, err := languageClient.GeneratePackage(
+					diags, err := languageClient.GeneratePackage(ctx,
 						sdkTargetDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, false)
 					if err != nil {
 						return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
@@ -1246,6 +1247,7 @@ func runLanguageTests(
 				}
 			} else {
 				diagnostics, err = languageClient.GenerateProject(
+					ctx,
 					sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
@@ -1302,7 +1304,7 @@ func runLanguageTests(
 			main,
 			project.Runtime.Options())
 
-		resp := installDependencies(languageClient, programInfo, false /* isPlugin */)
+		resp := installDependencies(ctx, languageClient, programInfo, false /* isPlugin */)
 		if resp != nil {
 			return resp, nil
 		}
@@ -1313,7 +1315,7 @@ func runLanguageTests(
 		// We make a transitive query here because some languages (e.g. Python) treat dependencies as transitive if any of
 		// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
 		// well.
-		dependencies, err := languageClient.GetProgramDependencies(programInfo, true)
+		dependencies, err := languageClient.GetProgramDependencies(ctx, programInfo, true)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
 		}
@@ -1389,7 +1391,7 @@ func runLanguageTests(
 		}
 
 		// Query the language plugin for what it thinks the project packages are, we expect to see the SDKs.
-		packages, err := languageClient.GetRequiredPackages(programInfo)
+		packages, err := languageClient.GetRequiredPackages(ctx, programInfo)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
 		}
@@ -1557,13 +1559,13 @@ func runLanguageTests(
 					},
 				},
 			}}
-			_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
+			_, err = languageClient.Link(ctx, policyInfo, linkDeps, grpcServer.Addr())
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
 			}
 
 			// Install the dependencies for the policy pack
-			resp := installDependencies(languageClient, policyInfo, true /* isPlugin */)
+			resp := installDependencies(ctx, languageClient, policyInfo, true /* isPlugin */)
 			if resp != nil {
 				return resp, nil
 			}
@@ -1732,7 +1734,7 @@ type roundTripClient struct {
 	ejectSnapshotBaseDir string
 }
 
-func (rtc roundTripClient) GenerateProject(
+func (rtc roundTripClient) GenerateProject(ctx context.Context,
 	sourceDirectory, targetDirectory, project string,
 	strict bool, loaderTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
@@ -1764,12 +1766,12 @@ func (rtc roundTripClient) GenerateProject(
 		}
 	}
 
-	diags2, err := rtc.LanguageRuntime.GenerateProject(pclDir, targetDirectory, project,
+	diags2, err := rtc.LanguageRuntime.GenerateProject(ctx, pclDir, targetDirectory, project,
 		strict, loaderTarget, localDependencies)
 	return diags.Extend(diags2), err
 }
 
-func (rtc roundTripClient) GenerateProgram(
+func (rtc roundTripClient) GenerateProgram(ctx context.Context,
 	program map[string]string, loaderTarget string, strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	sourceDir, err := os.MkdirTemp("", "lang-to-pcl-source-*")
@@ -1789,7 +1791,7 @@ func (rtc roundTripClient) GenerateProgram(
 	}
 
 	project := "{\"name\": \"roundtrip\"}"
-	pclDir, diags, err := rtc.roundTrip(context.TODO(), sourceDir, project, loaderTarget, strict, nil)
+	pclDir, diags, err := rtc.roundTrip(ctx, sourceDir, project, loaderTarget, strict, nil)
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}
@@ -1811,7 +1813,7 @@ func (rtc roundTripClient) GenerateProgram(
 		return nil, diags, err
 	}
 	// TODO: Snapshot files
-	lang, diags2, err := rtc.LanguageRuntime.GenerateProgram(pclFiles, loaderTarget, strict)
+	lang, diags2, err := rtc.LanguageRuntime.GenerateProgram(ctx, pclFiles, loaderTarget, strict)
 	return lang, diags.Extend(diags2), err
 }
 
@@ -1826,7 +1828,7 @@ func (rtc roundTripClient) roundTrip(
 	}
 	defer func() { contract.IgnoreError(os.RemoveAll(tmpDir)) }()
 
-	diags, err := rtc.LanguageRuntime.GenerateProject(
+	diags, err := rtc.LanguageRuntime.GenerateProject(ctx,
 		sourceDirectory, tmpDir, project, strict, loaderTarget, localDependencies)
 	if err != nil || diags.HasErrors() {
 		return "", diags, err

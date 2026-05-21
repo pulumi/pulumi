@@ -81,10 +81,11 @@ func InstallPluginDependencies(
 	}
 
 	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, main, projRuntime.Options())
-	err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
-		Info:     programInfo,
-		IsPlugin: true,
-	}, stdout, stderr)
+	err = pkgCmdUtil.InstallDependencies(pluginCtx.Request(),
+		lang, plugin.InstallDependenciesRequest{
+			Info:     programInfo,
+			IsPlugin: true,
+		}, stdout, stderr)
 	if err != nil {
 		return fmt.Errorf("installing dependencies failed: %w", err)
 	}
