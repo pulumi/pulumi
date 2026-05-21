@@ -192,7 +192,7 @@ func (p PackageSpec) String() string {
 }
 
 type packageSpecMarshalled struct {
-	Source            string            `json:"source" yaml:"source"`
+	Source            string            `json:"source,omitzero" yaml:"source,omitempty"`
 	Version           string            `json:"version,omitzero" yaml:"version,omitempty"`
 	Parameters        []string          `json:"parameters,omitzero" yaml:"parameters,omitempty"`
 	Checksums         map[string][]byte `json:"checksums,omitzero" yaml:"checksums,omitempty"`

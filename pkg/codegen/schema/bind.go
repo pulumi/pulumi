@@ -1958,6 +1958,7 @@ func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Di
 	}
 
 	return &Parameterization{
+		Name: spec.Name,
 		BaseProvider: BaseProvider{
 			Name:    spec.BaseProvider.Name,
 			Version: ver,

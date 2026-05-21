@@ -66,9 +66,11 @@ func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
 
 // InstallPackage installs a package to the project by generating an SDK and linking it.
 // It returns the path to the installed package.
+// When asExtension is true, the schema's Parameterization is promoted to
+// ExtensionParameterization before binding so codegen produces extension shape.
 func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
 	language, root, schemaSource string, parameters plugin.ParameterizeParameters,
-	registry registry.Registry, e env.Env, concurrency int,
+	registry registry.Registry, e env.Env, concurrency int, asExtension bool,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
 	pkgSpec, specOverride, err := SchemaFromSchemaSource(ws, pctx, schemaSource, parameters, registry, e, concurrency)
 	if err != nil {
@@ -77,6 +79,11 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 			return nil, nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
 		}
 		return nil, nil, nil, fmt.Errorf("failed to get schema: %w", err)
+	}
+
+	if asExtension && pkgSpec != nil && pkgSpec.Parameterization != nil && pkgSpec.ExtensionParameterization == nil {
+		pkgSpec.ExtensionParameterization = pkgSpec.Parameterization
+		pkgSpec.Parameterization = nil
 	}
 
 	pkg, err := BindSpec(*pkgSpec)
@@ -120,6 +127,10 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 	outName := pkg.Name
 	if pkg.Namespace != "" {
 		outName = pkg.Namespace + "-" + outName
+	}
+	// An extension SDK is named for the extension, not the base provider.
+	if pkg.ExtensionParameterization != nil && pkg.ExtensionParameterization.Name != "" {
+		outName = pkg.ExtensionParameterization.Name
 	}
 	out = filepath.Join(out, outName)
 
@@ -401,6 +412,7 @@ func SchemaFromSchemaSource(
 	defer contract.IgnoreClose(p)
 
 	var request plugin.GetSchemaRequest
+	var parameterizationName string
 	if !parameters.Empty() {
 		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 			Parameters: parameters,
@@ -409,6 +421,7 @@ func SchemaFromSchemaSource(
 			return nil, nil, fmt.Errorf("parameterize: %w", err)
 		}
 
+		parameterizationName = resp.Name
 		request = plugin.GetSchemaRequest{
 			SubpackageName:    resp.Name,
 			SubpackageVersion: &resp.Version,
@@ -426,6 +439,9 @@ func SchemaFromSchemaSource(
 	err = json.Unmarshal(schema.Schema, &spec)
 	if err != nil {
 		return nil, nil, err
+	}
+	if parameterizationName != "" && spec.Parameterization != nil {
+		spec.Parameterization.Name = parameterizationName
 	}
 	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {

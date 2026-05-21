@@ -148,7 +148,8 @@ from the parameters, as in:
 				parameters,
 				target.reg,
 				env.Global(),
-				0, /* unbounded concurrency */
+				0,     /* unbounded concurrency */
+				false, /* not an extension */
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
