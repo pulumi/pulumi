@@ -15,22 +15,25 @@
 package do
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
@@ -261,7 +264,9 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			if err != nil {
 				return fmt.Errorf("diff: %w", err)
 			}
-			if err := pc.confirm(cmd, formatPatchSummary(res, id, diff), yes); err != nil {
+			summary := formatPatchSummary(
+				res, id, oldInputs, checked, diff, pc.showSecrets, cmdutil.GetGlobalColorization())
+			if err := pc.confirm(cmd, summary, yes); err != nil {
 				return err
 			}
 
@@ -488,51 +493,40 @@ func formatDeleteSummary(res *schema.Resource, id resource.ID) string {
 	return fmt.Sprintf("This will delete %s %q.", res.Token, id)
 }
 
-// formatPatchSummary renders a human-readable summary of the changes a patch will apply, using the provider's
-// Diff response. If the provider returns no DetailedDiff we fall back to a short "no detailed diff available"
-// note — the operation can still proceed since Update is what actually applies the change.
-func formatPatchSummary(res *schema.Resource, id resource.ID, diff plugin.DiffResult) string {
+// formatPatchSummary renders a human-readable summary of the changes a patch will apply. The value-level diff is
+// produced by display.PrintObjectDiff — the same renderer the engine uses for `pulumi up` / `pulumi preview` —
+// so the output is shaped identically (e.g. "  ~ name: \"old\" => \"new\""). The provider's DiffResult informs
+// the "no changes" shortcut and the replacement notice.
+func formatPatchSummary(
+	res *schema.Resource, id resource.ID,
+	oldInputs, newInputs resource.PropertyMap,
+	providerDiff plugin.DiffResult,
+	showSecrets bool, color colors.Colorization,
+) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "This will update %s %q.", res.Token, id)
-	if diff.Changes == plugin.DiffNone {
-		b.WriteString("\nNo changes.")
+	fmt.Fprintf(&b, "This will update %s %q.\n", res.Token, id)
+
+	objDiff := oldInputs.Diff(newInputs)
+	if providerDiff.Changes == plugin.DiffNone || objDiff == nil {
+		b.WriteString("No changes.\n")
 		return b.String()
 	}
-	if len(diff.DetailedDiff) == 0 {
-		if len(diff.ChangedKeys) > 0 {
-			b.WriteString("\nChanged properties:")
-			for _, k := range diff.ChangedKeys {
-				fmt.Fprintf(&b, "\n  %s", k)
+
+	var diffBuf bytes.Buffer
+	display.PrintObjectDiff(&diffBuf, *objDiff, nil, /*include*/
+		true /*planning*/, 1 /*indent*/, false /*summary*/, false, /*truncateOutput*/
+		false /*debug*/, showSecrets, nil /*hidden*/)
+	b.WriteString(color.Colorize(diffBuf.String()))
+
+	if len(providerDiff.ReplaceKeys) > 0 {
+		b.WriteString("This change replaces the resource (")
+		for i, k := range providerDiff.ReplaceKeys {
+			if i > 0 {
+				b.WriteString(", ")
 			}
-		} else {
-			b.WriteString("\nProvider reported changes but no detailed diff is available.")
+			b.WriteString(string(k))
 		}
-		return b.String()
-	}
-	b.WriteString("\nChanges:")
-	// Stable order so the prompt is deterministic.
-	paths := make([]string, 0, len(diff.DetailedDiff))
-	for k := range diff.DetailedDiff {
-		paths = append(paths, k)
-	}
-	sort.Strings(paths)
-	for _, p := range paths {
-		d := diff.DetailedDiff[p]
-		marker := diffKindMarker(d.Kind)
-		fmt.Fprintf(&b, "\n  %s %s", marker, p)
+		b.WriteString(").\n")
 	}
 	return b.String()
-}
-
-func diffKindMarker(k plugin.DiffKind) string {
-	switch k {
-	case plugin.DiffAdd, plugin.DiffAddReplace:
-		return "+"
-	case plugin.DiffDelete, plugin.DiffDeleteReplace:
-		return "-"
-	case plugin.DiffUpdate, plugin.DiffUpdateReplace:
-		return "~"
-	default:
-		return "?"
-	}
 }
