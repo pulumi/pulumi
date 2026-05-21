@@ -1,6 +1,0 @@
-kind: improvement
-body: Add 'external' property to StepEventStateMetadata
-custom:
-  Scope: sdk/go
-  PR: ''
-time: '2026-03-23T00:00:00Z'

@@ -1,7 +1,0 @@
-kind: chore
-body: Replace the Pulumipus mascot in the `pulumi neo` welcome banner with new Neo-branded
-  ASCII art.
-custom:
-  Scope: cli
-  PR: ''
-time: '2026-05-04T00:00:00Z'

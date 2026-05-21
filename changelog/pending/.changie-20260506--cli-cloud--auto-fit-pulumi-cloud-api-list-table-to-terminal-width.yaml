@@ -1,8 +1,0 @@
-body: 'Auto-fit `pulumi cloud api list` table to terminal width and replace the
-
-  `tabular` table renderer with `go-pretty`'
-custom:
-  PR: ''
-  Scope: cli/cloud
-kind: chore
-time: '2026-01-01T00:00:00Z'

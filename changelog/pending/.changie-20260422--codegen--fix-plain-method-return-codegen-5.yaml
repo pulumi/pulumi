@@ -1,6 +1,0 @@
-kind: fix
-body: Emit await for plain method return calls in Node.js program-gen
-custom:
-  Scope: programgen/nodejs
-  PR: ''
-time: '2026-04-22T00:00:00Z'

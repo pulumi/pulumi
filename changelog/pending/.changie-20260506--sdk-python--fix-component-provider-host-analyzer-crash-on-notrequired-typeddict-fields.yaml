@@ -1,7 +1,0 @@
-body: Support `NotRequired`, `Required` and `total=False` in TypedDicts for component
-  resource arg types
-custom:
-  PR: ''
-  Scope: sdk/python
-kind: fix
-time: '2026-01-01T00:00:00Z'

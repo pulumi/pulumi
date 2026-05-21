@@ -1,7 +1,0 @@
-kind: feat
-body: Automatically install the `hcl` converter from pulumi-labs/pulumi-hcl when running
-  `pulumi convert --from hcl`
-custom:
-  Scope: cli
-  PR: ''
-time: '2026-05-04T00:00:00Z'

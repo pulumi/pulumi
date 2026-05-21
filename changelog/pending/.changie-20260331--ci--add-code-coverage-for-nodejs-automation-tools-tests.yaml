@@ -1,6 +1,0 @@
-kind: fix
-body: Add code coverage collection for Node.js automation tools tests
-custom:
-  Scope: ci
-  PR: ''
-time: '2026-03-31T00:00:00Z'

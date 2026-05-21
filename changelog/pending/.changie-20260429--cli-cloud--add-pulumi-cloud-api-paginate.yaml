@@ -1,8 +1,0 @@
-kind: feat
-body: 'Add `--paginate` to `pulumi cloud api`: follow continuation cursors, accumulate
-  items into a single JSON envelope, and surface progress events to stderr with `--emit-events`
-  (page, complete, truncated, partial_failure, cancelled).'
-custom:
-  Scope: cli/cloud
-  PR: ''
-time: '2026-04-29T00:00:00Z'

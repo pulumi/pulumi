@@ -1,6 +1,0 @@
-kind: fix
-body: Return a clear error when two installed plugins claim the same default provider package name instead of panicking
-custom:
-  Scope: engine
-  PR: ''
-time: '2026-04-22T00:00:00Z'

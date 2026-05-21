@@ -1,6 +1,0 @@
-kind: feat
-body: Reject invalid property paths from programs
-custom:
-  Scope: engine
-  PR: ''
-time: '2026-04-23T00:00:00Z'

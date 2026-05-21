@@ -1,6 +1,0 @@
-kind: fix
-body: 'Fix `pulumi neo` printing `error: context canceled` when the user quits the TUI'
-custom:
-  Scope: cli
-  PR: ''
-time: '2026-05-05T00:00:00Z'

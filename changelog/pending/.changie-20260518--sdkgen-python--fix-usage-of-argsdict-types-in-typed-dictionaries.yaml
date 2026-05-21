@@ -1,6 +1,0 @@
-kind: fix
-body: Fix usage of ArgsDict types in typed dictionaries
-custom:
-  Scope: sdkgen/python
-  PR: ''
-time: '2026-05-19T00:00:00Z'

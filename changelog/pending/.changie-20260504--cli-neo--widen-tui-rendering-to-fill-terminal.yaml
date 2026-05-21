@@ -1,7 +1,0 @@
-kind: improvement
-body: Widen the `pulumi neo` TUI to track the terminal width instead of capping conversation
-  rendering at 80 columns
-custom:
-  Scope: cli/neo
-  PR: ''
-time: '2026-05-04T00:00:00Z'

@@ -1,7 +1,0 @@
-body: Render URLs in `pulumi neo` output as clickable OSC 8 hyperlinks in terminals
-  that support them
-custom:
-  PR: ''
-  Scope: cli/neo
-kind: improvement
-time: '2026-01-01T00:00:00Z'

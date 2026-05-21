@@ -1,6 +1,0 @@
-kind: chore
-body: Remove `mimeType` & `readDir` from PCL
-custom:
-  Scope: programgen/dotnet,go,java,nodejs,python,yaml,pcl
-  PR: ''
-time: '2026-04-02T00:00:00Z'

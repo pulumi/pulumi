@@ -1,7 +1,0 @@
-body: Return the bare stack name and canonical project name from `pulumi_preview`
-  and `pulumi_up` tool results instead of echoing the raw input
-custom:
-  PR: ''
-  Scope: cli/neo
-kind: fix
-time: '2026-01-01T00:00:00Z'

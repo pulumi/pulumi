@@ -1,7 +1,0 @@
-kind: fix
-body: Surface the error and exit when `pulumi neo` fails to create the underlying
-  task, instead of leaving the TUI stuck in `Thinking…`
-custom:
-  Scope: cli
-  PR: ''
-time: '2026-05-04T00:00:00Z'

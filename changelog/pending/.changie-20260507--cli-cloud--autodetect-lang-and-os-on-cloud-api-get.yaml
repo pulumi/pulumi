@@ -1,8 +1,0 @@
-body: Auto-fill `lang` and `os` query parameters on `pulumi cloud api` GET/HEAD requests
-  when the matched OpenAPI operation declares them and the caller hasn't supplied
-  them
-custom:
-  PR: ''
-  Scope: cli/cloud
-kind: feat
-time: '2026-01-01T00:00:00Z'

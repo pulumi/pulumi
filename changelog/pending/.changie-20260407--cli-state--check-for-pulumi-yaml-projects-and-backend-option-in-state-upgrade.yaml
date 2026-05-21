@@ -1,6 +1,0 @@
-kind: fix
-body: Check for Pulumi.yaml projects and `backend` option in `state upgrade`
-custom:
-  Scope: cli/state
-  PR: ''
-time: '2026-04-07T00:00:00Z'

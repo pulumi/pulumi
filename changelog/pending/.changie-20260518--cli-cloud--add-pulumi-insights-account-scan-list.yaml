@@ -1,6 +1,0 @@
-kind: feat
-body: Add `pulumi insights account scan list <account>` to discover recent scan IDs to feed into `pulumi insights account scan log`
-custom:
-  Scope: cli/cloud
-  PR: ''
-time: '2026-05-19T00:00:00Z'

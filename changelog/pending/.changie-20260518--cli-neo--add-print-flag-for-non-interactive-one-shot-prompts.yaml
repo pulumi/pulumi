@@ -1,7 +1,0 @@
-body: Add `--print`/`-p` to `pulumi neo` to run a single prompt non-interactively
-  and print the agent's final response to stdout
-custom:
-  PR: ''
-  Scope: cli/neo
-kind: feat
-time: '2026-05-18T00:00:00Z'

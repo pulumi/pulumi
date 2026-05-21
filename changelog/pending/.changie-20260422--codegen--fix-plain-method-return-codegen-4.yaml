@@ -1,6 +1,0 @@
-kind: fix
-body: Do not wrap a plain method return type in an Output in program-gen
-custom:
-  Scope: programgen
-  PR: ''
-time: '2026-04-22T00:00:00Z'

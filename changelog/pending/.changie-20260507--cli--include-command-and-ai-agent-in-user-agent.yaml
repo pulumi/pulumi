@@ -1,7 +1,0 @@
-body: Include the running command name and detected AI agent (when present) in the
-  User-Agent header on Pulumi Cloud API requests
-custom:
-  PR: ''
-  Scope: cli
-kind: feat
-time: '2026-01-01T00:00:00Z'

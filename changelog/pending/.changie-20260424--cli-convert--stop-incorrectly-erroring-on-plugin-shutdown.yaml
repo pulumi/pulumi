@@ -1,6 +1,0 @@
-kind: fix
-body: Stop incorrectly erroring on plugin shutdown
-custom:
-  Scope: cli/convert
-  PR: ''
-time: '2026-04-24T00:00:00Z'
