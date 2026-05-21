@@ -127,6 +127,33 @@ func TestAgentCredentialsAndClaim(t *testing.T) {
 	assert.True(t, claim.ValidUntil.Equal(validUntil))
 }
 
+//nolint:paralleltest // mutates package global
+func TestMarkAgentClaimUnavailable(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	validUntil := time.Now().Add(time.Hour).UTC()
+	require.NoError(t, StoreAgentClaim(AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
+		ClaimToken: "abc123",
+		ValidUntil: validUntil,
+		CloudURL:   "https://api.example.com",
+	}))
+	unavailableAt := time.Now().UTC()
+	require.NoError(t, MarkAgentClaimUnavailable(unavailableAt))
+
+	claim, err := GetAgentClaim()
+	require.NoError(t, err)
+	assert.Equal(t, "https://app.pulumi.com/claim/abc123", claim.ClaimURL)
+	assert.Equal(t, "abc123", claim.ClaimToken)
+	assert.True(t, claim.ValidUntil.Equal(validUntil))
+	require.NotNil(t, claim.ClaimUnavailableAt)
+	assert.True(t, claim.ClaimUnavailableAt.Equal(unavailableAt))
+}
+
 //nolint:paralleltest // mutates environment, default credentials, and package global
 func TestGetAccountWithAgentFallbackPrefersDefaultCredentials(t *testing.T) {
 	oldCreds, err := GetStoredCredentials()

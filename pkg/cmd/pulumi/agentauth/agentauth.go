@@ -93,11 +93,18 @@ func AuthRequiredMessage(now time.Time) string {
 		return ""
 	}
 	expiresAt, valid := workspace.AgentAccessTokenExpiresAt(account, now)
+	if claim.ClaimUnavailableAt != nil {
+		return workspace.FormatAgentLoginRequiredInstruction(
+			workspace.AgentLoginClaimUnavailable, expiresAt, now)
+	}
 	if claim.ClaimToken != "" {
 		claimable, err := validateAgentClaim(context.Background(), claim.CloudURL, claim.ClaimToken)
 		if err != nil {
 			logging.V(7).Infof("Could not validate agent claim token for %q: %v", claim.CloudURL, err)
 		} else if !claimable {
+			if err = workspace.MarkAgentClaimUnavailable(now); err != nil {
+				logging.V(7).Infof("Could not mark agent claim unavailable for %q: %v", claim.CloudURL, err)
+			}
 			return workspace.FormatAgentLoginRequiredInstruction(
 				workspace.AgentLoginClaimUnavailable, expiresAt, now)
 		} else {

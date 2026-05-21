@@ -236,6 +236,55 @@ func TestAuthRequiredMessageOmitsClaimURLWhenClaimIsNotClaimable(t *testing.T) {
 	assert.Contains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 	assert.NotContains(t, message, "CLAIM_URL=")
 	assert.Contains(t, message, "claim URL is no longer claimable")
+	claim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	require.NotNil(t, claim.ClaimUnavailableAt)
+	assert.True(t, claim.ClaimUnavailableAt.Equal(now))
+}
+
+//nolint:paralleltest // mutates env vars, shared temporary agent credentials, and package global
+func TestAuthRequiredMessageSkipsValidationWhenClaimMarkedUnavailable(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	t.Setenv("CODEX_SANDBOX", "1")
+	now := time.Date(2026, 5, 21, 12, 0, 0, 0, time.UTC)
+	unavailableAt := now.Add(-time.Minute)
+	expiresAt := now.Add(time.Hour)
+	cloudURL := "https://api.cached-unavailable-claim.example.com"
+	err = workspace.StoreAgentAccount(cloudURL, workspace.Account{
+		AccessToken: "agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:           "https://app.pulumi.com/claim/cached-unavailable-claim",
+		ClaimToken:         "cached-unavailable-claim",
+		CloudURL:           cloudURL,
+		ValidUntil:         now.Add(time.Hour),
+		ClaimUnavailableAt: &unavailableAt,
+	})
+	require.NoError(t, err)
+	setValidateAgentClaim(t, func(ctx context.Context, gotCloudURL, claimToken string) (bool, error) {
+		t.Fatal("validateAgentClaim should not be called for a cached unavailable claim")
+		return false, nil
+	})
+
+	message := AuthRequiredMessage(now)
+	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
+	assert.NotContains(t, message, "CLAIM_URL=")
+	assert.Contains(t, message, "claim URL is no longer claimable")
 }
 
 //nolint:paralleltest // mutates env vars, shared temporary agent credentials, and package global

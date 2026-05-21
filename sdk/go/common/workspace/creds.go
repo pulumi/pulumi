@@ -367,10 +367,11 @@ func StoreCredentials(creds Credentials) error {
 // AgentClaim is the claim metadata returned when the CLI automatically creates
 // an account for an agent.
 type AgentClaim struct {
-	ClaimURL   string    `json:"claimUrl"`
-	ClaimToken string    `json:"claimToken,omitempty"`
-	ValidUntil time.Time `json:"validUntil"`
-	CloudURL   string    `json:"cloudUrl"`
+	ClaimURL           string     `json:"claimUrl"`
+	ClaimToken         string     `json:"claimToken,omitempty"`
+	ValidUntil         time.Time  `json:"validUntil"`
+	CloudURL           string     `json:"cloudUrl"`
+	ClaimUnavailableAt *time.Time `json:"claimUnavailableAt,omitempty"`
 }
 
 // FormatAgentClaimInstruction returns the structured instruction shown to
@@ -435,24 +436,27 @@ func FormatAgentLoginRequiredInstruction(
 	accessTokenExpiresAt *time.Time,
 	now time.Time,
 ) string {
-	message := "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED\n"
+	var message strings.Builder
+	message.WriteString("PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED\n")
 	if accessTokenExpiresAt != nil {
-		message += fmt.Sprintf(
+		message.WriteString(fmt.Sprintf(
 			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=%s\n",
-			FormatAgentClaimValidFor(*accessTokenExpiresAt, now))
+			FormatAgentClaimValidFor(*accessTokenExpiresAt, now)))
 	}
-	message +=
+	message.WriteString(
 		"ACTION_REQUIRED=Tell the user to run pulumi login.\n" +
-			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate"
+			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate")
 	switch reason {
+	case AgentLoginTokenRejected:
+		message.WriteString(" even though local access had not expired. The account was likely claimed or revoked. " +
+			"Ask the user to run pulumi login before retrying.\n")
 	case AgentLoginClaimUnavailable:
-		message += ", and its claim URL is no longer claimable. The account was likely already claimed, expired, " +
-			"or revoked. Ask the user to run pulumi login before retrying.\n"
+		message.WriteString(", and its claim URL is no longer claimable. The account was likely already claimed, expired, " +
+			"or revoked. Ask the user to run pulumi login before retrying.\n")
 	default:
-		message += " even though local access had not expired. The account was likely claimed or revoked. " +
-			"Ask the user to run pulumi login before retrying.\n"
+		contract.Failf("unknown agent login required reason %v", reason)
 	}
-	return message
+	return message.String()
 }
 
 // FormatAgentClaimValidFor returns a compact, approximate duration until an
@@ -710,6 +714,20 @@ func GetAgentClaim() (AgentClaim, error) {
 		return AgentClaim{}, fmt.Errorf("failed to read Pulumi agent claim file '%s': %w", claimFile, err)
 	}
 	return claim, nil
+}
+
+// MarkAgentClaimUnavailable records that the shared temporary agent claim is
+// no longer claimable.
+func MarkAgentClaimUnavailable(unavailableAt time.Time) error {
+	claim, err := GetAgentClaim()
+	if err != nil {
+		return err
+	}
+	if claim.ClaimURL == "" {
+		return nil
+	}
+	claim.ClaimUnavailableAt = &unavailableAt
+	return StoreAgentClaim(claim)
 }
 
 // DeleteExpiredAgentCredentials removes shared temporary agent credentials when
