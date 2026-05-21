@@ -396,6 +396,7 @@ func (h *langhost) Run(ctx context.Context, info RunInfo) (string, bool, error) 
 		Organization:     info.Organization,
 		Info:             minfo,
 		LoaderTarget:     info.LoaderAddress,
+		MapperTarget:     info.MapperAddress,
 		AttachDebugger:   info.AttachDebugger,
 	})
 	if err != nil {

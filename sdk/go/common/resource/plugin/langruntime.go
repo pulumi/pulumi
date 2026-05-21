@@ -230,6 +230,7 @@ type RunInfo struct {
 	Parallel         int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	Organization     string                // the organization name housing the program being run (might be empty).
 	LoaderAddress    string                // the RPC address of the host's schema loader.
+	MapperAddress    string                // the RPC address of the host's mapping service.
 	AttachDebugger   bool                  // true if we are starting the program under a debugger.
 }
 

@@ -420,6 +420,7 @@ class RunRequest(google.protobuf.message.Message):
     INFO_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     ATTACH_DEBUGGER_FIELD_NUMBER: builtins.int
+    MAPPER_TARGET_FIELD_NUMBER: builtins.int
     project: builtins.str
     """The project name."""
     stack: builtins.str
@@ -452,6 +453,8 @@ class RunRequest(google.protobuf.message.Message):
     """The target of a codegen.LoaderServer to use for loading schemas."""
     attach_debugger: builtins.bool
     """True if and only if the host should start the program under a debugger."""
+    mapper_target: builtins.str
+    """The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi."""
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """Any arguments to pass to the program."""
@@ -493,9 +496,10 @@ class RunRequest(google.protobuf.message.Message):
         info: global___ProgramInfo | None = ...,
         loader_target: builtins.str = ...,
         attach_debugger: builtins.bool = ...,
+        mapper_target: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["configPropertyMap", b"configPropertyMap", "info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "loader_target", b"loader_target", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
 
 global___RunRequest = RunRequest
 

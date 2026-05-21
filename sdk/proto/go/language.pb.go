@@ -782,8 +782,10 @@ type RunRequest struct {
 	LoaderTarget string `protobuf:"bytes,15,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// True if and only if the host should start the program under a debugger.
 	AttachDebugger bool `protobuf:"varint,16,opt,name=attach_debugger,json=attachDebugger,proto3" json:"attach_debugger,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi.
+	MapperTarget  string `protobuf:"bytes,17,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RunRequest) Reset() {
@@ -929,6 +931,13 @@ func (x *RunRequest) GetAttachDebugger() bool {
 		return x.AttachDebugger
 	}
 	return false
+}
+
+func (x *RunRequest) GetMapperTarget() string {
+	if x != nil {
+		return x.MapperTarget
+	}
+	return ""
 }
 
 // `RunResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Run) call.
@@ -2530,7 +2539,7 @@ const file_pulumi_language_proto_rawDesc = "" +
 	"\x1aGetRequiredPackagesRequest\x12*\n" +
 	"\x04info\x18\x01 \x01(\v2\x16.pulumirpc.ProgramInfoR\x04info\"W\n" +
 	"\x1bGetRequiredPackagesResponse\x128\n" +
-	"\bpackages\x18\x01 \x03(\v2\x1c.pulumirpc.PackageDependencyR\bpackages\"\x8a\x05\n" +
+	"\bpackages\x18\x01 \x03(\v2\x1c.pulumirpc.PackageDependencyR\bpackages\"\xaf\x05\n" +
 	"\n" +
 	"RunRequest\x12\x18\n" +
 	"\aproject\x18\x01 \x01(\tR\aproject\x12\x14\n" +
@@ -2549,7 +2558,8 @@ const file_pulumi_language_proto_rawDesc = "" +
 	"\x11configPropertyMap\x18\r \x01(\v2\x17.google.protobuf.StructB\x02\x18\x01R\x11configPropertyMap\x12*\n" +
 	"\x04info\x18\x0e \x01(\v2\x16.pulumirpc.ProgramInfoR\x04info\x12#\n" +
 	"\rloader_target\x18\x0f \x01(\tR\floaderTarget\x12'\n" +
-	"\x0fattach_debugger\x18\x10 \x01(\bR\x0eattachDebugger\x1a9\n" +
+	"\x0fattach_debugger\x18\x10 \x01(\bR\x0eattachDebugger\x12#\n" +
+	"\rmapper_target\x18\x11 \x01(\tR\fmapperTarget\x1a9\n" +
 	"\vConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"7\n" +

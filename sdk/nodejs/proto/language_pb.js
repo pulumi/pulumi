@@ -2738,7 +2738,8 @@ organization: jspb.Message.getFieldWithDefault(msg, 12, ""),
 configpropertymap: (f = msg.getConfigpropertymap()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f),
 loaderTarget: jspb.Message.getFieldWithDefault(msg, 15, ""),
-attachDebugger: jspb.Message.getBooleanFieldWithDefault(msg, 16, false)
+attachDebugger: jspb.Message.getBooleanFieldWithDefault(msg, 16, false),
+mapperTarget: jspb.Message.getFieldWithDefault(msg, 17, "")
   };
 
   if (includeInstance) {
@@ -2842,6 +2843,10 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 16:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAttachDebugger(value);
+      break;
+    case 17:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setMapperTarget(value);
       break;
     default:
       reader.skipField();
@@ -2980,6 +2985,13 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
   if (f) {
     writer.writeBool(
       16,
+      f
+    );
+  }
+  f = message.getMapperTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      17,
       f
     );
   }
@@ -3352,6 +3364,24 @@ proto.pulumirpc.RunRequest.prototype.getAttachDebugger = function() {
  */
 proto.pulumirpc.RunRequest.prototype.setAttachDebugger = function(value) {
   return jspb.Message.setProto3BooleanField(this, 16, value);
+};
+
+
+/**
+ * optional string mapper_target = 17;
+ * @return {string}
+ */
+proto.pulumirpc.RunRequest.prototype.getMapperTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 17, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.setMapperTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 17, value);
 };
 
 
