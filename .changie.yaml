@@ -1,6 +1,6 @@
 changesDir: changelog
 unreleasedDir: pending
-headerPath: ""
+headerPath: header.md
 changelogPath: CHANGELOG.md
 versionExt: md
 versionFormat: '## {{.Version}} ({{.Time.Format "2006-01-02"}})'
