@@ -3021,9 +3021,9 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 		}
 
 		var envVars strings.Builder
-		envVars.WriteString(fmt.Sprintf("'%s'", dv.Environment[0]))
+		fmt.Fprintf(&envVars, "'%s'", dv.Environment[0])
 		for _, e := range dv.Environment[1:] {
-			envVars.WriteString(fmt.Sprintf(", '%s'", e))
+			fmt.Fprintf(&envVars, ", '%s'", e)
 		}
 		if defaultValue == "" {
 			defaultValue = fmt.Sprintf("%s(%s)", envFunc, envVars.String())

@@ -1988,7 +1988,7 @@ func (host *pythonLanguageHost) Link(
 			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
 		}
 		packages[packageName] = dep.Path
-		imports.WriteString(fmt.Sprintf("  import %s as %s\n", packageName, importName))
+		fmt.Fprintf(&imports, "  import %s as %s\n", packageName, importName)
 	}
 	instructions += imports.String()
 

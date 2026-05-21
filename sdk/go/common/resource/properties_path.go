@@ -640,7 +640,7 @@ func (p PropertyPath) GoString() string {
 		case string:
 			buffer.WriteString(strconv.Quote(a))
 		default:
-			buffer.WriteString(fmt.Sprintf("INVALID %[1]T (%[1]q)", a))
+			fmt.Fprintf(&buffer, "INVALID %[1]T (%[1]q)", a)
 		}
 	}
 

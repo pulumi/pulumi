@@ -4,7 +4,7 @@
 #
 # Build with: golangci-lint custom
 # Result:     bin/custom-gcl
-version: v2.9.0
+version: v2.12.2
 name: custom-gcl
 destination: ./bin
 plugins:

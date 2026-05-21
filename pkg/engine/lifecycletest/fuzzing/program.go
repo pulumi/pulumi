@@ -150,23 +150,23 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 // debugging output and error messages.
 func (ps *ProgramSpec) Pretty(indent string) string {
 	var rendered strings.Builder
-	rendered.WriteString(fmt.Sprintf("%sProgram %p", indent, ps))
+	fmt.Fprintf(&rendered, "%sProgram %p", indent, ps)
 
 	if len(ps.ResourceRegistrations) == 0 {
-		rendered.WriteString(fmt.Sprintf("\n%s  No registrations", indent))
+		fmt.Fprintf(&rendered, "\n%s  No registrations", indent)
 	} else {
-		rendered.WriteString(fmt.Sprintf("\n%s  Registrations (%d):", indent, len(ps.ResourceRegistrations)))
+		fmt.Fprintf(&rendered, "\n%s  Registrations (%d):", indent, len(ps.ResourceRegistrations))
 		for _, r := range ps.ResourceRegistrations {
-			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    ")))
+			fmt.Fprintf(&rendered, "\n%s    %s", indent, r.Pretty(indent+"    "))
 		}
 	}
 
 	if len(ps.Drops) == 0 {
-		rendered.WriteString(fmt.Sprintf("\n%s  No drops", indent))
+		fmt.Fprintf(&rendered, "\n%s  No drops", indent)
 	} else {
-		rendered.WriteString(fmt.Sprintf("\n%s  Drops (%d):", indent, len(ps.Drops)))
+		fmt.Fprintf(&rendered, "\n%s  Drops (%d):", indent, len(ps.Drops))
 		for _, r := range ps.Drops {
-			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    ")))
+			fmt.Fprintf(&rendered, "\n%s    %s", indent, r.Pretty(indent+"    "))
 		}
 	}
 

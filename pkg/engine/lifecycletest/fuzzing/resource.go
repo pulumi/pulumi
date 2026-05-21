@@ -234,63 +234,63 @@ func (r *ResourceSpec) Pretty(indent string) string {
 
 	if len(r.Tags) > 0 {
 		ks := slices.Sorted(maps.Keys(r.Tags))
-		b.WriteString(fmt.Sprintf("\n%s  Tags:                %s", indent, strings.Join(ks, ", ")))
+		fmt.Fprintf(&b, "\n%s  Tags:                %s", indent, strings.Join(ks, ", "))
 	}
 
 	if r.ID != "" {
-		b.WriteString(fmt.Sprintf("\n%s  ID:                  %s", indent, r.ID))
+		fmt.Fprintf(&b, "\n%s  ID:                  %s", indent, r.ID)
 	}
 
 	if r.Protect {
-		b.WriteString(fmt.Sprintf("\n%s  Protect:             true", indent))
+		fmt.Fprintf(&b, "\n%s  Protect:             true", indent)
 	}
 
 	if r.PendingReplacement {
-		b.WriteString(fmt.Sprintf("\n%s  Pending replacement: true", indent))
+		fmt.Fprintf(&b, "\n%s  Pending replacement: true", indent)
 	}
 
 	if r.RetainOnDelete {
-		b.WriteString(fmt.Sprintf("\n%s  Retain on delete:    true", indent))
+		fmt.Fprintf(&b, "\n%s  Retain on delete:    true", indent)
 	}
 
 	if r.Provider != "" {
 		provRef, err := providers.ParseReference(r.Provider)
 		if err != nil {
-			b.WriteString(fmt.Sprintf("\n%s  Provider:            %s", indent, r.Provider))
+			fmt.Fprintf(&b, "\n%s  Provider:            %s", indent, r.Provider)
 		} else {
-			b.WriteString(fmt.Sprintf("\n%s  Provider:            %s::%s", indent, Colored(provRef.URN()), provRef.ID()))
+			fmt.Fprintf(&b, "\n%s  Provider:            %s::%s", indent, Colored(provRef.URN()), provRef.ID())
 		}
 	}
 
 	if r.Parent != "" {
-		b.WriteString(fmt.Sprintf("\n%s  Parent:              %s", indent, Colored(r.Parent)))
+		fmt.Fprintf(&b, "\n%s  Parent:              %s", indent, Colored(r.Parent))
 	}
 
 	if len(r.Dependencies) > 0 {
-		b.WriteString(fmt.Sprintf("\n\n%s  Dependencies (%d):", indent, len(r.Dependencies)))
+		fmt.Fprintf(&b, "\n\n%s  Dependencies (%d):", indent, len(r.Dependencies))
 		for _, d := range r.Dependencies {
-			b.WriteString(fmt.Sprintf("\n%s    %s", indent, Colored(d)))
+			fmt.Fprintf(&b, "\n%s    %s", indent, Colored(d))
 		}
 	}
 
 	if len(r.PropertyDependencies) > 0 {
-		b.WriteString(fmt.Sprintf("\n\n%s  Property dependencies (%d key[s]):", indent, len(r.PropertyDependencies)))
+		fmt.Fprintf(&b, "\n\n%s  Property dependencies (%d key[s]):", indent, len(r.PropertyDependencies))
 		for k, deps := range r.PropertyDependencies {
-			b.WriteString(fmt.Sprintf("\n%s    %s", indent, k))
+			fmt.Fprintf(&b, "\n%s    %s", indent, k)
 			for _, d := range deps {
-				b.WriteString(fmt.Sprintf("\n%s      %s", indent, Colored(d)))
+				fmt.Fprintf(&b, "\n%s      %s", indent, Colored(d))
 			}
 		}
 	}
 
 	if r.DeletedWith != "" {
-		b.WriteString(fmt.Sprintf("\n\n%s  Deleted with:        %s", indent, Colored(r.DeletedWith)))
+		fmt.Fprintf(&b, "\n\n%s  Deleted with:        %s", indent, Colored(r.DeletedWith))
 	}
 
 	if len(r.Aliases) > 0 {
-		b.WriteString(fmt.Sprintf("\n\n%s  Aliases (%d):", indent, len(r.Aliases)))
+		fmt.Fprintf(&b, "\n\n%s  Aliases (%d):", indent, len(r.Aliases))
 		for _, a := range r.Aliases {
-			b.WriteString(fmt.Sprintf("\n%s    %s", indent, Colored(a)))
+			fmt.Fprintf(&b, "\n%s    %s", indent, Colored(a))
 		}
 	}
 
