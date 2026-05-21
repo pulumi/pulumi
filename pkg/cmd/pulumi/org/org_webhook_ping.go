@@ -70,9 +70,9 @@ func newOrgWebhookPingCmd() *cobra.Command {
 			"properly configured and reachable. Returns the delivery result\n" +
 			"including the HTTP response code and duration.",
 		Example: "  # Ping a webhook\n" +
-			"  pulumi org webhook ping my-webhook\n\n" +
+			"  pulumi org webhook ping 1a2b3c4d\n\n" +
 			"  # Ping and get full delivery details as JSON\n" +
-			"  pulumi org webhook ping my-webhook --output json",
+			"  pulumi org webhook ping 1a2b3c4d --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opcmd.w = cmd.OutOrStdout()
 			return opcmd.run(cmd.Context(), args[0])
@@ -80,7 +80,7 @@ func newOrgWebhookPingCmd() *cobra.Command {
 	}
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{{Name: "name"}},
+		Arguments: []constrictor.Argument{{Name: "id"}},
 		Required:  1,
 	})
 

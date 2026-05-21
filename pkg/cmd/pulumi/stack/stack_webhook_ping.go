@@ -69,9 +69,9 @@ func newStackWebhookPingCmdWith(factory stackWebhookPingClientFactory) *cobra.Co
 			"\n" +
 			"Returns an error if the webhook does not exist.",
 		Example: "  # Ping a webhook to verify it works\n" +
-			"  pulumi stack webhook ping my-webhook\n\n" +
+			"  pulumi stack webhook ping 1a2b3c4d\n\n" +
 			"  # Ping a webhook and get the full delivery details as JSON\n" +
-			"  pulumi stack webhook ping my-webhook --output json",
+			"  pulumi stack webhook ping 1a2b3c4d --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if factory == nil {
 				factory = defaultStackWebhookPingClientFactory

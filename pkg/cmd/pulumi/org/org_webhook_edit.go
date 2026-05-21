@@ -84,14 +84,14 @@ func newOrgWebhookEditCmd() *cobra.Command {
 			"modify event subscriptions incrementally. To clear the secret,\n" +
 			"pass --secret \"\".",
 		Example: "  # Disable a webhook\n" +
-			"  pulumi org webhook edit my-hook --active=false\n\n" +
+			"  pulumi org webhook edit 1a2b3c4d --active=false\n\n" +
 			"  # Change the payload URL\n" +
-			"  pulumi org webhook edit my-hook --url https://new-url.example.com\n\n" +
+			"  pulumi org webhook edit 1a2b3c4d --url https://new-url.example.com\n\n" +
 			"  # Add an event and remove another\n" +
-			"  pulumi org webhook edit my-hook \\\n" +
+			"  pulumi org webhook edit 1a2b3c4d \\\n" +
 			"    --add-event deployment_failed --remove-event deployment_started\n\n" +
 			"  # Add a group\n" +
-			"  pulumi org webhook edit my-hook --add-group environments",
+			"  pulumi org webhook edit 1a2b3c4d --add-group environments",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			oecmd.w = cmd.OutOrStdout()
 			return oecmd.run(cmd.Context(), cmd, args[0])
@@ -99,7 +99,7 @@ func newOrgWebhookEditCmd() *cobra.Command {
 	}
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{{Name: "name"}},
+		Arguments: []constrictor.Argument{{Name: "id"}},
 		Required:  1,
 	})
 

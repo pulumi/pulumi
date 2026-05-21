@@ -60,9 +60,9 @@ func newOrgWebhookRemoveCmd() *cobra.Command {
 			"\n" +
 			"Returns an error if the webhook does not exist.",
 		Example: "  # Remove a webhook (will prompt for confirmation)\n" +
-			"  pulumi org webhook remove my-webhook\n\n" +
+			"  pulumi org webhook remove 1a2b3c4d\n\n" +
 			"  # Remove without confirmation\n" +
-			"  pulumi org webhook remove my-webhook --yes",
+			"  pulumi org webhook remove 1a2b3c4d --yes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			orcmd.w = cmd.OutOrStdout()
 			return orcmd.run(cmd.Context(), args[0])
@@ -70,7 +70,7 @@ func newOrgWebhookRemoveCmd() *cobra.Command {
 	}
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{{Name: "name"}},
+		Arguments: []constrictor.Argument{{Name: "id"}},
 		Required:  1,
 	})
 

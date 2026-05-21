@@ -74,9 +74,9 @@ func newOrgWebhookDeliveryListCmd() *cobra.Command {
 			"delivery includes the timestamp, event kind, HTTP response code,\n" +
 			"and request duration.",
 		Example: "  # List deliveries for a webhook\n" +
-			"  pulumi org webhook delivery list my-webhook\n\n" +
+			"  pulumi org webhook delivery list 1a2b3c4d\n\n" +
 			"  # List deliveries as JSON\n" +
-			"  pulumi org webhook delivery list my-webhook --output json",
+			"  pulumi org webhook delivery list 1a2b3c4d --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dlcmd.w = cmd.OutOrStdout()
 			return dlcmd.run(cmd.Context(), args[0])
@@ -84,7 +84,7 @@ func newOrgWebhookDeliveryListCmd() *cobra.Command {
 	}
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{{Name: "webhook"}},
+		Arguments: []constrictor.Argument{{Name: "id"}},
 		Required:  1,
 	})
 
