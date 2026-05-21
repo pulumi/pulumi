@@ -320,6 +320,77 @@ Resources:
 	assert.Equal(t, expected, output)
 }
 
+// TestDoCmdWithPkgArgPrintsHelpSkipsMethods asserts that methods declared on a resource (which appear in
+// PackageSpec.Functions but are bound with IsMethod=true) are *not* listed as standalone functions in the
+// package or module help. Methods are reached via their owning resource, not as top-level callables.
+func TestDoCmdWithPkgArgPrintsHelpSkipsMethods(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "aws", source)
+		// Two functions: one is a regular invoke, the other is the implementation of a method on myResource.
+		// Methods are referenced from ResourceSpec.Methods and must (1) have a token shaped
+		// "<resource-token>/<method-name>" and (2) declare a __self__ input parameter.
+		spec := schema.PackageSpec{
+			Name:        "aws",
+			Description: "Help text about aws.",
+			Functions: map[string]schema.FunctionSpec{
+				"aws:index:myFunction": {},
+				"aws:index:myResource/myMethod": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"__self__": {TypeSpec: schema.TypeSpec{Ref: "#/resources/aws:index:myResource"}},
+						},
+					},
+				},
+				"aws:myModule:myOtherFunction": {},
+				"aws:myModule:myOtherResource/myOtherMethod": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"__self__": {TypeSpec: schema.TypeSpec{Ref: "#/resources/aws:myModule:myOtherResource"}},
+						},
+					},
+				},
+			},
+			Resources: map[string]schema.ResourceSpec{
+				"aws:index:myResource": {
+					Methods: map[string]string{"myMethod": "aws:index:myResource/myMethod"},
+				},
+				"aws:myModule:myOtherResource": {
+					Methods: map[string]string{"myOtherMethod": "aws:myModule:myOtherResource/myOtherMethod"},
+				},
+			},
+		}
+		return &testProvider{spec: spec}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+
+	// Package-level help: methods (myMethod / myOtherMethod) should not appear under Functions.
+	cmd.SetArgs([]string{"aws"})
+	require.NoError(t, cmd.Execute())
+	pkgHelp := stdout.String()
+	assert.Contains(t, pkgHelp, "  aws:myFunction\n")
+	assert.Contains(t, pkgHelp, "  aws:myResource\n")
+	assert.Contains(t, pkgHelp, "  aws:myModule\n")
+	assert.NotContains(t, pkgHelp, "myMethod")
+	assert.NotContains(t, pkgHelp, "myOtherMethod")
+
+	// Module-level help: same expectation — myOtherMethod should not be listed alongside myOtherFunction.
+	stdout.Reset()
+	cmd.SetArgs([]string{"aws:myModule"})
+	require.NoError(t, cmd.Execute())
+	modHelp := stdout.String()
+	assert.Contains(t, modHelp, "  aws:myModule:myOtherFunction\n")
+	assert.Contains(t, modHelp, "  aws:myModule:myOtherResource\n")
+	assert.NotContains(t, modHelp, "myOtherMethod")
+}
+
 // TestDoCmdWithPkgArgPrintsHelpUnderRoot wraps the do command beneath a synthetic root with PersistentPreRun /
 // PersistentPostRun (mimicking the real `pulumi` command). When the dynamic subcommand executes via
 // subcmd.ExecuteContext, cobra walks back up to the root for a second Find/Execute pass — without the lifecycle

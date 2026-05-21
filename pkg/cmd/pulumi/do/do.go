@@ -459,6 +459,10 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 	functions := map[string]*schema.Function{}
 	resources := map[string]*schema.Resource{}
 	for _, fn := range pc.spec.Functions {
+		if fn.IsMethod {
+			continue
+		}
+
 		mod := pc.spec.TokenToModule(fn.Token)
 		if mod == "" {
 			functions[fn.Token] = fn
@@ -544,6 +548,10 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 	functions := map[string]*schema.Function{}
 	resources := map[string]*schema.Resource{}
 	for _, fn := range pc.spec.Functions {
+		if fn.IsMethod {
+			continue
+		}
+
 		mod := pc.spec.TokenToModule(fn.Token)
 		if mod == name {
 			functions[pc.spec.CanonicalizeToken(fn.Token)] = fn
