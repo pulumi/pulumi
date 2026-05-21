@@ -111,6 +111,8 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	return cmd
 }
 
+// deleteAllAccounts removes user credentials and, in agent mode, any shared
+// temporary agent credentials.
 func deleteAllAccounts() error {
 	if !agentLogoutFallbackEnabled() {
 		return workspace.DeleteAllAccounts()
@@ -121,6 +123,8 @@ func deleteAllAccounts() error {
 	return workspace.DeleteAgentCredentials()
 }
 
+// deleteAccount removes credentials for a cloud URL, falling back to shared
+// temporary agent credentials when default credentials are unavailable.
 func deleteAccount(cloudURL string) error {
 	if !agentLogoutFallbackEnabled() {
 		return workspace.DeleteAccount(cloudURL)
@@ -132,6 +136,8 @@ func deleteAccount(cloudURL string) error {
 	return workspace.DeleteAgentAccount(cloudURL)
 }
 
+// agentLogoutFallbackEnabled reports whether logout may use the shared agent
+// credential store as an implicit fallback.
 func agentLogoutFallbackEnabled() bool {
 	return agentdetect.Detect(os.Getenv) != "" &&
 		os.Getenv(workspace.PulumiCredentialsPathEnvVar) == "" &&

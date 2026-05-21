@@ -113,6 +113,8 @@ func DetectModel(agentName string, getEnv func(string) string) string {
 	}
 }
 
+// detectCodexModel reads Codex's local config and returns the configured model,
+// if one is available.
 func detectCodexModel(getEnv func(string) string) string {
 	type codexConfig struct {
 		Model string `toml:"model"`
@@ -124,6 +126,8 @@ func detectCodexModel(getEnv func(string) string) string {
 	return ""
 }
 
+// detectClaudeModel reads Claude's local settings and returns the configured
+// model, if one is available.
 func detectClaudeModel(getEnv func(string) string) string {
 	type claudeSettings struct {
 		Model string `json:"model"`
@@ -144,6 +148,8 @@ func detectClaudeModel(getEnv func(string) string) string {
 	return ""
 }
 
+// detectGeminiModel reads Gemini's local settings and returns the configured
+// model, if one is available.
 func detectGeminiModel(getEnv func(string) string) string {
 	type geminiSettings struct {
 		Model string `json:"model"`
@@ -155,6 +161,8 @@ func detectGeminiModel(getEnv func(string) string) string {
 	return ""
 }
 
+// homeDir returns the best available home directory from the supplied
+// environment reader, falling back to os.UserHomeDir.
 func homeDir(getEnv func(string) string) string {
 	if home := strings.TrimSpace(getEnv("HOME")); home != "" {
 		return home
@@ -169,6 +177,7 @@ func homeDir(getEnv func(string) string) string {
 	return home
 }
 
+// readTOMLFile decodes path into v and reports whether decoding succeeded.
 func readTOMLFile(path string, v any) bool {
 	if strings.TrimSpace(path) == "" {
 		return false
@@ -179,6 +188,7 @@ func readTOMLFile(path string, v any) bool {
 	return true
 }
 
+// readJSONFile decodes path into v and reports whether decoding succeeded.
 func readJSONFile(path string, v any) bool {
 	if strings.TrimSpace(path) == "" {
 		return false

@@ -30,6 +30,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -77,6 +78,29 @@ import (
 )
 
 var ErrUnauthorized = errors.New("Unauthorized: No credentials provided or are invalid.")
+
+var agentCredentialUse = struct {
+	sync.Mutex
+	cloudURLs map[string]bool
+}{
+	cloudURLs: map[string]bool{},
+}
+
+// MarkAgentCredentialsUsed records that this CLI process selected shared
+// temporary agent credentials for the given cloud URL.
+func MarkAgentCredentialsUsed(cloudURL string) {
+	agentCredentialUse.Lock()
+	defer agentCredentialUse.Unlock()
+	agentCredentialUse.cloudURLs[cloudURL] = true
+}
+
+// AgentCredentialsUsed reports whether this CLI process selected shared
+// temporary agent credentials for the given cloud URL.
+func AgentCredentialsUsed(cloudURL string) bool {
+	agentCredentialUse.Lock()
+	defer agentCredentialUse.Unlock()
+	return agentCredentialUse.cloudURLs[cloudURL]
+}
 
 type PulumiAILanguage string
 
@@ -279,42 +303,23 @@ func New(ctx context.Context, d diag.Sink,
 // getBackendAccount returns account credentials for a backend, falling back to
 // the shared agent cache when an agent cannot read the default credentials.
 func getBackendAccount(cloudURL string) (workspace.Account, error) {
-	account, err := workspace.GetAccount(cloudURL)
-	if err == nil {
-		if account.AccessToken != "" {
-			logging.V(7).Infof("Using backend account for %q from default credentials", cloudURL)
-			return account, nil
-		}
-		if agentdetect.Detect(os.Getenv) != "" && !hasExplicitPulumiPathEnv() {
-			logging.V(7).Infof(
-				"No backend account for %q found in default credentials; checking shared agent credentials", cloudURL)
-		} else {
-			logging.V(7).Infof("No backend account for %q found in default credentials", cloudURL)
-			return account, nil
-		}
-	}
-	agent := agentdetect.Detect(os.Getenv)
-	if agent == "" || hasExplicitPulumiPathEnv() {
-		logging.V(7).Infof(
-			"Could not get backend account from default credentials without agent fallback: %v", err)
+	account, fromAgent, err := workspace.GetAccountWithAgentFallback(cloudURL)
+	if err != nil {
 		return workspace.Account{}, err
 	}
-
-	logging.V(7).Infof(
-		"Could not get backend account from default credentials in agent mode (%s); checking shared agent credentials: %v",
-		agent, err)
-	agentAccount, agentErr := workspace.GetAgentAccount(cloudURL)
-	if agentErr != nil {
-		return workspace.Account{}, errors.Join(err, agentErr)
-	}
-	if agentAccount.AccessToken != "" {
+	if fromAgent {
 		logging.V(7).Infof("Using backend account for %q from shared agent credentials", cloudURL)
+		MarkAgentCredentialsUsed(cloudURL)
+	} else if account.AccessToken != "" {
+		logging.V(7).Infof("Using backend account for %q from default credentials", cloudURL)
 	} else {
-		logging.V(7).Infof("No backend account for %q found in shared agent credentials", cloudURL)
+		logging.V(7).Infof("No backend account for %q found", cloudURL)
 	}
-	return agentAccount, nil
+	return account, nil
 }
 
+// hasExplicitPulumiPathEnv reports whether the user explicitly selected a
+// Pulumi credential or home path, disabling implicit agent fallback paths.
 func hasExplicitPulumiPathEnv() bool {
 	return os.Getenv(workspace.PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
 }
@@ -491,6 +496,8 @@ var newLoginManager = func() LoginManager {
 
 type defaultLoginManager struct{}
 
+// validateStoredAccount checks whether a stored account can still
+// authenticate, refreshing cached user and token metadata when needed.
 func validateStoredAccount(
 	ctx context.Context,
 	cloudURL string,
@@ -617,9 +624,9 @@ func (m defaultLoginManager) Current(
 	return &account, nil
 }
 
-// currentOrSignupAgentAccount returns credentials from the shared agent cache,
-// or creates a new agent account for the detected agent when no valid cached
-// credentials exist.
+// currentOrSignupAgentAccount returns valid credentials from the shared agent
+// cache, reports active claim state when cached credentials cannot
+// authenticate, or creates a new agent account when no usable state remains.
 func (m defaultLoginManager) currentOrSignupAgentAccount(
 	ctx context.Context,
 	cloudURL string,
@@ -650,6 +657,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 			if err = workspace.StoreAgentAccount(cloudURL, agentAccount, setCurrent); err != nil {
 				return nil, err
 			}
+			MarkAgentCredentialsUsed(cloudURL)
 			return &agentAccount, nil
 		}
 		if expiresAt, tokenValid := workspace.AgentAccessTokenExpiresAt(agentAccount, now); tokenValid {
@@ -726,6 +734,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	if err = workspace.StoreAgentAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
+	MarkAgentCredentialsUsed(cloudURL)
 	logging.V(7).Infof("Stored shared agent credentials for %q", cloudURL)
 	claim := workspace.AgentClaim{
 		ClaimURL:   claimURL,
@@ -736,13 +745,6 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		return nil, err
 	}
 	logging.V(7).Infof("Stored shared agent claim metadata for %q; valid until %s", cloudURL, claim.ValidUntil)
-	var accessTokenExpiresAt *time.Time
-	if account.TokenInformation != nil {
-		accessTokenExpiresAt = account.TokenInformation.ExpiresAt
-	}
-	_, err = fmt.Fprint(os.Stderr,
-		workspace.FormatAgentClaimInstruction(claimURL, accessTokenExpiresAt, claim.ValidUntil, time.Now()))
-	contract.IgnoreError(err)
 
 	return &account, nil
 }
@@ -846,7 +848,7 @@ func (m defaultLoginManager) Login(
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
+	if err = storeUserAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
 
@@ -888,7 +890,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
+	if err = storeUserAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
 

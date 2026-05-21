@@ -371,6 +371,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "valid-agent-token", account.AccessToken)
+	assert.True(t, AgentCredentialsUsed(server.URL))
 	assert.Equal(t, 0, signupCalls)
 }
 
@@ -442,6 +443,7 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-token", account.AccessToken)
+	assert.True(t, AgentCredentialsUsed(server.URL))
 	require.NotNil(t, account.TokenInformation)
 	require.NotNil(t, account.TokenInformation.ExpiresAt)
 	assert.True(t, account.TokenInformation.ExpiresAt.Equal(accessTokenValidUntil))
@@ -452,6 +454,78 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	assert.Equal(t, "http://app.example.com/claim/claim-token", claim.ClaimURL)
 	assert.True(t, claim.ValidUntil.Equal(claimTokenValidUntil))
 	assert.Equal(t, server.URL, claim.CloudURL)
+}
+
+//nolint:paralleltest // mutates env vars, global interactive mode, shared temporary agent credentials, and console env
+func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	disableInteractive := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = true
+	t.Cleanup(func() {
+		cmdutil.DisableInteractive = disableInteractive
+	})
+
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+
+	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	claimTokenValidUntil := accessTokenValidUntil.Add(24 * time.Hour)
+	var signupMethods []string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/agents/signup":
+			signupMethods = append(signupMethods, req.Method)
+			switch req.Method {
+			case http.MethodGet:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+					ChallengeID:   "challenge-1",
+					ChallengeData: "v1:abcdef:8",
+				})
+				require.NoError(t, err)
+			case http.MethodPost:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupResponse{
+					AccessToken:           "agent-token",
+					AccessTokenValidUntil: accessTokenValidUntil,
+					ClaimToken:            "claim-token",
+					ClaimTokenValidUntil:  claimTokenValidUntil,
+				})
+				require.NoError(t, err)
+			default:
+				rw.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		case "/api/user":
+			assert.Equal(t, "token agent-token", req.Header.Get("Authorization"))
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "agent-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Login(t.Context(), server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
+		display.Options{})
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "agent-token", account.AccessToken)
+	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods)
+	assert.True(t, AgentCredentialsUsed(server.URL))
 }
 
 //nolint:paralleltest // mutates global configuration

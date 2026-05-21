@@ -127,6 +127,120 @@ func TestAgentCredentialsAndClaim(t *testing.T) {
 	assert.True(t, claim.ValidUntil.Equal(validUntil))
 }
 
+//nolint:paralleltest // mutates environment, default credentials, and package global
+func TestGetAccountWithAgentFallbackPrefersDefaultCredentials(t *testing.T) {
+	oldCreds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		require.NoError(t, StoreCredentials(oldCreds))
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	setAgentEnv(t)
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv("PULUMI_HOME", "")
+
+	cloudURL := "https://api.default-wins.example.com"
+	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "default-token"}, true))
+	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
+
+	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
+	require.NoError(t, err)
+	assert.False(t, fromAgent)
+	assert.Equal(t, "default-token", account.AccessToken)
+}
+
+//nolint:paralleltest // mutates environment and package global
+func TestGetAccountWithAgentFallbackUsesAgentCredentials(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	setAgentEnv(t)
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv("PULUMI_HOME", "")
+
+	cloudURL := "https://api.agent-fallback.example.com"
+	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
+
+	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
+	require.NoError(t, err)
+	assert.True(t, fromAgent)
+	assert.Equal(t, "agent-token", account.AccessToken)
+}
+
+//nolint:paralleltest // mutates environment and package global
+func TestGetAccountWithAgentFallbackDisabledOutsideAgentMode(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	clearAgentEnv(t)
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv("PULUMI_HOME", "")
+
+	cloudURL := "https://api.no-agent-fallback.example.com"
+	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
+
+	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
+	require.NoError(t, err)
+	assert.False(t, fromAgent)
+	assert.Empty(t, account.AccessToken)
+}
+
+//nolint:paralleltest // mutates environment and package global
+func TestGetAccountWithAgentFallbackDisabledWithExplicitHome(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	setAgentEnv(t)
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	cloudURL := "https://api.explicit-home.example.com"
+	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
+
+	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
+	require.NoError(t, err)
+	assert.False(t, fromAgent)
+	assert.Empty(t, account.AccessToken)
+}
+
+//nolint:paralleltest // mutates environment and package global
+func TestGetAccountWithAgentFallbackDisabledWithExplicitCredentialsPath(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	setAgentEnv(t)
+	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	t.Setenv("PULUMI_HOME", "")
+
+	cloudURL := "https://api.explicit-credentials-path.example.com"
+	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
+
+	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
+	require.NoError(t, err)
+	assert.False(t, fromAgent)
+	assert.Empty(t, account.AccessToken)
+}
+
 func TestFormatAgentClaimInstruction(t *testing.T) {
 	t.Parallel()
 
@@ -452,4 +566,38 @@ func TestAgentCredentialsRequireAccessibleTempDir(t *testing.T) {
 
 	_, err := GetAgentStoredCredentials()
 	require.ErrorContains(t, err, "agent mode requires read/write access to /tmp/.pulumi")
+}
+
+func setAgentEnv(t *testing.T) {
+	t.Helper()
+	clearAgentEnv(t)
+	t.Setenv("CODEX_SANDBOX", "1")
+}
+
+func clearAgentEnv(t *testing.T) {
+	t.Helper()
+	for _, name := range []string{
+		"AI_AGENT",
+		"CURSOR_TRACE_ID",
+		"CURSOR_AGENT",
+		"GEMINI_CLI",
+		"CODEX_SANDBOX",
+		"CODEX_CI",
+		"CODEX_THREAD_ID",
+		"ANTIGRAVITY_AGENT",
+		"AUGMENT_AGENT",
+		"OPENCODE",
+		"OPENCODE_CALLER",
+		"OPENCODE_CLIENT",
+		"CLAUDE_CODE_IS_COWORK",
+		"CLAUDECODE",
+		"CLAUDE_CODE",
+		"REPL_ID",
+		"COPILOT_MODEL",
+		"COPILOT_ALLOW_ALL",
+		"COPILOT_GITHUB_TOKEN",
+		"GOOSE_PROVIDER",
+	} {
+		t.Setenv(name, "")
+	}
 }

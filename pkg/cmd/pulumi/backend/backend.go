@@ -119,6 +119,8 @@ func getCurrentCloudURL(ws pkgWorkspace.Context, project *workspace.Project) (st
 	return agentCreds.Current, nil
 }
 
+// hasExplicitPulumiPathEnv reports whether the user explicitly selected a
+// Pulumi credential or home path, disabling implicit agent fallback paths.
 func hasExplicitPulumiPathEnv() bool {
 	return os.Getenv(workspace.PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
 }

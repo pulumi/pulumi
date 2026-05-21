@@ -62,6 +62,43 @@ func GetAccount(key string) (Account, error) {
 	return Account{AccessToken: token}, nil
 }
 
+// GetAccountWithAgentFallback returns an account from default credentials, or
+// from shared temporary agent credentials when running in a detected agent
+// environment without an explicit Pulumi credential path. The boolean return is
+// true only when the returned account came from shared agent credentials.
+func GetAccountWithAgentFallback(key string) (Account, bool, error) {
+	account, err := GetAccount(key)
+	if err == nil && account.AccessToken != "" {
+		return account, false, nil
+	}
+
+	agent := agentdetect.Detect(os.Getenv)
+	if agent == "" || hasExplicitPulumiPathEnv() {
+		return account, false, err
+	}
+
+	if err != nil {
+		logging.V(7).Infof(
+			"Could not read account for %q from default credentials in agent mode (%s); "+
+				"checking shared agent credentials: %v",
+			key, agent, err)
+	} else {
+		logging.V(7).Infof(
+			"No account for %q found in default credentials in agent mode (%s); "+
+				"checking shared agent credentials",
+			key, agent)
+	}
+
+	agentAccount, agentErr := GetAgentAccount(key)
+	if agentErr != nil {
+		return Account{}, false, errors.Join(err, agentErr)
+	}
+	if agentAccount.AccessToken == "" {
+		return Account{}, false, nil
+	}
+	return agentAccount, true, nil
+}
+
 // DeleteAccount deletes an account underneath the given key.
 func DeleteAccount(key string) error {
 	creds, err := GetStoredCredentials()
@@ -71,6 +108,8 @@ func DeleteAccount(key string) error {
 	return StoreCredentials(deleteAccountFromCredentials(creds, key))
 }
 
+// deleteAccountFromCredentials removes a cloud URL from a credentials object
+// and clears it as current if it was selected.
 func deleteAccountFromCredentials(creds Credentials, key string) Credentials {
 	if creds.AccessTokens != nil {
 		delete(creds.AccessTokens, key)
@@ -447,6 +486,8 @@ func GetAgentAccessTokenExpiresAt(cloudURL string, now time.Time) (*time.Time, b
 	return expiresAt, valid, nil
 }
 
+// defaultAgentPulumiDir returns the shared temporary Pulumi directory used for
+// agent credentials on this operating system.
 func defaultAgentPulumiDir() string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(os.TempDir(), BookkeepingDir)
@@ -573,19 +614,30 @@ func DeleteAgentAccount(key string) error {
 	}
 
 	var result error
-	claim, err := GetAgentClaim()
-	if err != nil {
+	if err = deleteAgentClaim(key); err != nil {
 		result = errors.Join(result, err)
-	} else if claim.CloudURL == key {
-		claimFile := getAgentClaimFilePathNoEnsure()
-		if err = os.Remove(claimFile); err != nil && !os.IsNotExist(err) {
-			result = errors.Join(result, fmt.Errorf("removing '%s': %w", claimFile, err))
-		}
 	}
 	if err = deleteAgentBackendConfig(key); err != nil {
 		result = errors.Join(result, err)
 	}
 	return result
+}
+
+// deleteAgentClaim removes the singleton shared temporary agent claim file when
+// the stored claim belongs to the given cloud URL.
+func deleteAgentClaim(key string) error {
+	claim, err := GetAgentClaim()
+	if err != nil {
+		return err
+	}
+	if claim.CloudURL != key {
+		return nil
+	}
+	claimFile := getAgentClaimFilePathNoEnsure()
+	if err = os.Remove(claimFile); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing '%s': %w", claimFile, err)
+	}
+	return nil
 }
 
 // StoreAgentCredentials replaces the shared temporary agent credentials file.
@@ -686,6 +738,8 @@ func StoreAgentClaim(claim AgentClaim) error {
 	return lockedfile.Write(claimFile, bytes.NewReader(raw), 0o600)
 }
 
+// deleteAgentBackendConfig removes backend config for key from the shared agent
+// config file, deleting that file if no backend config remains.
 func deleteAgentBackendConfig(key string) error {
 	configFile := getAgentConfigFilePathNoEnsure()
 	data, err := os.ReadFile(configFile)
@@ -738,6 +792,8 @@ func getConfigFilePath() (string, error) {
 	return filepath.Join(pulumiFolder, "config.json"), nil
 }
 
+// hasExplicitPulumiPathEnv reports whether the user explicitly selected a
+// Pulumi credential or home path, disabling implicit agent fallback paths.
 func hasExplicitPulumiPathEnv() bool {
 	return os.Getenv(PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
 }
@@ -778,6 +834,7 @@ func StorePulumiConfig(config PulumiConfig) error {
 	return nil
 }
 
+// writePulumiConfigFile atomically replaces a Pulumi config file.
 func writePulumiConfigFile(configFile string, config PulumiConfig) error {
 	raw, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {

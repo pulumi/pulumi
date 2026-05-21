@@ -96,6 +96,8 @@ func newMockClient(server *httptest.Server) *Client {
 }
 
 func TestSignupAgent(t *testing.T) {
+	t.Parallel()
+
 	validUntil := time.Now().UTC().Truncate(time.Second)
 	expiresAt := validUntil.Add(-time.Hour)
 	const challengeID = "challenge-1"

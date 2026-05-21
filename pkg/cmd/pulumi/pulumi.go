@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -291,7 +292,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 
 			logging.InitLogging(logToStderr, verbose, logFlow)
-			maybePrintAgentClaimWarning()
 
 			// Start automatic logging. At this point we don't have a stack
 			// or secrets manager, so logs will be gzip-compressed (not
@@ -395,6 +395,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			agentauth.MaybePrintClaimWarning()
+
 			// Before exiting, if there is a new version of the CLI available, print it out.
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
@@ -569,60 +571,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// environment variable declarations.
 	declareFlagsAsEnvironmentVariables(cmd)
 	return cmd, cleanup
-}
-
-// maybePrintAgentClaimWarning reminds users to claim automatically created
-// agent accounts while either the access token or claim URL is still valid.
-func maybePrintAgentClaimWarning() {
-	now := time.Now()
-	deleted, err := workspace.DeleteExpiredAgentCredentials(now)
-	if err != nil {
-		logging.V(7).Infof("Could not delete expired agent credentials: %v", err)
-		return
-	}
-	if deleted {
-		return
-	}
-
-	claim, err := workspace.GetAgentClaim()
-	if err != nil || claim.ClaimURL == "" {
-		return
-	}
-	var account workspace.Account
-	if claim.CloudURL != "" {
-		account, err = workspace.GetAgentAccount(claim.CloudURL)
-		if err != nil {
-			logging.V(7).Infof("Could not read agent account credentials: %v", err)
-			return
-		}
-	}
-	var accessTokenExpiresAt *time.Time
-	if account.TokenInformation != nil {
-		accessTokenExpiresAt = account.TokenInformation.ExpiresAt
-	}
-	if (accessTokenExpiresAt == nil || !accessTokenExpiresAt.After(now)) &&
-		(claim.ValidUntil.IsZero() || !claim.ValidUntil.After(now)) {
-		return
-	}
-
-	var warning string
-	if cmdMetadata.DetectAIAgent(os.Getenv) != "" {
-		warning = workspace.FormatAgentClaimInstruction(claim.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, now)
-	} else {
-		if accessTokenExpiresAt != nil && accessTokenExpiresAt.After(now) {
-			warning = fmt.Sprintf(
-				"Using an ephemeral Pulumi agent account that will expire in %s. Claim it to take ownership:\n%s\n",
-				workspace.FormatAgentClaimValidFor(*accessTokenExpiresAt, now),
-				claim.ClaimURL)
-		} else {
-			warning = fmt.Sprintf(
-				"Using an ephemeral Pulumi agent account. The access token has expired, but this claim URL is valid for %s:\n%s\n",
-				workspace.FormatAgentClaimValidFor(claim.ValidUntil, now),
-				claim.ClaimURL)
-		}
-	}
-	_, err = fmt.Fprint(os.Stderr, warning)
-	contract.IgnoreError(err)
 }
 
 // haveNewerDevVersion checks whethere we have a newer dev version available.
