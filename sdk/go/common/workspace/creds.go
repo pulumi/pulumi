@@ -550,7 +550,7 @@ func getAgentPulumiDirPath() string {
 func getAgentPulumiDir() (string, error) {
 	dir := getAgentPulumiDirPath()
 	if err := ensurePrivateAgentCredentialDir(dir); err != nil {
-		return "", fmt.Errorf("agent mode requires read/write access to /tmp/.pulumi: %w", err)
+		return "", fmt.Errorf("agent mode requires read/write access to %s: %w", dir, err)
 	}
 	logging.V(7).Infof("Using shared agent Pulumi directory %q", dir)
 	return dir, nil

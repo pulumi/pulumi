@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -605,7 +606,7 @@ func TestAgentCredentialsRequireAccessibleTempDir(t *testing.T) {
 	require.NoError(t, os.WriteFile(agentPulumiDir, []byte("not a directory"), 0o600))
 
 	_, err := GetAgentStoredCredentials()
-	require.ErrorContains(t, err, "agent mode requires read/write access to /tmp/.pulumi")
+	require.ErrorContains(t, err, fmt.Sprintf("agent mode requires read/write access to %s", agentPulumiDir))
 }
 
 func setAgentEnv(t *testing.T) {
