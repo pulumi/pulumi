@@ -25,6 +25,7 @@ import (
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestGetServiceSecretsAccountFallsBackToAgentCredentials(t *testing.T) {
+	isolateAgentCredentials(t)
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
 	oldAgentClaim, err := workspace.GetAgentClaim()
@@ -51,6 +52,7 @@ func TestGetServiceSecretsAccountFallsBackToAgentCredentials(t *testing.T) {
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestGetServiceSecretsAccountDoesNotFallbackWithExplicitPath(t *testing.T) {
+	isolateAgentCredentials(t)
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
 	oldAgentClaim, err := workspace.GetAgentClaim()
@@ -73,4 +75,9 @@ func TestGetServiceSecretsAccountDoesNotFallbackWithExplicitPath(t *testing.T) {
 	account, err := getServiceSecretsAccount(cloudURL)
 	require.NoError(t, err)
 	assert.Empty(t, account.AccessToken)
+}
+
+func isolateAgentCredentials(t *testing.T) {
+	t.Helper()
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 }

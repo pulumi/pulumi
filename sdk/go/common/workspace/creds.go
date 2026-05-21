@@ -527,12 +527,25 @@ func defaultAgentPulumiDir() string {
 
 var agentPulumiDir = defaultAgentPulumiDir()
 
+// pulumiTestAgentPulumiDirEnvVar is an internal test hook for isolating shared
+// agent credentials across concurrently running package tests.
+const pulumiTestAgentPulumiDirEnvVar = "PULUMI_TEST_AGENT_PULUMI_DIR"
+
+// getAgentPulumiDirPath returns the shared temporary directory path used for
+// agent credentials.
+func getAgentPulumiDirPath() string {
+	if dir := os.Getenv(pulumiTestAgentPulumiDirEnvVar); dir != "" {
+		return dir
+	}
+	return agentPulumiDir
+}
+
 // getAgentPulumiDir returns the shared temporary directory used for agent
 // credentials, creating it if needed.
 func getAgentPulumiDir() (string, error) {
-	dir := agentPulumiDir
+	dir := getAgentPulumiDirPath()
 	if err := ensurePrivateAgentCredentialDir(dir); err != nil {
-		return "", fmt.Errorf("agent mode requires read/write access to /tmp/.pulumi: %w", err)
+		return "", fmt.Errorf("agent mode requires read/write access to %s: %w", dir, err)
 	}
 	logging.V(7).Infof("Using shared agent Pulumi directory %q", dir)
 	return dir, nil
@@ -550,7 +563,7 @@ func getAgentCredsFilePath() (string, error) {
 // getAgentCredsFilePathNoEnsure returns the agent credentials path without
 // creating the agent credentials directory.
 func getAgentCredsFilePathNoEnsure() string {
-	return filepath.Join(agentPulumiDir, "credentials.json")
+	return filepath.Join(getAgentPulumiDirPath(), "credentials.json")
 }
 
 // getAgentClaimFilePath returns the shared temporary agent claim metadata path.
@@ -565,7 +578,7 @@ func getAgentClaimFilePath() (string, error) {
 // getAgentClaimFilePathNoEnsure returns the agent claim metadata path without
 // creating the agent credentials directory.
 func getAgentClaimFilePathNoEnsure() string {
-	return filepath.Join(agentPulumiDir, "agent-claim.json")
+	return filepath.Join(getAgentPulumiDirPath(), "agent-claim.json")
 }
 
 // getAgentConfigFilePath returns the shared temporary agent config path.
@@ -580,7 +593,7 @@ func getAgentConfigFilePath() (string, error) {
 // getAgentConfigFilePathNoEnsure returns the agent config path without
 // creating the agent credentials directory.
 func getAgentConfigFilePathNoEnsure() string {
-	return filepath.Join(agentPulumiDir, "config.json")
+	return filepath.Join(getAgentPulumiDirPath(), "config.json")
 }
 
 // GetAgentAccount returns the account for the given cloud URL from the shared
