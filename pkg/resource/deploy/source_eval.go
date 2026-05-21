@@ -398,30 +398,6 @@ type resmon struct {
 
 var _ SourceResourceMonitor = (*resmon)(nil)
 
-func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, logFile string) []grpc.ServerOption {
-	serveOpts := rpcutil.TracingServerInterceptorOptions(
-		tracingSpan,
-		otgrpc.SpanDecorator(decorateResourceSpans),
-	)
-	if logFile != "" {
-		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
-			LogFile: logFile,
-			Mutex:   ctx.DebugTraceMutex,
-		})
-		if err != nil {
-			// ignoring
-			return nil
-		}
-		metadata := map[string]any{
-			"mode": "server",
-		}
-		serveOpts = append(serveOpts, di.ServerOptions(interceptors.LogOptions{
-			Metadata: metadata,
-		})...)
-	}
-	return serveOpts
-}
-
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(
 	src *evalSource,
@@ -567,6 +543,30 @@ func (rm *resmon) Cancel(ctx context.Context) error {
 		errs = append(errs, client.Close())
 	}
 	return errors.Join(errs...)
+}
+
+func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, logFile string) []grpc.ServerOption {
+	serveOpts := rpcutil.TracingServerInterceptorOptions(
+		tracingSpan,
+		otgrpc.SpanDecorator(decorateResourceSpans),
+	)
+	if logFile != "" {
+		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
+			LogFile: logFile,
+			Mutex:   ctx.DebugTraceMutex,
+		})
+		if err != nil {
+			// ignoring
+			return nil
+		}
+		metadata := map[string]any{
+			"mode": "server",
+		}
+		serveOpts = append(serveOpts, di.ServerOptions(interceptors.LogOptions{
+			Metadata: metadata,
+		})...)
+	}
+	return serveOpts
 }
 
 // getProviderReference fetches the provider reference for a resource, read, or invoke from the given package with the
