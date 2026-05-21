@@ -911,21 +911,28 @@ func newUpdateSource(ctx context.Context,
 		args = []string{plugctx.Host.ServerAddr()}
 	}
 
-	// If that succeeded, create a new source that will perform interpretation of the compiled program.
-	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
+	runinfo := &deploy.EvalRunInfo{
 		Proj:        proj,
 		Pwd:         pwd,
 		Program:     main,
 		ProjectRoot: projectRoot,
 		Args:        args,
 		Target:      target,
-	}, defaultProviderVersions, resourceHooks, deploy.EvalSourceOptions{
+	}
+
+	evalOpts := deploy.EvalSourceOptions{
 		DryRun:                    opts.DryRun,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
-	}, panicErrs), nil
+	}
+
+	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
+
+	// If that succeeded, create a new source that will perform interpretation of the compiled program.
+	return deploy.NewEvalSource(plugctx, runinfo,
+		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, program), nil
 }
 
 func update(

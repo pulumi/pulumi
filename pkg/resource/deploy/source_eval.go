@@ -104,6 +104,7 @@ func NewEvalSource(
 	resourceHooks *ResourceHooks,
 	opts EvalSourceOptions,
 	panicErrs chan<- error,
+	runner func(string) *promise.Promise[struct{}],
 ) Source {
 	return &evalSource{
 		plugctx:             plugctx,
@@ -112,6 +113,7 @@ func NewEvalSource(
 		resourceHooks:       resourceHooks,
 		opts:                opts,
 		panicErrs:           panicErrs,
+		runner:              runner,
 	}
 }
 
@@ -123,6 +125,9 @@ type evalSource struct {
 	opts                EvalSourceOptions                              // options for the evaluation source.
 	// channel for reporting panics from goroutines
 	panicErrs chan<- error
+
+	// the function to run the evaluation with.
+	runner func(resourceMonitorTarget string) *promise.Promise[struct{}]
 }
 
 func (src *evalSource) Close() error {
@@ -278,56 +283,10 @@ func (iter *evalSourceIterator) forkRun(
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go PanicRecovery(iter.panicErrs, func() {
 		// Next, launch the language plugin.
-		run := func() error {
-			defer contract.IgnoreClose(iter.loaderServer)
-
-			rt := iter.src.runinfo.Proj.Runtime.Name()
-
-			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
-			if err != nil {
-				return fmt.Errorf("failed to launch language host %s: %w", rt, err)
-			}
-			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
-
-			rtopts := iter.src.runinfo.Proj.Runtime.Options()
-			programInfo := plugin.NewProgramInfo(
-				/* rootDirectory */ iter.src.runinfo.ProjectRoot,
-				/* programDirectory */ iter.src.runinfo.Pwd,
-				/* entryPoint */ iter.src.runinfo.Program,
-				/* options */ rtopts)
-
-			// Now run the actual program.
-			progerr, bail, err := langhost.Run(iter.src.plugctx.Request(), plugin.RunInfo{
-				MonitorAddress:   iter.mon.Address(),
-				Stack:            iter.src.runinfo.Target.Name.String(),
-				Project:          string(iter.src.runinfo.Proj.Name),
-				Pwd:              iter.src.runinfo.Pwd,
-				Args:             iter.src.runinfo.Args,
-				Config:           config,
-				ConfigSecretKeys: configSecretKeys,
-				DryRun:           iter.src.opts.DryRun,
-				Parallel:         iter.src.opts.Parallel,
-				Organization:     string(iter.src.runinfo.Target.Organization),
-				Info:             programInfo,
-				LoaderAddress:    iter.loaderServer.Addr(),
-				AttachDebugger:   iter.src.plugctx.Host.AttachDebugger(plugin.DebugSpec{Type: plugin.DebugTypeProgram}),
-			})
-
-			// Check if we were asked to Bail.  This a special random constant used for that
-			// purpose.
-			if err == nil && bail {
-				return result.BailErrorf("run bailed")
-			}
-
-			if err == nil && progerr != "" {
-				// If the program had an unhandled error; propagate it to the caller.
-				err = fmt.Errorf("an unhandled error occurred: %v", progerr)
-			}
-			return err
-		}
+		run := iter.src.runner(iter.mon.Address())
 
 		// Communicate the error, if it exists, or nil if the program exited cleanly.
-		err := run()
+		_, err := run.Result(context.TODO())
 		if err != nil {
 			logging.V(5).Infof("Program exited with error: %s", err)
 		} else {
