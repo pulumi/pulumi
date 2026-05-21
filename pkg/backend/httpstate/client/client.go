@@ -570,6 +570,7 @@ func (pc *Client) ExchangeOidcToken(
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -883,10 +884,56 @@ func (pc *Client) CreateOrgWebhook(
 	return resp, nil
 }
 
+// GetOrgWebhook returns a single webhook by name for the given organization.
+func (pc *Client) GetOrgWebhook(ctx context.Context, org, webhookName string) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName)
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
+}
+
+// UpdateOrgWebhook updates an existing webhook for the given organization.
+func (pc *Client) UpdateOrgWebhook(
+	ctx context.Context, org, webhookName string, req apitype.Webhook,
+) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName)
+	if err := pc.restCall(ctx, "PATCH", path, nil, &req, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
+}
+
 // DeleteOrgWebhook deletes the given webhook from the organization.
 func (pc *Client) DeleteOrgWebhook(ctx context.Context, org, webhookName string) error {
 	return pc.restCall(ctx, "DELETE",
 		"/api/orgs/"+url.PathEscape(org)+"/hooks/"+url.PathEscape(webhookName), nil, nil, nil)
+}
+
+// PingOrgWebhook sends a test ping to the given organization webhook.
+func (pc *Client) PingOrgWebhook(
+	ctx context.Context, org, webhookName string,
+) (apitype.WebhookDelivery, error) {
+	var resp apitype.WebhookDelivery
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName) + "/ping"
+	if err := pc.restCall(ctx, "POST", path, nil, nil, &resp); err != nil {
+		return apitype.WebhookDelivery{}, err
+	}
+	return resp, nil
+}
+
+// ListOrgWebhookDeliveries returns recent deliveries for the given org webhook.
+func (pc *Client) ListOrgWebhookDeliveries(
+	ctx context.Context, org, webhookName string,
+) ([]apitype.WebhookDelivery, error) {
+	var resp []apitype.WebhookDelivery
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName) + "/deliveries"
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // ListStackWebhooks returns all webhooks configured for the given stack.
@@ -938,6 +985,17 @@ func (pc *Client) GetDriftStatus(
 	var resp apitype.StackDriftStatus
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "drift", "status"), nil, nil, &resp); err != nil {
 		return apitype.StackDriftStatus{}, err
+	}
+	return resp, nil
+}
+
+// UpdateStackWebhook updates an existing webhook for the given stack.
+func (pc *Client) UpdateStackWebhook(
+	ctx context.Context, stackID StackIdentifier, webhookName string, req apitype.Webhook,
+) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	if err := pc.restCall(ctx, "PATCH", getStackPath(stackID, "hooks", webhookName), nil, &req, &resp); err != nil {
+		return apitype.Webhook{}, err
 	}
 	return resp, nil
 }
@@ -2349,7 +2407,11 @@ func (pc *Client) GetStackDeploymentSettings(ctx context.Context,
 
 func getDeploymentPath(stack StackIdentifier, components ...string) string {
 	prefix := fmt.Sprintf("/api/stacks/%s/%s/%s/deployments", stack.Owner, stack.Project, stack.Stack)
-	return path.Join(append([]string{prefix}, components...)...)
+	escaped := make([]string, len(components))
+	for i, c := range components {
+		escaped[i] = url.PathEscape(c)
+	}
+	return path.Join(append([]string{prefix}, escaped...)...)
 }
 
 func (pc *Client) CreateDeployment(ctx context.Context, stack StackIdentifier,
@@ -2377,6 +2439,22 @@ func (pc *Client) GetDeployment(
 	err := pc.restCall(ctx, http.MethodGet, getDeploymentPath(stack, id), nil, nil, &resp)
 	if err != nil {
 		return apitype.GetDeploymentResponse{}, fmt.Errorf("getting deployment %s failed: %w", id, err)
+	}
+	return resp, nil
+}
+
+// GetDeploymentByVersion retrieves a single deployment for a stack by its
+// per-program version number. It wraps the Pulumi Cloud REST endpoint
+// (GET /api/stacks/{org}/{project}/{stack}/deployments/version/{version}).
+// The response is the same shape as GetDeployment; in particular `ID` is the
+// deployment's UUID, which can be passed to the other per-deployment routes.
+func (pc *Client) GetDeploymentByVersion(
+	ctx context.Context, stack StackIdentifier, version string,
+) (apitype.GetDeploymentResponse, error) {
+	var resp apitype.GetDeploymentResponse
+	err := pc.restCall(ctx, http.MethodGet, getDeploymentPath(stack, "version", version), nil, nil, &resp)
+	if err != nil {
+		return apitype.GetDeploymentResponse{}, fmt.Errorf("getting deployment by version %s failed: %w", version, err)
 	}
 	return resp, nil
 }
@@ -3267,6 +3345,50 @@ func (pc *Client) ListInsightsAccounts(
 	var resp apitype.ListInsightsAccountsResponse
 	if err := pc.restCall(ctx, "GET", path, &params, nil, &resp); err != nil {
 		return apitype.ListInsightsAccountsResponse{}, err
+	}
+	return resp, nil
+}
+
+// GetInsightsScan fetches the full workflow run for a single Pulumi Insights
+// scan, including jobs and steps. The list endpoint (ListInsightsAccountScans)
+// only returns the per-scan summary; this is the only way to see the run's
+// jobs/steps and per-step status.
+//
+// `account` and `scanId` are both path parameters; the service double-decodes
+// `account`, so we double-URL-encode it — same convention as GetInsightsAccount
+// / CreateInsightsAccount / GetInsightsResource.
+func (pc *Client) GetInsightsScan(
+	ctx context.Context, org, account, scanID string,
+) (apitype.InsightsScanResponse, error) {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s/scans/%s",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+		url.PathEscape(scanID),
+	)
+	var resp apitype.InsightsScanResponse
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.InsightsScanResponse{}, err
+	}
+	return resp, nil
+}
+
+// ListInsightsAccountScans fetches a page of recent scans for an Insights account.
+// For parent accounts the endpoint returns scans across all child accounts,
+// so it is the recommended way to discover scan IDs to feed into GetInsightsScanLogs.
+//
+// The `accountName` path parameter is double-decoded on the service side
+func (pc *Client) ListInsightsAccountScans(
+	ctx context.Context, org, account string, params apitype.ListInsightsAccountScansParams,
+) (apitype.ListInsightsAccountScansResponse, error) {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s/scans",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+	)
+	var resp apitype.ListInsightsAccountScansResponse
+	if err := pc.restCall(ctx, "GET", path, &params, nil, &resp); err != nil {
+		return apitype.ListInsightsAccountScansResponse{}, err
 	}
 	return resp, nil
 }

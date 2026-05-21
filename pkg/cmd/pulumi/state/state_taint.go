@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -57,7 +58,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 
 			// If URN arguments were provided, use those:
 			if len(args) > 0 {
-				return taintMultipleResources(ctx, sink, ws, stack, args, showPrompt)
+				return taintMultipleResources(ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt)
 			}
 
 			// Otherwise, use interactive selection:
@@ -78,7 +79,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return taintResource(ctx, sink, ws, stack, urn, showPrompt)
+			return taintResource(ctx, cmd.OutOrStdout(), sink, ws, stack, urn, showPrompt)
 		},
 	}
 
@@ -132,7 +133,8 @@ func taintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []erro
 
 // taintMultipleResources taints multiple resources specified by their URNs.
 func taintMultipleResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
 ) error {
 	return runTotalStateEdit(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
@@ -140,7 +142,7 @@ func taintMultipleResources(
 			resourceCount, errs := taintResourcesInSnapshot(snap, urns)
 
 			if resourceCount > 0 && len(errs) == 0 {
-				fmt.Printf("%d resources tainted\n", resourceCount)
+				fmt.Fprintf(stdout, "%d resources tainted\n", resourceCount)
 			}
 
 			if len(errs) > 0 {
@@ -156,7 +158,8 @@ func taintMultipleResources(
 }
 
 func taintResource(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	return taintMultipleResources(ctx, sink, ws, stackName, []string{string(urn)}, showPrompt)
+	return taintMultipleResources(ctx, stdout, sink, ws, stackName, []string{string(urn)}, showPrompt)
 }

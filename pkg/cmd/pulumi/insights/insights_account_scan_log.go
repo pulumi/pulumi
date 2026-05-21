@@ -76,7 +76,7 @@ func newInsightsAccountScanLogCmd(factory scanLogClientFactory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "log <account> <scan-id>",
-		Short: "Retrieve log output for an Insights scan",
+		Short: "[EXPERIMENTAL] Retrieve log output for an Insights scan",
 		Long: "[EXPERIMENTAL] Retrieve log output for an Insights scan.\n" +
 			"\n" +
 			"By default, a single page of log entries is returned. Use --count\n" +
@@ -203,16 +203,16 @@ func (c *insightsAccountScanLogCmd) fetchContinuationMode(
 			acc.Type = resp.Type
 		}
 		acc.Lines = append(acc.Lines, resp.Lines...)
-		acc.ContinuationToken = resp.ContinuationToken
+		acc.NextToken = resp.NextToken
 
 		if want > 0 && len(acc.Lines) >= want {
 			acc.Lines = acc.Lines[:want]
 			break
 		}
-		if resp.ContinuationToken == "" || len(resp.Lines) == 0 || want == 0 {
+		if resp.NextToken == "" || len(resp.Lines) == 0 || want == 0 {
 			break
 		}
-		token = resp.ContinuationToken
+		token = resp.NextToken
 	}
 	return acc, nil
 }
@@ -222,18 +222,22 @@ func (c *insightsAccountScanLogCmd) fetchStepMode(
 	org, account, scanID string,
 ) (apitype.InsightsScanLogs, error) {
 	job, step := c.job, c.step
-	params := apitype.InsightsScanLogsParams{Job: &job, Step: &step}
-	resp, err := client.GetInsightsScanLogs(ctx, org, account, scanID, params)
+	resp, err := client.GetInsightsScanLogs(ctx, org, account, scanID,
+		apitype.InsightsScanLogsParams{Job: &job, Step: &step})
 	if err != nil {
 		return apitype.InsightsScanLogs{}, err
 	}
 
-	// --count doesn't apply in step mode (the API paginates by bytes, not
-	// by entries), so default and --count behave identically.
+	// --count doesn't apply in step mode (the API paginates by line
+	// offset, not by entry count), so default and --count behave
+	// identically here.
 	if !c.all {
 		return resp, nil
 	}
 
+	// In step mode the server emits `lines` plus a `nextOffset` pointing
+	// at the next line index to start from. Follow the offset chain until
+	// the server stops returning one, accumulating Lines.
 	acc := resp
 	for acc.NextOffset > 0 {
 		offset := acc.NextOffset
@@ -242,40 +246,17 @@ func (c *insightsAccountScanLogCmd) fetchStepMode(
 		if err != nil {
 			return apitype.InsightsScanLogs{}, err
 		}
-		acc.Output += more.Output
+		acc.Lines = append(acc.Lines, more.Lines...)
 		acc.NextOffset = more.NextOffset
-		if more.Output == "" && more.NextOffset == 0 {
-			break
-		}
 	}
 	return acc, nil
 }
 
-// renderText dispatches by mode: step mode emits a raw text blob, continuation
-// mode emits structured records.
+// renderText prints the log entries one per line. The shape is the same for
+// both modes — the server returns `lines` in either case — only the
+// "more available" footer differs (cursor token in continuation mode,
+// line-offset in step mode).
 func (c *insightsAccountScanLogCmd) renderText(r apitype.InsightsScanLogs) error {
-	if c.jobSet {
-		return c.renderStepText(r)
-	}
-	return c.renderContinuationText(r)
-}
-
-func (c *insightsAccountScanLogCmd) renderStepText(r apitype.InsightsScanLogs) error {
-	if _, err := io.WriteString(c.w, r.Output); err != nil {
-		return err
-	}
-	// Force a trailing newline so the hint below sits on its own line.
-	if len(r.Output) > 0 && r.Output[len(r.Output)-1] != '\n' {
-		fmt.Fprintln(c.w)
-	}
-	if r.NextOffset > 0 {
-		fmt.Fprintf(c.w,
-			"More output available. Re-run with --all to fetch the rest.\n")
-	}
-	return nil
-}
-
-func (c *insightsAccountScanLogCmd) renderContinuationText(r apitype.InsightsScanLogs) error {
 	if len(r.Lines) == 0 {
 		fmt.Fprintln(c.w, "No log entries.")
 		return nil
@@ -300,7 +281,11 @@ func (c *insightsAccountScanLogCmd) renderContinuationText(r apitype.InsightsSca
 			fmt.Fprintln(c.w, text)
 		}
 	}
-	if r.ContinuationToken != "" {
+	switch {
+	case c.jobSet && r.NextOffset > 0:
+		fmt.Fprintln(c.w,
+			"\nMore output available. Re-run with --all to fetch the rest.")
+	case !c.jobSet && r.NextToken != "":
 		fmt.Fprintln(c.w,
 			"\nMore entries available. Re-run with --count <N> or --all to fetch more.")
 	}

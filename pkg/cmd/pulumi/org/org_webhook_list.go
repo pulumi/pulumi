@@ -85,7 +85,7 @@ func newOrgWebhookListCmdWith(
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "[EXPERIMENTAL] List all webhooks configured for an organization",
-		Long: "List all webhooks configured for an organization.\n" +
+		Long: "[EXPERIMENTAL] List all webhooks configured for an organization.\n" +
 			"\n" +
 			"Returns all webhooks configured at the organization level. Each\n" +
 			"webhook includes its ID, name, payload URL, format, event groups,\n" +
@@ -305,7 +305,7 @@ func (c *orgWebhookListCmd) renderTable(webhooks []apitype.Webhook) error {
 	}
 
 	// Wrap flexible columns to fit the terminal.
-	cols := cmdCmd.StdoutWidth()
+	cols := cmdCmd.WriterWidth(c.w)
 	borderWidth := 3*len(header) + 1
 	fixedWidth := borderWidth + 12 + 6 // ID + ACTIVE
 	if hasName {

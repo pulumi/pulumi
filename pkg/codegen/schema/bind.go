@@ -18,9 +18,13 @@ import (
 	"cmp"
 	"context"
 	_ "embed"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash"
+	"hash/fnv"
 	"io"
+	"maps"
 	"math"
 	"net/url"
 	"os"
@@ -319,7 +323,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		resources:    map[string]*ResourceType{},
 		arrays:       map[Type]*ArrayType{},
 		maps:         map[Type]*MapType{},
-		unions:       map[string]*UnionType{},
+		unions:       map[typeHash]*UnionType{},
 		tokens:       map[string]*TokenType{},
 		inputs:       map[Type]*InputType{},
 		optionals:    map[Type]*OptionalType{},
@@ -468,7 +472,7 @@ type types struct {
 	resources map[string]*ResourceType
 	arrays    map[Type]*ArrayType
 	maps      map[Type]*MapType
-	unions    map[string]*UnionType
+	unions    map[typeHash]*UnionType
 	tokens    map[string]*TokenType
 	inputs    map[Type]*InputType
 	optionals map[Type]*OptionalType
@@ -772,11 +776,94 @@ func (t *types) newUnionType(
 		Discriminator: discriminator,
 		Mapping:       mapping,
 	}
-	if typ, ok := t.unions[union.String()]; ok {
+	key := hashType(union)
+	if typ, ok := t.unions[key]; ok {
 		return typ
 	}
-	t.unions[union.String()] = union
+	t.unions[key] = union
 	return union
+}
+
+// typeHash is a structural fingerprint of a Type.
+//
+// It should be used for structural type comparisons, instead of [(Type).String()].
+type typeHash uint64
+
+// hashType returns the structural hash of t.
+func hashType(t Type) typeHash {
+	h := fnv.New64a()
+	hashTypeInto(h, t)
+	return typeHash(h.Sum64())
+}
+
+// hashTypeInto is the recursive worker behind hashType. It mirrors the
+// kinds handled by compareTypes; any new Type kind added there must be
+// added here too.
+func hashTypeInto(h hash.Hash64, t Type) {
+	var buf [8]byte
+	writeTag := func(b byte) { _, _ = h.Write([]byte{b}) }
+	writeUint := func(u uint64) {
+		binary.LittleEndian.PutUint64(buf[:], u)
+		_, _ = h.Write(buf[:])
+	}
+	writeStr := func(s string) {
+		writeUint(uint64(len(s)))
+		_, _ = h.Write([]byte(s))
+	}
+
+	switch t := t.(type) {
+	case nil:
+		writeTag(0)
+	case primitiveType:
+		writeTag(1)
+		writeUint(uint64(t))
+	case *ArrayType:
+		writeTag(2)
+		hashTypeInto(h, t.ElementType)
+	case *MapType:
+		writeTag(3)
+		hashTypeInto(h, t.ElementType)
+	case *OptionalType:
+		writeTag(4)
+		hashTypeInto(h, t.ElementType)
+	case *InputType:
+		writeTag(5)
+		hashTypeInto(h, t.ElementType)
+	case *UnionType:
+		writeTag(6)
+		writeUint(uint64(len(t.ElementTypes)))
+		for _, el := range t.ElementTypes {
+			hashTypeInto(h, el)
+		}
+		hashTypeInto(h, t.DefaultType)
+		writeStr(t.Discriminator)
+		writeUint(uint64(len(t.Mapping)))
+		for _, k := range slices.Sorted(maps.Keys(t.Mapping)) {
+			writeStr(k)
+			writeStr(t.Mapping[k])
+		}
+	case *ObjectType:
+		writeTag(7)
+		writeStr(t.Token)
+		if t.IsInputShape() {
+			writeTag(1)
+		} else {
+			writeTag(0)
+		}
+	case *ResourceType:
+		writeTag(8)
+		writeStr(t.Token)
+	case *EnumType:
+		writeTag(9)
+		writeStr(t.Token)
+	case *TokenType:
+		writeTag(10)
+		writeStr(t.Token)
+	case *InvalidType:
+		writeTag(11)
+	default:
+		contract.Failf("unknown type %T", t)
+	}
 }
 
 func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.Diagnostics, error) {
@@ -1139,22 +1226,27 @@ func bindConstValue(path, kind string, value any, typ Type) (any, hcl.Diagnostic
 		}
 		return v, nil
 	case IntType:
-		v, ok := value.(int)
-		if !ok {
-			v, ok := value.(float64)
-			if !ok {
-				return 0, typeError("integer")
+		clamp := func(i int) (any, hcl.Diagnostics) {
+			if i < math.MinInt32 || i > math.MaxInt32 {
+				return nil, typeError("integer")
 			}
-			if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
-				return 0, typeError("integer")
-			}
-			return int32(v), nil
+			//nolint:gosec // int -> int32 conversion is guarded above.
+			return int32(i), nil
 		}
-		if v < math.MinInt32 || v > math.MaxInt32 {
+
+		switch v := value.(type) {
+		case int:
+			return clamp(v)
+		case int32:
+			return v, nil
+		case float64:
+			if math.Trunc(v) != v {
+				return 0, typeError("integer")
+			}
+			return clamp(int(v))
+		default:
 			return 0, typeError("integer")
 		}
-		//nolint:gosec // int -> int32 conversion is guarded above.
-		return int32(v), nil
 	case NumberType:
 		v, ok := value.(float64)
 		if !ok {
@@ -1521,11 +1613,117 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 		typeList = append(typeList, t)
 	}
 
-	sort.Slice(typeList, func(i, j int) bool {
-		return typeList[i].String() < typeList[j].String()
-	})
+	slices.SortFunc(typeList, compareTypes)
 
 	return typeList, diags, nil
+}
+
+// compareTypes is a total order on Type values used to sort the package's
+// type list deterministically.
+func compareTypes(a, b Type) int {
+	if c := cmp.Compare(typeOrder(a), typeOrder(b)); c != 0 {
+		return c
+	}
+
+	switch a := a.(type) {
+	case primitiveType:
+		return cmp.Compare(a, b.(primitiveType))
+	case *ArrayType:
+		return compareTypes(a.ElementType, b.(*ArrayType).ElementType)
+	case *MapType:
+		return compareTypes(a.ElementType, b.(*MapType).ElementType)
+	case *OptionalType:
+		return compareTypes(a.ElementType, b.(*OptionalType).ElementType)
+	case *UnionType:
+		b := b.(*UnionType)
+		if c := cmp.Compare(len(a.ElementTypes), len(b.ElementTypes)); c != 0 {
+			return c
+		}
+		for i := range a.ElementTypes {
+			if c := compareTypes(a.ElementTypes[i], b.ElementTypes[i]); c != 0 {
+				return c
+			}
+		}
+		if c := compareTypes(a.DefaultType, b.DefaultType); c != 0 {
+			return c
+		}
+		if c := strings.Compare(a.Discriminator, b.Discriminator); c != 0 {
+			return c
+		}
+
+		if c := cmp.Compare(len(a.Mapping), len(b.Mapping)); c != 0 {
+			return c
+		}
+		aKeys, bKeys := slices.Sorted(maps.Keys(a.Mapping)), slices.Sorted(maps.Keys(b.Mapping))
+		if c := slices.Compare(aKeys, bKeys); c != 0 {
+			return c
+		}
+		for _, k := range aKeys {
+			if c := strings.Compare(a.Mapping[k], b.Mapping[k]); c != 0 {
+				return c
+			}
+		}
+
+		return 0
+	case *ObjectType:
+		b := b.(*ObjectType)
+		if c := strings.Compare(a.Token, b.Token); c != 0 {
+			return c
+		}
+		bToI := func(b bool) int8 {
+			if b {
+				return 1
+			}
+			return 0
+		}
+
+		return cmp.Compare(bToI(a.IsInputShape()), bToI(b.IsInputShape()))
+	case *ResourceType:
+		return strings.Compare(a.Token, b.(*ResourceType).Token)
+	case *EnumType:
+		return strings.Compare(a.Token, b.(*EnumType).Token)
+	case *InvalidType, nil:
+		return 0 // All invalid types are the same
+	case *TokenType:
+		return strings.Compare(a.Token, b.(*TokenType).Token)
+	case *InputType:
+		return compareTypes(a.ElementType, b.(*InputType).ElementType)
+	default:
+		contract.Failf("unknown type %T", a)
+		return -1
+	}
+}
+
+func typeOrder(t Type) int {
+	switch t.(type) {
+	case nil:
+		return 0
+	case primitiveType:
+		return 1
+	case *ArrayType:
+		return 2
+	case *MapType:
+		return 3
+	case *OptionalType:
+		return 4
+	case *UnionType:
+		return 5
+	case *ObjectType:
+		return 6
+	case *EnumType:
+		return 7
+	case *ResourceType:
+		return 8
+	case *InvalidType:
+		return 9
+	case *TokenType:
+		return 10
+	case *InputType:
+		return 11
+	default:
+		contract.Failf("unknown type %T", t)
+		return -1
+	}
 }
 
 func checkDuplicates(

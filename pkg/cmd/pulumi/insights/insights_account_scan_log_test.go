@@ -100,9 +100,26 @@ func continuationPage(lines int, token string) apitype.InsightsScanLogs {
 		})
 	}
 	return apitype.InsightsScanLogs{
-		Type:              "continuation",
-		Lines:             entries,
-		ContinuationToken: token,
+		Type:      "continuation",
+		Lines:     entries,
+		NextToken: token,
+	}
+}
+
+// stepPage builds a step-mode response: structured lines plus an optional
+// nextOffset cursor mirroring what the live API returns.
+func stepPage(lines int, prefix string, nextOffset int64) apitype.InsightsScanLogs {
+	entries := make([]apitype.InsightsScanLogLine, 0, lines)
+	for i := 0; i < lines; i++ {
+		entries = append(entries, apitype.InsightsScanLogLine{
+			Timestamp: time.Date(2026, 5, 1, 14, 30, i, 0, time.UTC),
+			Line:      prefix + "-" + string(rune('0'+i)) + "\n",
+		})
+	}
+	return apitype.InsightsScanLogs{
+		Type:       "DeploymentLogsStep",
+		Lines:      entries,
+		NextOffset: nextOffset,
 	}
 }
 
@@ -266,11 +283,7 @@ func TestScanLog_StepDefault(t *testing.T) {
 	t.Parallel()
 
 	client := &mockScanLogClient{
-		responses: []apitype.InsightsScanLogs{{
-			Type:       "step",
-			Output:     "step output chunk 1\n",
-			NextOffset: 1024,
-		}},
+		responses: []apitype.InsightsScanLogs{stepPage(2, "setup", 1024)},
 	}
 	cmd, buf := newTestScanLogCmd()
 	cmd.jobSet = true
@@ -289,7 +302,8 @@ func TestScanLog_StepDefault(t *testing.T) {
 	assert.Nil(t, client.calls[0].params.Offset, "default mode never sets offset")
 
 	out := buf.String()
-	assert.Contains(t, out, "step output chunk 1")
+	assert.Contains(t, out, "setup-0")
+	assert.Contains(t, out, "setup-1")
 	assert.Contains(t, out, "More output available. Re-run with --all")
 }
 
@@ -298,9 +312,9 @@ func TestScanLog_StepAll(t *testing.T) {
 
 	client := &mockScanLogClient{
 		responses: []apitype.InsightsScanLogs{
-			{Type: "step", Output: "chunk-1\n", NextOffset: 1024},
-			{Type: "step", Output: "chunk-2\n", NextOffset: 2048},
-			{Type: "step", Output: "chunk-3\n", NextOffset: 0},
+			stepPage(2, "page0", 1024),
+			stepPage(2, "page1", 2048),
+			stepPage(1, "page2", 0),
 		},
 	}
 	cmd, buf := newTestScanLogCmd()
@@ -326,9 +340,12 @@ func TestScanLog_StepAll(t *testing.T) {
 	}
 
 	out := buf.String()
-	assert.Contains(t, out, "chunk-1")
-	assert.Contains(t, out, "chunk-2")
-	assert.Contains(t, out, "chunk-3")
+	// Every line from every page is accumulated and rendered.
+	assert.Contains(t, out, "page0-0")
+	assert.Contains(t, out, "page0-1")
+	assert.Contains(t, out, "page1-0")
+	assert.Contains(t, out, "page1-1")
+	assert.Contains(t, out, "page2-0")
 	assert.NotContains(t, out, "More output available")
 }
 
@@ -469,9 +486,7 @@ func TestNewInsightsAccountScanLogCmd_FlagBinding_StepMode(t *testing.T) {
 	t.Parallel()
 
 	client := &mockScanLogClient{
-		responses: []apitype.InsightsScanLogs{{
-			Type: "step", Output: "data\n",
-		}},
+		responses: []apitype.InsightsScanLogs{stepPage(1, "data", 0)},
 	}
 	cmd := newInsightsAccountScanLogCmd(stubScanLogFactory(client, "acme"))
 

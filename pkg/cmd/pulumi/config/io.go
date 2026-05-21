@@ -122,13 +122,15 @@ func getStackConfigurationFromProjectStack(
 		return backend.StackConfiguration{}, fmt.Errorf("opening environment: %w", err)
 	}
 	if len(diags) != 0 {
-		printESCDiagnostics(os.Stderr, diags)
+		// This is a non-command helper; we don't have a *cobra.Command writer
+		// to thread through here. Writes go to the process streams directly.
+		printESCDiagnostics(os.Stderr, diags) //nolint:forbidigo
 		return backend.StackConfiguration{}, errors.New("opening environment: too many errors")
 	}
 
 	var pulumiEnv esc.Value
 	if env != nil {
-		warnOnNoEnvironmentEffects(os.Stdout, env)
+		warnOnNoEnvironmentEffects(os.Stdout, env) //nolint:forbidigo
 
 		pulumiEnv = env.Properties["pulumiConfig"]
 

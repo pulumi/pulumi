@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: Add `pulumi insights account scan log` to fetch log output for a Pulumi Insights scan

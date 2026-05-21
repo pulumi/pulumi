@@ -17,7 +17,6 @@ package ai
 import (
 	"context"
 	"io"
-	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -30,7 +29,7 @@ import (
 )
 
 type aiCmd struct {
-	Stdout io.Writer // defaults to os.Stdout
+	Stdout io.Writer
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
@@ -40,10 +39,6 @@ type aiCmd struct {
 }
 
 func (cmd *aiCmd) Run(ctx context.Context, args []string) error {
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
-	}
-
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
@@ -61,6 +56,9 @@ func NewAICommand() *cobra.Command {
 			ctx := cmd.Context()
 			if len(args) == 0 {
 				return cmd.Help()
+			}
+			if aiCommand.Stdout == nil {
+				aiCommand.Stdout = cmd.OutOrStdout()
 			}
 			return aiCommand.Run(ctx, args)
 		},

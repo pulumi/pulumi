@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/neo
-  description: Transparently reconnect the Neo event stream after a transient network drop, resuming from the last seen event ID

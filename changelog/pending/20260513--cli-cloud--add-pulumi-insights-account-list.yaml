@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: Add `pulumi insights account list` to list Insights accounts in an organization

@@ -30,7 +30,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/pulumi/sdk/v3 v3.239.0
+	github.com/pulumi/pulumi/sdk/v3 v3.242.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.10.2
@@ -46,7 +46,7 @@ require (
 	golang.org/x/sync v0.20.0
 	google.golang.org/api v0.169.0
 	google.golang.org/genproto v0.0.0-20240311173647-c811ad7063a7
-	google.golang.org/grpc v1.81.0
+	google.golang.org/grpc v1.81.1
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v1.2.0
 )
@@ -73,7 +73,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.5.0
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/fatih/color v1.16.0
-	github.com/go-git/go-git/v5 v5.19.0
+	github.com/go-git/go-git/v5 v5.19.1
 	github.com/go-test/deep v1.1.1
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/golang-jwt/jwt/v5 v5.2.2
@@ -286,8 +286,8 @@ require (
 	golang.org/x/tools v0.44.0 // indirect
 	golang.org/x/tools/godoc v0.1.0-deprecated // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260511170946-3700d4141b60 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260519071638-aa98bba5eb94 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260519071638-aa98bba5eb94 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -76,7 +77,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 	cmd := &cobra.Command{
 		Use:   "new",
 		Short: "[EXPERIMENTAL] Create a new stack webhook",
-		Long: "Create a new stack webhook.\n" +
+		Long: "[EXPERIMENTAL] Create a new stack webhook.\n" +
 			"\n" +
 			"Creates a webhook that delivers events for the specified stack to a\n" +
 			"given URL.\n" +
@@ -108,7 +109,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 			opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 			webhookArgs, err := resolveNewArgs(
-				skipPrompts, name, url, format,
+				cmd.OutOrStdout(), skipPrompts, name, url, format,
 				filters, groups, opts,
 			)
 			if err != nil {
@@ -186,6 +187,66 @@ var groupFilters = map[string][]string{
 	},
 }
 
+// validGroupSet is the set of valid group names for fast lookup.
+var validGroupSet = func() map[string]bool {
+	m := make(map[string]bool, len(stackWebhookGroups))
+	for _, g := range stackWebhookGroups {
+		m[g] = true
+	}
+	return m
+}()
+
+// validEventSet is the set of all valid event names for fast lookup.
+var validEventSet = func() map[string]bool {
+	m := make(map[string]bool)
+	for _, events := range groupFilters {
+		for _, e := range events {
+			m[e] = true
+		}
+	}
+	return m
+}()
+
+// validateGroupsAndEvents checks that all group and event names are valid,
+// and that no event is already covered by a selected group.
+func validateGroupsAndEvents(groups, events []string) error {
+	for _, g := range groups {
+		if !validGroupSet[g] {
+			return fmt.Errorf("invalid group %q; valid groups: %s",
+				g, joinQuoted(stackWebhookGroups))
+		}
+	}
+	for _, e := range events {
+		if !validEventSet[e] {
+			return fmt.Errorf("invalid event %q", e)
+		}
+	}
+
+	// Build the set of events already covered by the selected groups.
+	covered := make(map[string]string) // event -> group
+	for _, g := range groups {
+		for _, e := range groupFilters[g] {
+			covered[e] = g
+		}
+	}
+	for _, e := range events {
+		if g, ok := covered[e]; ok {
+			return fmt.Errorf(
+				"event %q is already included by group %q; "+
+					"remove the event or the group", e, g)
+		}
+	}
+	return nil
+}
+
+func joinQuoted(ss []string) string {
+	quoted := make([]string, len(ss))
+	for i, s := range ss {
+		quoted[i] = fmt.Sprintf("%q", s)
+	}
+	return strings.Join(quoted, ", ")
+}
+
 // filtersNotCoveredByGroups returns event filters that are not already
 // covered by the selected groups.
 func filtersNotCoveredByGroups(selectedGroups []string) []string {
@@ -209,6 +270,7 @@ func filtersNotCoveredByGroups(selectedGroups []string) []string {
 
 // resolveNewArgs prompts for any required values not provided via flags.
 func resolveNewArgs(
+	stdout io.Writer,
 	skipPrompts bool,
 	name, url, format string,
 	filters, groups []string,
@@ -238,7 +300,7 @@ func resolveNewArgs(
 	// URL is required.
 	if url == "" {
 		if !skipPrompts {
-			fmt.Println("Enter the URL that will receive webhook payloads " +
+			fmt.Fprintln(stdout, "Enter the URL that will receive webhook payloads "+
 				"(e.g. https://example.com/webhook).")
 		}
 		urlErrMsg := "a payload URL is required (use --url)"
@@ -283,6 +345,10 @@ func resolveNewArgs(
 				remaining, nil,
 				opts.Color)
 		}
+	}
+
+	if err := validateGroupsAndEvents(groups, filters); err != nil {
+		return stackWebhookNewArgs{}, err
 	}
 
 	return stackWebhookNewArgs{

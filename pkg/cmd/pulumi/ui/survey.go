@@ -145,7 +145,9 @@ func PromptForValue(
 				if yes {
 					return "", err
 				}
-				fmt.Printf("%s\n", err)
+				// Helper used by many commands; uses process stdout for
+				// interactive prompt validation feedback.
+				fmt.Printf("%s\n", err) //nolint:forbidigo
 				continue
 			}
 		}
@@ -240,7 +242,8 @@ func PromptUserMulti(msg string, options []string, defaultOptions []string, colo
 func ConfirmPrompt(prompt string, name string, opts display.Options) bool {
 	out := opts.Stdout
 	if out == nil {
-		out = os.Stdout
+		// Helper used by many commands without a *cobra.Command writer.
+		out = os.Stdout //nolint:forbidigo
 	}
 	in := opts.Stdin
 	if in == nil {

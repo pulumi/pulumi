@@ -17,6 +17,7 @@ package stack
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"time"
@@ -106,10 +107,10 @@ This command displays data about previous updates for a stack.`,
 			}
 
 			if jsonOut {
-				return displayUpdatesJSON(updates, decrypter)
+				return displayUpdatesJSON(cmd.OutOrStdout(), updates, decrypter)
 			}
 
-			return displayUpdatesConsole(updates, page, opts, showFullDates)
+			return displayUpdatesConsole(cmd.OutOrStdout(), updates, page, opts, showFullDates)
 		},
 	}
 
@@ -214,38 +215,40 @@ func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) 
 	return updatesJSON, nil
 }
 
-func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) error {
+func displayUpdatesJSON(w io.Writer, updates []backend.UpdateInfo, decrypter config.Decrypter) error {
 	updatesJSON, err := buildUpdatesJSON(updates, decrypter)
 	if err != nil {
 		return err
 	}
-	return ui.PrintJSON(updatesJSON)
+	return ui.FprintJSON(w, updatesJSON)
 }
 
-func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.Options, noHumanize bool) error {
+func displayUpdatesConsole(
+	w io.Writer, updates []backend.UpdateInfo, page int, opts display.Options, noHumanize bool,
+) error {
 	if len(updates) == 0 {
 		if page > 1 {
-			fmt.Printf("No stack updates found on page '%d'\n", page)
+			fmt.Fprintf(w, "No stack updates found on page '%d'\n", page)
 			return nil
 		}
-		fmt.Println("Stack has never been updated")
+		fmt.Fprintln(w, "Stack has never been updated")
 		return nil
 	}
 
 	printResourceChanges := func(background, text, sign, reset string, amount int) {
 		msg := opts.Color.Colorize(fmt.Sprintf("%s%s%s%v%s", background, text, sign, amount, reset))
-		fmt.Print(msg)
+		fmt.Fprint(w, msg)
 	}
 
 	for _, update := range updates {
-		fmt.Printf("Version: %d\n", update.Version)
-		fmt.Printf("UpdateKind: %v\n", update.Kind)
+		fmt.Fprintf(w, "Version: %d\n", update.Version)
+		fmt.Fprintf(w, "UpdateKind: %v\n", update.Kind)
 		if update.Result == "succeeded" {
-			fmt.Print(opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Green, update.Result, colors.Reset)))
+			fmt.Fprint(w, opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Green, update.Result, colors.Reset)))
 		} else {
-			fmt.Print(opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Red, update.Result, colors.Reset)))
+			fmt.Fprint(w, opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Red, update.Result, colors.Reset)))
 		}
-		fmt.Printf("Message: %v\n", update.Message)
+		fmt.Fprintf(w, "Message: %v\n", update.Message)
 
 		printResourceChanges(colors.GreenBackground, colors.Black, "+", colors.Reset, update.ResourceChanges["create"])
 		printResourceChanges(colors.RedBackground, colors.Black, "-", colors.Reset, update.ResourceChanges["delete"])
@@ -261,7 +264,7 @@ func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.
 		}
 		timeEnd := time.Unix(update.EndTime, 0)
 		duration := timeEnd.Sub(timeStart)
-		fmt.Printf("%sUpdated %s took %s\n", " ", timeCreated, duration)
+		fmt.Fprintf(w, "%sUpdated %s took %s\n", " ", timeCreated, duration)
 
 		isEmpty := func(s string) bool {
 			return len(strings.TrimSpace(s)) == 0
@@ -274,13 +277,13 @@ func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.
 		indent := 4
 		for _, k := range keys {
 			if k == backend.GitHead && !isEmpty(update.Environment[k]) {
-				fmt.Print(opts.Color.Colorize(
+				fmt.Fprint(w, opts.Color.Colorize(
 					fmt.Sprintf("%*s%s%s: %s%s\n", indent, "", colors.Yellow, k, update.Environment[k], colors.Reset)))
 			} else if !isEmpty(update.Environment[k]) {
-				fmt.Printf("%*s%s: %s\n", indent, "", k, update.Environment[k])
+				fmt.Fprintf(w, "%*s%s: %s\n", indent, "", k, update.Environment[k])
 			}
 		}
-		fmt.Println("")
+		fmt.Fprintln(w, "")
 	}
 
 	return nil

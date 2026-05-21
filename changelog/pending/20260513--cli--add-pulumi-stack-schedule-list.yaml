@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add `pulumi stack schedule list` to list all scheduled actions configured for a stack

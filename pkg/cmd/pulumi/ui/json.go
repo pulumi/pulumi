@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 )
 
 // MakeJSONString turns the given value into a JSON string. If multiline is true, the JSON will be formatted with
@@ -49,11 +48,6 @@ func MakeJSONString(v any, multiline bool) (string, error) {
 	}
 
 	return string(bs), nil
-}
-
-// PrintJSON simply prints out some object, formatted as JSON, using standard indentation.
-func PrintJSON(v any) error {
-	return FprintJSON(os.Stdout, v)
 }
 
 // FprintJSON simply prints out some object, formatted as JSON, using standard indentation.

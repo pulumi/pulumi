@@ -193,6 +193,25 @@ type ListInsightsAccountsResponse struct {
 	NextToken string            `json:"nextToken,omitempty"`
 }
 
+// ListInsightsAccountScansParams are the query parameters for the Pulumi
+// Insights ListAccountScans endpoint.
+type ListInsightsAccountScansParams struct {
+	// ContinuationToken is the opaque cursor returned by a previous response;
+	// pass it on subsequent calls to fetch the next page.
+	ContinuationToken string `url:"continuationToken,omitempty"`
+	// PageSize is the maximum number of scans returned on a single page.
+	// Defaults to the server-side default when zero.
+	PageSize int `url:"pageSize,omitempty"`
+}
+
+// ListInsightsAccountScansResponse is the envelope returned by the
+// ListAccountScans endpoint. For parent accounts the result includes scans
+// across all child accounts. ContinuationToken is empty on the last page.
+type ListInsightsAccountScansResponse struct {
+	ScanStatuses      []InsightsAccountScanStatus `json:"scanStatuses"`
+	ContinuationToken string                      `json:"continuationToken,omitempty"`
+}
+
 // InsightsAccount describes a single Pulumi Insights account as returned by
 // the ListAccounts endpoint. The shape mirrors the OpenAPI schema of the same
 // name in the Pulumi Cloud REST API.
@@ -361,13 +380,20 @@ type InsightsScanLogsParams struct {
 
 // InsightsScanLogs is the response from GetScanLogs. Type is the
 // DeploymentLogsBase discriminator; only the fields relevant to the active
-// mode (continuation-token vs step) are populated.
+// mode (continuation vs step) are populated:
+//
+//   - continuation mode (no Job/Step in the request): the server emits a
+//     `lines` array spanning every step, paginated with `nextToken`.
+//   - step mode (Job and Step set): the server emits a `lines` array scoped
+//     to one step, paginated with `nextOffset` (a line index).
+//
+// The wire field name (`nextToken`) matches `apitype.DeploymentLogs`, since
+// both endpoints share a server-side handler.
 type InsightsScanLogs struct {
-	Type              string                `json:"__type,omitempty"`
-	Lines             []InsightsScanLogLine `json:"lines,omitempty"`
-	ContinuationToken string                `json:"continuationToken,omitempty"`
-	Output            string                `json:"output,omitempty"`
-	NextOffset        int64                 `json:"nextOffset,omitempty"`
+	Type       string                `json:"__type,omitempty"`
+	Lines      []InsightsScanLogLine `json:"lines,omitempty"`
+	NextToken  string                `json:"nextToken,omitempty"`
+	NextOffset int64                 `json:"nextOffset,omitempty"`
 }
 
 // InsightsScanLogLine mirrors apitype.DeploymentLogLine.

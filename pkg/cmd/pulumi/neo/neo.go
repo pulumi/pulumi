@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,12 +37,23 @@ import (
 	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// nonInteractivePromptPreamble nudges the agent away from follow-up questions
+// in modes where there's no way to send another user message: stdin isn't
+// wired and the caller (typically another agent or a script) is blocked
+// reading stdout, so anything that needs more input would hang. Wrapped in
+// <details> so it collapses in the rendered task view and doesn't clutter
+// the user's prompt.
+const nonInteractivePromptPreamble = "<details><summary>non-interactive mode</summary>\n\n" +
+	"You are running in non-interactive mode: your final response will be written " +
+	"to stdout. Do not ask follow-up questions; make any reasonable assumptions " +
+	"explicit and return a complete final answer.\n\n" +
+	"</details>"
 
 // createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
 // attached stack with "invalid entities" (typically a permissions issue) it retries
@@ -117,6 +129,7 @@ func NewNeoCmd() *cobra.Command {
 		cwdFlag            string
 		approvalModeFlag   string
 		permissionModeFlag string
+		printMode          bool
 	)
 
 	cmd := &cobra.Command{
@@ -126,8 +139,7 @@ func NewNeoCmd() *cobra.Command {
 			"tool loop. Filesystem and shell tool calls from the agent run on this machine, " +
 			"in the working directory you select, instead of in the cloud agent container. " +
 			"If no prompt is provided, the TUI starts and waits for your first message.",
-		Hidden: !env.Experimental.Value(),
-		Args:   cobra.MaximumNArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			var prompt string
@@ -142,7 +154,20 @@ func NewNeoCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return runNeo(ctx, prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode)
+			// --print has no UI; manual approval would deadlock. Reject if explicit,
+			// otherwise upgrade the default.
+			if printMode {
+				switch {
+				case cmd.Flags().Changed("approval-mode") && approvalMode == client.NeoApprovalModeManual:
+					return errors.New(
+						"--approval-mode=manual is incompatible with --print: there is no UI to approve from")
+				case !cmd.Flags().Changed("approval-mode"):
+					approvalMode = client.NeoApprovalModeAuto
+				}
+			}
+			return runNeo(
+				ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(),
+				prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode, printMode)
 		},
 	}
 
@@ -158,6 +183,9 @@ func NewNeoCmd() *cobra.Command {
 	cmd.Flags().StringVar(&permissionModeFlag, "permission-mode", string(client.NeoPermissionModeDefault),
 		"Permission mode for the agent: 'default' grants full role-based capabilities, "+
 			"'read-only' blocks state-mutating operations")
+	cmd.Flags().BoolVarP(&printMode, "print", "p", false,
+		"Run a single prompt non-interactively, print the agent's final response to "+
+			"stdout, and exit. Intended for use with other AI agents and scripts.")
 
 	return cmd
 }
@@ -187,9 +215,11 @@ func parsePermissionMode(s string) (client.NeoPermissionMode, error) {
 
 func runNeo(
 	ctx context.Context,
+	stdout, stderr io.Writer,
 	prompt, stackName, orgFlag, cwdFlag string,
 	approvalMode client.NeoApprovalMode,
 	permissionMode client.NeoPermissionMode,
+	printMode bool,
 ) error {
 	if cwdFlag == "" {
 		var err error
@@ -218,7 +248,7 @@ func runNeo(
 	pc := cloudBe.Client()
 
 	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
-		return result.FprintBailf(os.Stderr, "%s", msg)
+		return result.FprintBailf(stderr, "%s", msg)
 	}
 
 	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)
@@ -251,13 +281,13 @@ func runNeo(
 	}
 	handlers["pulumi"] = pu
 
-	// Non-interactive mode requires a prompt — there's no input mechanism.
-	if !isInteractive() {
+	if printMode || !isInteractive() {
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
+		taskPrompt := nonInteractivePromptPreamble + "\n\n" + prompt
 		resp, err := createNeoTaskWithEntityRetry(
-			ctx, pc, orgName, prompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+			ctx, pc, orgName, taskPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 				ToolExecutionMode: "cli",
 				ApprovalMode:      approvalMode,
 				PermissionMode:    permissionMode,
@@ -265,18 +295,23 @@ func runNeo(
 		if err != nil {
 			return err
 		}
-		consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
-		if consoleURL != "" {
-			fmt.Println(consoleURL)
-		} else {
-			fmt.Printf("Neo task created (id %s)\n", resp.TaskID)
+		if !printMode {
+			consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
+			if consoleURL != "" {
+				fmt.Fprintln(stderr, consoleURL)
+			} else {
+				fmt.Fprintf(stderr, "Neo task created (id %s)\n", resp.TaskID)
+			}
 		}
 		session := &Session{
 			Client:   pc,
 			Handlers: handlers,
 			OrgName:  orgName,
 			TaskID:   resp.TaskID,
-			Log:      os.Stderr,
+			Log:      stderr,
+		}
+		if printMode {
+			session.Output = stdout
 		}
 		return session.Run(ctx)
 	}

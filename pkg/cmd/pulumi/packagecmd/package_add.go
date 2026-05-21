@@ -137,6 +137,7 @@ from the parameters, as in:
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 
 			pkg, packageSpec, diags, err := packages.InstallPackage(
+				cmd.OutOrStdout(),
 				pkgWorkspace.Instance,
 				target.proj,
 				pctx,
@@ -250,7 +251,7 @@ func printRegistryDocsHint(
 		{"/readme", "                    # package readme"},
 		{"/nav", "                       # doc tree (modules)"},
 		{"/nav?q=<term>&depth=full", "   # search for resources/functions"},
-		{"/docs/<token>", "              # one resource or function (token from /nav)"},
+		{"/docs/<type-token>", "         # one resource or function (type token from /nav)"},
 	}
 	fmt.Fprintln(w, "Documentation:")
 	for _, h := range hints {

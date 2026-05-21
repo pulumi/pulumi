@@ -17,7 +17,6 @@ package cancel
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -78,7 +77,7 @@ func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 			stackName := s.Ref().Name().String()
 			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
 			if cmdutil.Interactive() && (!yes && !ui.ConfirmPrompt(prompt, stackName, opts)) {
-				return result.FprintBailf(os.Stdout, "confirmation declined")
+				return result.FprintBailf(cmd.OutOrStdout(), "confirmation declined")
 			}
 
 			// Cancel the update.
@@ -89,7 +88,7 @@ func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 			msg := fmt.Sprintf(
 				"%sThe currently running update for '%s' has been canceled!%s",
 				colors.SpecAttention, stackName, colors.Reset)
-			fmt.Println(opts.Color.Colorize(msg))
+			fmt.Fprintln(cmd.OutOrStdout(), opts.Color.Colorize(msg))
 
 			return nil
 		},

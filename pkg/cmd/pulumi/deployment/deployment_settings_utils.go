@@ -96,7 +96,9 @@ func (promptHandlers) PromptForValue(
 }
 
 func (promptHandlers) Print(prompt string) {
-	fmt.Println(prompt)
+	// `prompts` is consumed by command code; this default writes to the
+	// process stdout when no command-bound writer is plumbed.
+	fmt.Println(prompt) //nolint:forbidigo
 }
 
 type repoLookup interface {

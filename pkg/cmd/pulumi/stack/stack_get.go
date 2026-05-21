@@ -38,7 +38,7 @@ func newStackGetCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "get",
-		Short: "Retrieve detailed information about a stack",
+		Short: "[EXPERIMENTAL] Retrieve detailed information about a stack",
 		Long: "[EXPERIMENTAL] Retrieve detailed information about a stack.\n" +
 			"\n" +
 			"`pulumi stack get` is a convenience alias for `pulumi stack --output=json`.\n" +

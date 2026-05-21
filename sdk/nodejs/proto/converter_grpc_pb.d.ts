@@ -7,10 +7,12 @@
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_converter_pb from "./converter_pb";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
+import * as pulumi_codegen_loader_pb from "./codegen/loader_pb";
 
 interface IConverterService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     convertState: IConverterService_IConvertState;
     convertProgram: IConverterService_IConvertProgram;
+    convertSnippet: IConverterService_IConvertSnippet;
 }
 
 interface IConverterService_IConvertState extends grpc.MethodDefinition<pulumi_converter_pb.ConvertStateRequest, pulumi_converter_pb.ConvertStateResponse> {
@@ -31,12 +33,22 @@ interface IConverterService_IConvertProgram extends grpc.MethodDefinition<pulumi
     responseSerialize: grpc.serialize<pulumi_converter_pb.ConvertProgramResponse>;
     responseDeserialize: grpc.deserialize<pulumi_converter_pb.ConvertProgramResponse>;
 }
+interface IConverterService_IConvertSnippet extends grpc.MethodDefinition<pulumi_converter_pb.ConvertSnippetRequest, pulumi_converter_pb.ConvertSnippetResponse> {
+    path: "/pulumirpc.Converter/ConvertSnippet";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_converter_pb.ConvertSnippetRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_converter_pb.ConvertSnippetRequest>;
+    responseSerialize: grpc.serialize<pulumi_converter_pb.ConvertSnippetResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_converter_pb.ConvertSnippetResponse>;
+}
 
 export const ConverterService: IConverterService;
 
 export interface IConverterServer extends grpc.UntypedServiceImplementation {
     convertState: grpc.handleUnaryCall<pulumi_converter_pb.ConvertStateRequest, pulumi_converter_pb.ConvertStateResponse>;
     convertProgram: grpc.handleUnaryCall<pulumi_converter_pb.ConvertProgramRequest, pulumi_converter_pb.ConvertProgramResponse>;
+    convertSnippet: grpc.handleUnaryCall<pulumi_converter_pb.ConvertSnippetRequest, pulumi_converter_pb.ConvertSnippetResponse>;
 }
 
 export interface IConverterClient {
@@ -46,6 +58,9 @@ export interface IConverterClient {
     convertProgram(request: pulumi_converter_pb.ConvertProgramRequest, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertProgramResponse) => void): grpc.ClientUnaryCall;
     convertProgram(request: pulumi_converter_pb.ConvertProgramRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertProgramResponse) => void): grpc.ClientUnaryCall;
     convertProgram(request: pulumi_converter_pb.ConvertProgramRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertProgramResponse) => void): grpc.ClientUnaryCall;
+    convertSnippet(request: pulumi_converter_pb.ConvertSnippetRequest, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertSnippetResponse) => void): grpc.ClientUnaryCall;
+    convertSnippet(request: pulumi_converter_pb.ConvertSnippetRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertSnippetResponse) => void): grpc.ClientUnaryCall;
+    convertSnippet(request: pulumi_converter_pb.ConvertSnippetRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertSnippetResponse) => void): grpc.ClientUnaryCall;
 }
 
 export class ConverterClient extends grpc.Client implements IConverterClient {
@@ -56,4 +71,7 @@ export class ConverterClient extends grpc.Client implements IConverterClient {
     public convertProgram(request: pulumi_converter_pb.ConvertProgramRequest, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertProgramResponse) => void): grpc.ClientUnaryCall;
     public convertProgram(request: pulumi_converter_pb.ConvertProgramRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertProgramResponse) => void): grpc.ClientUnaryCall;
     public convertProgram(request: pulumi_converter_pb.ConvertProgramRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertProgramResponse) => void): grpc.ClientUnaryCall;
+    public convertSnippet(request: pulumi_converter_pb.ConvertSnippetRequest, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertSnippetResponse) => void): grpc.ClientUnaryCall;
+    public convertSnippet(request: pulumi_converter_pb.ConvertSnippetRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertSnippetResponse) => void): grpc.ClientUnaryCall;
+    public convertSnippet(request: pulumi_converter_pb.ConvertSnippetRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_converter_pb.ConvertSnippetResponse) => void): grpc.ClientUnaryCall;
 }

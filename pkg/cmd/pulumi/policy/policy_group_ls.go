@@ -17,6 +17,7 @@ package policy
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -104,9 +105,9 @@ func newPolicyGroupLsCmd() *cobra.Command {
 			}
 
 			if jsonOut {
-				return formatPolicyGroupsJSON(allPolicyGroups)
+				return formatPolicyGroupsJSON(cmd.OutOrStdout(), allPolicyGroups)
 			}
-			return formatPolicyGroupsConsole(allPolicyGroups)
+			return formatPolicyGroupsConsole(cmd.OutOrStdout(), allPolicyGroups)
 		},
 	}
 
@@ -122,7 +123,7 @@ func newPolicyGroupLsCmd() *cobra.Command {
 	return cmd
 }
 
-func formatPolicyGroupsConsole(policyGroups []apitype.PolicyGroupSummary) error {
+func formatPolicyGroupsConsole(w io.Writer, policyGroups []apitype.PolicyGroupSummary) error {
 	// Header string and formatting options to align columns.
 	headers := []string{"NAME", "DEFAULT", "ENABLED POLICY PACKS", "STACKS"}
 
@@ -150,7 +151,7 @@ func formatPolicyGroupsConsole(policyGroups []apitype.PolicyGroupSummary) error 
 		columns := []string{name, defaultGroup, numPolicyPacks, numStacks}
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
-	ui.PrintTable(cmdutil.Table{
+	ui.FprintTable(w, cmdutil.Table{
 		Headers: headers,
 		Rows:    rows,
 	}, nil)
@@ -167,7 +168,7 @@ type policyGroupsJSON struct {
 	NumStacks      int    `json:"numStacks"`
 }
 
-func formatPolicyGroupsJSON(policyGroups []apitype.PolicyGroupSummary) error {
+func formatPolicyGroupsJSON(w io.Writer, policyGroups []apitype.PolicyGroupSummary) error {
 	output := make([]policyGroupsJSON, len(policyGroups))
 	for i, group := range policyGroups {
 		output[i] = policyGroupsJSON{
@@ -177,5 +178,5 @@ func formatPolicyGroupsJSON(policyGroups []apitype.PolicyGroupSummary) error {
 			NumStacks:      group.NumStacks,
 		}
 	}
-	return ui.PrintJSON(output)
+	return ui.FprintJSON(w, output)
 }

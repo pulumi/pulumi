@@ -250,3 +250,33 @@ func TestCancelStackDeployment(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestGetDeploymentLogs(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "acme",
+		Project: "web",
+		Stack:   tokens.MustParseStackName("prod"),
+	}
+
+	// A deployment id containing a URL-special character must be percent-
+	// encoded into the path; otherwise `#` is parsed as a fragment delimiter
+	// and the server silently receives a request against /deployments/.
+	t.Run("escapes URL-special characters in the deployment id", func(t *testing.T) {
+		t.Parallel()
+
+		var capturedURI string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedURI = r.URL.RequestURI()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"lines":[]}`))
+		}))
+		defer server.Close()
+
+		c := newMockClient(server)
+		_, err := c.GetDeploymentLogs(t.Context(), stackID, "#9410", GetDeploymentLogsOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, "/api/stacks/acme/web/prod/deployments/%239410/logs", capturedURI)
+	})
+}

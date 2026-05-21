@@ -62,7 +62,7 @@ func newTemplateListCmd(
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "List registry-backed templates",
+		Short:   "[EXPERIMENTAL] List registry-backed templates",
 		Long: "[EXPERIMENTAL] List templates from the Pulumi Cloud registry.\n" +
 			"\n" +
 			"No authentication is required; without a Pulumi Cloud session, only publicly\n" +

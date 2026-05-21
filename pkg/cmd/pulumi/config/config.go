@@ -114,7 +114,7 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 			return listConfig(
 				ctx,
 				ssml,
-				os.Stdout,
+				cmd.OutOrStdout(),
 				project,
 				stack,
 				ps,
@@ -323,7 +323,7 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			return getConfig(ctx, cmdutil.Diag(), ssml, ws, s, key, path, jsonOut, open)
+			return getConfig(ctx, cmd.OutOrStdout(), cmdutil.Diag(), ssml, ws, s, key, path, jsonOut, open)
 		},
 	}
 	constrictor.AttachArguments(getCmd, &constrictor.Arguments{
@@ -614,7 +614,7 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string, lm cmdBackend.Log
 						return fmt.Errorf("backing up existing configuration file: %w", err)
 					}
 
-					fmt.Printf("backed up existing configuration file to %s\n", backupFile)
+					fmt.Fprintf(cmd.OutOrStdout(), "backed up existing configuration file to %s\n", backupFile)
 					break
 				} else if err != nil {
 					return fmt.Errorf("backing up existing configuration file: %w", err)
@@ -625,7 +625,7 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string, lm cmdBackend.Log
 
 			err = ps.Save(configPath)
 			if err == nil {
-				fmt.Printf("refreshed configuration for stack '%s'\n", s.Ref().Name())
+				fmt.Fprintf(cmd.OutOrStdout(), "refreshed configuration for stack '%s'\n", s.Ref().Name())
 			}
 			return err
 		},
@@ -1206,6 +1206,7 @@ func listConfig(
 
 func getConfig(
 	ctx context.Context,
+	out io.Writer,
 	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	ws pkgWorkspace.Context,
@@ -1310,19 +1311,19 @@ func getConfig(
 				value.ObjectValue = obj
 			}
 
-			out, err := json.MarshalIndent(value, "", "  ")
+			marshaled, err := json.MarshalIndent(value, "", "  ")
 			if err != nil {
 				return err
 			}
-			fmt.Println(string(out))
+			fmt.Fprintln(out, string(marshaled))
 		} else {
-			fmt.Printf("%v\n", raw)
+			fmt.Fprintf(out, "%v\n", raw)
 		}
 
 		if len(diags) != 0 {
-			fmt.Println()
-			fmt.Println("Environment diagnostics:")
-			printESCDiagnostics(os.Stdout, diags)
+			fmt.Fprintln(out)
+			fmt.Fprintln(out, "Environment diagnostics:")
+			printESCDiagnostics(out, diags)
 		}
 
 		cmdStack.Log3rdPartySecretsProviderDecryptionEvent(ctx, stack, key.Name(), "")

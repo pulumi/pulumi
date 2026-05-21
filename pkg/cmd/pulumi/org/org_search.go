@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"slices"
 	"strconv"
 
@@ -109,10 +108,6 @@ type orgSearchCmd struct {
 func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	interactive := cmdutil.Interactive()
 
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
-	}
-
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
@@ -185,6 +180,9 @@ func newSearchCmd() *cobra.Command {
 			ctx := cmd.Context()
 			if len(scmd.queryParams) == 0 {
 				return cmd.Help()
+			}
+			if scmd.Stdout == nil {
+				scmd.Stdout = cmd.OutOrStdout()
 			}
 			return scmd.Run(ctx, args)
 		},

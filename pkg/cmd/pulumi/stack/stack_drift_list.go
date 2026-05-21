@@ -81,7 +81,7 @@ func newStackDriftListCmdWith(factory driftListClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "[EXPERIMENTAL] List drift detection runs for a stack",
-		Long: "List drift detection runs for a stack.\n" +
+		Long: "[EXPERIMENTAL] List drift detection runs for a stack.\n" +
 			"\n" +
 			"Returns drift detection runs for the specified stack. Each run\n" +
 			"includes whether drift was detected, the run status, and details\n" +
@@ -245,7 +245,7 @@ func (c *driftListCmd) renderTable(runs []apitype.DriftRun, total int) error {
 	// Let go-pretty wrap columns to fit the terminal. Fixed-width columns
 	// (CREATED, STATUS, DRIFT) are short enough to never need wrapping.
 	// ID, DETECT, and REMEDIATE get max widths so they wrap if needed.
-	cols := cmdCmd.StdoutWidth()
+	cols := cmdCmd.WriterWidth(c.w)
 	// CREATED(25) + STATUS(11) + DRIFT(5) + borders(~22) = 63 fixed
 	flexible := cols - 63
 	if flexible < 30 {

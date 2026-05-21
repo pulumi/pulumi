@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add `pulumi stack webhook delivery redeliver` to redeliver a webhook event

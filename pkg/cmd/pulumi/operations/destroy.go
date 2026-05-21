@@ -308,8 +308,9 @@ func NewDestroyCmd() *cobra.Command {
 					return err
 				} else if protectedCount == len(snapshot.Resources) {
 					if !jsonDisplay && output != "json" {
-						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
-							" protected resources associated with this stack.\n", protectedCount)
+						fmt.Fprintf(cmd.OutOrStdout(),
+							"There were no unprotected resources to destroy. There are still %d"+
+								" protected resources associated with this stack.\n", protectedCount)
 					}
 					// We need to return now. Otherwise the update will conclude we tried to destroy
 					// everything and error for trying to destroy a protected resource. _Unless_ there are no
@@ -351,12 +352,13 @@ func NewDestroyCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			})
 
+			out := cmd.OutOrStdout()
 			if destroyErr == nil && protectedCount > 0 && !jsonDisplay && output != "json" {
-				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
+				fmt.Fprintf(out, "All unprotected resources were destroyed. There are still %d protected resources"+
 					" associated with this stack.\n", protectedCount)
 			} else if destroyErr == nil && len(*targets) == 0 {
 				if !jsonDisplay && output != "json" && !remove && !previewOnly {
-					fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
+					fmt.Fprintf(out, "The resources in the stack have been deleted, but the history and configuration "+
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
 						"completely, run `pulumi stack rm %s`.\n", s.Ref())
 				} else if remove {
@@ -369,7 +371,7 @@ func NewDestroyCmd() *cobra.Command {
 						if detectErr = os.Remove(path); detectErr != nil && !os.IsNotExist(detectErr) {
 							return detectErr
 						} else if !jsonDisplay && output != "json" {
-							fmt.Printf("The resources in the stack have been deleted, and the history and " +
+							fmt.Fprintf(out, "The resources in the stack have been deleted, and the history and "+
 								"configuration removed.\n")
 						}
 					}

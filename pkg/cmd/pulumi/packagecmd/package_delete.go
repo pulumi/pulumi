@@ -67,7 +67,7 @@ You must have publish permissions for the package to delete it.`,
 			}
 
 			if !cmdutil.Interactive() && !yes {
-				return backenderr.NonInteractiveRequiresYesError{}
+				return backenderr.ErrNonInteractiveRequiresYes
 			}
 
 			project, _, err := pkgWorkspace.Instance.ReadProject()
@@ -109,13 +109,13 @@ You must have publish permissions for the package to delete it.`,
 				if suggested := filterPrivate(registry.GetSuggestedPackages(err)); len(suggested) > 0 {
 					fmt.Fprintf(cmd.ErrOrStderr(), "No matching package was found. Did you mean")
 					if len(suggested) == 1 {
-						fmt.Println(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf(" %s%s%s?",
+						fmt.Fprintln(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf(" %s%s%s?",
 							colors.SpecInfo, formatPkg(suggested[0]), colors.Reset,
 						)))
 					}
 					fmt.Fprintln(cmd.ErrOrStderr(), " one of:")
 					for _, pkg := range suggested {
-						fmt.Println(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf("- %s%s%s",
+						fmt.Fprintln(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf("- %s%s%s",
 							colors.SpecInfo, formatPkg(pkg), colors.Reset,
 						)))
 					}

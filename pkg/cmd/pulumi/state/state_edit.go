@@ -79,6 +79,9 @@ a preview showing a diff of the altered state.`,
 			if err != nil {
 				return err
 			}
+			if stateEdit.Stdout == nil {
+				stateEdit.Stdout = cmd.OutOrStdout()
+			}
 			if err := stateEdit.Run(ctx, s); err != nil {
 				return err
 			}
@@ -149,9 +152,6 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 
 	if cmd.Stdin == nil {
 		cmd.Stdin = os.Stdin
-	}
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
 	}
 
 	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
@@ -277,10 +277,13 @@ func openInEditorInternal(editor, filename string) error {
 	}
 	args = append(args, filename)
 
+	// Launching an editor subprocess; wire it to the actual terminal so the
+	// user can interact with it. Using the cobra writers (which may be
+	// buffered or piped) would break vim/emacs/etc.
 	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout //nolint:forbidigo
+	cmd.Stderr = os.Stderr //nolint:forbidigo
 
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(cmd.Stdout, "Failed to exec EDITOR: %v\n", err)

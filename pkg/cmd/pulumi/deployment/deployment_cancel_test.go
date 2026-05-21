@@ -21,6 +21,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,13 +63,6 @@ func failingCancelFactory(err error) deploymentCancelClientFactory {
 	}
 }
 
-// alwaysConfirm/alwaysDecline make the confirmation deterministic in tests.
-// The default --yes flag bypasses the prompt entirely; these are used to cover
-// the interactive paths.
-func alwaysConfirm(string) bool { return true }
-
-func alwaysDecline(string) bool { return false }
-
 // cancelArgs builds a deploymentCancelArgs with the production OutputFlag
 // pre-wired so tests don't have to repeat the boilerplate. Pass "" for
 // outputFormat to keep the default (terminal) renderer.
@@ -79,8 +73,6 @@ func cancelArgs(stack string, yes bool, outputFormat string) deploymentCancelArg
 		output: defaultDeploymentCancelOutputFormat(),
 	}
 	if outputFormat != "" {
-		// Errors from Set bubble up via cobra in production; the tests that
-		// exercise an unsupported value drive cobra directly instead.
 		_ = args.output.Set(outputFormat)
 	}
 	return args
@@ -91,7 +83,7 @@ func TestDeploymentCancel_DefaultOutput(t *testing.T) {
 
 	c := &mockDeploymentCancelClient{}
 	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"), alwaysConfirm,
+	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"),
 		"dep-123", cancelArgs("", true, ""))
 	require.NoError(t, err)
 	assert.Equal(t, "Cancellation requested for deployment 'dep-123'.\n", buf.String())
@@ -102,7 +94,7 @@ func TestDeploymentCancel_JSONOutput(t *testing.T) {
 
 	c := &mockDeploymentCancelClient{}
 	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"), alwaysConfirm,
+	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"),
 		"dep-123", cancelArgs("", true, "json"))
 	require.NoError(t, err)
 
@@ -121,7 +113,7 @@ func TestDeploymentCancel_PropagatesIDAndStack(t *testing.T) {
 	var captured capturedCancelCall
 	c := &mockDeploymentCancelClient{captured: &captured}
 	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"), alwaysConfirm,
+	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"),
 		"dep-xyz", cancelArgs("", true, ""))
 	require.NoError(t, err)
 	assert.Equal(t, capturedCancelCall{stack: testStackID, deploymentID: "dep-xyz"}, captured)
@@ -137,7 +129,7 @@ func TestDeploymentCancel_StackFlagPropagatesToFactory(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf, factory, alwaysConfirm,
+	err := runDeploymentCancel(t.Context(), &buf, factory,
 		"dep-123", cancelArgs("acme/web/staging", true, ""))
 	require.NoError(t, err)
 	assert.Equal(t, "acme/web/staging", capturedStack)
@@ -148,7 +140,7 @@ func TestNewDeploymentCancelCmd_InvalidOutputRejected(t *testing.T) {
 
 	// Unsupported --output values are caught by the OutputFlag at flag-parse
 	// time, so the API is never reached.
-	cmd := newDeploymentCancelCmdWith(stubCancelFactory(&mockDeploymentCancelClient{}, "prod"), alwaysConfirm)
+	cmd := newDeploymentCancelCmdWith(stubCancelFactory(&mockDeploymentCancelClient{}, "prod"))
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
@@ -163,7 +155,7 @@ func TestDeploymentCancel_ClientError(t *testing.T) {
 
 	c := &mockDeploymentCancelClient{err: errors.New("server boom")}
 	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"), alwaysConfirm,
+	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"),
 		"dep-123", cancelArgs("", true, ""))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "canceling deployment")
@@ -175,141 +167,21 @@ func TestDeploymentCancel_FactoryError(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runDeploymentCancel(t.Context(), &buf,
-		failingCancelFactory(errors.New("not logged in")), alwaysConfirm,
+		failingCancelFactory(errors.New("not logged in")),
 		"dep-123", cancelArgs("", true, ""))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
-func TestDeploymentCancel_ConfirmDeclined(t *testing.T) {
+func TestDeploymentCancel_NonInteractiveRequiresYes(t *testing.T) {
 	t.Parallel()
 
-	// Without --yes the prompt fires; if the user declines, we must bail out
-	// before touching the client.
 	var captured capturedCancelCall
 	c := &mockDeploymentCancelClient{captured: &captured}
 	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"), alwaysDecline,
+	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"),
 		"dep-123", cancelArgs("", false, ""))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "confirmation declined")
-	assert.Equal(t, capturedCancelCall{}, captured, "client must not be called when confirmation declines")
-}
-
-func TestDeploymentCancel_ConfirmAccepted(t *testing.T) {
-	t.Parallel()
-
-	// Without --yes, an accepting confirmer must let the cancel through.
-	var captured capturedCancelCall
-	c := &mockDeploymentCancelClient{captured: &captured}
-	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"), alwaysConfirm,
-		"dep-123", cancelArgs("", false, ""))
-	require.NoError(t, err)
-	assert.Equal(t, capturedCancelCall{stack: testStackID, deploymentID: "dep-123"}, captured)
-}
-
-func TestDeploymentCancel_ConfirmPromptReceivesIDAndStack(t *testing.T) {
-	t.Parallel()
-
-	// The y/n prompt surfaces the deployment ID and stack to the user —
-	// assert they propagate verbatim.
-	var gotPrompt string
-	confirm := func(prompt string) bool {
-		gotPrompt = prompt
-		return true
-	}
-
-	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf,
-		stubCancelFactory(&mockDeploymentCancelClient{}, "prod"), confirm,
-		"dep-abc123", cancelArgs("", false, ""))
-	require.NoError(t, err)
-	assert.Contains(t, gotPrompt, "dep-abc123")
-	assert.Contains(t, gotPrompt, "prod")
-}
-
-func TestDeploymentCancel_NilConfirm_NonInteractiveAccepts(t *testing.T) {
-	t.Parallel()
-
-	// Passing nil for confirm installs the production prompt. Tests don't
-	// have a TTY, so cmdutil.Interactive() returns false and the inline
-	// non-interactive branch accepts without prompting — verify that the
-	// cancel still reaches the client.
-	var captured capturedCancelCall
-	c := &mockDeploymentCancelClient{captured: &captured}
-	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"), nil,
-		"dep-123", cancelArgs("", false, ""))
-	require.NoError(t, err)
-	assert.Equal(t, capturedCancelCall{stack: testStackID, deploymentID: "dep-123"}, captured)
-}
-
-func TestDeploymentCancel_NilFactory_UsesDefaultAndPropagatesError(t *testing.T) {
-	t.Parallel()
-
-	// Passing nil for the factory installs defaultDeploymentCancelClientFactory,
-	// which drives cmdStack.RequireStack — that fails when run outside a
-	// Pulumi project. The deeper branches of the factory (cloud-backend type
-	// assertion, success path) are left to integration tests; this guards the
-	// nil-default wire-up plus the resolving-stack early-error path.
-	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf, nil, alwaysConfirm,
-		"dep-123", cancelArgs("", true, ""))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "resolving stack")
-}
-
-func TestDeploymentCancel_YesSkipsPrompt(t *testing.T) {
-	t.Parallel()
-
-	// With --yes the confirm callback must not be invoked; if it is, the
-	// test fails because alwaysDecline would otherwise abort the run.
-	var captured capturedCancelCall
-	c := &mockDeploymentCancelClient{captured: &captured}
-	var buf bytes.Buffer
-	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"), alwaysDecline,
-		"dep-123", cancelArgs("", true, ""))
-	require.NoError(t, err)
-	assert.Equal(t, capturedCancelCall{stack: testStackID, deploymentID: "dep-123"}, captured)
-}
-
-func TestNewDeploymentCancelCmd_CobraFlagBinding(t *testing.T) {
-	t.Parallel()
-
-	var captured capturedCancelCall
-	c := &mockDeploymentCancelClient{captured: &captured}
-	cmd := newDeploymentCancelCmdWith(stubCancelFactory(c, "prod"), alwaysConfirm)
-
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetErr(&buf)
-	cmd.SetArgs([]string{
-		"--stack", "acme/web/prod",
-		"--yes",
-		"--output", "json",
-		"dep-123",
-	})
-	require.NoError(t, cmd.ExecuteContext(t.Context()))
-
-	assert.Equal(t, capturedCancelCall{stack: testStackID, deploymentID: "dep-123"}, captured)
-
-	var env deploymentCancelEnvelope
-	require.NoError(t, json.Unmarshal(buf.Bytes(), &env))
-	assert.Equal(t, "dep-123", env.DeploymentID)
-	assert.Equal(t, "prod", env.Stack)
-	assert.True(t, env.Canceled)
-}
-
-func TestNewDeploymentCancelCmd_RequiresDeploymentID(t *testing.T) {
-	t.Parallel()
-
-	cmd := newDeploymentCancelCmdWith(stubCancelFactory(&mockDeploymentCancelClient{}, "prod"), alwaysConfirm)
-	cmd.SetArgs([]string{})
-
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetErr(&buf)
-	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	assert.ErrorIs(t, err, backenderr.ErrNonInteractiveRequiresYes)
+	assert.Equal(t, capturedCancelCall{}, captured, "client must not be called when confirmation is refused")
 }

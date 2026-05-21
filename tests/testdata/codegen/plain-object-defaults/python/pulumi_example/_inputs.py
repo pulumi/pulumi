@@ -195,7 +195,7 @@ class KubeClientSettingsArgsDict(TypedDict):
     """
     Maximum queries per second (QPS) to the API server from this client. Default value is 5.
     """
-    rec_test: NotRequired[pulumi.Input[Optional['KubeClientSettingsArgs']]]
+    rec_test: NotRequired[pulumi.Input[Optional['KubeClientSettingsArgsDict']]]
 
 @pulumi.input_type
 class KubeClientSettingsArgs:
@@ -275,7 +275,7 @@ class LayeredTypeArgsDict(TypedDict):
     """
     The question already answered
     """
-    recursive: NotRequired[pulumi.Input[Optional['LayeredTypeArgs']]]
+    recursive: NotRequired[pulumi.Input[Optional['LayeredTypeArgsDict']]]
 
 @pulumi.input_type
 class LayeredTypeArgs:
@@ -382,8 +382,8 @@ class TypArgsDict(TypedDict):
     """
     A test for namespaces (mod main)
     """
-    mod1: NotRequired[pulumi.Input[Optional['_mod1.TypArgs']]]
-    mod2: NotRequired[pulumi.Input[Optional['_mod2.TypArgs']]]
+    mod1: NotRequired[pulumi.Input[Optional['_mod1.TypArgsDict']]]
+    mod2: NotRequired[pulumi.Input[Optional['_mod2.TypArgsDict']]]
     val: NotRequired[pulumi.Input[Optional[_builtins.str]]]
 
 @pulumi.input_type

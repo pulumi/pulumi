@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -35,32 +36,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// deploymentCancelClient is the subset of cloud-API operations the cancel
-// command needs. Defined here so tests can stub a thin interface rather than
-// the full HTTP client surface.
 type deploymentCancelClient interface {
 	CancelStackDeployment(ctx context.Context, stack client.StackIdentifier, deploymentID string) error
 }
 
-// deploymentCancelClientFactory resolves a cloud client and the
-// StackIdentifier the deployment lives under. stackFlag carries the raw value
-// of `--stack` (empty means "use the current stack"). The returned stackName
-// is the human-readable label used in the confirmation prompt and success
-// message; it deliberately mirrors what the user passed/selected rather than
-// the canonical `org/project/stack` form so error and confirmation text stays
-// terse.
 type deploymentCancelClientFactory func(
 	ctx context.Context, stackFlag string,
 ) (deploymentCancelClient, client.StackIdentifier, string, error)
 
-// deploymentCancelRender renders a successful cancellation to w. It is the
-// renderer type plugged into [outputflag.OutputFlag] so `--output` selects
-// between human-readable and JSON output.
 type deploymentCancelRender func(w io.Writer, deploymentID, stackName string) error
 
-// defaultDeploymentCancelOutputFormat returns the OutputFlag wired up with
-// every supported format. Callers (cobra constructors and tests) install this
-// on deploymentCancelArgs so `--output` selects between them.
 func defaultDeploymentCancelOutputFormat() outputflag.OutputFlag[deploymentCancelRender] {
 	return outputflag.OutputFlag[deploymentCancelRender]{
 		RenderForTerminal: renderDeploymentCancelText,
@@ -68,39 +53,22 @@ func defaultDeploymentCancelOutputFormat() outputflag.OutputFlag[deploymentCance
 	}
 }
 
-// deploymentCancelArgs collects the flag values for the cancel command, so
-// Run can be driven directly from tests.
 type deploymentCancelArgs struct {
 	stack  string
 	yes    bool
 	output outputflag.OutputFlag[deploymentCancelRender]
 }
 
-// confirmFunc abstracts the interactive confirmation so tests can inject a
-// deterministic answer without driving a fake terminal. A nil value resolves
-// to the default production prompt at runDeploymentCancel time —
-// terminal-attached sessions ask the user to type `cancel` (matching the
-// pattern used for other destructive `remove`-style commands where the
-// natural identifier — here, a UUID — would be hostile to ask for verbatim),
-// non-interactive sessions (CI, piped stdin, scripts) implicitly accept so
-// they don't block on input that can never arrive.
-type confirmFunc func(prompt string) bool
-
-// newDeploymentCancelCmd builds `pulumi deployment cancel` with the production
-// client factory and confirmation prompt. Test entrypoint is
-// [newDeploymentCancelCmdWith].
 func newDeploymentCancelCmd() *cobra.Command {
-	return newDeploymentCancelCmdWith(nil, nil)
+	return newDeploymentCancelCmdWith(nil)
 }
 
-func newDeploymentCancelCmdWith(
-	factory deploymentCancelClientFactory, confirm confirmFunc,
-) *cobra.Command {
+func newDeploymentCancelCmdWith(factory deploymentCancelClientFactory) *cobra.Command {
 	args := deploymentCancelArgs{output: defaultDeploymentCancelOutputFormat()}
 
 	cmd := &cobra.Command{
 		Use:   "cancel <deployment-id>",
-		Short: "Cancel an in-progress deployment",
+		Short: "[EXPERIMENTAL] Cancel an in-progress deployment",
 		Long: "[EXPERIMENTAL] Cancel an in-progress deployment.\n" +
 			"\n" +
 			"Terminates an in-progress Pulumi Deployments execution. If the deployment is\n" +
@@ -118,7 +86,7 @@ func newDeploymentCancelCmdWith(
 			"  # Emit JSON for scripting.\n" +
 			"  pulumi deployment cancel dep-abc123 --yes --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
-			return runDeploymentCancel(cmd.Context(), cmd.OutOrStdout(), factory, confirm, posArgs[0], args)
+			return runDeploymentCancel(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
 	}
 
@@ -136,14 +104,9 @@ func newDeploymentCancelCmdWith(
 	return cmd
 }
 
-// runDeploymentCancel is the cobra-decoupled body so tests can drive it
-// without going through the flag parser. Passing nil for factory or confirm
-// installs the production defaults — useful for the cobra wiring above, and
-// also lets us exercise the default-resolution path from a test without
-// stubbing every input.
 func runDeploymentCancel(
 	ctx context.Context, w io.Writer,
-	factory deploymentCancelClientFactory, confirm confirmFunc,
+	factory deploymentCancelClientFactory,
 	deploymentID string, args deploymentCancelArgs,
 ) error {
 	render := args.output.Get()
@@ -151,33 +114,21 @@ func runDeploymentCancel(
 	if factory == nil {
 		factory = defaultDeploymentCancelClientFactory
 	}
-	if confirm == nil {
-		// Non-interactive sessions (CI, piped stdin, scripts) implicitly
-		// accept so the command doesn't block on input that can never
-		// arrive. The interactive branch asks the user to type "cancel" —
-		// the deployment ID is a UUID so making them paste that verbatim
-		// (the usual ConfirmPrompt pattern) would be hostile.
-		confirm = func(prompt string) bool {
-			if !cmdutil.Interactive() {
-				return true
-			}
-			opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-			return ui.ConfirmPrompt(prompt, "cancel", opts)
-		}
-	}
 
 	c, stackID, stackName, err := factory(ctx, args.stack)
 	if err != nil {
 		return err
 	}
 
-	// Ask before doing anything destructive. We skip the prompt only when
-	// --yes is set.
 	if !args.yes {
+		if !cmdutil.Interactive() {
+			return backenderr.ErrNonInteractiveRequiresYes
+		}
+		opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 		prompt := fmt.Sprintf(
-			"Cancel deployment '%s' for stack '%s'?",
+			"This will cancel deployment '%s' for stack '%s'!",
 			deploymentID, stackName)
-		if !confirm(prompt) {
+		if !ui.ConfirmPrompt(prompt, "cancel", opts) {
 			return errors.New("confirmation declined")
 		}
 	}
@@ -189,9 +140,6 @@ func runDeploymentCancel(
 	return render(w, deploymentID, stackName)
 }
 
-// defaultDeploymentCancelClientFactory is the production wiring: resolve the
-// stack via RequireStack (non-prompting beyond the standard select flow), cast
-// to the cloud-backend types, and hand back the underlying *client.Client.
 func defaultDeploymentCancelClientFactory(
 	ctx context.Context, stackFlag string,
 ) (deploymentCancelClient, client.StackIdentifier, string, error) {
@@ -220,10 +168,6 @@ func defaultDeploymentCancelClientFactory(
 		Project: project,
 		Stack:   ref.Name(),
 	}
-	// The Stack→Backend type pair is guaranteed by the cloud backend
-	// implementation: any httpstate.Stack's Backend() returns an
-	// httpstate.Backend, so a second type assertion would be unreachable
-	// defensiveness rather than useful safety.
 	return cloudStack.Backend().(httpstate.Backend).Client(), stackID, ref.Name().String(), nil
 }
 
@@ -235,10 +179,6 @@ func renderDeploymentCancelText(w io.Writer, deploymentID, _ string) error {
 	return nil
 }
 
-// deploymentCancelEnvelope is the JSON shape emitted by
-// `pulumi deployment cancel --output=json`. Returning the inputs back to the
-// caller keeps scripts that pipe one cancel into another from having to
-// remember their own state.
 type deploymentCancelEnvelope struct {
 	DeploymentID string `json:"deploymentId"`
 	Stack        string `json:"stack"`

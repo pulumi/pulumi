@@ -11,7 +11,9 @@ scopes:
     - about
     - cloud
     - config
+    - deployment
     - display
+    - do
     - engine
     - env
     - import

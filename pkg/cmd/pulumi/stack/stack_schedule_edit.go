@@ -88,7 +88,7 @@ func newStackScheduleEditCmdWith(factory stackScheduleEditClientFactory) *cobra.
 
 	cmd := &cobra.Command{
 		Use:   "edit <schedule-id>",
-		Short: "Update the configuration of a scheduled deployment action",
+		Short: "[EXPERIMENTAL] Update the configuration of a scheduled deployment action",
 		Long: "[EXPERIMENTAL] Update the configuration of a scheduled deployment action.\n\n" +
 			"Only the fields you pass are changed; everything else is preserved. " +
 			"Each flag is only valid for a subset of kinds:\n" +

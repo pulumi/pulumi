@@ -168,6 +168,7 @@ type MockProvider struct {
 	ReadF               func(context.Context, ReadRequest) (ReadResponse, error)
 	UpdateF             func(context.Context, UpdateRequest) (UpdateResponse, error)
 	DeleteF             func(context.Context, DeleteRequest) (DeleteResponse, error)
+	ListF               func(context.Context, ListRequest) (*ListStream, error)
 	ConstructF          func(context.Context, ConstructRequest) (ConstructResponse, error)
 	InvokeF             func(context.Context, InvokeRequest) (InvokeResponse, error)
 	CallF               func(context.Context, CallRequest) (CallResponse, error)
@@ -279,6 +280,13 @@ func (m *MockProvider) Delete(ctx context.Context, req DeleteRequest) (DeleteRes
 	return DeleteResponse{}, errors.New("Delete not implemented")
 }
 
+func (m *MockProvider) List(ctx context.Context, req ListRequest) (*ListStream, error) {
+	if m.ListF != nil {
+		return m.ListF(ctx, req)
+	}
+	return nil, errors.New("List not implemented")
+}
+
 func (m *MockProvider) Construct(ctx context.Context, req ConstructRequest) (ConstructResponse, error) {
 	if m.ConstructF != nil {
 		return m.ConstructF(ctx, req)
@@ -326,4 +334,45 @@ func (m *MockProvider) GetMappings(ctx context.Context, req GetMappingsRequest) 
 		return m.GetMappingsF(ctx, req)
 	}
 	return GetMappingsResponse{}, errors.New("GetMappings not implemented")
+}
+
+type MockConverter struct {
+	CloseF          func() error
+	ConvertStateF   func(context.Context, *ConvertStateRequest) (*ConvertStateResponse, error)
+	ConvertProgramF func(context.Context, *ConvertProgramRequest) (*ConvertProgramResponse, error)
+	ConvertSnippetF func(context.Context, *ConvertSnippetRequest) (*ConvertSnippetResponse, error)
+}
+
+var _ Converter = (*MockConverter)(nil)
+
+func (m *MockConverter) Close() error {
+	if m.CloseF != nil {
+		return m.CloseF()
+	}
+	return nil
+}
+
+func (m *MockConverter) ConvertState(ctx context.Context, req *ConvertStateRequest) (*ConvertStateResponse, error) {
+	if m.ConvertStateF != nil {
+		return m.ConvertStateF(ctx, req)
+	}
+	return nil, errors.New("ConvertState not implemented")
+}
+
+func (m *MockConverter) ConvertProgram(
+	ctx context.Context, req *ConvertProgramRequest,
+) (*ConvertProgramResponse, error) {
+	if m.ConvertProgramF != nil {
+		return m.ConvertProgramF(ctx, req)
+	}
+	return nil, errors.New("ConvertProgram not implemented")
+}
+
+func (m *MockConverter) ConvertSnippet(
+	ctx context.Context, req *ConvertSnippetRequest,
+) (*ConvertSnippetResponse, error) {
+	if m.ConvertSnippetF != nil {
+		return m.ConvertSnippetF(ctx, req)
+	}
+	return nil, errors.New("ConvertSnippet not implemented")
 }

@@ -2048,7 +2048,7 @@ func (b *cloudBackend) runEngineAction(
 			snapshotJournaler := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
 			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
 			if err != nil {
-				validationErrs = append(validationErrs, err)
+				return nil, nil, err
 			}
 			combinedManager = &engine.CombinedManager{
 				Managers: []engine.SnapshotManager{journalManager},
@@ -2058,11 +2058,11 @@ func (b *cloudBackend) runEngineAction(
 			snapshotJournaler, err = backend.NewSnapshotJournaler(
 				ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
 			if err != nil {
-				validationErrs = append(validationErrs, err)
+				return nil, nil, err
 			}
 			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
 			if err != nil {
-				validationErrs = append(validationErrs, err)
+				return nil, nil, err
 			}
 			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot, engineEvents)
 			combinedManager = &engine.CombinedManager{

@@ -73,9 +73,8 @@ func newOrgRoleRemoveCmdWith(factory orgRoleClientFactory, confirm confirmFunc) 
 	output := defaultRoleRemoveOutput()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "remove <role-id>",
-		Short:  "Delete a custom role from an organization",
+		Use:   "remove <role-id>",
+		Short: "[EXPERIMENTAL] Delete a custom role from an organization",
 		Long: "[EXPERIMENTAL] Delete a custom role from an organization.\n" +
 			"\n" +
 			"Removing a role revokes any permissions it had granted to members and\n" +

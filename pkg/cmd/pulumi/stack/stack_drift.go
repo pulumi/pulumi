@@ -20,13 +20,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
-// TODO[https://github.com/pulumi/pulumi/issues/23053]: Not yet implemented.
 func newStackDriftCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "drift",
-		Short:  "Inspect stack drift detection results",
-		Long:   "[EXPERIMENTAL] Inspect stack drift detection results.",
+		Use:   "drift",
+		Short: "[EXPERIMENTAL] Inspect stack drift detection results",
+		Long:  "[EXPERIMENTAL] Inspect stack drift detection results.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -38,7 +36,3 @@ func newStackDriftCmd() *cobra.Command {
 	cmd.AddCommand(newStackDriftStatusCmd())
 	return cmd
 }
-
-// newStackDriftListCmd is defined in stack_drift_list.go.
-
-// newStackDriftStatusCmd is defined in stack_drift_status.go.

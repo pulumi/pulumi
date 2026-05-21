@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -86,7 +85,7 @@ func NewStackCmd() *cobra.Command {
 			}
 
 			args.fullyQualifyStackNames = cmdutil.FullyQualifyStackNames
-			return runStack(ctx, s, os.Stdout, args)
+			return runStack(ctx, s, cmd.OutOrStdout(), args)
 		},
 	}
 
@@ -217,7 +216,7 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 			}
 		}
 
-		ui.PrintTable(cmdutil.Table{
+		ui.FprintTable(out, cmdutil.Table{
 			Headers: []string{"TYPE", "NAME"},
 			Rows:    rows,
 			Prefix:  "    ",
@@ -226,7 +225,7 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 		outputs, err := getStackOutputs(snap, args.showSecrets)
 		if err == nil {
 			fmt.Fprintf(out, "\n")
-			_ = fprintStackOutputs(os.Stdout, outputs)
+			_ = fprintStackOutputs(out, outputs)
 		}
 
 		if args.showSecrets {

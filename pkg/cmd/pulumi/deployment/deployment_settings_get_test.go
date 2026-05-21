@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -106,20 +107,26 @@ func TestDeploymentSettingsGet_DefaultOutput(t *testing.T) {
 		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.NoError(t, err)
 
-	assert.Equal(t, `Executor image:          pulumi/pulumi:latest
-Working directory:       /work
-Source repo URL:         https://github.com/acme/infra
-Source branch:           main
-Source commit:           abc123
-Source repo dir:         stacks/prod
-GitHub repository:       acme/infra
-GitHub deploy commits:   true
-GitHub preview PRs:      true
-GitHub PR template:      false
-GitHub paths:            1
-Agent pool ID:           pool-1
-Env var keys:            2
-Pre-run commands:        1
+	assert.Equal(t, `Source: GitHub
+  Repository:               acme/infra
+  Branch:                   main
+  Commit:                   abc123
+  Pulumi.yaml folder:       stacks/prod
+  Run previews for PRs:     yes
+  Run updates on push:      yes
+  PR stack template:        no
+  Path filters:             stacks/prod/**
+
+Deployment runner
+  Runner pool:              pool-1
+  Executor image:           pulumi/pulumi:latest
+
+Pre-run commands
+  echo hi
+
+Environment variables
+  BAZ
+  FOO
 `, buf.String())
 }
 
@@ -132,21 +139,8 @@ func TestDeploymentSettingsGet_DefaultOutput_Empty(t *testing.T) {
 		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.NoError(t, err)
 
-	assert.Equal(t, `Executor image:          -
-Working directory:       -
-Source repo URL:         -
-Source branch:           -
-Source commit:           -
-Source repo dir:         -
-GitHub repository:       -
-GitHub deploy commits:   false
-GitHub preview PRs:      false
-GitHub PR template:      false
-GitHub paths:            0
-Agent pool ID:           -
-Env var keys:            0
-Pre-run commands:        0
-`, buf.String())
+	// Nothing configured, hide all sections
+	assert.Empty(t, buf.String())
 }
 
 func TestDeploymentSettingsGet_JSONOutput(t *testing.T) {
@@ -159,46 +153,49 @@ func TestDeploymentSettingsGet_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
-		"executorContext": {
-			"workingDirectory": "/work",
+		"source": {
+			"kind": "github",
+			"repository": "acme/infra",
+			"branch": "main",
+			"commit": "abc123",
+			"folder": "stacks/prod",
+			"previewPullRequests": true,
+			"runUpdatesOnPush": true,
+			"pullRequestTemplate": false,
+			"pathFilters": ["stacks/prod/**"]
+		},
+		"runner": {
+			"pool": "pool-1",
 			"executorImage": "pulumi/pulumi:latest"
 		},
-		"sourceContext": {
-			"git": {
-				"repoUrl": "https://github.com/acme/infra",
-				"branch": "main",
-				"commit": "abc123",
-				"repoDir": "stacks/prod"
-			}
-		},
-		"gitHub": {
-			"repository": "acme/infra",
-			"pullRequestTemplate": false,
-			"deployCommits": true,
-			"previewPullRequests": true,
-			"paths": ["stacks/prod/**"]
-		},
-		"operationContext": {
-			"preRunCommands": ["echo hi"],
-			"operation": "update",
-			"environmentVariables": {
-				"FOO": "bar",
-				"BAZ": "qux"
-			}
-		},
-		"agentPoolID": "pool-1"
+		"preRunCommands": ["echo hi"],
+		"environmentVariables": ["BAZ", "FOO"]
 	}`, buf.String())
 }
 
-func TestDeploymentSettingsGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
+func TestDeploymentSettingsGet_JSONOutput_Empty(t *testing.T) {
 	t.Parallel()
 
-	// GitHub set with nil Paths, Operation set with nil PreRunCommands and nil
-	// EnvironmentVariables — JSON should expose them as empty arrays / object.
+	var buf bytes.Buffer
+	c := &mockDeploymentSettingsGetClient{resp: &apitype.DeploymentSettings{}}
+	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
+		deploymentSettingsGetJSONArgs(t))
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `{}`, buf.String())
+}
+
+func TestDeploymentSettingsGet_JSONOutput_GitSource(t *testing.T) {
+	t.Parallel()
+
+	// No GitHub block. The raw git source falls through to source.kind == "git",
+	// and the GitHub-only toggles must NOT appear in the JSON.
 	settings := &apitype.DeploymentSettings{
-		GitHub: &apitype.DeploymentSettingsGitHub{Repository: "acme/infra"},
-		Operation: &apitype.OperationContext{
-			Operation: apitype.Preview,
+		SourceContext: &apitype.SourceContext{
+			Git: &apitype.SourceContextGit{
+				RepoURL: "git@example.com:acme/infra.git",
+				Branch:  "main",
+			},
 		},
 	}
 
@@ -209,19 +206,67 @@ func TestDeploymentSettingsGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
-		"gitHub": {
-			"repository": "acme/infra",
-			"pullRequestTemplate": false,
-			"deployCommits": false,
-			"previewPullRequests": false,
-			"paths": []
-		},
-		"operationContext": {
-			"preRunCommands": [],
-			"operation": "preview",
-			"environmentVariables": {}
+		"source": {
+			"kind": "git",
+			"repository": "git@example.com:acme/infra.git",
+			"branch": "main"
 		}
 	}`, buf.String())
+}
+
+func TestDeploymentSettingsGet_RichSections(t *testing.T) {
+	t.Parallel()
+
+	thirtyMin, err := time.ParseDuration("30m")
+	require.NoError(t, err)
+	settings := &apitype.DeploymentSettings{
+		Tag: "rev-42",
+		Operation: &apitype.OperationContext{
+			Operation: apitype.Update,
+			OIDC: &apitype.OperationContextOIDCConfiguration{
+				AWS: &apitype.OperationContextAWSOIDCConfiguration{
+					RoleARN:     "arn:aws:iam::123:role/pulumi-deploy",
+					SessionName: "pulumi-deploy",
+					Duration:    apitype.DeploymentDuration(thirtyMin),
+					PolicyARNs:  []string{"arn:aws:iam::aws:policy/ReadOnlyAccess"},
+				},
+				GCP: &apitype.OperationContextGCPOIDCConfiguration{
+					ProjectID:      "123456",
+					WorkloadPoolID: "pulumi-pool",
+					ProviderID:     "pulumi",
+					ServiceAccount: "pulumi@my-project.iam.gserviceaccount.com",
+				},
+			},
+			Options: &apitype.OperationContextOptions{
+				SkipInstallDependencies: true,
+				Shell:                   "bash",
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	c := &mockDeploymentSettingsGetClient{resp: settings}
+	require.NoError(t, runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
+		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()}))
+
+	assert.Equal(t, `Tag:                        rev-42
+
+OIDC
+  AWS
+    Role ARN:               arn:aws:iam::123:role/pulumi-deploy
+    Session name:           pulumi-deploy
+    Session duration:       30m0s
+    Policy ARNs:            arn:aws:iam::aws:policy/ReadOnlyAccess
+  GCP
+    Project number:         123456
+    Workload pool:          pulumi-pool
+    Provider:               pulumi
+    Service account:        pulumi@my-project.iam.gserviceaccount.com
+
+Advanced
+  Skip install dependencies: yes
+  Shell:                    bash
+`, buf.String())
 }
 
 func TestDeploymentSettingsGet_ClientError(t *testing.T) {

@@ -424,7 +424,7 @@ func handleResponse(w, errW io.Writer, resp *http.Response, api *apiCommand) err
 		return nil
 	}
 
-	return renderBody(w, resp.Header.Get("Content-Type"), body)
+	return renderBody(w, errW, resp.Header.Get("Content-Type"), body)
 }
 
 // writeStatusAndHeaders writes the status line + sorted headers to w.
@@ -445,14 +445,23 @@ func writeStatusAndHeaders(w io.Writer, resp *http.Response) {
 }
 
 // negotiateAccept picks the Accept header value to send for op based on the
-// user's --output flag. When --output is unset we use the op's primary
-// response content type (historically JSON for Pulumi Cloud). When the user
-// explicitly asks for JSON or markdown we validate against the op's declared
-// response content types so the call fails fast with a helpful message
-// instead of surprising the caller with a 406 from the server.
+// user's --output flag. An explicit --output that the op doesn't declare is
+// rejected here so the caller sees a helpful error instead of a 406 from
+// the server.
 func negotiateAccept(op *Operation, output string) (string, error) {
 	switch strings.ToLower(output) {
 	case "", "raw", "auto", "default":
+		if declaresMarkdown(op.SuccessContentTypes) {
+			// Fallback chain so a server that can't produce markdown still
+			// returns a usable body instead of a 406.
+			accept := []string{"text/markdown"}
+			for _, ct := range op.SuccessContentTypes {
+				if !strings.EqualFold(strings.TrimSpace(strings.SplitN(ct, ";", 2)[0]), "text/markdown") {
+					accept = append(accept, ct)
+				}
+			}
+			return strings.Join(accept, ", "), nil
+		}
 		if op.ResponseContentType != "" {
 			return op.ResponseContentType, nil
 		}
@@ -494,6 +503,15 @@ func unsupportedOutputError(op *Operation, want, mediaType string) error {
 		WithSuggestions(suggestions...)
 }
 
+func declaresMarkdown(contentTypes []string) bool {
+	for _, ct := range contentTypes {
+		if strings.EqualFold(strings.TrimSpace(strings.SplitN(ct, ";", 2)[0]), "text/markdown") {
+			return true
+		}
+	}
+	return false
+}
+
 // isJSONContentType loosely matches `application/json` plus any `+json`
 // subtype (application/vnd.pulumi+json etc.).
 func isJSONContentType(ct string) bool {
@@ -507,7 +525,7 @@ func isJSONContentType(ct string) bool {
 // renderBody writes body to w, pretty-printing JSON when the content type
 // indicates JSON, passing through text/binary otherwise. A thin adapter
 // over format.go's existing helpers.
-func renderBody(w io.Writer, contentType string, body []byte) error {
+func renderBody(w, errW io.Writer, contentType string, body []byte) error {
 	ct := strings.ToLower(contentType)
 	switch {
 	case isJSONContentType(contentType), ct == "":
@@ -518,9 +536,9 @@ func renderBody(w io.Writer, contentType string, body []byte) error {
 		return formatText(w, body)
 	case strings.Contains(ct, "application/x-tar"),
 		strings.Contains(ct, "application/octet-stream"):
-		return formatBinary(w, body)
+		return formatBinary(w, errW, body)
 	default:
-		return formatBinary(w, body)
+		return formatBinary(w, errW, body)
 	}
 }
 

@@ -39,7 +39,6 @@ import (
 func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
-		stdout:           os.Stdout,
 		diags:            cmdutil.Diag(),
 		ws:               ws,
 		requireStack:     cmdStack.RequireStack,
@@ -53,6 +52,9 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 		Short: "Manage ESC environments for a stack",
 		Long: "Manages the ESC environment associated with a specific stack. To create a new environment\n" +
 			"from a stack's configuration, use `pulumi config env init`.",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			impl.stdout = cmd.OutOrStdout()
+		},
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
@@ -183,7 +185,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	edit func(stack *workspace.ProjectStack) error,
 ) error {
 	if !yes && !cmd.interactive {
-		return backenderr.NonInteractiveRequiresYesError{}
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	projectStack, project, stack, err := cmd.loadEnvPreamble(ctx)

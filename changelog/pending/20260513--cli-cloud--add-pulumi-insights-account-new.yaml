@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: Add `pulumi insights account new` to create a Pulumi Insights account

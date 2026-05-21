@@ -96,7 +96,7 @@ empty string.`,
 				return fmt.Errorf("no mapping found for key %q", key)
 			}
 
-			fmt.Fprintf(os.Stderr, "%s maps to provider %s\n", source, mapping.Provider)
+			fmt.Fprintf(cmd.ErrOrStderr(), "%s maps to provider %s\n", source, mapping.Provider)
 
 			// If the user has specified out, then write out the mapping data
 			// to a file.
@@ -107,7 +107,7 @@ empty string.`,
 				}
 			} else {
 				// Otherwise, just write it to stdout
-				_, err := os.Stdout.Write(mapping.Data)
+				_, err := cmd.OutOrStdout().Write(mapping.Data)
 				if err != nil {
 					return fmt.Errorf("failed to write mapping data to stdout: %w", err)
 				}

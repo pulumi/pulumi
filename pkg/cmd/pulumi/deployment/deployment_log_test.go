@@ -14,8 +14,6 @@
 
 package deployment
 
-// AI Generated - needs human review
-
 import (
 	"bytes"
 	"context"
@@ -39,6 +37,23 @@ type mockDeploymentLogClient struct {
 	gotID       string
 	gotOpts     client.GetDeploymentLogsOptions
 	gotOptsAll  []client.GetDeploymentLogsOptions
+
+	// Version-resolution stubs. byVersionResp is returned for any
+	// GetDeploymentByVersion call; byVersionErr forces a failure. gotVersion
+	// records the version the command asked us to resolve.
+	byVersionResp apitype.GetDeploymentResponse
+	byVersionErr  error
+	gotVersion    string
+}
+
+func (m *mockDeploymentLogClient) GetDeploymentByVersion(
+	_ context.Context, _ client.StackIdentifier, version string,
+) (apitype.GetDeploymentResponse, error) {
+	m.gotVersion = version
+	if m.byVersionErr != nil {
+		return apitype.GetDeploymentResponse{}, m.byVersionErr
+	}
+	return m.byVersionResp, nil
 }
 
 func (m *mockDeploymentLogClient) GetDeploymentLogs(
@@ -74,20 +89,24 @@ func failingLogFactory(err error) deploymentLogClientFactory {
 func TestDeploymentLog_DefaultOutput(t *testing.T) {
 	t.Parallel()
 
+	// Real server payloads put Header on its own row (no Line) and end
+	// each body Line with "\n" — the workflow runner appends the newline
+	// when it stores the log row. The renderer must trust that.
 	resp := &apitype.DeploymentLogs{
 		Lines: []apitype.DeploymentLogLine{
-			{Header: "pulumi up", Line: "running update"},
-			{Line: "plain log line"},
+			{Header: "pulumi up"},
+			{Line: "running update\n"},
+			{Line: "plain log line\n"},
 		},
 	}
 	c := &mockDeploymentLogClient{resp: resp}
 
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1",
-		defaultDeploymentLogArgs())
+		defaultDeploymentLogArgs(), renderDeploymentLogText)
 	require.NoError(t, err)
 
-	assert.Equal(t, "[pulumi up] running update\nplain log line\n", buf.String())
+	assert.Equal(t, "[pulumi up]\nrunning update\nplain log line\n", buf.String())
 }
 
 func TestDeploymentLog_DefaultOutput_Empty(t *testing.T) {
@@ -96,7 +115,7 @@ func TestDeploymentLog_DefaultOutput_Empty(t *testing.T) {
 	c := &mockDeploymentLogClient{resp: &apitype.DeploymentLogs{}}
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1",
-		defaultDeploymentLogArgs())
+		defaultDeploymentLogArgs(), renderDeploymentLogText)
 	require.NoError(t, err)
 
 	assert.Equal(t, "No log lines available.\n", buf.String())
@@ -113,11 +132,9 @@ func TestDeploymentLog_JSONOutput(t *testing.T) {
 	}
 	c := &mockDeploymentLogClient{resp: resp}
 
-	args := defaultDeploymentLogArgs()
-	require.NoError(t, args.outputFormat.Set("json"))
-
 	var buf bytes.Buffer
-	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1", args)
+	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1",
+		defaultDeploymentLogArgs(), renderDeploymentLogJSON)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -132,11 +149,10 @@ func TestDeploymentLog_JSONOutput_NilLinesNormalized(t *testing.T) {
 	t.Parallel()
 
 	c := &mockDeploymentLogClient{resp: &apitype.DeploymentLogs{}}
-	args := defaultDeploymentLogArgs()
-	require.NoError(t, args.outputFormat.Set("json"))
 
 	var buf bytes.Buffer
-	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1", args)
+	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1",
+		defaultDeploymentLogArgs(), renderDeploymentLogJSON)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{"lines": []}`, buf.String())
@@ -150,7 +166,7 @@ func TestDeploymentLog_StepRequiresJob(t *testing.T) {
 	args.step = 2 // job stays at -1
 
 	var buf bytes.Buffer
-	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1", args)
+	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1", args, renderDeploymentLogText)
 	require.Error(t, err)
 	assert.Equal(t, "--step requires --job to also be set (>= 0)", err.Error())
 }
@@ -161,7 +177,7 @@ func TestDeploymentLog_ClientError(t *testing.T) {
 	c := &mockDeploymentLogClient{err: errors.New("not found")}
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-missing",
-		defaultDeploymentLogArgs())
+		defaultDeploymentLogArgs(), renderDeploymentLogText)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "getting deployment logs")
 	assert.Contains(t, err.Error(), "not found")
@@ -172,7 +188,8 @@ func TestDeploymentLog_FactoryError(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf,
-		failingLogFactory(errors.New("not logged in")), "dep-1", defaultDeploymentLogArgs())
+		failingLogFactory(errors.New("not logged in")), "dep-1", defaultDeploymentLogArgs(),
+		renderDeploymentLogText)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
@@ -188,7 +205,7 @@ func TestDeploymentLog_OptionsPropagation(t *testing.T) {
 	args.count = 4
 
 	var buf bytes.Buffer
-	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-id", args)
+	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-id", args, renderDeploymentLogText)
 	require.NoError(t, err)
 
 	job, step, offset, count := 1, 2, 3, 4
@@ -208,10 +225,65 @@ func TestDeploymentLog_OptionsPropagation_AllUnset(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-id",
-		defaultDeploymentLogArgs())
+		defaultDeploymentLogArgs(), renderDeploymentLogText)
 	require.NoError(t, err)
 
 	assert.Equal(t, client.GetDeploymentLogsOptions{}, c.gotOpts)
+}
+
+func TestDeploymentLog_ResolvesVersionRef(t *testing.T) {
+	t.Parallel()
+
+	for _, ref := range []string{"#9410", "9410"} {
+		t.Run(ref, func(t *testing.T) {
+			t.Parallel()
+
+			c := &mockDeploymentLogClient{
+				resp:          &apitype.DeploymentLogs{},
+				byVersionResp: apitype.GetDeploymentResponse{ID: "uuid-from-version"},
+			}
+
+			var buf bytes.Buffer
+			err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), ref,
+				defaultDeploymentLogArgs(), renderDeploymentLogText)
+			require.NoError(t, err)
+
+			assert.Equal(t, "9410", c.gotVersion)
+			assert.Equal(t, "uuid-from-version", c.gotID)
+		})
+	}
+}
+
+func TestDeploymentLog_PassesUUIDThrough(t *testing.T) {
+	t.Parallel()
+
+	c := &mockDeploymentLogClient{resp: &apitype.DeploymentLogs{}}
+
+	var buf bytes.Buffer
+	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c),
+		"0a1b2c3d-1111-2222-3333-444455556666", defaultDeploymentLogArgs(),
+		renderDeploymentLogText)
+	require.NoError(t, err)
+
+	assert.Equal(t, "", c.gotVersion, "non-numeric ref must not trigger a version lookup")
+	assert.Equal(t, "0a1b2c3d-1111-2222-3333-444455556666", c.gotID)
+}
+
+func TestDeploymentLog_VersionLookupError(t *testing.T) {
+	t.Parallel()
+
+	c := &mockDeploymentLogClient{
+		resp:         &apitype.DeploymentLogs{},
+		byVersionErr: errors.New("not found"),
+	}
+
+	var buf bytes.Buffer
+	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "#9410",
+		defaultDeploymentLogArgs(), renderDeploymentLogText)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "resolving deployment version 9410")
+	assert.Contains(t, err.Error(), "not found")
+	assert.Equal(t, "", c.gotID, "logs endpoint must not be called when resolution fails")
 }
 
 func TestDeploymentLog_AllFollowsContinuationToken(t *testing.T) {
@@ -219,9 +291,9 @@ func TestDeploymentLog_AllFollowsContinuationToken(t *testing.T) {
 
 	c := &mockDeploymentLogClient{
 		queuedResps: []*apitype.DeploymentLogs{
-			{Lines: []apitype.DeploymentLogLine{{Line: "page-1"}}, NextToken: "tok-1"},
-			{Lines: []apitype.DeploymentLogLine{{Line: "page-2"}}, NextToken: "tok-2"},
-			{Lines: []apitype.DeploymentLogLine{{Line: "page-3"}}, NextToken: ""},
+			{Lines: []apitype.DeploymentLogLine{{Line: "page-1\n"}}, NextToken: "tok-1"},
+			{Lines: []apitype.DeploymentLogLine{{Line: "page-2\n"}}, NextToken: "tok-2"},
+			{Lines: []apitype.DeploymentLogLine{{Line: "page-3\n"}}, NextToken: ""},
 		},
 	}
 
@@ -229,7 +301,7 @@ func TestDeploymentLog_AllFollowsContinuationToken(t *testing.T) {
 	args.all = true
 
 	var buf bytes.Buffer
-	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-id", args)
+	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-id", args, renderDeploymentLogText)
 	require.NoError(t, err)
 
 	assert.Equal(t, "page-1\npage-2\npage-3\n", buf.String())

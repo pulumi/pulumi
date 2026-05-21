@@ -70,7 +70,7 @@ func newStackDriftStatusCmdWith(factory driftStatusClientFactory) *cobra.Command
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "[EXPERIMENTAL] Show the current drift detection status for a stack",
-		Long: "Show the current drift detection status for a stack.\n" +
+		Long: "[EXPERIMENTAL] Show the current drift detection status for a stack.\n" +
 			"\n" +
 			"Shows whether drift has been detected, the ID of the latest drift\n" +
 			"detection run, and whether a run is currently in progress.",

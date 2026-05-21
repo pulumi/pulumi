@@ -105,7 +105,7 @@ func newInsightsResourceSearchCmd(factory searchClientFactory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "search",
-		Short: "Search for resources discovered by Pulumi Insights",
+		Short: "[EXPERIMENTAL] Search for resources discovered by Pulumi Insights",
 		Long: "[EXPERIMENTAL] Search resources discovered by Pulumi Insights across an\n" +
 			"organization, with advanced filtering, sorting, and pagination.\n" +
 			"\n" +
@@ -319,7 +319,7 @@ func renderSearchTable(w io.Writer, r apitype.InsightsResourceSearchResponse) er
 	// Let the URN column absorb whatever width is left after the other
 	// columns and the borders. 3 chars per column separator + 1 outer border
 	// each side = 3*ncols + 1.
-	cols := termWidth(searchTableFallbackCols)
+	cols := termWidth(w, searchTableFallbackCols)
 	borderWidth := 3*len(header) + 1
 	urnWidth := cols - borderWidth - fixedTableColsWidth
 	if urnWidth < minURNColWidth {
@@ -344,14 +344,18 @@ func renderSearchTable(w io.Writer, r apitype.InsightsResourceSearchResponse) er
 	return nil
 }
 
-// termWidth reports the column count of stdout, falling back to fallback when
-// stdout isn't a terminal or the size can't be determined (piped output, CI).
-func termWidth(fallback int) int {
-	w, _, err := term.GetSize(int(os.Stdout.Fd()))
-	if err != nil || w <= 0 {
+// termWidth reports the column count of w when it is a terminal, falling
+// back to fallback otherwise (piped output, CI, non-file writers).
+func termWidth(w io.Writer, fallback int) int {
+	f, ok := w.(*os.File)
+	if !ok {
 		return fallback
 	}
-	return w
+	cols, _, err := term.GetSize(int(f.Fd()))
+	if err != nil || cols <= 0 {
+		return fallback
+	}
+	return cols
 }
 
 // renderSearchJSON writes the full response as indented JSON.

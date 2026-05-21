@@ -59,7 +59,7 @@ func TestOrgMemberRemove_DefaultOutput(t *testing.T) {
 	c := &mockOrgMemberRemoveClient{}
 	err := runOrgMemberRemove(t.Context(), &buf,
 		stubOrgMemberRemoveFactory(c, "acme"), "alice",
-		orgMemberRemoveArgs{outputFormat: defaultOrgMemberRemoveOutputFormat()})
+		orgMemberRemoveArgs{yes: true, outputFormat: defaultOrgMemberRemoveOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, "Removed member alice from organization acme.\n", buf.String())
@@ -72,7 +72,7 @@ func TestOrgMemberRemove_JSONOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockOrgMemberRemoveClient{}
-	args := orgMemberRemoveArgs{outputFormat: defaultOrgMemberRemoveOutputFormat()}
+	args := orgMemberRemoveArgs{yes: true, outputFormat: defaultOrgMemberRemoveOutputFormat()}
 	require.NoError(t, args.outputFormat.Set("json"))
 	err := runOrgMemberRemove(t.Context(), &buf,
 		stubOrgMemberRemoveFactory(c, "acme"), "alice", args)
@@ -91,7 +91,7 @@ func TestOrgMemberRemove_ClientError(t *testing.T) {
 	c := &mockOrgMemberRemoveClient{err: errors.New("cannot remove self")}
 	err := runOrgMemberRemove(t.Context(), &buf,
 		stubOrgMemberRemoveFactory(c, "acme"), "alice",
-		orgMemberRemoveArgs{outputFormat: defaultOrgMemberRemoveOutputFormat()})
+		orgMemberRemoveArgs{yes: true, outputFormat: defaultOrgMemberRemoveOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "removing organization member: cannot remove self", err.Error())
 	assert.Equal(t, "", buf.String())
@@ -103,7 +103,7 @@ func TestOrgMemberRemove_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgMemberRemove(t.Context(), &buf,
 		failingOrgMemberRemoveFactory(errors.New("not logged in")),
-		"alice", orgMemberRemoveArgs{outputFormat: defaultOrgMemberRemoveOutputFormat()})
+		"alice", orgMemberRemoveArgs{yes: true, outputFormat: defaultOrgMemberRemoveOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 }

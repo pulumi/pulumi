@@ -57,7 +57,7 @@ func newStackWebhookListCmdWith(factory stackWebhookListClientFactory) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List all webhooks configured for a stack",
+		Short: "[EXPERIMENTAL] List all webhooks configured for a stack",
 		Long: "[EXPERIMENTAL] List all webhooks configured for a stack.\n" +
 			"\n" +
 			"Displays the ID, name, payload URL, format, event groups, events, and active\n" +
@@ -279,7 +279,7 @@ func renderWebhookListTable(w io.Writer, webhooks []apitype.Webhook) error {
 	// Wrap URL, EVENT GROUPS, and EVENTS to fit the terminal.
 	// Compute actual widths of fixed columns from the data so flex columns
 	// get an accurate share of the remaining space.
-	cols := cmdCmd.StdoutWidth()
+	cols := cmdCmd.WriterWidth(w)
 	borderWidth := 3*len(header) + 1
 	idWidth, nameWidth, activeWidth, formatWidth := len("ID"), len("NAME"), len("ACTIVE"), len("FORMAT")
 	for _, r := range rows {

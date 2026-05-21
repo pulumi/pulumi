@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -73,6 +74,7 @@ func newStackInitCmd() *cobra.Command {
 			"* `pulumi stack init --copy-config-from dev`",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sicmd.stdout = cmd.OutOrStdout()
 			return sicmd.Run(ctx, args)
 		},
 	}
@@ -110,6 +112,7 @@ type stackInitCmd struct {
 	noSelect        bool
 	teams           []string
 	remoteConfig    bool
+	stdout          io.Writer
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
@@ -160,8 +163,8 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 
 	if cmd.stackName == "" && cmdutil.Interactive() {
 		if b.SupportsOrganizations() {
-			fmt.Print("Please enter your desired stack name.\n" +
-				"To create a stack in an organization, " +
+			fmt.Fprint(cmd.stdout, "Please enter your desired stack name.\n"+
+				"To create a stack in an organization, "+
 				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
 		}
 

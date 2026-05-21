@@ -18,10 +18,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -52,7 +52,7 @@ func newStackScheduleRemoveCmdWith(factory stackScheduleRemoveClientFactory) *co
 
 	cmd := &cobra.Command{
 		Use:   "remove <schedule-id>",
-		Short: "Delete a scheduled deployment action",
+		Short: "[EXPERIMENTAL] Delete a scheduled deployment action",
 		Long: "[EXPERIMENTAL] Delete a scheduled deployment action.\n\n" +
 			"You will be prompted to confirm by typing `remove` unless --yes is passed.",
 		Example: "  # Remove a schedule (prompts for confirmation)\n" +
@@ -102,9 +102,12 @@ func runStackScheduleRemove(
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 	if !yes {
+		if !cmdutil.Interactive() {
+			return backenderr.ErrNonInteractiveRequiresYes
+		}
 		prompt := fmt.Sprintf("This will remove the schedule '%s'!", scheduleID)
 		if !ui.ConfirmPrompt(prompt, "remove", opts) {
-			return result.FprintBailf(os.Stdout, "confirmation declined")
+			return result.FprintBailf(w, "confirmation declined")
 		}
 	}
 

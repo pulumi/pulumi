@@ -58,7 +58,7 @@ func newStackScheduleListCmdWith(factory stackScheduleListClientFactory) *cobra.
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List all scheduled actions configured for a stack",
+		Short: "[EXPERIMENTAL] List all scheduled actions configured for a stack",
 		Long:  "[EXPERIMENTAL] List all scheduled actions configured for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if factory == nil {
@@ -167,7 +167,7 @@ func renderScheduleListTable(w io.Writer, schedules []apitype.ScheduledAction) e
 	}
 
 	// Let SETTINGS absorb extra width when the terminal is wide.
-	cols := cmdCmd.StdoutWidth()
+	cols := cmdCmd.WriterWidth(w)
 	borderWidth := 3*len(header) + 1
 	fixedColsWidth := 100
 	settingsWidth := max(cols-borderWidth-fixedColsWidth, 20)

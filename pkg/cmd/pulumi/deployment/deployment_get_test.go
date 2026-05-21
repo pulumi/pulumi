@@ -14,8 +14,6 @@
 
 package deployment
 
-// AI Generated - needs human review
-
 import (
 	"bytes"
 	"context"
@@ -29,11 +27,19 @@ import (
 )
 
 // mockDeploymentGetClient stubs deploymentGetClient. It returns a fixed
-// response (or error) and records the deployment ID it was called with.
+// response (or error) and records which endpoint was called and with what
+// argument.
 type mockDeploymentGetClient struct {
 	resp  apitype.GetDeploymentResponse
 	err   error
 	gotID string
+
+	// Version-resolution stubs. byVersionResp is returned for any
+	// GetDeploymentByVersion call; byVersionErr forces a failure.
+	// gotVersion records the version the command asked us to resolve.
+	byVersionResp apitype.GetDeploymentResponse
+	byVersionErr  error
+	gotVersion    string
 }
 
 func (m *mockDeploymentGetClient) GetDeployment(
@@ -44,6 +50,16 @@ func (m *mockDeploymentGetClient) GetDeployment(
 		return apitype.GetDeploymentResponse{}, m.err
 	}
 	return m.resp, nil
+}
+
+func (m *mockDeploymentGetClient) GetDeploymentByVersion(
+	_ context.Context, _ client.StackIdentifier, version string,
+) (apitype.GetDeploymentResponse, error) {
+	m.gotVersion = version
+	if m.byVersionErr != nil {
+		return apitype.GetDeploymentResponse{}, m.byVersionErr
+	}
+	return m.byVersionResp, nil
 }
 
 func stubGetFactory(c deploymentGetClient) deploymentGetClientFactory {
@@ -224,4 +240,55 @@ func TestDeploymentGet_DeploymentIDPropagation(t *testing.T) {
 		deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
 	require.NoError(t, err)
 	assert.Equal(t, "my-dep-id", c.gotID)
+}
+
+func TestDeploymentGet_ResolvesVersionRef(t *testing.T) {
+	t.Parallel()
+
+	for _, ref := range []string{"#9410", "9410"} {
+		t.Run(ref, func(t *testing.T) {
+			t.Parallel()
+
+			c := &mockDeploymentGetClient{
+				byVersionResp: sampleGetResponse(),
+			}
+
+			var buf bytes.Buffer
+			err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), ref,
+				deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
+			require.NoError(t, err)
+
+			assert.Equal(t, "9410", c.gotVersion)
+			assert.Equal(t, "", c.gotID, "version ref must not hit the by-id endpoint")
+		})
+	}
+}
+
+func TestDeploymentGet_PassesUUIDThrough(t *testing.T) {
+	t.Parallel()
+
+	c := &mockDeploymentGetClient{resp: sampleGetResponse()}
+
+	var buf bytes.Buffer
+	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c),
+		"0a1b2c3d-1111-2222-3333-444455556666",
+		deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
+	require.NoError(t, err)
+
+	assert.Equal(t, "", c.gotVersion, "non-numeric ref must not trigger a version lookup")
+	assert.Equal(t, "0a1b2c3d-1111-2222-3333-444455556666", c.gotID)
+}
+
+func TestDeploymentGet_VersionLookupError(t *testing.T) {
+	t.Parallel()
+
+	c := &mockDeploymentGetClient{byVersionErr: errors.New("not found")}
+
+	var buf bytes.Buffer
+	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), "#9410",
+		deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "getting deployment")
+	assert.Contains(t, err.Error(), "not found")
+	assert.Equal(t, "", c.gotID, "by-id endpoint must not be called when resolution fails")
 }

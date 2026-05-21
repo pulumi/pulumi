@@ -1,4 +1,0 @@
-changes:
-  - type: feat
-    scope: cli
-    description: Add `pulumi stack schedule new` to create a raw, drift, or TTL deployment schedule for a stack

@@ -56,7 +56,7 @@ func newStackWebhookPingCmdWith(factory stackWebhookPingClientFactory) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:   "ping",
-		Short: "Send a test ping to a stack webhook",
+		Short: "[EXPERIMENTAL] Send a test ping to a stack webhook",
 		Long: "[EXPERIMENTAL] Send a test ping to a stack webhook.\n" +
 			"\n" +
 			"Issues a test ping event to the specified webhook to verify it is\n" +

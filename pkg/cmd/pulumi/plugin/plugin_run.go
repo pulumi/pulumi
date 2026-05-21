@@ -102,7 +102,8 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 					source = fmt.Sprintf("%s@%s", source, pluginSpec.Version)
 				}
 
-				d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
+				d := diag.DefaultSink(
+					cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
 
 				pluginPath, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
 				if err != nil {
@@ -165,20 +166,21 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// For stdin, we start a copy goroutine but don't wait for it since it will block
 			// indefinitely if there's no stdin input.
 
+			stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
 			var wg sync.WaitGroup
 			wg.Add(2) // Only wait for stdout and stderr, not stdin
 			go func() {
 				defer wg.Done()
-				_, err := io.Copy(os.Stdout, plugin.Stdout)
+				_, err := io.Copy(stdout, plugin.Stdout)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error reading plugin stdout: %v\n", err)
+					fmt.Fprintf(stderr, "error reading plugin stdout: %v\n", err)
 				}
 			}()
 			go func() {
 				defer wg.Done()
-				_, err := io.Copy(os.Stderr, plugin.Stderr)
+				_, err := io.Copy(stderr, plugin.Stderr)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error reading plugin stderr: %v\n", err)
+					fmt.Fprintf(stderr, "error reading plugin stderr: %v\n", err)
 				}
 			}()
 			// Copy stdin in a separate goroutine but don't wait for it.

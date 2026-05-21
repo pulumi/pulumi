@@ -17,6 +17,7 @@ package httpstate
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,6 +33,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -39,6 +43,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -1944,4 +1950,215 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, resp)
 	})
+}
+
+func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
+	t.Parallel()
+
+	stackName, err := tokens.ParseStackName("stack")
+	require.NoError(t, err)
+	mgr := failingSecretsManager{err: errors.New("encrypt boom")}
+	snap := &deploy.Snapshot{
+		Resources: []*resource.State{{
+			Type: tokens.Type("test:index:Resource"),
+			URN: resource.NewURN(
+				stackName.Q(), tokens.PackageName("project"), "",
+				tokens.Type("test:index:Resource"), "resource"),
+			Outputs: resource.PropertyMap{
+				"secret": resource.MakeSecret(resource.NewProperty("value")),
+			},
+		}},
+	}
+	fx := newRunEngineActionFixture(t, snap, nil, mgr)
+
+	var runErr error
+	require.NotPanics(t, func() {
+		_, _, runErr = fx.backend.runEngineAction(
+			t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
+			"lease-token", "", nil, false, 0,
+		)
+	})
+	require.Error(t, runErr)
+	require.ErrorContains(t, runErr, "encrypt boom")
+}
+
+type failingSecretsManager struct{ err error }
+
+func (m failingSecretsManager) Type() string                { return "failing" }
+func (m failingSecretsManager) State() json.RawMessage      { return nil }
+func (m failingSecretsManager) Encrypter() config.Encrypter { return m }
+func (m failingSecretsManager) Decrypter() config.Decrypter { return config.NopDecrypter }
+
+func (m failingSecretsManager) EncryptValue(context.Context, string) (string, error) {
+	return "", m.err
+}
+
+func (m failingSecretsManager) BatchEncrypt(context.Context, []string) ([]string, error) {
+	return nil, m.err
+}
+
+func TestRunEngineActionPropagatesJournalManagerError(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		journalVersion int64
+		snap           *deploy.Snapshot
+		provider       secrets.Provider
+		wantWrap       string
+	}{
+		{
+			name:           "journalVersion=1",
+			journalVersion: 1,
+			snap:           &deploy.Snapshot{},
+			provider:       nil,
+			// Wrap from cloudJournaler.AddJournalEntry.
+			wantWrap: "serializing journal entry",
+		},
+		{
+			name:           "journalVersion=0",
+			journalVersion: 0,
+			snap:           &deploy.Snapshot{SecretsManager: b64.NewBase64SecretsManager()},
+			provider: (&secrets.MockProvider{}).Add(b64.Type, func(json.RawMessage) (secrets.Manager, error) {
+				return b64.NewBase64SecretsManager(), nil
+			}),
+			wantWrap: "failed to serialize journal entry",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			mgr := failingBatchingSecretsManager{err: errors.New("batch boom")}
+			fx := newRunEngineActionFixture(t, tc.snap, tc.provider, mgr)
+
+			var runErr error
+			require.NotPanics(t, func() {
+				_, _, runErr = fx.backend.runEngineAction(
+					t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
+					"lease-token", "", nil, false, tc.journalVersion,
+				)
+			})
+			require.Error(t, runErr)
+			require.ErrorContains(t, runErr, "batch boom")
+			require.ErrorContains(t, runErr, tc.wantWrap)
+		})
+	}
+}
+
+type runEngineActionFixture struct {
+	backend  *cloudBackend
+	stackRef cloudBackendReference
+	op       backend.UpdateOperation
+	update   client.UpdateIdentifier
+}
+
+func newRunEngineActionFixture(
+	t *testing.T,
+	snap *deploy.Snapshot,
+	secretsProvider secrets.Provider,
+	opSecretsManager secrets.Manager,
+) runEngineActionFixture {
+	t.Helper()
+
+	stackName, err := tokens.ParseStackName("stack")
+	require.NoError(t, err)
+
+	deployment, err := stack.SerializeUntypedDeployment(t.Context(), snap, &stack.SerializeOptions{ShowSecrets: true})
+	require.NoError(t, err)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/stacks/owner/project/stack/export":
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ExportStackResponse(*deployment)))
+		case "/api/stacks/owner/project/stack":
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.Stack{
+				OrgName: "owner", ProjectName: "project", StackName: stackName.Q(),
+			}))
+		default:
+			http.Error(w, "unexpected path "+r.URL.Path, http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	apiClient := client.NewClient(server.URL, "token", false, sink).WithHTTPClient(server.Client())
+	b := &cloudBackend{
+		d:      sink,
+		url:    server.URL,
+		client: apiClient,
+		capabilities: promise.Run(func() (apitype.Capabilities, error) {
+			return apitype.Capabilities{}, nil
+		}),
+	}
+	stackRef := cloudBackendReference{
+		name:    stackName,
+		project: tokens.Name("project"),
+		owner:   "owner",
+		b:       b,
+	}
+
+	op := backend.UpdateOperation{
+		Proj: &workspace.Project{
+			Name:    tokens.PackageName("project"),
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		},
+		Opts:            backend.UpdateOptions{Display: display.Options{Color: colors.Never}},
+		SecretsManager:  opSecretsManager,
+		SecretsProvider: secretsProvider,
+		StackConfiguration: backend.StackConfiguration{
+			Config:    config.Map{},
+			Decrypter: opSecretsManager.Decrypter(),
+		},
+	}
+	update := client.UpdateIdentifier{
+		StackIdentifier: client.StackIdentifier{Owner: "owner", Project: "project", Stack: stackName},
+		UpdateID:        "update-id",
+	}
+
+	return runEngineActionFixture{backend: b, stackRef: stackRef, op: op, update: update}
+}
+
+type failingBatchingSecretsManager struct{ err error }
+
+func (m failingBatchingSecretsManager) Type() string                { return "failing-batch" }
+func (m failingBatchingSecretsManager) State() json.RawMessage      { return nil }
+func (m failingBatchingSecretsManager) Encrypter() config.Encrypter { return config.NopEncrypter }
+func (m failingBatchingSecretsManager) Decrypter() config.Decrypter { return config.NopDecrypter }
+
+func (m failingBatchingSecretsManager) BeginBatchEncryption() (stack.BatchEncrypter, stack.CompleteCrypterBatch) {
+	return nopBatchEncrypter{}, func(context.Context) error { return m.err }
+}
+
+func (m failingBatchingSecretsManager) BeginBatchDecryption() (stack.BatchDecrypter, stack.CompleteCrypterBatch) {
+	return nopBatchDecrypter{}, func(context.Context) error { return nil }
+}
+
+type nopBatchEncrypter struct{}
+
+func (nopBatchEncrypter) EncryptValue(context.Context, string) (string, error) {
+	return "", nil
+}
+
+func (nopBatchEncrypter) BatchEncrypt(context.Context, []string) ([]string, error) {
+	return nil, nil
+}
+
+func (nopBatchEncrypter) Enqueue(context.Context, *resource.Secret, string, *apitype.SecretV1) error {
+	return nil
+}
+
+type nopBatchDecrypter struct{}
+
+func (nopBatchDecrypter) DecryptValue(context.Context, string) (string, error) {
+	return "", nil
+}
+
+func (nopBatchDecrypter) BatchDecrypt(context.Context, []string) ([]string, error) {
+	return nil, nil
+}
+
+func (nopBatchDecrypter) Enqueue(context.Context, string, *resource.Secret) error {
+	return nil
 }

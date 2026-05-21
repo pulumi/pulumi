@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/pkg/browser"
@@ -78,7 +77,7 @@ type aiWebCmd struct {
 	disableAutoSubmit bool
 	language          PulumiAILanguage
 
-	Stdout io.Writer // defaults to os.Stdout
+	Stdout io.Writer
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
@@ -88,10 +87,6 @@ type aiWebCmd struct {
 }
 
 func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
-	}
-
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
@@ -120,7 +115,7 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 
 	requestURL.RawQuery = query.Encode()
 	if err = browser.OpenURL(requestURL.String()); err != nil {
-		fmt.Printf("We couldn't launch your web browser for some reason. Please visit:\n\n%s\n\n"+
+		fmt.Fprintf(cmd.Stdout, "We couldn't launch your web browser for some reason. Please visit:\n\n%s\n\n"+
 			"to continue your Pulumi AI session.\n", requestURL)
 		return errors.Join(err, fmt.Errorf("failed to open URL: %s", requestURL.String()))
 	}
@@ -151,6 +146,9 @@ Example:
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			if aiwebcmd.Stdout == nil {
+				aiwebcmd.Stdout = cmd.OutOrStdout()
+			}
 			return aiwebcmd.Run(ctx, args)
 		},
 	}

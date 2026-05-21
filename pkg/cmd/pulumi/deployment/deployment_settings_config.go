@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -73,12 +74,15 @@ func newDeploymentSettingsCmd() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
+	// Commands to edit `Pulumi.<stack>.deployment.yaml`
 	cmd.AddCommand(newDeploymentSettingsInitCmd())
 	cmd.AddCommand(newDeploymentSettingsPullCmd())
 	cmd.AddCommand(newDeploymentSettingsUpdateCmd())
 	cmd.AddCommand(newDeploymentSettingsDestroyCmd())
 	cmd.AddCommand(newDeploymentSettingsEnvCmd())
 	cmd.AddCommand(newDeploymentSettingsConfigureCmd())
+
+	// Edit the settings in cloud
 	cmd.AddCommand(newDeploymentSettingsGetCmd())
 	cmd.AddCommand(newDeploymentSettingsEditCmd())
 
@@ -97,7 +101,7 @@ type deploymentSettingsCommandDependencies struct {
 }
 
 func initializeDeploymentSettingsCmd(
-	ctx context.Context, ws pkgWorkspace.Context, stack string,
+	ctx context.Context, stdout io.Writer, ws pkgWorkspace.Context, stack string,
 ) (*deploymentSettingsCommandDependencies, error) {
 	interactive := cmdutil.Interactive()
 
@@ -129,9 +133,9 @@ func initializeDeploymentSettingsCmd(
 		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg,
 			"https://www.pulumi.com/docs/pulumi-cloud/deployments/", colors.BrightBlue+colors.Underline+colors.Bold)
 
-		fmt.Println()
-		fmt.Println(displayOpts.Color.Colorize(unsupportedBackendMsg))
-		fmt.Println()
+		fmt.Fprintln(stdout)
+		fmt.Fprintln(stdout, displayOpts.Color.Colorize(unsupportedBackendMsg))
+		fmt.Fprintln(stdout)
 
 		return nil, fmt.Errorf("unable to manage stack deployments for backend type: %s",
 			be.Name())
@@ -179,12 +183,13 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 	var gitSSHPrivateKeyValue string
 
 	cmd := &cobra.Command{
+		Hidden:     true,
 		Use:        "init",
 		SuggestFor: []string{"new", "create"},
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}
@@ -294,15 +299,16 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 	var gitSSHPrivateKeyValue string
 
 	cmd := &cobra.Command{
-		Use:   "configure",
-		Short: "Updates stack's deployment settings secrets",
-		Long:  "",
+		Hidden: true,
+		Use:    "configure",
+		Short:  "Updates stack's deployment settings secrets",
+		Long:   "",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("configure command is only supported in interactive mode")
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}

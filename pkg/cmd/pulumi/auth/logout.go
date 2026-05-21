@@ -67,7 +67,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			var err error
 			if all {
 				err = deleteAllAccounts()
-				fmt.Println("Logged out of everything")
+				fmt.Fprintln(cmd.OutOrStdout(), "Logged out of everything")
 			} else {
 				if cloudURL == "" {
 					// Try to read the current project
@@ -87,7 +87,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 				}
 
 				err = deleteAccount(cloudURL)
-				fmt.Printf("Logged out of %s\n", cloudURL)
+				fmt.Fprintf(cmd.OutOrStdout(), "Logged out of %s\n", cloudURL)
 			}
 
 			return err

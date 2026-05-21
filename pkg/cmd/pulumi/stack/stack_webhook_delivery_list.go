@@ -79,7 +79,7 @@ func newStackWebhookDeliveryListCmdWith(
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "[EXPERIMENTAL] List recent deliveries for a stack webhook",
-		Long: "List recent deliveries for a stack webhook.\n" +
+		Long: "[EXPERIMENTAL] List recent deliveries for a stack webhook.\n" +
 			"\n" +
 			"Returns the recent delivery history for a specific webhook. Each\n" +
 			"delivery includes the timestamp, event kind, HTTP response code,\n" +

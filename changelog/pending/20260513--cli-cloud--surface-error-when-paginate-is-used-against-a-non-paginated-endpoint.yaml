@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/cloud
-  description: Surface a clear error when `pulumi api --all` is used against an endpoint whose response is not paginatable, instead of silently emitting an empty array

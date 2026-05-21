@@ -16,9 +16,15 @@ package plugin
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,6 +71,8 @@ type stubProvider struct {
 	) (ReadResult, resource.Status, error)
 
 	ConfigureFunc func(resource.PropertyMap) error
+
+	ListFunc func(ListRequest) (*ListStream, error)
 }
 
 func (p *stubProvider) Configure(ctx context.Context, req ConfigureRequest) (ConfigureResponse, error) {
@@ -113,4 +121,177 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotEqual(t, secret, resp.Id)
+}
+
+func (p *stubProvider) List(ctx context.Context, req ListRequest) (*ListStream, error) {
+	if p.ListFunc != nil {
+		return p.ListFunc(req)
+	}
+	return p.Provider.List(ctx, req)
+}
+
+// fakeListServerStream captures messages sent by a server-streaming List call. Only Context and Send are exercised
+// by the provider server; the embedded ServerStream is nil so other methods will panic if invoked.
+type fakeListServerStream struct {
+	grpc.ServerStream
+	ctx  context.Context
+	sent []*pulumirpc.ListResponse
+}
+
+func (s *fakeListServerStream) Context() context.Context { return s.ctx }
+
+func (s *fakeListServerStream) Send(m *pulumirpc.ListResponse) error {
+	s.sent = append(s.sent, m)
+	return nil
+}
+
+func (s *fakeListServerStream) SetHeader(metadata.MD) error  { return nil }
+func (s *fakeListServerStream) SendHeader(metadata.MD) error { return nil }
+func (s *fakeListServerStream) SetTrailer(metadata.MD)       {}
+
+func TestProviderServer_List_streamsResults(t *testing.T) {
+	t.Parallel()
+
+	provider := stubProvider{
+		ListFunc: func(req ListRequest) (*ListStream, error) {
+			assert.Equal(t, tokens.Type("pkgA:index:Thing"), req.Token)
+			assert.Equal(t, int64(7), req.Limit)
+			assert.Equal(t, int64(3), req.PageSize)
+			assert.Equal(t, "cursor-in", req.ContinuationToken)
+			return NewListStream([]ListResult{
+				{ID: "id-a", Name: "alpha"},
+				{ID: "id-b", Name: "beta"},
+			}, "cursor-out"), nil
+		},
+	}
+	srv := NewProviderServer(&provider)
+
+	stream := &fakeListServerStream{ctx: t.Context()}
+	err := srv.List(&pulumirpc.ListRequest{
+		Token:             "pkgA:index:Thing",
+		Limit:             7,
+		PageSize:          3,
+		ContinuationToken: "cursor-in",
+	}, stream)
+	require.NoError(t, err)
+
+	require.Len(t, stream.sent, 3)
+	r0 := stream.sent[0].GetResult()
+	require.NotNil(t, r0)
+	assert.Equal(t, "id-a", r0.GetId())
+	assert.Equal(t, "alpha", r0.GetName())
+	r1 := stream.sent[1].GetResult()
+	require.NotNil(t, r1)
+	assert.Equal(t, "id-b", r1.GetId())
+	assert.Equal(t, "beta", r1.GetName())
+	cont := stream.sent[2].GetContinuation()
+	require.NotNil(t, cont)
+	assert.Equal(t, "cursor-out", cont.GetContinuationToken())
+}
+
+// Results that the provider yields lazily via iter.Seq2 must reach the wire in order.
+func TestProviderServer_List_streamsLazyResults(t *testing.T) {
+	t.Parallel()
+
+	provider := stubProvider{
+		ListFunc: func(req ListRequest) (*ListStream, error) {
+			return &ListStream{
+				Items: func(yield func(ListResult, error) bool) {
+					for i := 0; i < 3; i++ {
+						if !yield(ListResult{ID: resource.ID(fmt.Sprintf("id-%d", i))}, nil) {
+							return
+						}
+					}
+				},
+			}, nil
+		},
+	}
+	srv := NewProviderServer(&provider)
+
+	stream := &fakeListServerStream{ctx: t.Context()}
+	err := srv.List(&pulumirpc.ListRequest{Token: "pkgA:index:Thing"}, stream)
+	require.NoError(t, err)
+
+	require.Len(t, stream.sent, 3)
+	for i, msg := range stream.sent {
+		r := msg.GetResult()
+		require.NotNil(t, r)
+		assert.Equal(t, fmt.Sprintf("id-%d", i), r.GetId())
+	}
+}
+
+func TestProviderServer_List_sendsComputed(t *testing.T) {
+	t.Parallel()
+
+	provider := stubProvider{
+		ListFunc: func(req ListRequest) (*ListStream, error) {
+			return NewComputedListStream(), nil
+		},
+	}
+	srv := NewProviderServer(&provider)
+
+	stream := &fakeListServerStream{ctx: t.Context()}
+	err := srv.List(&pulumirpc.ListRequest{Token: "pkgA:index:Thing"}, stream)
+	require.NoError(t, err)
+
+	require.Len(t, stream.sent, 1)
+	require.NotNil(t, stream.sent[0].GetComputed())
+}
+
+func TestProviderServer_List_sendsNothingForEmptyPage(t *testing.T) {
+	t.Parallel()
+
+	provider := stubProvider{
+		ListFunc: func(req ListRequest) (*ListStream, error) {
+			return NewListStream(nil, ""), nil
+		},
+	}
+	srv := NewProviderServer(&provider)
+
+	stream := &fakeListServerStream{ctx: t.Context()}
+	err := srv.List(&pulumirpc.ListRequest{Token: "pkgA:index:Thing"}, stream)
+	require.NoError(t, err)
+	assert.Empty(t, stream.sent)
+}
+
+func TestProviderServer_List_propagatesError(t *testing.T) {
+	t.Parallel()
+
+	wantErr := errors.New("provider exploded")
+	provider := stubProvider{
+		ListFunc: func(req ListRequest) (*ListStream, error) {
+			return nil, wantErr
+		},
+	}
+	srv := NewProviderServer(&provider)
+
+	stream := &fakeListServerStream{ctx: t.Context()}
+	err := srv.List(&pulumirpc.ListRequest{Token: "pkgA:index:Thing"}, stream)
+	assert.ErrorIs(t, err, wantErr)
+	assert.Empty(t, stream.sent)
+}
+
+func TestProviderServer_List_propagatesItemError(t *testing.T) {
+	t.Parallel()
+
+	wantErr := errors.New("midstream error")
+	provider := stubProvider{
+		ListFunc: func(req ListRequest) (*ListStream, error) {
+			return &ListStream{
+				Items: func(yield func(ListResult, error) bool) {
+					if !yield(ListResult{ID: "id-a"}, nil) {
+						return
+					}
+					yield(ListResult{}, wantErr)
+				},
+			}, nil
+		},
+	}
+	srv := NewProviderServer(&provider)
+
+	stream := &fakeListServerStream{ctx: t.Context()}
+	err := srv.List(&pulumirpc.ListRequest{Token: "pkgA:index:Thing"}, stream)
+	assert.ErrorIs(t, err, wantErr)
+	require.Len(t, stream.sent, 1)
+	assert.Equal(t, "id-a", stream.sent[0].GetResult().GetId())
 }

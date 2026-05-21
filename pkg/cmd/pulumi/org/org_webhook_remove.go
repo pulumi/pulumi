@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -51,7 +52,7 @@ func newOrgWebhookRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "remove",
 		Short: "[EXPERIMENTAL] Delete an organization webhook",
-		Long: "Delete an organization webhook.\n" +
+		Long: "[EXPERIMENTAL] Delete an organization webhook.\n" +
 			"\n" +
 			"Permanently removes the specified webhook from the organization.\n" +
 			"This cannot be undone. You will be prompted to confirm unless\n" +
@@ -85,6 +86,9 @@ func (c *orgWebhookRemoveCmd) run(ctx context.Context, webhookName string) error
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 	if !c.yes {
+		if !cmdutil.Interactive() {
+			return backenderr.ErrNonInteractiveRequiresYes
+		}
 		prompt := fmt.Sprintf(
 			"This will permanently remove the webhook '%s'!", webhookName)
 		if !ui.ConfirmPrompt(prompt, webhookName, opts) {

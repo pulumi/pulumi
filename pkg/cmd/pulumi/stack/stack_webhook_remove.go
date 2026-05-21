@@ -18,10 +18,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -57,7 +57,7 @@ func newStackWebhookRemoveCmdWith(factory stackWebhookRemoveClientFactory) *cobr
 	cmd := &cobra.Command{
 		Use:   "remove",
 		Short: "[EXPERIMENTAL] Delete a stack webhook",
-		Long: "Delete a stack webhook.\n" +
+		Long: "[EXPERIMENTAL] Delete a stack webhook.\n" +
 			"\n" +
 			"Permanently removes the specified webhook from the stack. This cannot\n" +
 			"be undone. You will be prompted to confirm unless --yes is passed.\n" +
@@ -106,11 +106,14 @@ func runStackWebhookRemove(
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 	if !yes {
+		if !cmdutil.Interactive() {
+			return backenderr.ErrNonInteractiveRequiresYes
+		}
 		prompt := fmt.Sprintf(
 			"This will permanently remove the webhook '%s'!",
 			webhookName)
 		if !ui.ConfirmPrompt(prompt, webhookName, opts) {
-			return result.FprintBailf(os.Stdout, "confirmation declined")
+			return result.FprintBailf(w, "confirmation declined")
 		}
 	}
 
