@@ -4375,7 +4375,8 @@ description: jspb.Message.getFieldWithDefault(msg, 7, ""),
 readme: jspb.Message.getFieldWithDefault(msg, 8, ""),
 provider: jspb.Message.getFieldWithDefault(msg, 9, ""),
 tagsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
-repository: jspb.Message.getFieldWithDefault(msg, 11, "")
+repository: jspb.Message.getFieldWithDefault(msg, 11, ""),
+runtime: jspb.Message.getFieldWithDefault(msg, 12, "")
   };
 
   if (includeInstance) {
@@ -4458,6 +4459,10 @@ proto.pulumirpc.AnalyzerInfo.deserializeBinaryFromReader = function(msg, reader)
     case 11:
       var value = /** @type {string} */ (reader.readString());
       msg.setRepository(value);
+      break;
+    case 12:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setRuntime(value);
       break;
     default:
       reader.skipField();
@@ -4560,6 +4565,13 @@ proto.pulumirpc.AnalyzerInfo.serializeBinaryToWriter = function(message, writer)
   if (f.length > 0) {
     writer.writeString(
       11,
+      f
+    );
+  }
+  f = message.getRuntime();
+  if (f.length > 0) {
+    writer.writeString(
+      12,
       f
     );
   }
@@ -4805,6 +4817,24 @@ proto.pulumirpc.AnalyzerInfo.prototype.getRepository = function() {
  */
 proto.pulumirpc.AnalyzerInfo.prototype.setRepository = function(value) {
   return jspb.Message.setProto3StringField(this, 11, value);
+};
+
+
+/**
+ * optional string runtime = 12;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzerInfo.prototype.getRuntime = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 12, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.AnalyzerInfo} returns this
+ */
+proto.pulumirpc.AnalyzerInfo.prototype.setRuntime = function(value) {
+  return jspb.Message.setProto3StringField(this, 12, value);
 };
 
 

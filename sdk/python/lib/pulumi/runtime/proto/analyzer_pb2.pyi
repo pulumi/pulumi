@@ -704,6 +704,7 @@ class AnalyzerInfo(google.protobuf.message.Message):
     PROVIDER_FIELD_NUMBER: builtins.int
     TAGS_FIELD_NUMBER: builtins.int
     REPOSITORY_FIELD_NUMBER: builtins.int
+    RUNTIME_FIELD_NUMBER: builtins.int
     name: builtins.str
     """Name of the PolicyPack."""
     displayName: builtins.str
@@ -720,6 +721,8 @@ class AnalyzerInfo(google.protobuf.message.Message):
     """Cloud provider/platform associated with the policy pack."""
     repository: builtins.str
     """A URL to the repository where the policy pack is defined."""
+    runtime: builtins.str
+    """The analyzer SDK runtime, e.g. "nodejs", "python", "opa"."""
     @property
     def policies(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PolicyInfo]:
         """Metadata about policies contained in PolicyPack."""
@@ -746,8 +749,9 @@ class AnalyzerInfo(google.protobuf.message.Message):
         provider: builtins.str = ...,
         tags: collections.abc.Iterable[builtins.str] | None = ...,
         repository: builtins.str = ...,
+        runtime: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["description", b"description", "displayName", b"displayName", "initialConfig", b"initialConfig", "name", b"name", "policies", b"policies", "provider", b"provider", "readme", b"readme", "repository", b"repository", "supportsConfig", b"supportsConfig", "tags", b"tags", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["description", b"description", "displayName", b"displayName", "initialConfig", b"initialConfig", "name", b"name", "policies", b"policies", "provider", b"provider", "readme", b"readme", "repository", b"repository", "runtime", b"runtime", "supportsConfig", b"supportsConfig", "tags", b"tags", "version", b"version"]) -> None: ...
 
 global___AnalyzerInfo = AnalyzerInfo
 

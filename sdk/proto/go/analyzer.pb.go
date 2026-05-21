@@ -1888,7 +1888,7 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	"diagnostic\"\x96\x01\n" +
 	"\x11RemediateResponse\x12:\n" +
 	"\fremediations\x18\x01 \x03(\v2\x16.pulumirpc.RemediationR\fremediations\x12E\n" +
-	"\x0enot_applicable\x18\x02 \x03(\v2\x1e.pulumirpc.PolicyNotApplicableR\rnotApplicable\"\xf0\x03\n" +
+	"\x0enot_applicable\x18\x02 \x03(\v2\x1e.pulumirpc.PolicyNotApplicableR\rnotApplicable\"\x8a\x04\n" +
 	"\fAnalyzerInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdisplayName\x18\x02 \x01(\tR\vdisplayName\x121\n" +
@@ -1903,7 +1903,8 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	" \x03(\tR\x04tags\x12\x1e\n" +
 	"\n" +
 	"repository\x18\v \x01(\tR\n" +
-	"repository\x1aY\n" +
+	"repository\x12\x18\n" +
+	"\aruntime\x18\f \x01(\tR\aruntime\x1aY\n" +
 	"\x12InitialConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
 	"\x05value\x18\x02 \x01(\v2\x17.pulumirpc.PolicyConfigR\x05value:\x028\x01\"\x90\x04\n" +

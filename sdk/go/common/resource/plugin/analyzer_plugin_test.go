@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,7 +23,12 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestAnalyzerSpawn(t *testing.T) {
@@ -187,3 +193,70 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	err = analyzer.Close()
 	require.NoError(t, err)
 }
+
+// TestAnalyzerGetAnalyzerInfo_Runtime covers the runtime-disambiguation logic
+// added to support service-side rejection of cross-runtime version bumps:
+// the plugin's reported runtime wins, falling back to the cached
+// PulumiPolicy.yaml runtime when the plugin omits it (older SDKs).
+func TestAnalyzerGetAnalyzerInfo_Runtime(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		fromPlugin  string
+		fromProject string
+		want        string
+	}{
+		{"plugin wins", "nodejs", "python", "nodejs"},
+		{"fallback to project", "", "python", "python"},
+		{"both empty", "", "", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a := &analyzer{
+				name:    tokens.QName("test-pack"),
+				runtime: tc.fromProject,
+				client: stubAnalyzerClient{info: &pulumirpc.AnalyzerInfo{
+					Name: "test-pack", Runtime: tc.fromPlugin,
+				}},
+			}
+			info, err := a.GetAnalyzerInfo()
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, info.Runtime)
+		})
+	}
+}
+
+// TestAnalyzerServer_ForwardsRuntime verifies analyzerServer copies the
+// Runtime field from the wrapped Analyzer onto the outgoing proto.
+func TestAnalyzerServer_ForwardsRuntime(t *testing.T) {
+	t.Parallel()
+
+	srv := NewAnalyzerServer(stubAnalyzer{info: AnalyzerInfo{Runtime: "opa"}})
+	resp, err := srv.GetAnalyzerInfo(t.Context(), &emptypb.Empty{})
+	require.NoError(t, err)
+	assert.Equal(t, "opa", resp.GetRuntime())
+}
+
+// stubAnalyzerClient is a pulumirpc.AnalyzerClient that only answers
+// GetAnalyzerInfo. Embedding the generated interface lets unused methods
+// nil-panic if a test accidentally calls them.
+type stubAnalyzerClient struct {
+	pulumirpc.AnalyzerClient
+	info *pulumirpc.AnalyzerInfo
+}
+
+func (s stubAnalyzerClient) GetAnalyzerInfo(
+	context.Context, *emptypb.Empty, ...grpc.CallOption,
+) (*pulumirpc.AnalyzerInfo, error) {
+	return s.info, nil
+}
+
+// stubAnalyzer is a plugin.Analyzer that only answers GetAnalyzerInfo.
+type stubAnalyzer struct {
+	Analyzer
+	info AnalyzerInfo
+}
+
+func (s stubAnalyzer) GetAnalyzerInfo() (AnalyzerInfo, error) { return s.info, nil }

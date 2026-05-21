@@ -535,6 +535,8 @@ export class AnalyzerInfo extends jspb.Message {
     addTags(value: string, index?: number): string;
     getRepository(): string;
     setRepository(value: string): AnalyzerInfo;
+    getRuntime(): string;
+    setRuntime(value: string): AnalyzerInfo;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzerInfo.AsObject;
@@ -560,6 +562,7 @@ export namespace AnalyzerInfo {
         provider: string,
         tagsList: Array<string>,
         repository: string,
+        runtime: string,
     }
 }
 
