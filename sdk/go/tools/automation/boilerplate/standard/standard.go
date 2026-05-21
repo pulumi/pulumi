@@ -23,7 +23,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/boilerplate/base"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 )
 
 // API wraps a PulumiCommand and exposes one Go method per pulumi CLI

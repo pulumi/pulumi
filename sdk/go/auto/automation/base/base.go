@@ -14,10 +14,6 @@
 
 // Package base is the shared foundation consumed by generated command methods
 // and their per-command option packages.
-//
-// The integration PR (#4) will swap PulumiCommand here for the real interface
-// exported from sdk/go/auto. For the standalone code generator it is a
-// structural copy so the generated output compiles in isolation.
 package base
 
 import (
@@ -57,9 +53,9 @@ type CommandResult struct {
 }
 
 // PulumiCommand is the structural contract the API calls into. It mirrors
-// `github.com/pulumi/pulumi/sdk/v3/go/auto.PulumiCommand` so that the
-// integration PR can drop the real type in here without touching the
-// generator.
+// `github.com/pulumi/pulumi/sdk/v3/go/auto.PulumiCommand` so that callers
+// of the generated wrapper can substitute the real type without the
+// generator having to depend on sdk/go/auto.
 type PulumiCommand interface {
 	Run(
 		ctx context.Context,

@@ -22,7 +22,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/boilerplate/base"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 )
 
 // API is the same public shape as the production boilerplate. The generator
