@@ -45,7 +45,7 @@ func newStackWebhookCmd() *cobra.Command {
 func stackWebhookHookArg() *constrictor.Arguments {
 	return &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
-			{Name: "name"},
+			{Name: "id"},
 		},
 		Required: 1,
 	}

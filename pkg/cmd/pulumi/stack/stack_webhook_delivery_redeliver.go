@@ -68,9 +68,9 @@ func newStackWebhookDeliveryRedeliverCmdWith(
 			"Returns the delivery result with HTTP status and response details.\n" +
 			"Returns an error if the webhook or event does not exist.",
 		Example: "  # Redeliver an event\n" +
-			"  pulumi stack webhook delivery redeliver my-webhook evt-abc123\n\n" +
+			"  pulumi stack webhook delivery redeliver 1a2b3c4d evt-abc123\n\n" +
 			"  # Redeliver and get the full result as JSON\n" +
-			"  pulumi stack webhook delivery redeliver my-webhook evt-abc123 --output json",
+			"  pulumi stack webhook delivery redeliver 1a2b3c4d evt-abc123 --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if factory == nil {
 				factory = defaultRedeliverClientFactory
@@ -84,7 +84,7 @@ func newStackWebhookDeliveryRedeliverCmdWith(
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
-			{Name: "webhook"},
+			{Name: "id"},
 			{Name: "event-id"},
 		},
 		Required: 2,
