@@ -149,7 +149,9 @@ func run() int {
 		}
 	}
 
-	// api.go is a verbatim copy of the chosen boilerplate.
+	// api.go is a verbatim copy of the chosen boilerplate, modulo a
+	// best-effort rewrite that points the boilerplate's own opt-package
+	// imports (none today, but possible in the future) at apiImportBase.
 	apiSource, err := readBoilerplateFile(boilerplateDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to read boilerplate: %v\n", err)

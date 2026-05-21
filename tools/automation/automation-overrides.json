@@ -194,6 +194,12 @@
             "flags": {}
         },
         {
+            "path": ["do"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
             "path": ["events"],
             "propagate": true,
             "exclude": true,
