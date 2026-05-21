@@ -1,0 +1,6 @@
+kind: chore
+body: Update the `pulumi package add --agent` documentation hint to use `<type-token>` as the placeholder for the `/docs/...` URL
+custom:
+  Scope: cli/package
+  PR: ''
+time: '2026-05-20T00:00:00Z'

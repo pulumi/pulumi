@@ -1,0 +1,6 @@
+kind: feat
+body: Prefer text/markdown over JSON in `pulumi api` when an endpoint produces both
+custom:
+  Scope: cli/cloud
+  PR: ''
+time: '2026-05-11T00:00:00Z'

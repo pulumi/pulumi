@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: Prefer text/markdown over JSON in `pulumi api` when an endpoint produces both

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/new
-  description: Alias `pulumi new` to `pulumi project new`
