@@ -227,7 +227,7 @@ func wrapAnalyzerWithGrpc(analyzer plugin.Analyzer) (plugin.Analyzer, io.Closer,
 		contract.IgnoreClose(wrapper)
 		return nil, nil, fmt.Errorf("could not connect to policy analyzer service: %w", err)
 	}
-	wrapped := plugin.NewAnalyzerWithClient(nil, analyzer.Name(), pulumirpc.NewAnalyzerClient(conn))
+	wrapped := plugin.NewAnalyzerWithClient(analyzer.Name(), pulumirpc.NewAnalyzerClient(conn))
 	return wrapped, wrapper, nil
 }
 

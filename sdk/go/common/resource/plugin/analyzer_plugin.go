@@ -48,7 +48,6 @@ import (
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
 type analyzer struct {
-	ctx     *Context
 	name    tokens.QName
 	plug    *Plugin
 	client  pulumirpc.AnalyzerClient
@@ -93,7 +92,6 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 
 	return &analyzer{
-		ctx:    ctx,
 		name:   name,
 		plug:   plug,
 		client: pulumirpc.NewAnalyzerClient(plug.Conn),
@@ -277,7 +275,6 @@ func NewPolicyAnalyzer(
 	}
 
 	return &analyzer{
-		ctx:         ctx,
 		name:        name,
 		plug:        plug,
 		client:      client,
@@ -286,9 +283,8 @@ func NewPolicyAnalyzer(
 	}, nil
 }
 
-func NewAnalyzerWithClient(ctx *Context, name tokens.QName, client pulumirpc.AnalyzerClient) Analyzer {
+func NewAnalyzerWithClient(name tokens.QName, client pulumirpc.AnalyzerClient) Analyzer {
 	return &analyzer{
-		ctx:    ctx,
 		name:   name,
 		client: client,
 	}
@@ -301,15 +297,8 @@ func (a *analyzer) label() string {
 	return fmt.Sprintf("Analyzer[%s]", a.name)
 }
 
-func (a *analyzer) requestContext() context.Context {
-	if a.ctx == nil {
-		return context.Background()
-	}
-	return a.ctx.Request()
-}
-
 // Analyze analyzes a single resource object, and returns any errors that it finds.
-func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
+func (a *analyzer) Analyze(ctx context.Context, r AnalyzerResource) (AnalyzeResponse, error) {
 	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
@@ -325,7 +314,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
 		return AnalyzeResponse{}, err
 	}
 
-	resp, err := a.client.Analyze(a.requestContext(), &pulumirpc.AnalyzeRequest{
+	resp, err := a.client.Analyze(ctx, &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
 		Name:       name,
@@ -342,7 +331,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
 	failures := resp.GetDiagnostics()
 	logging.V(7).Infof("%s success: failures=#%d", label, len(failures))
 
-	diags, err := a.convertDiagnostics(failures)
+	diags, err := a.convertDiagnostics(ctx, failures)
 	if err != nil {
 		return AnalyzeResponse{}, fmt.Errorf("converting analysis results: %w", err)
 	}
@@ -353,7 +342,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
 }
 
 // AnalyzeStack analyzes all resources in a stack at the end of the update operation.
-func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeResponse, error) {
+func (a *analyzer) AnalyzeStack(ctx context.Context, resources []AnalyzerStackResource) (AnalyzeResponse, error) {
 	logging.V(7).Infof("%s.AnalyzeStack(#resources=%d) executing", a.label(), len(resources))
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
@@ -398,7 +387,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeRespo
 		}
 	}
 
-	resp, err := a.client.AnalyzeStack(a.requestContext(), &pulumirpc.AnalyzeStackRequest{
+	resp, err := a.client.AnalyzeStack(ctx, &pulumirpc.AnalyzeStackRequest{
 		Resources: protoResources,
 	})
 	if err != nil {
@@ -418,7 +407,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeRespo
 	failures := resp.GetDiagnostics()
 	logging.V(7).Infof("%s.AnalyzeStack(...) success: failures=#%d", a.label(), len(failures))
 
-	diags, err := a.convertDiagnostics(failures)
+	diags, err := a.convertDiagnostics(ctx, failures)
 	if err != nil {
 		return AnalyzeResponse{}, fmt.Errorf("converting analysis results: %w", err)
 	}
@@ -429,7 +418,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeRespo
 }
 
 // Remediate is given the opportunity to transform a single resource, and returns its new properties.
-func (a *analyzer) Remediate(r AnalyzerResource) (RemediateResponse, error) {
+func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (RemediateResponse, error) {
 	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Remediate(%s)", a.label(), t)
@@ -445,7 +434,7 @@ func (a *analyzer) Remediate(r AnalyzerResource) (RemediateResponse, error) {
 		return RemediateResponse{}, err
 	}
 
-	resp, err := a.client.Remediate(a.requestContext(), &pulumirpc.AnalyzeRequest{
+	resp, err := a.client.Remediate(ctx, &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
 		Name:       name,
@@ -499,7 +488,7 @@ func (a *analyzer) Remediate(r AnalyzerResource) (RemediateResponse, error) {
 }
 
 // GetAnalyzerInfo returns metadata about the policies contained in this analyzer plugin.
-func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
+func (a *analyzer) GetAnalyzerInfo(ctx context.Context) (AnalyzerInfo, error) {
 	// Return the cached result, if available.
 	if a.info != nil {
 		return *a.info, nil
@@ -507,7 +496,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 
 	label := a.label() + ".GetAnalyzerInfo()"
 	logging.V(7).Infof("%s executing", label)
-	resp, err := a.client.GetAnalyzerInfo(a.requestContext(), &emptypb.Empty{})
+	resp, err := a.client.GetAnalyzerInfo(ctx, &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
@@ -596,10 +585,10 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 }
 
 // GetPluginInfo returns this plugin's information.
-func (a *analyzer) GetPluginInfo() (PluginInfo, error) {
+func (a *analyzer) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 	label := a.label() + ".GetPluginInfo()"
 	logging.V(7).Infof("%s executing", label)
-	resp, err := a.client.GetPluginInfo(a.requestContext(), &emptypb.Empty{})
+	resp, err := a.client.GetPluginInfo(ctx, &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
@@ -620,7 +609,7 @@ func (a *analyzer) GetPluginInfo() (PluginInfo, error) {
 	}, nil
 }
 
-func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error {
+func (a *analyzer) Configure(ctx context.Context, policyConfig map[string]AnalyzerPolicyConfig) error {
 	label := a.label() + ".Configure(...)"
 	logging.V(7).Infof("%s executing", label)
 
@@ -647,7 +636,7 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 		}
 	}
 
-	_, err := a.client.Configure(a.requestContext(), &pulumirpc.ConfigureAnalyzerRequest{
+	_, err := a.client.Configure(ctx, &pulumirpc.ConfigureAnalyzerRequest{
 		PolicyConfig: c,
 	})
 	if err != nil {
@@ -702,11 +691,11 @@ func (a *analyzer) Cancel(ctx context.Context) error {
 
 // getPolicySeverity returns the severity for the given policy name, or PolicySeverityUnspecified if the policy name
 // is not found.
-func (a *analyzer) getPolicySeverity(policyName string) apitype.PolicySeverity {
+func (a *analyzer) getPolicySeverity(ctx context.Context, policyName string) apitype.PolicySeverity {
 	m := a.policyNameToSeverity
 	if m == nil {
 		// Get the info to populate the map. This will return a cached value if we've already called it.
-		info, err := a.GetAnalyzerInfo()
+		info, err := a.GetAnalyzerInfo(ctx)
 		if err != nil {
 			logging.V(7).Infof("%s.getPolicySeverity(%q): failed to get analyzer info: %v", a.label(), policyName, err)
 			return apitype.PolicySeverityUnspecified
@@ -905,7 +894,9 @@ func convertComplianceFramework(framework *pulumirpc.PolicyComplianceFramework) 
 	}
 }
 
-func (a *analyzer) convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic) ([]AnalyzeDiagnostic, error) {
+func (a *analyzer) convertDiagnostics(
+	ctx context.Context, protoDiagnostics []*pulumirpc.AnalyzeDiagnostic,
+) ([]AnalyzeDiagnostic, error) {
 	diagnostics := make([]AnalyzeDiagnostic, len(protoDiagnostics))
 	for idx := range protoDiagnostics {
 		protoD := protoDiagnostics[idx]
@@ -924,7 +915,7 @@ func (a *analyzer) convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagn
 		severity := convertSeverity(protoD.Severity)
 		if severity == apitype.PolicySeverityUnspecified {
 			// If the severity is not specified in the diagnostic, try to get it from the policy info.
-			severity = a.getPolicySeverity(protoD.PolicyName)
+			severity = a.getPolicySeverity(ctx, protoD.PolicyName)
 		}
 
 		diagnostics[idx] = AnalyzeDiagnostic{

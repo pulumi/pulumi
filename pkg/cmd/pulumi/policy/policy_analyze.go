@@ -127,6 +127,7 @@ func newPolicyAnalyzeCmd(
 
 			// Run analysis against the snapshot.
 			events, finish, err := newAnalyzeEvents(
+				cmd.Context(),
 				cmd.OutOrStdout(), cmd.ErrOrStderr(), cmdutil.GetGlobalColorization(),
 				diffDisplay, jsonDisplay, s.Ref(), analyzers)
 			if err != nil {
@@ -178,6 +179,7 @@ type analyzeEvents struct {
 }
 
 func newAnalyzeEvents(
+	ctx context.Context,
 	out io.Writer,
 	errOut io.Writer,
 	colorization colors.Colorization,
@@ -187,7 +189,7 @@ func newAnalyzeEvents(
 	analyzers []plugin.Analyzer,
 ) (*analyzeEvents, func(apitype.OperationResult), error) {
 	if jsonDisplay {
-		policyPacks, err := policyPackVersions(analyzers)
+		policyPacks, err := policyPackVersions(ctx, analyzers)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -219,7 +221,7 @@ func newAnalyzeEvents(
 		}, func(apitype.OperationResult) {}, nil
 	}
 
-	policyPacks, err := policyPackVersions(analyzers)
+	policyPacks, err := policyPackVersions(ctx, analyzers)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -258,10 +260,10 @@ func newAnalyzeEvents(
 		}, nil
 }
 
-func policyPackVersions(analyzers []plugin.Analyzer) (map[string]string, error) {
+func policyPackVersions(ctx context.Context, analyzers []plugin.Analyzer) (map[string]string, error) {
 	policyPacks := map[string]string{}
 	for _, analyzer := range analyzers {
-		info, err := analyzer.GetAnalyzerInfo()
+		info, err := analyzer.GetAnalyzerInfo(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("getting analyzer info: %w", err)
 		}
