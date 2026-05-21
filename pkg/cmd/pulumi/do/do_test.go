@@ -237,6 +237,52 @@ Resources:
 	assert.Equal(t, expected, stdout.String())
 }
 
+// TestDoCmdWithPkgArgPrintsHelpWithModuleFormat asserts that when a package declares a non-default ModuleFormat
+// — for example a bridged provider whose tokens look like "aws:s3/getAccessPoint:getAccessPoint" — the package
+// help lists the simplified module ("aws:s3") rather than the raw module portion ("aws:s3/getAccessPoint").
+// The simplification comes from schema.Package.TokenToModule honoring the format regex.
+func TestDoCmdWithPkgArgPrintsHelpWithModuleFormat(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "aws", source)
+		spec := schema.PackageSpec{
+			Name:        "aws",
+			Description: "Help text about aws.",
+			Meta:        &schema.MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
+			Functions: map[string]schema.FunctionSpec{
+				"aws:s3/getAccessPoint:getAccessPoint":                       {},
+				"aws:s3/getAccountPublicAccessBlock:getAccountPublicAccessBlock": {},
+				"aws:ec2/getInstance:getInstance":                            {},
+			},
+			Resources: map[string]schema.ResourceSpec{
+				"aws:s3/bucket:Bucket":     {},
+				"aws:ec2/instance:Instance": {},
+			},
+		}
+		return &testProvider{spec: spec}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+
+	cmd.SetArgs([]string{"aws"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	output := stdout.String()
+	// Modules should be listed in their simplified form, one entry per unique top-level namespace, not the raw
+	// "<pkg>:<ns>/<sub>" form.
+	assert.Contains(t, output, "  aws:s3\n")
+	assert.Contains(t, output, "  aws:ec2\n")
+	assert.NotContains(t, output, "aws:s3/")
+	assert.NotContains(t, output, "aws:ec2/")
+}
+
 // TestDoCmdWithPkgArgPrintsHelpUnderRoot wraps the do command beneath a synthetic root with PersistentPreRun /
 // PersistentPostRun (mimicking the real `pulumi` command). When the dynamic subcommand executes via
 // subcmd.ExecuteContext, cobra walks back up to the root for a second Find/Execute pass — without the lifecycle
