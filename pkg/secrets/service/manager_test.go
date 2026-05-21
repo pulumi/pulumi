@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -40,7 +41,7 @@ func TestGetServiceSecretsAccountFallsBackToAgentCredentials(t *testing.T) {
 
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
-	t.Setenv(workspace.PulumiHomeEnvVar, "")
+	t.Setenv(env.Home.Var().Name(), "")
 
 	cloudURL := "https://api.service-secrets-agent.example.com"
 	err = workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true)
@@ -68,7 +69,7 @@ func TestGetServiceSecretsAccountDoesNotFallbackWithExplicitPath(t *testing.T) {
 
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv(workspace.PulumiCredentialsPathEnvVar, t.TempDir())
-	t.Setenv(workspace.PulumiHomeEnvVar, "")
+	t.Setenv(env.Home.Var().Name(), "")
 
 	cloudURL := "https://api.service-secrets-explicit.example.com"
 	err = workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true)

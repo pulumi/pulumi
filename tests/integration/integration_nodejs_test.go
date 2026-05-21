@@ -3153,7 +3153,10 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				PulumiHomeDir: pulumiHome,
 				PrepareProject: func(info *engine.Projinfo) error {
-					providerPath := filepath.Join(info.Root, "..", "provider")
+					providerPath, err := filepath.Abs(filepath.Join(info.Root, "..", "provider"))
+					if err != nil {
+						return err
+					}
 					installNodejsProviderDependencies(t, providerPath)
 
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
