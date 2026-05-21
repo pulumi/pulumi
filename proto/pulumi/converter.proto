@@ -114,6 +114,9 @@ message ConvertSnippetRequest {
     // The token to use when converting the snippet. This may be a provider token, such as `pulumi:providers:pkg`,
     // a function token, or a resource token.
     string token = 5;
+
+    // any extra attributes to merge into the source file conversion.
+    map<string, string> attributes = 6;
 }
 
 message ConvertSnippetResponse {

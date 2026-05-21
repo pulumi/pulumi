@@ -177,6 +177,9 @@ export class ConvertSnippetRequest extends jspb.Message {
     getToken(): string;
     setToken(value: string): ConvertSnippetRequest;
 
+    getAttributesMap(): jspb.Map<string, string>;
+    clearAttributesMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertSnippetRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ConvertSnippetRequest): ConvertSnippetRequest.AsObject;
@@ -194,6 +197,8 @@ export namespace ConvertSnippetRequest {
         targetLoader: string,
         pb_package?: pulumi_codegen_loader_pb.GetSchemaRequest.AsObject,
         token: string,
+
+        attributesMap: Array<[string, string]>,
     }
 }
 
