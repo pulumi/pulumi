@@ -253,12 +253,12 @@ func TestDoCmdWithPkgArgPrintsHelpWithModuleFormat(t *testing.T) {
 			Description: "Help text about aws.",
 			Meta:        &schema.MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
 			Functions: map[string]schema.FunctionSpec{
-				"aws:s3/getAccessPoint:getAccessPoint":                       {},
+				"aws:s3/getAccessPoint:getAccessPoint":                           {},
 				"aws:s3/getAccountPublicAccessBlock:getAccountPublicAccessBlock": {},
-				"aws:ec2/getInstance:getInstance":                            {},
+				"aws:ec2/getInstance:getInstance":                                {},
 			},
 			Resources: map[string]schema.ResourceSpec{
-				"aws:s3/bucket:Bucket":     {},
+				"aws:s3/bucket:Bucket":      {},
 				"aws:ec2/instance:Instance": {},
 			},
 		}
