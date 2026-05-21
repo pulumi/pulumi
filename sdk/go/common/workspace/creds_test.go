@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -152,6 +153,71 @@ func TestMarkAgentClaimUnavailable(t *testing.T) {
 	assert.True(t, claim.ValidUntil.Equal(validUntil))
 	require.NotNil(t, claim.ClaimUnavailableAt)
 	assert.True(t, claim.ClaimUnavailableAt.Equal(unavailableAt))
+}
+
+//nolint:paralleltest // mutates package global
+func TestGetAgentAccountUsesLegacyAccessTokenMap(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	require.NoError(t, StoreAgentCredentials(Credentials{
+		AccessTokens: map[string]string{
+			"https://api.legacy-agent-token.example.com": "legacy-token",
+		},
+	}))
+
+	account, err := GetAgentAccount("https://api.legacy-agent-token.example.com")
+	require.NoError(t, err)
+	assert.Equal(t, "legacy-token", account.AccessToken)
+	account, err = GetAgentAccount("https://api.missing-agent-token.example.com")
+	require.NoError(t, err)
+	assert.Empty(t, account.AccessToken)
+}
+
+//nolint:paralleltest // mutates env vars and package global
+func TestAgentPulumiDirTestOverride(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	override := filepath.Join(t.TempDir(), "agent")
+	t.Setenv(pulumiTestAgentPulumiDirEnvVar, override)
+
+	dir, err := getAgentPulumiDir()
+	require.NoError(t, err)
+	assert.Equal(t, override, dir)
+	assert.Equal(t, filepath.Join(override, "credentials.json"), getAgentCredsFilePathNoEnsure())
+	assert.Equal(t, filepath.Join(override, "agent-claim.json"), getAgentClaimFilePathNoEnsure())
+	assert.Equal(t, filepath.Join(override, "config.json"), getAgentConfigFilePathNoEnsure())
+}
+
+//nolint:paralleltest // mutates package global
+func TestGetAgentAccessTokenExpiresAt(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	now := time.Now().UTC()
+	expiresAt := now.Add(time.Hour)
+	require.NoError(t, StoreAgentAccount("https://api.agent-token-expiry.example.com", Account{
+		AccessToken: "agent-token",
+		TokenInformation: &TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true))
+
+	gotExpiresAt, valid, err := GetAgentAccessTokenExpiresAt("https://api.agent-token-expiry.example.com", now)
+	require.NoError(t, err)
+	require.NotNil(t, gotExpiresAt)
+	assert.True(t, gotExpiresAt.Equal(expiresAt))
+	assert.True(t, valid)
 }
 
 //nolint:paralleltest // mutates environment, default credentials, and package global
@@ -608,6 +674,45 @@ func TestAgentCredentialsRequireAccessibleTempDir(t *testing.T) {
 
 	_, err := GetAgentStoredCredentials()
 	require.ErrorContains(t, err, "agent mode requires read/write access to "+agentPulumiDir)
+}
+
+//nolint:paralleltest // mutates package global
+func TestAgentCredentialsRequireNonSymlinkDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permissions vary on Windows")
+	}
+	oldAgentPulumiDir := agentPulumiDir
+	parent := t.TempDir()
+	target := filepath.Join(parent, "target")
+	require.NoError(t, os.Mkdir(target, 0o700))
+	agentPulumiDir = filepath.Join(parent, "link")
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+	require.NoError(t, os.Symlink(target, agentPulumiDir))
+
+	_, err := GetAgentStoredCredentials()
+	require.ErrorContains(t, err, "must not be a symlink")
+}
+
+//nolint:paralleltest // mutates package global
+func TestAgentCredentialsRepairInsecurePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod permission bits vary on Windows")
+	}
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+	require.NoError(t, os.Mkdir(agentPulumiDir, 0o777))
+
+	dir, err := getAgentPulumiDir()
+	require.NoError(t, err)
+	assert.Equal(t, agentPulumiDir, dir)
+	info, err := os.Stat(agentPulumiDir)
+	require.NoError(t, err)
+	assert.Equal(t, fs.FileMode(0o700), info.Mode().Perm())
 }
 
 func setAgentEnv(t *testing.T) {

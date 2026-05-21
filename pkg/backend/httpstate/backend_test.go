@@ -463,6 +463,78 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	assert.Equal(t, server.URL, claim.CloudURL)
 }
 
+//nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
+	tests := []struct {
+		name     string
+		response client.AgentSignupResponse
+		wantErr  string
+	}{
+		{
+			name: "missing access token",
+			response: client.AgentSignupResponse{
+				AccessTokenValidUntil: time.Now().UTC().Add(time.Hour),
+				ClaimToken:            "claim-token",
+				ClaimTokenValidUntil:  time.Now().UTC().Add(2 * time.Hour),
+			},
+			wantErr: "signup response did not include an access token",
+		},
+		{
+			name: "missing access token expiration",
+			response: client.AgentSignupResponse{
+				AccessToken:          "agent-token",
+				ClaimToken:           "claim-token",
+				ClaimTokenValidUntil: time.Now().UTC().Add(2 * time.Hour),
+			},
+			wantErr: "signup response did not include accessTokenValidUntil",
+		},
+		{
+			name: "missing claim token",
+			response: client.AgentSignupResponse{
+				AccessToken:           "agent-token",
+				AccessTokenValidUntil: time.Now().UTC().Add(time.Hour),
+				ClaimTokenValidUntil:  time.Now().UTC().Add(2 * time.Hour),
+			},
+			wantErr: "signup response did not include a claim token",
+		},
+		{
+			name: "missing claim token expiration",
+			response: client.AgentSignupResponse{
+				AccessToken:           "agent-token",
+				AccessTokenValidUntil: time.Now().UTC().Add(time.Hour),
+				ClaimToken:            "claim-token",
+			},
+			wantErr: "signup response did not include claimTokenValidUntil",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				assert.Equal(t, "/api/agents/signup", req.URL.Path)
+				switch req.Method {
+				case http.MethodGet:
+					err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+						ChallengeID:   "challenge-1",
+						ChallengeData: "v1:abcdef:8",
+					})
+					require.NoError(t, err)
+				case http.MethodPost:
+					err := json.NewEncoder(rw).Encode(tt.response)
+					require.NoError(t, err)
+				default:
+					rw.WriteHeader(http.StatusMethodNotAllowed)
+				}
+			}))
+			t.Cleanup(server.Close)
+
+			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+			require.ErrorContains(t, err, tt.wantErr)
+			assert.Nil(t, account)
+		})
+	}
+}
+
 //nolint:paralleltest // mutates env vars, global interactive mode, shared temporary agent credentials, and console env
 func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()

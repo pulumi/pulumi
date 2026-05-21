@@ -697,18 +697,6 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	if err != nil {
 		return nil, fmt.Errorf("creating agent Pulumi account: %w", err)
 	}
-	if signup.AccessToken == "" {
-		return nil, errors.New("creating agent Pulumi account: signup response did not include an access token")
-	}
-	if signup.AccessTokenValidUntil.IsZero() {
-		return nil, errors.New("creating agent Pulumi account: signup response did not include accessTokenValidUntil")
-	}
-	if signup.ClaimToken == "" {
-		return nil, errors.New("creating agent Pulumi account: signup response did not include a claim token")
-	}
-	if signup.ClaimTokenValidUntil.IsZero() {
-		return nil, errors.New("creating agent Pulumi account: signup response did not include claimTokenValidUntil")
-	}
 	claimURL := client.AgentClaimURL(cloudURL, signup.ClaimToken)
 	if claimURL == "" {
 		return nil, fmt.Errorf("creating agent Pulumi account: could not construct claim URL for cloud URL %q", cloudURL)

@@ -15,9 +15,15 @@
 package backend
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
+	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -56,6 +62,43 @@ func TestGetCurrentCloudURLFallsBackToAgentCredentials(t *testing.T) {
 	assert.Equal(t, "https://api.agent.example", url)
 }
 
+//nolint:paralleltest // mutates environment and shared temporary agent credentials
+func TestGetCurrentCloudURLReturnsEmptyAgentCurrent(t *testing.T) {
+	clearAIAgentEnv(t)
+	t.Setenv(env.BackendURL.Var().Name(), "")
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+
+	ws := &pkgWorkspace.MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{}, assert.AnError
+		},
+	}
+
+	url, err := getCurrentCloudURL(ws, nil)
+	require.NoError(t, err)
+	assert.Empty(t, url)
+}
+
+//nolint:paralleltest // mutates environment and shared temporary agent credentials
+func TestGetCurrentCloudURLReturnsAgentCredentialReadError(t *testing.T) {
+	clearAIAgentEnv(t)
+	t.Setenv(env.BackendURL.Var().Name(), "")
+	t.Setenv("CODEX_SANDBOX", "1")
+	agentDir := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(agentDir, []byte("not a directory"), 0o600))
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", agentDir)
+
+	ws := &pkgWorkspace.MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{}, assert.AnError
+		},
+	}
+
+	_, err := getCurrentCloudURL(ws, nil)
+	require.ErrorContains(t, err, "could not get cloud url from agent credentials")
+}
+
 //nolint:paralleltest // mutates environment
 func TestGetCurrentCloudURLDoesNotFallbackWithExplicitPath(t *testing.T) {
 	clearAIAgentEnv(t)
@@ -86,6 +129,69 @@ func TestGetCurrentCloudURLReturnsDefaultCredentialErrorsOutsideAgents(t *testin
 
 	_, err := getCurrentCloudURL(ws, nil)
 	require.ErrorIs(t, err, assert.AnError)
+}
+
+//nolint:paralleltest // mutates environment
+func TestGetCurrentCloudURLReturnsDefaultCloudURL(t *testing.T) {
+	clearAIAgentEnv(t)
+	t.Setenv(env.BackendURL.Var().Name(), "https://api.default-current.example.com")
+
+	url, err := getCurrentCloudURL(&pkgWorkspace.MockContext{}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.default-current.example.com", url)
+}
+
+//nolint:paralleltest // mutates environment
+func TestCurrentBackendReturnsCloudURLError(t *testing.T) {
+	clearAIAgentEnv(t)
+	t.Setenv(env.BackendURL.Var().Name(), "")
+	ws := &pkgWorkspace.MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{}, assert.AnError
+		},
+	}
+
+	backend, err := CurrentBackend(t.Context(), ws, &MockLoginManager{}, nil, display.Options{})
+	require.ErrorIs(t, err, assert.AnError)
+	assert.Nil(t, backend)
+}
+
+//nolint:paralleltest // mutates environment
+func TestNonInteractiveCurrentBackendReturnsCloudURLError(t *testing.T) {
+	clearAIAgentEnv(t)
+	t.Setenv(env.BackendURL.Var().Name(), "")
+	ws := &pkgWorkspace.MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{}, assert.AnError
+		},
+	}
+
+	backend, err := NonInteractiveCurrentBackend(t.Context(), ws, &MockLoginManager{}, nil)
+	require.ErrorIs(t, err, assert.AnError)
+	assert.Nil(t, backend)
+}
+
+//nolint:paralleltest // mutates environment
+func TestNonInteractiveCurrentBackendPassesDefaultURL(t *testing.T) {
+	clearAIAgentEnv(t)
+	t.Setenv(env.BackendURL.Var().Name(), "https://api.noninteractive.example.com")
+
+	var gotURL string
+	_, err := NonInteractiveCurrentBackend(t.Context(), &pkgWorkspace.MockContext{}, &MockLoginManager{
+		CurrentF: func(
+			ctx context.Context,
+			ws pkgWorkspace.Context,
+			sink diag.Sink,
+			url string,
+			project *workspace.Project,
+			setCurrent bool,
+		) (pkgBackend.Backend, error) {
+			gotURL = url
+			return nil, nil
+		},
+	}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.noninteractive.example.com", gotURL)
 }
 
 func clearAIAgentEnv(t *testing.T) {

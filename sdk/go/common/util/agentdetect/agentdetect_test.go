@@ -169,6 +169,69 @@ func TestDetectModel(t *testing.T) {
 		assert.Equal(t, "claude-config-test", model)
 	})
 
+	t.Run("claude local config fallback", func(t *testing.T) {
+		t.Parallel()
+		home := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(home, ".claude"), 0o700))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(home, ".claude", "settings.local.json"),
+			[]byte(`{"model":"claude-local-test"}`),
+			0o600))
+		model := DetectModel("cowork", func(name string) string {
+			if name == "HOME" {
+				return home
+			}
+			return ""
+		})
+		assert.Equal(t, "claude-local-test", model)
+	})
+
+	t.Run("gemini config", func(t *testing.T) {
+		t.Parallel()
+		home := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(home, ".gemini"), 0o700))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(home, ".gemini", "settings.json"),
+			[]byte(`{"model":"gemini-config-test"}`),
+			0o600))
+		model := DetectModel("gemini", func(name string) string {
+			if name == "HOME" {
+				return home
+			}
+			return ""
+		})
+		assert.Equal(t, "gemini-config-test", model)
+	})
+
+	t.Run("userprofile fallback", func(t *testing.T) {
+		t.Parallel()
+		home := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(home, ".gemini"), 0o700))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(home, ".gemini", "settings.json"),
+			[]byte(`{"model":"gemini-userprofile-test"}`),
+			0o600))
+		model := DetectModel("gemini", func(name string) string {
+			if name == "USERPROFILE" {
+				return home
+			}
+			return ""
+		})
+		assert.Equal(t, "gemini-userprofile-test", model)
+	})
+
+	t.Run("missing config returns empty", func(t *testing.T) {
+		t.Parallel()
+		home := t.TempDir()
+		model := DetectModel("gemini", func(name string) string {
+			if name == "HOME" {
+				return home
+			}
+			return ""
+		})
+		assert.Empty(t, model)
+	})
+
 	t.Run("unknown", func(t *testing.T) {
 		t.Parallel()
 		assert.Empty(t, DetectModel("cursor", func(string) string { return "" }))

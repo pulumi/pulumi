@@ -18,6 +18,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -27,6 +31,89 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+//nolint:paralleltest // mutates env vars
+func TestMaybePrintClaimWarningSkipsOutsideAgentMode(t *testing.T) {
+	clearAgentEnv(t)
+
+	var output bytes.Buffer
+	MaybePrintClaimWarning(&output)
+	assert.Empty(t, output.String())
+}
+
+//nolint:paralleltest // mutates env vars
+func TestAuthRequiredMessageSkipsOutsideAgentMode(t *testing.T) {
+	clearAgentEnv(t)
+
+	assert.Empty(t, AuthRequiredMessage(time.Now()))
+}
+
+//nolint:paralleltest // mutates env vars
+func TestMaybePrintClaimWarningSkipsMissingClaim(t *testing.T) {
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+
+	var output bytes.Buffer
+	MaybePrintClaimWarning(&output)
+	assert.Empty(t, output.String())
+}
+
+//nolint:paralleltest // mutates env vars
+func TestAuthRequiredMessageSkipsMissingClaim(t *testing.T) {
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+
+	assert.Empty(t, AuthRequiredMessage(time.Now()))
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestMaybePrintClaimWarningSkipsDeletedExpiredAgentCredentials(t *testing.T) {
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	now := time.Now()
+	expiredAt := now.Add(-time.Minute)
+	cloudURL := "https://api.expired-agent-warning.example.com"
+	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{
+		AccessToken: "agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiredAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/expired-agent-warning",
+		ClaimToken: "expired-agent-warning",
+		CloudURL:   cloudURL,
+		ValidUntil: expiredAt,
+	})
+	require.NoError(t, err)
+	httpstate.MarkAgentCredentialsUsed(cloudURL)
+
+	var output bytes.Buffer
+	MaybePrintClaimWarning(&output)
+	assert.Empty(t, output.String())
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestMaybePrintClaimWarningSkipsUnreadableAgentAccount(t *testing.T) {
+	t.Setenv("CODEX_SANDBOX", "1")
+	agentDir := t.TempDir()
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", agentDir)
+	cloudURL := "https://api.unreadable-agent-warning.example.com"
+	err := workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/unreadable-agent-warning",
+		ClaimToken: "unreadable-agent-warning",
+		CloudURL:   cloudURL,
+		ValidUntil: time.Now().Add(time.Hour),
+	})
+	require.NoError(t, err)
+	httpstate.MarkAgentCredentialsUsed(cloudURL)
+	require.NoError(t, os.WriteFile(filepath.Join(agentDir, "credentials.json"), []byte("{"), 0o600))
+
+	var output bytes.Buffer
+	MaybePrintClaimWarning(&output)
+	assert.Empty(t, output.String())
+}
 
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestMaybePrintClaimWarningRequiresAgentCredentialsUsed(t *testing.T) {
@@ -193,6 +280,65 @@ func TestAuthRequiredMessageChecksClaimWhenTokenLocallyValidButRejected(t *testi
 	assert.NotContains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 }
 
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestAuthRequiredMessageUsesDefaultClaimValidator(t *testing.T) {
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodGet, req.Method)
+		assert.Equal(t, "/api/agents/signup/validate/default-validator-token", req.URL.Path)
+		rw.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	now := time.Date(2026, 5, 21, 12, 0, 0, 0, time.UTC)
+	expiresAt := now.Add(time.Hour)
+	err := workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken: "agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/default-validator-token",
+		ClaimToken: "default-validator-token",
+		CloudURL:   server.URL,
+		ValidUntil: now.Add(time.Hour),
+	})
+	require.NoError(t, err)
+
+	message := AuthRequiredMessage(now)
+	assert.Contains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
+	assert.NotContains(t, message, "CLAIM_URL=")
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestAuthRequiredMessageWithoutClaimTokenUsesLocalTokenState(t *testing.T) {
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	now := time.Date(2026, 5, 21, 12, 0, 0, 0, time.UTC)
+	expiresAt := now.Add(time.Hour)
+	cloudURL := "https://api.no-claim-token.example.com"
+	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{
+		AccessToken: "agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/no-claim-token",
+		CloudURL:   cloudURL,
+		ValidUntil: now.Add(time.Hour),
+	})
+	require.NoError(t, err)
+
+	message := AuthRequiredMessage(now)
+	assert.Contains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
+	assert.NotContains(t, message, "CLAIM_URL=")
+}
+
 //nolint:paralleltest // mutates env vars, shared temporary agent credentials, and package global
 func TestAuthRequiredMessageOmitsClaimURLWhenClaimIsNotClaimable(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
@@ -341,4 +487,31 @@ func setValidateAgentClaim(
 	t.Cleanup(func() {
 		validateAgentClaim = old
 	})
+}
+
+func clearAgentEnv(t *testing.T) {
+	t.Helper()
+	for _, name := range []string{
+		"CURSOR_TRACE_ID",
+		"CURSOR_AGENT",
+		"GEMINI_CLI",
+		"CODEX_SANDBOX",
+		"CODEX_CI",
+		"CODEX_THREAD_ID",
+		"ANTIGRAVITY_AGENT",
+		"AUGMENT_AGENT",
+		"OPENCODE",
+		"OPENCODE_CALLER",
+		"OPENCODE_CLIENT",
+		"CLAUDE_CODE_IS_COWORK",
+		"CLAUDECODE",
+		"CLAUDE_CODE",
+		"REPL_ID",
+		"COPILOT_MODEL",
+		"COPILOT_ALLOW_ALL",
+		"COPILOT_GITHUB_TOKEN",
+		"GOOSE_PROVIDER",
+	} {
+		t.Setenv(name, "")
+	}
 }
