@@ -286,6 +286,39 @@ func BindResource(
 	return args, inputType, diagnostics
 }
 
+// BindResourceList binds a PCL file as a resource list input and returns the bound arguments. This is used for `do` to
+// type check and evaluate resource list inputs.
+func BindResourceList(
+	file *syntax.File, res *schema.Resource,
+	opts ...BindOption,
+) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
+	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+
+	if res.ListInputs == nil {
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  fmt.Sprintf("resource %s does not support list", res.Token),
+		})
+		return nil, nil, diagnostics
+	}
+
+	inputs := make(map[string]model.Expression, len(args))
+	for _, item := range args {
+		inputs[item.Name] = item.Value
+	}
+	inputProperties := b.resolveInputUnions(inputs, res.ListInputs.Properties)
+	inputType := b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties})
+
+	diagnostics = append(diagnostics,
+		typecheckObjectArgs(inputType, file.Body.Range().Ptr(), args, inputRanges)...)
+
+	if diagnostics.HasErrors() {
+		return nil, nil, diagnostics
+	}
+
+	return args, inputType, diagnostics
+}
+
 func typecheckObjectArgs(
 	inputType model.Type,
 	rng *hcl.Range,

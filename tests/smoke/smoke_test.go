@@ -1303,6 +1303,32 @@ Resources
 		"stdout did not start with expected help prefix.\nExpected:\n%s\nActual:\n%s", expectedPrefix, stdout)
 }
 
+// Test that `pulumi do` can invoke a real provider resource end-to-end. We use the command provider's local:Command
+// resource because it's small, well-behaved, and exercises both an input file and a structured JSON output.
+func TestDoCommandLocalCommand(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Allow auto-acquiring the command plugin.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	e.WriteTestFile("inputs.pcl", "create = \"echo hello\"\n")
+
+	stdout, stderr := e.RunCommand(
+		"pulumi", "do", "command", "local", "Command", "create",
+		"--input-file", "inputs.pcl", "--yes")
+
+	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
+	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
+	// when it happens the test should fail loudly.
+	assert.NotContains(t, stderr, "panic:", "pulumi do should not panic; stderr:\n%s", stderr)
+
+	assert.Truef(t, strings.HasPrefix(stdout, "hello\n"),
+		"stdout did not start with hello\nActual:\n%s", stdout)
+}
+
 // Sanity test that we can `pulumi new -y` and then do some basic operations like stack selection and config.
 func TestPulumiNewEmptyOperations(t *testing.T) {
 	t.Parallel()

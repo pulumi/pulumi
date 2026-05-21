@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/do
+  description: Add resource support to `pulumi do`
