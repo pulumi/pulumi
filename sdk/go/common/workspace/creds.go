@@ -394,14 +394,19 @@ func FormatAgentClaimInstruction(
 		expirationLine = fmt.Sprintf("EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=%s\n", validFor)
 		instruction = fmt.Sprintf(
 			"Tell the user Pulumi created an ephemeral agent account. "+
-				"Include the claim URL and say they must claim the account within %s before agent access expires.\n",
+				"It is important to surface the claim URL to the user so they can take ownership of the account. "+
+				"Include the claim URL and say they must claim the account within %s before agent access expires. "+
+				"Tell them claiming the account will lock the Pulumi organization during the claim process, "+
+				"so they should let the agent finish its work before claiming it.\n",
 			validFor)
 	} else if !claimValidUntil.IsZero() && claimValidUntil.After(now) {
 		validFor := FormatAgentClaimValidFor(claimValidUntil, now)
 		expirationLine = fmt.Sprintf("CLAIM_URL_VALID_FOR=%s\n", validFor)
 		instruction = fmt.Sprintf(
 			"Tell the user this ephemeral agent account can no longer authenticate, "+
-				"but the claim URL is still valid for %s. Include the claim URL and the remaining time.\n",
+				"but the claim URL is still valid for %s. Include the claim URL and the remaining time. "+
+				"Tell them claiming the account will lock the Pulumi organization during the claim process, "+
+				"so they should let the agent finish its work before claiming it.\n",
 			validFor)
 	} else {
 		return ""
@@ -545,7 +550,7 @@ func getAgentPulumiDirPath() string {
 func getAgentPulumiDir() (string, error) {
 	dir := getAgentPulumiDirPath()
 	if err := ensurePrivateAgentCredentialDir(dir); err != nil {
-		return "", fmt.Errorf("agent mode requires read/write access to %s: %w", dir, err)
+		return "", fmt.Errorf("agent mode requires read/write access to /tmp/.pulumi: %w", err)
 	}
 	logging.V(7).Infof("Using shared agent Pulumi directory %q", dir)
 	return dir, nil

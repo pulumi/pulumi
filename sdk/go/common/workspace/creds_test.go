@@ -282,7 +282,10 @@ func TestFormatAgentClaimInstruction(t *testing.T) {
 			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=2d3h9m\n"+
 			"ACTION_REQUIRED=Tell the user to claim this Pulumi agent account.\n"+
 			"INSTRUCTION=Tell the user Pulumi created an ephemeral agent account. "+
-			"Include the claim URL and say they must claim the account within 2d3h9m before agent access expires.\n",
+			"It is important to surface the claim URL to the user so they can take ownership of the account. "+
+			"Include the claim URL and say they must claim the account within 2d3h9m before agent access expires. "+
+			"Tell them claiming the account will lock the Pulumi organization during the claim process, "+
+			"so they should let the agent finish its work before claiming it.\n",
 		FormatAgentClaimInstruction(claimURL, &expiresAt, validUntil, now))
 	expiredAt := now.Add(-time.Minute)
 	assert.Equal(t,
@@ -291,7 +294,9 @@ func TestFormatAgentClaimInstruction(t *testing.T) {
 			"CLAIM_URL_VALID_FOR=3d4h10m\n"+
 			"ACTION_REQUIRED=Tell the user to claim this Pulumi agent account.\n"+
 			"INSTRUCTION=Tell the user this ephemeral agent account can no longer authenticate, "+
-			"but the claim URL is still valid for 3d4h10m. Include the claim URL and the remaining time.\n",
+			"but the claim URL is still valid for 3d4h10m. Include the claim URL and the remaining time. "+
+			"Tell them claiming the account will lock the Pulumi organization during the claim process, "+
+			"so they should let the agent finish its work before claiming it.\n",
 		FormatAgentClaimInstruction(claimURL, &expiredAt, validUntil, now))
 	assert.Empty(t, FormatAgentClaimInstruction(claimURL, nil, time.Time{}, now))
 	assert.Empty(t, FormatAgentClaimInstruction("", &expiresAt, validUntil, now))
