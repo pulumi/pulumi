@@ -2310,7 +2310,7 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 		pulumiPlugin.Name = param.BaseProvider.Name
 		pulumiPlugin.Version = param.BaseProvider.Version.String()
 	} else if param := pkg.ExtensionParameterization; param != nil {
-		pulumiPlugin.Parameterization = &plugin.PulumiParameterizationJSON{
+		pulumiPlugin.ExtensionParameterization = &plugin.PulumiParameterizationJSON{
 			Name:    pulumiPlugin.Name,
 			Version: pulumiPlugin.Version,
 			Value:   param.Parameter,

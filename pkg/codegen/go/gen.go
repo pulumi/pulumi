@@ -4838,18 +4838,19 @@ func GeneratePackage(tool string,
 
 	// For both replacement and extension parameterization the plugin name/version
 	// in pulumi-plugin.json is from the base provider, not the top-level package.
-	param := pkg.Parameterization
-	kind := ""
-	if param == nil {
-		param = pkg.ExtensionParameterization
-		kind = "extension"
-	}
-	if param != nil {
+	if param := pkg.Parameterization; param != nil {
 		pulumiPlugin.Parameterization = &plugin.PulumiParameterizationJSON{
 			Name:    pulumiPlugin.Name,
 			Version: pulumiPlugin.Version,
 			Value:   param.Parameter,
-			Kind:    kind,
+		}
+		pulumiPlugin.Name = param.BaseProvider.Name
+		pulumiPlugin.Version = param.BaseProvider.Version.String()
+	} else if param := pkg.ExtensionParameterization; param != nil {
+		pulumiPlugin.ExtensionParameterization = &plugin.PulumiParameterizationJSON{
+			Name:    pulumiPlugin.Name,
+			Version: pulumiPlugin.Version,
+			Value:   param.Parameter,
 		}
 		pulumiPlugin.Name = param.BaseProvider.Name
 		pulumiPlugin.Version = param.BaseProvider.Version.String()

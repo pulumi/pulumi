@@ -684,16 +684,23 @@ func installPlugin(
 	return nil
 }
 
-// samePluginSource reports whether two PackageDescriptors refer to the same
-// underlying plugin (matching binary Name and matching parameterization
-// origin). Two descriptors that differ only in version are the same source;
-// two descriptors with different plugin Names (for example, a native
-// "scaleway" provider and a "terraform-provider" bridge parameterized as
-// "scaleway") are not.
+// replacementParamName returns the name of a replacement parameterization on a
+// descriptor, or "" if the descriptor has no replacement parameterization.
+// Extension parameterization is ignored here: an extension extends its base
+// plugin in place rather than forming a separate source.
+func replacementParamName(pd workspace.PackageDescriptor) string {
+	if pd.Parameterization == nil {
+		return ""
+	}
+	return pd.Parameterization.Name
+}
+
+// samePluginSource reports whether two descriptors resolve to the same plugin:
+// same binary Name and the same replacement parameterization, if any. A bridge
+// parameterized as "scaleway" and a native "scaleway" provider are different
+// sources; an extension and its plain base are the same source.
 func samePluginSource(a, b workspace.PackageDescriptor) bool {
-	return a.Name == b.Name &&
-		(a.Parameterization == nil) == (b.Parameterization == nil) &&
-		(a.Parameterization == nil || a.Parameterization.Name == b.Parameterization.Name)
+	return a.Name == b.Name && replacementParamName(a) == replacementParamName(b)
 }
 
 // describePluginSource returns a human-readable description of a plugin that

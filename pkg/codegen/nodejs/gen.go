@@ -2468,17 +2468,25 @@ func genNPMPackageMetadata(
 	}
 
 	var pulumiPlugin plugin.PulumiPluginJSON
-	param := pkg.Parameterization
-	if param == nil {
-		param = pkg.ExtensionParameterization
-	}
-	if param != nil {
+	if param := pkg.Parameterization; param != nil {
 		pulumiPlugin = plugin.PulumiPluginJSON{
 			Resource: true,
 			Server:   pkg.PluginDownloadURL,
 			Name:     param.BaseProvider.Name,
 			Version:  param.BaseProvider.Version.String(),
 			Parameterization: &plugin.PulumiParameterizationJSON{
+				Name:    pkg.Name,
+				Version: pkg.Version.String(),
+				Value:   param.Parameter,
+			},
+		}
+	} else if param := pkg.ExtensionParameterization; param != nil {
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource: true,
+			Server:   pkg.PluginDownloadURL,
+			Name:     param.BaseProvider.Name,
+			Version:  param.BaseProvider.Version.String(),
+			ExtensionParameterization: &plugin.PulumiParameterizationJSON{
 				Name:    pkg.Name,
 				Version: pkg.Version.String(),
 				Value:   param.Parameter,

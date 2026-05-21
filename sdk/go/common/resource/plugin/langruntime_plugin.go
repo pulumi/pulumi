@@ -271,20 +271,35 @@ func (h *langhost) GetRequiredPackages(
 		if !apitype.IsPluginKind(info.Kind) {
 			return nil, nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
-		var parameterization *workspace.Parameterization
-		if info.Parameterization != nil {
-			sv, err := semver.ParseTolerant(info.Parameterization.Version)
+		convert := func(p *pulumirpc.PackageParameterization) (*workspace.Parameterization, error) {
+			if p == nil {
+				return nil, nil
+			}
+			sv, err := semver.ParseTolerant(p.Version)
 			if err != nil {
-				return nil, nil, fmt.Errorf(
+				return nil, fmt.Errorf(
 					"illegal semver returned by language host: %s@%s: %w",
-					info.GetName(), info.Parameterization.Version, err)
+					info.GetName(), p.Version, err)
 			}
-
-			parameterization = &workspace.Parameterization{
-				Name:    info.Parameterization.Name,
+			return &workspace.Parameterization{
+				Name:    p.Name,
 				Version: sv,
-				Value:   info.Parameterization.Value,
-			}
+				Value:   p.Value,
+			}, nil
+		}
+
+		parameterization, err := convert(info.Parameterization)
+		if err != nil {
+			return nil, nil, err
+		}
+		extensionParameterization, err := convert(info.ExtensionParameterization)
+		if err != nil {
+			return nil, nil, err
+		}
+		if parameterization != nil && extensionParameterization != nil {
+			return nil, nil, fmt.Errorf(
+				"language host returned both replacement and extension parameterization for %s",
+				info.GetName())
 		}
 
 		packageDescriptors = append(packageDescriptors, workspace.PackageDescriptor{
@@ -295,7 +310,8 @@ func (h *langhost) GetRequiredPackages(
 				PluginDownloadURL: info.Server,
 				Checksums:         info.Checksums,
 			},
-			Parameterization: parameterization,
+			Parameterization:          parameterization,
+			ExtensionParameterization: extensionParameterization,
 		})
 	}
 
