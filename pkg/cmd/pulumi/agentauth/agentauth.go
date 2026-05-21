@@ -15,6 +15,7 @@
 package agentauth
 
 import (
+	"io"
 	"os"
 	"time"
 
@@ -27,7 +28,7 @@ import (
 
 // MaybePrintClaimWarning reminds detected coding agents to tell the user about
 // a claim URL for shared agent credentials used by this CLI process.
-func MaybePrintClaimWarning() {
+func MaybePrintClaimWarning(stderr io.Writer) {
 	if agentdetect.Detect(os.Getenv) == "" {
 		return
 	}
@@ -64,7 +65,7 @@ func MaybePrintClaimWarning() {
 	}
 
 	warning := workspace.FormatAgentClaimInstruction(claim.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, now)
-	_, err = os.Stderr.WriteString(warning)
+	_, err = io.WriteString(stderr, warning)
 	contract.IgnoreError(err)
 }
 

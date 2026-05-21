@@ -399,7 +399,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			agentauth.MaybePrintClaimWarning()
+			agentauth.MaybePrintClaimWarning(cmd.ErrOrStderr())
 
 			// Before exiting, if there is a new version of the CLI available, print it out.
 			jsonFlag := cmd.Flag("json")

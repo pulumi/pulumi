@@ -15,9 +15,9 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"io"
-	"os"
 	"testing"
 	"time"
 
@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-//nolint:paralleltest // mutates shared temporary agent credentials and os.Stderr
+//nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsPrintsAgentAuthRequiredInstruction(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -61,14 +61,14 @@ func TestProcessCmdErrorsPrintsAgentAuthRequiredInstruction(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	output := captureStderr(t, func() {
-		err = processCmdErrors(backenderr.LoginRequiredError{})
-	})
+	var output bytes.Buffer
+	err = processCmdErrors(backenderr.LoginRequiredError{}, &output)
 
 	assert.True(t, result.IsBail(err))
-	assert.Contains(t, output, "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
-	assert.Contains(t, output, "ACTION_REQUIRED=Tell the user to run pulumi login.")
-	assert.Contains(t, output, "INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate")
+	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
+	assert.Contains(t, output.String(), "ACTION_REQUIRED=Tell the user to run pulumi login.")
+	expectedInstruction := "INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate"
+	assert.Contains(t, output.String(), expectedInstruction)
 }
 
 //nolint:paralleltest // mutates shared temporary agent credentials
@@ -83,10 +83,10 @@ func TestProcessCmdErrorsKeepsGenericLoginRequiredOutsideAgentMode(t *testing.T)
 	t.Setenv("CLAUDE_CODE", "")
 
 	err := backenderr.LoginRequiredError{}
-	assert.Equal(t, err, processCmdErrors(err))
+	assert.Equal(t, err, processCmdErrors(err, io.Discard))
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials and os.Stderr
+//nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsPrintsAgentClaimWarningForNonLoginError(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -119,32 +119,10 @@ func TestProcessCmdErrorsPrintsAgentClaimWarningForNonLoginError(t *testing.T) {
 	httpstate.MarkAgentCredentialsUsed(cloudURL)
 
 	inputErr := errors.New("something failed")
-	output := captureStderr(t, func() {
-		err = processCmdErrors(inputErr)
-	})
+	var output bytes.Buffer
+	err = processCmdErrors(inputErr, &output)
 
 	assert.Same(t, inputErr, err)
-	assert.Contains(t, output, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
-	assert.Contains(t, output, "CLAIM_URL=https://app.pulumi.com/claim/non-login-error")
-}
-
-func captureStderr(t *testing.T, f func()) string {
-	t.Helper()
-
-	oldStderr := os.Stderr
-	reader, writer, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stderr = writer
-	t.Cleanup(func() {
-		os.Stderr = oldStderr
-	})
-
-	f()
-
-	require.NoError(t, writer.Close())
-	output, err := io.ReadAll(reader)
-	require.NoError(t, err)
-	require.NoError(t, reader.Close())
-	os.Stderr = oldStderr
-	return string(output)
+	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
+	assert.Contains(t, output.String(), "CLAIM_URL=https://app.pulumi.com/claim/non-login-error")
 }

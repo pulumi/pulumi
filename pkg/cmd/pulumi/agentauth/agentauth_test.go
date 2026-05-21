@@ -15,8 +15,7 @@
 package agentauth
 
 import (
-	"io"
-	"os"
+	"bytes"
 	"testing"
 	"time"
 
@@ -27,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-//nolint:paralleltest // mutates shared temporary agent credentials and os.Stderr
+//nolint:paralleltest // mutates shared temporary agent credentials
 func TestMaybePrintClaimWarningRequiresAgentCredentialsUsed(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -58,11 +57,12 @@ func TestMaybePrintClaimWarningRequiresAgentCredentialsUsed(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	output := captureStderr(t, MaybePrintClaimWarning)
-	assert.Empty(t, output)
+	var output bytes.Buffer
+	MaybePrintClaimWarning(&output)
+	assert.Empty(t, output.String())
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials and os.Stderr
+//nolint:paralleltest // mutates shared temporary agent credentials
 func TestMaybePrintClaimWarningPrintsForUsedAgentCredentials(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -94,9 +94,10 @@ func TestMaybePrintClaimWarningPrintsForUsedAgentCredentials(t *testing.T) {
 	require.NoError(t, err)
 	httpstate.MarkAgentCredentialsUsed(cloudURL)
 
-	output := captureStderr(t, MaybePrintClaimWarning)
-	assert.Contains(t, output, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
-	assert.Contains(t, output, "CLAIM_URL=https://app.pulumi.com/claim/used")
+	var output bytes.Buffer
+	MaybePrintClaimWarning(&output)
+	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
+	assert.Contains(t, output.String(), "CLAIM_URL=https://app.pulumi.com/claim/used")
 }
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
@@ -136,25 +137,4 @@ func TestAuthRequiredMessagePrintsClaimInstructionWhenTokenExpiredButClaimValid(
 	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/expired-token-valid-claim")
 	assert.Contains(t, message, "CLAIM_URL_VALID_FOR=1h")
 	assert.NotContains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
-}
-
-func captureStderr(t *testing.T, f func()) string {
-	t.Helper()
-
-	oldStderr := os.Stderr
-	reader, writer, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stderr = writer
-	t.Cleanup(func() {
-		os.Stderr = oldStderr
-	})
-
-	f()
-
-	require.NoError(t, writer.Close())
-	output, err := io.ReadAll(reader)
-	require.NoError(t, err)
-	require.NoError(t, reader.Close())
-	os.Stderr = oldStderr
-	return string(output)
 }
