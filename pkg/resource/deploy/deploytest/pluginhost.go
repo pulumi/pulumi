@@ -485,7 +485,7 @@ func (host *pluginHost) SignalCancellation() error {
 	}
 
 	if host.languageRuntime != nil {
-		if lErr := host.languageRuntime.Cancel(); lErr != nil {
+		if lErr := host.languageRuntime.Cancel(context.TODO()); lErr != nil {
 			err = lErr
 		}
 	}
@@ -585,7 +585,7 @@ func (host *pluginHost) GetRequiredPackages(
 	info plugin.ProgramInfo,
 	kinds plugin.Flags,
 ) ([]workspace.PackageDescriptor, error) {
-	return host.languageRuntime.GetRequiredPackages(info)
+	return host.languageRuntime.GetRequiredPackages(context.TODO(), info)
 }
 
 func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {

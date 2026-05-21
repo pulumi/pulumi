@@ -266,7 +266,7 @@ func formatValue(v reflect.Value) string {
 	}
 
 	// Handle pointers
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return "nil"
 		}

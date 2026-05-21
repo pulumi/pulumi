@@ -373,7 +373,7 @@ func NewPropertyValueRepl(v any,
 			arr = append(arr, NewPropertyValueRepl(elem.Interface(), replk, replv))
 		}
 		return NewProperty(arr)
-	case reflect.Ptr:
+	case reflect.Pointer:
 		// If a pointer, recurse and return the underlying value.
 		if rv.IsNil() {
 			return NewNullProperty()

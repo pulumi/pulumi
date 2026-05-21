@@ -103,7 +103,7 @@ func (src *programSource) forkRun(
 				/* options */ rtopts)
 
 			// Now run the actual program.
-			progerr, bail, err := langhost.Run(plugin.RunInfo{
+			progerr, bail, err := langhost.Run(src.plugctx.Request(), plugin.RunInfo{
 				MonitorAddress:   resourceMonitorTarget,
 				Stack:            src.runinfo.Target.Name.String(),
 				Project:          string(src.runinfo.Proj.Name),

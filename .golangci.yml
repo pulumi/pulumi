@@ -102,6 +102,20 @@ linters:
         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
         See the License for the specific language governing permissions and
         limitations under the License.
+    gosec:
+      excludes:
+        # Taint analysis rules produce excessive false positives in a CLI
+        # tool where virtually all file and command operations use
+        # user-provided paths.
+        - G115 # Integer overflow conversion via taint analysis
+        - G117 # Marshaled struct field matches secret pattern
+        - G122 # Filesystem TOCTOU in filepath.Walk callbacks
+        - G204 # Subprocess launched with tainted input
+        - G602 # Slice index out of range via taint analysis
+        - G701 # SQL injection via taint analysis
+        - G702 # Command injection via taint analysis
+        - G703 # Path traversal via taint analysis
+        - G704 # SSRF via taint analysis
     govet:
       enable:
         - nilness
@@ -189,6 +203,10 @@ linters:
       # Scope the cmd.OutOrStdout/ErrOrStderr/fmt.Fprint* forbidigo rules to
       # non-test code under pkg/cmd/. Paths reported by golangci-lint are
       # relative to the repo root regardless of which module is being linted.
+      - linters:
+          - gosec
+        path: _test\.go$
+        text: 'G101:'
       - linters:
           - forbidigo
         path-except: ^pkg/cmd/

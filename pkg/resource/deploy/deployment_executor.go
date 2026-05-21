@@ -88,7 +88,7 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 func (ex *deploymentExecutor) printPendingOperationsWarning() {
 	var pendingOperations strings.Builder
 	for _, op := range ex.deployment.prev.PendingOperations {
-		pendingOperations.WriteString(fmt.Sprintf("  * %s, interrupted while %s\n", op.Resource.URN, op.Type))
+		fmt.Fprintf(&pendingOperations, "  * %s, interrupted while %s\n", op.Resource.URN, op.Type)
 	}
 
 	resolutionMessage := "" +

@@ -201,7 +201,8 @@ func GenSDK(
 		}
 		defer contract.IgnoreClose(grpcServer)
 
-		diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil, local)
+		diags, err := languagePlugin.GeneratePackage(
+			ctx, directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil, local)
 		if err != nil {
 			return diags, err
 		}
@@ -308,15 +309,16 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 		})
 	}
 	programInfo := plugin.NewProgramInfo(root, root, ".", ctx.Project.RuntimeInfo().Options())
-	instructions, err := languagePlugin.Link(programInfo, deps, grpcServer.Addr())
+	instructions, err := languagePlugin.Link(ctx.PluginContext.Request(), programInfo, deps, grpcServer.Addr())
 	if err != nil {
 		return fmt.Errorf("linking package: %w", err)
 	}
 
 	if ctx.Install {
-		if err = pkgCmdUtil.InstallDependencies(languagePlugin, plugin.InstallDependenciesRequest{
-			Info: programInfo,
-		}, ctx.Writer, ctx.Writer); err != nil {
+		if err = pkgCmdUtil.InstallDependencies(
+			ctx.PluginContext.Request(), languagePlugin, plugin.InstallDependenciesRequest{
+				Info: programInfo,
+			}, ctx.Writer, ctx.Writer); err != nil {
 			return errutil.ErrorWithStderr(err, "installing dependencies")
 		}
 	}

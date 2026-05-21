@@ -37,12 +37,12 @@ func formatMissingKeys(missingKeys []string) string {
 	for index, key := range missingKeys {
 		// if last index, then use and before the key
 		if index == len(missingKeys)-1 {
-			formattedMissingKeys.WriteString(fmt.Sprintf("and '%s'", key))
+			fmt.Fprintf(&formattedMissingKeys, "and '%s'", key)
 		} else if index == len(missingKeys)-2 {
 			// no comma before the last key
-			formattedMissingKeys.WriteString(fmt.Sprintf("'%s' ", key))
+			fmt.Fprintf(&formattedMissingKeys, "'%s' ", key)
 		} else {
-			formattedMissingKeys.WriteString(fmt.Sprintf("'%s', ", key))
+			fmt.Fprintf(&formattedMissingKeys, "'%s', ", key)
 		}
 	}
 

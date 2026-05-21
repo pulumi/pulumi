@@ -82,13 +82,13 @@ func (ps *ProviderSpec) AsProviderLoaders() []*deploytest.ProviderLoader {
 // debugging output and error messages.
 func (ps *ProviderSpec) Pretty(indent string) string {
 	var rendered strings.Builder
-	rendered.WriteString(fmt.Sprintf("%sProvider %p", indent, ps))
+	fmt.Fprintf(&rendered, "%sProvider %p", indent, ps)
 	if len(ps.Packages) == 0 {
-		rendered.WriteString(fmt.Sprintf("\n%s  No packages", indent))
+		fmt.Fprintf(&rendered, "\n%s  No packages", indent)
 	} else {
-		rendered.WriteString(fmt.Sprintf("\n%s  Packages (%d):", indent, len(ps.Packages)))
+		fmt.Fprintf(&rendered, "\n%s  Packages (%d):", indent, len(ps.Packages))
 		for _, p := range slices.Sorted(maps.Keys(ps.Packages)) {
-			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, p))
+			fmt.Fprintf(&rendered, "\n%s    %s", indent, p)
 		}
 	}
 
@@ -105,7 +105,7 @@ func (ps *ProviderSpec) Pretty(indent string) string {
 		len(renderedUpdate) > 0
 
 	if !hasAny {
-		rendered.WriteString(fmt.Sprintf("\n%s  No modified operations", indent))
+		fmt.Fprintf(&rendered, "\n%s  No modified operations", indent)
 	} else {
 		rendered.WriteString(renderedCreate)
 		rendered.WriteString(renderedDelete)

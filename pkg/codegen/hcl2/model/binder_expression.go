@@ -16,6 +16,7 @@ package model
 
 import (
 	"reflect"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -268,14 +269,10 @@ func (b *expressionBinder) bindAnonSymbolExpression(syntax *hclsyntax.AnonSymbol
 // bindBinaryOpExpression binds a binary operator expression. If the operands to the binary operator contain eventuals,
 // the result of the binary operator is eventual.
 func (b *expressionBinder) bindBinaryOpExpression(syntax *hclsyntax.BinaryOpExpr) (Expression, hcl.Diagnostics) {
-	var diagnostics hcl.Diagnostics
-
 	// Bind the operands.
 	leftOperand, leftDiags := b.bindExpression(syntax.LHS)
-	diagnostics = append(diagnostics, leftDiags...)
 
 	rightOperand, rightDiags := b.bindExpression(syntax.RHS)
-	diagnostics = append(diagnostics, rightDiags...)
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.BinaryOpTokens)
 	if tokens == nil {
@@ -290,7 +287,8 @@ func (b *expressionBinder) bindBinaryOpExpression(syntax *hclsyntax.BinaryOpExpr
 	}
 
 	typecheckDiags := expr.Typecheck(false)
-	diagnostics = append(diagnostics, typecheckDiags...)
+
+	diagnostics := slices.Concat(leftDiags, rightDiags, typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -299,17 +297,12 @@ func (b *expressionBinder) bindBinaryOpExpression(syntax *hclsyntax.BinaryOpExpr
 // the expression is unify(true result, false result). If the type of the condition is eventual, the type of the
 // expression is eventual.
 func (b *expressionBinder) bindConditionalExpression(syntax *hclsyntax.ConditionalExpr) (Expression, hcl.Diagnostics) {
-	var diagnostics hcl.Diagnostics
-
 	// Bind the operands.
 	condition, conditionDiags := b.bindExpression(syntax.Condition)
-	diagnostics = append(diagnostics, conditionDiags...)
 
 	trueResult, trueDiags := b.bindExpression(syntax.TrueResult)
-	diagnostics = append(diagnostics, trueDiags...)
 
 	falseResult, falseDiags := b.bindExpression(syntax.FalseResult)
-	diagnostics = append(diagnostics, falseDiags...)
 
 	expr := &ConditionalExpression{
 		Syntax:      syntax,
@@ -319,7 +312,8 @@ func (b *expressionBinder) bindConditionalExpression(syntax *hclsyntax.Condition
 		FalseResult: falseResult,
 	}
 	typecheckDiags := expr.Typecheck(false)
-	diagnostics = append(diagnostics, typecheckDiags...)
+
+	diagnostics := slices.Concat(conditionDiags, trueDiags, falseDiags, typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -461,13 +455,9 @@ func (b *expressionBinder) bindFunctionCallExpression(
 //
 // If either the value being indexed or the index is eventual, result is eventual.
 func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Expression, hcl.Diagnostics) {
-	var diagnostics hcl.Diagnostics
-
 	collection, collectionDiags := b.bindExpression(syntax.Collection)
-	diagnostics = append(diagnostics, collectionDiags...)
 
 	key, keyDiags := b.bindExpression(syntax.Key)
-	diagnostics = append(diagnostics, keyDiags...)
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.IndexTokens)
 	if tokens == nil {
@@ -481,7 +471,8 @@ func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Exp
 		StrictCollectionTypechecking: !b.options.skipRangeTypechecking,
 	}
 	typecheckDiags := expr.Typecheck(false)
-	diagnostics = append(diagnostics, typecheckDiags...)
+
+	diagnostics := slices.Concat(collectionDiags, keyDiags, typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -491,8 +482,6 @@ func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Exp
 func (b *expressionBinder) bindLiteralValueExpression(
 	syntax *hclsyntax.LiteralValueExpr,
 ) (Expression, hcl.Diagnostics) {
-	var diagnostics hcl.Diagnostics
-
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.LiteralValueTokens)
 	if tokens == nil {
 		tokens = _syntax.NewLiteralValueTokens(syntax.Val)
@@ -503,7 +492,8 @@ func (b *expressionBinder) bindLiteralValueExpression(
 		Value:  syntax.Val,
 	}
 	typecheckDiags := expr.Typecheck(false)
-	diagnostics = append(diagnostics, typecheckDiags...)
+
+	diagnostics := slices.Concat(typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -600,8 +590,6 @@ func (b *expressionBinder) bindRelativeTraversalExpression(
 func (b *expressionBinder) bindScopeTraversalExpression(
 	syntax *hclsyntax.ScopeTraversalExpr,
 ) (Expression, hcl.Diagnostics) {
-	var diagnostics hcl.Diagnostics
-
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.ScopeTraversalTokens)
 	if tokens == nil {
 		tokens = _syntax.NewScopeTraversalTokens(syntax.Traversal)
@@ -615,7 +603,7 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 			parts[i] = DynamicType
 		}
 
-		diagnostics = hcl.Diagnostics{
+		diagnostics := hcl.Diagnostics{
 			undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange(),
 				b.options.allowMissingVariables),
 		}
@@ -636,7 +624,8 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 		Traversal: syntax.Traversal,
 	}
 	typecheckDiags := expr.typecheck(false, b.options.allowMissingVariables)
-	diagnostics = append(diagnostics, typecheckDiags...)
+
+	diagnostics := slices.Concat(typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -647,10 +636,7 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 // tuple. The type of the result is an list whose elements have the type of the each expression. If the value being
 // splatted is eventual or optional, the result type is eventual or optional.
 func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Expression, hcl.Diagnostics) {
-	var diagnostics hcl.Diagnostics
-
 	source, sourceDiags := b.bindExpression(syntax.Source)
-	diagnostics = append(diagnostics, sourceDiags...)
 
 	item := &SplatVariable{}
 	b.anonSymbols[syntax.Item] = item
@@ -658,7 +644,6 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 	source, item.VariableType = splatItemType(source, syntax)
 
 	each, eachDiags := b.bindExpression(syntax.Each)
-	diagnostics = append(diagnostics, eachDiags...)
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.SplatTokens)
 	if tokens == nil {
@@ -672,7 +657,8 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 		Item:   item,
 	}
 	typecheckDiags := expr.typecheck(false, false)
-	diagnostics = append(diagnostics, typecheckDiags...)
+
+	diagnostics := slices.Concat(sourceDiags, eachDiags, typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -759,11 +745,8 @@ func (b *expressionBinder) bindTupleConsExpression(syntax *hclsyntax.TupleConsEx
 // bindUnaryOpExpression binds a unary operator expression. If the operand to the unary operator contains eventuals,
 // the result of the unary operator is eventual.
 func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) (Expression, hcl.Diagnostics) {
-	var diagnostics hcl.Diagnostics
-
 	// Bind the operand.
 	operand, operandDiags := b.bindExpression(syntax.Val)
-	diagnostics = append(diagnostics, operandDiags...)
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.UnaryOpTokens)
 	if tokens == nil {
@@ -777,7 +760,8 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 		Operand:   operand,
 	}
 	typecheckDiags := expr.Typecheck(false)
-	diagnostics = append(diagnostics, typecheckDiags...)
+
+	diagnostics := slices.Concat(operandDiags, typecheckDiags)
 
 	// simplify UnaryOperation(Negate, Number(N)) into Number(-N)
 	if syntax.Op == hclsyntax.OpNegate {

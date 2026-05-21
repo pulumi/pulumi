@@ -175,7 +175,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 		var errorMsg strings.Builder
 		errorMsg.WriteString("Resource URN ambiguously referred to multiple resources. Did you mean:\n")
 		for _, res := range candidateResources {
-			errorMsg.WriteString(fmt.Sprintf("  %s\n", res.ID))
+			fmt.Fprintf(&errorMsg, "  %s\n", res.ID)
 		}
 		return nil, errors.New(errorMsg.String())
 	}

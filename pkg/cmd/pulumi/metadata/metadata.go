@@ -84,7 +84,7 @@ func GetLanguageRuntimeMetadata(
 			return nil, err
 		}
 
-		res, err := lang.About(programInfo)
+		res, err := lang.About(ctx, programInfo)
 		if err != nil {
 			return nil, err
 		}

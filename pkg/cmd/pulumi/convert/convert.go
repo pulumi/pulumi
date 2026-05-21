@@ -22,6 +22,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/blang/semver"
@@ -264,7 +265,7 @@ func runConvert(
 			projectJSON := string(projectBytes)
 
 			var diags hcl.Diagnostics
-			ds, err := languagePlugin.GenerateProject(
+			ds, err := languagePlugin.GenerateProject(ctx,
 				sourceDirectory, targetDirectory, projectJSON,
 				strict, grpcServer.Addr(), nil /*localDependencies*/)
 			diags = append(diags, ds...)
@@ -506,17 +507,15 @@ func runConvert(
 func getPackagesToGenerateSdks(
 	sourceDirectory string,
 ) (map[string]*schema.PackageDescriptor, hcl.Diagnostics, error) {
-	var diagnostics hcl.Diagnostics
-
 	parser := hclsyntax.NewParser()
 	parseDiagnostics, err := pcl.ParseDirectory(parser, sourceDirectory)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not parse PCL files: %w", err)
 	}
-	diagnostics = append(diagnostics, parseDiagnostics...)
 
 	allPackageDescriptors, packageDiagnostics := pcl.ReadAllPackageDescriptors(parser.Files)
-	diagnostics = append(diagnostics, packageDiagnostics...)
+
+	diagnostics := slices.Concat(parseDiagnostics, packageDiagnostics)
 
 	if len(diagnostics) != 0 {
 		var errorDiags hcl.Diagnostics

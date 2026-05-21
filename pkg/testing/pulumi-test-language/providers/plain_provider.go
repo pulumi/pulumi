@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"slices"
 
 	"github.com/blang/semver"
 
@@ -105,7 +106,7 @@ func (p *PlainProvider) GetSchema(
 			Plain: true,
 		},
 	}
-	dataRequired := append(typeRequired, "innerData")
+	dataRequired := slices.Concat(typeRequired, []string{"innerData"})
 
 	resourceProperties := map[string]schema.PropertySpec{
 		"data": {
