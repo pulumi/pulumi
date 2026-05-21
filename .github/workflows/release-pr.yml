@@ -35,10 +35,14 @@ jobs:
     name: version bump
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
+      - uses: actions/setup-go@v6
         with:
           go-version-file: sdk/go.mod
       - uses: miniscruff/changie-action@v2

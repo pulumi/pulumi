@@ -15,10 +15,14 @@ jobs:
       )
     steps:
       - name: Checkout the latest code
-        uses: actions/checkout@v6
+        uses: ./.github/actions/retry
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          fetch-depth: 0 # otherwise, you will fail to push refs to dest repo
+          action: actions/checkout@v6
+          with: |
+            token: ${{ secrets.PULUMI_BOT_TOKEN }}
+            fetch-depth: 0
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Automatic Rebase
         uses: cirrus-actions/rebase@50007412be906b9cc222db3dfc469f325031f1b2
         with:

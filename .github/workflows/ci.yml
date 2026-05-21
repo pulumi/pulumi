@@ -84,9 +84,13 @@ jobs:
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "matrix-setup"
@@ -99,11 +103,15 @@ jobs:
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          repository: dnephin/gotestsum
-          ref: d09768c81065b404caed0855eb3ab8f11a2a4431
-          path: vendor/gotestsum
+          action: actions/checkout@v6
+          with: |
+            repository: dnephin/gotestsum
+            ref: d09768c81065b404caed0855eb3ab8f11a2a4431
+            path: vendor/gotestsum
+          attempt_limit: 3
+          attempt_delay: 5000
       - run: |
           cd vendor/gotestsum
           go install .
@@ -112,9 +120,13 @@ jobs:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
-      - uses: jdx/mise-action@v2
+      - uses: ./.github/actions/retry
         with:
-          experimental: true
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
@@ -477,12 +489,16 @@ jobs:
           path: test-results
           key: gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: ./.github/actions/retry
         continue-on-error: true
         with:
-          pattern: gotestsum-test-results-*
-          merge-multiple: true
-          path: test-results
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            pattern: gotestsum-test-results-*
+            merge-multiple: true
+            path: test-results
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: List and clean up test results
         continue-on-error: true
         run: |
@@ -504,15 +520,23 @@ jobs:
               exit 1
           fi
       # Checkout repository to upload coverage results.
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Retrieve code coverage reports
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          pattern: coverage-*
-          merge-multiple: true
-          path: coverage
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            pattern: coverage-*
+            merge-multiple: true
+            path: coverage
+          attempt_limit: 3
+          attempt_delay: 5000
       # For PRs we need to set the merge base manually, otherwise it is sometimes incorrect.  See https://github.com/pulumi/pulumi/pull/17204#issuecomment-2405599310
       - name: Set codecov PR base
         if: github.event_name == 'pull_request'

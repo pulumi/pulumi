@@ -68,17 +68,25 @@ jobs:
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - uses: actions/setup-go@v6
         with:
           cache: true
           cache-dependency-path: pkg/go.sum
           go-version-file: pkg/go.mod
-      - uses: jdx/mise-action@v2
+      - uses: ./.github/actions/retry
         with:
-          experimental: true
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix

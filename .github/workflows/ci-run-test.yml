@@ -174,9 +174,13 @@ jobs:
           echo "/usr/local/opt/coreutils/libexec/gnubin" | tee -a "$GITHUB_PATH"
           command -v bash
           bash --version
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Setup versioning env vars
         env:
           version: ${{ inputs.version }}
@@ -232,10 +236,14 @@ jobs:
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
       - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@v5
+        uses: ./.github/actions/retry
         with:
-          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
-          dotnet-quality: ga
+          action: actions/setup-dotnet@v5
+          with: |
+            dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+            dotnet-quality: ga
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         uses: actions/setup-node@v6
         with:
@@ -248,9 +256,13 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: ./.github/actions/retry
         with:
-          gradle-version: "7.6"
+          action: gradle/actions/setup-gradle@v6
+          with: |
+            gradle-version: "7.6"
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
@@ -262,7 +274,11 @@ jobs:
         run: |
           npm install -g yarn pnpm@10
       - name: Install bun
-        uses: oven-sh/setup-bun@v2
+        uses: ./.github/actions/retry
+        with:
+          action: oven-sh/setup-bun@v2
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
@@ -318,16 +334,24 @@ jobs:
       # Integration and performance test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-integration-test }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
-          path: artifacts/cli
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
+            path: artifacts/cli
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-performance-test }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
-          path: artifacts/cli
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
+            path: artifacts/cli
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Install Pulumi Go Binaries
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         run: |
@@ -434,14 +458,18 @@ jobs:
             rm -rf "$MERGED_DIR"
           fi
       - name: Upload code coverage
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/retry
         if: ${{ inputs.enable-coverage }}
         continue-on-error: true
         with:
-          name: coverage-${{ env.TEST_HASH_ID }}
-          path: |
-            coverage/*
-            !coverage/.gitkeep
+          action: actions/upload-artifact@v7
+          with: |
+            name: coverage-${{ env.TEST_HASH_ID }}
+            path: |
+              coverage/*
+              !coverage/.gitkeep
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Upload codecov test results
         uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1
         continue-on-error: true
@@ -476,7 +504,11 @@ jobs:
           if [[ exit_status -eq 0 || exit_status -eq 141 ]]; then true; else exit $exit_status; fi
       - name: Upload artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/retry
         with:
-          name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
-          path: test-results/*.json
+          action: actions/upload-artifact@v7
+          with: |
+            name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
+            path: test-results/*.json
+          attempt_limit: 3
+          attempt_delay: 5000

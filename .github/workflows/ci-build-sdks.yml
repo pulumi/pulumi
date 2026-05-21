@@ -41,9 +41,13 @@ jobs:
     name: python
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Setup versioning env vars
         env:
           version: ${{ inputs.version }}
@@ -64,20 +68,28 @@ jobs:
           sed -i.bak "s/^version = .*/version = \"${PYPI_VERSION}\"/g" pyproject.toml && rm pyproject.toml.bak
           make build_package
       - name: Upload pulumi.whl
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-python-sdk
-          path: sdk/python/build/*.whl
-          retention-days: 1
-          if-no-files-found: error
+          action: actions/upload-artifact@v7
+          with: |
+            name: artifacts-python-sdk
+            path: sdk/python/build/*.whl
+            retention-days: 1
+            if-no-files-found: error
+          attempt_limit: 3
+          attempt_delay: 5000
 
   build_node_sdk:
     name: nodejs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Setup versioning env vars
         env:
           version: ${{ inputs.version }}
@@ -114,20 +126,28 @@ jobs:
           cd sdk/nodejs/bin
           npm pack
       - name: Upload pulumi-node-sdk.tgz
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-nodejs-sdk
-          path: sdk/nodejs/bin/*.tgz
-          retention-days: 1
-          if-no-files-found: error
+          action: actions/upload-artifact@v7
+          with: |
+            name: artifacts-nodejs-sdk
+            path: sdk/nodejs/bin/*.tgz
+            retention-days: 1
+            if-no-files-found: error
+          attempt_limit: 3
+          attempt_delay: 5000
 
   build_npm_package:
     name: npm cli wrapper
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Setup versioning env vars
         env:
           version: ${{ inputs.version }}
@@ -144,9 +164,13 @@ jobs:
         run: |
           cd npm && npm pack
       - name: Upload sdk-npm-pulumi.tgz
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-npm-package
-          path: npm/*.tgz
-          retention-days: 1
-          if-no-files-found: error
+          action: actions/upload-artifact@v7
+          with: |
+            name: artifacts-npm-package
+            path: npm/*.tgz
+            retention-days: 1
+            if-no-files-found: error
+          attempt_limit: 3
+          attempt_delay: 5000

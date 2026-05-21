@@ -77,9 +77,13 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
@@ -128,12 +132,16 @@ jobs:
           cat .goreleaser.yml \
             | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
             | goreleaser release -f - -p 5 --skip=validate --clean --snapshot
-      - uses: actions/upload-artifact@v7
+      - uses: ./.github/actions/retry
         if: ${{ inputs.os != 'js' }}
         with:
-          name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}${{ inputs.artifact-suffix || ''}}
-          overwrite: true
-          retention-days: 7
-          path: |
-            goreleaser/*.tar.gz
-            goreleaser/*.zip
+          action: actions/upload-artifact@v7
+          with: |
+            name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}${{ inputs.artifact-suffix || ''}}
+            overwrite: true
+            retention-days: 7
+            path: |
+              goreleaser/*.tar.gz
+              goreleaser/*.zip
+          attempt_limit: 3
+          attempt_delay: 5000

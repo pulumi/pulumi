@@ -25,9 +25,13 @@ jobs:
     name: Lint Go
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -42,10 +46,14 @@ jobs:
       # The action doesn't have an install-only mode,
       # so we'll ask it to print its help output instead.
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
+        uses: ./.github/actions/retry
         with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-          args: --help
+          action: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
+          with: |
+            version: ${{ env.GOLANGCI_LINT_VERSION }}
+            args: --help
+          attempt_limit: 3
+          attempt_delay: 5000
 
       - name: Run golangci-lint
         run: make lint_golang
@@ -53,9 +61,13 @@ jobs:
     name: go mod tidy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -68,9 +80,13 @@ jobs:
     name: Generate Go SDK
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -90,12 +106,20 @@ jobs:
     name: Lint Protobufs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
-      - uses: jdx/mise-action@v2
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
+      - uses: ./.github/actions/retry
         with:
-          experimental: true
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Check Protobufs
         run: make check_proto
 
@@ -103,9 +127,13 @@ jobs:
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -136,9 +164,13 @@ jobs:
       - name: Update path
         run: |
           echo "$RUNNER_TEMP/opt/pulumi/bin" >> "$GITHUB_PATH"
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" >> "$GITHUB_ENV"
@@ -156,9 +188,13 @@ jobs:
     name: Lint GHA
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -171,9 +207,13 @@ jobs:
     name: Lint changelog entries
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -188,9 +228,13 @@ jobs:
     name: Lint pulumi.json
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Set up Go
         uses: actions/setup-go@v6
         with:

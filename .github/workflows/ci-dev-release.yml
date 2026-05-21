@@ -23,13 +23,21 @@ jobs:
     name: gather-info
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
 
       - name: Git describe
         id: ghd
-        uses: proudust/gh-describe@v1
+        uses: ./.github/actions/retry
+        with:
+          action: proudust/gh-describe@v1
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: strip prefix
         id: strip-prefix
         # Always prefix the short_sha with a letter to ensure it's a valid semver prerelease,
@@ -46,17 +54,25 @@ jobs:
   matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
+          attempt_limit: 3
+          attempt_delay: 5000
       - uses: actions/setup-go@v6
         with:
           cache: true
           cache-dependency-path: pkg/go.sum
           go-version-file: pkg/go.mod
-      - uses: jdx/mise-action@v2
+      - uses: ./.github/actions/retry
         with:
-          experimental: true
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
@@ -124,7 +140,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: ./.github/actions/retry
+        with:
+          action: actions/checkout@v6
+          attempt_limit: 3
+          attempt_delay: 5000
 
       - name: Check for changes
         id: check-changes
@@ -152,14 +172,22 @@ jobs:
     if: ${{ needs.sdk-check-release.outputs.nodejs-release == 'true' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: ./.github/actions/retry
+        with:
+          action: actions/checkout@v6
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Make artifacts directory
         run: |
           mkdir -p artifacts.tmp
       - name: Download artifacts from previous step
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          path: artifacts.tmp
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            path: artifacts.tmp
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Move artifacts to the right place
         run: |
           mkdir -p artifacts
@@ -196,7 +224,11 @@ jobs:
     if: ${{ needs.sdk-check-release.outputs.python-release == 'true' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: ./.github/actions/retry
+        with:
+          action: actions/checkout@v6
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Set up Python ${{ fromJson(needs.matrix.outputs.version-set).python }}
         uses: actions/setup-python@v6
         with:
@@ -210,9 +242,13 @@ jobs:
         run: |
           mkdir -p artifacts.tmp
       - name: Download artifacts from previous step
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          path: artifacts.tmp
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            path: artifacts.tmp
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Move artifacts to the right place
         run: |
           mkdir -p artifacts
@@ -251,9 +287,13 @@ jobs:
         run: |
           mkdir -p artifacts.tmp
       - name: Download artifacts from previous step
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          path: artifacts.tmp
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            path: artifacts.tmp
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Remove performance test artifacts
         run: rm -rf artifacts.tmp/*-perf
       - name: Remove integration test artifacts
