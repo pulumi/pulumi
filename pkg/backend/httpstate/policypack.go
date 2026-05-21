@@ -413,7 +413,7 @@ func (pack *cloudPolicyPack) Publish(
 		return err
 	}
 
-	analyzerInfo, err := analyzer.GetAnalyzerInfo()
+	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
 	if err != nil {
 		return err
 	}

@@ -372,8 +372,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 //
 // If the given resource is a custom resource, the step generator will invoke Diff and Check on the
 // provider associated with that resource. If those fail, an error is returned.
-func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
-	steps, async, err := sg.generateSteps(event)
+func (sg *stepGenerator) GenerateSteps(ctx context.Context, event RegisterResourceEvent) ([]Step, bool, error) {
+	steps, async, err := sg.generateSteps(ctx, event)
 	if err != nil {
 		contract.Assertf(len(steps) == 0, "expected no steps if there is an error")
 		contract.Assertf(!async, "expected no async marker if there is an error")
@@ -671,7 +671,7 @@ func (sg *stepGenerator) getOldResource(
 	return old, invalid, alias
 }
 
-func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
+func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResourceEvent) ([]Step, bool, error) {
 	var invalid bool // will be set to true if this object fails validation.
 	goal := event.Goal()
 
@@ -819,14 +819,16 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		invalid:               invalid,
 	}
 
-	return sg.continueStepsFromRefresh(continueEvent)
+	return sg.continueStepsFromRefresh(ctx, continueEvent)
 }
 
 // This function is called by the deployment executor in response to a ContinueResourceRefreshEvent. It simply
 // calls into continueStepsFromRefresh and then validateSteps to continue the work that GenerateSteps would
 // have done without a refresh step.
-func (sg *stepGenerator) ContinueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
-	steps, async, err := sg.continueStepsFromRefresh(event)
+func (sg *stepGenerator) ContinueStepsFromRefresh(
+	ctx context.Context, event ContinueResourceRefreshEvent,
+) ([]Step, bool, error) {
+	steps, async, err := sg.continueStepsFromRefresh(ctx, event)
 	if err != nil {
 		return nil, false, err
 	}
@@ -866,7 +868,9 @@ func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, erro
 	return false, nil
 }
 
-func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
+func (sg *stepGenerator) continueStepsFromRefresh(
+	ctx context.Context, event ContinueResourceRefreshEvent,
+) ([]Step, bool, error) {
 	goal := event.Goal()
 	urn := event.URN()
 	old := event.Old()
@@ -1097,14 +1101,16 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		isImported:            false,
 	}
 
-	return sg.continueStepsFromImport(continueEvent)
+	return sg.continueStepsFromImport(ctx, continueEvent)
 }
 
 // This function is called by the deployment executor in response to a ContinueResourceImportEvent. It simply
 // calls into continueStepsFromImport and then validateSteps to continue the work that GenerateSteps would
 // have done without an import step.
-func (sg *stepGenerator) ContinueStepsFromImport(event ContinueResourceImportEvent) ([]Step, bool, error) {
-	steps, async, err := sg.continueStepsFromImport(event)
+func (sg *stepGenerator) ContinueStepsFromImport(
+	ctx context.Context, event ContinueResourceImportEvent,
+) ([]Step, bool, error) {
+	steps, async, err := sg.continueStepsFromImport(ctx, event)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1122,7 +1128,9 @@ func (sg *stepGenerator) ContinueStepsFromImport(event ContinueResourceImportEve
 // This function is called either from an import continuation or from a normal step generation that did no import.
 // Either way we're going to be doing normal step generation after this. Just if we did an import the old state is what
 // we just imported.
-func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEvent) ([]Step, bool, error) {
+func (sg *stepGenerator) continueStepsFromImport(
+	ctx context.Context, event ContinueResourceImportEvent,
+) ([]Step, bool, error) {
 	goal := event.Goal()
 	urn := event.URN()
 	old := event.Old()
@@ -1305,12 +1313,12 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 			}
 		}
 
-		info, err := analyzer.GetAnalyzerInfo()
+		info, err := analyzer.GetAnalyzerInfo(ctx)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to get analyzer info: %w", err)
 		}
 
-		response, err := analyzer.Remediate(r)
+		response, err := analyzer.Remediate(ctx, r)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to run remediation: %w", err)
 		}
@@ -1340,7 +1348,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 
 	// Second pass: perform analysis in parallel. Analysis is read-only (it only produces
 	// diagnostics) so all analyzers can safely run concurrently on the resource inputs.
-	analyzeInvalid, err := sg.analyzeAll(analyzers, new, inputs, goal)
+	analyzeInvalid, err := sg.analyzeAll(ctx, analyzers, new, inputs, goal)
 	if err != nil {
 		return nil, false, err
 	}
@@ -3146,6 +3154,7 @@ func (sg *stepGenerator) findResourcesReplacedWith(urn resource.URN) ([]dependen
 // parallelism entirely. It returns true if any mandatory violation was found (and we are not
 // in dry-run mode), indicating the resource is invalid.
 func (sg *stepGenerator) analyzeAll(
+	ctx context.Context,
 	analyzers []plugin.Analyzer,
 	new *resource.State,
 	inputs resource.PropertyMap,
@@ -3180,7 +3189,7 @@ func (sg *stepGenerator) analyzeAll(
 		}
 	}
 
-	invalid, sawError, err := analyzeResource(analyzers, r, sg.deployment.events, sg.deployment.opts.DryRun)
+	invalid, sawError, err := analyzeResource(ctx, analyzers, r, sg.deployment.events, sg.deployment.opts.DryRun)
 	if err != nil {
 		return false, err
 	}
@@ -3190,7 +3199,7 @@ func (sg *stepGenerator) analyzeAll(
 	return invalid, nil
 }
 
-func (sg *stepGenerator) AnalyzeResources() error {
+func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 	analyzers := sg.deployment.analyzers
 
 	var resources []plugin.AnalyzerStackResource
@@ -3287,12 +3296,12 @@ func (sg *stepGenerator) AnalyzeResources() error {
 
 	for _, analyzer := range analyzers {
 		g.Go(func() error {
-			info, err := analyzer.GetAnalyzerInfo()
+			info, err := analyzer.GetAnalyzerInfo(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get analyzer info: %w", err)
 			}
 
-			response, err := analyzer.AnalyzeStack(resources)
+			response, err := analyzer.AnalyzeStack(ctx, resources)
 			if err != nil {
 				return err
 			}

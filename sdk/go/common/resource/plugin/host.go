@@ -447,7 +447,7 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 		// If not, try to load and bind to a plugin.
 		plug, err := NewAnalyzer(host, host.ctx, name)
 		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo()
+			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
 			if infoerr != nil {
 				return nil, infoerr
 			}
@@ -475,7 +475,7 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *Po
 		// If not, try to load and bind to a plugin.
 		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts, nil)
 		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo()
+			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
 			if infoerr != nil {
 				return nil, infoerr
 			}

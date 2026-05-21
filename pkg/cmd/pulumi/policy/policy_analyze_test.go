@@ -371,7 +371,7 @@ type fakeAnalyzer struct {
 	analyzeStackProperties resource.PropertyMap
 }
 
-func (a *fakeAnalyzer) Analyze(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+func (a *fakeAnalyzer) Analyze(_ context.Context, r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 	if a.mandatory {
 		return plugin.AnalyzeResponse{
 			Diagnostics: []plugin.AnalyzeDiagnostic{{
@@ -386,7 +386,9 @@ func (a *fakeAnalyzer) Analyze(r plugin.AnalyzerResource) (plugin.AnalyzeRespons
 	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *fakeAnalyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+func (a *fakeAnalyzer) AnalyzeStack(
+	_ context.Context, resources []plugin.AnalyzerStackResource,
+) (plugin.AnalyzeResponse, error) {
 	a.analyzeStackCalled = true
 	if len(resources) > 0 {
 		a.analyzeStackProperties = resources[0].Properties.Copy()
@@ -399,7 +401,7 @@ func (a *fakeAnalyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) (p
 	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *fakeAnalyzer) Remediate(_ plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
+func (a *fakeAnalyzer) Remediate(_ context.Context, _ plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 	if a.remediate {
 		return plugin.RemediateResponse{
 			Remediations: []plugin.Remediation{{
@@ -414,11 +416,16 @@ func (a *fakeAnalyzer) Remediate(_ plugin.AnalyzerResource) (plugin.RemediateRes
 	return plugin.RemediateResponse{}, nil
 }
 
-func (a *fakeAnalyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
+func (a *fakeAnalyzer) GetAnalyzerInfo(context.Context) (plugin.AnalyzerInfo, error) {
 	return plugin.AnalyzerInfo{Name: "test-pack"}, nil
 }
-func (a *fakeAnalyzer) Name() tokens.QName                                       { return "test-pack" }
-func (a *fakeAnalyzer) GetPluginInfo() (plugin.PluginInfo, error)                { return plugin.PluginInfo{}, nil }
-func (a *fakeAnalyzer) Configure(_ map[string]plugin.AnalyzerPolicyConfig) error { return nil }
-func (a *fakeAnalyzer) Cancel(_ context.Context) error                           { return nil }
-func (a *fakeAnalyzer) Close() error                                             { return nil }
+func (a *fakeAnalyzer) Name() tokens.QName { return "test-pack" }
+func (a *fakeAnalyzer) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
+	return plugin.PluginInfo{}, nil
+}
+
+func (a *fakeAnalyzer) Configure(context.Context, map[string]plugin.AnalyzerPolicyConfig) error {
+	return nil
+}
+func (a *fakeAnalyzer) Cancel(context.Context) error { return nil }
+func (a *fakeAnalyzer) Close() error                 { return nil }
