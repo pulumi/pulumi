@@ -18,6 +18,8 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -356,7 +358,7 @@ func (m *MockConverter) ConvertState(ctx context.Context, req *ConvertStateReque
 	if m.ConvertStateF != nil {
 		return m.ConvertStateF(ctx, req)
 	}
-	return nil, errors.New("ConvertState not implemented")
+	return nil, status.Error(codes.Unimplemented, "ConvertState not implemented")
 }
 
 func (m *MockConverter) ConvertProgram(
@@ -365,7 +367,7 @@ func (m *MockConverter) ConvertProgram(
 	if m.ConvertProgramF != nil {
 		return m.ConvertProgramF(ctx, req)
 	}
-	return nil, errors.New("ConvertProgram not implemented")
+	return nil, status.Error(codes.Unimplemented, "ConvertProgram not implemented")
 }
 
 func (m *MockConverter) ConvertSnippet(
@@ -374,5 +376,5 @@ func (m *MockConverter) ConvertSnippet(
 	if m.ConvertSnippetF != nil {
 		return m.ConvertSnippetF(ctx, req)
 	}
-	return nil, errors.New("ConvertSnippet not implemented")
+	return nil, status.Error(codes.Unimplemented, "ConvertSnippet not implemented")
 }

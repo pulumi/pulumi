@@ -126,7 +126,7 @@ Outputs:
   output3 (boolean, required) - Whether it worked.
 
 Usage:
-  myOtherFunction [flags]
+  do azure:myModule:myOtherFunction [flags]
 
 Flags:
       --dry-run                Run the operation in preview mode
@@ -2222,6 +2222,65 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "load fictional input converter")
 	assert.ErrorContains(t, err, "converter not found")
+}
+
+// TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet verifies that a converter plugin that exists but does not
+// implement ConvertSnippet produces a targeted error instead of leaking the raw RPC error.
+func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	host := func() (plugin.Host, error) {
+		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"y": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					require.Fail(t, "Invoke should not be called when the converter cannot convert snippets")
+					return plugin.InvokeResponse{}, nil
+				},
+			},
+		}, nil
+	}
+
+	inputFile := writeHCLFile(t, "inputs.yaml", "x: hello")
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"azure:myFunction", "--input", "yaml", "--input-file", inputFile})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "yaml input converter does not support snippet conversion; "+
+		"use pcl format or try installing a newer yaml converter")
+	assert.NotContains(t, err.Error(), "ConvertSnippet not implemented")
 }
 
 // TestDoCmdFunctionInvokeWithConverterDiagnostics asserts that diagnostic-level errors from ConvertSnippet are
