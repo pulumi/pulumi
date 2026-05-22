@@ -223,7 +223,7 @@ class ConvertSnippetRequest(google.protobuf.message.Message):
 
     @property
     def attributes(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """any extra attributes to merge into the source file conversion."""
+        """any extra attributes to convert."""
 
     def __init__(
         self,
@@ -244,9 +244,26 @@ global___ConvertSnippetRequest = ConvertSnippetRequest
 class ConvertSnippetResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing.final
+    class AttributesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     DIAGNOSTICS_FIELD_NUMBER: builtins.int
     FILENAME_FIELD_NUMBER: builtins.int
     SOURCE_FIELD_NUMBER: builtins.int
+    ATTRIBUTES_FIELD_NUMBER: builtins.int
     filename: builtins.str
     """The generated PCL filename."""
     source: builtins.bytes
@@ -255,13 +272,18 @@ class ConvertSnippetResponse(google.protobuf.message.Message):
     def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
         """Any diagnostics raised by code generation."""
 
+    @property
+    def attributes(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """any extra attributes to merge into the final pcl result."""
+
     def __init__(
         self,
         *,
         diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
         filename: builtins.str = ...,
         source: builtins.bytes = ...,
+        attributes: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics", "filename", b"filename", "source", b"source"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["attributes", b"attributes", "diagnostics", b"diagnostics", "filename", b"filename", "source", b"source"]) -> None: ...
 
 global___ConvertSnippetResponse = ConvertSnippetResponse

@@ -115,7 +115,7 @@ message ConvertSnippetRequest {
     // a function token, or a resource token.
     string token = 5;
 
-    // any extra attributes to merge into the source file conversion.
+    // any extra attributes to convert.
     map<string, string> attributes = 6;
 }
 
@@ -128,4 +128,7 @@ message ConvertSnippetResponse {
 
     // The generated PCL source code.
     bytes source = 3;
+
+    // any extra attributes to merge into the final pcl result.
+    map<string, string> attributes = 4;
 }

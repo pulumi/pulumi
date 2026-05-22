@@ -214,6 +214,9 @@ export class ConvertSnippetResponse extends jspb.Message {
     getSource_asB64(): string;
     setSource(value: Uint8Array | string): ConvertSnippetResponse;
 
+    getAttributesMap(): jspb.Map<string, string>;
+    clearAttributesMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertSnippetResponse.AsObject;
     static toObject(includeInstance: boolean, msg: ConvertSnippetResponse): ConvertSnippetResponse.AsObject;
@@ -229,5 +232,7 @@ export namespace ConvertSnippetResponse {
         diagnosticsList: Array<pulumi_codegen_hcl_pb.Diagnostic.AsObject>,
         filename: string,
         source: Uint8Array | string,
+
+        attributesMap: Array<[string, string]>,
     }
 }
