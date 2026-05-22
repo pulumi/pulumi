@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/google/shlex"
+	"github.com/pgavlin/fx/v2/maps"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -501,14 +502,14 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 	var help strings.Builder
 	if len(modules) > 0 {
 		fmt.Fprintln(&help, "Modules:")
-		for mod := range modules {
+		for mod := range maps.Sorted(modules) {
 			fmt.Fprintf(&help, "  %s\n", mod)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
-		for _, fn := range functions {
+		for _, fn := range maps.Sorted(functions) {
 			tok := pc.spec.CanonicalizeToken(fn.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
@@ -516,7 +517,7 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 	}
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
-		for _, res := range resources {
+		for _, res := range maps.Sorted(resources) {
 			tok := pc.spec.CanonicalizeToken(res.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
@@ -590,14 +591,14 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 	var help strings.Builder
 	if len(modules) > 0 {
 		fmt.Fprintln(&help, "Modules:")
-		for mod := range modules {
+		for mod := range maps.Sorted(modules) {
 			fmt.Fprintf(&help, "  %s\n", mod)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
-		for _, fn := range functions {
+		for _, fn := range maps.Sorted(functions) {
 			tok := pc.spec.CanonicalizeToken(fn.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
@@ -605,7 +606,7 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 	}
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
-		for _, res := range resources {
+		for _, res := range maps.Sorted(resources) {
 			tok := pc.spec.CanonicalizeToken(res.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
