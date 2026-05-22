@@ -10,5 +10,5 @@ InstallPluginAt{ctx, "/work/provider", PluginProject{Runtime:ProjectRuntimeInfo{
 RunPackage{ctx, "/work/project", "/work/provider", nil} -> {invariantProvider{path:"/work/provider"}, nil}
 GenerateLocalSDK{ctx, ProjectRuntimeInfo{name:"python"}, "/work/project", invariantProvider{path:"/work/provider"}} -> {LinkablePackageDescriptor{Path:"/work/provider/sdk-<nil>"}, nil}
 LinkIntoProject{ctx, ProjectRuntimeInfo{name:"python"}, "/work/project", [1]{LinkablePackageDescriptor{Path:"/work/provider/sdk-<nil>"}}} -> {nil}
-GetRequiredPackages{ctx, "/work/provider", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}, Packages:map[1]{"provider-nested":PackageSpec{Source:"../provider-nested"}}}} -> {[1]{PackageDescriptor{PluginDescriptor:PluginDescriptor{Name:"provider-nested", Kind:"resource", Version:Version{}}}}, nil}
-GetRequiredPackages{ctx, "/work/provider-nested", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}} -> {nil, nil}
+GetRequiredPackages{ctx, "/work/provider", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}, Packages:map[1]{"provider-nested":PackageSpec{Source:"../provider-nested"}}}} -> {[1]{PackageDescriptor{PluginDescriptor:PluginDescriptor{Name:"provider-nested", Kind:"resource", Version:Version{}}}}, nil, nil}
+GetRequiredPackages{ctx, "/work/provider-nested", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}} -> {nil, nil, nil}

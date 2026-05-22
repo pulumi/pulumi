@@ -170,9 +170,29 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			if !noPlugins {
 				// Compute the set of plugins the current project needs.
-				packages, _, err := lang.GetRequiredPackages(ctx, programInfo)
+				packages, specs, err := lang.GetRequiredPackages(ctx, programInfo)
 				if err != nil {
 					return err
+				}
+
+				// Specs returned by the language host that aren't already declared
+				// in Pulumi.yaml are recorded there. Once recorded, a local SDK is
+				// generated for each new package by re-running
+				// InstallPackagesFromProject.
+				if addRequiredSpecsToProject(proj, specs) {
+					projPath, err := workspace.DetectProjectPathFrom(root)
+					if err != nil {
+						return fmt.Errorf("locating Pulumi.yaml: %w", err)
+					}
+					if err := proj.Save(projPath); err != nil {
+						return fmt.Errorf("updating %s: %w", filepath.Base(projPath), err)
+					}
+					if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
+						registry, parallel, useLanguageVersionTools,
+						cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
+					); err != nil {
+						return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
+					}
 				}
 
 				pluginSet := engine.NewPluginSet()
@@ -204,6 +224,30 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 		"use-language-version-tools", false, "Use language version tools to setup and install the language runtime")
 
 	return cmd
+}
+
+// addRequiredSpecsToProject adds package specs reported by the language host to
+// the project's `packages` section, deduplicating against existing entries by
+// [workspace.PackageSpec.Source]. Returns true if proj was modified.
+func addRequiredSpecsToProject(proj *workspace.Project, specs []workspace.PackageSpec) bool {
+	if len(specs) == 0 {
+		return false
+	}
+	existingSources := make(map[string]struct{})
+	for name, s := range proj.GetPackageSpecs() {
+		existingSources[name] = struct{}{}
+		existingSources[s.Source] = struct{}{}
+	}
+	added := false
+	for _, spec := range specs {
+		if _, ok := existingSources[spec.Source]; ok {
+			continue
+		}
+		proj.AddPackage(spec.Source, spec)
+		existingSources[spec.Source] = struct{}{}
+		added = true
+	}
+	return added
 }
 
 func shouldInstallPolicyPackDependencies() (bool, error) {
