@@ -238,6 +238,72 @@ size = 2
 }`, stdout.String())
 }
 
+func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
+	t.Parallel()
+
+	spec := schema.PackageSpec{
+		Name: "azure",
+		Resources: map[string]schema.ResourceSpec{
+			"azure:index:myResource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"name":               {TypeSpec: schema.TypeSpec{Type: "string"}},
+						"intValue":           {TypeSpec: schema.TypeSpec{Type: "integer"}},
+						"already-kebab-case": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						"snake_case":         {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+					},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"name":               {TypeSpec: schema.TypeSpec{Type: "string"}},
+					"intValue":           {TypeSpec: schema.TypeSpec{Type: "integer"}},
+					"already-kebab-case": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					"snake_case":         {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+				},
+				RequiredInputs: []string{"name"},
+			},
+		},
+	}
+
+	cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+		spec: spec,
+		MockProvider: plugin.MockProvider{
+			CheckF: func(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+				assert.Equal(t, "example", req.News["name"].StringValue())
+				assert.Equal(t, 42.0, req.News["intValue"].NumberValue())
+				assert.Equal(t, "kebab", req.News["already-kebab-case"].StringValue())
+				assert.Equal(t, true, req.News["snake_case"].BoolValue())
+				return plugin.CheckResponse{Properties: req.News}, nil
+			},
+			CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				return plugin.CreateResponse{
+					ID:         "res-1",
+					Properties: req.Properties,
+				}, nil
+			},
+		},
+	})
+
+	inputFile := writeHCLFile(t, "inputs.pcl", `name = "example"`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "create",
+		"--yes",
+		"--input-file", inputFile,
+		"--int-value", "42",
+		"--already-kebab-case", "kebab",
+		"--snake-case",
+	})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `{
+  "id": "res-1",
+  "name": "example",
+  "intValue": 42,
+  "already-kebab-case": "kebab",
+  "snake_case": true
+}`, stdout.String())
+}
+
 func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 	t.Parallel()
 

@@ -475,7 +475,7 @@ func pclLiteral(flag inputFlagValue) (string, error) {
 	switch flag.typ {
 	case schema.StringType:
 		return strconv.Quote(flag.value), nil
-	case schema.BoolType, schema.NumberType:
+	case schema.BoolType, schema.IntType, schema.NumberType:
 		return flag.value, nil
 	default:
 		return "", fmt.Errorf("unsupported flag type %s", flag.typ)
@@ -504,6 +504,11 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		if typ == schema.BoolType {
 			flagFunc = func(name string) {
 				flags.Bool(name, false, input.Comment)
+			}
+		}
+		if typ == schema.IntType {
+			flagFunc = func(name string) {
+				flags.Int(name, 0, input.Comment)
 			}
 		}
 		if typ == schema.NumberType {
@@ -555,7 +560,7 @@ func inputFlagName(name string) string {
 }
 
 func isInputFlagType(typ schema.Type) bool {
-	return typ == schema.StringType || typ == schema.BoolType || typ == schema.NumberType
+	return typ == schema.StringType || typ == schema.BoolType || typ == schema.IntType || typ == schema.NumberType
 }
 
 // unwrapType recursively unwraps Optional and Input types to get at the underlying element type.
