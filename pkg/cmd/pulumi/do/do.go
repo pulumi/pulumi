@@ -237,6 +237,12 @@ func NewDoCmd(
 			dryrun:            dryrun,
 			showSecrets:       showSecrets,
 		}).newCommand()
+		// Replace the short name in Use with the full token so the usage
+		// string shows e.g. "pulumi do aws:s3:Bucket" instead of "pulumi do Bucket".
+		if len(pargs) > 0 {
+			subcmd.Use = pargs[0] + strings.TrimPrefix(subcmd.Use, subcmd.Name())
+		}
+
 		subcmd.SetContext(cmd.Context())
 		subcmd.SetOut(cmd.OutOrStdout())
 		subcmd.SetErr(cmd.ErrOrStderr())
@@ -271,8 +277,19 @@ func NewDoCmd(
 				subcmd.PersistentFlags().AddFlag(f)
 			}
 		})
+		// Insert a fake "do" node so the command path reads "pulumi do <token>"
+		// instead of "pulumi <token>". Don't copy flags here — they're already
+		// on subcmd from the copy above.
+		fakeDo := &cobra.Command{Use: cmd.Use}
+		fakeDo.SetContext(cmd.Context())
+		fakeDo.SetOut(cmd.OutOrStdout())
+		fakeDo.SetErr(cmd.ErrOrStderr())
+		fakeDo.SetIn(cmd.InOrStdin())
+		fakeDo.AddCommand(subcmd)
+		fullArgs = append([]string{subcmd.Name()}, fullArgs...)
+
 		parent := cmd.Parent()
-		current := subcmd
+		current := fakeDo
 		for parent != nil {
 			nextParent := &cobra.Command{
 				Use: parent.Use,

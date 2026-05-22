@@ -118,14 +118,12 @@ List Inputs:
   prefix (string, optional)
 
 Usage:
-  myResource [flags]
-  myResource [command]
+  do azure:index:myResource [flags]
+  do azure:index:myResource [command]
 
 Available Commands:
-  completion  Generate the autocompletion script for the specified shell
   create      Create a resource
   delete      Delete a resource
-  help        Help about any command
   list        List resources
   patch       Patch a resource
   read        Read a resource
@@ -138,7 +136,7 @@ Flags:
       --provider-format string   Format of the provider configuration file (default "pcl")
       --show-secrets             Show secret values in output
 
-Use "myResource [command] --help" for more information about a command.
+Use "do azure:index:myResource [command] --help" for more information about a command.
 `
 	assert.Equal(t, expected, stdout.String())
 }
@@ -168,14 +166,12 @@ Outputs:
   size (integer)
 
 Usage:
-  myResource [flags]
-  myResource [command]
+  do azure:index:myResource [flags]
+  do azure:index:myResource [command]
 
 Available Commands:
-  completion  Generate the autocompletion script for the specified shell
   create      Create a resource
   delete      Delete a resource
-  help        Help about any command
   patch       Patch a resource
   read        Read a resource
 
@@ -187,7 +183,7 @@ Flags:
       --provider-format string   Format of the provider configuration file (default "pcl")
       --show-secrets             Show secret values in output
 
-Use "myResource [command] --help" for more information about a command.
+Use "do azure:index:myResource [command] --help" for more information about a command.
 `
 	assert.Equal(t, expected, stdout.String())
 }

@@ -126,7 +126,7 @@ Outputs:
   output3 (boolean, required) - Whether it worked.
 
 Usage:
-  myOtherFunction [flags]
+  do azure:myModule:myOtherFunction [flags]
 
 Flags:
       --dry-run                  Run the operation in preview mode
