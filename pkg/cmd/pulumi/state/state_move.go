@@ -498,10 +498,9 @@ None of the resources have been moved, it is safe to try again`, err)
 			var deleteCommands strings.Builder
 			// Iterate over the resources in reverse order, so resources with no dependencies will be deleted first.
 			for i := len(resourcesToMoveOrdered) - 1; i >= 0; i-- {
-				deleteCommands.WriteString(fmt.Sprintf(
-					"\n    pulumi state delete --stack %s '%s'",
+				fmt.Fprintf(&deleteCommands, "\n    pulumi state delete --stack %s '%s'",
 					source.Ref().FullyQualifiedName(),
-					resourcesToMoveOrdered[i].URN))
+					resourcesToMoveOrdered[i].URN)
 			}
 			return fmt.Errorf(`failed to save source snapshot: %w
 

@@ -292,7 +292,7 @@ func LoadLocalPolicyPackAnalyzers(
 		if err != nil {
 			return nil, err
 		}
-		info, err := analyzer.GetAnalyzerInfo()
+		info, err := analyzer.GetAnalyzerInfo(plugctx.Request())
 		if err != nil {
 			return nil, err
 		}
@@ -318,7 +318,7 @@ func LoadLocalPolicyPackAnalyzers(
 				return nil, fmt.Errorf("validating policy config for %q: %s",
 					info.Name, strings.Join(validationErrors, "; "))
 			}
-			if err = analyzer.Configure(config); err != nil {
+			if err = analyzer.Configure(plugctx.Request(), config); err != nil {
 				return nil, fmt.Errorf("configuring policy pack %q: %w", info.Name, err)
 			}
 		}
@@ -671,7 +671,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			analyzerInfo, err := analyzer.GetAnalyzerInfo(plugctx.Request())
 			if err != nil {
 				errs <- err
 				return
@@ -704,7 +704,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-			if err = analyzer.Configure(config); err != nil {
+			if err = analyzer.Configure(plugctx.Request(), config); err != nil {
 				errs <- fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
 				return
 			}
@@ -773,7 +773,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			}
 
 			// Update the Policy Pack names now that we have loaded the plugins and can access the name.
-			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			analyzerInfo, err := analyzer.GetAnalyzerInfo(plugctx.Request())
 			if err != nil {
 				errs <- err
 				return
@@ -815,7 +815,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-			if err = analyzer.Configure(config); err != nil {
+			if err = analyzer.Configure(plugctx.Request(), config); err != nil {
 				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
 				return
 			}
@@ -911,21 +911,28 @@ func newUpdateSource(ctx context.Context,
 		args = []string{plugctx.Host.ServerAddr()}
 	}
 
-	// If that succeeded, create a new source that will perform interpretation of the compiled program.
-	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
+	runinfo := &deploy.EvalRunInfo{
 		Proj:        proj,
 		Pwd:         pwd,
 		Program:     main,
 		ProjectRoot: projectRoot,
 		Args:        args,
 		Target:      target,
-	}, defaultProviderVersions, resourceHooks, deploy.EvalSourceOptions{
+	}
+
+	evalOpts := deploy.EvalSourceOptions{
 		DryRun:                    opts.DryRun,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
-	}, panicErrs), nil
+	}
+
+	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
+
+	// If that succeeded, create a new source that will perform interpretation of the compiled program.
+	return deploy.NewEvalSource(plugctx, runinfo,
+		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, program), nil
 }
 
 func update(

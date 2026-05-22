@@ -668,7 +668,6 @@ func NewUpCmd() *cobra.Command {
 			}
 
 			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
-			// Currently only available for `pulumi up`.
 			logging.V(7).Infof("PULUMI_SUPPRESS_NEO_LINK=%v", env.SuppressNeoLink.Value())
 			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 

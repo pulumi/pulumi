@@ -48,7 +48,7 @@ func DetailedError(err error) string {
 
 			// Append the stack trace.
 			for _, f := range stackerr.StackTrace() {
-				msg.WriteString(fmt.Sprintf("%+v\n", f))
+				fmt.Fprintf(&msg, "%+v\n", f)
 			}
 
 			// Keep going up the causer chain, if any.
@@ -150,9 +150,9 @@ func errorMessage(err error) string {
 
 	default:
 		var msg strings.Builder
-		msg.WriteString(fmt.Sprintf("%d errors occurred:", len(underlying)))
+		fmt.Fprintf(&msg, "%d errors occurred:", len(underlying))
 		for i, werr := range underlying {
-			msg.WriteString(fmt.Sprintf("\n    %d) %s", i+1, errorMessage(werr)))
+			fmt.Fprintf(&msg, "\n    %d) %s", i+1, errorMessage(werr))
 		}
 		return msg.String()
 	}

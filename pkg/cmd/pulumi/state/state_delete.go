@@ -121,7 +121,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					message.WriteString(" can't be safely deleted because the following resources depend on it:\n")
 					for _, dependentResource := range e.Dependencies {
 						depUrn := dependentResource.URN
-						message.WriteString(fmt.Sprintf(" * %-15q (%s)\n", depUrn.Name(), depUrn))
+						fmt.Fprintf(&message, " * %-15q (%s)\n", depUrn.Name(), depUrn)
 					}
 					message.WriteString("\nDelete those resources first or pass --target-dependents.")
 					return errors.New(message.String())

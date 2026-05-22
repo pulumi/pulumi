@@ -107,10 +107,11 @@ func TestDoCmdWithFunctionHelpArgPrintsHelp(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure", "myModule", "myOtherFunction", "--help"})
+	cmd.SetArgs([]string{"azure:myModule:myOtherFunction", "--help"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
+	//nolint:lll
 	expected := `Invoke the myOtherFunction function.
 
 This is the other function in this package.
@@ -125,18 +126,16 @@ Outputs:
   output3 (boolean, required) - Whether it worked.
 
 Usage:
-  do azure myModule myOtherFunction [flags]
+  do azure:myModule:myOtherFunction [flags]
 
 Flags:
-  -h, --help                help for myOtherFunction
-      --input string        Input file format (default "pcl")
-      --input-file string   Path to a file containing function inputs
-
-Global Flags:
-      --dry-run                  Run the operation in preview mode
-      --provider-file string     Path to a file containing provider configuration
-      --provider-format string   Format of the provider configuration file (default "pcl")
-      --show-secrets             Show secret values in output
+      --dry-run                Run the operation in preview mode
+  -h, --help                   help for do
+      --input string           Format of the configuration files (default "pcl")
+      --input-file string      Path to a file containing function inputs
+      --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
+      --provider-file string   Path to a file containing provider configuration
+      --show-secrets           Show secret values in output
 `
 	assert.Equal(t, expected, stdout.String())
 }
@@ -213,7 +212,7 @@ param2 = 42
 param3 = true
 `)
 
-	cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -266,7 +265,7 @@ func TestDoCmdFunctionInvokeFiltersOutputsToSchema(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure", "myFunction"})
+	cmd.SetArgs([]string{"azure:index:myFunction"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -359,7 +358,7 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure", "myFunction"})
+	cmd.SetArgs([]string{"azure:index:myFunction"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -417,7 +416,7 @@ func TestDoCmdFunctionInvokeReturnType(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure", "myFunction"})
+	cmd.SetArgs([]string{"azure:index:myFunction"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -496,7 +495,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchema(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure", "myFunction"})
+	cmd.SetArgs([]string{"azure:index:myFunction"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -580,7 +579,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchemaSecrets(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure", "myFunction"})
+	cmd.SetArgs([]string{"azure:index:myFunction"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -592,7 +591,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchemaSecrets(t *testing.T) {
 	assert.Equal(t, expected, stdout.String())
 
 	stdout.Reset()
-	cmd.SetArgs([]string{"azure", "myFunction", "--show-secrets"})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--show-secrets"})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
@@ -658,7 +657,7 @@ param = "hello"
 `)
 
 	stdout.Reset()
-	cmd.SetArgs([]string{"pkg", "mod1/mod2", "fun", "--input-file", inputFile})
+	cmd.SetArgs([]string{"pkg:mod1/mod2:fun", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -723,7 +722,7 @@ param2 = 42
 param3 = true
 `)
 
-	cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.ErrorContains(t, err, `Missing required input "param1"`)
 }
@@ -769,7 +768,7 @@ func TestDoCmdFunctionInvoke_NoInputFileWithRequired(t *testing.T) {
 	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure", "myFunction"})
+	cmd.SetArgs([]string{"azure:index:myFunction"})
 	err := cmd.Execute()
 	require.ErrorContains(t, err, `Missing required input "param1"`)
 }
@@ -898,7 +897,7 @@ param3 = {
 			cmd.SetErr(&stdout)
 
 			inputFile := writeHCLFile(t, "inputs.pcl", tt.input)
-			cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
+			cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
 			err := cmd.Execute()
 			require.Error(t, err)
 			for _, want := range tt.wantErrs {
@@ -947,7 +946,7 @@ func TestDoCmdFunctionInvokeInputFileForInputlessFunction(t *testing.T) {
 	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "unsupported attribute 'bogus'")
@@ -1003,7 +1002,7 @@ stuff {
 	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.ErrorContains(t, err, `unexpected block "stuff"`)
@@ -1063,7 +1062,7 @@ param2 = "true"
 param3 = "45"
 `)
 
-	cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -1146,7 +1145,7 @@ param2 = 42
 param3 = true
 `)
 
-	cmd.SetArgs([]string{"--dry-run", "azure", "myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"--dry-run", "azure:index:myFunction", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -1219,7 +1218,7 @@ param2 = max(1, length(split(":", "a:b:c")), 6)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 }
@@ -1284,7 +1283,7 @@ func TestDoCmdFunctionInvokeWithUnsupportedBuiltinFunction(t *testing.T) {
 
 			inputFile := writeHCLFile(t, "inputs.pcl", tt.input)
 
-			cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
+			cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
 			err := cmd.Execute()
 			require.ErrorContains(t, err, tt.expected)
 		})
@@ -1363,7 +1362,7 @@ project = project()
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 }
@@ -1459,9 +1458,8 @@ param3 = true
 `)
 
 	cmd.SetArgs([]string{
-		"azure",
+		"azure:index:myFunction",
 		"--provider-file", providerFile,
-		"myFunction",
 		"--input-file", inputFile,
 	})
 	err := cmd.Execute()
@@ -1539,7 +1537,7 @@ func TestDoCmdFunctionInvokeNestedResults(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure", "myFunction"})
+	cmd.SetArgs([]string{"azure:index:myFunction"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -1606,7 +1604,7 @@ func TestDoCmdFunctionInvokeShowSecrets(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"--show-secrets", "azure", "myFunction"})
+	cmd.SetArgs([]string{"--show-secrets", "azure:index:myFunction"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -1675,7 +1673,7 @@ func TestDoCmdFunctionInvokeAssetArchiveResults(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure", "myFunction"})
+	cmd.SetArgs([]string{"azure:index:myFunction"})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
@@ -1793,7 +1791,10 @@ func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	// First positional is the package spec: base provider name plus any Parameterize args, shlex-quoted.
-	cmd.SetArgs([]string{"terraform-provider foo/bar 1.2.3", "myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{
+		"--package", "terraform-provider foo/bar 1.2.3",
+		"myparam:index:myFunction", "--input-file", inputFile,
+	})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -1919,7 +1920,7 @@ param2: 42
 param3: true
 `)
 
-	cmd.SetArgs([]string{"azure", "myFunction", "--input", "yaml", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "yaml", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -2024,8 +2025,8 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
-		"terraform-provider@2.0.0 foo/bar 1.2.3",
-		"myFunction", "--input", "yaml", "--input-file", inputFile,
+		"--package", "terraform-provider@2.0.0 foo/bar 1.2.3",
+		"myparam:index:myFunction", "--input", "yaml", "--input-file", inputFile,
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -2067,13 +2068,13 @@ func TestDoCmdFunctionInvokeParameterizedSchemaWithoutArgs(t *testing.T) {
 	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure", "myFunction"})
+	cmd.SetArgs([]string{"azure:index:myFunction"})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "provider returned parameterization but no parameterization args were sent")
 }
 
-// TestDoCmdFunctionInvokeWithYAMLProviderFile exercises the provider-config converter path: --provider-format yaml
+// TestDoCmdFunctionInvokeWithYAMLProviderFile exercises the provider-config converter path: --input yaml
 // + --provider-file p.yaml should run the YAML through the converter, hand the resulting PCL to Configure, and
 // pass the right token (the provider's pulumi:providers:<pkg> token) and the same package descriptor we use for
 // function inputs.
@@ -2155,7 +2156,8 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
-		"azure", "--provider-file", providerFile, "--provider-format", "yaml", "myFunction",
+		"azure:index:myFunction",
+		"--provider-file", providerFile, "--input", "yaml",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -2213,11 +2215,70 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure", "myFunction", "--input", "fictional", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "fictional", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "load fictional input converter")
 	assert.ErrorContains(t, err, "converter not found")
+}
+
+// TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet verifies that a converter plugin that exists but does not
+// implement ConvertSnippet produces a targeted error instead of leaking the raw RPC error.
+func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	host := func() (plugin.Host, error) {
+		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"y": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					require.Fail(t, "Invoke should not be called when the converter cannot convert snippets")
+					return plugin.InvokeResponse{}, nil
+				},
+			},
+		}, nil
+	}
+
+	inputFile := writeHCLFile(t, "inputs.yaml", "x: hello")
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"azure:myFunction", "--input", "yaml", "--input-file", inputFile})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "yaml input converter does not support snippet conversion; "+
+		"use pcl format or try installing a newer yaml converter")
+	assert.NotContains(t, err.Error(), "ConvertSnippet not implemented")
 }
 
 // TestDoCmdFunctionInvokeWithConverterDiagnostics asserts that diagnostic-level errors from ConvertSnippet are
@@ -2280,7 +2341,7 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure", "myFunction", "--input", "yaml", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "yaml", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "could not convert: synthetic failure")
@@ -2347,7 +2408,7 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure", "myFunction", "--input", "yaml", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "yaml", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "not_an_input")

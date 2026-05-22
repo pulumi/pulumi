@@ -157,7 +157,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 	}
 
 	pv := reflect.ValueOf(props)
-	if pv.Kind() == reflect.Ptr {
+	if pv.Kind() == reflect.Pointer {
 		if pv.IsNil() {
 			return pmap, pdeps, nil, nil
 		}
@@ -166,7 +166,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 	pt := pv.Type()
 
 	rt := props.ElementType()
-	if rt.Kind() == reflect.Ptr {
+	if rt.Kind() == reflect.Pointer {
 		rt = rt.Elem()
 	}
 
@@ -176,7 +176,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 		contract.Assertf(rt.Kind() == reflect.Struct, "expected struct, got %v (%v)", rt, rt.Kind())
 		// We use the resolved type to decide how to convert inputs to outputs.
 		rt := props.ElementType()
-		if rt.Kind() == reflect.Ptr {
+		if rt.Kind() == reflect.Pointer {
 			rt = rt.Elem()
 		}
 		getMappedField := internal.MapStructTypes(pt, rt)
@@ -248,7 +248,7 @@ func marshalInputOptionsImpl(v any,
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/
 		if input, ok := v.(Input); !skipInputCheck && ok {
-			if inputType := reflect.ValueOf(input); inputType.Kind() == reflect.Ptr && inputType.IsNil() {
+			if inputType := reflect.ValueOf(input); inputType.Kind() == reflect.Pointer && inputType.IsNil() {
 				// input type is a ptr type with a nil backing value
 				return resource.PropertyValue{}, nil, nil
 			}
@@ -257,7 +257,7 @@ func marshalInputOptionsImpl(v any,
 			// Handle cases where the destination is a ptr type whose element type is the same as the value type
 			// (e.g. destType is *FooBar and valueType is FooBar).
 			// This avoids calling the ToOutput method to convert the input to an output in this case.
-			if valueType != destType && destType.Kind() == reflect.Ptr && valueType == destType.Elem() {
+			if valueType != destType && destType.Kind() == reflect.Pointer && valueType == destType.Elem() {
 				destType = destType.Elem()
 			}
 
@@ -330,7 +330,7 @@ func marshalInputOptionsImpl(v any,
 		// If v is nil, just return that.
 		if v == nil {
 			return resource.PropertyValue{}, nil, nil
-		} else if val := reflect.ValueOf(v); val.Kind() == reflect.Ptr && val.IsNil() {
+		} else if val := reflect.ValueOf(v); val.Kind() == reflect.Pointer && val.IsNil() {
 			// Here we round trip through a reflect.Value to catch fat pointers of the
 			// form
 			//
@@ -427,12 +427,12 @@ func marshalInputOptionsImpl(v any,
 			return resource.NewProperty(float64(rv.Uint())), deps, nil
 		case reflect.Float32, reflect.Float64:
 			return resource.NewProperty(rv.Float()), deps, nil
-		case reflect.Ptr, reflect.Interface:
+		case reflect.Pointer, reflect.Interface:
 			// Dereference non-nil pointers and interfaces.
 			if rv.IsNil() {
 				return resource.PropertyValue{}, deps, nil
 			}
-			if destType.Kind() == reflect.Ptr {
+			if destType.Kind() == reflect.Pointer {
 				destType = destType.Elem()
 			}
 			v = rv.Elem().Interface()
@@ -808,7 +808,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 
 	allocatedPointer := false
 	// Allocate storage as necessary.
-	for dest.Kind() == reflect.Ptr {
+	for dest.Kind() == reflect.Pointer {
 		allocatedPointer = true
 		elem := reflect.New(dest.Type().Elem())
 		dest.Set(elem)
@@ -853,7 +853,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		// If we unmarshal a pointer and the destination is "any", we also want to make sure the result is a
 		// pointer.  We check above whether the destination is a pointer, but that's not true for "any", even
 		// though it can hold a pointer.
-		if !allocatedPointer && resV.Kind() == reflect.Ptr && dest.Type().Kind() == reflect.Interface &&
+		if !allocatedPointer && resV.Kind() == reflect.Pointer && dest.Type().Kind() == reflect.Interface &&
 			resV.Elem().Type().AssignableTo(dest.Type()) {
 			dest.Set(resV)
 			return secret, nil

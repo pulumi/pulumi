@@ -83,8 +83,8 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 
 	if len(lockKeys) > 0 {
 		var errorString strings.Builder
-		errorString.WriteString(fmt.Sprintf("the stack is currently locked by %v lock(s). Either wait for the other "+
-			"process(es) to end or delete the lock file with `pulumi cancel`.", len(lockKeys)))
+		fmt.Fprintf(&errorString, "the stack is currently locked by %v lock(s). Either wait for the other "+
+			"process(es) to end or delete the lock file with `pulumi cancel`.", len(lockKeys))
 
 		for _, lock := range lockKeys {
 			content, err := b.bucket.ReadAll(ctx, lock)
@@ -97,13 +97,12 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 				return err
 			}
 
-			errorString.WriteString(fmt.Sprintf("\n  %v: created by %v@%v (pid %v) at %v",
+			fmt.Fprintf(&errorString, "\n  %v: created by %v@%v (pid %v) at %v",
 				b.lockURLForError(lock),
 				l.Username,
 				l.Hostname,
 				l.Pid,
-				l.Timestamp.Format(time.RFC3339),
-			))
+				l.Timestamp.Format(time.RFC3339))
 		}
 
 		return errors.New(errorString.String())

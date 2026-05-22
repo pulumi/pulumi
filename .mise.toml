@@ -1,9 +1,10 @@
 [tools]
 github-cli = "latest"
 "go:github.com/go-delve/delve/cmd/dlv" = "latest"
-"go:golang.org/x/tools/gopls" = "latest"
+# gopls v0.22+ requires Go 1.26; pin to the latest version compatible with Go 1.25.
+"go:golang.org/x/tools/gopls" = "0.21.0"
 go = "1.25"
-golangci-lint = "2.9.0"
+golangci-lint = "2.12.2"
 jq = "latest"
 node = "20"
 "npm:pnpm" = "10"

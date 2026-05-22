@@ -88,7 +88,7 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 func (ex *deploymentExecutor) printPendingOperationsWarning() {
 	var pendingOperations strings.Builder
 	for _, op := range ex.deployment.prev.PendingOperations {
-		pendingOperations.WriteString(fmt.Sprintf("  * %s, interrupted while %s\n", op.Resource.URN, op.Type))
+		fmt.Fprintf(&pendingOperations, "  * %s, interrupted while %s\n", op.Resource.URN, op.Type)
 	}
 
 	resolutionMessage := "" +
@@ -278,7 +278,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 			case event := <-stepGenEvents:
 				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming async event")
 
-				if err := ex.handleSingleEvent(event); err != nil {
+				if err := ex.handleSingleEvent(ctx, event); err != nil {
 					if !result.IsBail(err) {
 						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
 						ex.reportError(ex.deployment.generateEventURN(event), err)
@@ -304,7 +304,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				if event.Event == nil {
 					seenNil = true
 				} else {
-					if err := ex.handleSingleEvent(event.Event); err != nil {
+					if err := ex.handleSingleEvent(ctx, event.Event); err != nil {
 						if !result.IsBail(err) {
 							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
 							ex.reportError(ex.deployment.generateEventURN(event.Event), err)
@@ -405,7 +405,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	// If the step generator and step executor were both successful, then we send all the resources
 	// observed to be analyzed. Otherwise, this step is skipped.
 	if err == nil && stepExecutorError == nil {
-		err := ex.stepGen.AnalyzeResources()
+		err := ex.stepGen.AnalyzeResources(ctx)
 		if err != nil {
 			if !result.IsBail(err) {
 				logging.V(4).Infof("deploymentExecutor.Execute(...): error analyzing resources: %v", err)
@@ -567,7 +567,7 @@ func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
+func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event SourceEvent) error {
 	contract.Requiref(event != nil, "event", "must not be nil")
 
 	var steps []Step
@@ -577,7 +577,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceImportEvent")
 		ex.asyncEventsExpected--
 		var async bool
-		steps, async, err = ex.stepGen.ContinueStepsFromImport(e)
+		steps, async, err = ex.stepGen.ContinueStepsFromImport(ctx, e)
 		if async {
 			ex.asyncEventsExpected++
 		}
@@ -585,7 +585,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceRefreshEvent")
 		ex.asyncEventsExpected--
 		var async bool
-		steps, async, err = ex.stepGen.ContinueStepsFromRefresh(e)
+		steps, async, err = ex.stepGen.ContinueStepsFromRefresh(ctx, e)
 		if async {
 			ex.asyncEventsExpected++
 		}
@@ -596,7 +596,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	case RegisterResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
 		var async bool
-		steps, async, err = ex.stepGen.GenerateSteps(e)
+		steps, async, err = ex.stepGen.GenerateSteps(ctx, e)
 		if async {
 			ex.asyncEventsExpected++
 		}

@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1127,7 +1128,7 @@ func TestListPackages(t *testing.T) {
 			searchResults = append(searchResults, pkg)
 		}
 
-		expectedPackages := append(append(firstPagePackages, secondPagePackages...), thirdPagePackages...)
+		expectedPackages := slices.Concat(firstPagePackages, secondPagePackages, thirdPagePackages)
 		assert.Equal(t, expectedPackages, searchResults)
 		assert.Equal(t, 3, requestCount) // Ensure both requests were made
 	})

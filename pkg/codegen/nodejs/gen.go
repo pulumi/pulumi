@@ -48,9 +48,11 @@ import (
 
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
-	MinimumValidSDKVersion   string = "^3.142.0"
-	MinimumTypescriptVersion string = "^4.7.0"
-	MinimumNodeTypesVersion  string = "^20"
+	MinimumValidSDKVersion string = "^3.142.0"
+	// The minimum version of @pulumi/pulumi that supports parameterization.
+	MinimumValidParameterizationSDKVersion string = "^3.238.0"
+	MinimumTypescriptVersion               string = "^4.7.0"
+	MinimumNodeTypesVersion                string = "^20"
 )
 
 type typeDetails struct {
@@ -557,9 +559,9 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 		}
 
 		var envVars strings.Builder
-		envVars.WriteString(fmt.Sprintf("%q", dv.Environment[0]))
+		fmt.Fprintf(&envVars, "%q", dv.Environment[0])
 		for _, e := range dv.Environment[1:] {
-			envVars.WriteString(fmt.Sprintf(", %q", e))
+			fmt.Fprintf(&envVars, ", %q", e)
 		}
 
 		cast := ""
@@ -2440,9 +2442,6 @@ func genNPMPackageMetadata(
 	}
 
 	dependencies := map[string]string{}
-	if pkg.Parameterization != nil {
-		dependencies["async-mutex"] = "^0.5.0"
-	}
 	devDependencies := map[string]string{}
 	// Local SDKs require typescript as a normal dependency, so that we can
 	// compile the SDK in the postinstall script.
@@ -2572,6 +2571,8 @@ func genNPMPackageMetadata(
 		}
 		if path, ok := localDependencies["pulumi"]; ok {
 			npminfo.Dependencies[sdkPack] = path
+		} else if pkg.Parameterization != nil {
+			npminfo.Dependencies[sdkPack] = MinimumValidParameterizationSDKVersion
 		} else {
 			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersion
 		}
@@ -2930,12 +2931,6 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 		return err
 	}
 
-	if def.Parameterization != nil {
-		fmt.Fprintf(w, `import * as resproto from "@pulumi/pulumi/proto/resource_pb";
-import * as mutex from "async-mutex";
-`)
-	}
-
 	code := utilitiesFile
 
 	if url := def.PluginDownloadURL; url != "" {
@@ -2951,48 +2946,26 @@ import * as mutex from "async-mutex";
 	}
 
 	if def.Parameterization != nil {
-		parameterValue := fmt.Sprintf("Uint8Array.from(atob(%q), c => c.charCodeAt(0))", base64.StdEncoding.EncodeToString(def.Parameterization.Parameter))
+		base64Parameter := base64.StdEncoding.EncodeToString(def.Parameterization.Parameter)
 
 		_, err = fmt.Fprintf(w, `
-const _packageLock = new mutex.Mutex();
-var _packageRef : undefined | string = undefined;
-export async function getPackage() : Promise<string | undefined> {
-	if (_packageRef === undefined) {
-		if (!runtime.supportsParameterization()) {
-			throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
-		}
-
-		await _packageLock.acquire();
-		if (_packageRef === undefined) {
-			const monitor = runtime.getMonitor();
-			const params = new resproto.Parameterization();
-			params.setName("%s");
-			params.setVersion("%s");
-			params.setValue(%s);
-
-			const req = new resproto.RegisterPackageRequest();
-			req.setName("%s");
-			req.setVersion("%s");
-			req.setDownloadUrl("%s");
-			req.setParameterization(params);
-			const resp : any = await new Promise((resolve, reject) => {
-				monitor!.registerPackage(req, (err: any, resp: any) => {
-					if (err) {
-						reject(err);
-					} else {
-						resolve(resp);
-					}
-				});
-			});
-			_packageRef = resp.getRef();
-		}
-		_packageLock.release();
-	}
-	return _packageRef as string;
+export async function getPackage(): Promise<string | undefined> {
+	return runtime.registerPackage({
+		baseProviderName: "%s",
+		baseProviderVersion: "%s",
+		baseProviderDownloadUrl: "%s",
+		packageName: "%s",
+		packageVersion: "%s",
+		base64Parameter: "%s",
+	});
 }
 `,
-			def.Name, def.Version, parameterValue,
-			def.Parameterization.BaseProvider.Name, def.Parameterization.BaseProvider.Version.String(), def.PluginDownloadURL)
+			def.Parameterization.BaseProvider.Name,
+			def.Parameterization.BaseProvider.Version.String(),
+			def.PluginDownloadURL,
+			def.Name,
+			def.Version,
+			base64Parameter)
 	}
 
 	return err

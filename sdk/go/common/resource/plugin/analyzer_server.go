@@ -54,7 +54,7 @@ func (a *analyzerServer) Analyze(
 		return nil, err
 	}
 
-	res, err := a.analyzer.Analyze(AnalyzerResource{
+	res, err := a.analyzer.Analyze(ctx, AnalyzerResource{
 		URN:        resource.URN(req.GetUrn()),
 		Type:       tokens.Type(req.GetType()),
 		Name:       req.GetName(),
@@ -121,7 +121,7 @@ func (a *analyzerServer) AnalyzeStack(
 		return nil, err
 	}
 
-	res, err := a.analyzer.AnalyzeStack(resources)
+	res, err := a.analyzer.AnalyzeStack(ctx, resources)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (a *analyzerServer) Remediate(
 		return nil, err
 	}
 
-	res, err := a.analyzer.Remediate(AnalyzerResource{
+	res, err := a.analyzer.Remediate(ctx, AnalyzerResource{
 		URN:        resource.URN(req.GetUrn()),
 		Type:       tokens.Type(req.GetType()),
 		Name:       req.GetName(),
@@ -190,8 +190,8 @@ func (a *analyzerServer) Remediate(
 	}, nil
 }
 
-func (a *analyzerServer) GetAnalyzerInfo(context.Context, *emptypb.Empty) (*pulumirpc.AnalyzerInfo, error) {
-	info, err := a.analyzer.GetAnalyzerInfo()
+func (a *analyzerServer) GetAnalyzerInfo(ctx context.Context, _ *emptypb.Empty) (*pulumirpc.AnalyzerInfo, error) {
+	info, err := a.analyzer.GetAnalyzerInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -238,21 +238,23 @@ func (a *analyzerServer) GetAnalyzerInfo(context.Context, *emptypb.Empty) (*pulu
 	}, nil
 }
 
-func (a *analyzerServer) GetPluginInfo(context.Context, *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
-	info, err := a.analyzer.GetPluginInfo()
+func (a *analyzerServer) GetPluginInfo(ctx context.Context, _ *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	info, err := a.analyzer.GetPluginInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &pulumirpc.PluginInfo{Version: info.Version.String()}, nil
 }
 
-func (a *analyzerServer) Configure(_ context.Context, req *pulumirpc.ConfigureAnalyzerRequest) (*emptypb.Empty, error) {
+func (a *analyzerServer) Configure(
+	ctx context.Context, req *pulumirpc.ConfigureAnalyzerRequest,
+) (*emptypb.Empty, error) {
 	config, err := convertPolicyConfig(req.GetPolicyConfig())
 	if err != nil {
 		return nil, err
 	}
 
-	if err := a.analyzer.Configure(config); err != nil {
+	if err := a.analyzer.Configure(ctx, config); err != nil {
 		return nil, err
 	}
 

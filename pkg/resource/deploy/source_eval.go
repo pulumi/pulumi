@@ -40,8 +40,12 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
+	pconvert "github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -104,6 +108,7 @@ func NewEvalSource(
 	resourceHooks *ResourceHooks,
 	opts EvalSourceOptions,
 	panicErrs chan<- error,
+	runner func(string) *promise.Promise[struct{}],
 ) Source {
 	return &evalSource{
 		plugctx:             plugctx,
@@ -112,6 +117,7 @@ func NewEvalSource(
 		resourceHooks:       resourceHooks,
 		opts:                opts,
 		panicErrs:           panicErrs,
+		runner:              runner,
 	}
 }
 
@@ -123,10 +129,51 @@ type evalSource struct {
 	opts                EvalSourceOptions                              // options for the evaluation source.
 	// channel for reporting panics from goroutines
 	panicErrs chan<- error
+
+	// the function to run the evaluation with.
+	runner func(resourceMonitorTarget string) *promise.Promise[struct{}]
 }
 
 func (src *evalSource) Close() error {
 	return nil
+}
+
+// newRunMapper builds a caching provider mapper for use during a program run. It mirrors the mapper used during
+// `pulumi convert`: it enumerates installed resource plugins for mappings and can auto-install missing providers when
+// automatic plugin acquisition is enabled. The "terraform" conversion key matches the default used by the generic
+// plugin RPC server (see pkg/cmd/pulumi/plugin/rpc.go).
+func newRunMapper(ctx context.Context, pctx *plugin.Context) (pconvert.Mapper, error) {
+	log := func(sev diag.Severity, msg string) {
+		pctx.Diag.Logf(sev, diag.RawMessage("", msg))
+	}
+
+	installPlugin := func(pluginName string) *semver.Version {
+		if env.DisableAutomaticPluginAcquisition.Value() {
+			return nil
+		}
+		pluginSpec := workspace.PluginDescriptor{
+			Name: pluginName,
+			Kind: apitype.ResourcePlugin,
+		}
+		version, err := pkgWorkspace.InstallPlugin(pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromHost)
+		if err != nil {
+			log(diag.Warning, fmt.Sprintf("failed to install provider %q: %v", pluginName, err))
+			return nil
+		}
+		return version
+	}
+
+	baseMapper, err := pconvert.NewBasePluginMapper(
+		pluginstorage.Instance,
+		"terraform",
+		pconvert.ProviderFactoryFromHost(ctx, pctx.Host),
+		installPlugin,
+		nil, /*mappings*/
+	)
+	if err != nil {
+		return nil, err
+	}
+	return pconvert.NewCachingMapper(baseMapper), nil
 }
 
 // Project is the name of the project being run by this evaluation source.
@@ -175,10 +222,18 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
 
-	// Also start up a schema loader for the language runtime to use to fetch schema information.
+	// Also start up a schema loader and a provider mapper for the language runtime to use to fetch
+	// schema and mapping information.
 	loaderRegistration := schema.LoaderRegistration(
 		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx.Host)))
-	loaderServer, err := plugin.NewServer(src.plugctx, loaderRegistration)
+
+	mapper, err := newRunMapper(ctx, src.plugctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create provider mapper: %w", err)
+	}
+	mapperRegistration := pconvert.MapperRegistration(pconvert.NewMapperServer(mapper))
+
+	loaderServer, err := plugin.NewServer(src.plugctx, loaderRegistration, mapperRegistration)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start loader server: %w", err)
 	}
@@ -278,56 +333,10 @@ func (iter *evalSourceIterator) forkRun(
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go PanicRecovery(iter.panicErrs, func() {
 		// Next, launch the language plugin.
-		run := func() error {
-			defer contract.IgnoreClose(iter.loaderServer)
-
-			rt := iter.src.runinfo.Proj.Runtime.Name()
-
-			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
-			if err != nil {
-				return fmt.Errorf("failed to launch language host %s: %w", rt, err)
-			}
-			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
-
-			rtopts := iter.src.runinfo.Proj.Runtime.Options()
-			programInfo := plugin.NewProgramInfo(
-				/* rootDirectory */ iter.src.runinfo.ProjectRoot,
-				/* programDirectory */ iter.src.runinfo.Pwd,
-				/* entryPoint */ iter.src.runinfo.Program,
-				/* options */ rtopts)
-
-			// Now run the actual program.
-			progerr, bail, err := langhost.Run(plugin.RunInfo{
-				MonitorAddress:   iter.mon.Address(),
-				Stack:            iter.src.runinfo.Target.Name.String(),
-				Project:          string(iter.src.runinfo.Proj.Name),
-				Pwd:              iter.src.runinfo.Pwd,
-				Args:             iter.src.runinfo.Args,
-				Config:           config,
-				ConfigSecretKeys: configSecretKeys,
-				DryRun:           iter.src.opts.DryRun,
-				Parallel:         iter.src.opts.Parallel,
-				Organization:     string(iter.src.runinfo.Target.Organization),
-				Info:             programInfo,
-				LoaderAddress:    iter.loaderServer.Addr(),
-				AttachDebugger:   iter.src.plugctx.Host.AttachDebugger(plugin.DebugSpec{Type: plugin.DebugTypeProgram}),
-			})
-
-			// Check if we were asked to Bail.  This a special random constant used for that
-			// purpose.
-			if err == nil && bail {
-				return result.BailErrorf("run bailed")
-			}
-
-			if err == nil && progerr != "" {
-				// If the program had an unhandled error; propagate it to the caller.
-				err = fmt.Errorf("an unhandled error occurred: %v", progerr)
-			}
-			return err
-		}
+		run := iter.src.runner(iter.mon.Address())
 
 		// Communicate the error, if it exists, or nil if the program exited cleanly.
-		err := run()
+		_, err := run.Result(context.TODO())
 		if err != nil {
 			logging.V(5).Infof("Program exited with error: %s", err)
 		} else {

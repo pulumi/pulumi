@@ -135,13 +135,11 @@ func printSnapshotIntegrityError(err error, sie snapshot.SnapshotIntegrityError)
 `)
 
 	if sie.AutoRepairErr != nil {
-		message.WriteString(fmt.Sprintf(
-			"The Pulumi CLI attempted to automatically repair this error but was unable to\n"+
-				"do so (%v). You can try to repair the snapshot by passing the `--disable-integrity-checking` flag."+
-				"This will disable integrity checking on many Pulumi commands. This will allow you to execute "+
-				"fine-grained repairs using e.g. `pulumi state delete`",
-			sie.AutoRepairErr,
-		))
+		fmt.Fprintf(&message, "The Pulumi CLI attempted to automatically repair this error but was unable to\n"+
+			"do so (%v). You can try to repair the snapshot by passing the `--disable-integrity-checking` flag."+
+			"This will disable integrity checking on many Pulumi commands. This will allow you to execute "+
+			"fine-grained repairs using e.g. `pulumi state delete`",
+			sie.AutoRepairErr)
 	} else {
 		message.WriteString(`You can try to repair your snapshot as follows:
 
@@ -166,7 +164,7 @@ operation, please include them in your report as well.
 `)
 	}
 
-	message.WriteString(fmt.Sprintf(`
+	fmt.Fprintf(&message, `
 Please provide all of the text below in your report.
 ================================================================================
 Go Version:        %s
@@ -176,11 +174,10 @@ Operating System:  %s`,
 		runtime.Version(),
 		runtime.Compiler,
 		runtime.GOARCH,
-		runtime.GOOS,
-	))
+		runtime.GOOS)
 
 	if sie.Op == snapshot.SnapshotIntegrityRead && sie.Metadata != nil {
-		message.WriteString(fmt.Sprintf(`
+		fmt.Fprintf(&message, `
 
 Write Version:     %s
 Write Command:     %s
@@ -198,10 +195,9 @@ Read Error:        %s`,
 			version.Version,
 			strings.Join(os.Args, " "),
 			formatEnvVars(env.ConfiguredVariables()),
-			err,
-		))
+			err)
 	} else {
-		message.WriteString(fmt.Sprintf(`
+		fmt.Fprintf(&message, `
 
 Pulumi Version:    %s
 Command:           %s
@@ -210,18 +206,16 @@ Error:             %s`,
 			version.Version,
 			strings.Join(os.Args, " "),
 			formatEnvVars(env.ConfiguredVariables()),
-			err,
-		))
+			err)
 	}
 
-	message.WriteString(fmt.Sprintf(`
+	fmt.Fprintf(&message, `
 
 Stack Trace:
 
 %s
 `,
-		string(sie.Stack),
-	))
+		string(sie.Stack))
 
 	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, message.String()))
 }

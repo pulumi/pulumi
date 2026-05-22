@@ -341,6 +341,9 @@ message RunRequest {
 
     // True if and only if the host should start the program under a debugger.
     bool attach_debugger = 16;
+
+    // The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi.
+    string mapper_target = 17;
 }
 
 // `RunResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Run) call.

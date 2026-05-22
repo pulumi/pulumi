@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"github.com/blang/semver"
@@ -796,7 +797,7 @@ func TestListTemplates(t *testing.T) {
 			searchResults = append(searchResults, tmpl)
 		}
 
-		expectedTemplates := append(append(firstPageTemplates, secondPageTemplates...), thirdPageTemplates...)
+		expectedTemplates := slices.Concat(firstPageTemplates, secondPageTemplates, thirdPageTemplates)
 		assert.Equal(t, expectedTemplates, searchResults)
 		assert.Equal(t, 3, requestCount) // Ensure all three requests were made
 	})

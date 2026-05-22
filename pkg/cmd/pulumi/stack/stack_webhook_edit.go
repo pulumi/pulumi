@@ -76,17 +76,17 @@ func newStackWebhookEditCmdWith(factory stackWebhookEditClientFactory) *cobra.Co
 			"\n" +
 			"Returns an error if the webhook does not exist.",
 		Example: "  # Disable a webhook\n" +
-			"  pulumi stack webhook edit my-hook --active=false\n\n" +
+			"  pulumi stack webhook edit 1a2b3c4d --active=false\n\n" +
 			"  # Change the payload URL\n" +
-			"  pulumi stack webhook edit my-hook --url https://new-url.example.com\n\n" +
+			"  pulumi stack webhook edit 1a2b3c4d --url https://new-url.example.com\n\n" +
 			"  # Add event filters\n" +
-			"  pulumi stack webhook edit my-hook " +
+			"  pulumi stack webhook edit 1a2b3c4d " +
 			"--add-event update_succeeded --add-event update_failed\n\n" +
 			"  # Remove an event and add another\n" +
-			"  pulumi stack webhook edit my-hook " +
+			"  pulumi stack webhook edit 1a2b3c4d " +
 			"--remove-event update_failed --add-event destroy_failed\n\n" +
 			"  # Clear the secret\n" +
-			"  pulumi stack webhook edit my-hook --secret \"\"",
+			"  pulumi stack webhook edit 1a2b3c4d --secret \"\"",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if factory == nil {
 				factory = defaultEditClientFactory

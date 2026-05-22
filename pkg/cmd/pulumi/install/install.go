@@ -158,7 +158,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			programInfo := plugin.NewProgramInfo(pctx.Root, pwd, main, runtime.Options())
 
 			if !noDependencies {
-				err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
+				err = pkgCmdUtil.InstallDependencies(ctx, lang, plugin.InstallDependenciesRequest{
 					Info:                    programInfo,
 					UseLanguageVersionTools: useLanguageVersionTools,
 					IsPlugin:                false,
@@ -170,7 +170,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			if !noPlugins {
 				// Compute the set of plugins the current project needs.
-				packages, err := lang.GetRequiredPackages(programInfo)
+				packages, err := lang.GetRequiredPackages(ctx, programInfo)
 				if err != nil {
 					return err
 				}

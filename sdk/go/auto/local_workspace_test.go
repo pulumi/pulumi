@@ -3923,19 +3923,21 @@ func TestNewOptions(t *testing.T) {
 	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(m))
 	require.NoError(t, err)
 
-	// Basic call with no options.
+	// Basic call with no options. The generated CLI API places no
+	// `--` separator when there are no positional arguments to follow.
 	_, err = workspace.New(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, []string{"new", "--yes"}, m.capturedArgs)
 
-	// With template.
+	// With template — the templateOrURL goes after a `--` separator
+	// the generator emits before any positional args.
 	_, err = workspace.New(ctx, &NewOptions{
 		TemplateOrURL: "typescript",
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"new", "--yes", "typescript"}, m.capturedArgs)
+	require.Equal(t, []string{"new", "--yes", "--", "typescript"}, m.capturedArgs)
 
-	// With name and generate-only.
+	// With name and generate-only. No template, so no `--`.
 	_, err = workspace.New(ctx, &NewOptions{
 		Name:         "my-project",
 		GenerateOnly: true,
@@ -3965,7 +3967,7 @@ func TestNewOptions(t *testing.T) {
 		"--config-path",
 		"--description", "A test project",
 		"--stack", "dev",
-		"aws-typescript",
+		"--", "aws-typescript",
 	}, m.capturedArgs)
 
 	// With all boolean flags.
@@ -3989,7 +3991,7 @@ func TestNewOptions(t *testing.T) {
 		"--offline",
 		"--remote-stack-config",
 		"--template-mode",
-		"yaml",
+		"--", "yaml",
 	}, m.capturedArgs)
 }
 

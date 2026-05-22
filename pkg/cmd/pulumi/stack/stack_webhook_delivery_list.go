@@ -87,11 +87,11 @@ func newStackWebhookDeliveryListCmdWith(
 			"\n" +
 			"Returns an error if the webhook does not exist.",
 		Example: "  # List deliveries for a webhook\n" +
-			"  pulumi stack webhook delivery list my-webhook\n\n" +
+			"  pulumi stack webhook delivery list 1a2b3c4d\n\n" +
 			"  # List the last 5 deliveries\n" +
-			"  pulumi stack webhook delivery list my-webhook --count 5\n\n" +
+			"  pulumi stack webhook delivery list 1a2b3c4d --count 5\n\n" +
 			"  # List deliveries as JSON\n" +
-			"  pulumi stack webhook delivery list my-webhook --output json",
+			"  pulumi stack webhook delivery list 1a2b3c4d --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if dlcmd.factory == nil {
 				dlcmd.factory = defaultDeliveryListClientFactory

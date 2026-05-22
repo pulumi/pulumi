@@ -2222,9 +2222,9 @@ func (host *nodeLanguageHost) Link(
 
 		importName := cgstrings.Camel(pkgRef.Name())
 		if usesModuleSyntax {
-			imports.WriteString(fmt.Sprintf("  import * as %s from \"%s\";\n", importName, packageName))
+			fmt.Fprintf(&imports, "  import * as %s from \"%s\";\n", importName, packageName)
 		} else {
-			imports.WriteString(fmt.Sprintf("  const %s = require(\"%s\");\n", importName, packageName))
+			fmt.Fprintf(&imports, "  const %s = require(\"%s\");\n", importName, packageName)
 		}
 	}
 	instructions += imports.String()

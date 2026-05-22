@@ -64,9 +64,9 @@ func newStackWebhookRemoveCmdWith(factory stackWebhookRemoveClientFactory) *cobr
 			"\n" +
 			"Returns an error if the webhook does not exist.",
 		Example: "  # Remove a webhook (will prompt for confirmation)\n" +
-			"  pulumi stack webhook remove my-webhook\n\n" +
+			"  pulumi stack webhook remove 1a2b3c4d\n\n" +
 			"  # Remove without confirmation\n" +
-			"  pulumi stack webhook remove my-webhook --yes",
+			"  pulumi stack webhook remove 1a2b3c4d --yes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if factory == nil {
 				factory = defaultStackWebhookRemoveClientFactory

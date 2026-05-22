@@ -102,6 +102,7 @@ var expectedFailures = map[string]string{
 	"l1-config-types-object":        "fails to compile",
 	"l1-config-types-optional":      "fails to compile: cfg.GetObject signature mismatch (same as l1-config-types-object)", //nolint:lll
 	"l1-builtin-try":                "pulumi#18506 Support try in Go program generation",
+	"l1-expand-final":               "Go program generation does not support `...` argument expansion",
 	"l1-builtin-can":                "pulumi#18570 Support can in Go program generation",
 	"l1-builtin-list":               "list(string) config decoded as string; element/split emit TODO stubs",
 	"l1-builtin-object":             "entries/lookup emit TODO stubs",
