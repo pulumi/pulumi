@@ -438,6 +438,10 @@ func NewPreviewCmd() *cobra.Command {
 				displayOpts.SuppressPermalink = true
 			}
 
+			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
+			logging.V(7).Infof("PULUMI_SUPPRESS_NEO_LINK=%v", env.SuppressNeoLink.Value())
+			displayOpts.ShowLinkToNeo = !env.SuppressNeoLink.Value()
+
 			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
 			configureNeoTaskOption(neoTaskOnFailure, cmd, &displayOpts, isDIYBackend)
 
