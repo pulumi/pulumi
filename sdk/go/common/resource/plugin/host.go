@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -74,10 +73,6 @@ type Host interface {
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
 	LanguageRuntime(runtime string) (LanguageRuntime, error)
-
-	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
-	// and/or there are errors loading one or more plugins, a non-nil error is returned.
-	EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error
 
 	// ResolvePlugin resolves a pluginspec to a candidate plugin to load.
 	ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
@@ -614,42 +609,6 @@ func (host *defaultHost) LanguageRuntime(runtime string,
 		return nil, err
 	}
 	return plugin.(LanguageRuntime), nil
-}
-
-// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
-// and/or there are errors loading one or more plugins, a non-nil error is returned.
-func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error {
-	// Use a multieerror to track failures so we can return one big list of all failures at the end.
-	var result error
-	for _, plugin := range plugins {
-		switch plugin.Kind {
-		case apitype.AnalyzerPlugin:
-			if kinds&AnalyzerPlugins != 0 {
-				if _, err := host.Analyzer(tokens.QName(plugin.Name)); err != nil {
-					result = multierror.Append(result,
-						fmt.Errorf("failed to load analyzer plugin %s: %w", plugin.Name, err))
-				}
-			}
-		case apitype.LanguagePlugin:
-			if kinds&LanguagePlugins != 0 {
-				if _, err := host.LanguageRuntime(plugin.Name); err != nil {
-					result = multierror.Append(result,
-						fmt.Errorf("failed to load language plugin %s: %w", plugin.Name, err))
-				}
-			}
-		case apitype.ResourcePlugin:
-			if kinds&ResourcePlugins != 0 {
-				if _, err := host.Provider(plugin, env.Global()); err != nil {
-					result = multierror.Append(result,
-						fmt.Errorf("failed to load resource plugin %s: %w", plugin.Name, err))
-				}
-			}
-		case apitype.ConverterPlugin, apitype.ToolPlugin:
-			contract.Failf("unexpected plugin kind: %s", plugin.Kind)
-		}
-	}
-
-	return result
 }
 
 func (host *defaultHost) ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {

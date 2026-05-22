@@ -89,10 +89,6 @@ func (host *testPluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime
 	return nil, errors.New("unsupported")
 }
 
-func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
-	return nil
-}
-
 func (host *testPluginHost) ResolvePlugin(
 	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
