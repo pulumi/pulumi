@@ -91,11 +91,10 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 	var inputFormat string
 
 	cmd := &cobra.Command{
-		Use:     name,
-		GroupID: "Functions",
-		Short:   shorthelp,
-		Long:    longhelp,
-		Args:    cobra.NoArgs,
+		Use:   name,
+		Short: shorthelp,
+		Long:  longhelp,
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -146,6 +145,10 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 
 	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Input file format")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing function inputs")
+	cmd.Flags().StringVar(&pc.providerFile, "provider-file", "",
+		"Path to a file containing provider configuration")
+	cmd.Flags().StringVar(&pc.providerFormat, "provider-format", "pcl",
+		"Format of the provider configuration file")
 
 	return cmd
 }

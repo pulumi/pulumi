@@ -29,7 +29,6 @@ import (
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -38,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -71,6 +71,7 @@ func NewDoCmd(
 		loadConverterPlugin = cmdConvert.LoadConverterPlugin
 	}
 
+	var pkg string
 	var dryrun bool
 	var showSecrets bool
 
@@ -91,14 +92,20 @@ func NewDoCmd(
 		}
 
 		pargs := flags.Args()
-		// If we don't have any args then this is just `pulumi do` so return nil and the caller handle calling help.
-		if len(pargs) == 0 {
+		// If we don't have any args and no package then this is just `pulumi do` so return nil and the caller handle
+		// calling help.
+		if len(pargs) == 0 && pkg == "" {
 			return nil, nil, nil
+		}
+
+		// If --package was passed use that, else set it based on the token
+		if pkg == "" {
+			pkg, _, _ = strings.Cut(pargs[0], ":")
 		}
 
 		// package may be in the form "name@version" and further may have space separated parameters, e.g.
 		// "name@version param1 \"multi word param\"".
-		pkgargs, err := shlex.Split(pargs[0])
+		pkgargs, err := shlex.Split(pkg)
 		if err != nil {
 			return nil, nil, fmt.Errorf("parse package arguments: %w", err)
 		}
@@ -219,6 +226,7 @@ func NewDoCmd(
 		}
 
 		subcmd := (&packageCommand{
+			pkg:               pkg,
 			args:              pargs,
 			evalContext:       evalContext,
 			converter:         loadConverter,
@@ -243,15 +251,27 @@ func NewDoCmd(
 		// Name() is just the first token (e.g. "name@version"). Substitute the quoted spec with its first token
 		// in the dispatch args so Find can match.
 		fullArgs := slices.Clone(args)
-		if expanded := pargs[0] != pkgargs[0]; expanded {
+		// pargs[0] (when present) is the token that identifies the subcmd; we've already consumed it to pick the
+		// right command, so strip it from the args we hand to cobra. Otherwise cobra would see it as an unknown
+		// subcommand and stop dispatching before reaching the operation (create/read/...).
+		if len(pargs) > 0 {
 			for i, a := range fullArgs {
 				if a == pargs[0] {
-					fullArgs[i] = pkgargs[0]
+					fullArgs = slices.Delete(fullArgs, i, i+1)
 					break
 				}
 			}
 		}
-		parent := cmd
+		// Copy the flags from the `do` command to this new subcommand
+		cmd.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) {
+			subcmd.Flags().AddFlag(f)
+		})
+		cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
+			if subcmd.Flags().Lookup(f.Name) == nil {
+				subcmd.PersistentFlags().AddFlag(f)
+			}
+		})
+		parent := cmd.Parent()
 		current := subcmd
 		for parent != nil {
 			nextParent := &cobra.Command{
@@ -271,12 +291,10 @@ func NewDoCmd(
 				}
 			})
 
-			// If the real parent has its own parent, the next iteration will create another fake above this one.
-			// That fake will be the dispatch target, so include the current level's name in its args so Find walks
-			// through this fake.
-			if parent.Parent() != nil {
-				fullArgs = append([]string{parent.Name()}, fullArgs...)
-			}
+			// We added current as a child of nextParent. To dispatch from nextParent (or any further synthetic
+			// ancestor) down to subcmd, cobra's Find needs current.Name() at the front of the args so it consumes
+			// it as it descends. Each iteration prepends the level below it.
+			fullArgs = append([]string{current.Name()}, fullArgs...)
 
 			current = nextParent
 			parent = parent.Parent()
@@ -291,7 +309,7 @@ func NewDoCmd(
 	cmd := &cobra.Command{
 		// Hidden for now while we iterate.
 		Hidden: true,
-		Use:    "do <package> [args...]",
+		Use:    "do <pkg:mod:typ> [command]",
 		Short:  "Interact directly with cloud resources",
 		Long: `Interact with any cloud
 
@@ -300,10 +318,11 @@ direct CRUD access to cloud resources without a Pulumi program or state file.
 Each provider plugin contributes its own resources, functions, and
 configuration flags, all discoverable via --help on the provider subcommand.
 
-packages can be a package name or the path to a plugin binary or folder.
-Further parameters can be passed after the package name which will be used to
-parameterize the plugin loaded. 
-e.g. pulumi do "name@version param1 \"multi word param\""
+package will be inferred from the token or passed via --package which can be a
+package name or the path to a plugin binary or folder. Further parameters can
+be passed after the package name which will be used to parameterize the plugin
+loaded.
+e.g. pulumi do --package "name@version param1 \"multi word param\"" 
 
 Resource operations: list, create, read, patch, delete
 Functions are invoked directly by name.
@@ -359,15 +378,20 @@ converter plugin for that format to be installed.`,
 		}
 	})
 
-	constrictor.AttachArguments(cmd, constrictor.UnrestrictedArgs)
-
 	cmd.PersistentFlags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
 	cmd.PersistentFlags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
+	cmd.PersistentFlags().StringVar(
+		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
+			"a path to a plugin binary or folder. If the package supports "+
+			"parameterization, additional space-separated parameters can be "+
+			"included after the package name, e.g. --package \"name@version "+
+			"param1 \\\"multi word param\\\"\"")
 
 	return cmd
 }
 
 type packageCommand struct {
+	pkg               string
 	args              []string
 	evalContext       functionEvalContext
 	converter         func(string) (plugin.Converter, error)
@@ -382,159 +406,208 @@ type packageCommand struct {
 }
 
 func (pc *packageCommand) newCommand() *cobra.Command {
+	// Based on token (if present) we need to work out if this is a package, module, resource, or function command.
+
+	if len(pc.args) == 0 {
+		// No token, so this is just the package command.
+		return pc.newPackageCommand()
+	} else {
+		// Count the separators in the token.
+		count := strings.Count(pc.args[0], ":")
+		if count == 0 {
+			// No separators, this is a package
+			return pc.newPackageCommand()
+		}
+
+		// Try and look it up, it's either a module, resource, or function.
+		fun, ok := pc.spec.GetFunction(pc.args[0])
+		if ok {
+			return pc.newFunctionCommand(fun)
+		}
+		res, ok := pc.spec.GetResource(pc.args[0])
+		if ok {
+			return pc.newResourceCommand(res)
+		}
+
+		return pc.newModuleCommand()
+	}
+}
+
+func (pc *packageCommand) newPackageCommand() *cobra.Command {
 	shorthelp := fmt.Sprintf("Interact with %s resources and functions", pc.spec.Name)
 	longhelp := shorthelp + "."
 	if pc.spec.Description != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, pc.spec.Description)
 	}
+
+	// If the package can't be inferred from the token then add --package to the help text.
+	var flag string
+	if len(pc.args) > 0 {
+		pkg, _, _ := strings.Cut(pc.args[0], ":")
+		if pkg != pc.pkg {
+			flag = " --package " + pc.pkg
+		}
+	} else {
+		flag = " --package " + pc.pkg
+	}
+
 	longhelp = fmt.Sprintf(
-		"%s\n\nRun 'pulumi do %s <module/resource/function> --help' for more details on usage.",
-		longhelp, strings.Join(pc.args, " "))
+		"%s\n\nRun 'pulumi do%s <module/resource/function> --help' for more details on usage.",
+		longhelp, flag)
 
-	cmd := &cobra.Command{
-		Use:   pc.args[0],
-		Short: shorthelp,
-		Long:  longhelp,
-	}
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.PersistentFlags().StringVar(
-		&pc.providerFile, "provider-file", "", "Path to a file containing provider configuration")
-	cmd.PersistentFlags().StringVar(
-		&pc.providerFormat, "provider-format", "pcl", "Format of the provider configuration file")
-
-	moduleCommands := map[string]*cobra.Command{}
-	moduleCommands[""] = cmd // top-level commands with no module go directly under the package command
+	modules := map[string]struct{}{}
+	functions := map[string]*schema.Function{}
+	resources := map[string]*schema.Resource{}
 	for _, fn := range pc.spec.Functions {
-		if pc.spec.TokenToModule(fn.Token) == "" {
-			ensureCommandGroup(cmd, "Functions", "Functions")
-			break
-		}
-	}
-	for _, res := range pc.spec.Resources {
-		if pc.spec.TokenToModule(res.Token) == "" {
-			ensureCommandGroup(cmd, "Resources", "Resources")
-			break
-		}
-	}
-	for _, fn := range pc.spec.Functions {
-		if pc.spec.TokenToModule(fn.Token) != "" {
-			ensureCommandGroup(cmd, "Modules", "Modules")
-			break
-		}
-	}
-	for _, res := range pc.spec.Resources {
-		if pc.spec.TokenToModule(res.Token) != "" {
-			ensureCommandGroup(cmd, "Modules", "Modules")
-			break
-		}
-	}
-
-	for _, fn := range pc.spec.Functions {
-		// Skip methods for now
 		if fn.IsMethod {
 			continue
 		}
 
-		mod := ensureModuleCommand(pc.args, cmd, moduleCommands, pc.spec.TokenToModule(fn.Token))
-		ensureCommandGroup(mod, "Functions", "Functions")
-		mod.AddCommand(pc.newFunctionCommand(fn))
+		mod := pc.spec.TokenToModule(fn.Token)
+		if mod == "" {
+			functions[fn.Token] = fn
+		} else {
+			tok := string(tokens.Token(fn.Token).Package()) + ":" + mod
+			modules[tok] = struct{}{}
+		}
+	}
+	for _, res := range pc.spec.Resources {
+		mod := pc.spec.TokenToModule(res.Token)
+		if mod == "" {
+			resources[res.Token] = res
+		} else {
+			tok := string(tokens.Token(res.Token).Package()) + ":" + mod
+			modules[tok] = struct{}{}
+		}
 	}
 
-	for _, fn := range pc.spec.Resources {
-		mod := ensureModuleCommand(pc.args, cmd, moduleCommands, pc.spec.TokenToModule(fn.Token))
-		ensureCommandGroup(mod, "Resources", "Resources")
-		mod.AddCommand(pc.newResourceCommand(fn))
+	var help strings.Builder
+	if len(modules) > 0 {
+		fmt.Fprintln(&help, "Modules:")
+		for mod := range modules {
+			fmt.Fprintf(&help, "  %s\n", mod)
+		}
+		fmt.Fprintln(&help, "")
+	}
+	if len(functions) > 0 {
+		fmt.Fprintln(&help, "Functions:")
+		for _, fn := range functions {
+			tok := pc.spec.CanonicalizeToken(fn.Token)
+			fmt.Fprintf(&help, "  %s\n", tok)
+		}
+		fmt.Fprintln(&help, "")
+	}
+	if len(resources) > 0 {
+		fmt.Fprintln(&help, "Resources:")
+		for _, res := range resources {
+			tok := pc.spec.CanonicalizeToken(res.Token)
+			fmt.Fprintf(&help, "  %s\n", tok)
+		}
+		fmt.Fprintln(&help, "")
+	}
+
+	longhelp = fmt.Sprintf("%s\n\n%s", longhelp, help.String())
+
+	use := pc.spec.Name
+	if len(pc.args) > 0 {
+		use = pc.args[0]
+	}
+
+	cmd := &cobra.Command{
+		Use:   use,
+		Short: shorthelp,
+		Long:  longhelp,
+		Args:  cobra.NoArgs,
 	}
 
 	return cmd
 }
 
-func ensureModuleCommand(
-	args []string, providerCmd *cobra.Command, cmds map[string]*cobra.Command, mod string,
-) *cobra.Command {
-	if cmd, ok := cmds[mod]; ok {
-		return cmd
-	}
+func (pc *packageCommand) newModuleCommand() *cobra.Command {
+	_, name, _ := strings.Cut(pc.args[0], ":")
 
-	contract.Assertf(mod != "", "module should not be empty")
+	shorthelp := fmt.Sprintf("Functions and resources for the %s module", name)
+	longhelp := shorthelp + "."
 
-	if before, modName, found := strings.Cut(mod, "/"); found {
-		parent := ensureModuleCommand(args, providerCmd, cmds, before)
-		parent.RunE = func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
+	// If the package can't be inferred from the token then add --package to the help text.
+	var flag string
+	if len(pc.args) > 0 {
+		pkg, _, _ := strings.Cut(pc.args[0], ":")
+		if pkg != pc.pkg {
+			flag = " --package " + pc.pkg
 		}
-		parent.SetHelpFunc(moduleHelpWithoutChildren)
-		ensureNestedModulePadding(providerCmd, cmds)
-
-		cmd := newModuleCommand(args, mod, modName, mod, mod)
-		cmds[mod] = cmd
-		ensureCommandGroup(providerCmd, "Modules", "Modules")
-		providerCmd.AddCommand(cmd)
-		return cmd
 	} else {
-		cmd := newModuleCommand(args, mod, mod, mod, mod)
-		cmds[mod] = cmd
-		ensureCommandGroup(providerCmd, "Modules", "Modules")
-		providerCmd.AddCommand(cmd)
-		return cmd
+		flag = " --package " + pc.pkg
 	}
-}
 
-func ensureNestedModulePadding(providerCmd *cobra.Command, cmds map[string]*cobra.Command) {
-	const key = "__nested_module_padding__"
-	if _, ok := cmds[key]; ok {
-		return
-	}
-	cmd := &cobra.Command{
-		Use:    "________________",
-		Hidden: true,
-	}
-	cmds[key] = cmd
-	providerCmd.AddCommand(cmd)
-}
+	longhelp = fmt.Sprintf(
+		"%s\n\nRun 'pulumi do%s <module/resource/function> --help' for more details on usage.",
+		longhelp, flag)
 
-func moduleHelpWithoutChildren(cmd *cobra.Command, args []string) {
-	out := cmd.OutOrStdout()
-	_, _ = fmt.Fprintln(out, cmd.Long)
-	_, _ = fmt.Fprintf(out, "\nUsage:\n  %s [command]\n\n", cmd.CommandPath())
-	if cmd.HasAvailableLocalFlags() {
-		_, _ = fmt.Fprintln(out, "Flags:")
-		_, _ = fmt.Fprint(out, cmd.LocalFlags().FlagUsages())
-		_, _ = fmt.Fprintln(out)
-	}
-	if cmd.HasAvailableInheritedFlags() {
-		_, _ = fmt.Fprintln(out, "Global Flags:")
-		_, _ = fmt.Fprint(out, cmd.InheritedFlags().FlagUsages())
-		_, _ = fmt.Fprintln(out)
-	}
-	_, _ = fmt.Fprintf(out, "Use %q for more information about a command.\n", cmd.CommandPath()+" [command] --help")
-}
+	modules := map[string]struct{}{}
+	functions := map[string]*schema.Function{}
+	resources := map[string]*schema.Resource{}
+	for _, fn := range pc.spec.Functions {
+		if fn.IsMethod {
+			continue
+		}
 
-func newModuleCommand(args []string, use, shortDisplayName, longDisplayName, helpPath string) *cobra.Command {
-	shorthelp := fmt.Sprintf("Functions and resources for the %s module", shortDisplayName)
-	longIntro := fmt.Sprintf("Functions and resources for the %s module", longDisplayName)
-	longhelp := fmt.Sprintf("%s.\n\nRun 'pulumi do %s %s <resource/function> --help' for more details on usage.",
-		longIntro, args[0], helpPath)
-
-	cmd := &cobra.Command{
-		Use:     use,
-		GroupID: "Modules",
-		Short:   shorthelp,
-		Long:    longhelp,
-		Args:    cobra.NoArgs,
-	}
-	return cmd
-}
-
-func ensureCommandGroup(cmd *cobra.Command, id, title string) {
-	for _, group := range cmd.Groups() {
-		if group.ID == id {
-			return
+		mod := pc.spec.TokenToModule(fn.Token)
+		if mod == name {
+			functions[pc.spec.CanonicalizeToken(fn.Token)] = fn
+		} else if strings.HasPrefix(mod, name+"/") {
+			tok := string(tokens.Token(fn.Token).Package()) + ":" + mod
+			modules[tok] = struct{}{}
 		}
 	}
-	cmd.AddGroup(&cobra.Group{
-		ID:    id,
-		Title: title,
-	})
+	for _, res := range pc.spec.Resources {
+		mod := pc.spec.TokenToModule(res.Token)
+		if mod == name {
+			resources[res.Token] = res
+		} else if strings.HasPrefix(mod, name+"/") {
+			tok := string(tokens.Token(res.Token).Package()) + ":" + mod
+			modules[tok] = struct{}{}
+		}
+	}
+
+	var help strings.Builder
+	if len(modules) > 0 {
+		fmt.Fprintln(&help, "Modules:")
+		for mod := range modules {
+			fmt.Fprintf(&help, "  %s\n", mod)
+		}
+		fmt.Fprintln(&help, "")
+	}
+	if len(functions) > 0 {
+		fmt.Fprintln(&help, "Functions:")
+		for _, fn := range functions {
+			tok := pc.spec.CanonicalizeToken(fn.Token)
+			fmt.Fprintf(&help, "  %s\n", tok)
+		}
+		fmt.Fprintln(&help, "")
+	}
+	if len(resources) > 0 {
+		fmt.Fprintln(&help, "Resources:")
+		for _, res := range resources {
+			tok := pc.spec.CanonicalizeToken(res.Token)
+			fmt.Fprintf(&help, "  %s\n", tok)
+		}
+		fmt.Fprintln(&help, "")
+	}
+
+	longhelp = fmt.Sprintf("%s\n\n%s", longhelp, help.String())
+
+	use := pc.spec.Name
+	if len(pc.args) > 0 {
+		use = pc.args[0]
+	}
+
+	cmd := &cobra.Command{
+		Use:   use,
+		Short: shorthelp,
+		Long:  longhelp,
+		Args:  cobra.NoArgs,
+	}
+
+	return cmd
 }

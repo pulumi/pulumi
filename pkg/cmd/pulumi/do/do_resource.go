@@ -91,15 +91,19 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	}
 
 	cmd := &cobra.Command{
-		Use:     name,
-		GroupID: "Resources",
-		Short:   shorthelp,
-		Long:    longhelp,
-		Args:    cobra.NoArgs,
+		Use:   name,
+		Short: shorthelp,
+		Long:  longhelp,
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
 	}
+	// Provider configuration applies to all sub-operations, so register here as persistent flags.
+	cmd.PersistentFlags().StringVar(&pc.providerFile, "provider-file", "",
+		"Path to a file containing provider configuration")
+	cmd.PersistentFlags().StringVar(&pc.providerFormat, "provider-format", "pcl",
+		"Format of the provider configuration file")
 	cmd.AddCommand(pc.newResourceCreateCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))

@@ -1260,7 +1260,7 @@ func TestDoCommandLocalRun(t *testing.T) {
 	// is the JSON result. The provider still captures stdout/stderr as outputs.
 	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n"+`logging = "none"`+"\n")
 
-	stdout, stderr := e.RunCommand("pulumi", "do", "command", "local", "run", "--input-file", "inputs.pcl")
+	stdout, stderr := e.RunCommand("pulumi", "do", "command:local:run", "--input-file", "inputs.pcl")
 
 	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
 	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
@@ -1272,9 +1272,8 @@ func TestDoCommandLocalRun(t *testing.T) {
 	assert.Equal(t, "hello", strings.TrimSpace(fmt.Sprint(result["stdout"])))
 }
 
-// Test that `pulumi do <pkg> <module>` renders the expected help text for a module-level command. We only assert on
-// the do-specific portion up to (and including) the "Flags:" section — the trailing "Global Flags:" comes from
-// pulumi's root command and changes as global flags are added, which isn't what we're trying to pin down here.
+// Test that `pulumi do <pkg:module>` renders the expected help text for a module-level command. We only assert on
+// the do-specific portion.
 func TestDoCommandLocalHelp(t *testing.T) {
 	t.Parallel()
 
@@ -1283,24 +1282,22 @@ func TestDoCommandLocalHelp(t *testing.T) {
 
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 
-	stdout, _ := e.RunCommand("pulumi", "do", "command", "local")
+	stdout, _ := e.RunCommand("pulumi", "do", "command:local")
 
-	expectedPrefix := `Functions and resources for the local module.
+	expected := `Functions and resources for the local module.
 
-Run 'pulumi do command local <resource/function> --help' for more details on usage.
+Run 'pulumi do <module/resource/function> --help' for more details on usage.
 
-Usage:
-  pulumi do command local [command]
+Functions:
+  command:local:run
 
-Functions
-  run         Invoke the run function
-
-Resources
-  Command     Operate on the Command resource
+Resources:
+  command:local:Command
 
 `
-	assert.True(t, strings.HasPrefix(stdout, expectedPrefix),
-		"stdout did not start with expected help prefix.\nExpected:\n%s\nActual:\n%s", expectedPrefix, stdout)
+	assert.Equal(t, expected, stdout,
+		"stdout did not match expected help text.\nExpected:\n%s\nActual:\n%s",
+		expected, stdout)
 }
 
 // Test that `pulumi do` can invoke a real provider resource end-to-end. We use the command provider's local:Command
@@ -1317,7 +1314,7 @@ func TestDoCommandLocalCommand(t *testing.T) {
 	e.WriteTestFile("inputs.pcl", "create = \"echo hello\"\n")
 
 	stdout, stderr := e.RunCommand(
-		"pulumi", "do", "command", "local", "Command", "create",
+		"pulumi", "do", "command:local:Command", "create",
 		"--input-file", "inputs.pcl", "--yes")
 
 	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
