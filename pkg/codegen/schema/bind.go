@@ -170,6 +170,13 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 
 	diags = diags.Extend(spec.validateTypeTokens())
 
+	// Disallow the package names "pulumi" and "input". "pulumi" is reserved for the builtin package and provider
+	// resources, and "input" is reserved for `pulumi do` to use as a discriminator for input flags.
+	if (!options.AllowPulumiPackage && spec.Name == "pulumi") || spec.Name == "input" {
+		diags = diags.Append(errorf("#/name",
+			"invalid package name '%s' (package names 'pulumi' and 'input' are reserved)", spec.Name))
+	}
+
 	config, configDiags, err := bindConfig(spec.Config, types, options)
 	diags = diags.Extend(configDiags)
 	if err != nil {
@@ -336,6 +343,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 
 // Options that affect the validation of the packgae schema.
 type ValidationOptions struct {
+	// Internal flag set to allow the builtin pulumi package to bind.
+	AllowPulumiPackage      bool
 	AllowDanglingReferences bool
 }
 

@@ -1412,8 +1412,11 @@ func TestMethods(t *testing.T) {
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
+			// provider-methods-3.json declares the builtin "pulumi" package to exercise method binding on
+			// pulumi:providers:pulumi; allow the reserved name for these fixtures.
 			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
 				AllowDanglingReferences: true,
+				AllowPulumiPackage:      true,
 			})
 			if tt.expectedError != "" {
 				assert.ErrorContains(t, err, tt.expectedError)
@@ -3377,5 +3380,39 @@ func TestRequiredObjectCycles(t *testing.T) {
 					"test:index:B -> test:index:B",
 			},
 		}, diags)
+	})
+}
+
+// TestBindSpecReservedPackageNames asserts that the package names "pulumi" and "input" are rejected at bind time.
+// "pulumi" is reserved for the builtin package/provider resources; "input" is reserved for `pulumi do` to use as
+// a flag-vs-token discriminator.
+func TestBindSpecReservedPackageNames(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{"pulumi", "input"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, diags, err := BindSpec(PackageSpec{Name: name}, nil, ValidationOptions{})
+			require.NoError(t, err)
+			require.True(t, diags.HasErrors(), "expected errors for reserved name %q, got %v", name, diags)
+			found := false
+			for _, d := range diags {
+				if d.Severity == hcl.DiagError &&
+					strings.Contains(d.Summary, "invalid package name '"+name+"'") {
+					found = true
+					break
+				}
+			}
+			assert.True(t, found, "expected a reserved-name diagnostic for %q, got %v", name, diags)
+		})
+	}
+
+	// Sanity-check: any other name binds without that specific diagnostic.
+	t.Run("non-reserved", func(t *testing.T) {
+		t.Parallel()
+		_, diags, _ := BindSpec(PackageSpec{Name: "aws"}, nil, ValidationOptions{})
+		for _, d := range diags {
+			assert.NotContains(t, d.Summary, "package names 'pulumi' and 'input' are reserved")
+		}
 	})
 }
