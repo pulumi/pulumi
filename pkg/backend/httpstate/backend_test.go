@@ -150,7 +150,7 @@ func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *t
 	err = workspace.StoreAgentAccount("https://api.example.com", workspace.Account{AccessToken: "agent-token"}, true)
 	require.NoError(t, err)
 
-	account, err := getBackendAccount("https://api.example.com")
+	account, err := getBackendAccount(t.Context(), "https://api.example.com")
 	require.Error(t, err)
 	assert.Empty(t, account.AccessToken)
 }
@@ -373,11 +373,12 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "valid-agent-token", account.AccessToken)
-	assert.True(t, AgentCredentialsUsed(server.URL))
+	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
 	assert.Equal(t, 0, signupCalls)
 }
 
@@ -445,11 +446,12 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-token", account.AccessToken)
-	assert.True(t, AgentCredentialsUsed(server.URL))
+	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
 	require.NotNil(t, account.TokenInformation)
 	require.NotNil(t, account.TokenInformation.ExpiresAt)
 	assert.True(t, account.TokenInformation.ExpiresAt.Equal(accessTokenValidUntil))
@@ -598,13 +600,14 @@ func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	account, err := NewLoginManager().Login(t.Context(), server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := NewLoginManager().Login(ctx, server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
 		display.Options{})
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-token", account.AccessToken)
 	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods)
-	assert.True(t, AgentCredentialsUsed(server.URL))
+	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
 }
 
 //nolint:paralleltest // mutates global configuration

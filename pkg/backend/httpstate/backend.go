@@ -79,27 +79,48 @@ import (
 
 var ErrUnauthorized = errors.New("Unauthorized: No credentials provided or are invalid.")
 
-var agentCredentialUse = struct {
+type agentCredentialUseContextKey struct{}
+
+type agentCredentialUse struct {
 	sync.Mutex
 	cloudURLs map[string]bool
-}{
-	cloudURLs: map[string]bool{},
 }
 
-// MarkAgentCredentialsUsed records that this CLI process selected shared
-// temporary agent credentials for the given cloud URL.
-func MarkAgentCredentialsUsed(cloudURL string) {
-	agentCredentialUse.Lock()
-	defer agentCredentialUse.Unlock()
-	agentCredentialUse.cloudURLs[cloudURL] = true
+// ContextWithAgentCredentialUse returns a context that tracks shared temporary
+// agent credential use for one CLI command.
+func ContextWithAgentCredentialUse(ctx context.Context) context.Context {
+	return context.WithValue(ctx, agentCredentialUseContextKey{}, &agentCredentialUse{
+		cloudURLs: map[string]bool{},
+	})
 }
 
-// AgentCredentialsUsed reports whether this CLI process selected shared
+func agentCredentialUseFromContext(ctx context.Context) *agentCredentialUse {
+	use, _ := ctx.Value(agentCredentialUseContextKey{}).(*agentCredentialUse)
+	return use
+}
+
+// MarkAgentCredentialsUsed records that this CLI command selected shared
 // temporary agent credentials for the given cloud URL.
-func AgentCredentialsUsed(cloudURL string) bool {
-	agentCredentialUse.Lock()
-	defer agentCredentialUse.Unlock()
-	return agentCredentialUse.cloudURLs[cloudURL]
+func MarkAgentCredentialsUsed(ctx context.Context, cloudURL string) {
+	use := agentCredentialUseFromContext(ctx)
+	if use == nil {
+		return
+	}
+	use.Lock()
+	defer use.Unlock()
+	use.cloudURLs[cloudURL] = true
+}
+
+// AgentCredentialsUsed reports whether this CLI command selected shared
+// temporary agent credentials for the given cloud URL.
+func AgentCredentialsUsed(ctx context.Context, cloudURL string) bool {
+	use := agentCredentialUseFromContext(ctx)
+	if use == nil {
+		return false
+	}
+	use.Lock()
+	defer use.Unlock()
+	return use.cloudURLs[cloudURL]
 }
 
 type PulumiAILanguage string
@@ -252,7 +273,7 @@ func New(ctx context.Context, d diag.Sink,
 ) (Backend, error) {
 	contract.Requiref(d != nil, "d", "expected a non-nil diag.Sink")
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
-	account, err := getBackendAccount(cloudURL)
+	account, err := getBackendAccount(ctx, cloudURL)
 	if err != nil {
 		return nil, fmt.Errorf("getting stored credentials: %w", err)
 	}
@@ -302,14 +323,14 @@ func New(ctx context.Context, d diag.Sink,
 
 // getBackendAccount returns account credentials for a backend, falling back to
 // the shared agent cache when an agent cannot read the default credentials.
-func getBackendAccount(cloudURL string) (workspace.Account, error) {
+func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account, error) {
 	account, fromAgent, err := workspace.GetAccountWithAgentFallback(cloudURL)
 	if err != nil {
 		return workspace.Account{}, err
 	}
 	if fromAgent {
 		logging.V(7).Infof("Using backend account for %q from shared agent credentials", cloudURL)
-		MarkAgentCredentialsUsed(cloudURL)
+		MarkAgentCredentialsUsed(ctx, cloudURL)
 	} else if account.AccessToken != "" {
 		logging.V(7).Infof("Using backend account for %q from default credentials", cloudURL)
 	} else {
@@ -657,7 +678,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 			if err = workspace.StoreAgentAccount(cloudURL, agentAccount, setCurrent); err != nil {
 				return nil, err
 			}
-			MarkAgentCredentialsUsed(cloudURL)
+			MarkAgentCredentialsUsed(ctx, cloudURL)
 			return &agentAccount, nil
 		}
 		if expiresAt, tokenValid := workspace.AgentAccessTokenExpiresAt(agentAccount, now); tokenValid {
@@ -722,7 +743,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	if err = workspace.StoreAgentAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
-	MarkAgentCredentialsUsed(cloudURL)
+	MarkAgentCredentialsUsed(ctx, cloudURL)
 	logging.V(7).Infof("Stored shared agent credentials for %q", cloudURL)
 	claim := workspace.AgentClaim{
 		ClaimURL:   claimURL,

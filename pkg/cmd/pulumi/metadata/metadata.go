@@ -235,18 +235,11 @@ func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgen
 	}
 	env[backend.ExecutionKind] = execKind
 	if execAgent == "" {
-		execAgent = DetectAIAgent(os.Getenv)
+		execAgent = agentdetect.Detect(os.Getenv)
 	}
 	if execAgent != "" {
 		env[backend.ExecutionAgent] = execAgent
 	}
-}
-
-// DetectAIAgent returns a normalized name for the AI coding agent driving
-// the CLI (e.g. "claude", "cursor", "codex"), or "" if none is detected.
-// Detection is based on environment variables.
-func DetectAIAgent(getEnv func(string) string) string {
-	return agentdetect.Detect(getEnv)
 }
 
 // addUpdatePlanMetadataToEnvironment populates the environment metadata bag with update plan related values.

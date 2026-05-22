@@ -17,6 +17,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -47,15 +48,15 @@ import (
 // DisplayErrorMessage adds additional error handling specific to the Pulumi CLI. This
 // includes e.g. specific and more helpful messages in the case of decryption or snapshot
 // integrity errors.
-func DisplayErrorMessage(err error, stderr io.Writer) {
-	err = processCmdErrors(err, stderr)
+func DisplayErrorMessage(ctx context.Context, err error, stderr io.Writer) {
+	err = processCmdErrors(ctx, err, stderr)
 	cmdutil.DisplayErrorMessage(err)
 }
 
 // Processes errors that may be returned from commands, providing a central
 // location to insert more human-friendly messages when certain errors occur, or
 // to perform other type-specific handling.
-func processCmdErrors(err error, stderr io.Writer) error {
+func processCmdErrors(ctx context.Context, err error, stderr io.Writer) error {
 	// If no error occurred, we have nothing to do.
 	if err == nil {
 		return nil
@@ -85,7 +86,7 @@ func processCmdErrors(err error, stderr io.Writer) error {
 			return result.BailError(err)
 		}
 	} else {
-		agentauth.MaybePrintClaimWarning(stderr)
+		agentauth.MaybePrintClaimWarning(ctx, stderr)
 	}
 
 	// Other type-specific error handling.

@@ -64,7 +64,7 @@ func TestProcessCmdErrorsPrintsAgentAuthRequiredInstruction(t *testing.T) {
 	require.NoError(t, err)
 
 	var output bytes.Buffer
-	err = processCmdErrors(backenderr.LoginRequiredError{}, &output)
+	err = processCmdErrors(t.Context(), backenderr.LoginRequiredError{}, &output)
 
 	assert.True(t, result.IsBail(err))
 	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
@@ -85,7 +85,7 @@ func TestProcessCmdErrorsKeepsGenericLoginRequiredOutsideAgentMode(t *testing.T)
 	t.Setenv("CLAUDE_CODE", "")
 
 	err := backenderr.LoginRequiredError{}
-	assert.Equal(t, err, processCmdErrors(err, io.Discard))
+	assert.Equal(t, err, processCmdErrors(t.Context(), err, io.Discard))
 }
 
 //nolint:paralleltest // mutates shared temporary agent credentials
@@ -118,11 +118,12 @@ func TestProcessCmdErrorsPrintsAgentClaimWarningForNonLoginError(t *testing.T) {
 		ValidUntil: time.Now().Add(24 * time.Hour),
 	})
 	require.NoError(t, err)
-	httpstate.MarkAgentCredentialsUsed(cloudURL)
+	ctx := httpstate.ContextWithAgentCredentialUse(t.Context())
+	httpstate.MarkAgentCredentialsUsed(ctx, cloudURL)
 
 	inputErr := errors.New("something failed")
 	var output bytes.Buffer
-	err = processCmdErrors(inputErr, &output)
+	err = processCmdErrors(ctx, inputErr, &output)
 
 	assert.Same(t, inputErr, err)
 	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
@@ -166,10 +167,11 @@ func TestProcessCmdErrorsDoesNotPrintClaimURLForUnauthorizedClaimedAccount(t *te
 		ValidUntil: time.Now().Add(24 * time.Hour),
 	})
 	require.NoError(t, err)
-	httpstate.MarkAgentCredentialsUsed(server.URL)
+	ctx := httpstate.ContextWithAgentCredentialUse(t.Context())
+	httpstate.MarkAgentCredentialsUsed(ctx, server.URL)
 
 	var output bytes.Buffer
-	err = processCmdErrors(httpstate.ErrUnauthorized, &output)
+	err = processCmdErrors(ctx, httpstate.ErrUnauthorized, &output)
 
 	assert.True(t, result.IsBail(err))
 	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT")

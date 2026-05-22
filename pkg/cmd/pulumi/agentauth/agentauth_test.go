@@ -37,7 +37,7 @@ func TestMaybePrintClaimWarningSkipsOutsideAgentMode(t *testing.T) {
 	clearAgentEnv(t)
 
 	var output bytes.Buffer
-	MaybePrintClaimWarning(&output)
+	MaybePrintClaimWarning(t.Context(), &output)
 	assert.Empty(t, output.String())
 }
 
@@ -54,7 +54,7 @@ func TestMaybePrintClaimWarningSkipsMissingClaim(t *testing.T) {
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
 	var output bytes.Buffer
-	MaybePrintClaimWarning(&output)
+	MaybePrintClaimWarning(t.Context(), &output)
 	assert.Empty(t, output.String())
 }
 
@@ -87,10 +87,11 @@ func TestMaybePrintClaimWarningSkipsDeletedExpiredAgentCredentials(t *testing.T)
 		ValidUntil: expiredAt,
 	})
 	require.NoError(t, err)
-	httpstate.MarkAgentCredentialsUsed(cloudURL)
+	ctx := httpstate.ContextWithAgentCredentialUse(t.Context())
+	httpstate.MarkAgentCredentialsUsed(ctx, cloudURL)
 
 	var output bytes.Buffer
-	MaybePrintClaimWarning(&output)
+	MaybePrintClaimWarning(ctx, &output)
 	assert.Empty(t, output.String())
 }
 
@@ -107,11 +108,12 @@ func TestMaybePrintClaimWarningSkipsUnreadableAgentAccount(t *testing.T) {
 		ValidUntil: time.Now().Add(time.Hour),
 	})
 	require.NoError(t, err)
-	httpstate.MarkAgentCredentialsUsed(cloudURL)
+	ctx := httpstate.ContextWithAgentCredentialUse(t.Context())
+	httpstate.MarkAgentCredentialsUsed(ctx, cloudURL)
 	require.NoError(t, os.WriteFile(filepath.Join(agentDir, "credentials.json"), []byte("{"), 0o600))
 
 	var output bytes.Buffer
-	MaybePrintClaimWarning(&output)
+	MaybePrintClaimWarning(ctx, &output)
 	assert.Empty(t, output.String())
 }
 
@@ -147,7 +149,7 @@ func TestMaybePrintClaimWarningRequiresAgentCredentialsUsed(t *testing.T) {
 	require.NoError(t, err)
 
 	var output bytes.Buffer
-	MaybePrintClaimWarning(&output)
+	MaybePrintClaimWarning(t.Context(), &output)
 	assert.Empty(t, output.String())
 }
 
@@ -181,10 +183,11 @@ func TestMaybePrintClaimWarningPrintsForUsedAgentCredentials(t *testing.T) {
 		ValidUntil: time.Now().Add(24 * time.Hour),
 	})
 	require.NoError(t, err)
-	httpstate.MarkAgentCredentialsUsed(cloudURL)
+	ctx := httpstate.ContextWithAgentCredentialUse(t.Context())
+	httpstate.MarkAgentCredentialsUsed(ctx, cloudURL)
 
 	var output bytes.Buffer
-	MaybePrintClaimWarning(&output)
+	MaybePrintClaimWarning(ctx, &output)
 	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, output.String(), "CLAIM_URL=https://app.pulumi.com/claim/used")
 }

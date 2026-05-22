@@ -34,7 +34,7 @@ var validateAgentClaim = func(ctx context.Context, cloudURL, claimToken string) 
 
 // MaybePrintClaimWarning reminds detected coding agents to tell the user about
 // a claim URL for shared agent credentials used by this CLI process.
-func MaybePrintClaimWarning(stderr io.Writer) {
+func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
 	if agentdetect.Detect(os.Getenv) == "" {
 		return
 	}
@@ -53,7 +53,7 @@ func MaybePrintClaimWarning(stderr io.Writer) {
 	if err != nil || claim.ClaimURL == "" {
 		return
 	}
-	if claim.CloudURL == "" || !httpstate.AgentCredentialsUsed(claim.CloudURL) {
+	if claim.CloudURL == "" || !httpstate.AgentCredentialsUsed(ctx, claim.CloudURL) {
 		return
 	}
 	account, err := workspace.GetAgentAccount(claim.CloudURL)
