@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/google/shlex"
+	"github.com/pgavlin/fx/v2/maps"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -501,36 +502,23 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 	var help strings.Builder
 	if len(modules) > 0 {
 		fmt.Fprintln(&help, "Modules:")
-		moduleNames := make([]string, 0, len(modules))
-		for mod := range modules {
-			moduleNames = append(moduleNames, mod)
-		}
-		slices.Sort(moduleNames)
-		for _, mod := range moduleNames {
+		for mod := range maps.Sorted(modules) {
 			fmt.Fprintf(&help, "  %s\n", mod)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
-		functionNames := make([]string, 0, len(functions))
-		for _, fn := range functions {
-			functionNames = append(functionNames, pc.spec.CanonicalizeToken(fn.Token))
-		}
-		slices.Sort(functionNames)
-		for _, tok := range functionNames {
+		for _, fn := range maps.Sorted(functions) {
+			tok := pc.spec.CanonicalizeToken(fn.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
-		resourceNames := make([]string, 0, len(resources))
-		for _, res := range resources {
-			resourceNames = append(resourceNames, pc.spec.CanonicalizeToken(res.Token))
-		}
-		slices.Sort(resourceNames)
-		for _, tok := range resourceNames {
+		for _, res := range maps.Sorted(resources) {
+			tok := pc.spec.CanonicalizeToken(res.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
@@ -603,36 +591,23 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 	var help strings.Builder
 	if len(modules) > 0 {
 		fmt.Fprintln(&help, "Modules:")
-		moduleNames := make([]string, 0, len(modules))
-		for mod := range modules {
-			moduleNames = append(moduleNames, mod)
-		}
-		slices.Sort(moduleNames)
-		for _, mod := range moduleNames {
+		for mod := range maps.Sorted(modules) {
 			fmt.Fprintf(&help, "  %s\n", mod)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
-		functionNames := make([]string, 0, len(functions))
-		for _, fn := range functions {
-			functionNames = append(functionNames, pc.spec.CanonicalizeToken(fn.Token))
-		}
-		slices.Sort(functionNames)
-		for _, tok := range functionNames {
+		for _, fn := range maps.Sorted(functions) {
+			tok := pc.spec.CanonicalizeToken(fn.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
-		resourceNames := make([]string, 0, len(resources))
-		for _, res := range resources {
-			resourceNames = append(resourceNames, pc.spec.CanonicalizeToken(res.Token))
-		}
-		slices.Sort(resourceNames)
-		for _, tok := range resourceNames {
+		for _, res := range maps.Sorted(resources) {
+			tok := pc.spec.CanonicalizeToken(res.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
