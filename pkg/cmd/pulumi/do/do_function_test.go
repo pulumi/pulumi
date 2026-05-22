@@ -2355,7 +2355,81 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 	assert.ErrorContains(t, err, "not_an_input")
 }
 
-func TestDoCmdFunctionInvokeWithYAMLProviderFlags(t *testing.T) {
+func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
+	t.Parallel()
+
+	configureCalled := false
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Provider: schema.ResourceSpec{
+				InputProperties: map[string]schema.PropertySpec{
+					"opt1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					"opt2": {TypeSpec: schema.TypeSpec{Type: "string"}},
+				},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"in1":     {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"in2":     {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"dry-run": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					configureCalled = true
+					// The converted PCL ("opt1 = \"val1\"") + opt2=val2 should be bound, evaluated, and reach Configure intact.
+					assert.Equal(t, "val1", req.Inputs["opt1"].StringValue())
+					assert.Equal(t, "val2", req.Inputs["opt2"].StringValue())
+					return plugin.ConfigureResponse{}, nil
+				},
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "p1", req.Args["in1"].StringValue())
+					assert.Equal(t, "p2", req.Args["in2"].StringValue())
+					assert.Equal(t, true, req.Args["dry-run"].BoolValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	providerFile := writeHCLFile(t, "provider.pcl", "opt1 = \"val1\"\n")
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{
+		"azure:index:myFunction",
+		"--provider-file", providerFile,
+		"--azure:opt2", "val2",
+		"--in1", "p1",
+		"--input:in2", "p2",
+		"--input:dry-run",
+	})
+	err := cmd.Execute()
+	require.NoError(t, err)
+	assert.True(t, configureCalled, "Configure should be called with the converted provider config")
+}
+
+func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	t.Parallel()
 
 	configureCalled := false
@@ -2387,7 +2461,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFlags(t *testing.T) {
 				assert.Equal(t, "azure", req.Package.Package)
 				return &plugin.ConvertSnippetResponse{
 					Filename: "provider.pp",
-					Source:   []byte(`opt1 = "val1"` + "\n"),
+					Source:   []byte(`opt1 = "val1"` + "\n" + `opt2 = "val2"` + "\n"),
 				}, nil
 			},
 		}, nil
@@ -2404,6 +2478,13 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFlags(t *testing.T) {
 			},
 			Functions: map[string]schema.FunctionSpec{
 				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"in1":     {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"in2":     {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"dry-run": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						},
+					},
 					Outputs: &schema.ObjectTypeSpec{
 						Properties: map[string]schema.PropertySpec{
 							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
@@ -2423,6 +2504,9 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFlags(t *testing.T) {
 					return plugin.ConfigureResponse{}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "p1", req.Args["in1"].StringValue())
+					assert.Equal(t, "p2", req.Args["in2"].StringValue())
+					assert.Equal(t, true, req.Args["dry-run"].BoolValue())
 					return plugin.InvokeResponse{
 						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
 					}, nil
@@ -2441,6 +2525,9 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFlags(t *testing.T) {
 		"azure:index:myFunction",
 		"--provider-file", providerFile, "--provider-format", "yaml",
 		"--azure:opt2", "val2",
+		"--in1", "p1",
+		"--input:in2", "p2",
+		"--input:dry-run",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)

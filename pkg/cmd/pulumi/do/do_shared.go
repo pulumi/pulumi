@@ -366,15 +366,48 @@ func evaluateResourceFile(
 	)
 }
 
-func schemaTypeString(t schema.Type) string {
-	switch t := t.(type) {
-	case *schema.OptionalType:
-		return schemaTypeString(t.ElementType)
-	case *schema.InputType:
-		return schemaTypeString(t.ElementType)
-	default:
-		return t.String()
+func addInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Property) {
+	for _, input := range inputs {
+		var flagFunc func(string)
+
+		typ := unwrapType(input.Type)
+
+		if typ == schema.StringType {
+			flagFunc = func(name string) {
+				cmd.Flags().String(name, "", input.Comment)
+			}
+		}
+		if typ == schema.BoolType {
+			flagFunc = func(name string) {
+				cmd.Flags().Bool(name, false, input.Comment)
+			}
+		}
+		if typ == schema.NumberType {
+			flagFunc = func(name string) {
+				cmd.Flags().Float64(name, 0, input.Comment)
+			}
+		}
+
+		if flagFunc != nil {
+			key := fmt.Sprintf("%s:%s", namespace, input.Name)
+			flagFunc(key)
+			if namespace == "input" && cmd.Flags().Lookup(input.Name) == nil {
+				flagFunc(input.Name)
+				cmd.MarkFlagsMutuallyExclusive(key, input.Name)
+			}
+		}
 	}
+}
+
+// unwrapType recursively unwraps Optional and Input types to get at the underlying element type.
+func unwrapType(typ schema.Type) schema.Type {
+	if opt, ok := typ.(*schema.OptionalType); ok {
+		return unwrapType(opt.ElementType)
+	}
+	if input, ok := typ.(*schema.InputType); ok {
+		return unwrapType(input.ElementType)
+	}
+	return typ
 }
 
 func resourceURN(res *schema.Resource) resource.URN {

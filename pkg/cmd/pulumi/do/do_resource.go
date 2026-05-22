@@ -53,7 +53,7 @@ func resourceSchemaHelp(res *schema.Resource) string {
 		b.WriteString(title)
 		b.WriteString(":\n")
 		for _, property := range properties {
-			fmt.Fprintf(&b, "  %s (%s", property.Name, schemaTypeString(property.Type))
+			fmt.Fprintf(&b, "  %s (%s", property.Name, unwrapType(property.Type))
 			if includeRequired {
 				if property.IsRequired() {
 					b.WriteString(", required")
