@@ -2464,7 +2464,10 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 					assert.Equal(t, "azure", req.Package.Package)
 					return &plugin.ConvertSnippetResponse{
 						Filename: "provider.pp",
-						Source:   []byte(`opt1 = "val1"` + "\n" + `opt2 = "val2"` + "\n"),
+						Source:   []byte(`opt1 = "val1"` + "\n"),
+						Attributes: map[string]string{
+							"opt2": "\"val2\"",
+						},
 					}, nil
 				case "inputs.yaml":
 					assert.Equal(t, "in1: file\n", string(req.Source))
@@ -2478,10 +2481,12 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 					assert.Equal(t, "azure", req.Package.Package)
 					return &plugin.ConvertSnippetResponse{
 						Filename: "inputs.pp",
-						Source: []byte(
-							`in1 = "p1"` + "\n" +
-								`in2 = "p2"` + "\n" +
-								`dry-run = true` + "\n"),
+						Source:   []byte(`in1 = "file"` + "\n"),
+						Attributes: map[string]string{
+							"in1":     "\"p1\"",
+							"in2":     "\"p2\"",
+							"dry-run": "true",
+						},
 					}, nil
 				default:
 					require.Failf(t, "unexpected converter input", "filename: %s", req.Filename)

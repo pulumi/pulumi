@@ -120,5 +120,6 @@ func (c *converterServer) ConvertSnippet(ctx context.Context,
 		Diagnostics: diags,
 		Filename:    resp.Filename,
 		Source:      resp.Source,
+		Attributes:  resp.Attributes,
 	}, nil
 }

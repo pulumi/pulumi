@@ -211,5 +211,6 @@ func (c *converter) ConvertSnippet(
 		Diagnostics: diags,
 		Filename:    resp.Filename,
 		Source:      resp.Source,
+		Attributes:  resp.Attributes,
 	}, nil
 }

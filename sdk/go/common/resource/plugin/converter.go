@@ -73,6 +73,7 @@ type ConvertSnippetResponse struct {
 	Diagnostics hcl.Diagnostics
 	Filename    string
 	Source      []byte
+	Attributes  map[string]string
 }
 
 type Converter interface {
