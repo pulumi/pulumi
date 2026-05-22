@@ -133,9 +133,8 @@ Flags:
   -h, --help                   help for do
       --input string           Format of the configuration files (default "pcl")
       --input-file string      Path to a file containing function inputs
-      --input:param1 string    To set param1 things
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
-      --param1 string          To set param1 things
+      --param1 string          To set param1 things (alias for --input:param1)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
 `

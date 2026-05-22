@@ -499,38 +499,40 @@ func addPersistentInputFlags(cmd *cobra.Command, namespace string, inputs []*sch
 
 func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string, inputs []*schema.Property) {
 	for _, input := range inputs {
-		var flagFunc func(string)
+		var flagFunc func(string, string)
 
 		typ := unwrapType(input.Type)
 
 		if typ == schema.StringType {
-			flagFunc = func(name string) {
-				flags.String(name, "", input.Comment)
+			flagFunc = func(name, extraHelp string) {
+				flags.String(name, "", input.Comment+extraHelp)
 			}
 		}
 		if typ == schema.BoolType {
-			flagFunc = func(name string) {
-				flags.Bool(name, false, input.Comment)
+			flagFunc = func(name, extraHelp string) {
+				flags.Bool(name, false, input.Comment+extraHelp)
 			}
 		}
 		if typ == schema.IntType {
-			flagFunc = func(name string) {
-				flags.Int(name, 0, input.Comment)
+			flagFunc = func(name, extraHelp string) {
+				flags.Int(name, 0, input.Comment+extraHelp)
 			}
 		}
 		if typ == schema.NumberType {
-			flagFunc = func(name string) {
-				flags.Float64(name, 0, input.Comment)
+			flagFunc = func(name, extraHelp string) {
+				flags.Float64(name, 0, input.Comment+extraHelp)
 			}
 		}
 
 		if flagFunc != nil {
 			flagName := inputFlagName(input.Name)
 			key := fmt.Sprintf("%s:%s", namespace, flagName)
-			flagFunc(key)
+			flagFunc(key, "")
 			if namespace == "input" && flags.Lookup(flagName) == nil {
-				flagFunc(flagName)
+				flagFunc(flagName, " (alias for --"+key+")")
 				cmd.MarkFlagsMutuallyExclusive(key, flagName)
+				// Mark the namespaced flag as hidden
+				flags.Lookup(key).Hidden = true
 			}
 		}
 	}
