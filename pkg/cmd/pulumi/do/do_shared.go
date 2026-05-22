@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/gofrs/uuid"
 	"github.com/hashicorp/hcl/v2"
@@ -397,12 +398,13 @@ func collectInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Pr
 			continue
 		}
 
-		if flag := cmd.Flag(fmt.Sprintf("%s:%s", namespace, input.Name)); flag != nil && flag.Changed {
+		flagName := inputFlagName(input.Name)
+		if flag := cmd.Flag(fmt.Sprintf("%s:%s", namespace, flagName)); flag != nil && flag.Changed {
 			values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ}
 			continue
 		}
 		if namespace == "input" {
-			if flag := cmd.Flag(input.Name); flag != nil && flag.Changed {
+			if flag := cmd.Flag(flagName); flag != nil && flag.Changed {
 				values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ}
 			}
 		}
@@ -511,14 +513,45 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		}
 
 		if flagFunc != nil {
-			key := fmt.Sprintf("%s:%s", namespace, input.Name)
+			flagName := inputFlagName(input.Name)
+			key := fmt.Sprintf("%s:%s", namespace, flagName)
 			flagFunc(key)
-			if namespace == "input" && flags.Lookup(input.Name) == nil {
-				flagFunc(input.Name)
-				cmd.MarkFlagsMutuallyExclusive(key, input.Name)
+			if namespace == "input" && flags.Lookup(flagName) == nil {
+				flagFunc(flagName)
+				cmd.MarkFlagsMutuallyExclusive(key, flagName)
 			}
 		}
 	}
+}
+
+func inputFlagName(name string) string {
+	var builder strings.Builder
+	var previous rune
+	var previousIsWord bool
+	var previousIsSeparator bool
+	runes := []rune(name)
+	for i, r := range runes {
+		if r == '_' || r == '-' || unicode.IsSpace(r) {
+			if builder.Len() > 0 && !previousIsSeparator {
+				builder.WriteRune('-')
+			}
+			previous = '-'
+			previousIsWord = false
+			previousIsSeparator = true
+			continue
+		}
+
+		nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+		if unicode.IsUpper(r) && previousIsWord &&
+			(unicode.IsLower(previous) || unicode.IsDigit(previous) || nextIsLower) {
+			builder.WriteRune('-')
+		}
+		builder.WriteRune(unicode.ToLower(r))
+		previous = r
+		previousIsWord = true
+		previousIsSeparator = false
+	}
+	return strings.TrimSuffix(builder.String(), "-")
 }
 
 func isInputFlagType(typ schema.Type) bool {

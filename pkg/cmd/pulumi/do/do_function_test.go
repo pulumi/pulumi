@@ -2369,17 +2369,17 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 			Name: "azure",
 			Provider: schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
-					"opt1": {TypeSpec: schema.TypeSpec{Type: "string"}},
-					"opt2": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					"opt1":   {TypeSpec: schema.TypeSpec{Type: "string"}},
+					"optTwo": {TypeSpec: schema.TypeSpec{Type: "string"}},
 				},
 			},
 			Functions: map[string]schema.FunctionSpec{
 				"azure:index:myFunction": {
 					Inputs: &schema.ObjectTypeSpec{
 						Properties: map[string]schema.PropertySpec{
-							"in1":     {TypeSpec: schema.TypeSpec{Type: "string"}},
-							"in2":     {TypeSpec: schema.TypeSpec{Type: "string"}},
-							"dry-run": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+							"in1":    {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"inTwo":  {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"dryRun": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
 						},
 					},
 					Outputs: &schema.ObjectTypeSpec{
@@ -2395,15 +2395,15 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 					configureCalled = true
-					// The converted PCL ("opt1 = \"val1\"") + opt2=val2 should be bound, evaluated, and reach Configure intact.
+					// The converted PCL ("opt1 = \"val1\"") + optTwo=val2 should be bound, evaluated, and reach Configure intact.
 					assert.Equal(t, "val1", req.Inputs["opt1"].StringValue())
-					assert.Equal(t, "val2", req.Inputs["opt2"].StringValue())
+					assert.Equal(t, "val2", req.Inputs["optTwo"].StringValue())
 					return plugin.ConfigureResponse{}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, "p1", req.Args["in1"].StringValue())
-					assert.Equal(t, "p2", req.Args["in2"].StringValue())
-					assert.Equal(t, true, req.Args["dry-run"].BoolValue())
+					assert.Equal(t, "p2", req.Args["inTwo"].StringValue())
+					assert.Equal(t, true, req.Args["dryRun"].BoolValue())
 					return plugin.InvokeResponse{
 						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
 					}, nil
@@ -2421,9 +2421,9 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 	cmd.SetArgs([]string{
 		"azure:index:myFunction",
 		"--provider-file", providerFile,
-		"--azure:opt2", "val2",
+		"--azure:opt-two", "val2",
 		"--in1", "p1",
-		"--input:in2", "p2",
+		"--input:in-two", "p2",
 		"--input:dry-run",
 	})
 	err := cmd.Execute()
@@ -2455,7 +2455,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 				case "provider.yaml":
 					assert.Equal(t, "opt1: val1\n", string(req.Source))
 					assert.Equal(t, map[string]string{
-						"opt2": "val2",
+						"optTwo": "val2",
 					}, req.Attributes)
 					// The converter should be told this is a provider-config snippet via the provider's resource token,
 					// not the function token.
@@ -2466,15 +2466,15 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 						Filename: "provider.pp",
 						Source:   []byte(`opt1 = "val1"` + "\n"),
 						Attributes: map[string]string{
-							"opt2": "\"val2\"",
+							"optTwo": "\"val2\"",
 						},
 					}, nil
 				case "inputs.yaml":
 					assert.Equal(t, "in1: file\n", string(req.Source))
 					assert.Equal(t, map[string]string{
-						"dry-run": "true",
-						"in1":     "p1",
-						"in2":     "p2",
+						"dryRun": "true",
+						"in1":    "p1",
+						"inTwo":  "p2",
 					}, req.Attributes)
 					assert.Equal(t, "azure:index:myFunction", req.Token)
 					require.NotNil(t, req.Package)
@@ -2483,9 +2483,9 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 						Filename: "inputs.pp",
 						Source:   []byte(`in1 = "file"` + "\n"),
 						Attributes: map[string]string{
-							"in1":     "\"p1\"",
-							"in2":     "\"p2\"",
-							"dry-run": "true",
+							"in1":    "\"p1\"",
+							"inTwo":  "\"p2\"",
+							"dryRun": "true",
 						},
 					}, nil
 				default:
@@ -2501,17 +2501,17 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 			Name: "azure",
 			Provider: schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
-					"opt1": {TypeSpec: schema.TypeSpec{Type: "string"}},
-					"opt2": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					"opt1":   {TypeSpec: schema.TypeSpec{Type: "string"}},
+					"optTwo": {TypeSpec: schema.TypeSpec{Type: "string"}},
 				},
 			},
 			Functions: map[string]schema.FunctionSpec{
 				"azure:index:myFunction": {
 					Inputs: &schema.ObjectTypeSpec{
 						Properties: map[string]schema.PropertySpec{
-							"in1":     {TypeSpec: schema.TypeSpec{Type: "string"}},
-							"in2":     {TypeSpec: schema.TypeSpec{Type: "string"}},
-							"dry-run": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+							"in1":    {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"inTwo":  {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"dryRun": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
 						},
 					},
 					Outputs: &schema.ObjectTypeSpec{
@@ -2527,15 +2527,15 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 					configureCalled = true
-					// The converted PCL ("opt1 = \"val1\"") + opt2=val2 should be bound, evaluated, and reach Configure intact.
+					// The converted PCL ("opt1 = \"val1\"") + optTwo=val2 should be bound, evaluated, and reach Configure intact.
 					assert.Equal(t, "val1", req.Inputs["opt1"].StringValue())
-					assert.Equal(t, "val2", req.Inputs["opt2"].StringValue())
+					assert.Equal(t, "val2", req.Inputs["optTwo"].StringValue())
 					return plugin.ConfigureResponse{}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, "p1", req.Args["in1"].StringValue())
-					assert.Equal(t, "p2", req.Args["in2"].StringValue())
-					assert.Equal(t, true, req.Args["dry-run"].BoolValue())
+					assert.Equal(t, "p2", req.Args["inTwo"].StringValue())
+					assert.Equal(t, true, req.Args["dryRun"].BoolValue())
 					return plugin.InvokeResponse{
 						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
 					}, nil
@@ -2555,9 +2555,9 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 		"azure:index:myFunction",
 		"--provider-file", providerFile,
 		"--input-file", inputFile, "--input", "yaml",
-		"--azure:opt2", "val2",
+		"--azure:opt-two", "val2",
 		"--in1", "p1",
-		"--input:in2", "p2",
+		"--input:in-two", "p2",
 		"--input:dry-run",
 	})
 	err := cmd.Execute()
