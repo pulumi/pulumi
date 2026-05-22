@@ -444,9 +444,9 @@ func FormatAgentLoginRequiredInstruction(
 	var message strings.Builder
 	message.WriteString("PULUMI_EPHEMERAL_AGENT_ACCOUNT\n")
 	if accessTokenExpiresAt != nil {
-		message.WriteString(fmt.Sprintf(
+		fmt.Fprintf(&message,
 			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=%s\n",
-			FormatAgentClaimValidFor(*accessTokenExpiresAt, now)))
+			FormatAgentClaimValidFor(*accessTokenExpiresAt, now))
 	}
 	message.WriteString(
 		"ACTION_REQUIRED=Tell the user to run pulumi login.\n" +
