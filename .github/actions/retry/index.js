@@ -188,7 +188,12 @@ async function downloadAction(owner, repo, ref) {
     throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
 
   fs.writeFileSync(tarPath, Buffer.from(await resp.arrayBuffer()));
-  execSync(`tar -xzf "${tarPath}" -C "${extractDir}"`, { stdio: "pipe" });
+  // --force-local prevents tar from interpreting Windows drive letters (e.g. D:) as
+  // remote tape drives.
+  const forceLocal = process.platform === "win32" ? " --force-local" : "";
+  execSync(`tar -xzf "${tarPath}" -C "${extractDir}"${forceLocal}`, {
+    stdio: "pipe",
+  });
 
   const entries = fs.readdirSync(extractDir);
   if (!entries.length) throw new Error("Archive was empty");
