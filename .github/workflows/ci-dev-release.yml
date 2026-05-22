@@ -29,11 +29,7 @@ jobs:
 
       - name: Git describe
         id: ghd
-        uses: ./.github/actions/retry
-        with:
-          action: proudust/gh-describe@v1
-          attempt_limit: 3
-          attempt_delay: 5000
+        uses: proudust/gh-describe@v1
       - name: strip prefix
         id: strip-prefix
         # Always prefix the short_sha with a letter to ensure it's a valid semver prerelease,

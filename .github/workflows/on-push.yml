@@ -51,11 +51,7 @@ jobs:
           cache: enable
       - name: Git describe
         id: ghd
-        uses: ./.github/actions/retry
-        with:
-          action: proudust/gh-describe@v1
-          attempt_limit: 3
-          attempt_delay: 5000
+        uses: proudust/gh-describe@v1
       - name: Dispatch event to docs repo
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
