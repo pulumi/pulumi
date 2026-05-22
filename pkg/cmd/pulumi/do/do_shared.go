@@ -25,6 +25,8 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -325,6 +327,11 @@ func evaluateFile(
 		Token:        token,
 	})
 	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			return nil, fmt.Errorf(
+				"%s %s converter does not support snippet conversion; use pcl format or try installing a newer %s converter",
+				inputFormat, fileType, inputFormat)
+		}
 		return nil, fmt.Errorf("generate PCL from %s file: %w", fileType, err)
 	}
 	if resp.Diagnostics.HasErrors() {
