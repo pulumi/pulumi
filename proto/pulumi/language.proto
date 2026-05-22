@@ -278,6 +278,10 @@ message GetRequiredPackagesRequest {
 message GetRequiredPackagesResponse {
     // The packages required by the program specified by the request.
     repeated PackageDependency packages = 1;
+    // The package specs required by the program specified by the request.
+    //
+    // Only specs not included in packages should be included.
+    repeated PackageSpec specs = 2;
 }
 
 // `RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call.
