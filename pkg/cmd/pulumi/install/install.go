@@ -170,7 +170,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			if !noPlugins {
 				// Compute the set of plugins the current project needs.
-				packages, err := lang.GetRequiredPackages(ctx, programInfo)
+				packages, _, err := lang.GetRequiredPackages(ctx, programInfo)
 				if err != nil {
 					return err
 				}

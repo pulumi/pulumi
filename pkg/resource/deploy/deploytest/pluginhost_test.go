@@ -173,7 +173,7 @@ func TestPluginHostProvider(t *testing.T) {
 			},
 		}
 
-		_, err := host.GetRequiredPackages(plugin.ProgramInfo{}, 0)
+		_, _, err := host.GetRequiredPackages(plugin.ProgramInfo{}, 0)
 		assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 	})
 	t.Run("Close", func(t *testing.T) {

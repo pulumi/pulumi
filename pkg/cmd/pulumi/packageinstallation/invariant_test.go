@@ -357,17 +357,17 @@ func (w invariantWorkspace) LinkIntoProject(
 
 func (w invariantWorkspace) GetRequiredPackages(
 	ctx context.Context, dirPath string, project *workspace.PluginProject,
-) ([]workspace.PackageDescriptor, error) {
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
 	dirPath = filepath.ToSlash(dirPath)
 	pl, ok := w.plugins[dirPath]
 	if !ok || !pl.pathVisible {
 		assert.Failf(w.t, "", "GetRequiredPackages(%q) called on non-visible plugin", dirPath)
-		return nil, assert.AnError
+		return nil, nil, assert.AnError
 	}
 	if pl.requiredPackages == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
-	return pl.requiredPackages, nil
+	return pl.requiredPackages, nil, nil
 }
 
 func (w invariantWorkspace) RunPackage(

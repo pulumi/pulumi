@@ -57,7 +57,7 @@ type Context interface {
 
 	GetRequiredPackages(
 		ctx context.Context, dirPath string, project *workspace.PluginProject,
-	) ([]workspace.PackageDescriptor, error)
+	) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error)
 
 	// IsExecutable returns if the file at binaryPath can be executed.
 	//
@@ -897,7 +897,7 @@ type gatherPackageDependenciesStep struct {
 }
 
 func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) error {
-	pkgs, err := p.ws.GetRequiredPackages(ctx, step.project.projectDir, step.project.proj)
+	pkgs, _, err := p.ws.GetRequiredPackages(ctx, step.project.projectDir, step.project.proj)
 	if err != nil {
 		return err
 	}
