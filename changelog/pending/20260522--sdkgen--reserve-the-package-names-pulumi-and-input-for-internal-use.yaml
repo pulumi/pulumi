@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen
-  description: Reserve the package names 'pulumi' and 'input' for internal use
