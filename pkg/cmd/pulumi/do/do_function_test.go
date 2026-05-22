@@ -134,6 +134,7 @@ Flags:
       --input string           Format of the configuration files (default "pcl")
       --input-file string      Path to a file containing function inputs
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
+      --param1 string          To set param1 things (alias for --input:param1)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
 `
@@ -2412,4 +2413,212 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "not_an_input")
+}
+
+func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
+	t.Parallel()
+
+	configureCalled := false
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Provider: schema.ResourceSpec{
+				InputProperties: map[string]schema.PropertySpec{
+					"opt1":   {TypeSpec: schema.TypeSpec{Type: "string"}},
+					"optTwo": {TypeSpec: schema.TypeSpec{Type: "string"}},
+				},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"in1":    {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"inTwo":  {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"dryRun": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					configureCalled = true
+					// The converted PCL ("opt1 = \"val1\"") + optTwo=val2 should be bound, evaluated, and reach Configure intact.
+					assert.Equal(t, "val1", req.Inputs["opt1"].StringValue())
+					assert.Equal(t, "val2", req.Inputs["optTwo"].StringValue())
+					return plugin.ConfigureResponse{}, nil
+				},
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "p1", req.Args["in1"].StringValue())
+					assert.Equal(t, "p2", req.Args["inTwo"].StringValue())
+					assert.Equal(t, true, req.Args["dryRun"].BoolValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	providerFile := writeHCLFile(t, "provider.pcl", "opt1 = \"val1\"\n")
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{
+		"azure:index:myFunction",
+		"--provider-file", providerFile,
+		"--azure:opt-two", "val2",
+		"--in1", "p1",
+		"--input:in-two", "p2",
+		"--input:dry-run",
+	})
+	err := cmd.Execute()
+	require.NoError(t, err)
+	assert.True(t, configureCalled, "Configure should be called with the converted provider config")
+}
+
+func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
+	t.Parallel()
+
+	configureCalled := false
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	yamlHost := func() (plugin.Host, error) {
+		return &plugin.MockHost{
+			LoaderAddrF: func() string { return "loader-address" },
+		}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{
+			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
+			) {
+				assert.NotEmpty(t, req.TargetLoader)
+				switch filepath.Base(req.Filename) {
+				case "provider.yaml":
+					assert.Equal(t, "opt1: val1\n", string(req.Source))
+					assert.Equal(t, map[string]string{
+						"optTwo": "val2",
+					}, req.Attributes)
+					// The converter should be told this is a provider-config snippet via the provider's resource token,
+					// not the function token.
+					assert.Equal(t, "pulumi:providers:azure", req.Token)
+					require.NotNil(t, req.Package)
+					assert.Equal(t, "azure", req.Package.Package)
+					return &plugin.ConvertSnippetResponse{
+						Filename: "provider.pp",
+						Source:   []byte(`opt1 = "val1"` + "\n"),
+						Attributes: map[string]string{
+							"optTwo": "\"val2\"",
+						},
+					}, nil
+				case "inputs.yaml":
+					assert.Equal(t, "in1: file\n", string(req.Source))
+					assert.Equal(t, map[string]string{
+						"dryRun": "true",
+						"in1":    "p1",
+						"inTwo":  "p2",
+					}, req.Attributes)
+					assert.Equal(t, "azure:index:myFunction", req.Token)
+					require.NotNil(t, req.Package)
+					assert.Equal(t, "azure", req.Package.Package)
+					return &plugin.ConvertSnippetResponse{
+						Filename: "inputs.pp",
+						Source:   []byte(`in1 = "file"` + "\n"),
+						Attributes: map[string]string{
+							"in1":    "\"p1\"",
+							"inTwo":  "\"p2\"",
+							"dryRun": "true",
+						},
+					}, nil
+				default:
+					require.Failf(t, "unexpected converter input", "filename: %s", req.Filename)
+					return nil, nil
+				}
+			},
+		}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Provider: schema.ResourceSpec{
+				InputProperties: map[string]schema.PropertySpec{
+					"opt1":   {TypeSpec: schema.TypeSpec{Type: "string"}},
+					"optTwo": {TypeSpec: schema.TypeSpec{Type: "string"}},
+				},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"in1":    {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"inTwo":  {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"dryRun": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					configureCalled = true
+					// The converted PCL ("opt1 = \"val1\"") + optTwo=val2 should be bound, evaluated, and reach Configure intact.
+					assert.Equal(t, "val1", req.Inputs["opt1"].StringValue())
+					assert.Equal(t, "val2", req.Inputs["optTwo"].StringValue())
+					return plugin.ConfigureResponse{}, nil
+				},
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "p1", req.Args["in1"].StringValue())
+					assert.Equal(t, "p2", req.Args["inTwo"].StringValue())
+					assert.Equal(t, true, req.Args["dryRun"].BoolValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	providerFile := writeHCLFile(t, "provider.yaml", "opt1: val1\n")
+	inputFile := writeHCLFile(t, "inputs.yaml", "in1: file\n")
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{
+		"azure:index:myFunction",
+		"--provider-file", providerFile,
+		"--input-file", inputFile, "--input", "yaml",
+		"--azure:opt-two", "val2",
+		"--in1", "p1",
+		"--input:in-two", "p2",
+		"--input:dry-run",
+	})
+	err := cmd.Execute()
+	require.NoError(t, err)
+	assert.True(t, configureCalled, "Configure should be called with the converted provider config")
 }

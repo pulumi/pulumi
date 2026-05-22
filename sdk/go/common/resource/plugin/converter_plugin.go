@@ -193,6 +193,7 @@ func (c *converter) ConvertSnippet(
 		TargetLoader: req.TargetLoader,
 		Package:      req.Package,
 		Token:        req.Token,
+		Attributes:   req.Attributes,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -210,5 +211,6 @@ func (c *converter) ConvertSnippet(
 		Diagnostics: diags,
 		Filename:    resp.Filename,
 		Source:      resp.Source,
+		Attributes:  resp.Attributes,
 	}, nil
 }

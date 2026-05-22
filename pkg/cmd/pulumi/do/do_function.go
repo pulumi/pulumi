@@ -44,7 +44,7 @@ func functionSchemaHelp(fn *schema.Function) string {
 		b.WriteString(title)
 		b.WriteString(":\n")
 		for _, property := range properties {
-			fmt.Fprintf(&b, "  %s (%s", property.Name, schemaTypeString(property.Type))
+			fmt.Fprintf(&b, "  %s (%s", property.Name, unwrapType(property.Type))
 			if includeRequired {
 				if property.IsRequired() {
 					b.WriteString(", required")
@@ -69,7 +69,7 @@ func functionSchemaHelp(fn *schema.Function) string {
 		if b.Len() > 0 {
 			b.WriteString("\n\n")
 		}
-		fmt.Fprintf(&b, "Outputs:\n  result (%s)\n", schemaTypeString(fn.ReturnType))
+		fmt.Fprintf(&b, "Outputs:\n  result (%s)\n", unwrapType(fn.ReturnType))
 	}
 	return strings.TrimSuffix(b.String(), "\n")
 }
@@ -97,13 +97,18 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
-			if err := pc.configureProvider(ctx); err != nil {
+			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
 			}
 
+			var inputProperties []*schema.Property
+			if fn.Inputs != nil {
+				inputProperties = fn.Inputs.Properties
+			}
 			inputs, err := evaluateFunctionFile(
 				ctx, inputFile, "input", pc.format, fn, pc.evalContext,
-				pc.converter, pc.loaderTarget, pc.packageDescriptor)
+				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				collectInputFlags(cmd, "input", inputProperties))
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
 			}
@@ -147,6 +152,11 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 		"Path to a file containing provider configuration")
 	cmd.Flags().StringVar(&pc.format, "input", "pcl",
 		"Format of the configuration files")
+
+	addInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties)
+	if fn.Inputs != nil {
+		addInputFlags(cmd, "input", fn.Inputs.Properties)
+	}
 
 	return cmd
 }

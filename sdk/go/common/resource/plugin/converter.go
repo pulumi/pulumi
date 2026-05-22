@@ -64,14 +64,16 @@ type ConvertSnippetRequest struct {
 	TargetLoader string
 	// Package identifies the package (and any parameterization) the snippet belongs to so the converter can load
 	// the same schema we did when invoking the provider.
-	Package *codegenrpc.GetSchemaRequest
-	Token   string
+	Package    *codegenrpc.GetSchemaRequest
+	Token      string
+	Attributes map[string]string
 }
 
 type ConvertSnippetResponse struct {
 	Diagnostics hcl.Diagnostics
 	Filename    string
 	Source      []byte
+	Attributes  map[string]string
 }
 
 type Converter interface {

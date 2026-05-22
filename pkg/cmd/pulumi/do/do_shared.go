@@ -20,11 +20,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/gofrs/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -50,6 +54,11 @@ type functionEvalContext struct {
 	WorkingDir    string
 	ProjectName   string
 	RootDirectory string
+}
+
+type inputFlagValue struct {
+	value string
+	typ   schema.Type
 }
 
 func jsonifyPropertyValue(v resource.PropertyValue, showSecrets bool) (any, error) {
@@ -214,6 +223,7 @@ func evaluatePCLFile(
 	path, fileType string,
 	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
 	evalContext functionEvalContext,
+	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
 	// When no input file is supplied we still run the bind step against an empty file so that the schema's
 	// required-input check fires.
@@ -231,7 +241,11 @@ func evaluatePCLFile(
 		input = f
 	}
 
-	return evaluatePCL(input, filename, fileType, bind, evalContext)
+	attributeLiterals, err := inputFlagLiterals(inputFlags)
+	if err != nil {
+		return nil, err
+	}
+	return evaluatePCL(input, filename, fileType, bind, evalContext, attributeLiterals)
 }
 
 func evaluatePCL(
@@ -239,6 +253,7 @@ func evaluatePCL(
 	filename, fileType string,
 	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
 	evalContext functionEvalContext,
+	attributeLiterals map[string]string,
 ) (resource.PropertyMap, error) {
 	parser := hclsyntax.NewParser()
 	if err := parser.ParseFile(input, filename); err != nil {
@@ -249,6 +264,9 @@ func evaluatePCL(
 	}
 	contract.Assertf(len(parser.Files) == 1, "Should be one PCL file")
 	file := parser.Files[0]
+	if err := mergeAttributeLiterals(file, filename, fileType, attributeLiterals); err != nil {
+		return nil, err
+	}
 
 	attrs, inputType, properties, diagnostics := bind(file)
 	if diagnostics.HasErrors() {
@@ -304,9 +322,10 @@ func evaluateFile(
 	loaderTarget string,
 	packageDescriptor *codegenrpc.GetSchemaRequest,
 	evalContext functionEvalContext,
+	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
 	if path == "" || inputFormat == "" || inputFormat == "pcl" {
-		return evaluatePCLFile(path, fileType, bind, evalContext)
+		return evaluatePCLFile(path, fileType, bind, evalContext, inputFlags)
 	}
 
 	converter, err := loadConverter(inputFormat)
@@ -325,6 +344,7 @@ func evaluateFile(
 		TargetLoader: loaderTarget,
 		Package:      packageDescriptor,
 		Token:        token,
+		Attributes:   inputFlagAttributes(inputFlags),
 	})
 	if err != nil {
 		if status.Code(err) == codes.Unimplemented {
@@ -337,13 +357,14 @@ func evaluateFile(
 	if resp.Diagnostics.HasErrors() {
 		return nil, resp.Diagnostics
 	}
-	return evaluatePCL(bytes.NewReader(resp.Source), resp.Filename, fileType, bind, evalContext)
+	return evaluatePCL(bytes.NewReader(resp.Source), resp.Filename, fileType, bind, evalContext, resp.Attributes)
 }
 
 func evaluateFunctionFile(
 	ctx context.Context, path, fileType, inputFormat string, fn *schema.Function, evalContext functionEvalContext,
 	loadConverter func(string) (plugin.Converter, error), loaderTarget string,
 	packageDescriptor *codegenrpc.GetSchemaRequest,
+	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
 		attrs, inputType, diags := pcl.BindFunction(file, fn)
@@ -355,6 +376,7 @@ func evaluateFunctionFile(
 	}
 	return evaluateFile(
 		ctx, path, fileType, inputFormat, fn.Token, bind, loadConverter, loaderTarget, packageDescriptor, evalContext,
+		inputFlags,
 	)
 }
 
@@ -362,6 +384,7 @@ func evaluateResourceFile(
 	ctx context.Context, path, fileType, inputFormat string, res *schema.Resource, evalContext functionEvalContext,
 	loadConverter func(string) (plugin.Converter, error), loaderTarget string,
 	packageDescriptor *codegenrpc.GetSchemaRequest,
+	inputFlags map[string]inputFlagValue,
 	bindOpts ...pcl.BindOption,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
@@ -370,18 +393,194 @@ func evaluateResourceFile(
 	}
 	return evaluateFile(
 		ctx, path, fileType, inputFormat, res.Token, bind, loadConverter, loaderTarget, packageDescriptor, evalContext,
+		inputFlags,
 	)
 }
 
-func schemaTypeString(t schema.Type) string {
-	switch t := t.(type) {
-	case *schema.OptionalType:
-		return schemaTypeString(t.ElementType)
-	case *schema.InputType:
-		return schemaTypeString(t.ElementType)
-	default:
-		return t.String()
+func collectInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Property) map[string]inputFlagValue {
+	values := map[string]inputFlagValue{}
+	for _, input := range inputs {
+		typ := unwrapType(input.Type)
+		if !isInputFlagType(typ) {
+			continue
+		}
+
+		flagName := inputFlagName(input.Name)
+		if flag := cmd.Flag(fmt.Sprintf("%s:%s", namespace, flagName)); flag != nil && flag.Changed {
+			values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ}
+			continue
+		}
+		if namespace == "input" {
+			if flag := cmd.Flag(flagName); flag != nil && flag.Changed {
+				values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ}
+			}
+		}
 	}
+	return values
+}
+
+func inputFlagAttributes(inputFlags map[string]inputFlagValue) map[string]string {
+	if len(inputFlags) == 0 {
+		return nil
+	}
+	attrs := make(map[string]string, len(inputFlags))
+	for name, flag := range inputFlags {
+		attrs[name] = flag.value
+	}
+	return attrs
+}
+
+func inputFlagLiterals(inputFlags map[string]inputFlagValue) (map[string]string, error) {
+	if len(inputFlags) == 0 {
+		return nil, nil
+	}
+	attrs := make(map[string]string, len(inputFlags))
+	for name, flag := range inputFlags {
+		literal, err := pclLiteral(flag)
+		if err != nil {
+			return nil, err
+		}
+		attrs[name] = literal
+	}
+	return attrs, nil
+}
+
+func mergeAttributeLiterals(
+	file *hclsyntax.File, filename, fileType string, attributes map[string]string,
+) error {
+	if len(attributes) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(attributes))
+	for name := range attributes {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	var overlay strings.Builder
+	for _, name := range names {
+		fmt.Fprintf(&overlay, "%s = %s\n", name, attributes[name])
+	}
+
+	parser := hclsyntax.NewParser()
+	overlayName := fmt.Sprintf("%s flags for %s", fileType, filename)
+	if err := parser.ParseFile(strings.NewReader(overlay.String()), overlayName); err != nil {
+		return fmt.Errorf("parse %s flags: %w", fileType, err)
+	}
+	if parser.Diagnostics.HasErrors() {
+		return parser.Diagnostics
+	}
+	contract.Assertf(len(parser.Files) == 1, "Should be one PCL flags file")
+	for name, attr := range parser.Files[0].Body.Attributes {
+		file.Body.Attributes[name] = attr
+	}
+	return nil
+}
+
+func pclLiteral(flag inputFlagValue) (string, error) {
+	switch flag.typ {
+	case schema.StringType:
+		return strconv.Quote(flag.value), nil
+	case schema.BoolType, schema.IntType, schema.NumberType:
+		return flag.value, nil
+	default:
+		return "", fmt.Errorf("unsupported flag type %s", flag.typ)
+	}
+}
+
+func addInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Property) {
+	addInputFlagsTo(cmd, cmd.Flags(), namespace, inputs)
+}
+
+func addPersistentInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Property) {
+	addInputFlagsTo(cmd, cmd.PersistentFlags(), namespace, inputs)
+}
+
+func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string, inputs []*schema.Property) {
+	for _, input := range inputs {
+		var flagFunc func(string, string)
+
+		typ := unwrapType(input.Type)
+
+		if typ == schema.StringType {
+			flagFunc = func(name, extraHelp string) {
+				flags.String(name, "", input.Comment+extraHelp)
+			}
+		}
+		if typ == schema.BoolType {
+			flagFunc = func(name, extraHelp string) {
+				flags.Bool(name, false, input.Comment+extraHelp)
+			}
+		}
+		if typ == schema.IntType {
+			flagFunc = func(name, extraHelp string) {
+				flags.Int(name, 0, input.Comment+extraHelp)
+			}
+		}
+		if typ == schema.NumberType {
+			flagFunc = func(name, extraHelp string) {
+				flags.Float64(name, 0, input.Comment+extraHelp)
+			}
+		}
+
+		if flagFunc != nil {
+			flagName := inputFlagName(input.Name)
+			key := fmt.Sprintf("%s:%s", namespace, flagName)
+			flagFunc(key, "")
+			if namespace == "input" && flags.Lookup(flagName) == nil {
+				flagFunc(flagName, " (alias for --"+key+")")
+				cmd.MarkFlagsMutuallyExclusive(key, flagName)
+				// Mark the namespaced flag as hidden
+				flags.Lookup(key).Hidden = true
+			}
+		}
+	}
+}
+
+func inputFlagName(name string) string {
+	var builder strings.Builder
+	var previous rune
+	var previousIsWord bool
+	var previousIsSeparator bool
+	runes := []rune(name)
+	for i, r := range runes {
+		if r == '_' || r == '-' || unicode.IsSpace(r) {
+			if builder.Len() > 0 && !previousIsSeparator {
+				builder.WriteRune('-')
+			}
+			previous = '-'
+			previousIsWord = false
+			previousIsSeparator = true
+			continue
+		}
+
+		nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+		if unicode.IsUpper(r) && previousIsWord &&
+			(unicode.IsLower(previous) || unicode.IsDigit(previous) || nextIsLower) {
+			builder.WriteRune('-')
+		}
+		builder.WriteRune(unicode.ToLower(r))
+		previous = r
+		previousIsWord = true
+		previousIsSeparator = false
+	}
+	return strings.TrimSuffix(builder.String(), "-")
+}
+
+func isInputFlagType(typ schema.Type) bool {
+	return typ == schema.StringType || typ == schema.BoolType || typ == schema.IntType || typ == schema.NumberType
+}
+
+// unwrapType recursively unwraps Optional and Input types to get at the underlying element type.
+func unwrapType(typ schema.Type) schema.Type {
+	if opt, ok := typ.(*schema.OptionalType); ok {
+		return unwrapType(opt.ElementType)
+	}
+	if input, ok := typ.(*schema.InputType); ok {
+		return unwrapType(input.ElementType)
+	}
+	return typ
 }
 
 func resourceURN(res *schema.Resource) resource.URN {
@@ -390,10 +589,11 @@ func resourceURN(res *schema.Resource) resource.URN {
 	return resource.NewURN("dev", "default", "", tokens.Type(res.Token), name)
 }
 
-func (pc *packageCommand) configureProvider(ctx context.Context) error {
+func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Context) error {
 	config, err := evaluateResourceFile(
 		ctx, pc.providerFile, "provider", pc.format,
-		pc.spec.Provider, pc.evalContext, pc.converter, pc.loaderTarget, pc.packageDescriptor)
+		pc.spec.Provider, pc.evalContext, pc.converter, pc.loaderTarget, pc.packageDescriptor,
+		collectInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties))
 	if err != nil {
 		return fmt.Errorf("parse provider file: %w", err)
 	}

@@ -53,7 +53,7 @@ func resourceSchemaHelp(res *schema.Resource) string {
 		b.WriteString(title)
 		b.WriteString(":\n")
 		for _, property := range properties {
-			fmt.Fprintf(&b, "  %s (%s", property.Name, schemaTypeString(property.Type))
+			fmt.Fprintf(&b, "  %s (%s", property.Name, unwrapType(property.Type))
 			if includeRequired {
 				if property.IsRequired() {
 					b.WriteString(", required")
@@ -104,6 +104,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		"Path to a file containing provider configuration")
 	cmd.PersistentFlags().StringVar(&pc.format, "input", "pcl",
 		"Format of the provider configuration file")
+	addPersistentInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties)
 	cmd.AddCommand(pc.newResourceCreateCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))
@@ -126,13 +127,14 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 				return err
 			}
 			ctx := cmd.Context()
-			if err := pc.configureProvider(ctx); err != nil {
+			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
 			}
 			urn := resourceURN(res)
 			inputs, err := evaluateResourceFile(
 				ctx, inputFile, "input", pc.format, res, pc.evalContext,
-				pc.converter, pc.loaderTarget, pc.packageDescriptor)
+				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				collectInputFlags(cmd, "input", res.InputProperties))
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
 			}
@@ -167,6 +169,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
+	addInputFlags(cmd, "input", res.InputProperties)
 	return cmd
 }
 
@@ -177,7 +180,7 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			if err := pc.configureProvider(ctx); err != nil {
+			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
 			}
 			urn := resourceURN(res)
@@ -217,7 +220,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 				return err
 			}
 			ctx := cmd.Context()
-			if err := pc.configureProvider(ctx); err != nil {
+			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
 			}
 			urn := resourceURN(res)
@@ -240,7 +243,8 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			// would otherwise reject any partial patch that omits a required input.
 			patch, err := evaluateResourceFile(
 				ctx, inputFile, "input", inputFormat, res, pc.evalContext,
-				pc.converter, pc.loaderTarget, pc.packageDescriptor, pcl.AllowMissingProperties)
+				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				collectInputFlags(cmd, "input", res.InputProperties), pcl.AllowMissingProperties)
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
 			}
@@ -294,6 +298,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
+	addInputFlags(cmd, "input", res.InputProperties)
 	return cmd
 }
 
@@ -308,7 +313,7 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 				return err
 			}
 			ctx := cmd.Context()
-			if err := pc.configureProvider(ctx); err != nil {
+			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
 			}
 			urn := resourceURN(res)
@@ -347,13 +352,14 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 				return errors.New("--all and --count are mutually exclusive")
 			}
 			ctx := cmd.Context()
-			if err := pc.configureProvider(ctx); err != nil {
+			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
 			}
 
 			query, err := evaluateResourceListFile(
 				ctx, inputFile, "input", inputFormat, res, pc.evalContext,
-				pc.converter, pc.loaderTarget, pc.packageDescriptor)
+				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				collectInputFlags(cmd, "input", res.ListInputs.Properties))
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
 			}
@@ -408,6 +414,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource list inputs")
 	cmd.Flags().BoolVar(&all, "all", false, "Enumerate all matching resources")
 	cmd.Flags().Int64Var(&count, "count", 0, "Enumerate up to count matching resources")
+	addInputFlags(cmd, "input", res.ListInputs.Properties)
 	return cmd
 }
 
@@ -415,6 +422,7 @@ func evaluateResourceListFile(
 	ctx context.Context, path, fileType, inputFormat string, res *schema.Resource, evalContext functionEvalContext,
 	loadConverter func(string) (plugin.Converter, error), loaderTarget string,
 	packageDescriptor *codegenrpc.GetSchemaRequest,
+	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
 	contract.Assertf(res.ListInputs != nil, "should not call evaluateResourceListFile for resources without list inputs")
 
@@ -424,6 +432,7 @@ func evaluateResourceListFile(
 	}
 	return evaluateFile(
 		ctx, path, fileType, inputFormat, res.Token, bind, loadConverter, loaderTarget, packageDescriptor, evalContext,
+		inputFlags,
 	)
 }
 

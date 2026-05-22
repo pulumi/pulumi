@@ -1414,7 +1414,8 @@ filename: jspb.Message.getFieldWithDefault(msg, 1, ""),
 source: msg.getSource_asB64(),
 targetLoader: jspb.Message.getFieldWithDefault(msg, 3, ""),
 pb_package: (f = msg.getPackage()) && pulumi_codegen_loader_pb.GetSchemaRequest.toObject(includeInstance, f),
-token: jspb.Message.getFieldWithDefault(msg, 5, "")
+token: jspb.Message.getFieldWithDefault(msg, 5, ""),
+attributesMap: (f = msg.getAttributesMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -1471,6 +1472,12 @@ proto.pulumirpc.ConvertSnippetRequest.deserializeBinaryFromReader = function(msg
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setToken(value);
+      break;
+    case 6:
+      var value = msg.getAttributesMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+         });
       break;
     default:
       reader.skipField();
@@ -1536,6 +1543,10 @@ proto.pulumirpc.ConvertSnippetRequest.serializeBinaryToWriter = function(message
       5,
       f
     );
+  }
+  f = message.getAttributesMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(6, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
 };
 
@@ -1673,6 +1684,29 @@ proto.pulumirpc.ConvertSnippetRequest.prototype.setToken = function(value) {
 };
 
 
+/**
+ * map<string, string> attributes = 6;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.pulumirpc.ConvertSnippetRequest.prototype.getAttributesMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 6, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.ConvertSnippetRequest} returns this
+ */
+proto.pulumirpc.ConvertSnippetRequest.prototype.clearAttributesMap = function() {
+  this.getAttributesMap().clear();
+  return this;
+};
+
+
 
 /**
  * List of repeated fields within this message type.
@@ -1715,7 +1749,8 @@ proto.pulumirpc.ConvertSnippetResponse.toObject = function(includeInstance, msg)
 diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
     pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance),
 filename: jspb.Message.getFieldWithDefault(msg, 2, ""),
-source: msg.getSource_asB64()
+source: msg.getSource_asB64(),
+attributesMap: (f = msg.getAttributesMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -1764,6 +1799,12 @@ proto.pulumirpc.ConvertSnippetResponse.deserializeBinaryFromReader = function(ms
     case 3:
       var value = /** @type {!Uint8Array} */ (reader.readBytes());
       msg.setSource(value);
+      break;
+    case 4:
+      var value = msg.getAttributesMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+         });
       break;
     default:
       reader.skipField();
@@ -1815,6 +1856,10 @@ proto.pulumirpc.ConvertSnippetResponse.serializeBinaryToWriter = function(messag
       3,
       f
     );
+  }
+  f = message.getAttributesMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(4, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
 };
 
@@ -1914,6 +1959,29 @@ proto.pulumirpc.ConvertSnippetResponse.prototype.getSource_asU8 = function() {
  */
 proto.pulumirpc.ConvertSnippetResponse.prototype.setSource = function(value) {
   return jspb.Message.setProto3BytesField(this, 3, value);
+};
+
+
+/**
+ * map<string, string> attributes = 4;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.pulumirpc.ConvertSnippetResponse.prototype.getAttributesMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 4, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.ConvertSnippetResponse} returns this
+ */
+proto.pulumirpc.ConvertSnippetResponse.prototype.clearAttributesMap = function() {
+  this.getAttributesMap().clear();
+  return this;
 };
 
 
