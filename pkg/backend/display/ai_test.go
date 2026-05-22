@@ -46,6 +46,7 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 
   Would you like additional help with this update?
   http://foo.bar/baz?explainFailure
+  Or run `+"`pulumi neo`"+` for an interactive agent in your terminal.
 
 `, neoDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummary, buf.String())

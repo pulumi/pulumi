@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Suggest `pulumi neo` in `pulumi preview` and `pulumi up` diagnostics output
