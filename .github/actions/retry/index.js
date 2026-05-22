@@ -188,12 +188,13 @@ async function downloadAction(owner, repo, ref) {
     throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
 
   fs.writeFileSync(tarPath, Buffer.from(await resp.arrayBuffer()));
-  // --force-local prevents tar from interpreting Windows drive letters (e.g. D:) as
-  // remote tape drives.
-  const forceLocal = process.platform === "win32" ? " --force-local" : "";
-  execSync(`tar -xzf "${tarPath}" -C "${extractDir}"${forceLocal}`, {
-    stdio: "pipe",
-  });
+  // On Windows, convert backslash paths to forward slashes for tar (MSYS2/Git tar
+  // interprets backslashes as escape characters with --force-local).
+  const tarFile =
+    process.platform === "win32" ? tarPath.replace(/\\/g, "/") : tarPath;
+  const tarDest =
+    process.platform === "win32" ? extractDir.replace(/\\/g, "/") : extractDir;
+  execSync(`tar -xzf "${tarFile}" -C "${tarDest}"`, { stdio: "pipe" });
 
   const entries = fs.readdirSync(extractDir);
   if (!entries.length) throw new Error("Archive was empty");
