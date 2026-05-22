@@ -18,6 +18,10 @@ inputs:
     description: "Delay between attempts in milliseconds"
     required: false
     default: "5000"
+  github_token:
+    description: "GitHub token passed through to child actions (resolves github.token expressions)"
+    required: false
+    default: ${{ github.token }}
 runs:
   using: "node24"
   main: "index.js"

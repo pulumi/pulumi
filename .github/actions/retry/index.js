@@ -204,6 +204,15 @@ function buildChildEnv(meta, withInput) {
   delete env["INPUT_WITH"];
   delete env["INPUT_ATTEMPT_LIMIT"];
   delete env["INPUT_ATTEMPT_DELAY"];
+  delete env["INPUT_GITHUB_TOKEN"];
+
+  // Ensure GITHUB_TOKEN is available for evaluating ${{ github.token }} defaults.
+  // Set on both process.env (so evaluateExpr can resolve it) and env (child inherits it).
+  const githubToken = getInput("github_token");
+  if (githubToken && !process.env["GITHUB_TOKEN"]) {
+    process.env["GITHUB_TOKEN"] = githubToken;
+    env["GITHUB_TOKEN"] = githubToken;
+  }
 
   // Apply defaults from the child action's action.yml.
   for (const [name, cfg] of Object.entries(meta.inputs)) {
