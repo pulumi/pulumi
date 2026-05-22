@@ -139,6 +139,8 @@ function parseActionYml(text) {
         const m = line.trim().match(/^default\s*:\s*(.*)/);
         if (m) {
           let val = m[1].trim();
+          // YAML null values should not become string defaults.
+          if (/^(null|~|Null|NULL)$/.test(val) || val === "") continue;
           if (/^(['"]).*\1$/.test(val)) val = val.slice(1, -1);
           result.inputs[currentInput].default = val;
         }
