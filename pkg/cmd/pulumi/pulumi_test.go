@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -427,6 +428,66 @@ func TestGetCLIMetadata(t *testing.T) {
 			},
 		},
 		{
+			name: "do with token and operation",
+			cmd:  newDoTestCmd(),
+			args: []string{"aws:s3:Bucket", "list"},
+			metadata: map[string]string{
+				"Command":     "pulumi do aws:s3:Bucket list",
+				"Flags":       "",
+				"Environment": "",
+			},
+		},
+		{
+			name: "do with flags mixed in",
+			cmd:  newDoTestCmd(),
+			args: []string{"--dry-run", "aws:s3:Bucket", "create", "--some-unknown-flag", "secret-value"},
+			metadata: map[string]string{
+				"Command":     "pulumi do aws:s3:Bucket create",
+				"Flags":       "",
+				"Environment": "",
+			},
+		},
+		{
+			name: "do with package flag",
+			cmd:  newDoTestCmd(),
+			args: []string{"--package", "aws", "aws:s3:Bucket", "list"},
+			metadata: map[string]string{
+				"Command":     "pulumi do aws:s3:Bucket list",
+				"Flags":       "",
+				"Environment": "",
+			},
+		},
+		{
+			name: "do drops extra positionals after verb",
+			cmd:  newDoTestCmd(),
+			args: []string{"aws:s3:Bucket", "read", "some-resource-id"},
+			metadata: map[string]string{
+				"Command":     "pulumi do aws:s3:Bucket read",
+				"Flags":       "",
+				"Environment": "",
+			},
+		},
+		{
+			name: "do drops unknown verb",
+			cmd:  newDoTestCmd(),
+			args: []string{"aws:lambda:Function", "someUnknownVerb"},
+			metadata: map[string]string{
+				"Command":     "pulumi do aws:lambda:Function",
+				"Flags":       "",
+				"Environment": "",
+			},
+		},
+		{
+			name: "do with no args",
+			cmd:  newDoTestCmd(),
+			args: []string{},
+			metadata: map[string]string{
+				"Command":     "pulumi do",
+				"Flags":       "",
+				"Environment": "",
+			},
+		},
+		{
 			name: "plugin run with argument",
 			cmd: (func() *cobra.Command {
 				cmd := &cobra.Command{Use: "pulumi"}
@@ -459,6 +520,13 @@ func TestGetCLIMetadata(t *testing.T) {
 			require.Equal(t, c.metadata, metadata)
 		})
 	}
+}
+
+func newDoTestCmd() *cobra.Command {
+	root := &cobra.Command{Use: "pulumi"}
+	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil)
+	root.AddCommand(doCmd)
+	return doCmd
 }
 
 //nolint:paralleltest // changes environment variables and globals

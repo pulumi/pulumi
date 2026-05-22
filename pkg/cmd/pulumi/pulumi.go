@@ -690,7 +690,24 @@ func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 
 	if command == "pulumi plugin run" {
 		if len(args) > 0 {
-			command += " " + args[0]
+			positionals := positionalArgs(cmd, args)
+			if len(positionals) > 0 {
+				command += " " + positionals[0]
+			}
+		}
+	}
+
+	if command == "pulumi do" {
+		positionals := positionalArgs(cmd, args)
+		// Include the resource/function token
+		if len(positionals) > 0 {
+			command += " " + positionals[0]
+		}
+		if len(positionals) > 1 {
+			switch positionals[1] {
+			case "create", "read", "patch", "delete", "list":
+				command += " " + positionals[1]
+			}
 		}
 	}
 
@@ -710,6 +727,32 @@ func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 	}
 
 	return metadata
+}
+
+// positionalArgs extracts positional arguments from a raw argument list,
+// filtering out flags. This is used for commands with DisableFlagParsing
+// where args contains everything including flags. Known flags from the
+// command are registered so pflag can skip over their values correctly;
+// unknown flags are also tolerated.
+func positionalArgs(cmd *cobra.Command, args []string) []string {
+	fs := pflag.NewFlagSet("telemetry", pflag.ContinueOnError)
+	fs.ParseErrorsAllowlist.UnknownFlags = true
+	// Register the command's own flags so pflag can correctly skip their
+	// values (e.g. --package "foo" should not treat "foo" as positional).
+	// Visit both Flags() and PersistentFlags() to cover all defined flags;
+	// cobra merges them during Execute(), but we may run before that merge.
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		fs.AddFlag(f)
+	})
+	cmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		if fs.Lookup(f.Name) == nil {
+			fs.AddFlag(f)
+		}
+	})
+	// Silence any output from parsing errors.
+	fs.SetOutput(io.Discard)
+	_ = fs.Parse(args)
+	return fs.Args()
 }
 
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
