@@ -129,14 +129,13 @@ Usage:
   myOtherFunction [flags]
 
 Flags:
-      --dry-run                  Run the operation in preview mode
-  -h, --help                     help for do
-      --input string             Input file format (default "pcl")
-      --input-file string        Path to a file containing function inputs
-      --package string           The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
-      --provider-file string     Path to a file containing provider configuration
-      --provider-format string   Format of the provider configuration file (default "pcl")
-      --show-secrets             Show secret values in output
+      --dry-run                Run the operation in preview mode
+  -h, --help                   help for do
+      --input string           Format of the configuration files (default "pcl")
+      --input-file string      Path to a file containing function inputs
+      --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
+      --provider-file string   Path to a file containing provider configuration
+      --show-secrets           Show secret values in output
 `
 	assert.Equal(t, expected, stdout.String())
 }
@@ -2075,7 +2074,7 @@ func TestDoCmdFunctionInvokeParameterizedSchemaWithoutArgs(t *testing.T) {
 	assert.ErrorContains(t, err, "provider returned parameterization but no parameterization args were sent")
 }
 
-// TestDoCmdFunctionInvokeWithYAMLProviderFile exercises the provider-config converter path: --provider-format yaml
+// TestDoCmdFunctionInvokeWithYAMLProviderFile exercises the provider-config converter path: --input yaml
 // + --provider-file p.yaml should run the YAML through the converter, hand the resulting PCL to Configure, and
 // pass the right token (the provider's pulumi:providers:<pkg> token) and the same package descriptor we use for
 // function inputs.
@@ -2158,7 +2157,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
 		"azure:index:myFunction",
-		"--provider-file", providerFile, "--provider-format", "yaml",
+		"--provider-file", providerFile, "--input", "yaml",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)

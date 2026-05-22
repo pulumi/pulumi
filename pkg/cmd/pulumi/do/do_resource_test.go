@@ -131,12 +131,12 @@ Available Commands:
   read        Read a resource
 
 Flags:
-      --dry-run                  Run the operation in preview mode
-  -h, --help                     help for do
-      --package string           The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
-      --provider-file string     Path to a file containing provider configuration
-      --provider-format string   Format of the provider configuration file (default "pcl")
-      --show-secrets             Show secret values in output
+      --dry-run                Run the operation in preview mode
+  -h, --help                   help for do
+      --input string           Format of the provider configuration file (default "pcl")
+      --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
+      --provider-file string   Path to a file containing provider configuration
+      --show-secrets           Show secret values in output
 
 Use "myResource [command] --help" for more information about a command.
 `
@@ -180,12 +180,12 @@ Available Commands:
   read        Read a resource
 
 Flags:
-      --dry-run                  Run the operation in preview mode
-  -h, --help                     help for do
-      --package string           The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
-      --provider-file string     Path to a file containing provider configuration
-      --provider-format string   Format of the provider configuration file (default "pcl")
-      --show-secrets             Show secret values in output
+      --dry-run                Run the operation in preview mode
+  -h, --help                   help for do
+      --input string           Format of the provider configuration file (default "pcl")
+      --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
+      --provider-file string   Path to a file containing provider configuration
+      --show-secrets           Show secret values in output
 
 Use "myResource [command] --help" for more information about a command.
 `

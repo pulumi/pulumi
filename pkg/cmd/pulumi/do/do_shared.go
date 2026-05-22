@@ -385,7 +385,7 @@ func resourceURN(res *schema.Resource) resource.URN {
 
 func (pc *packageCommand) configureProvider(ctx context.Context) error {
 	config, err := evaluateResourceFile(
-		ctx, pc.providerFile, "provider", pc.providerFormat,
+		ctx, pc.providerFile, "provider", pc.format,
 		pc.spec.Provider, pc.evalContext, pc.converter, pc.loaderTarget, pc.packageDescriptor)
 	if err != nil {
 		return fmt.Errorf("parse provider file: %w", err)

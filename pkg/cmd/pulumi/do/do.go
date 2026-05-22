@@ -334,7 +334,7 @@ installed locally.
 Provider configuration can be supplied via:
   - the provider's standard environment variables (e.g. AWS_REGION)
   - an input file passed with --provider-file (PCL by default;
-    set --provider-format to convert from another format)
+    set --input to convert from another format)
 
 Function inputs come from --input-file. PCL is the default; pass --input
 to convert from another format such as YAML. Non-PCL formats require a
@@ -399,7 +399,7 @@ type packageCommand struct {
 	packageDescriptor *codegenrpc.GetSchemaRequest
 	provider          plugin.Provider
 	providerFile      string
-	providerFormat    string
+	format            string
 	spec              *schema.Package
 	dryrun            bool
 	showSecrets       bool
