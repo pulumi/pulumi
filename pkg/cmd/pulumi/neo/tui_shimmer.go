@@ -41,8 +41,9 @@ var (
 	verbNearStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
 	verbDimStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("5")).Faint(true)
 
-	// waveStyles is the wave palette for dark terminals: a bright→brightest→
-	// bright ramp that sweeps left-to-right and stays visible on a dark bg.
+	// Wave palettes: a brightness ramp the wave sweeps across the label.
+	// The dark-bg ramp uses near-white grays; the light-bg ramp inverts to
+	// near-black grays so the wave stays visible on either background.
 	waveStyles = []lipgloss.Style{
 		lipgloss.NewStyle().Foreground(lipgloss.Color("245")),
 		lipgloss.NewStyle().Foreground(lipgloss.Color("247")),
@@ -51,9 +52,6 @@ var (
 		lipgloss.NewStyle().Foreground(lipgloss.Color("250")),
 		lipgloss.NewStyle().Foreground(lipgloss.Color("247")),
 	}
-	// waveStylesLight is the same ramp inverted for light terminals: darker
-	// grays so the wave reads against a white background. Near-white grays
-	// (245-253) from the dark palette disappear on light bg.
 	waveStylesLight = []lipgloss.Style{
 		lipgloss.NewStyle().Foreground(lipgloss.Color("244")),
 		lipgloss.NewStyle().Foreground(lipgloss.Color("241")),
@@ -67,9 +65,9 @@ var (
 
 // shimmerLabel renders text with the shimmer effect selected by kind. Frame
 // is the animation tick counter; callers should pass a value that advances
-// monotonically (modulo any safe bound) as the spinner ticks. hasDarkBackground
-// picks the wave palette (the spotlight uses pure magenta and reads fine on
-// both backgrounds).
+// monotonically (modulo any safe bound) as the spinner ticks.
+// hasDarkBackground picks the wave palette; the spotlight is magenta and
+// reads on either background.
 func shimmerLabel(text string, kind shimmerKind, frame int, hasDarkBackground bool) string {
 	if text == "" {
 		return ""
@@ -117,9 +115,7 @@ func buildSpotlight(text string, frame int) string {
 
 // buildWave renders text with a grayscale brightness ramp that sweeps
 // left-to-right across the string, then restarts after a brief lull where
-// every character renders dim. hasDarkBackground selects between the bright-
-// gray palette (dark terms) and the dark-gray palette (light terms) so the
-// wave stays visible regardless of the terminal theme.
+// every character renders dim.
 func buildWave(text string, frame int, hasDarkBackground bool) string {
 	runes := []rune(text)
 	if len(runes) == 0 {

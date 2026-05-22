@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: cli/neo
-  description: The `pulumi neo` TUI no longer hardcodes a dark color scheme; markdown, the assistant marker, and the busy-shimmer adapt to the terminal background, and echoed user messages drop the dark highlight
+  description: `pulumi neo` now adapts its TUI colors to the terminal background instead of hardcoding a dark scheme
