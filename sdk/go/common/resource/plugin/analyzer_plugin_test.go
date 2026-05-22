@@ -194,8 +194,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestAnalyzerGetAnalyzerInfo_Runtime covers the runtime-disambiguation logic
-// added to support service-side rejection of cross-runtime version bumps:
+// TestAnalyzerGetAnalyzerInfo_Runtime covers the runtime-disambiguation logic:
 // the plugin's reported runtime wins, falling back to the cached
 // PulumiPolicy.yaml runtime when the plugin omits it (older SDKs).
 func TestAnalyzerGetAnalyzerInfo_Runtime(t *testing.T) {

@@ -189,8 +189,7 @@ type AnalyzerInfo struct {
 	// A URL to the repository where the policy pack is defined.
 	Repository string
 	// Runtime identifies the analyzer SDK that produced the pack (e.g. "nodejs",
-	// "python", "opa"). Reported to the service on publish so it can reject
-	// cross-runtime version bumps that would silently overwrite an existing pack.
+	// "python", "opa"). Empty when produced by an older SDK that does not report it.
 	Runtime string
 }
 

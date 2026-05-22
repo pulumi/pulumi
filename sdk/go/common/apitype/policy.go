@@ -56,9 +56,7 @@ type CreatePolicyPackRequest struct {
 	Repository string `json:"repository,omitempty"`
 
 	// Runtime identifies the analyzer SDK that produced the pack (e.g. "nodejs",
-	// "python", "opa"). The service uses this to reject publishing a new version
-	// of an existing pack under a different runtime, which would silently overwrite
-	// the pack's behavior. Older CLIs that omit this field continue to work.
+	// "python", "opa"). Empty when produced by an older SDK that does not report it.
 	Runtime string `json:"runtime,omitempty"`
 
 	// Metadata contains optional data about the environment performing the publish operation,

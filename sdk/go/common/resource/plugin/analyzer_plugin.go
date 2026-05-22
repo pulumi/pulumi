@@ -57,9 +57,9 @@ type analyzer struct {
 	// The description from the policy pack's PulumiPolicy.yaml file (if present).
 	description string
 
-	// The runtime name from the policy pack's PulumiPolicy.yaml `runtime:` field,
-	// used to populate AnalyzerInfo.Runtime on publish so the service can detect
-	// cross-runtime version bumps. Empty for `NewAnalyzer` (non-policy) callers.
+	// The runtime name from the policy pack's PulumiPolicy.yaml `runtime:` field.
+	// Used as the fallback for AnalyzerInfo.Runtime when the plugin does not
+	// report one. Empty for `NewAnalyzer` (non-policy) callers.
 	runtime string
 
 	// Cached result of the first call to GetAnalyzerInfo, which will be returned from subsequent calls.
