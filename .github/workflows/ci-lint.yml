@@ -25,13 +25,9 @@ jobs:
     name: Lint Go
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -61,13 +57,9 @@ jobs:
     name: go mod tidy
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -80,13 +72,9 @@ jobs:
     name: Generate Go SDK
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -106,13 +94,9 @@ jobs:
     name: Lint Protobufs
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - uses: ./.github/actions/retry
         with:
           action: jdx/mise-action@v2
@@ -127,13 +111,9 @@ jobs:
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -188,13 +168,9 @@ jobs:
     name: Lint GHA
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -207,18 +183,18 @@ jobs:
     name: Lint changelog entries
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
+          ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: ./.github/actions/retry
+        with:
+          action: actions/setup-go@v6
           with: |
-            ref: ${{ inputs.ref }}
+            go-version: ${{ fromJson(inputs.version-set).go }}
+            check-latest: true
           attempt_limit: 3
           attempt_delay: 5000
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
       - uses: miniscruff/changie-action@v2
         with:
           version: v1.21.0
@@ -228,13 +204,9 @@ jobs:
     name: Lint pulumi.json
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Set up Go
         uses: actions/setup-go@v6
         with:

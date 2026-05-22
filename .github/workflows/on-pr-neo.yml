@@ -40,13 +40,9 @@ jobs:
       # here for downstream `fromJson(inputs.version-set).<key>` lookups to work.
       version-set: ${{ fromJSON(steps.gen.outputs.version-set) }}
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ github.head_ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ github.head_ref }}
       - uses: ./.github/actions/retry
         with:
           action: jdx/mise-action@v2

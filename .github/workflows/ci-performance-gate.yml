@@ -68,13 +68,9 @@ jobs:
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-go@v6
         with:
           cache: true

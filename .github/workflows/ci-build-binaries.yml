@@ -77,13 +77,9 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"

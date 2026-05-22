@@ -23,13 +23,9 @@ jobs:
     name: gather-info
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
 
       - name: Git describe
         id: ghd
@@ -54,13 +50,9 @@ jobs:
   matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-go@v6
         with:
           cache: true
@@ -140,11 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: ./.github/actions/retry
-        with:
-          action: actions/checkout@v6
-          attempt_limit: 3
-          attempt_delay: 5000
+        uses: actions/checkout@v6
 
       - name: Check for changes
         id: check-changes
@@ -172,11 +160,7 @@ jobs:
     if: ${{ needs.sdk-check-release.outputs.nodejs-release == 'true' }}
     steps:
       - name: Checkout
-        uses: ./.github/actions/retry
-        with:
-          action: actions/checkout@v6
-          attempt_limit: 3
-          attempt_delay: 5000
+        uses: actions/checkout@v6
       - name: Make artifacts directory
         run: |
           mkdir -p artifacts.tmp
@@ -224,11 +208,7 @@ jobs:
     if: ${{ needs.sdk-check-release.outputs.python-release == 'true' }}
     steps:
       - name: Checkout
-        uses: ./.github/actions/retry
-        with:
-          action: actions/checkout@v6
-          attempt_limit: 3
-          attempt_delay: 5000
+        uses: actions/checkout@v6
       - name: Set up Python ${{ fromJson(needs.matrix.outputs.version-set).python }}
         uses: actions/setup-python@v6
         with:
@@ -287,13 +267,9 @@ jobs:
         run: |
           mkdir -p artifacts.tmp
       - name: Download artifacts from previous step
-        uses: ./.github/actions/retry
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-          with: |
-            path: artifacts.tmp
-          attempt_limit: 3
-          attempt_delay: 5000
+          path: artifacts.tmp
       - name: Remove performance test artifacts
         run: rm -rf artifacts.tmp/*-perf
       - name: Remove integration test artifacts

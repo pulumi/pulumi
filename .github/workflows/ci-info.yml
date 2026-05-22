@@ -40,14 +40,10 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-            fetch-depth: 0
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
       - name: Print rate limits
         continue-on-error: true
         run: gh api -i repos/${{ github.repository }}/releases/latest

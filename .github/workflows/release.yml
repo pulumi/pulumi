@@ -69,13 +69,9 @@ jobs:
         language: ["nodejs", "python", "go"]
     steps:
       - name: Checkout Repo
-        uses: ./.github/actions/retry
+        uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Set up uv
         if: ${{ matrix.language == 'python' }}
         uses: astral-sh/setup-uv@v7
@@ -109,13 +105,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: ./.github/actions/retry
+        uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         uses: actions/setup-node@v6
         with:
@@ -136,13 +128,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: ./.github/actions/retry
+        uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
@@ -200,13 +188,9 @@ jobs:
             run-command: pulumictl dispatch -r pulumi/pulumi-docker-containers -c release-build "${PULUMI_VERSION}"
     steps:
       - name: Checkout Repo
-        uses: ./.github/actions/retry
+        uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Install Pulumictl
         uses: jaxxstorm/action-install-gh-release@v3.0.0
         env:

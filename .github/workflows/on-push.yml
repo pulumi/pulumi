@@ -38,13 +38,9 @@ jobs:
     needs: [dev-release, info]
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ github.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ github.ref }}
       - name: Install Pulumictl
         uses: jaxxstorm/action-install-gh-release@v3.0.0
         env:
@@ -80,11 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: ./.github/actions/retry
-        with:
-          action: actions/checkout@v6
-          attempt_limit: 3
-          attempt_delay: 5000
+        uses: actions/checkout@v6
       - name: Tag and push pkg version if necessary
         run: |
           title=$(git show --pretty=format:%s -s HEAD)

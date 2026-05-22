@@ -19,12 +19,8 @@ jobs:
     outputs:
       version: "${{ fromJSON(steps.version.outputs.version) }}"
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         # Uses release ref (tag)
-        with:
-          action: actions/checkout@v6
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Info
         id: version
         run: |

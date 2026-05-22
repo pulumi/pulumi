@@ -45,24 +45,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: ./.github/actions/retry
+        uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-            path: pulumi
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
+          path: pulumi
       - name: Checkout tap repo
-        uses: ./.github/actions/retry
+        uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            repository: pulumi/homebrew-tap
-            path: homebrew-tap
-            token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          repository: pulumi/homebrew-tap
+          path: homebrew-tap
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
       - name: Update Homebrew Tap
         run: |
           set -euo pipefail

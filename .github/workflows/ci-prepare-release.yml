@@ -52,13 +52,9 @@ jobs:
     needs: [sign]
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Get commit hash
         id: commit-info
         run: |

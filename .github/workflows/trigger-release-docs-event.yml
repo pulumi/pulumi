@@ -14,20 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: ./.github/actions/retry
-        with:
-          action: actions/checkout@v6
-          attempt_limit: 3
-          attempt_delay: 5000
+        uses: actions/checkout@v6
       - name: Checkout Scripts Repo
-        uses: ./.github/actions/retry
+        uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            path: ci-scripts
-            repository: pulumi/scripts
-          attempt_limit: 3
-          attempt_delay: 5000
+          path: ci-scripts
+          repository: pulumi/scripts
       - name: Trigger Docs Build
         run: |
           ./ci-scripts/ci/build-package-docs.sh "pulumi"

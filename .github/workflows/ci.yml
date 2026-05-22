@@ -84,13 +84,9 @@ jobs:
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "matrix-setup"
@@ -489,16 +485,12 @@ jobs:
           path: test-results
           key: gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
-      - uses: ./.github/actions/retry
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         continue-on-error: true
         with:
-          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-          with: |
-            pattern: gotestsum-test-results-*
-            merge-multiple: true
-            path: test-results
-          attempt_limit: 3
-          attempt_delay: 5000
+          pattern: gotestsum-test-results-*
+          merge-multiple: true
+          path: test-results
       - name: List and clean up test results
         continue-on-error: true
         run: |
@@ -520,13 +512,9 @@ jobs:
               exit 1
           fi
       # Checkout repository to upload coverage results.
-      - uses: ./.github/actions/retry
+      - uses: actions/checkout@v6
         with:
-          action: actions/checkout@v6
-          with: |
-            ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
+          ref: ${{ inputs.ref }}
       - name: Retrieve code coverage reports
         uses: ./.github/actions/retry
         with:
