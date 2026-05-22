@@ -133,7 +133,9 @@ Flags:
   -h, --help                   help for do
       --input string           Format of the configuration files (default "pcl")
       --input-file string      Path to a file containing function inputs
+      --input:param1 string    To set param1 things
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
+      --param1 string          To set param1 things
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
 `
@@ -2448,21 +2450,43 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
 				*plugin.ConvertSnippetResponse, error,
 			) {
-				assert.Equal(t, "provider.yaml", filepath.Base(req.Filename))
-				assert.Equal(t, "opt1: val1\n", string(req.Source))
 				assert.NotEmpty(t, req.TargetLoader)
-				assert.Equal(t, map[string]string{
-					"opt2": "val2",
-				}, req.Attributes)
-				// The converter should be told this is a provider-config snippet via the provider's resource token,
-				// not the function token.
-				assert.Equal(t, "pulumi:providers:azure", req.Token)
-				require.NotNil(t, req.Package)
-				assert.Equal(t, "azure", req.Package.Package)
-				return &plugin.ConvertSnippetResponse{
-					Filename: "provider.pp",
-					Source:   []byte(`opt1 = "val1"` + "\n" + `opt2 = "val2"` + "\n"),
-				}, nil
+				switch filepath.Base(req.Filename) {
+				case "provider.yaml":
+					assert.Equal(t, "opt1: val1\n", string(req.Source))
+					assert.Equal(t, map[string]string{
+						"opt2": "val2",
+					}, req.Attributes)
+					// The converter should be told this is a provider-config snippet via the provider's resource token,
+					// not the function token.
+					assert.Equal(t, "pulumi:providers:azure", req.Token)
+					require.NotNil(t, req.Package)
+					assert.Equal(t, "azure", req.Package.Package)
+					return &plugin.ConvertSnippetResponse{
+						Filename: "provider.pp",
+						Source:   []byte(`opt1 = "val1"` + "\n" + `opt2 = "val2"` + "\n"),
+					}, nil
+				case "inputs.yaml":
+					assert.Equal(t, "in1: file\n", string(req.Source))
+					assert.Equal(t, map[string]string{
+						"dry-run": "true",
+						"in1":     "p1",
+						"in2":     "p2",
+					}, req.Attributes)
+					assert.Equal(t, "azure:index:myFunction", req.Token)
+					require.NotNil(t, req.Package)
+					assert.Equal(t, "azure", req.Package.Package)
+					return &plugin.ConvertSnippetResponse{
+						Filename: "inputs.pp",
+						Source: []byte(
+							`in1 = "p1"` + "\n" +
+								`in2 = "p2"` + "\n" +
+								`dry-run = true` + "\n"),
+					}, nil
+				default:
+					require.Failf(t, "unexpected converter input", "filename: %s", req.Filename)
+					return nil, nil
+				}
 			},
 		}, nil
 	}
@@ -2516,6 +2540,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	}
 
 	providerFile := writeHCLFile(t, "provider.yaml", "opt1: val1\n")
+	inputFile := writeHCLFile(t, "inputs.yaml", "in1: file\n")
 
 	var stdout bytes.Buffer
 	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
@@ -2523,7 +2548,8 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
 		"azure:index:myFunction",
-		"--provider-file", providerFile, "--provider-format", "yaml",
+		"--provider-file", providerFile,
+		"--input-file", inputFile, "--input", "yaml",
 		"--azure:opt2", "val2",
 		"--in1", "p1",
 		"--input:in2", "p2",

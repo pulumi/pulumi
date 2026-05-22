@@ -484,23 +484,36 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 	var help strings.Builder
 	if len(modules) > 0 {
 		fmt.Fprintln(&help, "Modules:")
+		moduleNames := make([]string, 0, len(modules))
 		for mod := range modules {
+			moduleNames = append(moduleNames, mod)
+		}
+		slices.Sort(moduleNames)
+		for _, mod := range moduleNames {
 			fmt.Fprintf(&help, "  %s\n", mod)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
+		functionNames := make([]string, 0, len(functions))
 		for _, fn := range functions {
-			tok := pc.spec.CanonicalizeToken(fn.Token)
+			functionNames = append(functionNames, pc.spec.CanonicalizeToken(fn.Token))
+		}
+		slices.Sort(functionNames)
+		for _, tok := range functionNames {
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
+		resourceNames := make([]string, 0, len(resources))
 		for _, res := range resources {
-			tok := pc.spec.CanonicalizeToken(res.Token)
+			resourceNames = append(resourceNames, pc.spec.CanonicalizeToken(res.Token))
+		}
+		slices.Sort(resourceNames)
+		for _, tok := range resourceNames {
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
@@ -573,23 +586,36 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 	var help strings.Builder
 	if len(modules) > 0 {
 		fmt.Fprintln(&help, "Modules:")
+		moduleNames := make([]string, 0, len(modules))
 		for mod := range modules {
+			moduleNames = append(moduleNames, mod)
+		}
+		slices.Sort(moduleNames)
+		for _, mod := range moduleNames {
 			fmt.Fprintf(&help, "  %s\n", mod)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
+		functionNames := make([]string, 0, len(functions))
 		for _, fn := range functions {
-			tok := pc.spec.CanonicalizeToken(fn.Token)
+			functionNames = append(functionNames, pc.spec.CanonicalizeToken(fn.Token))
+		}
+		slices.Sort(functionNames)
+		for _, tok := range functionNames {
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
+		resourceNames := make([]string, 0, len(resources))
 		for _, res := range resources {
-			tok := pc.spec.CanonicalizeToken(res.Token)
+			resourceNames = append(resourceNames, pc.spec.CanonicalizeToken(res.Token))
+		}
+		slices.Sort(resourceNames)
+		for _, tok := range resourceNames {
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")

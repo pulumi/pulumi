@@ -97,13 +97,18 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
-			if err := pc.configureProvider(ctx); err != nil {
+			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
 			}
 
+			var inputProperties []*schema.Property
+			if fn.Inputs != nil {
+				inputProperties = fn.Inputs.Properties
+			}
 			inputs, err := evaluateFunctionFile(
 				ctx, inputFile, "input", pc.format, fn, pc.evalContext,
-				pc.converter, pc.loaderTarget, pc.packageDescriptor)
+				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				collectInputFlags(cmd, "input", inputProperties))
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
 			}
