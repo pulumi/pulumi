@@ -41,8 +41,8 @@ var (
 	verbNearStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
 	verbDimStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("5")).Faint(true)
 
-	// waveStyles is a brightness ramp used by the traveling-wave shimmer.
-	// The wave reads bright→brightest→bright as it sweeps right.
+	// waveStyles is the wave palette for dark terminals: a bright→brightest→
+	// bright ramp that sweeps left-to-right and stays visible on a dark bg.
 	waveStyles = []lipgloss.Style{
 		lipgloss.NewStyle().Foreground(lipgloss.Color("245")),
 		lipgloss.NewStyle().Foreground(lipgloss.Color("247")),
@@ -51,19 +51,32 @@ var (
 		lipgloss.NewStyle().Foreground(lipgloss.Color("250")),
 		lipgloss.NewStyle().Foreground(lipgloss.Color("247")),
 	}
+	// waveStylesLight is the same ramp inverted for light terminals: darker
+	// grays so the wave reads against a white background. Near-white grays
+	// (245-253) from the dark palette disappear on light bg.
+	waveStylesLight = []lipgloss.Style{
+		lipgloss.NewStyle().Foreground(lipgloss.Color("244")),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("241")),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("238")),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("235")),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("238")),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("241")),
+	}
 	waveDimStyle = lipgloss.NewStyle().Faint(true)
 )
 
 // shimmerLabel renders text with the shimmer effect selected by kind. Frame
 // is the animation tick counter; callers should pass a value that advances
-// monotonically (modulo any safe bound) as the spinner ticks.
-func shimmerLabel(text string, kind shimmerKind, frame int) string {
+// monotonically (modulo any safe bound) as the spinner ticks. hasDarkBackground
+// picks the wave palette (the spotlight uses pure magenta and reads fine on
+// both backgrounds).
+func shimmerLabel(text string, kind shimmerKind, frame int, hasDarkBackground bool) string {
 	if text == "" {
 		return ""
 	}
 	switch kind {
 	case shimmerWave:
-		return buildWave(text, frame)
+		return buildWave(text, frame, hasDarkBackground)
 	case shimmerVerb:
 		fallthrough
 	default:
@@ -104,19 +117,25 @@ func buildSpotlight(text string, frame int) string {
 
 // buildWave renders text with a grayscale brightness ramp that sweeps
 // left-to-right across the string, then restarts after a brief lull where
-// every character renders dim.
-func buildWave(text string, frame int) string {
+// every character renders dim. hasDarkBackground selects between the bright-
+// gray palette (dark terms) and the dark-gray palette (light terms) so the
+// wave stays visible regardless of the terminal theme.
+func buildWave(text string, frame int, hasDarkBackground bool) string {
 	runes := []rune(text)
 	if len(runes) == 0 {
 		return ""
 	}
-	wavePos := frame % (len(runes) + len(waveStyles))
+	palette := waveStyles
+	if !hasDarkBackground {
+		palette = waveStylesLight
+	}
+	wavePos := frame % (len(runes) + len(palette))
 	var sb strings.Builder
 	for i, r := range runes {
 		ch := string(r)
 		dist := wavePos - i
-		if dist >= 0 && dist < len(waveStyles) {
-			sb.WriteString(waveStyles[dist].Render(ch))
+		if dist >= 0 && dist < len(palette) {
+			sb.WriteString(palette[dist].Render(ch))
 		} else {
 			sb.WriteString(waveDimStyle.Render(ch))
 		}
