@@ -2273,7 +2273,7 @@ func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
 	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure", "myFunction", "--input", "yaml", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:myFunction", "--input", "yaml", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "yaml input converter does not support snippet conversion; "+
