@@ -710,7 +710,7 @@ func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResour
 						err:                   err,
 					}
 				})
-				return []Step{NewParameterizeStep(sg.deployment, provider, event.ExtensionRef(), *event.Extension(), created)}, true, nil
+				return []Step{NewExtensionParameterizeStep(sg.deployment, provider, event.ExtensionRef(), *event.Extension(), created)}, true, nil
 			}
 			// Already in flight — wait, don't re-emit.
 			go PanicRecovery(sg.deployment.panicErrs, func() {

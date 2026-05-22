@@ -277,7 +277,7 @@ func (sm *JournalSnapshotManager) BeginMutation(step deploy.Step) (SnapshotMutat
 	case deploy.OpImport, deploy.OpImportReplacement:
 		return sm.doImport(step, operationID)
 	case deploy.OpExtendParameterize:
-		// ParameterizeStep doesn't mutate resource state — it only side-effects
+		// ExtensionParameterizeStep doesn't mutate resource state — it only side-effects
 		// the provider plugin. The backend SnapshotManager records the blob; the
 		// journal has nothing to track here.
 		return &noopJournalMutation{}, nil
@@ -288,7 +288,7 @@ func (sm *JournalSnapshotManager) BeginMutation(step deploy.Step) (SnapshotMutat
 }
 
 // noopJournalMutation is a SnapshotMutation that doesn't record anything in the journal.
-// Used by step types that operate on engine state outside the resource graph (e.g. ParameterizeStep).
+// Used by step types that operate on engine state outside the resource graph (e.g. ExtensionParameterizeStep).
 type noopJournalMutation struct{}
 
 func (*noopJournalMutation) End(_ deploy.Step, _ bool) error { return nil }

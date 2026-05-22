@@ -996,7 +996,7 @@ func TestStepGenerator(t *testing.T) {
 		})
 	})
 
-	t.Run("generateSteps emits ParameterizeStep for an extension event", func(t *testing.T) {
+	t.Run("generateSteps emits ExtensionParameterizeStep for an extension event", func(t *testing.T) {
 		t.Parallel()
 
 		// Pre-load a fake provider into the registry so GetProvider(ref)
@@ -1053,10 +1053,10 @@ func TestStepGenerator(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, async)
 		require.Len(t, steps, 1)
-		ps, ok := steps[0].(*ParameterizeStep)
+		ps, ok := steps[0].(*ExtensionParameterizeStep)
 		require.True(t, ok, "got %T", steps[0])
 
-		// Simulate ParameterizeStep.Apply succeeding so the spawned
+		// Simulate ExtensionParameterizeStep.Apply succeeding so the spawned
 		// goroutine produces its continue-event.
 		ps.cts.MustFulfill(struct{}{})
 
@@ -1076,7 +1076,7 @@ func TestStepGenerator(t *testing.T) {
 	})
 }
 
-func TestParameterizeStepApply_Success(t *testing.T) {
+func TestExtensionParameterizeStepApply_Success(t *testing.T) {
 	t.Parallel()
 
 	extension := apitype.Extension{
@@ -1094,7 +1094,7 @@ func TestParameterizeStepApply_Success(t *testing.T) {
 	}
 
 	completionSource := &promise.CompletionSource[struct{}]{}
-	step := NewParameterizeStep(&Deployment{}, prov, apitype.ExtensionRef("ref-success"), extension, completionSource)
+	step := NewExtensionParameterizeStep(&Deployment{}, prov, apitype.ExtensionRef("ref-success"), extension, completionSource)
 
 	status, _, err := step.Apply()
 	require.NoError(t, err)
@@ -1112,7 +1112,7 @@ func TestParameterizeStepApply_Success(t *testing.T) {
 	assert.NoError(t, err, "successful parameterize should fulfill the CompletionSource")
 }
 
-func TestParameterizeStepApply_ProviderError(t *testing.T) {
+func TestExtensionParameterizeStepApply_ProviderError(t *testing.T) {
 	t.Parallel()
 
 	want := errors.New("provider blew up")
@@ -1123,7 +1123,7 @@ func TestParameterizeStepApply_ProviderError(t *testing.T) {
 	}
 
 	completionSource := &promise.CompletionSource[struct{}]{}
-	step := NewParameterizeStep(
+	step := NewExtensionParameterizeStep(
 		&Deployment{},
 		prov,
 		apitype.ExtensionRef("ref-err"),
@@ -1138,7 +1138,7 @@ func TestParameterizeStepApply_ProviderError(t *testing.T) {
 	assert.ErrorIs(t, err, want, "failed parameterize must reject the CompletionSource")
 }
 
-func TestParameterizeStepApply_MalformedVersion(t *testing.T) {
+func TestExtensionParameterizeStepApply_MalformedVersion(t *testing.T) {
 	t.Parallel()
 
 	var called bool
@@ -1150,7 +1150,7 @@ func TestParameterizeStepApply_MalformedVersion(t *testing.T) {
 	}
 
 	completionSource := &promise.CompletionSource[struct{}]{}
-	step := NewParameterizeStep(
+	step := NewExtensionParameterizeStep(
 		&Deployment{},
 		prov,
 		apitype.ExtensionRef("ref-badver"),

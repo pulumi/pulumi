@@ -1695,14 +1695,14 @@ func (s *RefreshStep) Skip() {
 	// Nothing to do here.
 }
 
-// ParameterizeStep is an internal step that applies an extension
+// ExtensionParameterizeStep is an internal step that applies an extension
 // parameterization to a provider plugin. The step generator emits it when a
 // register-resource event arrives for an extension-parameterized resource and
 // the target provider has not yet been parameterized with that extension.
 //
-// Unlike resource steps, ParameterizeStep does not correspond to any user
+// Unlike resource steps, ExtensionParameterizeStep does not correspond to any user
 // resource. URN, Type, and the Old/New/Res accessors all return zero values.
-type ParameterizeStep struct {
+type ExtensionParameterizeStep struct {
 	deployment *Deployment
 	provider   plugin.Provider
 	ref        apitype.ExtensionRef
@@ -1710,18 +1710,18 @@ type ParameterizeStep struct {
 	cts        *promise.CompletionSource[struct{}]
 }
 
-var _ Step = (*ParameterizeStep)(nil)
+var _ Step = (*ExtensionParameterizeStep)(nil)
 
-// NewParameterizeStep creates a new ParameterizeStep. The completion source must be fulfilled
+// NewExtensionParameterizeStep creates a new ExtensionParameterizeStep. The completion source must be fulfilled
 // (or rejected) exactly once by Apply().
-func NewParameterizeStep(
+func NewExtensionParameterizeStep(
 	deployment *Deployment,
 	provider plugin.Provider,
 	ref apitype.ExtensionRef,
 	extension apitype.Extension,
 	cts *promise.CompletionSource[struct{}],
 ) Step {
-	return &ParameterizeStep{
+	return &ExtensionParameterizeStep{
 		deployment: deployment,
 		provider:   provider,
 		ref:        ref,
@@ -1732,12 +1732,12 @@ func NewParameterizeStep(
 
 // Ref returns the ExtensionRef this step is parameterizing for. SnapshotManager
 // uses this to record the blob keyed by ref when the step is dispatched.
-func (s *ParameterizeStep) Ref() apitype.ExtensionRef { return s.ref }
+func (s *ExtensionParameterizeStep) Ref() apitype.ExtensionRef { return s.ref }
 
 // Extension returns the extension blob being applied. Counterpart to Ref().
-func (s *ParameterizeStep) Extension() apitype.Extension { return s.extension }
+func (s *ExtensionParameterizeStep) Extension() apitype.Extension { return s.extension }
 
-func (s *ParameterizeStep) Apply() (resource.Status, StepCompleteFunc, error) {
+func (s *ExtensionParameterizeStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	version, err := semver.ParseTolerant(s.extension.Version)
 	if err != nil {
 		s.cts.MustReject(err)
@@ -1768,17 +1768,17 @@ func (s *ParameterizeStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
 }
 
-func (s *ParameterizeStep) Op() display.StepOp      { return OpExtendParameterize }
-func (s *ParameterizeStep) URN() resource.URN       { return "" }
-func (s *ParameterizeStep) Type() tokens.Type       { return "" }
-func (s *ParameterizeStep) Provider() string        { return "" }
-func (s *ParameterizeStep) Old() *resource.State    { return nil }
-func (s *ParameterizeStep) New() *resource.State    { return nil }
-func (s *ParameterizeStep) Res() *resource.State    { return nil }
-func (s *ParameterizeStep) Logical() bool           { return false }
-func (s *ParameterizeStep) Deployment() *Deployment { return s.deployment }
-func (s *ParameterizeStep) Fail()                   {}
-func (s *ParameterizeStep) Skip()                   {}
+func (s *ExtensionParameterizeStep) Op() display.StepOp      { return OpExtendParameterize }
+func (s *ExtensionParameterizeStep) URN() resource.URN       { return "" }
+func (s *ExtensionParameterizeStep) Type() tokens.Type       { return "" }
+func (s *ExtensionParameterizeStep) Provider() string        { return "" }
+func (s *ExtensionParameterizeStep) Old() *resource.State    { return nil }
+func (s *ExtensionParameterizeStep) New() *resource.State    { return nil }
+func (s *ExtensionParameterizeStep) Res() *resource.State    { return nil }
+func (s *ExtensionParameterizeStep) Logical() bool           { return false }
+func (s *ExtensionParameterizeStep) Deployment() *Deployment { return s.deployment }
+func (s *ExtensionParameterizeStep) Fail()                   {}
+func (s *ExtensionParameterizeStep) Skip()                   {}
 
 type ImportStep struct {
 	deployment    *Deployment           // the current deployment.

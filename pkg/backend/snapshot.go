@@ -194,16 +194,16 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 	return nil, nil
 }
 
-// doExtendParameterize records the extension blob attached to a ParameterizeStep so that
+// doExtendParameterize records the extension blob attached to a ExtensionParameterizeStep so that
 // Snap() can include it in the final snapshot's Extensions map.
 func (sm *SnapshotManager) doExtendParameterize(step deploy.Step) (engine.SnapshotMutation, error) {
-	ps, ok := step.(*deploy.ParameterizeStep)
-	contract.Assertf(ok, "doExtendParameterize called on non-ParameterizeStep: %T", step)
+	ps, ok := step.(*deploy.ExtensionParameterizeStep)
+	contract.Assertf(ok, "doExtendParameterize called on non-ExtensionParameterizeStep: %T", step)
 	sm.extensions[ps.Ref()] = ps.Extension()
 	return &noopSnapshotMutation{}, nil
 }
 
-// noopSnapshotMutation reports no resource-state change. ParameterizeStep uses it because
+// noopSnapshotMutation reports no resource-state change. ExtensionParameterizeStep uses it because
 // its work (calling Parameterize on a plugin) is a side effect on the plugin process, not
 // a mutation of any resource in the snapshot.
 type noopSnapshotMutation struct{}

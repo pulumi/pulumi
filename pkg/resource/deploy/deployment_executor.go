@@ -555,7 +555,7 @@ func (ex *deploymentExecutor) performPostSteps(
 }
 
 func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
-	// Some step types (e.g. ParameterizeStep) operate on the provider rather than a
+	// Some step types (e.g. ExtensionParameterizeStep) operate on the provider rather than a
 	// resource and have no Res(). They can't depend on skipped resources.
 	res := step.Res()
 	if res == nil {

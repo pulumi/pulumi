@@ -48,13 +48,13 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	isRefresh := false
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
-	// Collect extension blobs from ParameterizeStep entries seen during this plan.
+	// Collect extension blobs from ExtensionParameterizeStep entries seen during this plan.
 	liveExtensions := map[apitype.ExtensionRef]apitype.Extension{}
 	for _, e := range entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
 
 		if e.Kind == TestJournalEntrySuccess && e.Step.Op() == deploy.OpExtendParameterize {
-			if ps, ok := e.Step.(*deploy.ParameterizeStep); ok {
+			if ps, ok := e.Step.(*deploy.ExtensionParameterizeStep); ok {
 				liveExtensions[ps.Ref()] = ps.Extension()
 			}
 		}
@@ -193,7 +193,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	manifest.Magic = manifest.NewMagic()
 
 	// A missing blob can't happen here — extension resources only enter the
-	// journal alongside their ParameterizeStep — so drop the missing list.
+	// journal alongside their ExtensionParameterizeStep — so drop the missing list.
 	snapExtensions, _ := deploy.MaterializeExtensions(filteredResources, liveExtensions, base)
 
 	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets, snapExtensions)

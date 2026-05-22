@@ -1023,7 +1023,7 @@ func (acts *updateActions) OnRebuiltBaseState() error {
 }
 
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
-	// ParameterizeStep doesn't correspond to a resource registration — it
+	// ExtensionParameterizeStep doesn't correspond to a resource registration — it
 	// side-effects the provider plugin. Skip the resource-graph bookkeeping
 	// entirely.
 	if step.Op() == deploy.OpExtendParameterize {
@@ -1048,7 +1048,7 @@ func (acts *updateActions) OnResourceStepPost(
 	ctx any, step deploy.Step,
 	status resource.Status, err error,
 ) error {
-	// ParameterizeStep doesn't appear in the resource graph; skip the post-hooks
+	// ExtensionParameterizeStep doesn't appear in the resource graph; skip the post-hooks
 	// that touch step.Res().
 	if step.Op() == deploy.OpExtendParameterize {
 		if ctx != nil {
