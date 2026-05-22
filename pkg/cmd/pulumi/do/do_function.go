@@ -88,7 +88,6 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 	}
 
 	var inputFile string
-	var inputFormat string
 
 	cmd := &cobra.Command{
 		Use:   name,
@@ -103,7 +102,7 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 			}
 
 			inputs, err := evaluateFunctionFile(
-				ctx, inputFile, "input", inputFormat, fn, pc.evalContext,
+				ctx, inputFile, "input", pc.format, fn, pc.evalContext,
 				pc.converter, pc.loaderTarget, pc.packageDescriptor)
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
@@ -143,12 +142,11 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 		},
 	}
 
-	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Input file format")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing function inputs")
 	cmd.Flags().StringVar(&pc.providerFile, "provider-file", "",
 		"Path to a file containing provider configuration")
-	cmd.Flags().StringVar(&pc.providerFormat, "provider-format", "pcl",
-		"Format of the provider configuration file")
+	cmd.Flags().StringVar(&pc.format, "input", "pcl",
+		"Format of the configuration files")
 
 	return cmd
 }

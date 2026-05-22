@@ -102,7 +102,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	// Provider configuration applies to all sub-operations, so register here as persistent flags.
 	cmd.PersistentFlags().StringVar(&pc.providerFile, "provider-file", "",
 		"Path to a file containing provider configuration")
-	cmd.PersistentFlags().StringVar(&pc.providerFormat, "provider-format", "pcl",
+	cmd.PersistentFlags().StringVar(&pc.format, "input", "pcl",
 		"Format of the provider configuration file")
 	cmd.AddCommand(pc.newResourceCreateCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
@@ -116,7 +116,6 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 
 func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
-	var inputFormat string
 	var yes bool
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -132,7 +131,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 			}
 			urn := resourceURN(res)
 			inputs, err := evaluateResourceFile(
-				ctx, inputFile, "input", inputFormat, res, pc.evalContext,
+				ctx, inputFile, "input", pc.format, res, pc.evalContext,
 				pc.converter, pc.loaderTarget, pc.packageDescriptor)
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
@@ -165,7 +164,6 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 			return pc.printResourceResult(cmd, response.ID, response.Properties, res)
 		},
 	}
-	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Input file format")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
@@ -292,7 +290,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			return pc.printResourceResult(cmd, id, response.Properties, res)
 		},
 	}
-	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Input file format")
+	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Format of the configuration files")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
