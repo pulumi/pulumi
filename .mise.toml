@@ -24,6 +24,7 @@ protoc = "29.5"
 "npm:protoc-gen-js" = { version = "3.21.4", os = ["linux", "macos"], npm_args = "--ignore-scripts=false" }
 "go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.8.0"
 "github:WebAssembly/wabt" = "1.0.37"
+changie = "1.21"
 dotnet = "8"
 java = "temurin-11"
 gradle = "7.6"

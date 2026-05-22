@@ -1,0 +1,6 @@
+kind: feat
+body: Pressing Esc in `pulumi neo` now clears the input box when it has text; with an empty box, Esc still cancels the agent's current turn
+custom:
+  Scope: cli/neo
+  PR: ''
+time: '2026-05-20T00:00:00Z'

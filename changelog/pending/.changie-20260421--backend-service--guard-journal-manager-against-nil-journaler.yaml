@@ -1,0 +1,6 @@
+kind: fix
+body: Error out when setting up journaler fails
+custom:
+  Scope: backend/service
+  PR: ''
+time: '2026-04-21T00:00:00Z'
