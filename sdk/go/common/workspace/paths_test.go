@@ -54,6 +54,63 @@ func TestDetectProjectAndPath(t *testing.T) {
 	assert.Equal(t, "nodejs", project.Runtime.name)
 }
 
+//nolint:paralleltest // mutates env vars and shared agent Pulumi directory
+func TestPulumiHomeDirForPathFallsBackToAgentDir(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv(PulumiHomeEnvVar, "")
+
+	badHome := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(badHome, []byte("not a directory"), 0o600))
+
+	dir, err := pulumiHomeDirForPath(badHome)
+	require.NoError(t, err)
+	assert.Equal(t, agentPulumiDir, dir)
+}
+
+//nolint:paralleltest // mutates env vars and shared agent Pulumi directory
+func TestPulumiHomeDirForPathKeepsWritableHomeForAgent(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv(PulumiHomeEnvVar, "")
+
+	home := filepath.Join(t.TempDir(), BookkeepingDir)
+	dir, err := pulumiHomeDirForPath(home)
+	require.NoError(t, err)
+	assert.Equal(t, home, dir)
+}
+
+//nolint:paralleltest // mutates env vars and shared agent Pulumi directory
+func TestPulumiHomeDirForPathKeepsExplicitPath(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv(PulumiHomeEnvVar, filepath.Join(t.TempDir(), "explicit-home"))
+
+	badHome := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(badHome, []byte("not a directory"), 0o600))
+
+	dir, err := pulumiHomeDirForPath(badHome)
+	require.NoError(t, err)
+	assert.Equal(t, badHome, dir)
+}
+
 //nolint:paralleltest // Theses test use and change the current working directory
 func TestProjectStackPath(t *testing.T) {
 	expectedPath := func(expectedPath string) func(t *testing.T, projectDir, path string, err error) {

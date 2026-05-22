@@ -17,6 +17,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -64,7 +66,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			var err error
 			if all {
-				err = workspace.DeleteAllAccounts()
+				err = deleteAllAccounts()
 				fmt.Fprintln(cmd.OutOrStdout(), "Logged out of everything")
 			} else {
 				if cloudURL == "" {
@@ -84,7 +86,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 					cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
 				}
 
-				err = workspace.DeleteAccount(cloudURL)
+				err = deleteAccount(cloudURL)
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged out of %s\n", cloudURL)
 			}
 
@@ -107,4 +109,37 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 		"Log out of using local mode")
 
 	return cmd
+}
+
+// deleteAllAccounts removes user credentials and, in agent mode, any shared
+// temporary agent credentials.
+func deleteAllAccounts() error {
+	if !agentLogoutFallbackEnabled() {
+		return workspace.DeleteAllAccounts()
+	}
+	if err := workspace.DeleteAllAccounts(); err != nil {
+		return workspace.DeleteAgentCredentials()
+	}
+	return workspace.DeleteAgentCredentials()
+}
+
+// deleteAccount removes credentials for a cloud URL, falling back to shared
+// temporary agent credentials when default credentials are unavailable.
+func deleteAccount(cloudURL string) error {
+	if !agentLogoutFallbackEnabled() {
+		return workspace.DeleteAccount(cloudURL)
+	}
+	account, err := workspace.GetAccount(cloudURL)
+	if err == nil && account.AccessToken != "" {
+		return workspace.DeleteAccount(cloudURL)
+	}
+	return workspace.DeleteAgentAccount(cloudURL)
+}
+
+// agentLogoutFallbackEnabled reports whether logout may use the shared agent
+// credential store as an implicit fallback.
+func agentLogoutFallbackEnabled() bool {
+	return agentdetect.Detect(os.Getenv) != "" &&
+		os.Getenv(workspace.PulumiCredentialsPathEnvVar) == "" &&
+		os.Getenv(env.Home.Var().Name()) == ""
 }

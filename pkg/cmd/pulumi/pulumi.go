@@ -45,8 +45,10 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -65,7 +67,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
-	cmdMetadata "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
@@ -87,6 +88,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
@@ -275,7 +277,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
 			client.SetUserAgentCommand(commandPath)
-			client.SetUserAgentAIAgent(cmdMetadata.DetectAIAgent(os.Getenv))
+			client.SetUserAgentAIAgent(agentdetect.Detect(os.Getenv))
 
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't
@@ -357,6 +359,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				cmdutil.SetAppDashTraceParent(sc.TraceID(), sc.SpanID())
 			}
 			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
+			ctx = httpstate.ContextWithAgentCredentialUse(ctx)
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
@@ -398,6 +401,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			agentauth.MaybePrintClaimWarning(cmd.Context(), cmd.ErrOrStderr())
+
 			// Before exiting, if there is a new version of the CLI available, print it out.
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"

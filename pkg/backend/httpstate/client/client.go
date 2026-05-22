@@ -20,12 +20,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"iter"
+	"math/bits"
 	"net/http"
 	"net/url"
 	"path"
@@ -47,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -126,6 +129,32 @@ type NeoTaskMessage struct {
 	Content    string             `json:"content"`
 	Timestamp  string             `json:"timestamp"`
 	EntityDiff *NeoTaskEntityDiff `json:"entity_diff,omitempty"`
+}
+
+// AgentSignupChallenge is returned by the unauthenticated agent signup
+// challenge endpoint.
+type AgentSignupChallenge struct {
+	ChallengeID   string `json:"challengeID"`
+	ChallengeData string `json:"challengeData"`
+}
+
+// AgentSignupResponse is returned after solving an unauthenticated agent signup
+// challenge.
+type AgentSignupResponse struct {
+	AccessToken           string    `json:"accessToken"`
+	AccessTokenValidUntil time.Time `json:"accessTokenValidUntil"`
+	ClaimToken            string    `json:"claimToken"`
+	ClaimTokenValidUntil  time.Time `json:"claimTokenValidUntil"`
+}
+
+// agentSignupRequest is sent to the unauthenticated agent signup endpoint with
+// the solved challenge and best-effort agent metadata.
+type agentSignupRequest struct {
+	ChallengeID              string `json:"challengeID,omitempty"`
+	ChallengeResult          string `json:"challengeResult,omitempty"`
+	AgentName                string `json:"agentName,omitempty"`
+	AgentModel               string `json:"agentModel,omitempty"`
+	ChallengeSolveDurationMS int64  `json:"challengeSolveDurationMs,omitempty"`
 }
 
 // NeoTaskEntityDiff represents entities to add or remove from the agent context.
@@ -245,6 +274,125 @@ func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *Client) URL() string {
 	return pc.apiURL
+}
+
+// SignupAgent creates an ephemeral account for the detected agent using the
+// unauthenticated signup endpoint.
+func (pc *Client) SignupAgent(ctx context.Context, metadata agentdetect.Metadata) (AgentSignupResponse, error) {
+	var challenge AgentSignupChallenge
+	if err := pc.restCall(ctx, http.MethodGet, "/api/agents/signup", nil, nil, &challenge); err != nil {
+		return AgentSignupResponse{}, err
+	}
+	if challenge.ChallengeID == "" || challenge.ChallengeData == "" {
+		return AgentSignupResponse{}, errors.New(
+			"creating agent Pulumi account: signup response did not include challenge data")
+	}
+
+	challengeStart := time.Now()
+	challengeResult, err := solveAgentSignupChallenge(ctx, challenge.ChallengeData)
+	if err != nil {
+		return AgentSignupResponse{}, err
+	}
+	challengeSolveDuration := time.Since(challengeStart)
+
+	var resp AgentSignupResponse
+	if err := pc.restCall(ctx, http.MethodPost, "/api/agents/signup", nil, agentSignupRequest{
+		ChallengeID:              challenge.ChallengeID,
+		ChallengeResult:          challengeResult,
+		AgentName:                metadata.Name,
+		AgentModel:               metadata.Model,
+		ChallengeSolveDurationMS: challengeSolveDuration.Milliseconds(),
+	}, &resp); err != nil {
+		return AgentSignupResponse{}, err
+	}
+	if resp.AccessToken == "" {
+		return AgentSignupResponse{}, errors.New(
+			"creating agent Pulumi account: signup response did not include an access token")
+	}
+	if resp.AccessTokenValidUntil.IsZero() {
+		return AgentSignupResponse{}, errors.New(
+			"creating agent Pulumi account: signup response did not include accessTokenValidUntil")
+	}
+	if resp.ClaimToken == "" {
+		return AgentSignupResponse{}, errors.New(
+			"creating agent Pulumi account: signup response did not include a claim token")
+	}
+	if resp.ClaimTokenValidUntil.IsZero() {
+		return AgentSignupResponse{}, errors.New(
+			"creating agent Pulumi account: signup response did not include claimTokenValidUntil")
+	}
+	return resp, nil
+}
+
+// ValidateAgentClaim reports whether an agent claim token is still claimable.
+// It uses the unauthenticated signup validation endpoint.
+func (pc *Client) ValidateAgentClaim(ctx context.Context, claimToken string) (bool, error) {
+	if strings.TrimSpace(claimToken) == "" {
+		return false, nil
+	}
+	err := pc.restCall(ctx, http.MethodGet, "/api/agents/signup/validate/"+url.PathEscape(claimToken), nil, nil, nil)
+	if err == nil {
+		return true, nil
+	}
+	var errResp *apitype.ErrorResponse
+	if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
+		return false, nil
+	}
+	return false, err
+}
+
+// solveAgentSignupChallenge finds a nonce satisfying the signup proof-of-work
+// challenge and returns it as the challenge result.
+func solveAgentSignupChallenge(ctx context.Context, data string) (string, error) {
+	difficulty, err := parseAgentSignupChallengeDifficulty(data)
+	if err != nil {
+		return "", err
+	}
+	for nonce := uint64(0); ; nonce++ {
+		if nonce%4096 == 0 {
+			select {
+			case <-ctx.Done():
+				return "", ctx.Err()
+			default:
+			}
+		}
+		result := strconv.FormatUint(nonce, 10)
+		hash := sha256.Sum256([]byte(data + ":" + result))
+		if leadingZeroBits(hash[:]) >= difficulty {
+			return result, nil
+		}
+		if nonce == ^uint64(0) {
+			return "", errors.New("creating agent Pulumi account: exhausted challenge nonce space")
+		}
+	}
+}
+
+// parseAgentSignupChallengeDifficulty extracts the proof-of-work difficulty
+// from versioned challenge data.
+func parseAgentSignupChallengeDifficulty(data string) (int, error) {
+	parts := strings.Split(data, ":")
+	if len(parts) != 3 || parts[0] != "v1" {
+		return 0, errors.New("creating agent Pulumi account: invalid challenge data")
+	}
+	difficulty, err := strconv.Atoi(parts[2])
+	if err != nil || difficulty <= 0 || difficulty > 256 {
+		return 0, errors.New("creating agent Pulumi account: invalid challenge difficulty")
+	}
+	return difficulty, nil
+}
+
+// leadingZeroBits returns the number of leading zero bits in a byte slice.
+func leadingZeroBits(b []byte) int {
+	n := 0
+	for _, x := range b {
+		if x == 0 {
+			n += 8
+			continue
+		}
+		n += bits.LeadingZeros8(x)
+		break
+	}
+	return n
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
