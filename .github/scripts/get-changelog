@@ -11,8 +11,5 @@ if [ -z "${VERSION}" ]; then
   exit 1
 fi
 
-# Backfill PR numbers from git history before rendering.
-./scripts/backfill-pr-links.sh
-
 # Render all pending changelog entries for this version without writing files.
 changie batch "${VERSION}" --dry-run
