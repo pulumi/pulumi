@@ -17,9 +17,17 @@
 // monkey-patching the gRPC module, which must happen before it's loaded.
 
 import * as opentelemetry from "@opentelemetry/api";
+import { initOtelLogging, shutdownOtelLogging } from "../../runtime/otelLogger";
 
 let rootContext: opentelemetry.Context | null = null;
 let tracerProvider: any = null;
+
+// Initialize OTLP logging independently of tracing — logs are sent
+// whenever the endpoint is available, regardless of TRACEPARENT.
+const otlpEndpointForLogs = process.env.PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT;
+if (otlpEndpointForLogs) {
+    initOtelLogging(otlpEndpointForLogs);
+}
 
 if (process.env.TRACEPARENT) {
     // These imports are done dynamically inside the if block to avoid
@@ -103,4 +111,5 @@ export async function shutdownTracing(): Promise<void> {
     if (tracerProvider) {
         await tracerProvider.shutdown();
     }
+    await shutdownOtelLogging();
 }

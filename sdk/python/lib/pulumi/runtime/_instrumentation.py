@@ -103,6 +103,19 @@ def _initialize_tracing() -> None:
 _initialize_tracing()
 
 
+def _initialize_logging() -> None:
+    """Initialize OTLP logging when the endpoint is available."""
+    endpoint = os.environ.get("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
+    if not endpoint:
+        return
+    from pulumi.runtime.otel_logger import init_otel_logging
+
+    init_otel_logging(endpoint)
+
+
+_initialize_logging()
+
+
 def wrap_with_context(fn):
     """Wrap a callable so it runs with the current OTel context.
 
@@ -128,3 +141,6 @@ async def shutdown_tracing() -> None:
     """
     if _tracer_provider is not None:
         _tracer_provider.shutdown()
+    from pulumi.runtime.otel_logger import shutdown_otel_logging
+
+    shutdown_otel_logging()

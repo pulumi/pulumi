@@ -43,9 +43,9 @@ func EncodeStructValueForLog(val *structpb.Value) ([]byte, error) {
 	return buf, nil
 }
 
-// decodeStructValueFromLog verifies the magic prefix and returns the
+// DecodeStructValueFromLog verifies the magic prefix and returns the
 // inner protobuf-encoded structpb.Value.
-func decodeStructValueFromLog(data []byte) (*structpb.Value, error) {
+func DecodeStructValueFromLog(data []byte) (*structpb.Value, error) {
 	if len(data) < propertyValueLogMagicSize {
 		return nil, errors.New("not a property value log: too short")
 	}
