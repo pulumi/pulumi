@@ -238,7 +238,11 @@ func evaluatePCLFile(
 		input = f
 	}
 
-	return evaluatePCL(input, filename, fileType, bind, evalContext, inputFlags)
+	attributeLiterals, err := inputFlagLiterals(inputFlags)
+	if err != nil {
+		return nil, err
+	}
+	return evaluatePCL(input, filename, fileType, bind, evalContext, attributeLiterals)
 }
 
 func evaluatePCL(
@@ -246,7 +250,7 @@ func evaluatePCL(
 	filename, fileType string,
 	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
 	evalContext functionEvalContext,
-	inputFlags map[string]inputFlagValue,
+	attributeLiterals map[string]string,
 ) (resource.PropertyMap, error) {
 	parser := hclsyntax.NewParser()
 	if err := parser.ParseFile(input, filename); err != nil {
@@ -257,7 +261,7 @@ func evaluatePCL(
 	}
 	contract.Assertf(len(parser.Files) == 1, "Should be one PCL file")
 	file := parser.Files[0]
-	if err := mergeInputFlags(file, filename, fileType, inputFlags); err != nil {
+	if err := mergeAttributeLiterals(file, filename, fileType, attributeLiterals); err != nil {
 		return nil, err
 	}
 
@@ -345,7 +349,7 @@ func evaluateFile(
 	if resp.Diagnostics.HasErrors() {
 		return nil, resp.Diagnostics
 	}
-	return evaluatePCL(bytes.NewReader(resp.Source), resp.Filename, fileType, bind, evalContext, nil)
+	return evaluatePCL(bytes.NewReader(resp.Source), resp.Filename, fileType, bind, evalContext, resp.Attributes)
 }
 
 func evaluateFunctionFile(
@@ -417,27 +421,37 @@ func inputFlagAttributes(inputFlags map[string]inputFlagValue) map[string]string
 	return attrs
 }
 
-func mergeInputFlags(
-	file *hclsyntax.File, filename, fileType string, inputFlags map[string]inputFlagValue,
-) error {
+func inputFlagLiterals(inputFlags map[string]inputFlagValue) (map[string]string, error) {
 	if len(inputFlags) == 0 {
+		return nil, nil
+	}
+	attrs := make(map[string]string, len(inputFlags))
+	for name, flag := range inputFlags {
+		literal, err := pclLiteral(flag)
+		if err != nil {
+			return nil, err
+		}
+		attrs[name] = literal
+	}
+	return attrs, nil
+}
+
+func mergeAttributeLiterals(
+	file *hclsyntax.File, filename, fileType string, attributes map[string]string,
+) error {
+	if len(attributes) == 0 {
 		return nil
 	}
 
-	names := make([]string, 0, len(inputFlags))
-	for name := range inputFlags {
+	names := make([]string, 0, len(attributes))
+	for name := range attributes {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
 	var overlay strings.Builder
 	for _, name := range names {
-		flag := inputFlags[name]
-		literal, err := pclLiteral(flag)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(&overlay, "%s = %s\n", name, literal)
+		fmt.Fprintf(&overlay, "%s = %s\n", name, attributes[name])
 	}
 
 	parser := hclsyntax.NewParser()
