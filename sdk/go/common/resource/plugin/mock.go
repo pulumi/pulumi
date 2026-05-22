@@ -21,7 +21,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -78,28 +77,28 @@ func (m *MockHost) Analyzer(nm tokens.QName) (Analyzer, error) {
 	if m.AnalyzerF != nil {
 		return m.AnalyzerF(nm)
 	}
-	return nil, errors.New("Analyzer not implemented")
+	return nil, status.Error(codes.Unimplemented, "Analyzer not implemented")
 }
 
 func (m *MockHost) PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
 	if m.PolicyAnalyzerF != nil {
 		return m.PolicyAnalyzerF(name, path, opts)
 	}
-	return nil, errors.New("PolicyAnalyzer not implemented")
+	return nil, status.Error(codes.Unimplemented, "PolicyAnalyzer not implemented")
 }
 
 func (m *MockHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {
 	if m.ProviderF != nil {
 		return m.ProviderF(descriptor, e)
 	}
-	return nil, errors.New("Provider not implemented")
+	return nil, status.Error(codes.Unimplemented, "Provider not implemented")
 }
 
 func (m *MockHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
 	if m.LanguageRuntimeF != nil {
 		return m.LanguageRuntimeF(runtime)
 	}
-	return nil, errors.New("LanguageRuntime not implemented")
+	return nil, status.Error(codes.Unimplemented, "LanguageRuntime not implemented")
 }
 
 func (m *MockHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error {
@@ -115,7 +114,7 @@ func (m *MockHost) ResolvePlugin(
 	if m.ResolvePluginF != nil {
 		return m.ResolvePluginF(spec)
 	}
-	return nil, errors.New("ResolvePlugin not implemented")
+	return nil, status.Error(codes.Unimplemented, "ResolvePlugin not implemented")
 }
 
 func (m *MockHost) GetProjectPlugins() []workspace.ProjectPlugin {
@@ -202,119 +201,119 @@ func (m *MockProvider) Handshake(
 	if m.HandshakeF != nil {
 		return m.HandshakeF(ctx, req)
 	}
-	return nil, errors.New("Handshake not implemented")
+	return nil, status.Error(codes.Unimplemented, "Handshake not implemented")
 }
 
 func (m *MockProvider) Parameterize(ctx context.Context, req ParameterizeRequest) (ParameterizeResponse, error) {
 	if m.ParameterizeF != nil {
 		return m.ParameterizeF(ctx, req)
 	}
-	return ParameterizeResponse{}, errors.New("Parameterize not implemented")
+	return ParameterizeResponse{}, status.Error(codes.Unimplemented, "Parameterize not implemented")
 }
 
 func (m *MockProvider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSchemaResponse, error) {
 	if m.GetSchemaF != nil {
 		return m.GetSchemaF(ctx, req)
 	}
-	return GetSchemaResponse{}, errors.New("GetSchema not implemented")
+	return GetSchemaResponse{}, status.Error(codes.Unimplemented, "GetSchema not implemented")
 }
 
 func (m *MockProvider) CheckConfig(ctx context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
 	if m.CheckConfigF != nil {
 		return m.CheckConfigF(ctx, req)
 	}
-	return CheckConfigResponse{}, errors.New("CheckConfig not implemented")
+	return CheckConfigResponse{}, status.Error(codes.Unimplemented, "CheckConfig not implemented")
 }
 
 func (m *MockProvider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffConfigResponse, error) {
 	if m.DiffConfigF != nil {
 		return m.DiffConfigF(ctx, req)
 	}
-	return DiffConfigResponse{}, errors.New("DiffConfig not implemented")
+	return DiffConfigResponse{}, status.Error(codes.Unimplemented, "DiffConfig not implemented")
 }
 
 func (m *MockProvider) Configure(ctx context.Context, req ConfigureRequest) (ConfigureResponse, error) {
 	if m.ConfigureF != nil {
 		return m.ConfigureF(ctx, req)
 	}
-	return ConfigureResponse{}, errors.New("Configure not implemented")
+	return ConfigureResponse{}, status.Error(codes.Unimplemented, "Configure not implemented")
 }
 
 func (m *MockProvider) Check(ctx context.Context, req CheckRequest) (CheckResponse, error) {
 	if m.CheckF != nil {
 		return m.CheckF(ctx, req)
 	}
-	return CheckResponse{}, errors.New("Check not implemented")
+	return CheckResponse{}, status.Error(codes.Unimplemented, "Check not implemented")
 }
 
 func (m *MockProvider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, error) {
 	if m.DiffF != nil {
 		return m.DiffF(ctx, req)
 	}
-	return DiffResponse{}, errors.New("Diff not implemented")
+	return DiffResponse{}, status.Error(codes.Unimplemented, "Diff not implemented")
 }
 
 func (m *MockProvider) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
 	if m.CreateF != nil {
 		return m.CreateF(ctx, req)
 	}
-	return CreateResponse{}, errors.New("Create not implemented")
+	return CreateResponse{}, status.Error(codes.Unimplemented, "Create not implemented")
 }
 
 func (m *MockProvider) Read(ctx context.Context, req ReadRequest) (ReadResponse, error) {
 	if m.ReadF != nil {
 		return m.ReadF(ctx, req)
 	}
-	return ReadResponse{}, errors.New("Read not implemented")
+	return ReadResponse{}, status.Error(codes.Unimplemented, "Read not implemented")
 }
 
 func (m *MockProvider) Update(ctx context.Context, req UpdateRequest) (UpdateResponse, error) {
 	if m.UpdateF != nil {
 		return m.UpdateF(ctx, req)
 	}
-	return UpdateResponse{}, errors.New("Update not implemented")
+	return UpdateResponse{}, status.Error(codes.Unimplemented, "Update not implemented")
 }
 
 func (m *MockProvider) Delete(ctx context.Context, req DeleteRequest) (DeleteResponse, error) {
 	if m.DeleteF != nil {
 		return m.DeleteF(ctx, req)
 	}
-	return DeleteResponse{}, errors.New("Delete not implemented")
+	return DeleteResponse{}, status.Error(codes.Unimplemented, "Delete not implemented")
 }
 
 func (m *MockProvider) List(ctx context.Context, req ListRequest) (*ListStream, error) {
 	if m.ListF != nil {
 		return m.ListF(ctx, req)
 	}
-	return nil, errors.New("List not implemented")
+	return nil, status.Error(codes.Unimplemented, "List not implemented")
 }
 
 func (m *MockProvider) Construct(ctx context.Context, req ConstructRequest) (ConstructResponse, error) {
 	if m.ConstructF != nil {
 		return m.ConstructF(ctx, req)
 	}
-	return ConstructResponse{}, errors.New("Construct not implemented")
+	return ConstructResponse{}, status.Error(codes.Unimplemented, "Construct not implemented")
 }
 
 func (m *MockProvider) Invoke(ctx context.Context, req InvokeRequest) (InvokeResponse, error) {
 	if m.InvokeF != nil {
 		return m.InvokeF(ctx, req)
 	}
-	return InvokeResponse{}, errors.New("Invoke not implemented")
+	return InvokeResponse{}, status.Error(codes.Unimplemented, "Invoke not implemented")
 }
 
 func (m *MockProvider) Call(ctx context.Context, req CallRequest) (CallResponse, error) {
 	if m.CallF != nil {
 		return m.CallF(ctx, req)
 	}
-	return CallResponse{}, errors.New("Call not implemented")
+	return CallResponse{}, status.Error(codes.Unimplemented, "Call not implemented")
 }
 
 func (m *MockProvider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 	if m.GetPluginInfoF != nil {
 		return m.GetPluginInfoF(ctx)
 	}
-	return PluginInfo{}, errors.New("GetPluginInfo not implemented")
+	return PluginInfo{}, status.Error(codes.Unimplemented, "GetPluginInfo not implemented")
 }
 
 func (m *MockProvider) SignalCancellation(ctx context.Context) error {
@@ -328,14 +327,14 @@ func (m *MockProvider) GetMapping(ctx context.Context, req GetMappingRequest) (G
 	if m.GetMappingF != nil {
 		return m.GetMappingF(ctx, req)
 	}
-	return GetMappingResponse{}, errors.New("GetMapping not implemented")
+	return GetMappingResponse{}, status.Error(codes.Unimplemented, "GetMapping not implemented")
 }
 
 func (m *MockProvider) GetMappings(ctx context.Context, req GetMappingsRequest) (GetMappingsResponse, error) {
 	if m.GetMappingsF != nil {
 		return m.GetMappingsF(ctx, req)
 	}
-	return GetMappingsResponse{}, errors.New("GetMappings not implemented")
+	return GetMappingsResponse{}, status.Error(codes.Unimplemented, "GetMappings not implemented")
 }
 
 type MockConverter struct {
