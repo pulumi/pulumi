@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/neo
-  description: Pressing Esc in `pulumi neo` now clears the input box when it has text; with an empty box, Esc still cancels the agent's current turn

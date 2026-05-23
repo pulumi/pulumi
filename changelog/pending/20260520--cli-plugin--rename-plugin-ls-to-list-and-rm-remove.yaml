@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli/plugin
-  description: Rename plugin ls to list and rm to remove

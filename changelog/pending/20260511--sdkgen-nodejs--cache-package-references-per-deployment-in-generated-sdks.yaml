@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/nodejs
-  description: Cache package references per-deployment in generated SDKs to fix concurrent inline programs
