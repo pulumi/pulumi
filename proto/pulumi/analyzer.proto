@@ -227,7 +227,6 @@ message AnalyzerInfo {
     string provider = 9;                         // Cloud provider/platform associated with the policy pack.
     repeated string tags = 10;                   // Tags for this policy pack.
     string repository = 11;                      // A URL to the repository where the policy pack is defined.
-    string runtime = 12;                         // The analyzer SDK runtime, e.g. "nodejs", "python", "opa".
 }
 
 // PolicyInfo provides metadata about a policy within a Policy Pack.

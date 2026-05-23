@@ -188,9 +188,6 @@ type AnalyzerInfo struct {
 	Tags []string
 	// A URL to the repository where the policy pack is defined.
 	Repository string
-	// Runtime identifies the analyzer SDK that produced the pack (e.g. "nodejs",
-	// "python", "opa"). Empty when produced by an older SDK that does not report it.
-	Runtime string
 }
 
 // AnalyzerPolicyInfo defines the metadata for an individual Policy within a Policy Pack.

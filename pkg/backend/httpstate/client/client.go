@@ -1735,7 +1735,7 @@ func (pc *Client) AssignTeamRole(
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
-	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader,
+	runtime string, analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader,
 	metadata map[string]string,
 ) (string, error) {
 	//
@@ -1779,7 +1779,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Provider:    analyzerInfo.Provider,
 		Tags:        analyzerInfo.Tags,
 		Repository:  analyzerInfo.Repository,
-		Runtime:     analyzerInfo.Runtime,
+		Runtime:     runtime,
 		Metadata:    metadata,
 	}
 

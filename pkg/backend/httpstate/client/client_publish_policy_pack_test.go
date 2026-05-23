@@ -41,7 +41,6 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 		Provider:    "aws",
 		Tags:        []string{"security", "compliance", "test"},
 		Repository:  "https://github.com/example/test-policy-pack",
-		Runtime:     "python",
 		Policies: []plugin.AnalyzerPolicyInfo{
 			{
 				Name:             "required-tags",
@@ -125,7 +124,7 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 	var metadata map[string]string
 
 	// Call PublishPolicyPack
-	version, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
+	version, err := client.PublishPolicyPack(t.Context(), "test-org", "python", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 	assert.Equal(t, "1.2.3", version)
 
@@ -141,7 +140,7 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 	assert.Equal(t, analyzerInfo.Provider, capturedRequest.Provider)
 	assert.Equal(t, analyzerInfo.Tags, capturedRequest.Tags)
 	assert.Equal(t, analyzerInfo.Repository, capturedRequest.Repository)
-	assert.Equal(t, analyzerInfo.Runtime, capturedRequest.Runtime)
+	assert.Equal(t, "python", capturedRequest.Runtime)
 
 	// Verify policies were converted correctly
 	require.Len(t, capturedRequest.Policies, 1)
@@ -225,7 +224,7 @@ func TestPublishPolicyPack_EmptyOptionalFields(t *testing.T) {
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 
 	// Verify required fields are present
@@ -245,15 +244,14 @@ func TestPublishPolicyPack_EmptyOptionalFields(t *testing.T) {
 
 // TestPublishPolicyPack_RuntimeIsForwarded covers the runtime-disambiguation
 // guard added so the service can reject cross-runtime version bumps. The CLI
-// reports the analyzer SDK runtime (e.g. "opa") via AnalyzerInfo.Runtime and
-// this test verifies it lands in the request body.
+// passes the policy pack project's runtime to PublishPolicyPack, and this test
+// verifies it lands in the request body.
 func TestPublishPolicyPack_RuntimeIsForwarded(t *testing.T) {
 	t.Parallel()
 
 	analyzerInfo := plugin.AnalyzerInfo{
 		Name:    "runtime-test-pack",
 		Version: "1.0.0",
-		Runtime: "opa",
 		Policies: []plugin.AnalyzerPolicyInfo{
 			{Name: "p1", EnforcementLevel: apitype.Advisory},
 		},
@@ -285,7 +283,7 @@ func TestPublishPolicyPack_RuntimeIsForwarded(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	_, err := client.PublishPolicyPack(t.Context(), "test-org",
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", "opa",
 		analyzerInfo, bytes.NewReader([]byte("data")), nil)
 	require.NoError(t, err)
 
@@ -346,7 +344,7 @@ func TestPublishPolicyPack_LegacyVersionHandling(t *testing.T) {
 	// Empty metadata.
 	var metadata map[string]string
 
-	version, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
+	version, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 
 	// Verify that server-assigned version is returned when client version is empty
@@ -443,7 +441,7 @@ func TestPublishPolicyPack_PolicyConfigSchemaConversion(t *testing.T) {
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 
 	// Verify config schema conversion
@@ -525,7 +523,7 @@ func TestPublishPolicyPack_NilConfigSchema(t *testing.T) {
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 
 	// Verify nil config schema is handled correctly
@@ -589,7 +587,7 @@ func TestPublishPolicyPack_NilComplianceFramework(t *testing.T) {
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 
 	// Verify nil compliance framework is handled correctly
