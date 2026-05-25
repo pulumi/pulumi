@@ -134,3 +134,36 @@ func (k dummySecretsKeeper) Decrypt(ctx context.Context, ciphertext []byte) ([]b
 func (k dummySecretsKeeper) Encrypt(ctx context.Context, plaintext []byte) ([]byte, error) {
 	return plaintext, nil
 }
+
+func TestOpenKeeperAssumeRoles(t *testing.T) {
+	t.Parallel()
+
+	// openKeeper uses awskms.Scheme (which is "awskms"), but that scheme is already
+	// registered by gocloud.dev's awskms package in init(). We test the assumeRoles
+	// parsing logic directly by exercising openKeeper's error handling paths.
+
+	baseURL := "awskms://alias/test?region=us-west-2&awssdk=v2&assumeRoles="
+
+	t.Run("assumeRoles parsing - invalid JSON", func(t *testing.T) {
+		t.Parallel()
+		_, err := openKeeper(t.Context(), baseURL+"not-valid-json")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "assumeRoles")
+	})
+
+	t.Run("assumeRoles parsing - empty roleArn", func(t *testing.T) {
+		t.Parallel()
+		url := baseURL + `[{"roleArn":""}]`
+		_, err := openKeeper(t.Context(), url)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "assumeRoles")
+	})
+
+	t.Run("assumeRoles parsing - invalid ARN", func(t *testing.T) {
+		t.Parallel()
+		url := baseURL + `[{"roleArn":"not-an-arn"}]`
+		_, err := openKeeper(t.Context(), url)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "assumeRoles")
+	})
+}

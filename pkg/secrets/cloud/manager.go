@@ -23,10 +23,12 @@ import (
 	"fmt"
 	netUrl "net/url"
 	"os"
+	"path"
 	"strings"
 
+	awsv2 "github.com/aws/aws-sdk-go-v2/aws"
 	gosecrets "gocloud.dev/secrets"
-	_ "gocloud.dev/secrets/awskms"        // support for awskms://
+	"gocloud.dev/secrets/awskms"          // support for awskms://
 	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
 	"gocloud.dev/secrets/gcpkms"          // support for gcpkms://
 	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
@@ -54,6 +56,33 @@ func openKeeper(ctx context.Context, url string) (*gosecrets.Keeper, error) {
 	}
 
 	switch u.Scheme {
+	case awskms.Scheme:
+		assumeRoles, err := authhelpers.AssumeRoleFromURLParams(u.Query())
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse assumeRoles for awskms://: %w", err)
+		}
+
+		if len(assumeRoles) > 0 {
+			credsProvider, err := authhelpers.NewAssumeRoleChainedCredentials(ctx, assumeRoles, u.Query().Get("region"))
+			if err != nil {
+				return nil, fmt.Errorf("failed to create assume role credentials for awskms://: %w", err)
+			}
+
+			kmsConfig := awsv2.Config{
+				Credentials: credsProvider,
+				Region:      u.Query().Get("region"),
+			}
+
+			kmsClient, err := awskms.DialV2(kmsConfig)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create KMS client for awskms://: %w", err)
+			}
+
+			keyID := strings.TrimPrefix(path.Join(u.Host, u.Path), "/")
+			return awskms.OpenKeeperV2(kmsClient, keyID, nil), nil
+		}
+
+		return gosecrets.OpenKeeper(ctx, url)
 	case gcpkms.Scheme:
 		credentials, err := authhelpers.ResolveGoogleCredentials(ctx, cloudkms.CloudkmsScope)
 		if err != nil {

@@ -36,7 +36,7 @@ import (
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
 	"gocloud.dev/blob/gcsblob"     // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	"gocloud.dev/blob/s3blob"      // driver for s3://
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
@@ -260,6 +260,21 @@ func newDIYBackend(
 		blobmux, err = authhelpers.GoogleCredentialsMux(ctx)
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	// Check for AWS IAM Roles to assume for s3 bucket access
+	if p.Scheme == s3blob.Scheme {
+		assumeRoles, err := authhelpers.AssumeRoleFromURLParams(p.Query())
+		if err != nil {
+			return nil, err
+		}
+		if len(assumeRoles) > 0 {
+			region := p.Query().Get("region")
+			blobmux, err = authhelpers.AWSCredentialsMux(ctx, assumeRoles, region)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

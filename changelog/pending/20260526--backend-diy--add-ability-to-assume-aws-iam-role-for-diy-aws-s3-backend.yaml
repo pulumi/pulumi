@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/diy
+  description: Add ability to assume AWS IAM Role for DIY AWS S3 backend
