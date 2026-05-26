@@ -56,7 +56,7 @@ jobs:
 
           # Batch the pending entries into a versioned file, then merge all
           # version files into CHANGELOG.md and clean up pending entries.
-          changie batch "${PULUMI_VERSION}"
+          changie batch auto
           changie merge
 
           git config user.name github-actions
