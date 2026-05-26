@@ -1,6 +1,0 @@
-kind: feat
-body: Make the `pulumi project new -y` command write a minimal project file with no template
-custom:
-  Scope: cli
-  PR: ''
-time: '2026-05-05T00:00:00Z'

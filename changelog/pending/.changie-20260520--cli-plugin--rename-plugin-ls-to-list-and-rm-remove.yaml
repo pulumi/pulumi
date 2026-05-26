@@ -1,6 +1,0 @@
-kind: chore
-body: Rename plugin ls to list and rm to remove
-custom:
-  Scope: cli/plugin
-  PR: ''
-time: '2026-05-20T00:00:00Z'

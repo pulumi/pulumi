@@ -1,6 +1,0 @@
-kind: feat
-body: Alias `pulumi new` to `pulumi project new`
-custom:
-  Scope: cli/new
-  PR: ''
-time: '2026-05-19T00:00:00Z'

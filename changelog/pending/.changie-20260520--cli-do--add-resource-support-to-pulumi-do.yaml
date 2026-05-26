@@ -1,6 +1,0 @@
-kind: feat
-body: Add resource support to `pulumi do`
-custom:
-  Scope: cli/do
-  PR: ''
-time: '2026-05-20T00:00:00Z'

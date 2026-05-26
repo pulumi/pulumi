@@ -1,6 +1,0 @@
-kind: fix
-body: Cache package references per-deployment in generated SDKs to fix concurrent inline programs
-custom:
-  Scope: sdkgen/nodejs
-  PR: ''
-time: '2026-05-11T00:00:00Z'

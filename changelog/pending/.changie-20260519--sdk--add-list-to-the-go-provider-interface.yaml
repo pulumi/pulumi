@@ -1,6 +1,0 @@
-kind: feat
-body: Add `List` to the Go `plugin.Provider` interface, wired to the streaming `ResourceProvider.List` RPC
-custom:
-  Scope: sdk
-  PR: ''
-time: '2026-05-19T00:00:00Z'

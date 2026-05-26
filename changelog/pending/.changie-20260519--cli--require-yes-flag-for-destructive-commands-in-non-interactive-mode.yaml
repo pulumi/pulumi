@@ -1,6 +1,0 @@
-kind: fix
-body: Require `--yes` to confirm `pulumi deployment cancel`, `pulumi stack schedule remove`, `pulumi org webhook remove`, and `pulumi stack webhook remove` when running non-interactively
-custom:
-  Scope: cli
-  PR: ''
-time: '2026-05-19T00:00:00Z'
