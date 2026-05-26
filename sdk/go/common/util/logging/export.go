@@ -17,7 +17,6 @@ package logging
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -32,10 +31,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-var (
-	exportHandler slog.Handler
-	logProvider   *sdklog.LoggerProvider
-)
+var logProvider *sdklog.LoggerProvider
 
 // initExportHandler checks for PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT and
 // sets up an OTLP log export handler if present. Called from InitLogging.
@@ -73,7 +69,7 @@ func initExportHandler(serviceName string) {
 	inner := otelslog.NewHandler(serviceName,
 		otelslog.WithLoggerProvider(provider),
 	)
-	exportHandler = &propertyValueExportHandler{inner: inner}
+	SetExportHandler(&propertyValueExportHandler{inner: inner})
 }
 
 // shutdownExportHandler flushes and closes the OTLP log provider.
@@ -84,17 +80,7 @@ func shutdownExportHandler() {
 		logProvider.Shutdown(ctx) //nolint:errcheck
 		logProvider = nil
 	}
-	exportHandler = nil
-}
-
-func logToExporter(ctx context.Context, level slog.Level, msg string, attrs ...slog.Attr) {
-	h := exportHandler
-	if h == nil || !h.Enabled(ctx, level) {
-		return
-	}
-	r := slog.NewRecord(time.Now(), level, msg, 0)
-	r.AddAttrs(attrs...)
-	h.Handle(ctx, r) //nolint:errcheck
+	SetExportHandler(nil)
 }
 
 // PropertyValue wraps a *structpb.Struct for use as an slog attribute
@@ -128,34 +114,6 @@ func (pv PropertyValue) LogValue() slog.Value {
 // In the local log the value is rendered as JSON via fmt.Sprintf %v.
 func NewPropertyValue(key string, s *structpb.Struct) PropertyValue {
 	return PropertyValue{Key: key, Struct: s}
-}
-
-// replacePropertyValues re-formats the message, substituting each
-// PropertyValue arg with a [[key]] placeholder and collecting the
-// values as separate slog.Attr entries for the export handler.
-func replacePropertyValues(format string, args []any) (string, []slog.Attr) {
-	var attrs []slog.Attr
-	has := false
-	for _, arg := range args {
-		if _, ok := arg.(PropertyValue); ok {
-			has = true
-			break
-		}
-	}
-	if !has {
-		return fmt.Sprintf(format, args...), nil
-	}
-
-	replaced := make([]any, len(args))
-	for i, arg := range args {
-		if pv, ok := arg.(PropertyValue); ok {
-			replaced[i] = "[[" + pv.Key + "]]"
-			attrs = append(attrs, slog.Any(pv.Key, pv))
-		} else {
-			replaced[i] = arg
-		}
-	}
-	return fmt.Sprintf(format, replaced...), attrs
 }
 
 // propertyValueExportHandler wraps an slog.Handler and converts

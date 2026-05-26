@@ -58,11 +58,12 @@ var (
 )
 
 var (
-	handlerMu   sync.RWMutex
-	primary     slog.Handler = discardHandler{} // regular log output (stderr / file)
-	sinkHandler slog.Handler                    // encrypted log handler, nil when inactive
-	logFilePath string
-	logFile     *os.File
+	handlerMu     sync.RWMutex
+	primary       slog.Handler = discardHandler{} // regular log output (stderr / file)
+	sinkHandler   slog.Handler                    // encrypted log handler, nil when inactive
+	exportHandler slog.Handler                    // OTLP export handler, nil when inactive
+	logFilePath   string
+	logFile       *os.File
 )
 
 func init() {
@@ -74,11 +75,30 @@ func init() {
 // handlerMu held for writing. slog.SetDefault is safe for concurrent use
 // with readers, so no additional synchronisation is needed.
 func rebuildLogger() {
-	var h slog.Handler = formattingHandler{inner: filteringHandler{inner: primary}}
-	if sinkHandler != nil {
-		h = &teeHandler{primary: h, sink: sinkHandler}
-	}
+	// The primary handler gets the formatted message (argN attrs
+	// folded back into the msg string).
+	var p slog.Handler = formattingHandler{inner: primary}
+
+	// The sink and export handlers receive the raw format string +
+	// individual argN attributes so they can handle property values
+	// separately.  The filtering handler (secret redaction) wraps
+	// everything so it applies to all outputs.
+	var h slog.Handler = filteringHandler{inner: &multiHandler{
+		primary:  p,
+		sink:     sinkHandler,
+		exporter: exportHandler,
+	}}
 	slog.SetDefault(slog.New(h))
+}
+
+// SetExportHandler installs an slog.Handler for OTLP log export.
+// The handler receives a copy of every log record.  Pass nil to
+// remove the export handler.
+func SetExportHandler(h slog.Handler) {
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
+	exportHandler = h
+	rebuildLogger()
 }
 
 // SetSinkHandler installs an additional slog.Handler that receives a
@@ -145,14 +165,9 @@ func (v VerboseLogger) Infoln(args ...any) {
 // The format string is stored as the slog message and each argument is
 // recorded as a separate "pulumi.log.argN" attribute so that the sink
 // handler can access them individually.
-// Any PropertyValue args are also sent to the export handler as separate
-// attributes with [[key]] placeholders in the exported message.
 func (v VerboseLogger) Infof(format string, args ...any) {
 	if v.Enabled() {
-		level := v.slogLevel()
-		slog.Log(context.TODO(), level, format, fmtAttrs(args, "v", int(v.level))...)
-		exportMsg, pvAttrs := replacePropertyValues(format, args)
-		logToExporter(context.TODO(), level, exportMsg, append(pvAttrs, slog.Int("v", int(v.level)))...)
+		slog.Log(context.TODO(), v.slogLevel(), format, fmtAttrs(args, "v", int(v.level))...)
 	}
 }
 
@@ -162,17 +177,14 @@ func V(level int32) VerboseLogger {
 
 func Errorf(format string, args ...any) {
 	slog.Log(context.TODO(), slog.LevelError, format, fmtAttrs(args)...)
-	logToExporter(context.TODO(), slog.LevelError, fmt.Sprintf(format, args...))
 }
 
 func Infof(format string, args ...any) {
 	slog.Log(context.TODO(), slog.LevelInfo, format, fmtAttrs(args)...)
-	logToExporter(context.TODO(), slog.LevelInfo, fmt.Sprintf(format, args...))
 }
 
 func Warningf(format string, args ...any) {
 	slog.Log(context.TODO(), slog.LevelWarn, format, fmtAttrs(args)...)
-	logToExporter(context.TODO(), slog.LevelWarn, fmt.Sprintf(format, args...))
 }
 
 // fmtAttrs encodes format arguments as slog key-value pairs so that
@@ -212,7 +224,6 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	}
 
 	handlerMu.Lock()
-	defer handlerMu.Unlock()
 
 	if LogToStderr {
 		primary = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
@@ -229,6 +240,8 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 		}
 	}
 	rebuildLogger()
+	handlerMu.Unlock()
+
 	initExportHandler(filepath.Base(os.Args[0]))
 }
 
@@ -269,34 +282,61 @@ func GetLogfilePath() (string, error) {
 	return "", errors.New("no log files found")
 }
 
-// teeHandler fans out slog records to two handlers.
-type teeHandler struct {
-	primary slog.Handler
-	sink    slog.Handler
+// multiHandler fans out slog records to a primary handler (which
+// gets the formatted message) and optional sink/export handlers
+// (which get the raw format string + individual argN attributes).
+type multiHandler struct {
+	primary  slog.Handler
+	sink     slog.Handler // encrypted log, nil when inactive
+	exporter slog.Handler // OTLP export, nil when inactive
 }
 
-func (t *teeHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return t.primary.Enabled(ctx, level) || t.sink.Enabled(ctx, level)
-}
-
-func (t *teeHandler) Handle(ctx context.Context, r slog.Record) error {
-	if t.primary.Enabled(ctx, r.Level) {
-		_ = t.primary.Handle(ctx, r)
+func (m *multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	if m.primary.Enabled(ctx, level) {
+		return true
 	}
-	if t.sink.Enabled(ctx, r.Level) {
-		_ = t.sink.Handle(ctx, r)
+	if m.sink != nil && m.sink.Enabled(ctx, level) {
+		return true
+	}
+	if m.exporter != nil && m.exporter.Enabled(ctx, level) {
+		return true
+	}
+	return false
+}
+
+func (m *multiHandler) Handle(ctx context.Context, r slog.Record) error {
+	if m.primary.Enabled(ctx, r.Level) {
+		_ = m.primary.Handle(ctx, r)
+	}
+	if m.sink != nil && m.sink.Enabled(ctx, r.Level) {
+		_ = m.sink.Handle(ctx, r)
+	}
+	if m.exporter != nil && m.exporter.Enabled(ctx, r.Level) {
+		_ = m.exporter.Handle(ctx, r)
 	}
 	return nil
 }
 
-func (t *teeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	p := t.primary.WithAttrs(attrs)
-	s := t.sink.WithAttrs(attrs)
-	return &teeHandler{primary: p, sink: s}
+func (m *multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	result := &multiHandler{primary: m.primary.WithAttrs(attrs)}
+	if m.sink != nil {
+		result.sink = m.sink.WithAttrs(attrs)
+	}
+	if m.exporter != nil {
+		result.exporter = m.exporter.WithAttrs(attrs)
+	}
+	return result
 }
 
-func (t *teeHandler) WithGroup(name string) slog.Handler {
-	return &teeHandler{primary: t.primary.WithGroup(name), sink: t.sink.WithGroup(name)}
+func (m *multiHandler) WithGroup(name string) slog.Handler {
+	result := &multiHandler{primary: m.primary.WithGroup(name)}
+	if m.sink != nil {
+		result.sink = m.sink.WithGroup(name)
+	}
+	if m.exporter != nil {
+		result.exporter = m.exporter.WithGroup(name)
+	}
+	return result
 }
 
 // formattingHandler reconstructs the formatted message from

@@ -104,6 +104,7 @@ require (
 	github.com/spf13/afero v1.15.0
 	github.com/texttheater/golang-levenshtein v1.0.1
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e
+	go.opentelemetry.io/collector/pdata v1.59.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/bridge/opentracing v1.33.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.44.0
