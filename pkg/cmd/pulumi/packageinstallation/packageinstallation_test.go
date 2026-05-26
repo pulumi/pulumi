@@ -914,9 +914,9 @@ func TestInstallPluginWithMultipleVersions(t *testing.T) {
 	require.True(t, ws.plugins[sharedV2Path].installed, "shared-plugin v2.0.0 should be installed")
 
 	// Verify that plugin-a is linked to v1.0.0 and plugin-b is linked to v2.0.0
-	require.Contains(t, ws.plugins[pluginAPath].linked, sharedV1Path,
+	require.Contains(t, ws.plugins[pluginAPath].linked, sharedV1Path+"/sdk-shared-plugin",
 		"plugin-a should be linked to shared-plugin v1.0.0")
-	require.Contains(t, ws.plugins[pluginBPath].linked, sharedV2Path,
+	require.Contains(t, ws.plugins[pluginBPath].linked, sharedV2Path+"/sdk-shared-plugin",
 		"plugin-b should be linked to shared-plugin v2.0.0")
 }
 
@@ -1176,6 +1176,92 @@ func TestInstallParameterizedProviderFromRegistry(t *testing.T) {
 		Source:  "opentofu/airbytehq/airbyte",
 		Version: "0.13.0",
 	}, spec)
+}
+
+// TestInstallProjectWithMultiplePackagesSharingOnePlugin tests that when a project
+// declares two parameterized packages that share the same underlying plugin, the plugin
+// is downloaded and installed only once, while each package's SDK is generated
+// separately using its own parameterization.
+//
+// Dependency graph:
+//
+//	project -> airbyte (parameterized) -> terraform-provider
+//	project -> github  (parameterized) -> terraform-provider
+func TestInstallProjectWithMultiplePackagesSharingOnePlugin(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name:    "terraform-provider",
+				Version: &semver.Version{Major: 1, Patch: 2},
+				Kind:    apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+	})
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	mockRegistry := registry.Mock{
+		GetPackageF: func(
+			ctx context.Context, source, publisher, name string, version *semver.Version,
+		) (apitype.PackageMetadata, error) {
+			switch name {
+			case "airbyte":
+				return apitype.PackageMetadata{
+					Source:    "opentofu",
+					Publisher: "airbytehq",
+					Name:      "airbyte",
+					Version:   semver.Version{Major: 0, Minor: 13},
+					Parameterization: &apitype.PackageParameterization{
+						BaseProvider: apitype.ArtifactVersionNameSpec{
+							Name:    "terraform-provider",
+							Version: semver.Version{Major: 1, Patch: 2},
+						},
+						Parameter: []byte("opentofu/airbytehq/airbyte"),
+					},
+				}, nil
+			case "github":
+				return apitype.PackageMetadata{
+					Source:    "opentofu",
+					Publisher: "integrations",
+					Name:      "github",
+					Version:   semver.Version{Major: 5},
+					Parameterization: &apitype.PackageParameterization{
+						BaseProvider: apitype.ArtifactVersionNameSpec{
+							Name:    "terraform-provider",
+							Version: semver.Version{Major: 1, Patch: 2},
+						},
+						Parameter: []byte("opentofu/integrations/github"),
+					},
+				}, nil
+			}
+			return apitype.PackageMetadata{}, registry.ErrNotFound
+		},
+	}
+
+	err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		Packages: map[string]workspace.PackageSpec{
+			"airbyte": {
+				Source:  "opentofu/airbytehq/airbyte",
+				Version: "0.13.0",
+			},
+			"github": {
+				Source:  "opentofu/integrations/github",
+				Version: "5.0.0",
+			},
+		},
+	}, "/project", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveWithRegistry: true,
+		},
+		Concurrency: 1,
+	}, mockRegistry, rws)
+	require.NoError(t, err)
 }
 
 // TestInstallPluginWithRequiredPackages tests that GetRequiredPackages is called and its
@@ -1559,19 +1645,20 @@ func TestInstallSharedDependencyInParallel(t *testing.T) {
 
 	componentAPath := "$HOME/.pulumi/plugins/resource-component-a"
 	componentBPath := "$HOME/.pulumi/plugins/resource-component-b"
-	pluginCPath := "$HOME/.pulumi/plugins/resource-plugin-c"
-	pluginDPath := "$HOME/.pulumi/plugins/resource-plugin-d"
+	componentASDK := componentAPath + "/sdk-component-a"
+	pluginCSDK := "$HOME/.pulumi/plugins/resource-plugin-c/sdk-plugin-c"
+	pluginDSDK := "$HOME/.pulumi/plugins/resource-plugin-d/sdk-plugin-d"
 
 	require.True(t, baselineWs.plugins[componentAPath].installed,
 		"component-a should be installed in baseline")
 	require.True(t, baselineWs.plugins[componentBPath].installed,
 		"component-b should be installed in baseline")
 
-	require.Contains(t, baselineWs.plugins[componentAPath].linked, pluginCPath,
+	require.Contains(t, baselineWs.plugins[componentAPath].linked, pluginCSDK,
 		"component-a should be linked to plugin-c")
-	require.Contains(t, baselineWs.plugins[componentBPath].linked, componentAPath,
+	require.Contains(t, baselineWs.plugins[componentBPath].linked, componentASDK,
 		"component-b should be linked to component-a (the shared dependency)")
-	require.Contains(t, baselineWs.plugins[componentBPath].linked, pluginDPath,
+	require.Contains(t, baselineWs.plugins[componentBPath].linked, pluginDSDK,
 		"component-b should be linked to plugin-d")
 
 	for range 100 {
