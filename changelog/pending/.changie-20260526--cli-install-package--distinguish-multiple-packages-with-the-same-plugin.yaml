@@ -1,0 +1,4 @@
+kind: fix
+body: Distinguish multiple packages with the same plugin
+custom:
+  Scope: cli/install,package
