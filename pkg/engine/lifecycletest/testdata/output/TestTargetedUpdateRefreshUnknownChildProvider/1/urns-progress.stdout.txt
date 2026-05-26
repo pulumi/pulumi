@@ -1,0 +1,19 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:index:Component$pkgB:index:ResA::resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:index:Component$pkgB:index:ResA::resA <{%fg 3%}>refresh<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:index:Component::comp <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::childProv <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::childProv <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:index:Component$pulumi:providers:pkgB::childProv <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:index:Component$pkgB:index:ResA::resA <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:index:Component$pkgB:index:ResA::resA <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:index:Component::comp <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    3 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+
