@@ -15,9 +15,13 @@
 package deploy
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -62,7 +66,21 @@ func (src *programSource) run(resourceMonitorTarget string) *promise.Promise[str
 	// Also start up a schema loader for the language runtime to use to fetch schema information.
 	loaderRegistration := schema.LoaderRegistration(
 		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx.Host)))
-	loaderServer, err := plugin.NewServer(src.plugctx, loaderRegistration)
+
+	baseMapper, err := convert.NewBasePluginMapper(
+		pluginstorage.Instance,
+		"terraform",
+		convert.ProviderFactoryFromHost(context.Background(), src.plugctx.Host),
+		func(string) *semver.Version { return nil },
+		nil,
+	)
+	if err != nil {
+		return promise.Errorf[struct{}]("failed to create mapper: %w", err)
+	}
+	mapperRegistration := convert.MapperRegistration(
+		convert.NewMapperServer(convert.NewCachingMapper(baseMapper)))
+
+	loaderServer, err := plugin.NewServer(src.plugctx, loaderRegistration, mapperRegistration)
 	if err != nil {
 		return promise.Errorf[struct{}]("failed to start loader server: %w", err)
 	}
