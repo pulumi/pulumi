@@ -311,8 +311,11 @@ func (w invariantWorkspace) GenerateLocalSDK(
 	}
 
 	ip := provider.(invariantProvider)
+	// SDKs are emitted per-package, not per-plugin. The path embeds the
+	// package name so two parameterized packages backed by the same plugin
+	// produce distinct LinkablePackageDescriptor.Path values.
 	return workspace.LinkablePackageDescriptor{
-		Path: ip.path,
+		Path: filepath.ToSlash(filepath.Join(ip.path, "sdk-"+string(ip.pkgName))),
 	}, nil
 }
 
@@ -374,7 +377,7 @@ func (w invariantWorkspace) RunPackage(
 ) (plugin.Provider, error) {
 	pluginPath = filepath.ToSlash(pluginPath)
 	if _, ok := w.plainBinaryPaths[pluginPath]; ok {
-		return invariantProvider{path: pluginPath}, nil
+		return invariantProvider{path: pluginPath, pkgName: pkgName}, nil
 	}
 
 	w.rw.RLock()
@@ -394,11 +397,12 @@ func (w invariantWorkspace) RunPackage(
 			pluginPath, pl.installed, pl.project != nil)
 		return nil, assert.AnError
 	}
-	return invariantProvider{path: pluginPath}, nil
+	return invariantProvider{path: pluginPath, pkgName: pkgName}, nil
 }
 
 type invariantProvider struct {
 	plugin.Provider
 
-	path string
+	path    string
+	pkgName tokens.Package
 }

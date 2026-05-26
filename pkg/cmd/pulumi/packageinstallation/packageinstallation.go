@@ -156,7 +156,7 @@ func InstallPlugin(
 	}
 
 	return func(ctx context.Context, wd string) (plugin.Provider, error) {
-		return ws.RunPackage(ctx, wd, runBundle.pluginPath, tokens.Package(runBundle.name),
+		return ws.RunPackage(ctx, wd, runBundle.info.pluginPath, tokens.Package(runBundle.info.name),
 			runBundle.params, resolvedSpec)
 	}, resolvedSpec, nil
 }
@@ -299,8 +299,27 @@ func hashLocalPath(path string) pluginHash {
 	return pluginHash(h.Sum64())
 }
 
-// runBundle represents the information necessary to actually run a plugin.
+// runBundle represents the information necessary to actually run a package.
+//
+// Each in-flight package owns its own runBundle. The plugin-level info field is
+// shared across packages that resolve to the same underlying plugin (so we
+// download/install the plugin only once); params is per-package, so two
+// parameterized packages on the same plugin keep distinct parameterizations.
 type runBundle struct {
+	// Plugin-level state, shared with other packages that resolve to the same plugin.
+	//
+	// The pointer is wired by newSpecNode; the pointee is populated by the
+	// resolveStep/downloadStep chain for the first spec that resolves to this
+	// plugin. Subsequent dup'd specs wait on that chain via the DAG before
+	// reading these fields.
+	info *pluginInfo
+	// The parameterization to apply on top of the underlying plugin. May be nil.
+	params plugin.ParameterizeParameters
+}
+
+// pluginInfo holds the plugin-level state shared across packages that resolve
+// to the same underlying plugin.
+type pluginInfo struct {
 	// The name of the plugin.
 	//
 	// Name is provided on a best-effort basis.
@@ -309,8 +328,6 @@ type runBundle struct {
 	//
 	// This field is required.
 	pluginPath string
-	// The parameterization of the plugin. May be nil.
-	params plugin.ParameterizeParameters
 }
 
 // A step in the install/build graph.
@@ -340,8 +357,8 @@ type state struct {
 }
 
 type cachedPlugin struct {
-	node      pdag.Node
-	runBundle *runBundle
+	node pdag.Node
+	info *pluginInfo
 }
 
 // A step that does nothing. Useful for creating nodes in the DAG and then deciding later
@@ -386,13 +403,6 @@ func enqueueUnresolvedPackage(
 	resolveReady()
 	return nil
 }
-
-// copyStep represents a scheduled copy from src to dst.
-type copyStep[T any] struct {
-	src, dst *T
-}
-
-func (step copyStep[T]) run(context.Context, state) error { *step.dst = *step.src; return nil }
 
 // Add package specs depended on by a project to the graph.
 //
@@ -506,8 +516,8 @@ func ensureProjectDir(
 	pluginProject, _, err := state.ws.LoadPluginProjectAt(ctx, projectDir)
 	switch {
 	case err == nil:
-		runBundleOut.pluginPath = projectDir
-		runBundleOut.name = name
+		runBundleOut.info.pluginPath = projectDir
+		runBundleOut.info.name = name
 		return pluginProject, nil
 
 	// We didn't detect a PulumiPlugin file. This may be a binary plugin, so
@@ -523,8 +533,8 @@ func ensureProjectDir(
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		} else if isExec {
-			runBundleOut.pluginPath = binaryPath
-			runBundleOut.name = name
+			runBundleOut.info.pluginPath = binaryPath
+			runBundleOut.info.name = name
 			// A binary was found, so this plugin is done.
 			if downloadCleanup != nil {
 				downloadCleanup.f(true)
@@ -560,7 +570,7 @@ type generateLocalSDKStep struct {
 
 func (step generateLocalSDKStep) run(ctx context.Context, p state) error {
 	provider, err := p.ws.RunPackage(ctx,
-		step.project.projectDir, step.runBundle.pluginPath,
+		step.project.projectDir, step.runBundle.info.pluginPath,
 		tokens.Package(step.packageName), step.runBundle.params, step.specSource)
 	if err != nil {
 		return err
@@ -608,34 +618,31 @@ func newSpecNode(
 	state.seenM.Lock()
 	defer state.seenM.Unlock()
 	if n, ok := state.seen[hash]; ok {
-		// After n has resolved, we need to update our runBundleOut to be the same
-		// as what is cached. That means that cached plugins have as their node format:
+		// The plugin is already being resolved by another spec. Share the
+		// pluginInfo pointer, and wait for the original spec's node before
+		// declaring our spec ready — that way consumers downstream of `parent`
+		// see fully populated plugin info. Per-package fields on runBundleOut
+		// (e.g., params) are unaffected, since they live outside pluginInfo.
 		//
-		//	original plugin -> copy runBundle -> spec ready -> parent
+		//	original plugin -> spec ready -> parent
+		runBundleOut.info = n.info
 
 		defer ready()
 		contract.AssertNoErrorf(state.dag.NewEdge(specReady, parent),
 			"linking in a new node is safe")
 
-		copyBundle, ready := state.dag.NewNode(copyStep[runBundle]{
-			src: n.runBundle,
-			dst: runBundleOut,
-		})
-		defer ready()
-		contract.AssertNoErrorf(state.dag.NewEdge(copyBundle, specReady),
-			"linking in a new node is safe")
-
-		return n.node, func() {}, true, state.dag.NewEdge(n.node, copyBundle)
+		return n.node, func() {}, true, state.dag.NewEdge(n.node, specReady)
 	}
 
+	runBundleOut.info = new(pluginInfo)
 	err := state.dag.NewEdge(specReady, parent)
 	if err != nil {
 		ready()
 		return pdag.Node{}, nil, false, err
 	}
 	state.seen[hash] = cachedPlugin{
-		node:      specReady,
-		runBundle: runBundleOut,
+		node: specReady,
+		info: runBundleOut.info,
 	}
 
 	return specReady, ready, false, nil
@@ -705,12 +712,12 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		if isExec, err := p.ws.IsExecutable(ctx, projectDir); err != nil {
 			return err
 		} else if isExec {
-			step.runBundleOut.pluginPath = projectDir
+			step.runBundleOut.info.pluginPath = projectDir
 			if name, found := strings.CutPrefix(filepath.Base(projectDir), "pulumi-resource-"); found {
 				if runtime.GOOS == "windows" {
 					name = strings.TrimSuffix(name, ".exe")
 				}
-				step.runBundleOut.name = name
+				step.runBundleOut.info.name = name
 			}
 			return nil
 		}
@@ -733,6 +740,19 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	case packageresolution.PackageResolution:
 		*step.resolvedSpec = result.Spec
 		descriptor := result.Pkg.PluginDescriptor
+
+		// Set params before the dedup check: parameterization is per-package
+		// (e.g., two parameterized packages may share one underlying plugin),
+		// so it must be recorded on this call's runBundle even when the plugin
+		// has already been resolved by another spec.
+		if p := result.Pkg.Parameterization; p != nil {
+			step.runBundleOut.params = &plugin.ParameterizeValue{
+				Name:    p.Name,
+				Version: p.Version,
+				Value:   p.Value,
+			}
+		}
+
 		specFinished, specReady, isDuplicate, err := newSpecNode(
 			hashPluginSpec(descriptor), descriptor, step.runBundleOut, p, step.parent)
 		if err != nil {
@@ -740,14 +760,6 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		}
 		if isDuplicate {
 			return nil
-		}
-
-		if p := result.Pkg.Parameterization; p != nil {
-			step.runBundleOut.params = &plugin.ParameterizeValue{
-				Name:    p.Name,
-				Version: p.Version,
-				Value:   p.Value,
-			}
 		}
 
 		if result.InstalledInWorkspace {
@@ -780,6 +792,13 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		*step.resolvedSpec = result.Spec
 		descriptor := result.Pkg.PluginDescriptor
 
+		// Set params before the dedup check; see PackageResolution above for why.
+		if p := result.Pkg.ParameterizationArgs; len(p) > 0 {
+			step.runBundleOut.params = &plugin.ParameterizeArgs{
+				Args: p,
+			}
+		}
+
 		specFinished, specReady, isDuplicate, err := newSpecNode(
 			hashPluginSpec(descriptor), descriptor, step.runBundleOut, p, step.parent)
 		if err != nil {
@@ -787,12 +806,6 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		}
 		if isDuplicate {
 			return nil
-		}
-
-		if p := result.Pkg.ParameterizationArgs; len(p) > 0 {
-			step.runBundleOut.params = &plugin.ParameterizeArgs{
-				Args: p,
-			}
 		}
 
 		if result.InstalledInWorkspace {
@@ -858,7 +871,7 @@ func (step downloadStep) run(ctx context.Context, p state) error {
 	})
 	p.cleanupM.Unlock()
 
-	step.runBundleOut.pluginPath = pluginDir
+	step.runBundleOut.info.pluginPath = pluginDir
 	return enqueueDownloadedPluginDirHasDependenciesAndIsInstalled(
 		ctx, p, step.parent, step.spec.Name, pluginDir, step.downloadCleanup, step.runBundleOut)
 }
