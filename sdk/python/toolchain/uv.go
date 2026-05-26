@@ -190,7 +190,7 @@ func (u *uv) PrepareProject(
 			return fmt.Errorf("opening %s: %w", pyprojectPath, err)
 		}
 		if _, err := f.WriteString(section); err != nil {
-			contract.IgnoreError(f.Close())
+			contract.IgnoreClose(f)
 			return fmt.Errorf("appending [project] to %s: %w", pyprojectPath, err)
 		}
 		if err := f.Close(); err != nil {
