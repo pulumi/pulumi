@@ -544,13 +544,6 @@ func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.PolicyAnalyzer(nm, "", nil)
 }
 
-func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
-	if host.isClosed() {
-		return ErrHostIsClosed
-	}
-	return nil
-}
-
 func (host *pluginHost) ResolvePlugin(
 	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {

@@ -36,7 +36,6 @@ type MockHost struct {
 	PolicyAnalyzerF     func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
 	ProviderF           func(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
 	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
-	EnsurePluginsF      func(plugins []workspace.PluginDescriptor, kinds Flags) error
 	ResolvePluginF      func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
 	GetProjectPluginsF  func() []workspace.ProjectPlugin
 	SignalCancellationF func() error
@@ -99,13 +98,6 @@ func (m *MockHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
 		return m.LanguageRuntimeF(runtime)
 	}
 	return nil, status.Error(codes.Unimplemented, "LanguageRuntime not implemented")
-}
-
-func (m *MockHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error {
-	if m.EnsurePluginsF != nil {
-		return m.EnsurePluginsF(plugins, kinds)
-	}
-	return nil
 }
 
 func (m *MockHost) ResolvePlugin(

@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -518,10 +519,42 @@ func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 	return nil
 }
 
-// ensurePluginsAreLoaded ensures that all of the plugins in the given plugin set that match the given plugin flags are
-// loaded.
+// ensurePluginsAreLoaded ensures all plugins in the given array are loaded and ready to use. If any plugins are
+// missing, and/or there are errors loading one or more plugins, a non-nil error is returned.
 func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins PluginSet, kinds plugin.Flags) error {
-	return plugctx.Host.EnsurePlugins(plugins.Values(), kinds)
+	host := plugctx.Host
+
+	// Use a multieerror to track failures so we can return one big list of all failures at the end.
+	var result error
+	for _, p := range plugins {
+		switch p.Kind {
+		case apitype.AnalyzerPlugin:
+			if kinds&plugin.AnalyzerPlugins != 0 {
+				if _, err := host.Analyzer(tokens.QName(p.Name)); err != nil {
+					result = multierror.Append(result,
+						fmt.Errorf("failed to load analyzer plugin %s: %w", p.Name, err))
+				}
+			}
+		case apitype.LanguagePlugin:
+			if kinds&plugin.LanguagePlugins != 0 {
+				if _, err := host.LanguageRuntime(p.Name); err != nil {
+					result = multierror.Append(result,
+						fmt.Errorf("failed to load language plugin %s: %w", p.Name, err))
+				}
+			}
+		case apitype.ResourcePlugin:
+			if kinds&plugin.ResourcePlugins != 0 {
+				if _, err := host.Provider(p, env.Global()); err != nil {
+					result = multierror.Append(result,
+						fmt.Errorf("failed to load resource plugin %s: %w", p.Name, err))
+				}
+			}
+		case apitype.ConverterPlugin, apitype.ToolPlugin:
+			contract.Failf("unexpected plugin kind: %s", p.Kind)
+		}
+	}
+
+	return result
 }
 
 // installPlugin installs a plugin from the given backend client.

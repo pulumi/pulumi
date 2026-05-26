@@ -726,14 +726,13 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// And now replace the context host with our own test host
 	host := &testHost{
-		engine:                      eng,
-		ctx:                         pctx,
-		host:                        pctx.Host,
-		runtime:                     languageClient,
-		runtimeName:                 token.LanguagePluginName,
-		providers:                   make(map[string]func() (plugin.Provider, error)),
-		connections:                 make(map[plugin.Provider]io.Closer),
-		skipEnsurePluginsValidation: test.SkipEnsurePluginsValidation,
+		engine:      eng,
+		ctx:         pctx,
+		host:        pctx.Host,
+		runtime:     languageClient,
+		runtimeName: token.LanguagePluginName,
+		providers:   make(map[string]func() (plugin.Provider, error)),
+		connections: make(map[plugin.Provider]io.Closer),
 	}
 
 	pctx.Host = host
@@ -1391,96 +1390,101 @@ func runLanguageTests(
 		}
 
 		// Query the language plugin for what it thinks the project packages are, we expect to see the SDKs.
-		packages, err := languageClient.GetRequiredPackages(ctx, programInfo)
-		if err != nil {
-			return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
-		}
-		expectedPackages := []workspace.PackageDescriptor{}
-		for _, pkg := range programPackages {
-			if pkg.Name() == "pulumi" {
-				// Skip the pulumi package, the version for that is handled above.
-				continue
-			}
-
-			pkgDef, err := pkg.Definition()
+		// This is the conformance hook that used to live behind Host.EnsurePlugins: now that the engine ensures
+		// plugins inline, the runner checks GetRequiredPackages directly here. Tests opt out of the check with
+		// SkipEnsurePluginsValidation when the program intentionally diverges (e.g. version-pinning tests).
+		if !test.SkipEnsurePluginsValidation {
+			packages, err := languageClient.GetRequiredPackages(ctx, programInfo)
 			if err != nil {
-				return makeTestResponse(fmt.Sprintf("get package definition: %v", err)), nil
+				return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
 			}
-
-			var desc workspace.PackageDescriptor
-			if pkgDef.Parameterization == nil {
-				desc = workspace.PackageDescriptor{
-					PluginDescriptor: workspace.PluginDescriptor{
-						Name:    pkgDef.Name,
-						Version: pkgDef.Version,
-					},
+			expectedPackages := []workspace.PackageDescriptor{}
+			for _, pkg := range programPackages {
+				if pkg.Name() == "pulumi" {
+					// Skip the pulumi package, the version for that is handled above.
+					continue
 				}
-			} else {
-				desc = workspace.PackageDescriptor{
-					PluginDescriptor: workspace.PluginDescriptor{
-						Name:    pkgDef.Parameterization.BaseProvider.Name,
-						Version: &pkgDef.Parameterization.BaseProvider.Version,
-					},
-					Parameterization: &workspace.Parameterization{
-						Name:    pkgDef.Name,
-						Version: *pkgDef.Version,
-						Value:   pkgDef.Parameterization.Parameter,
-					},
+
+				pkgDef, err := pkg.Definition()
+				if err != nil {
+					return makeTestResponse(fmt.Sprintf("get package definition: %v", err)), nil
 				}
-			}
 
-			expectedPackages = append(expectedPackages, desc)
-		}
-
-		versionsMatch := func(expected, actual *semver.Version) bool {
-			if expected == nil && actual == nil {
-				return true
-			}
-			if expected == nil || actual == nil {
-				return false
-			}
-			return expected.EQ(*actual)
-		}
-		parameterizationsMatch := func(expected, actual *workspace.Parameterization) bool {
-			if expected == nil && actual == nil {
-				return true
-			}
-			if expected == nil || actual == nil {
-				return false
-			}
-			return expected.Name == actual.Name &&
-				versionsMatch(&expected.Version, &actual.Version) &&
-				slices.Equal(expected.Value, actual.Value)
-		}
-		for _, expectedPackage := range expectedPackages {
-			var found bool
-			for _, actual := range packages {
-				if actual.Name == expectedPackage.Name &&
-					versionsMatch(expectedPackage.Version, actual.Version) &&
-					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
-					found = true
-					break
+				var desc workspace.PackageDescriptor
+				if pkgDef.Parameterization == nil {
+					desc = workspace.PackageDescriptor{
+						PluginDescriptor: workspace.PluginDescriptor{
+							Name:    pkgDef.Name,
+							Version: pkgDef.Version,
+						},
+					}
+				} else {
+					desc = workspace.PackageDescriptor{
+						PluginDescriptor: workspace.PluginDescriptor{
+							Name:    pkgDef.Parameterization.BaseProvider.Name,
+							Version: &pkgDef.Parameterization.BaseProvider.Version,
+						},
+						Parameterization: &workspace.Parameterization{
+							Name:    pkgDef.Name,
+							Version: *pkgDef.Version,
+							Value:   pkgDef.Parameterization.Parameter,
+						},
+					}
 				}
+
+				expectedPackages = append(expectedPackages, desc)
 			}
 
-			if !found {
-				return makeTestResponse(fmt.Sprintf("missing expected package %v", expectedPackage)), nil
+			versionsMatch := func(expected, actual *semver.Version) bool {
+				if expected == nil && actual == nil {
+					return true
+				}
+				if expected == nil || actual == nil {
+					return false
+				}
+				return expected.EQ(*actual)
 			}
-		}
-		// For packages we need a symmetric check, we shouldn't have any packages that _aren't_ expected.
-		for _, actual := range packages {
-			var found bool
+			parameterizationsMatch := func(expected, actual *workspace.Parameterization) bool {
+				if expected == nil && actual == nil {
+					return true
+				}
+				if expected == nil || actual == nil {
+					return false
+				}
+				return expected.Name == actual.Name &&
+					versionsMatch(&expected.Version, &actual.Version) &&
+					slices.Equal(expected.Value, actual.Value)
+			}
 			for _, expectedPackage := range expectedPackages {
-				if actual.Name == expectedPackage.Name &&
-					versionsMatch(expectedPackage.Version, actual.Version) &&
-					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
-					found = true
-					break
+				var found bool
+				for _, actual := range packages {
+					if actual.Name == expectedPackage.Name &&
+						versionsMatch(expectedPackage.Version, actual.Version) &&
+						parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					return makeTestResponse(fmt.Sprintf("missing expected package %v", expectedPackage)), nil
 				}
 			}
+			// For packages we need a symmetric check, we shouldn't have any packages that _aren't_ expected.
+			for _, actual := range packages {
+				var found bool
+				for _, expectedPackage := range expectedPackages {
+					if actual.Name == expectedPackage.Name &&
+						versionsMatch(expectedPackage.Version, actual.Version) &&
+						parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+						found = true
+						break
+					}
+				}
 
-			if !found {
-				return makeTestResponse(fmt.Sprintf("unexpected extra package %v", actual)), nil
+				if !found {
+					return makeTestResponse(fmt.Sprintf("unexpected extra package %v", actual)), nil
+				}
 			}
 		}
 
