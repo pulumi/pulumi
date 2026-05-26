@@ -69,7 +69,7 @@ jobs:
         id: notes
         run: |
           VERSION="${{ fromJSON(steps.version.outputs.version) }}"
-          CHANGELOG="$(./.github/scripts/get-changelog "${VERSION}")"
+          CHANGELOG="$(changie batch "${VERSION}" --dry-run)"
           ./.github/scripts/set-output release-notes "${CHANGELOG}"
       - name: Check version
         if: ${{ !inputs.is-snapshot }}
