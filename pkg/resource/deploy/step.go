@@ -364,9 +364,6 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 				return resp, err
 			},
-			func(resp plugin.CreateResponse, err error) bool {
-				return resp.Status == resource.StatusPartialFailure
-			},
 			func(resp plugin.CreateResponse, failures []string) (bool, error) {
 				shouldRetry, err := s.Deployment().RunErrorHooks(
 					s.new.ResourceHooks[resource.OnError],
@@ -681,11 +678,6 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 				return resp, err
 			},
-
-			func(_ plugin.DeleteResponse, _ error) bool {
-				return true
-			},
-
 			func(_ plugin.DeleteResponse, failures []string) (bool, error) {
 				shouldRetry, err := s.Deployment().RunErrorHooks(
 					s.old.ResourceHooks[resource.OnError],
@@ -1011,9 +1003,6 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				}
 
 				return resp, err
-			},
-			func(resp plugin.UpdateResponse, err error) bool {
-				return resp.Status == resource.StatusPartialFailure
 			},
 			func(resp plugin.UpdateResponse, failures []string) (bool, error) {
 				shouldRetry, err := s.Deployment().RunErrorHooks(
