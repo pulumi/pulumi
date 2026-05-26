@@ -68,8 +68,7 @@ jobs:
       - name: Extract release notes
         id: notes
         run: |
-          VERSION="${{ fromJSON(steps.version.outputs.version) }}"
-          CHANGELOG="$(changie batch "${VERSION}" --dry-run)"
+          CHANGELOG="$(changie batch "${{ fromJSON(steps.version.outputs.version) }}" --dry-run)"
           ./.github/scripts/set-output release-notes "${CHANGELOG}"
       - name: Check version
         if: ${{ !inputs.is-snapshot }}
