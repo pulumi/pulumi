@@ -559,6 +559,103 @@ func TestDeleteAllAccountsDeletesBackendConfig(t *testing.T) {
 	assert.Empty(t, config.BackendConfig)
 }
 
+//nolint:paralleltest // mutates environment
+func TestDeleteAllAccountsReturnsCredentialsDeleteError(t *testing.T) {
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	credentialsPath := filepath.Join(credsDir, "credentials.json")
+	require.NoError(t, os.Mkdir(credentialsPath, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(credentialsPath, "file"), []byte("token-value"), 0o600))
+
+	err := DeleteAllAccounts()
+	require.Error(t, err)
+}
+
+//nolint:paralleltest // mutates environment
+func TestDeleteAllAccountsReturnsBackendConfigDeleteError(t *testing.T) {
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	require.NoError(t, StoreCredentials(Credentials{
+		AccessTokens: map[string]string{
+			"https://api.example.com": "token-value",
+		},
+	}))
+	require.NoError(t, os.Mkdir(filepath.Join(credsDir, "config.json"), 0o700))
+
+	err := DeleteAllAccounts()
+	require.ErrorContains(t, err, "reading")
+}
+
+//nolint:paralleltest // mutates environment
+func TestDeleteBackendConfigMissingFile(t *testing.T) {
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	err := deleteBackendConfig("https://api.example.com")
+	require.NoError(t, err)
+}
+
+//nolint:paralleltest // mutates environment
+func TestDeleteBackendConfigInvalidJSON(t *testing.T) {
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "config.json"), []byte("{"), 0o600))
+
+	err := deleteBackendConfig("https://api.example.com")
+	require.ErrorContains(t, err, "failed to read Pulumi agent config file")
+}
+
+//nolint:paralleltest // mutates environment
+func TestDeleteBackendConfigPathError(t *testing.T) {
+	credsPath := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(credsPath, []byte("not a directory"), 0o600))
+	t.Setenv(PulumiCredentialsPathEnvVar, credsPath)
+	t.Setenv("PULUMI_HOME", "")
+
+	err := deleteBackendConfig("https://api.example.com")
+	require.ErrorContains(t, err, "failed to create")
+}
+
+//nolint:paralleltest // mutates environment
+func TestDeleteAllBackendConfigMissingFile(t *testing.T) {
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	err := deleteAllBackendConfig()
+	require.NoError(t, err)
+}
+
+//nolint:paralleltest // mutates environment
+func TestDeleteAllBackendConfigInvalidJSON(t *testing.T) {
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "config.json"), []byte("{"), 0o600))
+
+	err := deleteAllBackendConfig()
+	require.ErrorContains(t, err, "failed to read Pulumi config file")
+}
+
+//nolint:paralleltest // mutates environment
+func TestDeleteAllBackendConfigPathError(t *testing.T) {
+	credsPath := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(credsPath, []byte("not a directory"), 0o600))
+	t.Setenv(PulumiCredentialsPathEnvVar, credsPath)
+	t.Setenv("PULUMI_HOME", "")
+
+	err := deleteAllBackendConfig()
+	require.ErrorContains(t, err, "failed to create")
+}
+
 //nolint:paralleltest // mutates environment and package global
 func TestAgentPulumiConfigExplicitPathDoesNotFallbackToAgentPath(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
