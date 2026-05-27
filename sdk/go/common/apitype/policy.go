@@ -55,6 +55,10 @@ type CreatePolicyPackRequest struct {
 	// A URL to the repository where the policy pack is defined.
 	Repository string `json:"repository,omitempty"`
 
+	// Runtime identifies the analyzer SDK that produced the pack (e.g. "nodejs",
+	// "python", "opa"). Empty when produced by an older SDK that does not report it.
+	Runtime string `json:"runtime,omitempty"`
+
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
 	Metadata map[string]string `json:"metadata,omitempty"`
