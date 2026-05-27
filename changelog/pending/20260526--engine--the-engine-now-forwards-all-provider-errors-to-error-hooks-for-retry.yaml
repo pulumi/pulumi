@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: The engine now forwards all provider errors to error hooks for retry

@@ -2008,3 +2008,66 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 	require.GreaterOrEqual(t, resAHooks, 1)
 	require.GreaterOrEqual(t, resBHooks, 2)
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/23344. A normal error from a provider should trigger an
+// error hook. Not just StatusPartialFailure responses.
+func TestErrorHooks_PlainCreateErrorRunsOnErrorHook(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if req.Preview {
+						return plugin.CreateResponse{Status: resource.StatusOK}, nil
+					}
+					return plugin.CreateResponse{Status: resource.StatusOK}, errors.New("create failed")
+				},
+			}, nil
+		}),
+	}
+
+	hookCalls := 0
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
+			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				failedOperation string, errs []string,
+			) (bool, error) {
+				require.Equal(t, "resA", name)
+				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
+				require.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), urn)
+				require.Equal(t, "create", failedOperation)
+				require.NotEmpty(t, errs)
+				hookCalls++
+				return false, nil
+			})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				OnError: []*deploytest.ResourceHook{h},
+			},
+		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.Error(t, err)
+	require.Equal(t, 1, hookCalls)
+}
