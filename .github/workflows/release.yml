@@ -161,7 +161,6 @@ jobs:
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
-      release-notes: ${{ inputs.release-notes }}
       queue-merge: ${{ inputs.queue-merge }}
     secrets: inherit
 
