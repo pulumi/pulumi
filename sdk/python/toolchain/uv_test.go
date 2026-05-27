@@ -221,6 +221,70 @@ fail-to-install = { path = "./fail-to-install" }
 	})
 }
 
+func TestUvFailsWhenPyprojectMissingProjectSection(t *testing.T) {
+	t.Parallel()
+
+	t.Run("InstallDependencies", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "pyproject.toml"),
+			[]byte("[tool.something]\nvalue = 1\n"), 0o600)
+		require.NoError(t, err)
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+
+		err = uv.InstallDependencies(t.Context(), root, false, false, nil, nil)
+		require.ErrorContains(t, err, "missing a [project] section")
+	})
+
+	t.Run("Command", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "pyproject.toml"),
+			[]byte("[tool.something]\nvalue = 1\n"), 0o600)
+		require.NoError(t, err)
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+
+		_, err = uv.Command(t.Context(), "-c", "print('hello')")
+		require.ErrorContains(t, err, "missing a [project] section")
+	})
+}
+
+func TestUvMergeRequirements(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	// pyproject.toml without [project] section
+	pyproject := `[tool.pylint."MESSAGES CONTROL"]
+max-line-length = 120
+`
+	require.NoError(t, os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "requirements.txt"), []byte("wheel\n"), 0o600))
+
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	err = uv.InstallDependencies(t.Context(), root, false, false, nil, nil)
+	require.NoError(t, err)
+
+	require.NoFileExists(t, filepath.Join(root, "requirements.txt"), "requirements.txt should be deleted")
+	py, err := LoadPyproject(root)
+	require.NoError(t, err)
+	require.NotNil(t, py.Project)
+	hasWheel := false
+	for _, dep := range py.Project.Dependencies {
+		if strings.HasPrefix(dep, "wheel") {
+			hasWheel = true
+			break
+		}
+	}
+	require.True(t, hasWheel, "expected wheel in dependencies, got %v", py.Project.Dependencies)
+
+	contents, err := os.ReadFile(filepath.Join(root, "pyproject.toml"))
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "[tool.pylint", "expected [tool.pylint] section to still be present")
+}
+
 // Test that link actually runs in the root directory.
 func TestUvLinkCorrectDirectory(t *testing.T) {
 	t.Parallel()
