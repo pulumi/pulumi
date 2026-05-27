@@ -4,6 +4,7 @@ github-cli = "latest"
 # gopls v0.22+ requires Go 1.26; pin to the latest version compatible with Go 1.25.
 "go:golang.org/x/tools/gopls" = "0.21.0"
 go = "1.25"
+changie = "1.21.0"
 golangci-lint = "2.12.2"
 jq = "latest"
 node = "20"
