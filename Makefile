@@ -317,12 +317,7 @@ release:
 	changie batch "$$NEXT_VERSION" && \
 	changie merge && \
 	./.github/scripts/update-versions "$$NEXT_VERSION" && \
-	(cd sdk/python && uv sync) && \
-	git switch --create "automation/prepare-release-v$$NEXT_VERSION" && \
-	git add -A && \
-	git commit -m "chore: prepare release v$$NEXT_VERSION" && \
-	git push -u origin HEAD && \
-	gh pr create --title "chore: prepare release v$$NEXT_VERSION" --body ""
+	(cd sdk/python && uv sync)
 
 clean::
 	rm -rf bin/*
