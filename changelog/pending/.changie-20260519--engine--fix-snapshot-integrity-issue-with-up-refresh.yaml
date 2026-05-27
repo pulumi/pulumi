@@ -1,4 +1,3 @@
 kind: fix
 body: Fix snapshot integrity issue with `up --refresh`
-custom:
-  Scope: engine
+component: engine

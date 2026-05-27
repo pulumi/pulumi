@@ -5,7 +5,79 @@ changelogPath: CHANGELOG.md
 versionExt: md
 versionFormat: '## {{.Version}} ({{.Time.Format "2006-01-02"}})'
 kindFormat: '### {{.Kind}}'
-changeFormat: '- [{{.Custom.Scope}}] {{.Body}}{{if .Custom.PR}} [#{{.Custom.PR}}](https://github.com/pulumi/pulumi/pull/{{.Custom.PR}}){{end}}'
+changeFormat: '- [{{.Component}}] {{.Body}}{{if .Custom.PR}} [#{{.Custom.PR}}](https://github.com/pulumi/pulumi/pull/{{.Custom.PR}}){{end}}'
+
+components:
+  - auto
+  - auto/dotnet
+  - auto/go
+  - auto/java
+  - auto/nodejs
+  - auto/python
+  - auto/yaml
+  - backend
+  - backend/diy
+  - backend/service
+  - build
+  - ci
+  - cli
+  - cli/about
+  - cli/cloud
+  - cli/config
+  - cli/convert
+  - cli/deployment
+  - cli/display
+  - cli/do
+  - cli/engine
+  - cli/env
+  - cli/import
+  - cli/install
+  - cli/neo
+  - cli/new
+  - cli/package
+  - cli/plugin
+  - cli/policy
+  - cli/state
+  - components
+  - components/dotnet
+  - components/go
+  - components/java
+  - components/nodejs
+  - components/pcl
+  - components/python
+  - components/yaml
+  - docs
+  - engine
+  - java
+  - pcl
+  - pkg
+  - pkg/testing
+  - programgen
+  - programgen/dotnet
+  - programgen/go
+  - programgen/java
+  - programgen/nodejs
+  - programgen/pcl
+  - programgen/python
+  - programgen/yaml
+  - protobuf
+  - sdk
+  - sdk/bun
+  - sdk/dotnet
+  - sdk/go
+  - sdk/java
+  - sdk/nodejs
+  - sdk/python
+  - sdkgen
+  - sdkgen/docs
+  - sdkgen/dotnet
+  - sdkgen/go
+  - sdkgen/java
+  - sdkgen/nodejs
+  - sdkgen/pcl
+  - sdkgen/python
+  - sdkgen/yaml
+  - yaml
 
 kinds:
   - label: Features
@@ -22,80 +94,6 @@ kinds:
     auto: patch
 
 custom:
-  - key: Scope
-    label: "Component scope"
-    type: enum
-    enumOptions:
-      - auto
-      - auto/dotnet
-      - auto/go
-      - auto/java
-      - auto/nodejs
-      - auto/python
-      - auto/yaml
-      - backend
-      - backend/diy
-      - backend/service
-      - build
-      - ci
-      - cli
-      - cli/about
-      - cli/cloud
-      - cli/config
-      - cli/convert
-      - cli/deployment
-      - cli/display
-      - cli/do
-      - cli/engine
-      - cli/env
-      - cli/import
-      - cli/install
-      - cli/neo
-      - cli/new
-      - cli/package
-      - cli/plugin
-      - cli/policy
-      - cli/state
-      - components
-      - components/dotnet
-      - components/go
-      - components/java
-      - components/nodejs
-      - components/pcl
-      - components/python
-      - components/yaml
-      - docs
-      - engine
-      - java
-      - pcl
-      - pkg
-      - pkg/testing
-      - programgen
-      - programgen/dotnet
-      - programgen/go
-      - programgen/java
-      - programgen/nodejs
-      - programgen/pcl
-      - programgen/python
-      - programgen/yaml
-      - protobuf
-      - sdk
-      - sdk/bun
-      - sdk/dotnet
-      - sdk/go
-      - sdk/java
-      - sdk/nodejs
-      - sdk/python
-      - sdkgen
-      - sdkgen/docs
-      - sdkgen/dotnet
-      - sdkgen/go
-      - sdkgen/java
-      - sdkgen/nodejs
-      - sdkgen/pcl
-      - sdkgen/python
-      - sdkgen/yaml
-      - yaml
   - key: PR
     label: "Pull request number (leave empty if unknown)"
     type: string
