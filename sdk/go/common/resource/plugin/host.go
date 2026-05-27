@@ -176,11 +176,21 @@ func collectPluginsFromPackages(
 
 type NewLoaderFunc = func(h Host) codegenrpc.LoaderServer
 
+// LanguageInstaller downloads and installs an unbundled language runtime on demand, so that
+// loading it via Host.LanguageRuntime works even when the runtime is not bundled with the CLI
+// or already cached. It is the language-runtime analogue of the engine's plugin install path.
+//
+// The install machinery lives in the pkg module, which the SDK cannot import, so a host is
+// given its installer at construction. newLoader is the same loader the host was built with;
+// installing a plugin may need it to install the plugin's dependencies. A nil LanguageInstaller
+// disables on-demand install (the host then relies on the runtime already being present).
+type LanguageInstaller = func(ctx context.Context, runtime string, newLoader NewLoaderFunc) error
+
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
 	config map[config.Key]string, debugging DebugContext, projectName tokens.PackageName,
-	newLoader NewLoaderFunc,
+	newLoader NewLoaderFunc, installLang LanguageInstaller,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -230,6 +240,8 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 		debugContext:            debugging,
 		projectName:             projectName,
 		hasLoaderServer:         newLoader != nil,
+		newLoader:               newLoader,
+		installLang:             installLang,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -354,6 +366,8 @@ type defaultHost struct {
 	projectPlugins []workspace.ProjectPlugin
 
 	hasLoaderServer bool
+	newLoader       NewLoaderFunc     // the loader the host was built with, passed to installLang.
+	installLang     LanguageInstaller // installs unbundled language runtimes on demand; may be nil.
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -600,6 +614,13 @@ func (host *defaultHost) LanguageRuntime(runtime string,
 		if plug, has := host.languagePlugins[runtime]; has {
 			contract.Assertf(plug != nil, "language plugin %v was loaded but is nil", runtime)
 			return plug.Plugin, nil
+		}
+
+		// Download and install the language runtime on demand if it is unbundled and missing.
+		if host.installLang != nil {
+			if err := host.installLang(host.ctx.Request(), runtime, host.newLoader); err != nil {
+				return nil, fmt.Errorf("failed to install language plugin %s: %w", runtime, err)
+			}
 		}
 
 		// If not, allocate a new one.

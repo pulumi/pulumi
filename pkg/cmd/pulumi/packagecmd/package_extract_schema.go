@@ -51,7 +51,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			sink := cmdutil.Diag()
 			pctx, err := plugin.NewContext(
 				cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost)
+				nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return err
 			}

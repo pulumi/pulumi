@@ -71,7 +71,8 @@ func InstallPackagesFromProject(
 	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
 		Color: utilCmdutil.GetGlobalColorization(),
 	})
-	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil, schema.NewLoaderServerFromHost)
+	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil,
+		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return err
 	}

@@ -58,7 +58,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 			sink := cmdutil.Diag()
 			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost)
+				nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return err
 			}

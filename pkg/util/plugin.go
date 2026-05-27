@@ -18,12 +18,37 @@ package util
 import (
 	"slices"
 
+	"github.com/blang/semver"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// SetKnownPluginDownloadURL sets the PluginDownloadURL for the given PluginSpec if it's a known plugin.
-// Returns true if it filled in the URL.
+// knownLanguageRuntime describes a language runtime that is no longer bundled with the
+// `pulumi` binary and must be downloaded on demand. The URL points at the release source
+// (typically a GitHub repository) and Version pins the release the CLI is built against.
+type knownLanguageRuntime struct {
+	PluginDownloadURL string
+	Version           semver.Version
+}
+
+// knownLanguageRuntimes is the set of language runtimes that the CLI knows how to fetch
+// without being told a download URL by the user or a project file. As we migrate
+// previously-bundled language runtimes off the CLI release tarball, they are added here so
+// the CLI continues to know where to find them.
+var knownLanguageRuntimes = map[string]knownLanguageRuntime{
+	// The HCL language runtime lives in pulumi-labs/pulumi-hcl rather than pulumi/pulumi-hcl,
+	// so we have to point downloads at that repo explicitly.
+	"hcl": {
+		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
+		// renovate: datasource=github-releases depName=pulumi-labs/pulumi-hcl extractVersion=^v(?<version>.+)$
+		Version: semver.MustParse("0.4.0"),
+	},
+}
+
+// SetKnownPluginDownloadURL fills in metadata on the given PluginDescriptor that the CLI
+// knows about for well-known plugins: a PluginDownloadURL, and for unbundled language
+// runtimes, a pinned Version. Returns true if it filled in anything.
 func SetKnownPluginDownloadURL(spec *workspace.PluginDescriptor) bool {
 	// If the download url is already set don't touch it
 	if spec.PluginDownloadURL != "" {
@@ -44,6 +69,17 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginDescriptor) bool {
 		// release artifact.
 		spec.PluginDownloadURL = "github://api.github.com/pulumi-labs/pulumi-hcl"
 		return true
+	}
+
+	if spec.Kind == apitype.LanguagePlugin {
+		if known, ok := knownLanguageRuntimes[spec.Name]; ok {
+			spec.PluginDownloadURL = known.PluginDownloadURL
+			if spec.Version == nil {
+				v := known.Version
+				spec.Version = &v
+			}
+			return true
+		}
 	}
 
 	return false

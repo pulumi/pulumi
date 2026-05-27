@@ -18,6 +18,7 @@ package util
 import (
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -46,4 +47,41 @@ func TestKnownProvider(t *testing.T) {
 	res := SetKnownPluginDownloadURL(&spec)
 	assert.True(t, res)
 	assert.Equal(t, "github://api.github.com/pulumiverse", spec.PluginDownloadURL)
+}
+
+func TestKnownLanguageRuntimeHCL(t *testing.T) {
+	t.Parallel()
+
+	spec := workspace.PluginDescriptor{
+		Name: "hcl",
+		Kind: apitype.LanguagePlugin,
+	}
+	res := SetKnownPluginDownloadURL(&spec)
+	assert.True(t, res)
+	pinned := semver.MustParse("0.4.0")
+	assert.Equal(t, workspace.PluginDescriptor{
+		Name:              "hcl",
+		Kind:              apitype.LanguagePlugin,
+		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
+		Version:           &pinned,
+	}, spec)
+}
+
+func TestKnownLanguageRuntimePreservesExplicitVersion(t *testing.T) {
+	t.Parallel()
+
+	explicit := semver.MustParse("0.3.0")
+	spec := workspace.PluginDescriptor{
+		Name:    "hcl",
+		Kind:    apitype.LanguagePlugin,
+		Version: &explicit,
+	}
+	res := SetKnownPluginDownloadURL(&spec)
+	assert.True(t, res)
+	assert.Equal(t, workspace.PluginDescriptor{
+		Name:              "hcl",
+		Kind:              apitype.LanguagePlugin,
+		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
+		Version:           &explicit,
+	}, spec)
 }

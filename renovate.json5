@@ -33,6 +33,16 @@
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+\"\\S+ (?<currentValue>\\S+)\"",
       ],
     },
+    // Update the pinned versions of unbundled language runtimes in
+    // `pkg/util/plugin.go`. Each entry in `knownLanguageRuntimes` is preceded by a
+    // `// renovate:` annotation that tells this manager which release to track.
+    {
+      customType: "regex",
+      fileMatch: ["^pkg/util/plugin\\.go$"],
+      matchStrings: [
+        "// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+Version:\\s+semver\\.MustParse\\(\"(?<currentValue>[^\"]+)\"\\)",
+      ],
+    },
   ],
   // The preset's ignorePaths has `sdk/**` in it, we don't want that
   // https://github.com/pulumi/renovate-config/blob/main/default.json5#L55

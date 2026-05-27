@@ -729,7 +729,8 @@ func NewImportCmd() *cobra.Command {
 				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
-			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
+			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
+				schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -947,7 +948,8 @@ func NewImportCmd() *cobra.Command {
 				}
 				sink := cmdutil.Diag()
 
-				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
+				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
+					schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 				if err != nil {
 					return nil, nil, err
 				}
