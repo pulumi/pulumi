@@ -226,28 +226,58 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	return cmd
 }
 
-// addRequiredSpecsToProject adds package specs reported by the language host to
-// the project's `packages` section, deduplicating against existing entries by
-// [workspace.PackageSpec.Source]. Returns true if proj was modified.
+// addRequiredSpecsToProject adds package specs reported by the language host
+// to the project's `packages` section, deduplicating against existing entries
+// by full spec identity ([workspace.PackageSpec.String], which includes
+// Source, Version, and Parameters). Returns true if proj was modified.
+//
+// Multiple parameterizations of the same base plugin — e.g.
+// `terraform-provider hashicorp/aws` and `terraform-provider hashicorp/archive`
+// — are distinct specs and must both be installed; deduping on Source alone
+// would silently drop all but the first.
+//
+// New specs are staged under a unique synthetic key derived from the spec
+// (Source plus Parameters); a subsequent `InstallPackagesFromProject` rewrites
+// each entry's key to the parameterized provider's real name. Without a unique
+// synthetic key, two specs sharing the same Source overwrite each other in
+// the `packages` map before installation can run.
 func addRequiredSpecsToProject(proj *workspace.Project, specs []workspace.PackageSpec) bool {
 	if len(specs) == 0 {
 		return false
 	}
-	existingSources := make(map[string]struct{})
+	existing := make(map[string]struct{})
 	for name, s := range proj.GetPackageSpecs() {
-		existingSources[name] = struct{}{}
-		existingSources[s.Source] = struct{}{}
+		existing[name] = struct{}{}
+		existing[s.String()] = struct{}{}
 	}
 	added := false
 	for _, spec := range specs {
-		if _, ok := existingSources[spec.Source]; ok {
+		key := spec.String()
+		if _, ok := existing[key]; ok {
 			continue
 		}
-		proj.AddPackage(spec.Source, spec)
-		existingSources[spec.Source] = struct{}{}
+		proj.AddPackage(stagingKey(spec, existing), spec)
+		existing[key] = struct{}{}
 		added = true
 	}
 	return added
+}
+
+// stagingKey returns a unique package-map key for a spec being staged into
+// Pulumi.yaml ahead of installation. Prefers spec.Source when that name is
+// free; otherwise appends "#<n>" suffixes until a free key is found.
+func stagingKey(spec workspace.PackageSpec, existing map[string]struct{}) string {
+	if _, taken := existing[spec.Source]; !taken {
+		existing[spec.Source] = struct{}{}
+		return spec.Source
+	}
+	for i := 2; ; i++ {
+		candidate := fmt.Sprintf("%s#%d", spec.Source, i)
+		if _, taken := existing[candidate]; !taken {
+			existing[candidate] = struct{}{}
+			return candidate
+		}
+	}
 }
 
 func shouldInstallPolicyPackDependencies() (bool, error) {
