@@ -174,8 +174,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
-      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-      - run: uv run scripts/check-changelog.py
+      - uses: miniscruff/changie-action@v2
+        with:
+          version: v1.21.0
+      - run: changie batch auto --dry-run
 
   pulumi-json:
     name: Lint pulumi.json
