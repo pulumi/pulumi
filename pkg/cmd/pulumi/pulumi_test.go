@@ -15,9 +15,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -527,6 +529,41 @@ func newDoTestCmd() *cobra.Command {
 	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil)
 	root.AddCommand(doCmd)
 	return doCmd
+}
+
+// TestPulumiCmdPreParsesPersistentFlagsForDisableFlagParsing verifies the workaround in
+// NewPulumiCmd's PersistentPreRunE: when a subcommand sets DisableFlagParsing (`pulumi do`),
+// cobra skips flag parsing entirely, so root persistent flags like --otel-traces have to be
+// parsed manually before the flag-dependent init (InitOtelReceiver, SetGlobalColorization,
+// os.Chdir, etc.) can use them.
+//
+//nolint:paralleltest // mutates env vars and cmdutil's package-level OTel state
+func TestPulumiCmdPreParsesPersistentFlagsForDisableFlagParsing(t *testing.T) {
+	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	pulumiCmd, cleanup := NewPulumiCmd()
+	t.Cleanup(cleanup)
+
+	// file:// is a real OTel exporter scheme — InitOtelReceiver will actually start a receiver,
+	// flipping cmdutil.IsOTelEnabled() to true. That's the behavior we want to confirm: the
+	// pre-parse in PersistentPreRunE made the flag value visible to InitOtelReceiver.
+	endpoint := "file://" + filepath.Join(t.TempDir(), "trace.json")
+
+	var stdout, stderr bytes.Buffer
+	pulumiCmd.SetOut(&stdout)
+	pulumiCmd.SetErr(&stderr)
+	// The "missing-package-that-fails-to-load" arg makes `do` fail in buildSubcommand,
+	// but PersistentPreRunE has already completed by then — which is all we're testing here.
+	pulumiCmd.SetArgs([]string{"do", "--otel-traces=" + endpoint, "missing-package-that-fails-to-load"})
+	_ = pulumiCmd.Execute() //nolint:errcheck // do is expected to fail; we only care about PersistentPreRunE
+
+	otelFlag := pulumiCmd.PersistentFlags().Lookup("otel-traces")
+	require.NotNil(t, otelFlag)
+	assert.Equal(t, endpoint, otelFlag.Value.String(),
+		"PersistentPreRunE should have pre-parsed --otel-traces before flag-dependent init ran")
+	assert.True(t, cmdutil.IsOTelEnabled(),
+		"InitOtelReceiver should have been called with the parsed --otel-traces endpoint")
 }
 
 //nolint:paralleltest // changes environment variables and globals

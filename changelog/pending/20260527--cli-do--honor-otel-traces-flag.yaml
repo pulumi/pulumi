@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Honor root persistent flags like --otel-traces, --tracing and --color when passed under `pulumi do`
