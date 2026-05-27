@@ -1825,15 +1825,29 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 	marshalOpts.KeepOutputValues = true
 
+	dependencies := []string{}
+	propertyDependencies := map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{}
+	for key, val := range inputs {
+		deps := getAllDependencies(val)
+		if len(deps) > 0 {
+			dependencies = append(dependencies, deps...)
+			propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
+				Urns: deps,
+			}
+		}
+	}
+
 	componentName := i.effectiveName(component.LogicalName())
 	request := &pulumirpc.RegisterResourceRequest{
-		Type:            "components:index:" + component.DeclarationName(),
-		Name:            componentName,
-		Custom:          false,
-		Object:          obj,
-		AcceptSecrets:   true,
-		AcceptResources: true,
-		Parent:          i.stackURN,
+		Type:                 "components:index:" + component.DeclarationName(),
+		Name:                 componentName,
+		Custom:               false,
+		Object:               obj,
+		PropertyDependencies: propertyDependencies,
+		Dependencies:         dependencies,
+		AcceptSecrets:        true,
+		AcceptResources:      true,
+		Parent:               i.stackURN,
 	}
 	if component.Options != nil && component.Options.Parent != nil {
 		parent, poison, diags := i.evalContext.Evaluate(component.Options.Parent)
