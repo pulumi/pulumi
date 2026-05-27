@@ -1,0 +1,61 @@
+name: Prepare Release
+
+permissions:
+  # To create a PR
+  contents: write
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        required: false
+        description: "Version to release (defaults to next version computed from changelog)"
+        type: string
+
+jobs:
+  prepare:
+    name: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - uses: miniscruff/changie-action@v2
+        with:
+          version: v1.21.0
+      - name: Compute next version
+        id: next-version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            NEXT_VERSION="${{ inputs.version }}"
+          else
+            NEXT_VERSION="$(changie next auto)"
+          fi
+          echo "next-version=${NEXT_VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Batch changelog and update version files
+        env:
+          NEXT_VERSION: ${{ steps.next-version.outputs.next-version }}
+        run: |
+          changie batch "${NEXT_VERSION}"
+          changie merge
+          ./.github/scripts/update-versions "${NEXT_VERSION}"
+          (cd sdk/python && uv sync)
+      - name: Create PR
+        env:
+          NEXT_VERSION: ${{ steps.next-version.outputs.next-version }}
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name pulumi-bot
+          git config user.email bot@pulumi.com
+          git switch --create "automation/prepare-release-v${NEXT_VERSION}"
+          git add -A
+          git commit -m "chore: prepare release v${NEXT_VERSION}"
+          git push -u origin HEAD
+          gh pr create \
+            --title "chore: prepare release v${NEXT_VERSION}" \
+            --body ""

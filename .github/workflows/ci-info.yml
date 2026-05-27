@@ -66,8 +66,15 @@ jobs:
           version: v1.21.0
       - name: Extract release notes
         id: notes
+        env:
+          IS_SNAPSHOT: ${{ inputs.is-snapshot }}
         run: |
-          CHANGELOG="$(changie batch "${{ fromJSON(steps.version.outputs.version) }}" --dry-run)"
+          PLAIN_VERSION="$(./.github/scripts/get-version)"
+          if [ "$IS_SNAPSHOT" = "true" ]; then
+            CHANGELOG="$(changie batch auto --dry-run)"
+          else
+            CHANGELOG="$(cat "changelog/${PLAIN_VERSION}.md")"
+          fi
           ./.github/scripts/set-output release-notes "${CHANGELOG}"
       - name: Check version
         if: ${{ !inputs.is-snapshot }}

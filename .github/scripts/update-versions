@@ -56,26 +56,12 @@ for n in $(seq 0 1 "$((N-1))"); do
       updatePath=$(yq -r '.updatePath' <<< "$replacement")
       versionFormat=$(yq -r '.versionFormat' <<< "$replacement")
 
-      TOOL="jq"
-      TOOL_ARGS=""
-      SPONGE=false
       case "$fileFormat" in
-        "sed") TOOL="sed";;
-        "json") TOOL="jq" TOOL_ARGS="--in-place";;
-        "yaml") TOOL="yq" TOOL_ARGS="--in-place";;
+        "sed" | "json" | "yaml") ;;
         *)
           >&2 echo "::error::Unknown file format $fileFormat; unable to update file $file"
           exit 1
       esac
-
-      tool() {
-        if $SPONGE; then
-          TEMP="$("$TOOL" "$@")"
-          echo -n "$TEMP" > "$file"
-        else
-          "$TOOL" "$@"
-        fi
-      }
 
       # Use a subshell to avoid mutating our caller's environment.
       # envsubst requires exported variables
@@ -92,10 +78,13 @@ for n in $(seq 0 1 "$((N-1))"); do
         # shellcheck disable=SC2016
         versionString=$(envsubst '$SEMVER,$VERSION,$MAJOR,$MINOR,$PATCH,$PRERELEASE,$BUILD' <<< "$versionFormat")
 
-        if [ "$TOOL" == "sed" ]; then
+        if [ "$fileFormat" == "sed" ]; then
           sed --in-place -E "s/$updatePath/$versionString/" "$file"
+        elif [ "$fileFormat" == "json" ]; then
+          # jq does not support --in-place; read, transform, write
+          printf '%s\n' "$(jq "$updatePath = \"$versionString\"" "$file")" > "$file"
         else
-          tool $TOOL_ARGS "$updatePath = \"$versionString\"" "$file"
+          yq --in-place "$updatePath = \"$versionString\"" "$file"
         fi
       )
     ;;

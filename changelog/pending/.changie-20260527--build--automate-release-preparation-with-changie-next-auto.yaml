@@ -1,0 +1,5 @@
+kind: chore
+body: Automate release preparation using changie to determine the next version
+component: build
+custom:
+  PR: ""
