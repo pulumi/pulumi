@@ -95,7 +95,7 @@ kinds:
 
 custom:
   - key: PR
-    label: "Pull request number (leave empty if unknown)"
+    label: "GitHub Pull Request or Issue Number (leave empty if unknown)"
     type: string
 
 body:
