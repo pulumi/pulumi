@@ -15,6 +15,8 @@
 package install
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -22,39 +24,54 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAddRequiredSpecsToProject_MultipleParameterizationsOfSameSource pins down
-// the fix for the language-host scenario where multiple PackageSpec entries
-// share a single base plugin Source but parameterize it differently — e.g.
-// `terraform-provider hashicorp/aws` and `terraform-provider hashicorp/archive`.
-// The previous implementation deduped on Source alone, silently dropping all
-// but the first, so `pulumi install` would generate only one SDK and `pulumi
-// up` would later fail on the missing one.
-func TestAddRequiredSpecsToProject_MultipleParameterizationsOfSameSource(t *testing.T) {
-	t.Parallel()
-
-	proj := &workspace.Project{}
-	specs := []workspace.PackageSpec{
-		{Source: "terraform-provider", Parameters: []string{"hashicorp/archive"}},
-		{Source: "terraform-provider", Parameters: []string{"hashicorp/aws", "6.19.0"}},
-	}
-
-	require.True(t, addRequiredSpecsToProject(proj, specs))
-
-	got := proj.GetPackageSpecs()
-	require.Len(t, got, 2, "both parameterizations must be staged; got %v", got)
-
-	bySpecString := map[string]workspace.PackageSpec{}
-	for _, s := range got {
-		bySpecString[s.String()] = s
-	}
-	for _, want := range specs {
-		_, ok := bySpecString[want.String()]
-		assert.Truef(t, ok, "missing staged spec %s in %v", want.String(), got)
+// staticNameResolver stands in for the plugin-running resolver, looking up
+// the (name, resolvedSpec) result by the input's [workspace.PackageSpec.String].
+func staticNameResolver(t *testing.T, mapping map[string]struct {
+	name     string
+	resolved workspace.PackageSpec
+},
+) func(workspace.PackageSpec) (string, workspace.PackageSpec, error) {
+	t.Helper()
+	return func(spec workspace.PackageSpec) (string, workspace.PackageSpec, error) {
+		entry, ok := mapping[spec.String()]
+		if !ok {
+			return "", workspace.PackageSpec{}, fmt.Errorf("staticNameResolver: no mapping for %s", spec)
+		}
+		return entry.name, entry.resolved, nil
 	}
 }
 
-// TestAddRequiredSpecsToProject_DedupesExactDuplicates verifies that a spec
-// already in the project's `packages` map (by full identity) is not re-added.
+// Two specs sharing one base plugin Source but with different Parameters must
+// each land under their schema-discovered name so the Source-keyed local
+// override in resolveStep can't alias one onto the other.
+func TestAddRequiredSpecsToProject_MultipleParameterizationsOfSameSource(t *testing.T) {
+	t.Parallel()
+
+	archive := workspace.PackageSpec{
+		Source: "terraform-provider", Parameters: []string{"hashicorp/archive"},
+	}
+	aws := workspace.PackageSpec{
+		Source: "terraform-provider", Parameters: []string{"hashicorp/aws", "6.19.0"},
+	}
+	nameFor := staticNameResolver(t, map[string]struct {
+		name     string
+		resolved workspace.PackageSpec
+	}{
+		archive.String(): {name: "archive", resolved: archive},
+		aws.String():     {name: "aws", resolved: aws},
+	})
+
+	proj := &workspace.Project{}
+	added, err := addRequiredSpecsToProject(proj, []workspace.PackageSpec{archive, aws}, nameFor)
+	require.NoError(t, err)
+	require.True(t, added)
+
+	assert.EqualExportedValues(t, map[string]workspace.PackageSpec{
+		"archive": archive,
+		"aws":     aws,
+	}, proj.GetPackageSpecs())
+}
+
 func TestAddRequiredSpecsToProject_DedupesExactDuplicates(t *testing.T) {
 	t.Parallel()
 
@@ -65,16 +82,44 @@ func TestAddRequiredSpecsToProject_DedupesExactDuplicates(t *testing.T) {
 	proj := &workspace.Project{}
 	proj.AddPackage("aws", existing)
 
-	require.False(t, addRequiredSpecsToProject(proj, []workspace.PackageSpec{existing}),
-		"identical spec must not be re-added")
+	resolver := func(workspace.PackageSpec) (string, workspace.PackageSpec, error) {
+		t.Fatal("resolver must not be invoked for an already-present spec")
+		return "", workspace.PackageSpec{}, errors.New("unreachable")
+	}
+
+	added, err := addRequiredSpecsToProject(proj, []workspace.PackageSpec{existing}, resolver)
+	require.NoError(t, err)
+	assert.False(t, added)
 	require.Len(t, proj.GetPackageSpecs(), 1)
 }
 
-// TestAddRequiredSpecsToProject_NoSpecs is a fast-path: empty input is a no-op.
 func TestAddRequiredSpecsToProject_NoSpecs(t *testing.T) {
 	t.Parallel()
 
+	resolver := func(workspace.PackageSpec) (string, workspace.PackageSpec, error) {
+		t.Fatal("resolver must not be invoked when there are no specs")
+		return "", workspace.PackageSpec{}, errors.New("unreachable")
+	}
+
 	proj := &workspace.Project{}
-	require.False(t, addRequiredSpecsToProject(proj, nil))
-	require.Empty(t, proj.GetPackageSpecs())
+	added, err := addRequiredSpecsToProject(proj, nil, resolver)
+	require.NoError(t, err)
+	assert.False(t, added)
+	assert.Empty(t, proj.GetPackageSpecs())
+}
+
+func TestAddRequiredSpecsToProject_PropagatesResolverError(t *testing.T) {
+	t.Parallel()
+
+	boom := errors.New("schema fetch failed")
+	resolver := func(workspace.PackageSpec) (string, workspace.PackageSpec, error) {
+		return "", workspace.PackageSpec{}, boom
+	}
+
+	proj := &workspace.Project{}
+	_, err := addRequiredSpecsToProject(proj, []workspace.PackageSpec{
+		{Source: "terraform-provider", Parameters: []string{"hashicorp/aws"}},
+	}, resolver)
+	require.ErrorIs(t, err, boom)
+	assert.Empty(t, proj.GetPackageSpecs())
 }

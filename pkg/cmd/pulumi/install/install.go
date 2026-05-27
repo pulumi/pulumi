@@ -15,6 +15,8 @@
 package install
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -25,9 +27,15 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -175,11 +183,12 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					return err
 				}
 
-				// Specs returned by the language host that aren't already declared
-				// in Pulumi.yaml are recorded there. Once recorded, a local SDK is
-				// generated for each new package by re-running
-				// InstallPackagesFromProject.
-				if addRequiredSpecsToProject(proj, specs) {
+				nameFor := newSpecNameResolver(ctx, pctx, registry, env.Global(), parallel, os.Stdout, os.Stderr) //nolint:forbidigo
+				added, err := addRequiredSpecsToProject(proj, specs, nameFor)
+				if err != nil {
+					return err
+				}
+				if added {
 					projPath, err := workspace.DetectProjectPathFrom(root)
 					if err != nil {
 						return fmt.Errorf("locating Pulumi.yaml: %w", err)
@@ -226,24 +235,18 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	return cmd
 }
 
-// addRequiredSpecsToProject adds package specs reported by the language host
-// to the project's `packages` section, deduplicating against existing entries
-// by full spec identity ([workspace.PackageSpec.String], which includes
-// Source, Version, and Parameters). Returns true if proj was modified.
-//
-// Multiple parameterizations of the same base plugin — e.g.
-// `terraform-provider hashicorp/aws` and `terraform-provider hashicorp/archive`
-// — are distinct specs and must both be installed; deduping on Source alone
-// would silently drop all but the first.
-//
-// New specs are staged under a unique synthetic key derived from the spec
-// (Source plus Parameters); a subsequent `InstallPackagesFromProject` rewrites
-// each entry's key to the parameterized provider's real name. Without a unique
-// synthetic key, two specs sharing the same Source overwrite each other in
-// the `packages` map before installation can run.
-func addRequiredSpecsToProject(proj *workspace.Project, specs []workspace.PackageSpec) bool {
+// addRequiredSpecsToProject merges specs into proj.Packages, keyed by each
+// spec's schema-discovered name via nameForSpec. Using the schema name as the
+// key ensures multiple parameterizations of the same base plugin don't
+// collide on a single key (and don't alias each other through the
+// Source-keyed local-override lookup in resolveStep).
+func addRequiredSpecsToProject(
+	proj *workspace.Project,
+	specs []workspace.PackageSpec,
+	nameForSpec func(workspace.PackageSpec) (string, workspace.PackageSpec, error),
+) (bool, error) {
 	if len(specs) == 0 {
-		return false
+		return false, nil
 	}
 	existing := make(map[string]struct{})
 	for name, s := range proj.GetPackageSpecs() {
@@ -252,31 +255,61 @@ func addRequiredSpecsToProject(proj *workspace.Project, specs []workspace.Packag
 	}
 	added := false
 	for _, spec := range specs {
-		key := spec.String()
-		if _, ok := existing[key]; ok {
+		if _, ok := existing[spec.String()]; ok {
 			continue
 		}
-		proj.AddPackage(stagingKey(spec, existing), spec)
-		existing[key] = struct{}{}
+		name, resolved, err := nameForSpec(spec)
+		if err != nil {
+			return added, fmt.Errorf("resolving package %s: %w", spec, err)
+		}
+		proj.AddPackage(name, resolved)
+		existing[name] = struct{}{}
+		existing[resolved.String()] = struct{}{}
+		existing[spec.String()] = struct{}{}
 		added = true
 	}
-	return added
+	return added, nil
 }
 
-// stagingKey returns a unique package-map key for a spec being staged into
-// Pulumi.yaml ahead of installation. Prefers spec.Source when that name is
-// free; otherwise appends "#<n>" suffixes until a free key is found.
-func stagingKey(spec workspace.PackageSpec, existing map[string]struct{}) string {
-	if _, taken := existing[spec.Source]; !taken {
-		existing[spec.Source] = struct{}{}
-		return spec.Source
+// newSpecNameResolver returns a resolver that installs a spec just far enough
+// to read its schema name. The redundant plugin install is absorbed by the
+// plugin cache when InstallPackagesFromProject runs next.
+func newSpecNameResolver(
+	ctx context.Context, pctx *plugin.Context,
+	reg registry.Registry, e env.Env, concurrency int,
+	stdout, stderr *os.File,
+) func(workspace.PackageSpec) (string, workspace.PackageSpec, error) {
+	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host,
+		stdout, stderr, nil, packageworkspace.Options{})
+	opts := packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveWithRegistry:                        !e.GetBool(env.DisableRegistryResolve),
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: concurrency,
 	}
-	for i := 2; ; i++ {
-		candidate := fmt.Sprintf("%s#%d", spec.Source, i)
-		if _, taken := existing[candidate]; !taken {
-			existing[candidate] = struct{}{}
-			return candidate
+	return func(spec workspace.PackageSpec) (string, workspace.PackageSpec, error) {
+		runner, resolved, err := packageinstallation.InstallPlugin(ctx, spec, nil, "", opts, reg, ws)
+		if err != nil {
+			return "", workspace.PackageSpec{}, fmt.Errorf("install: %w", err)
 		}
+		provider, err := runner(ctx, pctx.Pwd)
+		if err != nil {
+			return "", workspace.PackageSpec{}, fmt.Errorf("run: %w", err)
+		}
+		schemaResp, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{})
+		if err != nil {
+			return "", workspace.PackageSpec{}, fmt.Errorf("schema: %w", err)
+		}
+		var pkgSpec schema.PackageSpec
+		if err := json.Unmarshal(schemaResp.Schema, &pkgSpec); err != nil {
+			return "", workspace.PackageSpec{}, fmt.Errorf("schema unmarshal: %w", err)
+		}
+		if pkgSpec.Name == "" {
+			return "", workspace.PackageSpec{}, errors.New("schema returned empty package name")
+		}
+		return pkgSpec.Name, resolved, nil
 	}
 }
 
