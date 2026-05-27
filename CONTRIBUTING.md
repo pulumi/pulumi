@@ -126,7 +126,7 @@ If you're using an AI coding assistant to contribute:
 
 Whenever a new PR is merged in this repository, the latest draft release on the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) is updated with the latest binaries.  To release one of those draft releases:
 
-Run the [Prepare Release](https://github.com/pulumi/pulumi/actions/workflows/prepare-release.yml) workflow.  This automatically determines the next version from the pending changelog entries (`feat`/`improvement` entries trigger a minor bump; `fix`/`chore` entries trigger a patch bump), then opens a PR that batches the changelog, regenerates `CHANGELOG.md`, and bumps all version files.  Once that PR is merged, the current draft release is frozen and no longer updated by new commits.
+Run `make release` at the repo root.  This automatically determines the next version from the pending changelog entries (`feat`/`improvement` entries trigger a minor bump; `fix`/`chore` entries trigger a patch bump), then opens a PR that batches the changelog, regenerates `CHANGELOG.md`, and bumps all version files.  Once that PR is merged, the current draft release is frozen and no longer updated by new commits.
 
 To gain additional confidence before publishing, run the [Test examples](https://github.com/pulumi/examples/actions/workflows/test-examples.yml) and [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) test suites.
 
