@@ -105,7 +105,10 @@ func DeleteAccount(key string) error {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	return StoreCredentials(deleteAccountFromCredentials(creds, key))
+	if err = StoreCredentials(deleteAccountFromCredentials(creds, key)); err != nil {
+		return err
+	}
+	return deleteBackendConfig(key)
 }
 
 // deleteAccountFromCredentials removes a cloud URL from a credentials object
@@ -129,10 +132,14 @@ func DeleteAllAccounts() error {
 		return err
 	}
 
+	var result error
 	if err = os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
-		return err
+		result = errors.Join(result, err)
 	}
-	return nil
+	if err = deleteAllBackendConfig(); err != nil {
+		result = errors.Join(result, err)
+	}
+	return result
 }
 
 // StoreAccount saves the given account underneath the given key.
@@ -806,6 +813,20 @@ func StoreAgentClaim(claim AgentClaim) error {
 // config file, deleting that file if no backend config remains.
 func deleteAgentBackendConfig(key string) error {
 	configFile := getAgentConfigFilePathNoEnsure()
+	return deleteBackendConfigFromFile(configFile, key)
+}
+
+// deleteBackendConfig removes backend config for key from the default config
+// file, deleting that file if no backend config remains.
+func deleteBackendConfig(key string) error {
+	configFile, err := getConfigFilePath()
+	if err != nil {
+		return err
+	}
+	return deleteBackendConfigFromFile(configFile, key)
+}
+
+func deleteBackendConfigFromFile(configFile, key string) error {
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -826,6 +847,19 @@ func deleteAgentBackendConfig(key string) error {
 		return nil
 	}
 	return writePulumiConfigFile(configFile, config)
+}
+
+// deleteAllBackendConfig removes the default config file when it only contains
+// backend configuration.
+func deleteAllBackendConfig() error {
+	configFile, err := getConfigFilePath()
+	if err != nil {
+		return err
+	}
+	if err = os.Remove(configFile); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing '%s': %w", configFile, err)
+	}
+	return nil
 }
 
 type BackendConfig struct {

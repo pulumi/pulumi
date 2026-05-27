@@ -470,6 +470,94 @@ func TestAgentPulumiConfigUsesDefaultPathWhenWritable(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
+//nolint:paralleltest // mutates environment
+func TestDeleteAccountDeletesBackendConfig(t *testing.T) {
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	err := StoreCredentials(Credentials{
+		AccessTokens: map[string]string{
+			"https://api.example.com":       "token-value",
+			"https://api.other.example.com": "other-token",
+		},
+	})
+	require.NoError(t, err)
+	err = StorePulumiConfig(PulumiConfig{
+		BackendConfig: map[string]BackendConfig{
+			"https://api.example.com":       {DefaultOrg: "agent-org"},
+			"https://api.other.example.com": {DefaultOrg: "other-org"},
+		},
+	})
+	require.NoError(t, err)
+
+	err = DeleteAccount("https://api.example.com")
+	require.NoError(t, err)
+
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.NotContains(t, creds.AccessTokens, "https://api.example.com")
+	assert.Equal(t, "other-token", creds.AccessTokens["https://api.other.example.com"])
+	config, err := GetPulumiConfig()
+	require.NoError(t, err)
+	assert.NotContains(t, config.BackendConfig, "https://api.example.com")
+	assert.Equal(t, "other-org", config.BackendConfig["https://api.other.example.com"].DefaultOrg)
+}
+
+//nolint:paralleltest // mutates environment
+func TestDeleteAccountDeletesBackendConfigFileWhenEmpty(t *testing.T) {
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	err := StoreCredentials(Credentials{
+		AccessTokens: map[string]string{
+			"https://api.example.com": "token-value",
+		},
+	})
+	require.NoError(t, err)
+	err = StorePulumiConfig(PulumiConfig{
+		BackendConfig: map[string]BackendConfig{
+			"https://api.example.com": {DefaultOrg: "agent-org"},
+		},
+	})
+	require.NoError(t, err)
+
+	err = DeleteAccount("https://api.example.com")
+	require.NoError(t, err)
+
+	_, err = os.Stat(filepath.Join(credsDir, "config.json"))
+	require.True(t, os.IsNotExist(err))
+}
+
+//nolint:paralleltest // mutates environment
+func TestDeleteAllAccountsDeletesBackendConfig(t *testing.T) {
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	err := StoreCredentials(Credentials{
+		AccessTokens: map[string]string{
+			"https://api.example.com": "token-value",
+		},
+	})
+	require.NoError(t, err)
+	err = StorePulumiConfig(PulumiConfig{
+		BackendConfig: map[string]BackendConfig{
+			"https://api.example.com": {DefaultOrg: "agent-org"},
+		},
+	})
+	require.NoError(t, err)
+
+	err = DeleteAllAccounts()
+	require.NoError(t, err)
+
+	_, err = os.Stat(filepath.Join(credsDir, "credentials.json"))
+	require.True(t, os.IsNotExist(err))
+	_, err = os.Stat(filepath.Join(credsDir, "config.json"))
+	require.True(t, os.IsNotExist(err))
+}
+
 //nolint:paralleltest // mutates environment and package global
 func TestAgentPulumiConfigExplicitPathDoesNotFallbackToAgentPath(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
