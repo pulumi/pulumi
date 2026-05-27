@@ -316,7 +316,7 @@ release:
 	@NEXT_VERSION=$$(changie next auto) && \
 	changie batch "$$NEXT_VERSION" && \
 	changie merge && \
-	./.github/scripts/update-versions "$$NEXT_VERSION" && \
+	python scripts/set-version.py "$$NEXT_VERSION" && \
 	(cd sdk/python && uv sync)
 
 clean::

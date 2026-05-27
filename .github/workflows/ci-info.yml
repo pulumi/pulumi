@@ -81,7 +81,7 @@ jobs:
         run: |
           PULUMI_VERSION="${{ fromJSON(steps.version.outputs.version) }}"
 
-          ./.github/scripts/update-versions "${PULUMI_VERSION}"
+          python scripts/set-version.py "${PULUMI_VERSION}"
 
           ERROR=false
           if [ -n "$(git status --porcelain)" ]; then
