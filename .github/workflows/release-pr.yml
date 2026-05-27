@@ -41,10 +41,9 @@ jobs:
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
           go-version-file: sdk/go.mod
-      - name: Install changie
-        run: |
-          CHANGIE_VERSION="1.21.0"
-          curl -sSL "https://github.com/miniscruff/changie/releases/download/v${CHANGIE_VERSION}/changie_${CHANGIE_VERSION}_linux_amd64.tar.gz" | tar xz -C /usr/local/bin changie
+      - uses: miniscruff/changie-action@v2
+        with:
+          version: v1.21.0
       - name: Create PR
         env:
           PULUMI_VERSION: ${{ inputs.version }}
