@@ -61,16 +61,13 @@ jobs:
           fi
 
           ./.github/scripts/set-output version "${PULUMI_VERSION}"
-      - uses: actions/setup-go@v6
+      - uses: miniscruff/changie-action@v2
         with:
-          go-version: '>=1.19.0' # decoupled from version sets, used by changelog tool
-          cache: true
-          cache-dependency-path: '.github/scripts/get-changelog'
+          version: v1.21.0
       - name: Extract release notes
         id: notes
         run: |
-          PREVIOUS_VERSION="$(./.github/scripts/get-previous-version)"
-          CHANGELOG="$(./.github/scripts/get-changelog "${PREVIOUS_VERSION}" --version "${{ fromJSON(steps.version.outputs.version) }}")"
+          CHANGELOG="$(changie batch "${{ fromJSON(steps.version.outputs.version) }}" --dry-run)"
           ./.github/scripts/set-output release-notes "${CHANGELOG}"
       - name: Check version
         if: ${{ !inputs.is-snapshot }}

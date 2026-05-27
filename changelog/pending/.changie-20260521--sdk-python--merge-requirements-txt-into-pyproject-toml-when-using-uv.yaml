@@ -1,0 +1,5 @@
+kind: fix
+body: Merge requirements.txt into pyproject.toml when using uv without a project section
+component: sdk/python
+custom:
+  PR: "23340"

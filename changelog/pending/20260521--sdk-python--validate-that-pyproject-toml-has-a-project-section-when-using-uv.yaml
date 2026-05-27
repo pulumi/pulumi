@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Merge requirements.txt into pyproject.toml when using uv without a project section

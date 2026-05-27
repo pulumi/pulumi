@@ -145,7 +145,7 @@ brew::
 lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json lint_changelog
 
 lint_changelog::
-	uv run scripts/check-changelog.py
+	changie batch auto --dry-run
 
 lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
@@ -309,7 +309,7 @@ get_schemas: \
 
 .PHONY: changelog
 changelog:
-	go run github.com/pulumi/go-change@v0.1.3 create
+	changie new
 
 clean::
 	rm -rf bin/*

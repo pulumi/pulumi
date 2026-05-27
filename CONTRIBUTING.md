@@ -52,7 +52,7 @@ We require a changelog entry for all PRs that aren't labeled `impact/no-changelo
 ```bash
 make changelog
 ```
-…and follow the prompts on screen.
+…and follow the prompts on screen. This requires [changie](https://changie.dev/guide/installation/) to be installed. If you use [mise](https://mise.jdx.dev/), it is included in `.mise.toml` and will be installed automatically. Otherwise, install it manually (`brew install changie` on macOS, or `go install github.com/miniscruff/changie@v1.21` otherwise).
 
 ### Pull Request Descriptions
 
@@ -130,7 +130,7 @@ If `sdk/.version` is the version we want to release, we need to "freeze" that dr
 
 If `sdk/.version` is not the version we want to release yet, usually in the case of a minor release, bump the version to the right version first, and merge that first (always using `scripts/set-version.py`).  Once that's merged the current release can be frozen as above.
 
-For these version bump PRs it's useful for reviewers if the expected changelog is included.  This can be generated using `GITHUB_REPOSITORY=pulumi/pulumi go run github.com/pulumi/go-change@v0.1.3 render`, at the root of the repository.
+For these version bump PRs it's useful for reviewers if the expected changelog is included.  This can be generated using `changie batch auto --dry-run` at the root of the repository.
 
 The next step, to gain some additional confidence in the release is to run the [Test examples](https://github.com/pulumi/examples/actions/workflows/test-examples.yml), and [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) test suites.  These run the tests in the `pulumi/examples` and `pulumi/templates` repositories using the latest `pulumi/pulumi` dev version, thus including all the latest changes.
 
