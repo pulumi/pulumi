@@ -52,7 +52,7 @@ We require a changelog entry for all PRs that aren't labeled `impact/no-changelo
 ```bash
 make changelog
 ```
-…and follow the prompts on screen.
+…and follow the prompts on screen. This requires [changie](https://changie.dev/guide/installation/) to be installed (`brew install changie` on macOS, or `go install github.com/miniscruff/changie@v1.21` otherwise).
 
 ### Pull Request Descriptions
 
