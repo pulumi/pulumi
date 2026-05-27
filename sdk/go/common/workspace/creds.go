@@ -849,17 +849,27 @@ func deleteBackendConfigFromFile(configFile, key string) error {
 	return writePulumiConfigFile(configFile, config)
 }
 
-// deleteAllBackendConfig removes the default config file when it only contains
-// backend configuration.
+// deleteAllBackendConfig removes all backend configuration from the default
+// config file.
 func deleteAllBackendConfig() error {
 	configFile, err := getConfigFilePath()
 	if err != nil {
 		return err
 	}
-	if err = os.Remove(configFile); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("removing '%s': %w", configFile, err)
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("reading '%s': %w", configFile, err)
 	}
-	return nil
+
+	var config PulumiConfig
+	if err = json.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("failed to read Pulumi config file '%s': %w", configFile, err)
+	}
+	config.BackendConfig = nil
+	return writePulumiConfigFile(configFile, config)
 }
 
 type BackendConfig struct {

@@ -554,8 +554,9 @@ func TestDeleteAllAccountsDeletesBackendConfig(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(credsDir, "credentials.json"))
 	require.True(t, os.IsNotExist(err))
-	_, err = os.Stat(filepath.Join(credsDir, "config.json"))
-	require.True(t, os.IsNotExist(err))
+	config, err := GetPulumiConfig()
+	require.NoError(t, err)
+	assert.Empty(t, config.BackendConfig)
 }
 
 //nolint:paralleltest // mutates environment and package global
