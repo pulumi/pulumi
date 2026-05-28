@@ -624,6 +624,13 @@ type StackConfig struct {
 	// EncryptionSalt is this stack's base64 encoded encryption salt. Only used for
 	// passphrase-based secrets providers.
 	EncryptionSalt string `json:"encryptionSalt,omitempty"`
+	// PreserveEnvironmentOnDelete, when true, leaves the linked ESC environment in
+	// place when the stack is deleted. Defaults to false (best-effort cleanup).
+	//
+	// No omitempty: the server stores this as a policy, so false must serialize
+	// explicitly instead of collapsing to "unset" — that keeps a true->false flip
+	// expressible over the wire.
+	PreserveEnvironmentOnDelete bool `json:"preserveEnvironmentOnDelete"`
 }
 
 // OperationStatus describes the state of an operation being performed on a Pulumi stack.
