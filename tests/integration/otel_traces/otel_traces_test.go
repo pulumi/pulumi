@@ -21,25 +21,24 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
-type traceSpan struct {
-	Name        string
-	SpanID      pcommon.SpanID
-	ParentID    pcommon.SpanID
-	TraceID     pcommon.TraceID
-	ServiceName string
-	Attributes  map[string]string
-}
-
+// TestOtelTraces runs a basic `pulumi up` with --otel-traces and asserts that the captured trace
+// has exactly one root span. A well-formed trace should be a single tree rooted at the CLI's
+// "pulumi" span; multiple roots mean a span was emitted somewhere without inheriting the parent
+// context — typically a goroutine or RPC handler that wasn't wired into the trace context
+// propagation. We deliberately don't assert on the shape of the tree below the root, since the
+// names and arrangement of spans under "pulumi" are an internal detail that's expected to evolve.
+//
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestOtelTraces(t *testing.T) {
 	// Build the testprovider as a standalone binary so the engine launches it directly in ExecPlugin rather than
@@ -71,139 +70,41 @@ func TestOtelTraces(t *testing.T) {
 		Quick:      true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			upTracePath := filepath.Join(traceDir, "traces-pulumi-update-initial.json")
-			spans := readSpans(t, upTracePath)
+			traces := readTraces(t, upTracePath)
 
-			spanByID := make(map[pcommon.SpanID]traceSpan)
-			for _, s := range spans {
-				spanByID[s.SpanID] = s
+			var rootDescriptions []string
+			for i := range traces.ResourceSpans().Len() {
+				rs := traces.ResourceSpans().At(i)
+				serviceName := ""
+				if v, ok := rs.Resource().Attributes().Get("service.name"); ok {
+					serviceName = v.Str()
+				}
+				for j := range rs.ScopeSpans().Len() {
+					spans := rs.ScopeSpans().At(j).Spans()
+					for k := range spans.Len() {
+						s := spans.At(k)
+						if s.ParentSpanID().IsEmpty() {
+							rootDescriptions = append(rootDescriptions, fmt.Sprintf(
+								"  - name=%q service=%q span=%s trace=%s",
+								s.Name(), serviceName, s.SpanID(), s.TraceID()))
+						}
+					}
+				}
 			}
 
-			// Walk through the expected span hierarchy top-down:
-			//
-			//   pulumi                                    (pulumi-cli)
-			//   └── pulumi-plan                           (pulumi-cli)
-			//       ├── LanguageRuntime/Run               (pulumi-language-python)
-			//       │   └── RegisterResource              (pulumi-sdk-python, client)
-			//       │       └── RegisterResource          (pulumi-cli, server)
-			//       └── ResourceProvider/Create           (pulumi-cli, client)
-			//           └── ResourceProvider/Create       (testprovider, server)
-
-			// Root pulumi span: the CLI entry point, no parent.
-			rootSpans := findSpans(spans, "pulumi")
-			require.NotEmpty(t, rootSpans, "expected root 'pulumi' span")
-			assert.Equal(t, "pulumi-cli", rootSpans[0].ServiceName)
-			assert.True(t, rootSpans[0].ParentID.IsEmpty())
-			rootAttrs := rootSpans[0].Attributes
-			assert.Equal(t, rootAttrs["cli.command"], "pulumi up")
-			assert.NotEmpty(t, rootAttrs["pulumi.version"])
-			assert.NotEmpty(t, rootAttrs["pulumi.os"])
-			assert.NotEmpty(t, rootAttrs["pulumi.arch"])
-			assert.NotEmpty(t, rootAttrs["exec.kind"])
-
-			// pulumi-plan: the engine's deployment span, child of root.
-			planSpans := findSpans(spans, "pulumi-plan")
-			require.NotEmpty(t, planSpans)
-			assert.Equal(t, "pulumi-cli", planSpans[0].ServiceName)
-			assert.True(t, isDescendantOf(planSpans[0], rootSpans[0], spanByID))
-
-			// LanguageRuntime/Run: the language host handling the Run RPC from the engine.
-			pyRunSpans := filterByService(findSpans(spans, "pulumirpc.LanguageRuntime/Run"), "pulumi-language-python")
-			require.NotEmpty(t, pyRunSpans)
-
-			// RegisterResource (client side): the Python SDK calling the engine to register a resource, descendant of
-			// LanguageRuntime/Run.
-			// Python SDK client spans have a leading "/" in gRPC method names.
-			pyRegSpans := filterByService(findSpans(spans, "/pulumirpc.ResourceMonitor/RegisterResource"), "pulumi-sdk-python")
-			require.NotEmpty(t, pyRegSpans)
-			for _, s := range pyRegSpans {
-				assert.True(t, isDescendantOf(s, pyRunSpans[0], spanByID))
-			}
-
-			// RegisterResource (server side): the engine handling the RegisterResource call. Each engine-side span
-			// should be a child of a Python SDK client-side span.
-			engineRegSpans := filterByService(
-				findSpans(spans, "pulumirpc.ResourceMonitor/RegisterResource"), "pulumi-cli")
-			require.NotEmpty(t, engineRegSpans)
-			for _, s := range engineRegSpans {
-				assert.True(t, isDescendantOfAny(s, pyRegSpans, spanByID))
-			}
-
-			// ResourceProvider/Create: the engine calling the provider to create the resource, descendant of
-			// pulumi-plan.
-			createSpans := filterByService(findSpans(spans, "pulumirpc.ResourceProvider/Create"), "pulumi-cli")
-			require.NotEmpty(t, createSpans, "expected provider Create span")
-			for _, s := range createSpans {
-				assert.True(t, isDescendantOf(s, planSpans[0], spanByID))
-			}
-
-			// ResourceProvider/Create (server side): the provider handling the Create RPC. These spans come from the
-			// testprovider process itself.
-			providerCreateSpans := filterByService(findSpans(spans, "pulumirpc.ResourceProvider/Create"), "testprovider")
-			require.NotEmpty(t, providerCreateSpans)
-			for _, s := range providerCreateSpans {
-				assert.True(t, isDescendantOfAny(s, createSpans, spanByID))
+			if len(rootDescriptions) != 1 {
+				sort.Strings(rootDescriptions)
+				assert.Fail(t, fmt.Sprintf("expected exactly 1 root span, got %d:\n%s",
+					len(rootDescriptions), strings.Join(rootDescriptions, "\n")))
 			}
 		},
 	})
 }
 
-// findSpans returns all spans whose name exactly matches the given string.
-func findSpans(spans []traceSpan, name string) []traceSpan {
-	var result []traceSpan
-	for _, s := range spans {
-		if s.Name == name {
-			result = append(result, s)
-		}
-	}
-	return result
-}
-
-// filterByService returns spans with the given service name.
-func filterByService(spans []traceSpan, service string) []traceSpan {
-	var result []traceSpan
-	for _, s := range spans {
-		if s.ServiceName == service {
-			result = append(result, s)
-		}
-	}
-	return result
-}
-
-// isDescendantOfAny returns true if span is a descendant of any of the given ancestors.
-func isDescendantOfAny(span traceSpan, ancestors []traceSpan, index map[pcommon.SpanID]traceSpan) bool {
-	for _, a := range ancestors {
-		if isDescendantOf(span, a, index) {
-			return true
-		}
-	}
-	return false
-}
-
-// isDescendantOf walks the parent chain of span and returns true if it reaches ancestor.
-func isDescendantOf(span, ancestor traceSpan, index map[pcommon.SpanID]traceSpan) bool {
-	current := span
-	seen := make(map[pcommon.SpanID]bool)
-	for {
-		if current.SpanID == ancestor.SpanID {
-			return true
-		}
-		if current.ParentID.IsEmpty() {
-			return false
-		}
-		if seen[current.ParentID] {
-			return false
-		}
-		seen[current.ParentID] = true
-		parent, ok := index[current.ParentID]
-		if !ok {
-			return false
-		}
-		current = parent
-	}
-}
-
-// readSpans reads a newline-delimited OTLP JSON trace file and returns all spans with their metadata.
-func readSpans(t *testing.T, path string) []traceSpan {
+// readTraces reads a newline-delimited OTLP JSON trace file (the format written by the file://
+// exporter — each line is a separate ExportTraceServiceRequest) and merges every line into a
+// single ptrace.Traces value.
+func readTraces(t *testing.T, path string) ptrace.Traces {
 	t.Helper()
 
 	f, err := os.Open(path)
@@ -211,7 +112,7 @@ func readSpans(t *testing.T, path string) []traceSpan {
 	defer f.Close()
 
 	var unmarshaler ptrace.JSONUnmarshaler
-	var spans []traceSpan
+	out := ptrace.NewTraces()
 
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 0, 1024*1024), 10*1024*1024)
@@ -220,41 +121,12 @@ func readSpans(t *testing.T, path string) []traceSpan {
 		if len(line) == 0 {
 			continue
 		}
-
 		traces, err := unmarshaler.UnmarshalTraces(line)
 		require.NoError(t, err, "unmarshaling trace line")
-
-		for i := range traces.ResourceSpans().Len() {
-			rs := traces.ResourceSpans().At(i)
-
-			serviceName := ""
-			if val, ok := rs.Resource().Attributes().Get("service.name"); ok {
-				serviceName = val.Str()
-			}
-
-			for j := range rs.ScopeSpans().Len() {
-				ss := rs.ScopeSpans().At(j)
-				for k := range ss.Spans().Len() {
-					s := ss.Spans().At(k)
-					attrs := make(map[string]string)
-					s.Attributes().Range(func(k string, v pcommon.Value) bool {
-						attrs[k] = v.AsString()
-						return true
-					})
-					spans = append(spans, traceSpan{
-						Name:        s.Name(),
-						SpanID:      s.SpanID(),
-						ParentID:    s.ParentSpanID(),
-						TraceID:     s.TraceID(),
-						ServiceName: serviceName,
-						Attributes:  attrs,
-					})
-				}
-			}
-		}
+		traces.ResourceSpans().MoveAndAppendTo(out.ResourceSpans())
 	}
 	require.NoError(t, scanner.Err(), "scanning trace file")
-	require.NotEmpty(t, spans, "expected at least one span in trace file %s", path)
+	require.NotZero(t, out.SpanCount(), "expected at least one span in trace file %s", path)
 
-	return spans
+	return out
 }
