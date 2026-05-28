@@ -54,6 +54,8 @@ type functionEvalContext struct {
 	WorkingDir    string
 	ProjectName   string
 	RootDirectory string
+	Organization  string
+	Stack         string
 }
 
 type inputFlagValue struct {
@@ -279,9 +281,9 @@ func evaluatePCL(
 	ectx := pclruntime.NewEvalContext(
 		evalContext.WorkingDir,
 		evalContext.RootDirectory,
-		"",
+		evalContext.Organization,
 		evalContext.ProjectName,
-		"",
+		evalContext.Stack,
 		func(context.Context, string) (*schema.Resource, error) {
 			return nil, notSupported("reference resources")
 		},

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,7 +29,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -591,4 +595,213 @@ Functions:
 	err = cmd.Execute()
 	require.NoError(t, err)
 	assert.Equal(t, expectedNestedModuleHelp, stdout.String())
+}
+
+func TestCurrentStackIdentity(t *testing.T) {
+	t.Parallel()
+
+	mockWS := func(stack string, newErr error) *pkgWorkspace.MockContext {
+		return &pkgWorkspace.MockContext{
+			NewF: func() (pkgWorkspace.W, error) {
+				if newErr != nil {
+					return nil, newErr
+				}
+				return &pkgWorkspace.MockW{
+					SettingsF: func() *pkgWorkspace.Settings {
+						return &pkgWorkspace.Settings{Stack: stack}
+					},
+				}, nil
+			},
+		}
+	}
+
+	table := []struct {
+		name    string
+		ws      pkgWorkspace.Context
+		wantOrg string
+		wantStk string
+	}{
+		{name: "fully qualified", ws: mockWS("acme/my-project/dev", nil), wantOrg: "acme", wantStk: "dev"},
+		{name: "legacy two-part", ws: mockWS("acme/dev", nil), wantOrg: "acme", wantStk: "dev"},
+		{name: "bare stack name", ws: mockWS("dev", nil), wantOrg: "", wantStk: "dev"},
+		{name: "no stack selected", ws: mockWS("", nil), wantOrg: "", wantStk: ""},
+		// New() can fail (e.g. no credentials file yet). The helper must not propagate that —
+		// `do` should still run with no project context.
+		{name: "workspace open fails", ws: mockWS("", errors.New("boom")), wantOrg: "", wantStk: ""},
+	}
+
+	for _, tc := range table {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			org, stk := currentStackIdentity(tc.ws)
+			assert.Equal(t, tc.wantOrg, org)
+			assert.Equal(t, tc.wantStk, stk)
+		})
+	}
+}
+
+// TestDoCmdFunctionInvokeWithStackContext exercises the end-to-end wiring: when a project is on disk
+// and a stack is selected in the workspace, `do` should expose the organization and short stack name
+// to PCL input files via the pulumi.organization / pulumi.stack builtins.
+func TestDoCmdFunctionInvokeWithStackContext(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name:    tokens.PackageName("my-project"),
+				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
+			}, root, nil
+		},
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "acme/my-project/dev"}
+				},
+			}, nil
+		},
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"organization": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"project":      {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"stack":        {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"ok": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "acme", req.Args["organization"].StringValue())
+					assert.Equal(t, "my-project", req.Args["project"].StringValue())
+					assert.Equal(t, "dev", req.Args["stack"].StringValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{
+							"ok": resource.NewProperty(true),
+						},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	inputFile := writeHCLFile(t, "inputs.pcl", `
+organization = organization()
+project = project()
+stack = stack()
+`)
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	require.NoError(t, cmd.Execute())
+}
+
+// TestDoCmdFunctionInvokeWithoutStackContext asserts that when a project is present but no stack is
+// selected in the workspace, `do` still runs — and calling pulumi.organization() / pulumi.stack() in
+// the input file surfaces a clear "not supported" error rather than crashing or silently passing an
+// empty string. Mirrors the behavior of the PCL builtin when the eval context's value is empty.
+func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name:    tokens.PackageName("my-project"),
+				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
+			}, root, nil
+		},
+		// Default NewF returns workspace.ErrProjectNotFound which currentStackIdentity must tolerate.
+	}
+
+	makeSpec := func() schema.PackageSpec {
+		return schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"project":      {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"organization": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"stack":        {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"ok": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	// Sub-case 1: only project() is referenced — currentStackIdentity returns ("", "") but the
+	// command should still succeed because project() doesn't depend on the stack identity.
+	t.Run("project-only input succeeds", func(t *testing.T) {
+		t.Parallel()
+		loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+			return &testProvider{
+				spec: makeSpec(),
+				MockProvider: plugin.MockProvider{
+					InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+						assert.Equal(t, "my-project", req.Args["project"].StringValue())
+						return plugin.InvokeResponse{
+							Properties: resource.PropertyMap{"ok": resource.NewProperty(true)},
+						}, nil
+					},
+				},
+			}, nil
+		}
+
+		inputFile := writeHCLFile(t, "inputs.pcl", `project = project()`)
+
+		var stdout bytes.Buffer
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+		cmd.SetOut(&stdout)
+		cmd.SetErr(&stdout)
+		cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+		require.NoError(t, cmd.Execute())
+	})
+
+	// Sub-case 2: referencing organization() / stack() with no stack selected errors with the
+	// "not supported" message from the PCL runtime (same behavior as `pulumi up` outside a stack).
+	t.Run("organization/stack reference errors", func(t *testing.T) {
+		t.Parallel()
+		loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+			return &testProvider{spec: makeSpec()}, nil
+		}
+
+		inputFile := writeHCLFile(t, "inputs.pcl", `organization = organization()`)
+
+		var stdout bytes.Buffer
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+		cmd.SetOut(&stdout)
+		cmd.SetErr(&stdout)
+		cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+		err := cmd.Execute()
+		require.ErrorContains(t, err, "organization is not supported")
+	})
 }
