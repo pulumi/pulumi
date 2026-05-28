@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -87,12 +88,13 @@ func TestOtelTraces(t *testing.T) {
 				}
 			}
 			if len(unparented) != 1 {
-				msg := fmt.Sprintf("expected exactly 1 root span, got %d:", len(unparented))
+				var msg strings.Builder
+				fmt.Fprintf(&msg, "expected exactly 1 root span, got %d:", len(unparented))
 				for _, s := range unparented {
-					msg += fmt.Sprintf("\n  - name=%q service=%q span=%s trace=%s",
+					fmt.Fprintf(&msg, "\n  - name=%q service=%q span=%s trace=%s",
 						s.Name, s.ServiceName, s.SpanID, s.TraceID)
 				}
-				assert.Fail(t, msg)
+				assert.Fail(t, msg.String())
 			}
 
 			// Walk through the expected span hierarchy top-down:
