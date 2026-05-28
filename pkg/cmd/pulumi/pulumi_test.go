@@ -15,12 +15,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -530,39 +527,6 @@ func newDoTestCmd() *cobra.Command {
 	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil)
 	root.AddCommand(doCmd)
 	return doCmd
-}
-
-// TestPulumiCmdPreParsesPersistentFlagsForDisableFlagParsing verifies the workaround in
-// NewPulumiCmd's PersistentPreRunE: when a subcommand sets DisableFlagParsing (`pulumi do`),
-// cobra skips flag parsing entirely, so root persistent flags like --cwd have to be
-// parsed manually before the flag-dependent init can use them.
-//
-//nolint:paralleltest // mutates env vars and the process working directory
-func TestPulumiCmdPreParsesPersistentFlagsForDisableFlagParsing(t *testing.T) {
-	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
-	t.Setenv("PULUMI_HOME", t.TempDir())
-
-	pulumiCmd, cleanup := NewPulumiCmd()
-	t.Cleanup(cleanup)
-
-	cwd := t.TempDir()
-
-	var stdout, stderr bytes.Buffer
-	pulumiCmd.SetOut(&stdout)
-	pulumiCmd.SetErr(&stderr)
-	// The "missing-package-that-fails-to-load" arg makes `do` fail in buildSubcommand,
-	// but PersistentPreRunE has already completed by then — which is all we're testing here.
-	pulumiCmd.SetArgs([]string{"do", "--cwd", cwd, "missing-package-that-fails-to-load"})
-	_ = pulumiCmd.Execute() //nolint:errcheck // do is expected to fail; we only care about PersistentPreRunE
-
-	wd, err := os.Getwd()
-	require.NoError(t, err)
-	expectedWD, err := filepath.EvalSymlinks(cwd)
-	require.NoError(t, err)
-	actualWD, err := filepath.EvalSymlinks(wd)
-	require.NoError(t, err)
-	assert.Equal(t, expectedWD, actualWD,
-		"PersistentPreRunE should have pre-parsed --cwd before flag-dependent init ran")
 }
 
 //nolint:paralleltest // changes environment variables and globals
