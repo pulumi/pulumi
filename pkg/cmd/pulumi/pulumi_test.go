@@ -542,12 +542,6 @@ func TestPulumiCmdPreParsesPersistentFlagsForDisableFlagParsing(t *testing.T) {
 	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
-	originalWD, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(originalWD))
-	})
-
 	pulumiCmd, cleanup := NewPulumiCmd()
 	t.Cleanup(cleanup)
 
