@@ -365,7 +365,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		inputs = args
 	} else {
 		inputs = make(resource.PropertyMap)
-		for k, v := range req.GetVariables() {
+		for k, v := range req.GetVariables() { //nolint:staticcheck // maintain backwards compatibility
 			key, err := config.ParseKey(k)
 			if err != nil {
 				return nil, err
