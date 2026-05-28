@@ -12,7 +12,7 @@ ROOT=$(git rev-parse --show-toplevel)
 export PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true
 
 # Run *all* language tests
-if [ "$1" = "" ]; then
+if [ -z "${1+x}" ]; then
     cd "$ROOT/sdk/pcl/cmd/pulumi-language-pcl" && go test . -v -count=1 -run "TestLanguage"
 
     cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguage"
