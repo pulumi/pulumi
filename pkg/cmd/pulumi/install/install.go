@@ -15,8 +15,6 @@
 package install
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -32,10 +30,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -183,35 +179,27 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					return err
 				}
 
-				nameFor := newSpecNameResolver(ctx, pctx, registry, env.Global(), parallel, os.Stdout, os.Stderr) //nolint:forbidigo
-				added, err := addRequiredSpecsToProject(proj, specs, nameFor)
+				projPath, err := workspace.DetectProjectPathFrom(root)
 				if err != nil {
-					return err
-				}
-				if added {
-					projPath, err := workspace.DetectProjectPathFrom(root)
-					if err != nil {
-						return fmt.Errorf("locating Pulumi.yaml: %w", err)
-					}
-					if err := proj.Save(projPath); err != nil {
-						return fmt.Errorf("updating %s: %w", filepath.Base(projPath), err)
-					}
-					if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
-						registry, parallel, useLanguageVersionTools,
-						cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
-					); err != nil {
-						return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
-					}
+					return fmt.Errorf("locating Pulumi.yaml: %w", err)
 				}
 
-				pluginSet := engine.NewPluginSet()
-				for _, pkg := range packages {
-					pluginSet.Add(pkg.PluginDescriptor)
-				}
+				ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance,
+					pctx.Host, cmd.OutOrStderr(), cmd.ErrOrStderr(), nil,
+					packageworkspace.Options{
+						UseLanguageVersionTools: useLanguageVersionTools,
+					})
 
-				if err = engine.EnsurePluginsAreInstalled(ctx, nil, pctx.Diag, pluginSet,
-					pctx.Host.GetProjectPlugins(), reinstall, true); err != nil {
-					return err
+				err = packageinstallation.InstallPluginSet(ctx, packages, specs, proj, projPath, packageinstallation.Options{
+					Concurrency: parallel,
+					Options: packageresolution.Options{
+						ResolveVersionWithLocalWorkspace:           true,
+						ResolveWithRegistry:                        !env.DisableRegistryResolve.Value(),
+						AllowNonInvertableLocalWorkspaceResolution: true,
+					},
+				}, registry, ws)
+				if err != nil {
+					return fmt.Errorf("installing packages: %w", err)
 				}
 			}
 
@@ -233,84 +221,6 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 		"use-language-version-tools", false, "Use language version tools to setup and install the language runtime")
 
 	return cmd
-}
-
-// addRequiredSpecsToProject merges specs into proj.Packages, keyed by each
-// spec's schema-discovered name via nameForSpec. Using the schema name as the
-// key ensures multiple parameterizations of the same base plugin don't
-// collide on a single key (and don't alias each other through the
-// Source-keyed local-override lookup in resolveStep).
-func addRequiredSpecsToProject(
-	proj *workspace.Project,
-	specs []workspace.PackageSpec,
-	nameForSpec func(workspace.PackageSpec) (string, workspace.PackageSpec, error),
-) (bool, error) {
-	if len(specs) == 0 {
-		return false, nil
-	}
-	existing := make(map[string]struct{})
-	for name, s := range proj.GetPackageSpecs() {
-		existing[name] = struct{}{}
-		existing[s.String()] = struct{}{}
-	}
-	added := false
-	for _, spec := range specs {
-		if _, ok := existing[spec.String()]; ok {
-			continue
-		}
-		name, resolved, err := nameForSpec(spec)
-		if err != nil {
-			return added, fmt.Errorf("resolving package %s: %w", spec, err)
-		}
-		proj.AddPackage(name, resolved)
-		existing[name] = struct{}{}
-		existing[resolved.String()] = struct{}{}
-		existing[spec.String()] = struct{}{}
-		added = true
-	}
-	return added, nil
-}
-
-// newSpecNameResolver returns a resolver that installs a spec just far enough
-// to read its schema name. The redundant plugin install is absorbed by the
-// plugin cache when InstallPackagesFromProject runs next.
-func newSpecNameResolver(
-	ctx context.Context, pctx *plugin.Context,
-	reg registry.Registry, e env.Env, concurrency int,
-	stdout, stderr *os.File,
-) func(workspace.PackageSpec) (string, workspace.PackageSpec, error) {
-	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host,
-		stdout, stderr, nil, packageworkspace.Options{})
-	opts := packageinstallation.Options{
-		Options: packageresolution.Options{
-			ResolveWithRegistry:                        !e.GetBool(env.DisableRegistryResolve),
-			ResolveVersionWithLocalWorkspace:           true,
-			AllowNonInvertableLocalWorkspaceResolution: true,
-		},
-		Concurrency: concurrency,
-	}
-	return func(spec workspace.PackageSpec) (string, workspace.PackageSpec, error) {
-		runner, resolved, err := packageinstallation.InstallPlugin(ctx, spec, nil, "", opts, reg, ws)
-		if err != nil {
-			return "", workspace.PackageSpec{}, fmt.Errorf("install: %w", err)
-		}
-		provider, err := runner(ctx, pctx.Pwd)
-		if err != nil {
-			return "", workspace.PackageSpec{}, fmt.Errorf("run: %w", err)
-		}
-		schemaResp, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{})
-		if err != nil {
-			return "", workspace.PackageSpec{}, fmt.Errorf("schema: %w", err)
-		}
-		var pkgSpec schema.PackageSpec
-		if err := json.Unmarshal(schemaResp.Schema, &pkgSpec); err != nil {
-			return "", workspace.PackageSpec{}, fmt.Errorf("schema unmarshal: %w", err)
-		}
-		if pkgSpec.Name == "" {
-			return "", workspace.PackageSpec{}, errors.New("schema returned empty package name")
-		}
-		return pkgSpec.Name, resolved, nil
-	}
 }
 
 func shouldInstallPolicyPackDependencies() (bool, error) {

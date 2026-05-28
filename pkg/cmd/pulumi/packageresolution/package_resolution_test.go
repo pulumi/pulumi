@@ -260,6 +260,7 @@ func TestResolvePackage(t *testing.T) {
 			options: &Options{
 				AllowNonInvertableLocalWorkspaceResolution: true,
 				ResolveWithRegistry:                        true,
+				ResolveVersionWithLocalWorkspace:           true,
 			},
 			pluginSpec: workspace.PackageSpec{Source: "installed-pkg"},
 			workspace: pluginstorage.MockContext{

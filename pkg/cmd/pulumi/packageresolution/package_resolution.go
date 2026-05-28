@@ -262,6 +262,26 @@ func registryResolution(
 	return pkg, nil
 }
 
+func IsPluginInstalled(
+	ctx context.Context,
+	plugin workspace.PluginDescriptor, ws pluginstorage.Context, options Options,
+) (bool, *semver.Version, error) {
+	if ws.HasPlugin(ctx, plugin) {
+		return true, plugin.Version, nil
+	}
+
+	if plugin.Version == nil && options.ResolveVersionWithLocalWorkspace {
+		has, version, err := ws.HasPluginGTE(ctx, plugin)
+		if err != nil {
+			return true, nil, err
+		}
+		if has {
+			return true, version, nil
+		}
+	}
+	return false, nil, nil
+}
+
 func Resolve(
 	ctx context.Context,
 	reg registry.Registry,
@@ -284,45 +304,32 @@ func Resolve(
 	}
 
 	if options.AllowNonInvertableLocalWorkspaceResolution {
-		if ws.HasPlugin(ctx, naivePackageDescriptor.PluginDescriptor) {
-			return naiveResolution(spec, naivePackageDescriptor, true), nil
+		installed, atVersion, err := IsPluginInstalled(ctx, naivePackageDescriptor.PluginDescriptor, ws, options)
+		if err != nil {
+			return nil, err
 		}
-
-		if naivePackageDescriptor.Version == nil {
-			has, version, err := ws.HasPluginGTE(ctx, naivePackageDescriptor.PluginDescriptor)
-			if err != nil {
-				return nil, err
+		if installed {
+			if atVersion != nil {
+				spec.Version = atVersion.String()
+				naivePackageDescriptor.Version = atVersion
 			}
-			if has {
-				if version != nil {
-					naivePackageDescriptor.Version = version
-					spec.Version = version.String()
-				}
-				return naiveResolution(spec, naivePackageDescriptor, true), nil
-			}
+			return naiveResolution(spec, naivePackageDescriptor, true), nil
 		}
 	}
 
 	remoteResolution := func() (Resolution, error) {
 		logging.V(3).Infof("Resolved package %#v to an external source %#v\n",
 			spec, naivePackageDescriptor)
-		// If we have the exact version installed, then use that
-		if ws.HasPlugin(ctx, naivePackageDescriptor.PluginDescriptor) {
-			return naiveResolution(spec, naivePackageDescriptor, true), nil
+		installed, atVersion, err := IsPluginInstalled(ctx, naivePackageDescriptor.PluginDescriptor, ws, options)
+		if err != nil {
+			return nil, err
 		}
-		// If we don't have a version specified and we are referencing the local workspace
-		if naivePackageDescriptor.Version == nil && options.ResolveVersionWithLocalWorkspace {
-			has, version, err := ws.HasPluginGTE(ctx, naivePackageDescriptor.PluginDescriptor)
-			if err != nil {
-				return nil, err
+		if installed {
+			if atVersion != nil {
+				naivePackageDescriptor.Version = atVersion
+				spec.Version = atVersion.String()
 			}
-			if has {
-				if version != nil {
-					naivePackageDescriptor.Version = version
-					spec.Version = version.String()
-				}
-				return naiveResolution(spec, naivePackageDescriptor, true), nil
-			}
+			return naiveResolution(spec, naivePackageDescriptor, true), nil
 		}
 
 		// We still don't have a version, so let's look up the latest version.
