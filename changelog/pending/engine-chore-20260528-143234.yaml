@@ -1,6 +1,0 @@
-component: engine
-kind: chore
-body: 'BREAKING: Drop support for the Pulumi Kubernetes provider at versions before 4.7.1'
-time: 2026-05-28T14:32:34.310679+02:00
-custom:
-    PR: "23363"

@@ -776,6 +776,18 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		}
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 			rpcError.Message())
+		// https://github.com/pulumi/pulumi/issues/14529: Old versions of kubernetes would error on this
+		// call if "kubeconfig" was set to a file. This didn't cause issues later when the same config was
+		// passed to Configure, and for many years silently "worked".
+		// https://github.com/pulumi/pulumi/pull/14436 fixed this method to start returning errors which
+		// exposed this issue with the kubernetes provider, new versions will be fixed to not error on
+		// this (https://github.com/pulumi/pulumi-kubernetes/issues/2663) but so that the CLI continues to
+		// work for old versions we have an explicit ignore for this one error here.
+		if providers.GetProviderPackage(req.URN.Type()) == "kubernetes" &&
+			strings.Contains(rpcError.Error(), "cannot unmarshal string into Go value of type struct") {
+			logging.V(8).Infof("%s ignoring error from kubernetes provider", label)
+			return DiffResult{Changes: DiffUnknown}, nil
+		}
 
 		return DiffResult{}, err
 	}
