@@ -559,6 +559,17 @@ type hostManagedProvider struct {
 	host *defaultHost
 }
 
+// shutdownParentContext returns the context to use as the parent for plugin shutdown RPCs
+// (Cancel, SignalCancellation). It preserves the active OTel / OpenTracing span from the plugin
+// Context so those RPCs appear as children of the current operation rather than emitting fresh
+// root spans, but strips cancellation — shutdown still gets its timeout budget even if the caller
+// context has already been cancelled. Falls back to context.Background() when the plugin Context
+// has no base, which happens in tests that construct Context literals directly.
+func shutdownParentContext(ctx *Context) context.Context {
+	base := ctx.Request()
+	return context.WithoutCancel(base)
+}
+
 // Overrides the wrapped provider's implementation of Provider.Close to ask the managing plugin host to close the
 // provider.
 func (pc hostManagedProvider) Close() error {
@@ -566,7 +577,7 @@ func (pc hostManagedProvider) Close() error {
 	// Plugin.Close does not treat the subsequent exit as a premature crash. defaultHost.Close does the same for
 	// providers still in resourcePlugins at shutdown, but callers that Close individual providers (e.g. the
 	// convert mapper) bypass that path.
-	cancelCtx, cancelCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	cancelCtx, cancelCancel := context.WithTimeout(shutdownParentContext(pc.host.ctx), 5*time.Second)
 	defer cancelCancel()
 	contract.IgnoreError(pc.SignalCancellation(cancelCtx))
 
@@ -622,7 +633,7 @@ func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {
 func (host *defaultHost) SignalCancellation() error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
 	_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		cancelCtx, cancelCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		cancelCtx, cancelCancel := context.WithTimeout(shutdownParentContext(host.ctx), 30*time.Second)
 		defer cancelCancel()
 
 		// Cancel in two phases: first resource providers and analyzers, then language hosts. RunPlugin-based providers
@@ -681,7 +692,7 @@ func (host *defaultHost) Close() (err error) {
 		host.pluginLock.Lock()
 		// N.B We purposefully do not unlock this.
 
-		cancelCtx, cancelCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		cancelCtx, cancelCancel := context.WithTimeout(shutdownParentContext(host.ctx), 5*time.Second)
 		defer cancelCancel()
 
 		// Close plugins in two phases: first resource providers and analyzers, then language hosts. RunPlugin-based

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Cancel RPCs sent to plugins during shutdown are now traced as children of the active operation instead of emitting separate root spans
