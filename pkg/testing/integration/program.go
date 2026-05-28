@@ -3190,6 +3190,8 @@ func (pt *ProgramTester) usePnpm() bool {
 		return true
 	case PackageManagerYarn:
 		return false
+	case PackageManagerDefault:
+		return usePnpmEnv()
 	default:
 		return usePnpmEnv()
 	}
