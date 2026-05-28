@@ -838,42 +838,6 @@ func annotateSecrets(outs, ins resource.PropertyMap) {
 	}
 }
 
-func removeSecrets(v resource.PropertyValue) any {
-	switch {
-	case v.IsNull():
-		return nil
-	case v.IsBool():
-		return v.BoolValue()
-	case v.IsNumber():
-		return v.NumberValue()
-	case v.IsString():
-		return v.StringValue()
-	case v.IsArray():
-		arr := []any{}
-		for _, v := range v.ArrayValue() {
-			arr = append(arr, removeSecrets(v))
-		}
-		return arr
-	case v.IsAsset():
-		return v.AssetValue()
-	case v.IsArchive():
-		return v.ArchiveValue()
-	case v.IsComputed():
-		return v.Input()
-	case v.IsOutput():
-		return v.OutputValue()
-	case v.IsSecret():
-		return removeSecrets(v.SecretValue().Element)
-	default:
-		contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
-		obj := map[string]any{}
-		for k, v := range v.ObjectValue() {
-			obj[string(k)] = removeSecrets(v)
-		}
-		return obj
-	}
-}
-
 func traverseProperty(element resource.PropertyValue, f func(resource.PropertyValue)) {
 	f(element)
 	if element.IsSecret() {
