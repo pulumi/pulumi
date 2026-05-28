@@ -2,4 +2,4 @@ kind: fix
 body: Fix `pulumi package add` failing with pnpm when the generated SDK has a scoped package name (`@`-prefix), caused by pnpm's `pkg set` rejecting `@` in dot-notation property paths
 component: sdk/nodejs
 custom:
-  PR: ""
+  PR: 23365
