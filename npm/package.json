@@ -1,6 +1,6 @@
 {
     "name": "pulumi",
-    "version": "3.244.0",
+    "version": "3.245.0",
     "description": "Pulumi Infrastructure as Code CLI",
     "license": "Apache-2.0",
     "repository": {
