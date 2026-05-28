@@ -191,12 +191,11 @@ func (h *testHost) ResolvePlugin(
 			if err != nil {
 				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", name, err)
 			}
-			pkg := p.Pkg()
-			providerVersion, err := GetProviderVersion(p)
+			providerVersion, err := GetProviderVersion(context.TODO(), p)
 			if err != nil {
-				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
+				return nil, fmt.Errorf("get provider version %s: %w", name, err)
 			}
-			if spec.Name == string(pkg) && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
+			if spec.Name == name && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
 				return &workspace.PluginInfo{
 					Name:    spec.Name,
 					Kind:    spec.Kind,

@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -679,10 +678,6 @@ type testProvider struct {
 
 	GetMappingF  func(key, provider string) ([]byte, string, error)
 	GetMappingsF func(key string) ([]string, error)
-}
-
-func (prov *testProvider) Pkg() tokens.Package {
-	return tokens.Package(prov.pkg)
 }
 
 func (prov *testProvider) GetMapping(

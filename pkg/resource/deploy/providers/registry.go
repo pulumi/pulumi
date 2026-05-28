@@ -371,7 +371,7 @@ var _ plugin.Provider = (*Registry)(nil)
 func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
 	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider, e env.Env,
 ) (plugin.Provider, error) {
-	if builtins != nil && pkg == builtins.Pkg() { // TODO: We need another way to check this
+	if builtins != nil && pkg == "pulumi" {
 		return builtins, nil
 	}
 
@@ -554,10 +554,6 @@ func (r *Registry) deleteProvider(ref providers.Reference) (plugin.Provider, boo
 
 func (r *Registry) Close() error {
 	return nil
-}
-
-func (r *Registry) Pkg() tokens.Package {
-	return "pulumi"
 }
 
 func (r *Registry) label() string {

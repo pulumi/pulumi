@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
@@ -66,10 +65,6 @@ func newBuiltinProvider(
 
 func (p *builtinProvider) Close() error {
 	return nil
-}
-
-func (p *builtinProvider) Pkg() tokens.Package {
-	return "pulumi"
 }
 
 func (p *builtinProvider) Handshake(

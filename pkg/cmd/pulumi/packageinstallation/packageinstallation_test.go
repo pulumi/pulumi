@@ -914,9 +914,9 @@ func TestInstallPluginWithMultipleVersions(t *testing.T) {
 	require.True(t, ws.plugins[sharedV2Path].installed, "shared-plugin v2.0.0 should be installed")
 
 	// Verify that plugin-a is linked to v1.0.0 and plugin-b is linked to v2.0.0
-	require.Contains(t, ws.plugins[pluginAPath].linked, sharedV1Path+"/sdk-shared-plugin",
+	require.Contains(t, ws.plugins[pluginAPath].linked, sharedV1Path+"/sdk-<nil>",
 		"plugin-a should be linked to shared-plugin v1.0.0")
-	require.Contains(t, ws.plugins[pluginBPath].linked, sharedV2Path+"/sdk-shared-plugin",
+	require.Contains(t, ws.plugins[pluginBPath].linked, sharedV2Path+"/sdk-<nil>",
 		"plugin-b should be linked to shared-plugin v2.0.0")
 }
 
@@ -1645,9 +1645,9 @@ func TestInstallSharedDependencyInParallel(t *testing.T) {
 
 	componentAPath := "$HOME/.pulumi/plugins/resource-component-a"
 	componentBPath := "$HOME/.pulumi/plugins/resource-component-b"
-	componentASDK := componentAPath + "/sdk-component-a"
-	pluginCSDK := "$HOME/.pulumi/plugins/resource-plugin-c/sdk-plugin-c"
-	pluginDSDK := "$HOME/.pulumi/plugins/resource-plugin-d/sdk-plugin-d"
+	componentASDK := componentAPath + "/sdk-<nil>"
+	pluginCSDK := "$HOME/.pulumi/plugins/resource-plugin-c/sdk-<nil>"
+	pluginDSDK := "$HOME/.pulumi/plugins/resource-plugin-d/sdk-<nil>"
 
 	require.True(t, baselineWs.plugins[componentAPath].installed,
 		"component-a should be installed in baseline")

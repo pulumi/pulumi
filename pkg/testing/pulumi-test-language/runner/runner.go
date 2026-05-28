@@ -635,16 +635,30 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	}, nil
 }
 
-func GetProviderVersion(provider plugin.Provider) (semver.Version, error) {
-	pkg := provider.Pkg()
-	info, err := provider.GetPluginInfo(context.TODO())
+func GetProviderVersion(ctx context.Context, provider plugin.Provider) (semver.Version, error) {
+	info, err := provider.GetPluginInfo(ctx)
 	if err != nil {
-		return semver.Version{}, fmt.Errorf("get plugin info for %s: %w", pkg, err)
+		return semver.Version{}, fmt.Errorf("get plugin info: %w", err)
 	}
 	if info.Version == nil {
-		return semver.Version{}, fmt.Errorf("provider %s has no version", pkg)
+		return semver.Version{}, errors.New("provider has no version")
 	}
 	return *info.Version, nil
+}
+
+func GetProviderName(ctx context.Context, provider plugin.Provider) (string, error) {
+	resp, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{})
+	if err != nil {
+		return "", err
+	}
+	var s schema.PartialPackageSpec
+	if err := json.Unmarshal(resp.Schema, &s); err != nil {
+		return "", fmt.Errorf("unable to unmarshal schema for name: %w", err)
+	}
+	if s.Name == "" {
+		return "", errors.New("invalid schema: empty name")
+	}
+	return s.Name, nil
 }
 
 func hasDependency(pkg *schema.Package, dep string) bool {
@@ -755,14 +769,17 @@ func (eng *languageTestServer) RunLanguageTest(
 	// And fill that host with our test providers
 	for _, provider := range test.Providers {
 		p := provider()
-		version, err := GetProviderVersion(p)
+		version, err := GetProviderVersion(ctx, p)
 		if err != nil {
 			return nil, err
 		}
-		key := fmt.Sprintf("%s@%s", p.Pkg(), version)
+		pkg, err := GetProviderName(ctx, p)
+		if err != nil {
+			return nil, err
+		}
+		key := fmt.Sprintf("%s@%s", pkg, version)
 
 		// If this is a provider that should be overridden using the languages plugin directory try and do that now.
-		pkg := p.Pkg().String()
 		if slices.Contains(test.LanguageProviders, pkg) {
 			cacheKey := fmt.Sprintf("%s@%s", key, token.TemporaryDirectory)
 			// The second return value indicates whether the result was loaded or stored

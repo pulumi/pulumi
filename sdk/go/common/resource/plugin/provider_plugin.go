@@ -471,10 +471,6 @@ func NewProviderWithVersionOverride(ctx *Context, client pulumirpc.ResourceProvi
 	}
 }
 
-func (p *provider) Pkg() tokens.Package {
-	panic("TODO: This can be derived from a cached schema or hopefully dropped")
-}
-
 // label returns a base label for tracing functions.
 func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%p]", p)
@@ -981,16 +977,6 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 				known: false,
 			})
 			return ConfigureResponse{}, nil
-		}
-
-		mapped := removeSecrets(v)
-		if _, isString := mapped.(string); !isString {
-			_, err := json.Marshal(mapped)
-			if err != nil {
-				err := fmt.Errorf("marshaling configuration property '%v': %w", k, err)
-				p.configSource.MustReject(err)
-				return ConfigureResponse{}, err
-			}
 		}
 	}
 
