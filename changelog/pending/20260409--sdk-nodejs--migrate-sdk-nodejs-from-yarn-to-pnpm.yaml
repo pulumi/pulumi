@@ -1,7 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/nodejs
-  description: Migrate sdk/nodejs build from yarn to pnpm
-- type: feat
-  scope: pkg/testing
-  description: Add pnpm support to ProgramTest via UsePnpm option and PULUMI_TEST_USE_PNPM env var
