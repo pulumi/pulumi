@@ -1,3 +1,0 @@
-kind: fix
-body: Distinguish multiple packages with the same plugin
-component: cli/install

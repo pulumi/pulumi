@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.244.0 (2026-05-28)
+
+### Bug Fixes
+
+- [cli/do] Fix top level flags like `--logtostderr` being recognized when using `pulumi do` [#23355](https://github.com/pulumi/pulumi/pull/23355)
+- [cli/install] Distinguish multiple packages with the same plugin
+- [engine] Fix snapshot integrity issue with `up --refresh`
+- [engine] Forward all provider errors to error hooks for retry [#23347](https://github.com/pulumi/pulumi/pull/23347)
+- [engine] Trace cancel RPCs sent to plugins during shutdown as children of the active operation instead of emitting separate root spans [#23362](https://github.com/pulumi/pulumi/pull/23362)
+- [sdk/python] Merge requirements.txt into pyproject.toml when using uv without a project section [#23340](https://github.com/pulumi/pulumi/pull/23340)
 ## 3.243.0 (2026-05-22)
 
 
