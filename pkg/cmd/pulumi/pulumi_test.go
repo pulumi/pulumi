@@ -19,6 +19,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -533,37 +534,41 @@ func newDoTestCmd() *cobra.Command {
 
 // TestPulumiCmdPreParsesPersistentFlagsForDisableFlagParsing verifies the workaround in
 // NewPulumiCmd's PersistentPreRunE: when a subcommand sets DisableFlagParsing (`pulumi do`),
-// cobra skips flag parsing entirely, so root persistent flags like --otel-traces have to be
-// parsed manually before the flag-dependent init (InitOtelReceiver, SetGlobalColorization,
-// os.Chdir, etc.) can use them.
+// cobra skips flag parsing entirely, so root persistent flags like --cwd have to be
+// parsed manually before the flag-dependent init can use them.
 //
-//nolint:paralleltest // mutates env vars and cmdutil's package-level OTel state
+//nolint:paralleltest // mutates env vars and the process working directory
 func TestPulumiCmdPreParsesPersistentFlagsForDisableFlagParsing(t *testing.T) {
 	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
+	originalWD, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWD))
+	})
+
 	pulumiCmd, cleanup := NewPulumiCmd()
 	t.Cleanup(cleanup)
 
-	// file:// is a real OTel exporter scheme — InitOtelReceiver will actually start a receiver,
-	// flipping cmdutil.IsOTelEnabled() to true. That's the behavior we want to confirm: the
-	// pre-parse in PersistentPreRunE made the flag value visible to InitOtelReceiver.
-	endpoint := "file://" + filepath.Join(t.TempDir(), "trace.json")
+	cwd := t.TempDir()
 
 	var stdout, stderr bytes.Buffer
 	pulumiCmd.SetOut(&stdout)
 	pulumiCmd.SetErr(&stderr)
 	// The "missing-package-that-fails-to-load" arg makes `do` fail in buildSubcommand,
 	// but PersistentPreRunE has already completed by then — which is all we're testing here.
-	pulumiCmd.SetArgs([]string{"do", "--otel-traces=" + endpoint, "missing-package-that-fails-to-load"})
+	pulumiCmd.SetArgs([]string{"do", "--cwd", cwd, "missing-package-that-fails-to-load"})
 	_ = pulumiCmd.Execute() //nolint:errcheck // do is expected to fail; we only care about PersistentPreRunE
 
-	otelFlag := pulumiCmd.PersistentFlags().Lookup("otel-traces")
-	require.NotNil(t, otelFlag)
-	assert.Equal(t, endpoint, otelFlag.Value.String(),
-		"PersistentPreRunE should have pre-parsed --otel-traces before flag-dependent init ran")
-	assert.True(t, cmdutil.IsOTelEnabled(),
-		"InitOtelReceiver should have been called with the parsed --otel-traces endpoint")
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	expectedWD, err := filepath.EvalSymlinks(cwd)
+	require.NoError(t, err)
+	actualWD, err := filepath.EvalSymlinks(wd)
+	require.NoError(t, err)
+	assert.Equal(t, expectedWD, actualWD,
+		"PersistentPreRunE should have pre-parsed --cwd before flag-dependent init ran")
 }
 
 //nolint:paralleltest // changes environment variables and globals
