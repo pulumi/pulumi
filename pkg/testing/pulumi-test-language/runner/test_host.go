@@ -300,6 +300,6 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
 	wrapped := plugin.NewProviderWithClient(
-		nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
+		nil, pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil
 }

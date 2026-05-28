@@ -17,6 +17,7 @@ package packageinstallation_test
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"math/rand/v2"
 	"path/filepath"
@@ -33,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -315,7 +315,7 @@ func (w invariantWorkspace) GenerateLocalSDK(
 	// package name so two parameterized packages backed by the same plugin
 	// produce distinct LinkablePackageDescriptor.Path values.
 	return workspace.LinkablePackageDescriptor{
-		Path: filepath.ToSlash(filepath.Join(ip.path, "sdk-"+string(ip.pkgName))),
+		Path: filepath.ToSlash(filepath.Join(ip.path, fmt.Sprintf("sdk-%#v", ip.params))),
 	}, nil
 }
 
@@ -372,12 +372,12 @@ func (w invariantWorkspace) GetRequiredPackages(
 
 func (w invariantWorkspace) RunPackage(
 	ctx context.Context,
-	rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	rootDir, pluginPath string, params plugin.ParameterizeParameters,
 	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
 	pluginPath = filepath.ToSlash(pluginPath)
 	if _, ok := w.plainBinaryPaths[pluginPath]; ok {
-		return invariantProvider{path: pluginPath, pkgName: pkgName}, nil
+		return invariantProvider{path: pluginPath, params: params}, nil
 	}
 
 	w.rw.RLock()
@@ -397,12 +397,12 @@ func (w invariantWorkspace) RunPackage(
 			pluginPath, pl.installed, pl.project != nil)
 		return nil, assert.AnError
 	}
-	return invariantProvider{path: pluginPath, pkgName: pkgName}, nil
+	return invariantProvider{path: pluginPath, params: params}, nil
 }
 
 type invariantProvider struct {
 	plugin.Provider
 
-	path    string
-	pkgName tokens.Package
+	path   string
+	params plugin.ParameterizeParameters
 }

@@ -371,7 +371,7 @@ var _ plugin.Provider = (*Registry)(nil)
 func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
 	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider, e env.Env,
 ) (plugin.Provider, error) {
-	if builtins != nil && pkg == builtins.Pkg() {
+	if builtins != nil && pkg == builtins.Pkg() { // TODO: We need another way to check this
 		return builtins, nil
 	}
 

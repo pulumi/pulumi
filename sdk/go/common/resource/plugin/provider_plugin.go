@@ -83,7 +83,6 @@ type provider struct {
 	NotForwardCompatibleProvider
 
 	ctx                    *Context                         // a plugin context for caching, etc.
-	pkg                    tokens.Package                   // the Pulumi package containing this provider's resources.
 	plug                   *Plugin                          // the actual plugin process wrapper.
 	clientRaw              pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
@@ -289,7 +288,6 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 
 	p := &provider{
 		ctx:                    ctx,
-		pkg:                    pkg,
 		plug:                   plug,
 		clientRaw:              pulumirpc.NewResourceProviderClient(plug.Conn),
 		disableProviderPreview: disableProviderPreview,
@@ -380,7 +378,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 }
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
-func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path string) (Provider, error) {
+func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*ProviderHandshakeResponse, error) {
@@ -414,7 +412,6 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
 		legacyPreview: legacyPreview,
 		configSource:  &promise.CompletionSource[pluginConfig]{},
-		pkg:           pkg,
 	}
 
 	if handshakeRes != nil {
@@ -451,24 +448,22 @@ func (p *cancelOnCloseProvider) Close() error {
 	return p.Provider.Close()
 }
 
-func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
+func NewProviderWithClient(ctx *Context, client pulumirpc.ResourceProviderClient,
 	disableProviderPreview bool,
 ) Provider {
 	return &provider{
 		ctx:                    ctx,
-		pkg:                    pkg,
 		clientRaw:              client,
 		disableProviderPreview: disableProviderPreview,
 		configSource:           &promise.CompletionSource[pluginConfig]{},
 	}
 }
 
-func NewProviderWithVersionOverride(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
+func NewProviderWithVersionOverride(ctx *Context, client pulumirpc.ResourceProviderClient,
 	disableProviderPreview bool, version *semver.Version,
 ) Provider {
 	return &provider{
 		ctx:                    ctx,
-		pkg:                    pkg,
 		clientRaw:              client,
 		disableProviderPreview: disableProviderPreview,
 		configSource:           &promise.CompletionSource[pluginConfig]{},
@@ -476,11 +471,13 @@ func NewProviderWithVersionOverride(ctx *Context, pkg tokens.Package, client pul
 	}
 }
 
-func (p *provider) Pkg() tokens.Package { return p.pkg }
+func (p *provider) Pkg() tokens.Package {
+	panic("TODO: This can be derived from a cached schema or hopefully dropped")
+}
 
 // label returns a base label for tracing functions.
 func (p *provider) label() string {
-	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
+	return fmt.Sprintf("Provider[%p]", p)
 }
 
 func (p *provider) requestContext() context.Context {
@@ -782,18 +779,6 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		}
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 			rpcError.Message())
-		// https://github.com/pulumi/pulumi/issues/14529: Old versions of kubernetes would error on this
-		// call if "kubeconfig" was set to a file. This didn't cause issues later when the same config was
-		// passed to Configure, and for many years silently "worked".
-		// https://github.com/pulumi/pulumi/pull/14436 fixed this method to start returning errors which
-		// exposed this issue with the kubernetes provider, new versions will be fixed to not error on
-		// this (https://github.com/pulumi/pulumi-kubernetes/issues/2663) but so that the CLI continues to
-		// work for old versions we have an explicit ignore for this one error here.
-		if p.pkg == "kubernetes" &&
-			strings.Contains(rpcError.Error(), "cannot unmarshal string into Go value of type struct") {
-			logging.V(8).Infof("%s ignoring error from kubernetes provider", label)
-			return DiffResult{Changes: DiffUnknown}, nil
-		}
 
 		return DiffResult{}, err
 	}
@@ -1000,18 +985,13 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 
 		mapped := removeSecrets(v)
 		if _, isString := mapped.(string); !isString {
-			marshalled, err := json.Marshal(mapped)
+			_, err := json.Marshal(mapped)
 			if err != nil {
 				err := fmt.Errorf("marshaling configuration property '%v': %w", k, err)
 				p.configSource.MustReject(err)
 				return ConfigureResponse{}, err
 			}
-			mapped = string(marshalled)
 		}
-
-		// Pass the older spelling of a configuration key across the RPC interface, for now, to support
-		// providers which are on the older plan.
-		config[string(p.Pkg())+":config:"+string(k)] = mapped.(string)
 	}
 
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
@@ -1402,7 +1382,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 
 	if id == "" && !req.Preview {
 		return CreateResponse{Status: resource.StatusUnknown},
-			fmt.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, req.URN)
+			fmt.Errorf("plugin returned empty resource.ID from create '%v'", req.URN)
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
