@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -44,6 +45,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -78,7 +80,7 @@ func newDecryptCmd(ws pkgWorkspace.Context) *cobra.Command {
 					}
 					fmt.Fprintf(cmd.ErrOrStderr(), "Decrypting %s\n", filename)
 				} else {
-					filename, err = chooseLog(stackName)
+					filename, err = chooseLog(stackName, "Select a log file to decrypt:")
 					if err != nil {
 						return err
 					}
@@ -112,10 +114,7 @@ func newDecryptCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 			defer gz.Close()
 
-			if _, err := io.Copy(out, gz); err != nil { //nolint:gosec // user's own log file
-				return fmt.Errorf("decompressing log: %w", err)
-			}
-			return nil
+			return formatLogRecords(gz, out, false)
 		},
 	}
 
@@ -162,7 +161,7 @@ func decryptPLOG(
 		return fmt.Errorf("decrypting log: %w", err)
 	}
 
-	return formatLogRecords(reader, out)
+	return formatLogRecords(reader, out, false)
 }
 
 // stackNameFromFilename extracts the stack name from a log filename.
@@ -249,8 +248,8 @@ func findLatestLog(stackName string) (string, error) {
 
 // chooseLog prompts the user to pick a log file from ~/.pulumi/logs/.
 // If stackName is non-empty, the list is filtered to logs for that
-// stack.
-func chooseLog(stackName string) (string, error) {
+// stack. The prompt parameter is used as the survey message.
+func chooseLog(stackName, prompt string) (string, error) {
 	logsDir, err := workspace.GetPulumiPath("logs")
 	if err != nil {
 		return "", fmt.Errorf("getting log directory: %w", err)
@@ -288,7 +287,7 @@ func chooseLog(stackName string) (string, error) {
 
 	var choice string
 	if err := survey.AskOne(&survey.Select{
-		Message:  "Select a log file to decrypt:",
+		Message:  prompt,
 		Options:  options,
 		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
 	}, &choice, ui.SurveyIcons(cmdutil.GetGlobalColorization())); err != nil {
@@ -360,3 +359,59 @@ func parseLogTimestamp(name string) (time.Time, bool) {
 	return t, true
 }
 
+// formatLogRecords reads JSON log lines from r, reconstructs formatted
+// messages from pulumi.log.arg* fields, removes those fields, and
+// writes the resulting JSON to w.
+func formatLogRecords(r io.Reader, w io.Writer, redactSecrets bool) error {
+	scanner := bufio.NewScanner(r)
+	enc := json.NewEncoder(w)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+
+		var rec map[string]any
+		if err := json.Unmarshal(line, &rec); err != nil {
+			// Not JSON — write through as-is (e.g. old plain-text logs).
+			fmt.Fprintf(w, "%s\n", line)
+			continue
+		}
+
+		// Collect pulumi.log.argN keys in order, reconstruct the
+		// formatted message, and delete the arg keys.
+		var argKeys []string
+		for k := range rec {
+			if strings.HasPrefix(k, "pulumi.log.arg") {
+				argKeys = append(argKeys, k)
+			}
+		}
+		if len(argKeys) > 0 {
+			sort.Strings(argKeys)
+			args := make([]any, len(argKeys))
+			for i, k := range argKeys {
+				args[i] = decodePropertyArg(rec[k])
+				delete(rec, k)
+			}
+			if msg, ok := rec["msg"].(string); ok {
+				rec["msg"] = fmt.Sprintf(msg, args...)
+			}
+		}
+
+		if err := enc.Encode(rec); err != nil {
+			return err
+		}
+	}
+	return scanner.Err()
+}
+
+func decodePropertyArg(v any) any {
+	s, ok := v.(string)
+	if !ok {
+		return v
+	}
+	if sv, err := logging.DecodeStructValueFromLog([]byte(s)); err == nil {
+		return sv.AsInterface()
+	}
+	return v
+}
