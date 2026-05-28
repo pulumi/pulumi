@@ -25,8 +25,10 @@ import (
 	"time"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestDecryptGzipLog(t *testing.T) {
@@ -67,7 +69,7 @@ func TestFormatLogRecordsFoldsArgs(t *testing.T) {
 	require.NoError(t, err)
 
 	var out bytes.Buffer
-	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out)
+	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out, false)
 	require.NoError(t, err)
 
 	var got map[string]any
@@ -83,27 +85,32 @@ func TestFormatLogRecordsFoldsArgs(t *testing.T) {
 	assert.EqualValues(t, 3, got["v"])
 }
 
-func TestFormatLogRecordsFormatsPropertyValues(t *testing.T) {
+func TestFormatLogRecordsDecodesPropertyValues(t *testing.T) {
 	t.Parallel()
+
+	sv, err := structpb.NewValue(map[string]any{"key": "val"})
+	require.NoError(t, err)
+	encoded, err := logging.EncodeStructValueForLog(sv)
+	require.NoError(t, err)
 
 	input := map[string]any{
 		"time":            "2026-04-30T10:00:00Z",
 		"level":           "INFO",
 		"msg":             "resource inputs: %v",
-		"pulumi.log.arg0": "some-value",
+		"pulumi.log.arg0": string(encoded),
 	}
 	line, err := json.Marshal(input)
 	require.NoError(t, err)
 
 	var out bytes.Buffer
-	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out)
+	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out, false)
 	require.NoError(t, err)
 
 	var got map[string]any
 	err = json.Unmarshal(out.Bytes(), &got)
 	require.NoError(t, err)
 
-	assert.Equal(t, "resource inputs: some-value", got["msg"])
+	assert.Equal(t, "resource inputs: map[key:val]", got["msg"])
 	assert.NotContains(t, got, "pulumi.log.arg0")
 }
 
@@ -140,11 +147,11 @@ runtime: nodejs`)
 
 	raw, err := os.ReadFile(logFile)
 	require.NoError(t, err)
-	assert.NotContains(t, string(raw), "CLI Metadata")
+	assert.NotContains(t, string(raw), "Pulumi")
 
 	stdout, _ := e.RunCommand("pulumi", "logs", "decrypt", logFile)
 
-	assert.Contains(t, stdout, "CLI Metadata")
+	assert.Contains(t, stdout, "Pulumi")
 }
 
 func TestFormatLogChoicesAligns(t *testing.T) {

@@ -15,12 +15,11 @@
 package logs
 
 import (
-	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -42,6 +41,7 @@ import (
 
 func newShareCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var includeSecrets bool
+	var latest bool
 
 	cmd := &cobra.Command{
 		Use:   "share [filename]",
@@ -50,9 +50,10 @@ func newShareCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"Pulumi support. The log content is re-encrypted with a key\n" +
 			"that only Pulumi can read.\n" +
 			"\n" +
-			"If no filename is provided, the most recent log file is\n" +
-			"used. When a current stack is selected (or --stack is\n" +
-			"given), logs for that stack are preferred.\n" +
+			"If no filename is provided, a list of available log files is\n" +
+			"displayed and the user is prompted to choose one. Pass\n" +
+			"--latest to skip the prompt and share the most recent log\n" +
+			"file instead.\n" +
 			"\n" +
 			"By default, secret values in the log are redacted. Use\n" +
 			"--include-secrets to include them in the shared log.",
@@ -65,17 +66,23 @@ func newShareCmd(ws pkgWorkspace.Context) *cobra.Command {
 			if len(args) > 0 {
 				filename = args[0]
 			} else {
-				filterName := stackName
-				if filterName == "" {
-					filterName = currentStackName(ws)
-				}
-
 				var err error
-				filename, err = findLatestLog(filterName)
-				if err != nil {
-					return err
+				if latest {
+					filterName := stackName
+					if filterName == "" {
+						filterName = currentStackName(ws)
+					}
+					filename, err = findLatestLog(filterName)
+					if err != nil {
+						return err
+					}
+					fmt.Fprintf(cmd.ErrOrStderr(), "Sharing %s\n", filename)
+				} else {
+					filename, err = chooseLog(stackName, "Select a log file to share:")
+					if err != nil {
+						return err
+					}
 				}
-				fmt.Fprintf(os.Stderr, "Sharing %s\n", filename)
 			}
 
 			sessionID, sessionKey, err := createEncryptionSession(ctx, ws)
@@ -109,13 +116,15 @@ func newShareCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintf(os.Stderr, "Shared log written to %s\n\n", outPath)
-			fmt.Fprintf(os.Stderr, "You can safely attach this file to a GitHub issue or\n")
-			fmt.Fprintf(os.Stderr, "send it to Pulumi support. Only Pulumi can decrypt it.\n")
+			fmt.Fprintf(cmd.ErrOrStderr(), "Shared log written to %s\n\n", outPath)
+			fmt.Fprintf(cmd.ErrOrStderr(), "You can safely attach this file to a GitHub issue or\n")
+			fmt.Fprintf(cmd.ErrOrStderr(), "send it to Pulumi support. Only Pulumi can decrypt it.\n")
 			return nil
 		},
 	}
 
+	cmd.Flags().BoolVar(&latest, "latest", false,
+		"Share the most recent log file without prompting")
 	cmd.Flags().BoolVar(&includeSecrets, "include-secrets", false,
 		"Include secret values in the shared log (by default secrets are redacted)")
 
@@ -160,11 +169,12 @@ func sharePLOG(
 		return fmt.Errorf("reading decrypted log: %w", err)
 	}
 
-	if redact {
-		plaintext = redactSecretsInLog(plaintext)
+	var processed bytes.Buffer
+	if err := formatLogRecords(bytes.NewReader(plaintext), &processed, redact); err != nil {
+		return fmt.Errorf("processing log: %w", err)
 	}
 
-	return writeEncryptedLog(outPath, sessionID, sessionKey, plaintext)
+	return writeEncryptedLog(outPath, sessionID, sessionKey, processed.Bytes())
 }
 
 // shareGzip decompresses a gzip log file, optionally redacts secrets,
@@ -183,11 +193,12 @@ func shareGzip(
 		return fmt.Errorf("decompressing log: %w", err)
 	}
 
-	if redact {
-		plaintext = redactSecretsInLog(plaintext)
+	var processed bytes.Buffer
+	if err := formatLogRecords(bytes.NewReader(plaintext), &processed, redact); err != nil {
+		return fmt.Errorf("processing log: %w", err)
 	}
 
-	return writeEncryptedLog(outPath, sessionID, sessionKey, plaintext)
+	return writeEncryptedLog(outPath, sessionID, sessionKey, processed.Bytes())
 }
 
 // writeEncryptedLog creates a PLOG file encrypted with the given session
@@ -199,7 +210,12 @@ func writeEncryptedLog(outPath string, sessionID string, sessionKey []byte, plai
 	}
 	defer outFile.Close()
 
-	w, err := encryptedlog.NewWriterWithKey(outFile, sessionKey, []byte(sessionID))
+	key, err := encryptedlog.NewPreparedKey(sessionKey, []byte(sessionID))
+	if err != nil {
+		os.Remove(outPath)
+		return fmt.Errorf("preparing encryption key: %w", err)
+	}
+	w, err := encryptedlog.NewWriterFromKey(outFile, key)
 	if err != nil {
 		os.Remove(outPath)
 		return fmt.Errorf("creating encrypted writer: %w", err)
@@ -218,11 +234,13 @@ func writeEncryptedLog(outPath string, sessionID string, sessionKey []byte, plai
 // createEncryptionSession is a variable so tests can replace it with a mock.
 var createEncryptionSession = createEncryptionSessionFromAPI
 
-func createEncryptionSessionFromAPI(ctx context.Context, ws pkgWorkspace.Context) (sessionID string, sessionKey []byte, err error) {
+func createEncryptionSessionFromAPI(
+	ctx context.Context, ws pkgWorkspace.Context,
+) (sessionID string, sessionKey []byte, err error) {
 	// Resolve the cloud URL without requiring login — this endpoint needs no auth.
 	cloudURL := httpstate.ValueOrDefaultURL(ws, "")
 	if cloudURL == "" {
-		return "", nil, fmt.Errorf("could not determine Pulumi Cloud URL; set PULUMI_API or run `pulumi login`")
+		return "", nil, errors.New("could not determine Pulumi Cloud URL; set PULUMI_API or run `pulumi login`")
 	}
 	insecure := pkgWorkspace.GetCloudInsecure(ws, cloudURL)
 
@@ -240,37 +258,4 @@ func createEncryptionSessionFromAPI(ctx context.Context, ws pkgWorkspace.Context
 	}
 
 	return resp.SessionID, keyBytes, nil
-}
-
-// redactSecretsInLog processes each JSON line in the log and replaces
-// secret property values with "[secret]".
-func redactSecretsInLog(data []byte) []byte {
-	scanner := bufio.NewScanner(bytes.NewReader(data))
-	var result bytes.Buffer
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		if len(line) == 0 {
-			result.WriteByte('\n')
-			continue
-		}
-
-		var rec map[string]any
-		if err := json.Unmarshal(line, &rec); err != nil {
-			// Not JSON — write through as-is.
-			result.Write(line)
-			result.WriteByte('\n')
-			continue
-		}
-
-		redactSecretsInValue(rec)
-
-		redacted, err := json.Marshal(rec)
-		if err != nil {
-			result.Write(line)
-		} else {
-			result.Write(redacted)
-		}
-		result.WriteByte('\n')
-	}
-	return result.Bytes()
 }

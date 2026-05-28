@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -87,7 +87,7 @@ func TestRedactSecretsInLog(t *testing.T) {
 	// Build a log line with a secret property value.
 	secret := map[string]any{
 		resource.SigKey: resource.SecretSig,
-		"ciphertext":   "encrypted-secret-value",
+		"ciphertext":    "encrypted-secret-value",
 	}
 	rec := map[string]any{
 		"msg":    "registering resource",
@@ -97,10 +97,11 @@ func TestRedactSecretsInLog(t *testing.T) {
 	require.NoError(t, err)
 	logData := append(line, '\n')
 
-	redacted := redactSecretsInLog(logData)
+	var redacted bytes.Buffer
+	require.NoError(t, formatLogRecords(bytes.NewReader(logData), &redacted, true))
 
 	var got map[string]any
-	require.NoError(t, json.Unmarshal(redacted, &got))
+	require.NoError(t, json.Unmarshal(redacted.Bytes(), &got))
 
 	inputs := got["inputs"].(map[string]any)
 	pw := inputs["password"].(map[string]any)
@@ -132,10 +133,11 @@ func TestRedactSecretsNested(t *testing.T) {
 	line, err := json.Marshal(rec)
 	require.NoError(t, err)
 
-	redacted := redactSecretsInLog(append(line, '\n'))
+	var redacted bytes.Buffer
+	require.NoError(t, formatLogRecords(bytes.NewReader(append(line, '\n')), &redacted, true))
 
 	var got map[string]any
-	require.NoError(t, json.Unmarshal(redacted, &got))
+	require.NoError(t, json.Unmarshal(redacted.Bytes(), &got))
 
 	values := got["values"].([]any)
 	pub := values[0].(map[string]any)
@@ -151,8 +153,9 @@ func TestRedactSecretsNonJSON(t *testing.T) {
 
 	// Non-JSON lines should pass through unchanged.
 	input := []byte("plain text log line\n{bad json\n")
-	result := redactSecretsInLog(input)
-	assert.Equal(t, input, result)
+	var result bytes.Buffer
+	require.NoError(t, formatLogRecords(bytes.NewReader(input), &result, true))
+	assert.Equal(t, input, result.Bytes())
 }
 
 func TestRedactSecretsNoSecrets(t *testing.T) {
@@ -162,10 +165,11 @@ func TestRedactSecretsNoSecrets(t *testing.T) {
 	line, _ := json.Marshal(rec)
 	input := append(line, '\n')
 
-	result := redactSecretsInLog(input)
+	var result bytes.Buffer
+	require.NoError(t, formatLogRecords(bytes.NewReader(input), &result, true))
 
 	var got map[string]any
-	require.NoError(t, json.Unmarshal(result, &got))
+	require.NoError(t, json.Unmarshal(result.Bytes(), &got))
 	assert.Equal(t, "hello", got["msg"])
 	assert.Equal(t, "info", got["level"])
 }
@@ -175,7 +179,7 @@ func TestIsSecretValue(t *testing.T) {
 
 	assert.True(t, isSecretValue(map[string]any{
 		resource.SigKey: resource.SecretSig,
-		"ciphertext":   "...",
+		"ciphertext":    "...",
 	}))
 
 	// Non-secret signature.
@@ -219,9 +223,10 @@ func TestRedactSecretsPreservesMultipleLines(t *testing.T) {
 		buf.WriteByte('\n')
 	}
 
-	result := redactSecretsInLog(buf.Bytes())
-	lines := strings.Split(strings.TrimSuffix(string(result), "\n"), "\n")
-	assert.Len(t, lines, 3)
+	var result bytes.Buffer
+	require.NoError(t, formatLogRecords(bytes.NewReader(buf.Bytes()), &result, true))
+	lines := strings.Split(strings.TrimSuffix(result.String(), "\n"), "\n")
+	require.Len(t, lines, 3)
 
 	for i, expected := range []string{"first", "second", "third"} {
 		var got map[string]any
