@@ -50,13 +50,13 @@ func TestGetLinkPackageProperty(t *testing.T) {
 			name:        "scoped package",
 			packageName: "@pulumi/aap",
 			path:        "sdks/aap",
-			want:        `dependencies["@pulumi/aap"]=file:sdks/aap`,
+			want:        `dependencies[@pulumi/aap]=file:sdks/aap`,
 		},
 		{
 			name:        "unscoped package",
 			packageName: "pulumi-aap",
 			path:        "sdks/aap",
-			want:        `dependencies["pulumi-aap"]=file:sdks/aap`,
+			want:        `dependencies[pulumi-aap]=file:sdks/aap`,
 		},
 	}
 	for _, tt := range tests {
