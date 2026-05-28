@@ -104,7 +104,7 @@ func init() {
 						map[string]any{"x": float64(42)},
 						c.Args.Fields["objInt1"].AsInterface(), "objInt1")
 
-					v := c.GetVariables()
+					v := c.GetVariables() //nolint:staticcheck // Intentionally tested deprecated features
 					assert.Equal(l, "", v["config-grpc:config:string1"], "string1")
 					assert.Equal(l, "x", v["config-grpc:config:string2"], "string2")
 					assert.Equal(l, "{}", v["config-grpc:config:string3"], "string3")
