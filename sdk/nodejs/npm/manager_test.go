@@ -38,6 +38,36 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGetLinkPackageProperty(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		packageName string
+		path        string
+		want        string
+	}{
+		{
+			name:        "scoped package",
+			packageName: "@pulumi/aap",
+			path:        "sdks/aap",
+			want:        `dependencies["@pulumi/aap"]=file:sdks/aap`,
+		},
+		{
+			name:        "unscoped package",
+			packageName: "pulumi-aap",
+			path:        "sdks/aap",
+			want:        `dependencies["pulumi-aap"]=file:sdks/aap`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := getLinkPackageProperty(tt.packageName, tt.path)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 //nolint:paralleltest // changes working directory
 func TestNPMInstall(t *testing.T) {
 	t.Run("development", func(t *testing.T) {

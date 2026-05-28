@@ -277,6 +277,8 @@ func preferYarn() bool {
 }
 
 // getLinkPackageProperty returns a string to use in `npm pkg set` to add the package to package.json dependencies.
+// Bracket notation is used to support scoped package names (e.g. @pulumi/aap), as pnpm's pkg set tokenizer
+// rejects '@' in dot-notation property paths (ERR_PNPM_UNEXPECTED_TOKEN_IN_PROPERTY_PATH).
 func getLinkPackageProperty(packageName, path string) string {
-	return fmt.Sprintf("dependencies.%s=file:%s", packageName, path)
+	return fmt.Sprintf("dependencies[%q]=file:%s", packageName, path)
 }
