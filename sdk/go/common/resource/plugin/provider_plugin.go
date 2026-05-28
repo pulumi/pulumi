@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -960,9 +961,15 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	label := p.label() + ".Configure()"
 	logging.V(7).Infof("%s executing (#vars=%d)", label, len(req.Inputs))
 
-	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leave
+	// The deprecated `variables` field is keyed by `<pkg>:config:<key>` for providers that still read config
+	// under the old name. The plugin no longer knows its own package, so we take it from the provider type the
+	// engine supplies at configure time.
+	contract.Assertf(req.Type != nil, "ConfigureRequest.Type must be set")
+	pkg := providers.GetProviderPackage(*req.Type)
+
+	// Convert the inputs to a variables map. If any are unknown, do not configure the underlying plugin: instead, leave
 	// the cfgknown bit unset and carry on.
-	config := make(map[string]string)
+	variables := make(map[string]string)
 	for k, v := range req.Inputs {
 		if k == "version" {
 			continue
@@ -990,7 +997,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			mapped = string(marshalled)
 		}
 
-		config[string(k)] = mapped.(string)
+		variables[string(pkg)+":config:"+string(k)] = mapped.(string)
 	}
 
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
@@ -1032,7 +1039,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			AcceptResources:        true,
 			SendsOldInputs:         true,
 			SendsOldInputsToDelete: true,
-			Variables:              config,
+			Variables:              variables,
 			Args:                   minputs,
 		})
 		if err != nil {
