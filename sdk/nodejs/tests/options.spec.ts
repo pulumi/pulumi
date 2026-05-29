@@ -15,13 +15,7 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import {
-    ComponentResourceOptions,
-    ErrorHookFunction,
-    ProviderResource,
-    merge,
-    mergeOptions,
-} from "../resource";
+import { ComponentResourceOptions, ErrorHookFunction, ProviderResource, merge, mergeOptions } from "../resource";
 
 describe("options", () => {
     describe("merge", () => {
