@@ -15,7 +15,13 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { ComponentResourceOptions, ProviderResource, merge, mergeOptions } from "../resource";
+import {
+    ComponentResourceOptions,
+    ErrorHookFunction,
+    ProviderResource,
+    merge,
+    mergeOptions,
+} from "../resource";
 
 describe("options", () => {
     describe("merge", () => {
@@ -235,6 +241,32 @@ describe("options", () => {
             it("merges promise-array and promise-array into array", async () => {
                 const result = mergeDependsOn(Promise.resolve(["a"]), Promise.resolve(["b"]));
                 assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+            });
+        });
+
+        describe("hooks.onError", () => {
+            const makeHook = (name: string) => ({
+                name,
+                callback: (() => false) as ErrorHookFunction,
+                __registered: Promise.resolve(),
+                __pulumiErrorHook: true as const,
+            });
+
+            it("keeps onError hooks from opts1 if not provided in opts2", async () => {
+                const hook = makeHook("h1");
+                const result = mergeOptions({ hooks: { onError: [hook] } }, {});
+                assert.deepStrictEqual(result.hooks?.onError, [hook]);
+            });
+            it("keeps onError hooks from opts2 if not provided in opts1", async () => {
+                const hook = makeHook("h1");
+                const result = mergeOptions({}, { hooks: { onError: [hook] } });
+                assert.deepStrictEqual(result.hooks?.onError, [hook]);
+            });
+            it("merges onError hooks from opts1 and opts2", async () => {
+                const hook1 = makeHook("h1");
+                const hook2 = makeHook("h2");
+                const result = mergeOptions({ hooks: { onError: [hook1] } }, { hooks: { onError: [hook2] } });
+                assert.deepStrictEqual(result.hooks?.onError, [hook1, hook2]);
             });
         });
 
