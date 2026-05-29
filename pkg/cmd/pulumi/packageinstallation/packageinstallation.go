@@ -730,7 +730,7 @@ func paramsEqual(a plugin.ParameterizeParameters) func(plugin.ParameterizeParame
 			}
 			return a.Name == b.Name && a.Version.EQ(b.Version) && bytes.Equal(a.Value, b.Value)
 		default:
-			contract.Failf("unknown type of paramaters: %T", a)
+			contract.Failf("unknown type of parameters: %T", a)
 			return false
 		}
 	}

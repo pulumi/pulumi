@@ -1941,3 +1941,114 @@ func TestInstallContinuationSkipsDuplicateWork(t *testing.T) {
 		nil, specs, proj, "/project", options(continuation), nil, replay)
 	require.NoError(t, replayErr)
 }
+
+// TestInstallContinuationLinksDifferentParameterization verifies that the
+// continuation does not over-dedup: a different package with an already
+// recorded plugin in the continuation must still be linked.
+func TestInstallContinuationLinksDifferentParameterization(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name: "plugin-spec",
+				Kind: apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+	})
+
+	specWithParam := func(param string) []workspace.PackageSpec {
+		return []workspace.PackageSpec{
+			{
+				Source:            "plugin-spec",
+				PluginDownloadURL: "https://example.com/plugin-spec.tar.gz",
+				Parameters:        []string{param},
+			},
+		}
+	}
+	proj := &workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+	}
+	options := func(c packageinstallation.Continuation) packageinstallation.Options {
+		return packageinstallation.Options{
+			Continuation: c,
+			Options: packageresolution.Options{
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			Concurrency: 1,
+		}
+	}
+
+	// First install links the package parameterized with "paramA".
+	continuation, err := packageinstallation.InstallPluginSet(t.Context(),
+		nil, specWithParam("paramA"), proj, "/project", options(packageinstallation.Continuation{}), nil, ws)
+	require.NoError(t, err)
+
+	// Replaying with a different parameterization must still link the package,
+	// even though the underlying plugin is already installed.
+	replay := &recordingWorkspace{ws, nil}
+	defer replay.save(t)
+	_, replayErr := packageinstallation.InstallPluginSet(t.Context(),
+		nil, specWithParam("paramB"), proj, "/project", options(continuation), nil, replay)
+	require.NoError(t, replayErr)
+
+	require.Len(t, ws.downloadedWorkspace["/project"].linked, 2,
+		"a package with a different parameterization must still be linked")
+}
+
+// TestInstallContinuationLinksDifferentProjectDir verifies that the continuation
+// does not over-dedup across projects: the same package must still be linked into
+// a different project directory than the one recorded in the continuation.
+func TestInstallContinuationLinksDifferentProjectDir(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, []string{"/project1", "/project2"}, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name: "plugin-spec",
+				Kind: apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+	})
+
+	specs := []workspace.PackageSpec{
+		{
+			Source:            "plugin-spec",
+			PluginDownloadURL: "https://example.com/plugin-spec.tar.gz",
+		},
+	}
+	proj := &workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+	}
+	options := func(c packageinstallation.Continuation) packageinstallation.Options {
+		return packageinstallation.Options{
+			Continuation: c,
+			Options: packageresolution.Options{
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			Concurrency: 1,
+		}
+	}
+
+	// First install links the package into /project1.
+	continuation, err := packageinstallation.InstallPluginSet(t.Context(),
+		nil, specs, proj, "/project1", options(packageinstallation.Continuation{}), nil, ws)
+	require.NoError(t, err)
+
+	// Replaying the same package into a different project dir must still link it
+	// there, even though the plugin is already installed.
+	replay := &recordingWorkspace{ws, nil}
+	defer replay.save(t)
+	_, replayErr := packageinstallation.InstallPluginSet(t.Context(),
+		nil, specs, proj, "/project2", options(continuation), nil, replay)
+	require.NoError(t, replayErr)
+
+	require.Len(t, ws.downloadedWorkspace["/project2"].linked, 1,
+		"the same package must still be linked into a different project dir")
+}
