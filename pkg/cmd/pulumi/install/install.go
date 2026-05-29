@@ -190,14 +190,15 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 						UseLanguageVersionTools: useLanguageVersionTools,
 					})
 
-				err = packageinstallation.InstallPluginSet(ctx, packages, specs, proj, projPath, packageinstallation.Options{
-					Concurrency: parallel,
-					Options: packageresolution.Options{
-						ResolveVersionWithLocalWorkspace:           true,
-						ResolveWithRegistry:                        !env.DisableRegistryResolve.Value(),
-						AllowNonInvertableLocalWorkspaceResolution: true,
-					},
-				}, registry, ws)
+				err = packageinstallation.InstallPluginSet(ctx, packages, specs, proj, filepath.Dir(projPath),
+					packageinstallation.Options{
+						Concurrency: parallel,
+						Options: packageresolution.Options{
+							ResolveVersionWithLocalWorkspace:           true,
+							ResolveWithRegistry:                        !env.DisableRegistryResolve.Value(),
+							AllowNonInvertableLocalWorkspaceResolution: true,
+						},
+					}, registry, ws)
 				if err != nil {
 					return fmt.Errorf("installing packages: %w", err)
 				}
