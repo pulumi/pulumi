@@ -1766,3 +1766,65 @@ func TestRequiredPackagesDeclaredInProjectPackagesNotDownloaded(t *testing.T) {
 	require.True(t, ws.plugins[providerNestedPath].installed,
 		"provider-nested should be installed (via provider's packages)")
 }
+
+// TestInstallPluginSet tests that InstallPluginSet installs the resolved plugin
+// descriptors directly while generating and linking local SDKs for the package specs.
+func TestInstallPluginSet(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name:    "plugin-descriptor",
+				Version: &semver.Version{Major: 1},
+				Kind:    apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+		{
+			d: workspace.PluginDescriptor{
+				Name: "plugin-spec",
+				Kind: apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+	})
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	err := packageinstallation.InstallPluginSet(t.Context(),
+		[]workspace.PackageDescriptor{
+			{
+				PluginDescriptor: workspace.PluginDescriptor{
+					Name:              "plugin-descriptor",
+					Version:           &semver.Version{Major: 1},
+					Kind:              apitype.ResourcePlugin,
+					PluginDownloadURL: "https://example.com/plugin-descriptor.tar.gz",
+				},
+			},
+		},
+		[]workspace.PackageSpec{
+			{
+				Source:            "plugin-spec",
+				PluginDownloadURL: "https://example.com/plugin-spec.tar.gz",
+			},
+		},
+		&workspace.Project{
+			Name:    "test-project",
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		}, "/project", packageinstallation.Options{
+			Options: packageresolution.Options{
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			Concurrency: 1,
+		}, nil, rws)
+	require.NoError(t, err)
+
+	descriptorPath := "$HOME/.pulumi/plugins/resource-plugin-descriptor-v1.0.0"
+	specPath := "$HOME/.pulumi/plugins/resource-plugin-spec"
+
+	require.True(t, ws.plugins[descriptorPath].downloaded, "descriptor plugin should be downloaded")
+	require.True(t, ws.plugins[specPath].downloaded, "spec plugin should be downloaded")
+}

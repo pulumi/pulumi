@@ -161,6 +161,7 @@ func InstallPlugin(
 	}, resolvedSpec, nil
 }
 
+// InstallPluginSet installs the plugins for the descriptors, and installs + links the packages descried by specs.
 func InstallPluginSet(
 	ctx context.Context,
 	descriptors []workspace.PackageDescriptor, specs []workspace.PackageSpec,

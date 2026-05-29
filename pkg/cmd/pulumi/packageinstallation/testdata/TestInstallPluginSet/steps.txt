@@ -1,0 +1,17 @@
+HasPlugin{PluginDescriptor{Name:"plugin-descriptor", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://example.com/plugin-descriptor.tar.gz"}} -> {false}
+HasPlugin{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false, nil, nil}
+HasPlugin{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false, nil, nil}
+GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {nil, nil}
+DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-descriptor", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://example.com/plugin-descriptor.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-plugin-descriptor-v1.0.0", <func(bool)>, nil}
+LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-descriptor-v1.0.0"} -> {nil, "", wrapErrors{msg:"no project file found and no plugin file found", errs:[2]{errorString{s:"no project file found"}, errorString{s:"no plugin file found"}}}}
+IsExecutable{ctx, "$HOME/.pulumi/plugins/resource-plugin-descriptor-v1.0.0/pulumi-resource-plugin-descriptor"} -> {true, nil}
+DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-descriptor", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://example.com/plugin-descriptor.tar.gz"}, true} -> {}
+DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-plugin-spec", <func(bool)>, nil}
+LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-spec"} -> {nil, "", wrapErrors{msg:"no project file found and no plugin file found", errs:[2]{errorString{s:"no project file found"}, errorString{s:"no plugin file found"}}}}
+IsExecutable{ctx, "$HOME/.pulumi/plugins/resource-plugin-spec/pulumi-resource-plugin-spec"} -> {true, nil}
+DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}, true} -> {}
+RunPackage{ctx, "/project", "$HOME/.pulumi/plugins/resource-plugin-spec/pulumi-resource-plugin-spec", nil} -> {invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-spec"}, nil}
+GenerateLocalSDK{ctx, ProjectRuntimeInfo{name:"go"}, "/project", invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-spec"}} -> {LinkablePackageDescriptor{Path:"$HOME/.pulumi/plugins/resource-plugin-spec/sdk-<nil>"}, nil}
+LinkIntoProject{ctx, ProjectRuntimeInfo{name:"go"}, "/project", [1]{LinkablePackageDescriptor{Path:"$HOME/.pulumi/plugins/resource-plugin-spec/sdk-<nil>"}}} -> {nil}
