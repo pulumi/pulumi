@@ -177,7 +177,13 @@ jobs:
       - uses: miniscruff/changie-action@v2
         with:
           version: v1.21.0
-      - run: changie batch auto --dry-run
+      - name: Validate changelog entries
+        run: |
+          if [ -z "$(find changelog/pending -maxdepth 1 -name '*.yaml' -print -quit)" ]; then
+            echo "No pending changelog entries; skipping changie batch."
+            exit 0
+          fi
+          changie batch auto --dry-run
 
   pulumi-json:
     name: Lint pulumi.json
