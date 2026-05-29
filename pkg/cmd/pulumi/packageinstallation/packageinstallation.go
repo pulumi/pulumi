@@ -15,6 +15,7 @@
 package packageinstallation
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -101,12 +102,27 @@ type Context interface {
 
 type MarkInstallationDone = func(success bool)
 
+// A Continuation represents the work already performed during an install.
+//
+// By passing the Continuation from one install to the next, we can assert that
+// duplicate work won't be performed.
+type Continuation struct {
+	// Plugins that have been resolved/downloaded and are known to be already installed.
+	seen map[pluginHash]cachedPlugin
+
+	// A map from projecDirs to plugin path params
+	links map[string]map[string][]plugin.ParameterizeParameters
+}
+
 type Options struct {
 	packageresolution.Options
 	// The maximum number of concurrent operations.
 	//
 	// If Concurrency is less then 1, the number of concurrent operations is unbounded.
 	Concurrency int
+
+	// A [Continuation] representing existing work done that won't be repeated.
+	Continuation Continuation
 }
 
 // A function to run the installed plugin.
@@ -140,11 +156,11 @@ func InstallPlugin(
 	baseProject workspace.BaseProject, projectDir string,
 	options Options,
 	registry registry.Registry, ws Context,
-) (RunPlugin, workspace.PackageSpec, error) {
+) (RunPlugin, workspace.PackageSpec, Continuation, error) {
 	var runBundle runBundle
 	var resolvedSpec workspace.PackageSpec
 
-	err := runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
+	token, err := runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
 		enqueueUnresolvedPackage(ctx, state, root, spec, project[workspace.BaseProject]{
 			proj:       baseProject,
 			projectDir: projectDir,
@@ -152,13 +168,13 @@ func InstallPlugin(
 		return nil
 	})
 	if err != nil {
-		return nil, resolvedSpec, err
+		return nil, resolvedSpec, token, err
 	}
 
 	return func(ctx context.Context, wd string) (plugin.Provider, error) {
 		return ws.RunPackage(ctx, wd, runBundle.info.pluginPath,
 			runBundle.params, resolvedSpec)
-	}, resolvedSpec, nil
+	}, resolvedSpec, token, nil
 }
 
 // InstallPluginSet installs the plugins for the descriptors, and installs + links the packages descried by specs.
@@ -168,7 +184,7 @@ func InstallPluginSet(
 	baseProject workspace.BaseProject, projectDir string,
 	options Options,
 	registry registry.Registry, ws Context,
-) error {
+) (Continuation, error) {
 	specs = slices.Clone(specs)
 	return runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
 		for _, resolved := range descriptors {
@@ -213,7 +229,7 @@ func InstallProjectPlugins(
 	ctx context.Context,
 	project_ workspace.BaseProject, projectDir string,
 	options Options, registry registry.Registry, ws Context,
-) error {
+) (Continuation, error) {
 	return runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
 		enqueueProjectDependencies(ctx, state, root, project[workspace.BaseProject]{
 			proj:       project_,
@@ -231,25 +247,31 @@ func runInstall(
 	ctx context.Context,
 	options Options, registry registry.Registry, ws Context,
 	enqueue func(ctx context.Context, state state, root pdag.Node) error,
-) error {
+) (Continuation, error) {
 	dag := pdag.New[step]()
 	root, rootReady := dag.NewNode(noOpStep{})
 
 	// State shared across all nodes.
 	state := state{
-		ws:       ws,
-		registry: registry,
-		options:  options,
-		dag:      dag,
+		ws:                ws,
+		registry:          registry,
+		resolutionOptions: options.Options,
+		dag:               dag,
 
-		// Most Installs will install exactly one binary plugin, so pre-allocate
-		// for that.
+		// Most Installs will install exactly one binary plugin, so pre-allocate for that.
 		seen:  make(map[pluginHash]cachedPlugin, 1),
 		seenM: new(sync.Mutex),
+
+		links:  make(map[string]map[string][]plugin.ParameterizeParameters),
+		linksM: new(sync.Mutex),
 
 		cleanupFuncs: nil,
 		cleanupM:     new(sync.Mutex),
 	}
+
+	// Apply the continuation token into state
+	maps.Copy(state.seen, options.Continuation.seen)
+	maps.Copy(state.links, options.Continuation.links)
 
 	defer func() {
 		for _, f := range state.cleanupFuncs {
@@ -258,7 +280,7 @@ func runInstall(
 	}()
 
 	if err := enqueue(ctx, state, root); err != nil {
-		return err
+		return Continuation{}, err
 	}
 
 	rootReady() // Now that at least one spec has been added, it's safe to mark the root as ready.
@@ -266,7 +288,7 @@ func runInstall(
 		return step.run(ctx, state)
 	}, pdag.MaxProcs(options.Concurrency))
 
-	return wrapCycleError(err)
+	return Continuation{state.seen, state.links}, wrapCycleError(err)
 }
 
 type ErrorCyclicDependencies struct {
@@ -382,14 +404,17 @@ type step interface {
 //
 // state is available to all running [step]s in parallel.
 type state struct {
-	ws       Context
-	registry registry.Registry
-	options  Options
-	dag      *pdag.DAG[step]
+	ws                Context
+	registry          registry.Registry
+	resolutionOptions packageresolution.Options
+	dag               *pdag.DAG[step]
 
 	// A mapping of plugins already managed by dag.
 	seen  map[pluginHash]cachedPlugin
 	seenM *sync.Mutex
+
+	links  map[string]map[string][]plugin.ParameterizeParameters
+	linksM *sync.Mutex
 
 	// A list of functions, to be called in arbitrary order before the install run is
 	// finished.
@@ -652,7 +677,25 @@ type generateLocalSDKStep struct {
 	outDescriptor *workspace.LinkablePackageDescriptor
 }
 
+const alreadyLinkedDescriptorPath = "already-linked-517048514783154790"
+
 func (step generateLocalSDKStep) run(ctx context.Context, p state) error {
+	p.linksM.Lock()
+	linked, ok := p.links[step.project.projectDir]
+	if ok && slices.ContainsFunc(linked[step.runBundle.info.pluginPath], paramsEqual(step.runBundle.params)) {
+		p.linksM.Unlock()
+		*step.outDescriptor = workspace.LinkablePackageDescriptor{
+			Path: alreadyLinkedDescriptorPath,
+		}
+		return nil
+	}
+	if !ok {
+		linked = make(map[string][]plugin.ParameterizeParameters, 1)
+		p.links[step.project.projectDir] = linked
+	}
+	linked[step.runBundle.info.pluginPath] = append(linked[step.runBundle.info.pluginPath], step.runBundle.params)
+	p.linksM.Unlock()
+
 	provider, err := p.ws.RunPackage(ctx,
 		step.project.projectDir, step.runBundle.info.pluginPath,
 		step.runBundle.params, step.specSource)
@@ -667,6 +710,32 @@ func (step generateLocalSDKStep) run(ctx context.Context, p state) error {
 	return nil
 }
 
+func paramsEqual(a plugin.ParameterizeParameters) func(plugin.ParameterizeParameters) bool {
+	return func(b plugin.ParameterizeParameters) bool {
+		if a, b := a == nil || a.Empty(), b == nil || b.Empty(); a || b {
+			return a && b
+		}
+		switch a := a.(type) {
+		case *plugin.ParameterizeArgs:
+			b, ok := b.(*plugin.ParameterizeArgs)
+			if !ok {
+				return false
+			}
+			return slices.Equal(a.Args, b.Args)
+
+		case *plugin.ParameterizeValue:
+			b, ok := b.(*plugin.ParameterizeValue)
+			if !ok {
+				return false
+			}
+			return a.Name == b.Name && a.Version.EQ(b.Version) && bytes.Equal(a.Value, b.Value)
+		default:
+			contract.Failf("unknown type of paramaters: %T", a)
+			return false
+		}
+	}
+}
+
 // Link an already downloaded and installed package into a project.
 type linkPackageStep struct {
 	// The project we are linking into.
@@ -677,7 +746,15 @@ type linkPackageStep struct {
 }
 
 func (step linkPackageStep) run(ctx context.Context, p state) error {
-	return p.ws.LinkIntoProject(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, step.descriptors)
+	toLink := slices.DeleteFunc(step.descriptors, func(d workspace.LinkablePackageDescriptor) bool {
+		return d.Path == alreadyLinkedDescriptorPath
+	})
+
+	if len(toLink) == 0 {
+		return nil
+	}
+
+	return p.ws.LinkIntoProject(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, toLink)
 }
 
 // newSpecNode adds a new spec to the DAG, or de-duplicates the spec.
@@ -757,7 +834,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 
 	// TODO: The registry should be wrapped in a caching layer to de-duplicate calls.
 	result, err := packageresolution.Resolve(ctx, p.registry, p.ws, step.spec,
-		p.options.Options)
+		p.resolutionOptions)
 	if err != nil {
 		return fmt.Errorf("unable to resolve: %w", err)
 	}

@@ -106,7 +106,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					// plugin. Use the global default registry.
 					reg := cmdCmd.NewDefaultRegistry(
 						ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
-					if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
+					if _, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
 						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
@@ -145,9 +145,10 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
 			registry := cmdCmd.NewDefaultRegistry(
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, pctx.Diag, env.Global())
-			if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
+			continuation, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
 				registry, parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
-			); err != nil {
+			)
+			if err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
 			}
 
@@ -190,9 +191,12 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 						UseLanguageVersionTools: useLanguageVersionTools,
 					})
 
-				err = packageinstallation.InstallPluginSet(ctx, packages, specs, proj, filepath.Dir(projPath),
+				// Pass the continuation from InstallPackagesFromProject so the packages it
+				// already installed and linked are not reinstalled or regenerated here.
+				_, err = packageinstallation.InstallPluginSet(ctx, packages, specs, proj, filepath.Dir(projPath),
 					packageinstallation.Options{
-						Concurrency: parallel,
+						Concurrency:  parallel,
+						Continuation: continuation,
 						Options: packageresolution.Options{
 							ResolveVersionWithLocalWorkspace:           true,
 							ResolveWithRegistry:                        !env.DisableRegistryResolve.Value(),

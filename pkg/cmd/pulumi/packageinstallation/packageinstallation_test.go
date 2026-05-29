@@ -54,7 +54,7 @@ func TestInstallAlreadyInstalledPackage(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source: "already-installed",
 	}, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
@@ -89,7 +89,7 @@ func TestInstallAlreadyInstalledPlugin(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, _, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source: "plugin", Version: "1.0.0",
 		Parameters: []string{"parameterization"},
 	}, nil, "", packageinstallation.Options{
@@ -138,7 +138,7 @@ func TestDoNotInstallDependenciesOfAlreadyInstalledPackage(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source: "already-installed",
 	}, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
@@ -173,7 +173,7 @@ func TestInstallExternalBinaryPackage(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:            "external-package",
 		PluginDownloadURL: "https://example.com/external-package.tar.gz",
 	}, nil, "", packageinstallation.Options{
@@ -230,7 +230,7 @@ func TestInstallPluginWithParameterizedDependency(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:            "plugin-a",
 		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
 	}, nil, "", packageinstallation.Options{
@@ -330,7 +330,7 @@ func TestInstallPluginWithDiamondDependency(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:            "plugin-a",
 		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
 	}, nil, "", packageinstallation.Options{
@@ -427,7 +427,7 @@ func TestDeduplicateRegistryBasedPlugin(t *testing.T) {
 		},
 	}
 
-	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:            "plugin-a",
 		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
 	}, nil, "", packageinstallation.Options{
@@ -508,7 +508,7 @@ func TestInstallPluginWithCyclicDependency(t *testing.T) {
 		},
 	})
 
-	_, _, err := packageinstallation.InstallPlugin(
+	_, _, _, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PackageSpec{
 			Source:            "plugin-a",
@@ -576,7 +576,7 @@ func TestInstallRegistryPackage(t *testing.T) {
 		},
 	}
 
-	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source: "registry-package",
 	}, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
@@ -636,7 +636,7 @@ func TestInstallInProjectWithSharedDependency(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
+	_, err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
 		Name:    "test-project",
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		Packages: map[string]workspace.PackageSpec{
@@ -732,7 +732,7 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
+	_, err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
 		Name:    "test-project",
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		Packages: map[string]workspace.PackageSpec{
@@ -769,7 +769,7 @@ func TestInstallPluginWithBinaryPaths(t *testing.T) {
 			rws := &recordingWorkspace{ws, nil}
 			defer rws.save(t)
 
-			runPlugin, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+			runPlugin, spec, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 				Source: tt.source,
 			}, nil, "", packageinstallation.Options{
 				Concurrency: 1,
@@ -877,7 +877,7 @@ func TestInstallPluginWithMultipleVersions(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, spec, err := packageinstallation.InstallPlugin(
+	run, spec, _, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PackageSpec{
 			Source:            "root",
@@ -980,7 +980,7 @@ func TestDuplicateParameterizationSources(t *testing.T) {
 		},
 	}
 
-	_, _, err := packageinstallation.InstallPlugin(
+	_, _, _, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PackageSpec{
 			Source:            "root",
@@ -1019,7 +1019,7 @@ func TestMissingBinaryAndProject(t *testing.T) {
 		},
 	})
 
-	_, _, err := packageinstallation.InstallPlugin(
+	_, _, _, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PackageSpec{
 			Source:            "invalid-plugin",
@@ -1065,7 +1065,7 @@ func TestRegistryLookupFailure(t *testing.T) {
 			},
 		}
 
-		_, _, err := packageinstallation.InstallPlugin(
+		_, _, _, err := packageinstallation.InstallPlugin(
 			t.Context(),
 			workspace.PackageSpec{
 				Source: "unavailable-package",
@@ -1099,7 +1099,7 @@ func TestRegistryLookupFailure(t *testing.T) {
 			},
 		}
 
-		_, _, err := packageinstallation.InstallPlugin(
+		_, _, _, err := packageinstallation.InstallPlugin(
 			t.Context(),
 			workspace.PackageSpec{
 				Source: "nonexistent-package",
@@ -1160,7 +1160,7 @@ func TestInstallParameterizedProviderFromRegistry(t *testing.T) {
 		},
 	}
 
-	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:  "opentofu/airbytehq/airbyte",
 		Version: "0.13.0",
 	}, nil, "", packageinstallation.Options{
@@ -1242,7 +1242,7 @@ func TestInstallProjectWithMultiplePackagesSharingOnePlugin(t *testing.T) {
 		},
 	}
 
-	err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
+	_, err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
 		Name:    "test-project",
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		Packages: map[string]workspace.PackageSpec{
@@ -1308,7 +1308,7 @@ func TestInstallPluginWithRequiredPackages(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source:            "plugin-a",
 		Version:           "1.0.0",
 		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
@@ -1498,7 +1498,7 @@ func TestConcurrency(t *testing.T) {
 	}
 
 	baselineWs := createWorkspace()
-	run, spec, err := packageinstallation.InstallPlugin(
+	run, spec, _, err := packageinstallation.InstallPlugin(
 		t.Context(),
 		workspace.PackageSpec{
 			Source:            "root",
@@ -1527,7 +1527,7 @@ func TestConcurrency(t *testing.T) {
 	for range 100 {
 		ws := createWorkspace()
 		ws.jitter = time.Millisecond * 5
-		run, spec, err := packageinstallation.InstallPlugin(
+		run, spec, _, err := packageinstallation.InstallPlugin(
 			t.Context(),
 			workspace.PackageSpec{
 				Source:            "root",
@@ -1633,7 +1633,7 @@ func TestInstallSharedDependencyInParallel(t *testing.T) {
 	}
 
 	baselineWs := createWorkspace()
-	err := packageinstallation.InstallProjectPlugins(t.Context(), createProject(),
+	_, err := packageinstallation.InstallProjectPlugins(t.Context(), createProject(),
 		"/project", packageinstallation.Options{
 			Options: packageresolution.Options{
 				ResolveVersionWithLocalWorkspace:           true,
@@ -1664,7 +1664,7 @@ func TestInstallSharedDependencyInParallel(t *testing.T) {
 	for range 100 {
 		ws := createWorkspace()
 		ws.jitter = time.Millisecond * 10
-		err := packageinstallation.InstallProjectPlugins(t.Context(), createProject(),
+		_, err := packageinstallation.InstallProjectPlugins(t.Context(), createProject(),
 			"/project", packageinstallation.Options{
 				Options: packageresolution.Options{
 					ResolveVersionWithLocalWorkspace:           true,
@@ -1743,7 +1743,7 @@ func TestRequiredPackagesDeclaredInProjectPackagesNotDownloaded(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
+	_, err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
 		Name:    "test-project",
 		Runtime: workspace.NewProjectRuntimeInfo("python", nil),
 		Packages: map[string]workspace.PackageSpec{
@@ -1793,7 +1793,7 @@ func TestInstallPluginSet(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	err := packageinstallation.InstallPluginSet(t.Context(),
+	_, err := packageinstallation.InstallPluginSet(t.Context(),
 		[]workspace.PackageDescriptor{
 			{
 				PluginDescriptor: workspace.PluginDescriptor{
@@ -1852,7 +1852,7 @@ func TestInstallPluginSetRemotePackageOverride(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	err := packageinstallation.InstallPluginSet(t.Context(),
+	_, err := packageinstallation.InstallPluginSet(t.Context(),
 		[]workspace.PackageDescriptor{
 			{
 				PluginDescriptor: workspace.PluginDescriptor{
@@ -1890,4 +1890,54 @@ func TestInstallPluginSetRemotePackageOverride(t *testing.T) {
 	require.True(t, ws.plugins[awsPath].downloaded, "remote package plugin should be downloaded")
 	require.Empty(t, ws.downloadedWorkspace["/project"].linked,
 		"remote package must not be linked as a local SDK into the project")
+}
+
+func TestInstallContinuationSkipsDuplicateWork(t *testing.T) {
+	t.Parallel()
+
+	// Both installs run against the same workspace, modeling the shared plugin
+	// storage that a real second install resumes from.
+	ws := newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name: "plugin-spec",
+				Kind: apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+	})
+
+	specs := []workspace.PackageSpec{
+		{
+			Source:            "plugin-spec",
+			PluginDownloadURL: "https://example.com/plugin-spec.tar.gz",
+		},
+	}
+	proj := &workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+	}
+	options := func(c packageinstallation.Continuation) packageinstallation.Options {
+		return packageinstallation.Options{
+			Continuation: c,
+			Options: packageresolution.Options{
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			Concurrency: 1,
+		}
+	}
+
+	// First install performs the work and records a continuation.
+	continuation, err := packageinstallation.InstallPluginSet(t.Context(),
+		nil, specs, proj, "/project", options(packageinstallation.Continuation{}), nil, ws)
+	require.NoError(t, err)
+
+	// Replay the same install against the same workspace, passing the continuation.
+	// None of the previously performed work should be repeated.
+	replay := &recordingWorkspace{ws, nil}
+	defer replay.save(t)
+	_, replayErr := packageinstallation.InstallPluginSet(t.Context(),
+		nil, specs, proj, "/project", options(continuation), nil, replay)
+	require.NoError(t, replayErr)
 }

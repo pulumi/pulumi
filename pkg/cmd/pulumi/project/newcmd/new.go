@@ -483,7 +483,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	if !args.generateOnly && proj.Runtime.Name() != "" {
 		registry := cmdCmd.NewDefaultRegistry(
 			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
-		if err := InstallPackagesFromProject(ctx, proj, root,
+		if _, err := InstallPackagesFromProject(ctx, proj, root,
 			registry, -1, false, args.stderr, args.stderr, env.Global()); err != nil {
 			return err
 		}
