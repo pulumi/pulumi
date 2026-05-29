@@ -37,7 +37,7 @@ func (DiscriminatedUnionProvider) version() semver.Version {
 	return semver.Version{Major: 31}
 }
 
-func (p *DiscriminatedUnionProvider) Pkg() tokens.Package {
+func (p *DiscriminatedUnionProvider) pkg() tokens.Package {
 	return "discriminated-union"
 }
 
@@ -74,14 +74,14 @@ func (p *DiscriminatedUnionProvider) GetSchema(
 
 	union := schema.TypeSpec{
 		OneOf: []schema.TypeSpec{
-			{Ref: fmt.Sprintf("#/types/%s:index:VariantOne", p.Pkg())},
-			{Ref: fmt.Sprintf("#/types/%s:index:VariantTwo", p.Pkg())},
+			{Ref: fmt.Sprintf("#/types/%s:index:VariantOne", p.pkg())},
+			{Ref: fmt.Sprintf("#/types/%s:index:VariantTwo", p.pkg())},
 		},
 		Discriminator: &schema.DiscriminatorSpec{
 			PropertyName: "discriminantKind",
 			Mapping: map[string]string{
-				"variant1": fmt.Sprintf("#/types/%s:index:VariantOne", p.Pkg()),
-				"variant2": fmt.Sprintf("#/types/%s:index:VariantTwo", p.Pkg()),
+				"variant1": fmt.Sprintf("#/types/%s:index:VariantOne", p.pkg()),
+				"variant2": fmt.Sprintf("#/types/%s:index:VariantTwo", p.pkg()),
 			},
 		},
 	}
@@ -101,14 +101,14 @@ func (p *DiscriminatedUnionProvider) GetSchema(
 	}
 
 	pkg := schema.PackageSpec{
-		Name:    string(p.Pkg()),
+		Name:    string(p.pkg()),
 		Version: p.version().String(),
 		Types: map[string]schema.ComplexTypeSpec{
-			fmt.Sprintf("%s:index:VariantOne", p.Pkg()): {ObjectTypeSpec: variantOneType},
-			fmt.Sprintf("%s:index:VariantTwo", p.Pkg()): {ObjectTypeSpec: variantTwoType},
+			fmt.Sprintf("%s:index:VariantOne", p.pkg()): {ObjectTypeSpec: variantOneType},
+			fmt.Sprintf("%s:index:VariantTwo", p.pkg()): {ObjectTypeSpec: variantTwoType},
 		},
 		Resources: map[string]schema.ResourceSpec{
-			fmt.Sprintf("%s:index:Example", p.Pkg()): {
+			fmt.Sprintf("%s:index:Example", p.pkg()): {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: resourceProperties,
@@ -169,7 +169,7 @@ func (p *DiscriminatedUnionProvider) DiffConfig(
 func (p *DiscriminatedUnionProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	if string(req.URN.Type()) != fmt.Sprintf("%s:index:Example", p.Pkg()) {
+	if string(req.URN.Type()) != fmt.Sprintf("%s:index:Example", p.pkg()) {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
@@ -181,7 +181,7 @@ func (p *DiscriminatedUnionProvider) Check(
 func (p *DiscriminatedUnionProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if string(req.URN.Type()) == fmt.Sprintf("%s:index:Example", p.Pkg()) {
+	if string(req.URN.Type()) == fmt.Sprintf("%s:index:Example", p.pkg()) {
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
 			Properties: req.Properties,

@@ -58,7 +58,7 @@ var (
 	_ ProviderWithCustomServer = (*ConfigGrpcProvider)(nil)
 )
 
-func (*ConfigGrpcProvider) Pkg() tokens.Package {
+func (*ConfigGrpcProvider) pkg() tokens.Package {
 	return "config-grpc"
 }
 
@@ -131,7 +131,7 @@ func (p *ConfigGrpcProvider) populateSchema(
 			},
 			Secret: markPropertiesAsSecret,
 		}
-		typeToken := fmt.Sprintf("%s:index:T%s", p.Pkg(), c)
+		typeToken := fmt.Sprintf("%s:index:T%s", p.pkg(), c)
 		typeRef := "#/types/" + typeToken
 		spec[withPrefix("obj", c)] = pschema.PropertySpec{
 			TypeSpec: pschema.TypeSpec{
@@ -160,7 +160,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 	}
 
 	schema := pschema.PackageSpec{
-		Name:    string(p.Pkg()),
+		Name:    string(p.pkg()),
 		Version: p.version(),
 		Config:  configSpec,
 		Provider: pschema.ResourceSpec{
@@ -171,7 +171,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 		},
 		Types: types,
 		Resources: map[string]pschema.ResourceSpec{
-			fmt.Sprintf("%s:index:ConfigFetcher", p.Pkg()): {
+			fmt.Sprintf("%s:index:ConfigFetcher", p.pkg()): {
 				ObjectTypeSpec: pschema.ObjectTypeSpec{
 					Properties: map[string]pschema.PropertySpec{
 						"config": {
@@ -191,7 +191,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 		allProps = append(allProps, k)
 	}
 
-	schema.Functions[fmt.Sprintf("%s:index:toSecret", p.Pkg())] = pschema.FunctionSpec{
+	schema.Functions[fmt.Sprintf("%s:index:toSecret", p.pkg())] = pschema.FunctionSpec{
 		Inputs: &pschema.ObjectTypeSpec{
 			Properties: toSecretSchema,
 		},
@@ -260,7 +260,7 @@ func (p *ConfigGrpcProvider) Create(
 	ctx context.Context,
 	req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if string(req.Type) == fmt.Sprintf("%s:index:ConfigFetcher", p.Pkg()) {
+	if string(req.Type) == fmt.Sprintf("%s:index:ConfigFetcher", p.pkg()) {
 		requestsJSON, err := json.Marshal([]RPCRequest{
 			p.lastCheckConfigRequest,
 			p.lastConfigureRequest,
@@ -294,7 +294,7 @@ func (p *ConfigGrpcProvider) Invoke(
 	ctx context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
 	switch {
-	case string(req.Tok) == fmt.Sprintf("%s:index:toSecret", p.Pkg()):
+	case string(req.Tok) == fmt.Sprintf("%s:index:toSecret", p.pkg()):
 		secreted := req.Args.Copy()
 		for k, v := range secreted {
 			secreted[k] = resource.MakeSecret(v)

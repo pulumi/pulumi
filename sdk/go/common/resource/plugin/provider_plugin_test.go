@@ -41,6 +41,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+func ptr[T any](v T) *T { return &v }
+
 func TestAnnotateSecrets(t *testing.T) {
 	t.Parallel()
 
@@ -459,10 +461,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				},
 			}
 
-			p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+			p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
 			// We have to configure before we can use Delete.
-			_, err := p.Configure(t.Context(), ConfigureRequest{})
+			_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
 			require.NoError(t, err, "Configure failed")
 
 			// Act.
@@ -493,9 +495,6 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			// Zero value of a slice or map is nil.
 			v.Set(reflect.Zero(v.Type()))
 		}
-	}
-	ptr := func(v bool) *bool {
-		return &v
 	}
 
 	tests := []struct {
@@ -699,10 +698,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 				},
 			}
 
-			p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+			p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
 			// Must configure before we can use Construct.
-			_, err := p.Configure(t.Context(), ConfigureRequest{})
+			_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
 			require.NoError(t, err, "configure failed")
 
 			_, err = p.Construct(t.Context(),
@@ -748,7 +747,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 		},
 	}
 
-	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
 	props := resource.PropertyMap{
 		"foo": resource.NewProperty(&resource.Secret{
@@ -779,7 +778,10 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 	// Wait until delete request has been sent to Configure
 	// and then wait until Delete has finished.
 	<-deleting
-	_, err := p.Configure(t.Context(), ConfigureRequest{Inputs: props})
+	_, err := p.Configure(t.Context(), ConfigureRequest{
+		Type:   ptr(tokens.Type("pulumi:providers:test")),
+		Inputs: props,
+	})
 	require.NoError(t, err)
 	<-done
 
@@ -1042,8 +1044,8 @@ func TestProvider_List(t *testing.T) {
 				},
 			}
 
-			p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
-			_, err := p.Configure(t.Context(), ConfigureRequest{})
+			p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+			_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
 			require.NoError(t, err)
 
 			stream, err := p.List(t.Context(), ListRequest{
@@ -1081,8 +1083,8 @@ func TestProvider_List_YieldsStreamError(t *testing.T) {
 		},
 	}
 
-	p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
-	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err)
 
 	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
@@ -1128,8 +1130,8 @@ func TestProvider_List_EarlyBreakCancelsRPC(t *testing.T) {
 		},
 	}
 
-	p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
-	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err)
 
 	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
@@ -1171,8 +1173,8 @@ func TestProvider_List_FullDrainCancelsRPC(t *testing.T) {
 		},
 	}
 
-	p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
-	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err)
 
 	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
@@ -1200,8 +1202,8 @@ func TestProvider_List_StreamErrorCancelsRPC(t *testing.T) {
 		},
 	}
 
-	p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
-	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err)
 
 	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
@@ -1235,8 +1237,8 @@ func TestProvider_List_StopsEarly(t *testing.T) {
 		},
 	}
 
-	p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
-	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err)
 
 	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
@@ -1269,9 +1271,9 @@ func TestKubernetesDiffError(t *testing.T) {
 	}
 
 	// Test that the error from 14529 is NOT ignored if reported by something other than kubernetes
-	az := NewProviderWithClient(newTestContext(t), "azure", client, false /* disablePreview */)
+	az := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 	_, err := az.DiffConfig(t.Context(), DiffConfigRequest{
-		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:azure", "qux"),
+		resource.NewURN("org/proj/dev", "foo", "", "pulumi:providers:azure", "qux"),
 		"",
 		"",
 		resource.PropertyMap{},
@@ -1283,9 +1285,9 @@ func TestKubernetesDiffError(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to parse kubeconfig")
 
 	// Test that the error from 14529 is ignored if reported by kubernetes
-	k8s := NewProviderWithClient(newTestContext(t), "kubernetes", client, false /* disablePreview */)
+	k8s := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 	diff, err := k8s.DiffConfig(t.Context(), DiffConfigRequest{
-		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
+		resource.NewURN("org/proj/dev", "foo", "", "pulumi:providers:kubernetes", "qux"),
 		"",
 		"",
 		resource.PropertyMap{},
@@ -1300,7 +1302,7 @@ func TestKubernetesDiffError(t *testing.T) {
 	// Test that some other error is not ignored if reported by kubernetes
 	diffErr = status.Errorf(codes.Unknown, "some other error")
 	_, err = k8s.DiffConfig(t.Context(), DiffConfigRequest{
-		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
+		resource.NewURN("org/proj/dev", "foo", "", "pulumi:providers:kubernetes", "qux"),
 		"",
 		"",
 		resource.PropertyMap{},
@@ -1331,7 +1333,7 @@ func TestOverrideVersion(t *testing.T) {
 
 	version := semver.MustParse("1.2.3")
 
-	prov := NewProviderWithVersionOverride(newTestContext(t), "azure", client, false /* disablePreview */, &version)
+	prov := NewProviderWithVersionOverride(newTestContext(t), client, false /* disablePreview */, &version)
 	resp, err := prov.GetPluginInfo(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, &version, resp.Version)
@@ -1423,9 +1425,9 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 		},
 	}
 
-	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
-	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err, "configure failed")
 
 	var initErr *InitError

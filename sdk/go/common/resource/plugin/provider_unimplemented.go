@@ -17,7 +17,6 @@ package plugin
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -47,10 +46,6 @@ func (p *UnimplementedProvider) Close() error {
 
 func (p *UnimplementedProvider) SignalCancellation(context.Context) error {
 	return status.Error(codes.Unimplemented, "SignalCancellation is not yet implemented")
-}
-
-func (p *UnimplementedProvider) Pkg() tokens.Package {
-	return tokens.Package("")
 }
 
 func (p *UnimplementedProvider) Parameterize(context.Context, ParameterizeRequest) (ParameterizeResponse, error) {

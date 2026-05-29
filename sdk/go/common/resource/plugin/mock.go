@@ -148,7 +148,6 @@ type MockProvider struct {
 	NotForwardCompatibleProvider
 
 	CloseF              func() error
-	PkgF                func() tokens.Package
 	HandshakeF          func(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 	ParameterizeF       func(context.Context, ParameterizeRequest) (ParameterizeResponse, error)
 	GetSchemaF          func(context.Context, GetSchemaRequest) (GetSchemaResponse, error)
@@ -178,13 +177,6 @@ func (m *MockProvider) Close() error {
 		return m.CloseF()
 	}
 	return nil
-}
-
-func (m *MockProvider) Pkg() tokens.Package {
-	if m.PkgF != nil {
-		return m.PkgF()
-	}
-	return ""
 }
 
 func (m *MockProvider) Handshake(

@@ -63,10 +63,6 @@ func (p *OutputProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (p *OutputProvider) Pkg() tokens.Package {
-	return "output"
-}
-
 func (p *OutputProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("23.0.0")
 	return plugin.PluginInfo{
