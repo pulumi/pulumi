@@ -1,3 +1,5 @@
 kind: fix
 body: Fix snapshot integrity issue with `up --refresh`
 component: engine
+custom:
+  PR: "23260"
