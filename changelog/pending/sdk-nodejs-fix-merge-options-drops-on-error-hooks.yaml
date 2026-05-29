@@ -1,0 +1,3 @@
+kind: fix
+body: Fix mergeOptions dropping onError hooks from ResourceOptions in the Node.js SDK
+component: sdk/nodejs
