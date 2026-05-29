@@ -16,6 +16,8 @@ package packages
 
 import (
 	"context"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/blang/semver"
@@ -155,8 +157,12 @@ func TestProviderFromSource(t *testing.T) {
 		Version: "1.0.0",
 	}
 
+	binaryName := "pulumi-resource-test-provider"
+	if runtime.GOOS == "windows" {
+		binaryName += ".exe"
+	}
 	wantProvider := launchedProvider{
-		pluginPath:   mockPluginDir + "/pulumi-resource-test-provider",
+		pluginPath:   filepath.Join(mockPluginDir, binaryName),
 		originalSpec: resolvedSpec,
 	}
 
