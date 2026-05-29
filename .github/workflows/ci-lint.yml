@@ -174,10 +174,15 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
       - uses: miniscruff/changie-action@v2
         with:
           version: v1.21.0
-      - run: changie batch auto --dry-run
+      - run: make lint_changelog
 
   pulumi-json:
     name: Lint pulumi.json

@@ -145,7 +145,11 @@ brew::
 lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json lint_changelog
 
 lint_changelog::
-	changie batch auto --dry-run
+	@if [ -n "$$(find changelog/pending -maxdepth 1 -name '*.yaml' -print -quit)" ]; then \
+		changie batch auto --dry-run; \
+	else \
+		echo "No pending changelog entries; skipping changie batch."; \
+	fi
 
 lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
