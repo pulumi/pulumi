@@ -1,3 +1,3 @@
 kind: fix
-body: Delete all backend config when logging out
+body: "BREAKING: Delete all backend config when logging out"
 component: cli/auth
