@@ -1828,3 +1828,66 @@ func TestInstallPluginSet(t *testing.T) {
 	require.True(t, ws.plugins[descriptorPath].downloaded, "descriptor plugin should be downloaded")
 	require.True(t, ws.plugins[specPath].downloaded, "spec plugin should be downloaded")
 }
+
+// TestInstallPluginSetRemotePackageOverride checks that a remote (registry)
+// package in the project's `packages:` block - the kind written by `pulumi
+// package add` - is installed via the normal descriptor download path rather
+// than being diverted into local SDK generation. Only local-path packages
+// should be diverted to the spec path, so a remote package must not be linked
+// as a local SDK into the project.
+func TestInstallPluginSetRemotePackageOverride(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name:    "aws",
+				Version: &semver.Version{Major: 1},
+				Kind:    apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+	})
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	err := packageinstallation.InstallPluginSet(t.Context(),
+		[]workspace.PackageDescriptor{
+			{
+				PluginDescriptor: workspace.PluginDescriptor{
+					Name:              "aws",
+					Version:           &semver.Version{Major: 1},
+					Kind:              apitype.ResourcePlugin,
+					PluginDownloadURL: "https://example.com/aws.tar.gz",
+				},
+			},
+		},
+		nil,
+		&workspace.Project{
+			Name:    "test-project",
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+			// A registry package whose name matches the descriptor, but whose
+			// source is not a local path.
+			Packages: map[string]workspace.PackageSpec{
+				"aws": {
+					Source:            "aws",
+					Version:           "1.0.0",
+					PluginDownloadURL: "https://example.com/aws.tar.gz",
+				},
+			},
+		}, "/project", packageinstallation.Options{
+			Options: packageresolution.Options{
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			Concurrency: 1,
+		}, nil, rws)
+	require.NoError(t, err)
+
+	awsPath := "$HOME/.pulumi/plugins/resource-aws-v1.0.0"
+
+	require.True(t, ws.plugins[awsPath].downloaded, "remote package plugin should be downloaded")
+	require.Empty(t, ws.downloadedWorkspace["/project"].linked,
+		"remote package must not be linked as a local SDK into the project")
+}

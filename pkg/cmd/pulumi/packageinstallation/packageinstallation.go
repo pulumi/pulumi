@@ -169,12 +169,18 @@ func InstallPluginSet(
 	options Options,
 	registry registry.Registry, ws Context,
 ) error {
+	specs = slices.Clone(specs)
 	return runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
-		enqueuePackageSpecLinkedSDKs(ctx, state, root, project[workspace.BaseProject]{
-			proj:       baseProject,
-			projectDir: projectDir,
-		}, specs)
 		for _, resolved := range descriptors {
+			// Only local-path packages need to be diverted to the spec path so they
+			// resolve from disk. Remote/registry packages are installed via the normal
+			// descriptor path, matching the behavior of project plugin overrides.
+			override, hasOverride := baseProject.GetPackageSpecs()[resolved.Name]
+			if hasOverride && plugin.IsLocalPluginPath(ctx, override.Source) {
+				specs = append(specs, override)
+				continue
+			}
+
 			installed, version, err := packageresolution.IsPluginInstalled(ctx,
 				resolved.PluginDescriptor, ws, options.Options)
 			if err != nil {
@@ -189,6 +195,10 @@ func InstallPluginSet(
 				return err
 			}
 		}
+		enqueuePackageSpecLinkedSDKs(ctx, state, root, project[workspace.BaseProject]{
+			proj:       baseProject,
+			projectDir: projectDir,
+		}, specs)
 		return nil
 	})
 }
