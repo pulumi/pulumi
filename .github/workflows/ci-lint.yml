@@ -48,8 +48,6 @@ jobs:
           with: |
             version: ${{ env.GOLANGCI_LINT_VERSION }}
             args: --help
-          attempt_limit: 3
-          attempt_delay: 5000
 
       - name: Run golangci-lint
         run: make lint_golang
@@ -102,8 +100,6 @@ jobs:
           action: jdx/mise-action@v2
           with: |
             experimental: true
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Check Protobufs
         run: make check_proto
 
@@ -149,8 +145,6 @@ jobs:
           action: actions/checkout@v6
           with: |
             ref: ${{ inputs.ref }}
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" >> "$GITHUB_ENV"

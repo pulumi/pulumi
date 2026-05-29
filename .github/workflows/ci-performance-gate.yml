@@ -81,8 +81,6 @@ jobs:
           action: jdx/mise-action@v2
           with: |
             experimental: true
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix

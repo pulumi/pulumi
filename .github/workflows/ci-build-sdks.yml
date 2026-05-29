@@ -72,8 +72,6 @@ jobs:
             path: sdk/python/build/*.whl
             retention-days: 1
             if-no-files-found: error
-          attempt_limit: 3
-          attempt_delay: 5000
 
   build_node_sdk:
     name: nodejs
@@ -126,8 +124,6 @@ jobs:
             path: sdk/nodejs/bin/*.tgz
             retention-days: 1
             if-no-files-found: error
-          attempt_limit: 3
-          attempt_delay: 5000
 
   build_npm_package:
     name: npm cli wrapper
@@ -160,5 +156,3 @@ jobs:
             path: npm/*.tgz
             retention-days: 1
             if-no-files-found: error
-          attempt_limit: 3
-          attempt_delay: 5000

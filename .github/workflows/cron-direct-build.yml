@@ -18,8 +18,6 @@ jobs:
           action: jdx/mise-action@v2
           with: |
             experimental: true
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Build
         shell: bash
         run: GOPROXY=direct SDKS="" make build

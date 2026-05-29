@@ -48,8 +48,6 @@ jobs:
           action: jdx/mise-action@v2
           with: |
             experimental: true
-          attempt_limit: 3
-          attempt_delay: 5000
       - id: gen
         run: |
           VERSION_SET=$(./scripts/get-job-matrix.py generate-version-set --version-set current)

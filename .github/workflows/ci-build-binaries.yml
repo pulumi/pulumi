@@ -139,5 +139,3 @@ jobs:
             path: |
               goreleaser/*.tar.gz
               goreleaser/*.zip
-          attempt_limit: 3
-          attempt_delay: 5000

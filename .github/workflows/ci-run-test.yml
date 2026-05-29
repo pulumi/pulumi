@@ -238,8 +238,6 @@ jobs:
           with: |
             dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
             dotnet-quality: ga
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         uses: actions/setup-node@v6
         with:
@@ -257,8 +255,6 @@ jobs:
           action: gradle/actions/setup-gradle@v6
           with: |
             gradle-version: "7.6"
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
@@ -273,8 +269,6 @@ jobs:
         uses: ./.github/actions/retry
         with:
           action: oven-sh/setup-bun@v2
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
@@ -336,8 +330,6 @@ jobs:
           with: |
             name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
             path: artifacts/cli
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-performance-test }}
         uses: ./.github/actions/retry
@@ -346,8 +338,6 @@ jobs:
           with: |
             name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
             path: artifacts/cli
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Install Pulumi Go Binaries
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         run: |
@@ -464,8 +454,6 @@ jobs:
             path: |
               coverage/*
               !coverage/.gitkeep
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Upload codecov test results
         uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1
         continue-on-error: true
@@ -506,5 +494,3 @@ jobs:
           with: |
             name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
             path: test-results/*.json
-          attempt_limit: 3
-          attempt_delay: 5000

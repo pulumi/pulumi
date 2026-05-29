@@ -40,8 +40,6 @@ jobs:
           action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
           with: |
             path: artifacts.tmp
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Remove performance test artifacts
         run: rm -rf artifacts.tmp/*-perf
       - name: Remove integration test artifacts
@@ -136,5 +134,3 @@ jobs:
             path: |
               sigs.tmp/*
             if-no-files-found: error
-          attempt_limit: 3
-          attempt_delay: 5000

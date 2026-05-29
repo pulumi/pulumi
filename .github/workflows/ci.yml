@@ -106,8 +106,6 @@ jobs:
             repository: dnephin/gotestsum
             ref: d09768c81065b404caed0855eb3ab8f11a2a4431
             path: vendor/gotestsum
-          attempt_limit: 3
-          attempt_delay: 5000
       - run: |
           cd vendor/gotestsum
           go install .
@@ -121,8 +119,6 @@ jobs:
           action: jdx/mise-action@v2
           with: |
             experimental: true
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
@@ -523,8 +519,6 @@ jobs:
             pattern: coverage-*
             merge-multiple: true
             path: coverage
-          attempt_limit: 3
-          attempt_delay: 5000
       # For PRs we need to set the merge base manually, otherwise it is sometimes incorrect.  See https://github.com/pulumi/pulumi/pull/17204#issuecomment-2405599310
       - name: Set codecov PR base
         if: github.event_name == 'pull_request'

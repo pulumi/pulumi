@@ -59,8 +59,6 @@ jobs:
           action: jdx/mise-action@v2
           with: |
             experimental: true
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
@@ -166,8 +164,6 @@ jobs:
           action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
           with: |
             path: artifacts.tmp
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Move artifacts to the right place
         run: |
           mkdir -p artifacts
@@ -223,8 +219,6 @@ jobs:
           action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
           with: |
             path: artifacts.tmp
-          attempt_limit: 3
-          attempt_delay: 5000
       - name: Move artifacts to the right place
         run: |
           mkdir -p artifacts
