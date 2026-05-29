@@ -108,7 +108,7 @@ type MarkInstallationDone = func(success bool)
 // duplicate work won't be performed.
 type Continuation struct {
 	// Plugins that have been resolved/downloaded and are known to be already installed.
-	seen map[pluginHash]cachedPlugin
+	seen map[pluginHash]pluginInfo
 
 	// A map from projecDirs to plugin path params
 	links map[string]map[string][]plugin.ParameterizeParameters
@@ -270,7 +270,14 @@ func runInstall(
 	}
 
 	// Apply the continuation token into state
-	maps.Copy(state.seen, options.Continuation.seen)
+	for k, v := range options.Continuation.seen {
+		n, done := dag.NewNode(noOpStep{})
+		state.seen[k] = cachedPlugin{
+			node: n,
+			info: &v,
+		}
+		done()
+	}
 	maps.Copy(state.links, options.Continuation.links)
 
 	defer func() {
@@ -288,7 +295,11 @@ func runInstall(
 		return step.run(ctx, state)
 	}, pdag.MaxProcs(options.Concurrency))
 
-	return Continuation{state.seen, state.links}, wrapCycleError(err)
+	seen := make(map[pluginHash]pluginInfo, len(state.seen))
+	for k, v := range state.seen {
+		seen[k] = *v.info
+	}
+	return Continuation{seen, state.links}, wrapCycleError(err)
 }
 
 type ErrorCyclicDependencies struct {

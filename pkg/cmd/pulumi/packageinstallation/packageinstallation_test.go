@@ -2052,3 +2052,56 @@ func TestInstallContinuationLinksDifferentProjectDir(t *testing.T) {
 	require.Len(t, ws.downloadedWorkspace["/project2"].linked, 1,
 		"the same package must still be linked into a different project dir")
 }
+
+// TestInstallContinuationAcrossInstallsDoesNotCycle reproduces a bug where the
+// node recorded in a Continuation was reused in a subsequent install's DAG. Since
+// a pdag.Node is just an index into the DAG that created it, reusing it in a new
+// DAG references an unrelated node and can manufacture a spurious cycle.
+func TestInstallContinuationAcrossInstallsDoesNotCycle(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
+		{d: workspace.PluginDescriptor{Name: "spec", Kind: apitype.ResourcePlugin}, hasBinary: true},
+		{d: workspace.PluginDescriptor{Name: "extra1", Kind: apitype.ResourcePlugin}, hasBinary: true},
+		{d: workspace.PluginDescriptor{Name: "extra2", Kind: apitype.ResourcePlugin}, hasBinary: true},
+	})
+
+	specs := []workspace.PackageSpec{
+		{Source: "spec", PluginDownloadURL: "https://example.com/spec.tar.gz"},
+	}
+	descriptors := []workspace.PackageDescriptor{
+		{PluginDescriptor: workspace.PluginDescriptor{
+			Name: "extra1", Kind: apitype.ResourcePlugin, PluginDownloadURL: "https://example.com/extra1.tar.gz",
+		}},
+		{PluginDescriptor: workspace.PluginDescriptor{
+			Name: "extra2", Kind: apitype.ResourcePlugin, PluginDownloadURL: "https://example.com/extra2.tar.gz",
+		}},
+	}
+	proj := &workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+	}
+	options := func(c packageinstallation.Continuation) packageinstallation.Options {
+		return packageinstallation.Options{
+			Continuation: c,
+			Options: packageresolution.Options{
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			// Concurrency 1 makes node-index assignment deterministic so this
+			// reproduction is stable.
+			Concurrency: 1,
+		}
+	}
+
+	continuation, err := packageinstallation.InstallPluginSet(t.Context(),
+		nil, specs, proj, "/project", options(packageinstallation.Continuation{}), nil, ws)
+	require.NoError(t, err)
+
+	// The second install reuses the continuation. The spec's plugin is already
+	// recorded there, so it must not be re-linked to a stale node from the first
+	// install's DAG.
+	_, err = packageinstallation.InstallPluginSet(t.Context(),
+		descriptors, specs, proj, "/project", options(continuation), nil, ws)
+	require.NoError(t, err)
+}
