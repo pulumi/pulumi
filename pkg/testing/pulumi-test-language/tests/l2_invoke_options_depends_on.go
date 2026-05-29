@@ -34,7 +34,7 @@ func init() {
 					changes := res.Changes
 
 					RequireStackResource(l, err, changes)
-					require.Len(l, snap.Resources, 5, "expected 5 resources")
+					require.Len(l, snap.Resources, 4, "expected 4 resources")
 					// TODO https://github.com/pulumi/pulumi/issues/17816
 					// TODO: the root stack must be the first resource to be registered
 					// such that snap.Resources[0].Type == resource.RootStackType
