@@ -55,6 +55,20 @@ func TestConsoleURL(t *testing.T) {
 			CloudConsoleURL("http://localhost:8080", "pulumi-bot", "my-stack"))
 	})
 
+	t.Run("TokenSettingsURL", func(t *testing.T) {
+		assert.Equal(t,
+			"https://app.pulumi.com/user/settings/tokens",
+			CloudConsoleURL("https://api.pulumi.com", "user", "settings", "tokens"))
+
+		assert.Equal(t,
+			"http://localhost:3000/user/settings/tokens",
+			CloudConsoleURL("http://localhost:8080", "user", "settings", "tokens"))
+
+		assert.Equal(t,
+			"http://app.pulumi.example.com/user/settings/tokens",
+			CloudConsoleURL("http://api.pulumi.example.com", "user", "settings", "tokens"))
+	})
+
 	t.Run("ConsoleDomainUnknown", func(t *testing.T) {
 		assert.Equal(t, "", CloudConsoleURL("https://pulumi.example.com", "pulumi-bot", "my-stack"))
 		assert.Equal(t, "", CloudConsoleURL("not-even-a-real-url", "pulumi-bot", "my-stack"))
