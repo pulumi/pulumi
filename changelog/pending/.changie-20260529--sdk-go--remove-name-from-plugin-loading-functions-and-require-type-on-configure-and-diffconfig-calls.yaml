@@ -1,6 +1,5 @@
-component: sdk/go
 kind: chore
 body: Remove "name" from plugin loading functions and require "Type" on Configure & DiffConfig calls
-time: 2026-05-29T00:26:19.458878+02:00
+component: sdk/go
 custom:
-    PR: "23363"
+  PR: "23363"
