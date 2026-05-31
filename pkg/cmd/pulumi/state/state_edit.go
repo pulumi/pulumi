@@ -82,6 +82,7 @@ a preview showing a diff of the altered state.`,
 			if stateEdit.Stdout == nil {
 				stateEdit.Stdout = cmd.OutOrStdout()
 			}
+			stateEdit.DisableIntegrityChecking = cmdBackend.DisableIntegrityChecking(cmd)
 			if err := stateEdit.Run(ctx, s); err != nil {
 				return err
 			}
@@ -97,9 +98,10 @@ a preview showing a diff of the altered state.`,
 }
 
 type stateEditCmd struct {
-	Stdin     io.Reader
-	Stdout    io.Writer
-	Colorizer colors.Colorization
+	Stdin                    io.Reader
+	Stdout                   io.Writer
+	Colorizer                colors.Colorization
+	DisableIntegrityChecking bool
 }
 
 type snapshotBuffer struct {
@@ -154,7 +156,7 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 		cmd.Stdin = os.Stdin
 	}
 
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider, cmd.DisableIntegrityChecking)
 	if err != nil {
 		return err
 	}
@@ -210,7 +212,7 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 
 		switch response := ui.PromptUser(msg, options, edit, cmd.Colorizer); response {
 		case accept:
-			return cmdStack.SaveSnapshot(ctx, s, news, false /* force */)
+			return cmdStack.SaveSnapshot(ctx, s, news, false /* force */, cmd.DisableIntegrityChecking)
 		case edit:
 			continue
 		case reset:
@@ -234,7 +236,7 @@ func (cmd *stateEditCmd) validateAndPrintState(ctx context.Context, f *snapshotB
 		return nil, err
 	}
 
-	if !backend.DisableIntegrityChecking {
+	if !cmd.DisableIntegrityChecking {
 		err = news.VerifyIntegrity()
 		if err != nil {
 			return nil, err

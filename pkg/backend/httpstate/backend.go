@@ -2066,7 +2066,8 @@ func (b *cloudBackend) runEngineAction(
 		} else {
 			persister := b.newSnapshotPersister(ctx, update, tokenSource)
 			snapshotJournaler, err = backend.NewSnapshotJournaler(
-				ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
+				ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot,
+				op.Opts.DisableIntegrityChecking)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -2074,7 +2075,8 @@ func (b *cloudBackend) runEngineAction(
 			if err != nil {
 				return nil, nil, err
 			}
-			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot, engineEvents)
+			snapshotManager = backend.NewSnapshotManager(
+				persister, op.SecretsManager, u.Target.Snapshot, engineEvents, op.Opts.DisableIntegrityChecking)
 			combinedManager = &engine.CombinedManager{
 				Managers:          []engine.SnapshotManager{snapshotManager, journalManager},
 				CollectErrorsOnly: []bool{false, true},
@@ -2308,7 +2310,8 @@ func (b *cloudBackend) GetLogs(ctx context.Context,
 	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
 	logQuery operations.LogQuery,
 ) ([]operations.LogEntry, error) {
-	target, targetErr := b.getTarget(ctx, secretsProvider, stack.Ref(), cfg.Config, cfg.Decrypter)
+	target, targetErr := b.getTarget(
+		ctx, secretsProvider, stack.Ref(), cfg.Config, cfg.Decrypter, false /* disableIntegrityChecking */)
 	if targetErr != nil {
 		return nil, targetErr
 	}

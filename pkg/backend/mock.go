@@ -586,13 +586,15 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 //
 
 type MockStack struct {
-	RefF                  func() StackReference
-	ConfigLocationF       func() StackConfigLocation
-	LoadRemoteF           func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
-	SaveRemoteF           func(ctx context.Context, project *workspace.ProjectStack) error
-	OrgNameF              func() string
-	ConfigF               func() config.Map
-	SnapshotF             func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	RefF            func() StackReference
+	ConfigLocationF func() StackConfigLocation
+	LoadRemoteF     func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	SaveRemoteF     func(ctx context.Context, project *workspace.ProjectStack) error
+	OrgNameF        func() string
+	ConfigF         func() config.Map
+	SnapshotF       func(
+		ctx context.Context, secretsProvider secrets.Provider, disableIntegrityChecking bool,
+	) (*deploy.Snapshot, error)
 	TagsF                 func() map[apitype.StackTagName]string
 	BackendF              func() Backend
 	DefaultSecretManagerF func(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error)
@@ -643,9 +645,11 @@ func (ms *MockStack) Config() config.Map {
 	panic("not implemented: MockStack.Config")
 }
 
-func (ms *MockStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+func (ms *MockStack) Snapshot(
+	ctx context.Context, secretsProvider secrets.Provider, disableIntegrityChecking bool,
+) (*deploy.Snapshot, error) {
 	if ms.SnapshotF != nil {
-		return ms.SnapshotF(ctx, secretsProvider)
+		return ms.SnapshotF(ctx, secretsProvider, disableIntegrityChecking)
 	}
 	panic("not implemented: MockStack.Snapshot")
 }
@@ -653,7 +657,7 @@ func (ms *MockStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 func (ms *MockStack) SnapshotStackOutputs(
 	ctx context.Context, secretsProvider secrets.Provider,
 ) (property.Map, error) {
-	snapshot, err := ms.Snapshot(ctx, secretsProvider)
+	snapshot, err := ms.Snapshot(ctx, secretsProvider, false /* disableIntegrityChecking */)
 	if err != nil {
 		return property.Map{}, err
 	}

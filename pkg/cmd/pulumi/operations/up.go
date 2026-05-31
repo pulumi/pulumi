@@ -593,7 +593,8 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
+			opts, err := updateFlagsToOptions(
+				interactive, skipPreview, yes, false /* previewOnly */, cmdBackend.DisableIntegrityChecking(cmd))
 			if err != nil {
 				return err
 			}

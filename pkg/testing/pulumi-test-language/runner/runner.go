@@ -1701,7 +1701,7 @@ func runLanguageTests(
 				return nil, fmt.Errorf("get stack: %w", err)
 			}
 
-			snap, err = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
+			snap, err = s.Snapshot(ctx, b64secrets.Base64SecretsProvider, false /* disableIntegrityChecking */)
 			if err != nil {
 				return nil, fmt.Errorf("snapshot: %w", err)
 			}
@@ -1710,7 +1710,7 @@ func runLanguageTests(
 			// if we can't.
 			s, err = testBackend.GetStack(ctx, stackReference)
 			if err == nil {
-				snap, _ = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
+				snap, _ = s.Snapshot(ctx, b64secrets.Base64SecretsProvider, false /* disableIntegrityChecking */)
 			}
 		}
 

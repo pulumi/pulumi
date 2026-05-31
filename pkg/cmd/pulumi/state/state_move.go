@@ -47,11 +47,12 @@ import (
 const providerPrefix = "pulumi:providers:"
 
 type stateMoveCmd struct {
-	Stdin          io.Reader
-	Stdout         io.Writer
-	Colorizer      colors.Colorization
-	Yes            bool
-	IncludeParents bool
+	Stdin                    io.Reader
+	Stdout                   io.Writer
+	Colorizer                colors.Colorization
+	Yes                      bool
+	IncludeParents           bool
+	DisableIntegrityChecking bool
 
 	ws pkgWorkspace.Context
 }
@@ -113,6 +114,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 
 			stateMove.Yes = yes
 			stateMove.IncludeParents = includeParents
+			stateMove.DisableIntegrityChecking = cmdBackend.DisableIntegrityChecking(cmd)
 
 			sourceSecretsProvider := backend_secrets.NamedStackProvider{
 				StackName: sourceStack.Ref().FullyQualifiedName().String(),
@@ -159,11 +161,11 @@ func (cmd *stateMoveCmd) Run(
 		cmd.ws = pkgWorkspace.Instance
 	}
 
-	sourceSnapshot, err := source.Snapshot(ctx, sourceSecretsProvider)
+	sourceSnapshot, err := source.Snapshot(ctx, sourceSecretsProvider, cmd.DisableIntegrityChecking)
 	if err != nil {
 		return err
 	}
-	destSnapshot, err := dest.Snapshot(ctx, destSecretsProvider)
+	destSnapshot, err := dest.Snapshot(ctx, destSecretsProvider, cmd.DisableIntegrityChecking)
 	if err != nil {
 		return err
 	}
@@ -482,18 +484,18 @@ This is a bug! We would appreciate a report: https://github.com/pulumi/pulumi/is
 	// We're saving the destination snapshot first, so that if saving a snapshot fails
 	// the resources will always still be tracked.  If the source snapshot fails the user
 	// will have to manually remove the resources from the source stack.
-	err = cmdStack.SaveSnapshot(ctx, dest, destSnapshot, false)
+	err = cmdStack.SaveSnapshot(ctx, dest, destSnapshot, false, cmd.DisableIntegrityChecking)
 	if err != nil {
 		return fmt.Errorf(`failed to save destination snapshot: %w
 
 None of the resources have been moved, it is safe to try again`, err)
 	}
 
-	err = cmdStack.SaveSnapshot(ctx, source, sourceSnapshot, false)
+	err = cmdStack.SaveSnapshot(ctx, source, sourceSnapshot, false, cmd.DisableIntegrityChecking)
 	if err != nil {
 		// Try to restore the destination snapshot to its original state
 		destSnapshot.Resources = originalDestResources
-		errDest := cmdStack.SaveSnapshot(ctx, dest, destSnapshot, false)
+		errDest := cmdStack.SaveSnapshot(ctx, dest, destSnapshot, false, cmd.DisableIntegrityChecking)
 		if errDest != nil {
 			var deleteCommands strings.Builder
 			// Iterate over the resources in reverse order, so resources with no dependencies will be deleted first.

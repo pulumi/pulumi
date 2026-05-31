@@ -50,8 +50,12 @@ type Stack interface {
 	LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
 	// SaveRemoteConfig the stack's configuration remotely to the backend.
 	SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error
-	// Snapshot returns the latest deployment snapshot.
-	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	// Snapshot returns the latest deployment snapshot. When disableIntegrityChecking is true, the snapshot's
+	// integrity is not verified before it is returned; this is only safe for commands (such as `state repair`)
+	// that exist to operate on potentially-corrupt snapshots.
+	Snapshot(
+		ctx context.Context, secretsProvider secrets.Provider, disableIntegrityChecking bool,
+	) (*deploy.Snapshot, error)
 	// SnapshotStackOutputs returns the stack outputs of the latest deployment snapshot.
 	SnapshotStackOutputs(ctx context.Context, secretsProvider secrets.Provider) (property.Map, error)
 	// Backend returns the backend this stack belongs to.

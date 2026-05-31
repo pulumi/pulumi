@@ -63,7 +63,7 @@ func TestTaintSingleResource(t *testing.T) {
 	})
 
 	// Get initial snapshot to verify taint state
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 	require.Len(t, initialSnap.Resources, 2)
 	assert.False(t, initialSnap.Resources[1].Taint)
@@ -124,7 +124,7 @@ func TestTaintMultipleResources(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Taint multiple resources
@@ -176,7 +176,7 @@ func TestTaintNonExistentResource(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Try to taint a non-existent resource
@@ -234,7 +234,7 @@ func TestTaintMixedExistingAndNonExistent(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Try to taint existing and non-existent resources
@@ -289,7 +289,7 @@ func TestTaintAlreadyTaintedResource(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 	require.Len(t, initialSnap.Resources, 2)
 	assert.True(t, initialSnap.Resources[1].Taint)
@@ -360,7 +360,7 @@ func TestTaintWithParentChildRelationship(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Taint the parent resource only
@@ -458,7 +458,7 @@ func TestTaintWithDependencies(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Taint the resource that has a dependency

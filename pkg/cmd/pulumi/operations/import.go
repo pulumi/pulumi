@@ -865,7 +865,8 @@ func NewImportCmd() *cobra.Command {
 				return backenderr.NoConfirmationInNonInteractiveError{}
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			opts, err := updateFlagsToOptions(
+				interactive, skipPreview, yes, previewOnly, cmdBackend.DisableIntegrityChecking(cmd))
 			if err != nil {
 				return err
 			}

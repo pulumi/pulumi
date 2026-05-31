@@ -118,11 +118,9 @@ not write any changes.
 
 func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	// We need to disable integrity checking since this command exists solely to repair invalid states and enabling
-	// integrity checking would prevent us from even loading them in the first place. Currently integrity checking is
-	// controlled by a hacky global variable, so this is the best we can do, but hopefully it and consequently this code
-	// can be refactored.
-	backend.DisableIntegrityChecking = true
-	defer func() { backend.DisableIntegrityChecking = false }()
+	// integrity checking would prevent us from even loading them in the first place. We therefore always read the
+	// snapshot with integrity checking disabled.
+	const disableIntegrityChecking = true
 
 	displayOpts := display.Options{
 		Color: cmd.Args.Colorizer,
@@ -140,7 +138,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 		return err
 	}
 
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider, disableIntegrityChecking)
 	if err != nil {
 		return err
 	} else if snap == nil {

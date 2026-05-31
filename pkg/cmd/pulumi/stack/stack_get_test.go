@@ -327,7 +327,7 @@ func newMockStack(snap *deploy.Snapshot, snapErr error) backend.Stack {
 			}
 		},
 		BackendF: func() backend.Backend { return mockBe },
-		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return snap, snapErr
 		},
 	}
@@ -338,7 +338,7 @@ func newMockStack(snap *deploy.Snapshot, snapErr error) backend.Stack {
 func TestLoadStackJSONInputs_NonCloud_NilSnapshot(t *testing.T) {
 	t.Parallel()
 
-	in, err := loadStackJSONInputs(t.Context(), newMockStack(nil, nil), false)
+	in, err := loadStackJSONInputs(t.Context(), newMockStack(nil, nil), false, false)
 	require.NoError(t, err)
 	assert.Equal(t, "dev", in.StackName)
 	assert.Equal(t, "proj", in.Project)
@@ -354,7 +354,7 @@ func TestLoadStackJSONInputs_PropagatesSnapshotError(t *testing.T) {
 	t.Parallel()
 
 	want := assert.AnError
-	_, err := loadStackJSONInputs(t.Context(), newMockStack(nil, want), false)
+	_, err := loadStackJSONInputs(t.Context(), newMockStack(nil, want), false, false)
 	require.ErrorIs(t, err, want)
 }
 

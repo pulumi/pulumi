@@ -139,7 +139,8 @@ func NewDestroyCmd() *cobra.Command {
 				return fmt.Errorf("invalid --output value %q (expected %q or %q)", output, "default", "json")
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			opts, err := updateFlagsToOptions(
+				interactive, skipPreview, yes, previewOnly, cmdBackend.DisableIntegrityChecking(cmd))
 			if err != nil {
 				return err
 			}
@@ -293,7 +294,7 @@ func NewDestroyCmd() *cobra.Command {
 			excludeUrns := *excludes
 			protectedCount := 0
 			if excludeProtected {
-				snapshot, err := s.Snapshot(ctx, secrets.DefaultProvider)
+				snapshot, err := s.Snapshot(ctx, secrets.DefaultProvider, opts.DisableIntegrityChecking)
 				if err != nil {
 					return err
 				} else if snapshot == nil {

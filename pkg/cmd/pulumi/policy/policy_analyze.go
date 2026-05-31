@@ -108,7 +108,7 @@ func newPolicyAnalyzeCmd(
 			}
 
 			// Load the current stack snapshot.
-			snap, err := s.Snapshot(ctx, secretsProvider)
+			snap, err := s.Snapshot(ctx, secretsProvider, cmdBackend.DisableIntegrityChecking(cmd))
 			if err != nil {
 				return fmt.Errorf("loading stack snapshot: %w", err)
 			}

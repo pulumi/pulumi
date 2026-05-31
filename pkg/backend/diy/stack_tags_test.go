@@ -429,7 +429,7 @@ func (m *mockStackForTesting) SaveRemoteConfig(context.Context, *workspace.Proje
 	return nil
 }
 
-func (m *mockStackForTesting) Snapshot(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+func (m *mockStackForTesting) Snapshot(context.Context, secrets.Provider, bool) (*deploy.Snapshot, error) {
 	return nil, nil
 }
 

@@ -60,7 +60,7 @@ func HandleConfig(
 	stackConfig := latest.Config
 
 	// Get the existing snapshot.
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider, false /* disableIntegrityChecking */)
 	if err != nil {
 		return err
 	}

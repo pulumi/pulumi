@@ -114,7 +114,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 				string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
-					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+					SnapshotF: func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 						return &snap, nil
 					},
 				}, nil
@@ -225,7 +225,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 				string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
-					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+					SnapshotF: func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 						return &snap, nil
 					},
 				}, nil
@@ -346,7 +346,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 				string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
-					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+					SnapshotF: func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 						return &snap, nil
 					},
 				}, nil

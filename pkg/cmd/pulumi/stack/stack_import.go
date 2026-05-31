@@ -125,7 +125,7 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 				}
 			}
 
-			if err := SaveSnapshot(ctx, s, snapshot, force); err != nil {
+			if err := SaveSnapshot(ctx, s, snapshot, force, cmdBackend.DisableIntegrityChecking(cmd)); err != nil {
 				return err
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), "Import complete.")

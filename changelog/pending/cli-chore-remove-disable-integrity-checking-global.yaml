@@ -1,0 +1,6 @@
+component: cli
+kind: chore
+body: Thread the value of `--disable-integrity-checking` explicitly instead of through a package-level global
+time: 2026-05-31T00:00:00.000000+00:00
+custom:
+    PR: "23393"

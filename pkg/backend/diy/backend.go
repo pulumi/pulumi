@@ -762,7 +762,7 @@ func (b *diyBackend) CreateStack(
 		return nil, &backenderr.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	_, err = b.saveStack(ctx, diyStackRef, apitype.TypedDeployment{})
+	_, err = b.saveStack(ctx, diyStackRef, apitype.TypedDeployment{}, false /* disableIntegrityChecking */)
 	if err != nil {
 		return nil, err
 	}
@@ -1249,8 +1249,9 @@ func (b *diyBackend) apply(
 	// We only need a snapshot manager if we're doing an update.
 	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
-		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot, nil)
+		persister := b.newSnapshotPersister(ctx, diyStackRef, op.Opts.DisableIntegrityChecking)
+		manager = backend.NewSnapshotManager(
+			persister, op.SecretsManager, update.Target.Snapshot, nil, op.Opts.DisableIntegrityChecking)
 		engineCtx.SnapshotManager = manager
 	}
 
@@ -1409,7 +1410,8 @@ func (b *diyBackend) GetLogs(ctx context.Context,
 		return nil, err
 	}
 
-	target, err := b.getTarget(ctx, secretsProvider, diyStackRef, cfg.Config, cfg.Decrypter)
+	target, err := b.getTarget(
+		ctx, secretsProvider, diyStackRef, cfg.Config, cfg.Decrypter, false /* disableIntegrityChecking */)
 	if err != nil {
 		return nil, err
 	}

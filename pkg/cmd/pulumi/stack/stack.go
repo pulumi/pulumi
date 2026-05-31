@@ -42,13 +42,14 @@ import (
 )
 
 type stackArgs struct {
-	showIDs                bool
-	showURNs               bool
-	showSecrets            bool
-	startTime              string
-	showStackName          bool
-	fullyQualifyStackNames bool
-	output                 string
+	showIDs                  bool
+	showURNs                 bool
+	showSecrets              bool
+	startTime                string
+	showStackName            bool
+	fullyQualifyStackNames   bool
+	output                   string
+	disableIntegrityChecking bool
 }
 
 func NewStackCmd() *cobra.Command {
@@ -85,6 +86,7 @@ func NewStackCmd() *cobra.Command {
 			}
 
 			args.fullyQualifyStackNames = cmdutil.FullyQualifyStackNames
+			args.disableIntegrityChecking = cmdBackend.DisableIntegrityChecking(cmd)
 			return runStack(ctx, s, cmd.OutOrStdout(), args)
 		},
 	}
@@ -147,7 +149,7 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 		return fmt.Errorf("invalid --output value %q: expected \"default\" or \"json\"", args.output)
 	}
 
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider, args.disableIntegrityChecking)
 	if err != nil {
 		return err
 	}
@@ -435,7 +437,7 @@ func renderCloudStackText(out io.Writer, info *apitype.Stack) {
 // backends it also fetches the GetStack API for cloud-only metadata
 // (version, tags, activeUpdate, currentOperation, console URL).
 func runStackJSON(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
-	in, err := loadStackJSONInputs(ctx, s, args.showSecrets)
+	in, err := loadStackJSONInputs(ctx, s, args.showSecrets, args.disableIntegrityChecking)
 	if err != nil {
 		return fmt.Errorf("fetching stack: %w", err)
 	}

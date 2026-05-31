@@ -112,10 +112,10 @@ func runMoveWithOptionsAndDestResources(
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, args, mp, mp)
 	require.NoError(t, err)
 
-	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
-	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	destSnapshot, err := destStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	return sourceSnapshot, destSnapshot, stdout
@@ -652,13 +652,13 @@ runtime: mock
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp, mp)
 	require.NoError(t, err)
 
-	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
-	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	destSnapshot, err := destStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
@@ -734,10 +734,10 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	require.NoError(t, err)
 
-	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
-	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	destSnapshot, err := destStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// The provider, rootstack and one resource remain
@@ -748,10 +748,10 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[3].URN)}, mp, mp)
 	require.NoError(t, err)
 
-	sourceSnapshot, err = sourceStack.Snapshot(ctx, mp)
+	sourceSnapshot, err = sourceStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
-	destSnapshot, err = destStack.Snapshot(ctx, mp)
+	destSnapshot, err = destStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Only the provider and root stack remain
@@ -830,7 +830,7 @@ func TestMoveUnknownResource(t *testing.T) {
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{"not-a-urn"}, mp, mp)
 	assert.ErrorContains(t, err, "no resources found to move")
 
-	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout.String(), "warning: Resource not-a-urn not found in source stack")
@@ -937,7 +937,7 @@ func TestMoveProvider(t *testing.T) {
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(providerURN)}, mp, mp)
 	assert.ErrorContains(t, err, "cannot move provider")
 
-	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	require.Len(t, sourceSnapshot.Resources, 3) // No resources should be moved
@@ -1056,13 +1056,13 @@ runtime: mock
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	require.NoError(t, err)
 
-	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
-	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	destSnapshot, err := destStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Expect the root stack and the provider to remain in the source stack
@@ -1147,13 +1147,13 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 	//nolint:lll
 	assert.ErrorContains(t, err, "destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
 
-	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
-	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	destSnapshot, err := destStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Expect no resources to be moved
@@ -1230,13 +1230,13 @@ runtime: mock
 	//nolint:lll
 	assert.ErrorContains(t, err, "destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
 
-	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
-	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	destSnapshot, err := destStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Expect no resources to be moved
@@ -1374,12 +1374,12 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 
 	sourceStack, err = b.GetStack(ctx, sourceStack.Ref())
 	require.NoError(t, err)
-	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
+	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destStack.Ref())
 	require.NoError(t, err)
-	destSnapshot, err := destStack.Snapshot(ctx, mp)
+	destSnapshot, err := destStack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	require.Len(t, destSnapshot.Resources, 0)

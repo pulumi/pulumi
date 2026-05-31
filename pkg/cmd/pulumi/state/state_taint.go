@@ -55,10 +55,12 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
+			disableIntegrityChecking := backend.DisableIntegrityChecking(cmd)
 
 			// If URN arguments were provided, use those:
 			if len(args) > 0 {
-				return taintMultipleResources(ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt)
+				return taintMultipleResources(
+					ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt, disableIntegrityChecking)
 			}
 
 			// Otherwise, use interactive selection:
@@ -74,12 +76,13 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				stack,
 				nil,
 				"Select a resource to taint:",
+				disableIntegrityChecking,
 			)
 			if err != nil {
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return taintResource(ctx, cmd.OutOrStdout(), sink, ws, stack, urn, showPrompt)
+			return taintResource(ctx, cmd.OutOrStdout(), sink, ws, stack, urn, showPrompt, disableIntegrityChecking)
 		},
 	}
 
@@ -135,9 +138,10 @@ func taintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []erro
 func taintMultipleResources(
 	ctx context.Context, stdout io.Writer,
 	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	disableIntegrityChecking bool,
 ) error {
 	return runTotalStateEdit(
-		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
+		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt, disableIntegrityChecking,
 		func(_ display.Options, snap *deploy.Snapshot) error {
 			resourceCount, errs := taintResourcesInSnapshot(snap, urns)
 
@@ -160,6 +164,8 @@ func taintMultipleResources(
 func taintResource(
 	ctx context.Context, stdout io.Writer,
 	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+	disableIntegrityChecking bool,
 ) error {
-	return taintMultipleResources(ctx, stdout, sink, ws, stackName, []string{string(urn)}, showPrompt)
+	return taintMultipleResources(
+		ctx, stdout, sink, ws, stackName, []string{string(urn)}, showPrompt, disableIntegrityChecking)
 }

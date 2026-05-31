@@ -486,7 +486,9 @@ func CopyEntireConfigMap(
 	return requiresSaving, nil
 }
 
-func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapshot, force bool) error {
+func SaveSnapshot(
+	ctx context.Context, s backend.Stack, snapshot *deploy.Snapshot, force bool, disableIntegrityChecking bool,
+) error {
 	stackName := s.Ref().Name()
 	var result error
 	for _, res := range snapshot.Resources {
@@ -506,7 +508,7 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 		}
 	}
 	// Validate the stack. If --force was passed, issue an error if validation fails. Otherwise, issue a warning.
-	if !backend.DisableIntegrityChecking {
+	if !disableIntegrityChecking {
 		if err := snapshot.VerifyIntegrity(); err != nil {
 			msg := fmt.Sprintf("state file contains errors: %v", err)
 			if force {

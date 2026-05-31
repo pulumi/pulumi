@@ -44,7 +44,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
@@ -193,6 +192,7 @@ func (loggingWriter) Write(bytes []byte) (int, error) {
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() (*cobra.Command, func()) {
 	var cwd string
+	var disableIntegrityChecking bool
 	var logFlow bool
 	var logToStderr bool
 	var tracingFlag string
@@ -442,7 +442,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Enable emojis in the output")
 	cmd.PersistentFlags().BoolVarP(&cmdutil.FullyQualifyStackNames, "fully-qualify-stack-names", "Q", false,
 		"Show fully-qualified stack names")
-	cmd.PersistentFlags().BoolVar(&backend.DisableIntegrityChecking, "disable-integrity-checking", false,
+	cmd.PersistentFlags().BoolVar(&disableIntegrityChecking, cmdBackend.DisableIntegrityCheckingFlag, false,
 		"Disable integrity checking of checkpoint files")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false,
 		"Flow log settings to child processes (like plugins)")
