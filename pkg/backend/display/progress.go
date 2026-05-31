@@ -190,9 +190,6 @@ func newOpStopwatch() opStopwatch {
 	}
 }
 
-// policyPayloads is a collection of policy violation events for a single resource.
-var policyPayloads []engine.PolicyViolationEventPayload
-
 // getEventUrnAndMetadata returns the resource URN associated with an event, or the empty URN if this is not an
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
@@ -1155,7 +1152,6 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 step,
 		hideRowIfUnnecessary: true,
 	}
@@ -1191,7 +1187,6 @@ func (display *ProgressDisplay) ensureParentRow(metadata *engine.StepEventMetada
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 parentStep,
 		hideRowIfUnnecessary: true,
 	}
@@ -1448,7 +1443,6 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
 		hideRowIfUnnecessary: false,
 	}
