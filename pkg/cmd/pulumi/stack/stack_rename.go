@@ -63,6 +63,7 @@ func newStackRenameCmd() *cobra.Command {
 				stack,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err

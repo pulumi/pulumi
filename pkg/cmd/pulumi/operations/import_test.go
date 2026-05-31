@@ -618,9 +618,8 @@ func TestImportFileMarshal(t *testing.T) {
 // the `--output` flag with the expected default and hidden state. The
 // display-layer behaviour is covered by TestUp_OutputJSONSummary; here we
 // just check the flag is plumbed.
-//
-//nolint:paralleltest // NewImportCmd writes to global cmdStack.ConfigFile
 func TestImportCmd_OutputFlagRegistered(t *testing.T) {
+	t.Parallel()
 	cmd := NewImportCmd()
 	flag := cmd.Flags().Lookup("output")
 	require.NotNil(t, flag, "expected --output flag on `pulumi import`")
@@ -631,9 +630,8 @@ func TestImportCmd_OutputFlagRegistered(t *testing.T) {
 // TestImportCmd_OutputAndJSONMutuallyExclusive verifies that passing both
 // --json and --output is rejected by cobra's flag-group validation before
 // RunE is invoked, so the command never starts a real import.
-//
-//nolint:paralleltest // NewImportCmd writes to global cmdStack.ConfigFile
 func TestImportCmd_OutputAndJSONMutuallyExclusive(t *testing.T) {
+	t.Parallel()
 	cmd := NewImportCmd()
 	cmd.SetArgs([]string{"--json", "--output", "json"})
 	cmd.SetOut(io.Discard)

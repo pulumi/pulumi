@@ -390,7 +390,8 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
 		if s, err = PromptAndCreateStack(ctx, cmdutil.Diag(), ws, b, args.prompt,
-			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider, args.remoteStackConfig); err != nil {
+			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider,
+			args.remoteStackConfig, ""); err != nil {
 			return err
 		}
 		// The backend will print "Created stack '<stack>'" on success.
@@ -466,6 +467,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			args.yes,
 			args.configPath,
 			opts,
+			"",
 		)
 		if err != nil {
 			return err

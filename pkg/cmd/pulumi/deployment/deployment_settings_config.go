@@ -149,6 +149,7 @@ func initializeDeploymentSettingsCmd(
 		stack,
 		cmdStack.OfferNew|cmdStack.SetCurrent,
 		displayOpts,
+		"",
 	)
 	if err != nil {
 		return nil, err

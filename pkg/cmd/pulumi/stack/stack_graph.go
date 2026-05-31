@@ -83,6 +83,7 @@ func newStackGraphCmd() *cobra.Command {
 				cmdOpts.stackName,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err

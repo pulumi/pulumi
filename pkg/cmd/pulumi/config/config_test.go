@@ -118,7 +118,7 @@ func TestListConfig(t *testing.T) {
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, nil)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -143,7 +143,7 @@ common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2"}
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, config.Map{}, openEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -169,7 +169,7 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, openEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -197,7 +197,7 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, openEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, false, false, true)
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, false, false, true, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -225,7 +225,7 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, checkEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, false)
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -253,7 +253,7 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, checkEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, false, false, false)
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, false, false, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -281,7 +281,7 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, plainEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -307,7 +307,7 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, openEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -334,7 +334,7 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, openEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true)
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -472,8 +472,8 @@ func prepareConfig(
 	return mockStack, project, projectStack, ssml
 }
 
-//nolint:paralleltest // changes global ConfigFile variable
 func TestConfigSet(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		args     []string
@@ -517,6 +517,7 @@ func TestConfigSet(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			project := workspace.Project{
 				Name: "testProject",
 			}
@@ -540,24 +541,22 @@ func TestConfigSet(t *testing.T) {
 					diags diag.Sink,
 					project *workspace.Project,
 					_ backend.Stack,
+					_ string,
 				) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(diags, project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
 			}
 
 			tmpdir := t.TempDir()
-			cmdStack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
-			defer func() {
-				cmdStack.ConfigFile = ""
-			}()
+			configFile := filepath.Join(tmpdir, "Pulumi.stack.yaml")
 
 			ws := &pkgWorkspace.MockContext{}
 
-			err := configSetCmd.Run(t.Context(), ws, c.args, &project, &s)
+			err := configSetCmd.Run(t.Context(), ws, c.args, &project, &s, configFile)
 			require.NoError(t, err)
 
 			// verify the config was set
-			data, err := os.ReadFile(cmdStack.ConfigFile)
+			data, err := os.ReadFile(configFile)
 			require.NoError(t, err)
 
 			require.Equal(t, c.expected, string(data))
@@ -565,9 +564,8 @@ func TestConfigSet(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // changes global ConfigFile variable
 func TestConfigSetTypes(t *testing.T) {
-	ctx := t.Context()
+	t.Parallel()
 
 	cases := []struct {
 		name     string
@@ -632,6 +630,7 @@ func TestConfigSetTypes(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run("", func(t *testing.T) {
+			t.Parallel()
 			project := workspace.Project{
 				Name: "testProject",
 			}
@@ -652,24 +651,22 @@ func TestConfigSetTypes(t *testing.T) {
 				Path: c.path,
 				Type: c.typ,
 				LoadProjectStack: func(_ context.Context, d diag.Sink, project *workspace.Project, _ backend.Stack,
+					_ string,
 				) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(d, project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
 			}
 
 			tmpdir := t.TempDir()
-			cmdStack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
-			defer func() {
-				cmdStack.ConfigFile = ""
-			}()
+			configFile := filepath.Join(tmpdir, "Pulumi.stack.yaml")
 
 			ws := &pkgWorkspace.MockContext{}
 
-			err := configSetCmd.Run(ctx, ws, c.args, &project, &s)
+			err := configSetCmd.Run(t.Context(), ws, c.args, &project, &s, configFile)
 			require.NoError(t, err)
 
 			// verify the config was set
-			data, err := os.ReadFile(cmdStack.ConfigFile)
+			data, err := os.ReadFile(configFile)
 			require.NoError(t, err)
 
 			require.Equal(t, c.expected, string(data))
@@ -677,9 +674,8 @@ func TestConfigSetTypes(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // changes global ConfigFile variable
 func TestConfigSetAll(t *testing.T) {
-	ctx := t.Context()
+	t.Parallel()
 
 	cases := []struct {
 		name          string
@@ -784,6 +780,7 @@ func TestConfigSetAll(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			s := backend.MockStack{
 				RefF: func() backend.StackReference {
 					return &backend.MockStackReference{
@@ -797,10 +794,7 @@ func TestConfigSetAll(t *testing.T) {
 			}
 
 			tmpdir := t.TempDir()
-			cmdStack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
-			defer func() {
-				cmdStack.ConfigFile = ""
-			}()
+			configFile := filepath.Join(tmpdir, "Pulumi.stack.yaml")
 
 			ws := &pkgWorkspace.MockContext{
 				ReadProjectF: func() (*workspace.Project, string, error) {
@@ -854,8 +848,8 @@ func TestConfigSetAll(t *testing.T) {
 				},
 			}
 
-			cmd := newConfigSetAllCmd(ws, &stackName, lm, mockEncrypterFactory)
-			cmd.SetContext(ctx)
+			cmd := newConfigSetAllCmd(ws, &stackName, lm, mockEncrypterFactory, &configFile)
+			cmd.SetContext(t.Context())
 
 			// Set flags based on test case
 			if c.jsonArg != "" {
@@ -889,7 +883,7 @@ func TestConfigSetAll(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify the config was set correctly
-			data, err := os.ReadFile(cmdStack.ConfigFile)
+			data, err := os.ReadFile(configFile)
 			require.NoError(t, err)
 
 			require.Equal(t, c.expected, string(data))
@@ -909,8 +903,8 @@ func (m *mockEncrypterFactory) GetEncrypter(
 	return m.encrypter, cmdStack.SecretsManagerUnchanged, nil
 }
 
-//nolint:paralleltest // changes global ConfigFile variable
 func TestConfigRefresh(t *testing.T) {
+	t.Parallel()
 	minimalDeployment := &apitype.UntypedDeployment{
 		Version:    3,
 		Deployment: json.RawMessage(`{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""}}`),
@@ -973,10 +967,9 @@ func TestConfigRefresh(t *testing.T) {
 	}
 
 	t.Run("environments from backend are written to config file", func(t *testing.T) {
+		t.Parallel()
 		tmpdir := t.TempDir()
 		configPath := filepath.Join(tmpdir, "Pulumi.testStack.yaml")
-		cmdStack.ConfigFile = configPath
-		defer func() { cmdStack.ConfigFile = "" }()
 
 		lm, ws := setupBackend(backend.LatestConfiguration{
 			Config: config.Map{
@@ -986,7 +979,7 @@ func TestConfigRefresh(t *testing.T) {
 		})
 
 		stackName := "testStack"
-		cmd := newConfigRefreshCmd(ws, &stackName, lm)
+		cmd := newConfigRefreshCmd(ws, &stackName, lm, &configPath)
 		cmd.SetContext(t.Context())
 		require.NoError(t, cmd.PersistentFlags().Set("force", "true"))
 
@@ -1007,10 +1000,9 @@ environment:
 	})
 
 	t.Run("nil environments do not overwrite existing environments", func(t *testing.T) {
+		t.Parallel()
 		tmpdir := t.TempDir()
 		configPath := filepath.Join(tmpdir, "Pulumi.testStack.yaml")
-		cmdStack.ConfigFile = configPath
-		defer func() { cmdStack.ConfigFile = "" }()
 
 		require.NoError(t, os.WriteFile(configPath,
 			[]byte("environment:\n  - existing-env\nconfig:\n  testProject:old: old-value\n"), 0o600))
@@ -1022,7 +1014,7 @@ environment:
 		})
 
 		stackName := "testStack"
-		cmd := newConfigRefreshCmd(ws, &stackName, lm)
+		cmd := newConfigRefreshCmd(ws, &stackName, lm, &configPath)
 		cmd.SetContext(t.Context())
 		require.NoError(t, cmd.PersistentFlags().Set("force", "true"))
 
@@ -1040,8 +1032,8 @@ config:
 	})
 }
 
-//nolint:paralleltest // changes global ConfigFile variable
 func TestConfigPathOperations(t *testing.T) {
+	t.Parallel()
 	type testArgs struct {
 		Key                   string
 		Value                 string
@@ -1390,6 +1382,7 @@ func TestConfigPathOperations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run("", func(t *testing.T) {
+			t.Parallel()
 			project := workspace.Project{
 				Name: "testProject",
 			}
@@ -1427,10 +1420,7 @@ func TestConfigPathOperations(t *testing.T) {
 			}
 
 			tmpdir := t.TempDir()
-			cmdStack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
-			defer func() {
-				cmdStack.ConfigFile = ""
-			}()
+			configFile := filepath.Join(tmpdir, "Pulumi.stack.yaml")
 
 			ws := &pkgWorkspace.MockContext{
 				ReadProjectF: func() (*workspace.Project, string, error) {
@@ -1447,8 +1437,9 @@ func TestConfigPathOperations(t *testing.T) {
 						diags diag.Sink,
 						project *workspace.Project,
 						_ backend.Stack,
+						configFile string,
 					) (*workspace.ProjectStack, error) {
-						data, err := os.ReadFile(cmdStack.ConfigFile)
+						data, err := os.ReadFile(configFile)
 						if os.IsNotExist(err) {
 							return &workspace.ProjectStack{
 								Config: config.Map{},
@@ -1459,7 +1450,7 @@ func TestConfigPathOperations(t *testing.T) {
 					},
 				}
 
-				err := configSetCmd.Run(t.Context(), ws, []string{operation.Key, operation.Value}, &project, &s)
+				err := configSetCmd.Run(t.Context(), ws, []string{operation.Key, operation.Value}, &project, &s, configFile)
 				if operation.ExpectFailure {
 					require.Error(t, err)
 					continue
@@ -1470,7 +1461,7 @@ func TestConfigPathOperations(t *testing.T) {
 				key, err := config.ParseKey(operation.TopLevelKey)
 				require.NoError(t, err)
 
-				ps, err := cmdStack.LoadProjectStack(t.Context(), cmdutil.Diag(), &project, &s)
+				ps, err := cmdStack.LoadProjectStack(t.Context(), cmdutil.Diag(), &project, &s, configFile)
 				require.NoError(t, err)
 
 				cfg, err := ps.Config.Copy(config.NopDecrypter, config.NopEncrypter)
