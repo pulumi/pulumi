@@ -17,10 +17,29 @@ package operations
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
+
+func TestParseAndSaveConfigArrayRejectsRemote(t *testing.T) {
+	t.Parallel()
+	env := "proj/stack"
+	remote := &backend.MockStack{
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &env}
+		},
+	}
+
+	// -c on a remote-config stack must be rejected: persisting it would mutate the shared ESC
+	// environment, even from a read-only command like preview.
+	err := parseAndSaveConfigArray(t.Context(), nil, nil, remote, []string{"proj:k=v"}, false, "")
+	require.ErrorContains(t, err, "not supported for remote-config stacks")
+
+	// No -c values: a no-op, so the guard is not reached.
+	require.NoError(t, parseAndSaveConfigArray(t.Context(), nil, nil, remote, nil, false, ""))
+}
 
 func TestConfigureNeoTaskOption(t *testing.T) {
 	t.Parallel()

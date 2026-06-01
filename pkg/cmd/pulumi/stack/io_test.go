@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -115,4 +116,72 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 
 	// Assert.
 	assert.Equal(t, expectedSm.State(), actualDeployment.SecretsProviders.State)
+}
+
+// TestCreateStackRemoteConfig verifies that creating a stack with useRemoteConfig=true requests a
+// remote-config stack: it passes a StackConfig naming the "<project>/<stack>" environment to the
+// backend. This is the creation path both `new --remote-config` and `stack init --remote-config`
+// (and the `--remote-stack-config` alias) feed.
+//
+//nolint:paralleltest // shares mock backend state
+func TestCreateStackRemoteConfig(t *testing.T) {
+	var gotConfig *apitype.StackConfig
+	mockBackend := &backend.MockBackend{
+		NameF: func() string { return "mock" },
+		CreateStackF: func(
+			_ context.Context, _ backend.StackReference, _ string,
+			_ *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			if opts != nil {
+				gotConfig = opts.Config
+			}
+			return nil, nil
+		},
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+	}
+	stackRef := &backend.MockStackReference{
+		NameV:    tokens.MustParseStackName("dev"),
+		ProjectV: tokens.Name("proj"),
+	}
+
+	_, err := CreateStack(
+		t.Context(), cmdutil.Diag(), pkgWorkspace.Instance, mockBackend, stackRef,
+		"" /*root*/, nil /*teams*/, false /*setCurrent*/, "" /*secretsProvider*/, true /*useRemoteConfig*/, "" /*configFile*/)
+	require.NoError(t, err)
+	require.NotNil(t, gotConfig)
+	require.Equal(t, "proj/dev", gotConfig.Environment)
+}
+
+// TestCreateStackRemoteConfigUnsupported verifies that a backend which does not support remote
+// configuration rejects creation cleanly (the DIY backend returns ErrConfigNotSupported before any
+// state is written).
+//
+//nolint:paralleltest // shares mock backend state
+func TestCreateStackRemoteConfigUnsupported(t *testing.T) {
+	mockBackend := &backend.MockBackend{
+		NameF: func() string { return "mock" },
+		CreateStackF: func(
+			_ context.Context, _ backend.StackReference, _ string,
+			_ *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			if opts != nil && opts.Config != nil {
+				return nil, backend.ErrConfigNotSupported
+			}
+			return nil, nil
+		},
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+	}
+	stackRef := &backend.MockStackReference{
+		NameV:    tokens.MustParseStackName("dev"),
+		ProjectV: tokens.Name("proj"),
+	}
+
+	_, err := CreateStack(
+		t.Context(), cmdutil.Diag(), pkgWorkspace.Instance, mockBackend, stackRef,
+		"" /*root*/, nil /*teams*/, false /*setCurrent*/, "" /*secretsProvider*/, true /*useRemoteConfig*/, "" /*configFile*/)
+	require.ErrorContains(t, err, "remote config is not supported")
 }

@@ -1408,6 +1408,43 @@ func TestNewCmdYesWritesMinimalPulumiYAMLWithExplicitName(t *testing.T) {
 	assert.Equal(t, "name: my-project\n", string(contents))
 }
 
+// TestNewRemoteConfigFlagRouting verifies that non-interactive `new` defaults to local config, and
+// that both `--remote-config` and its `--remote-stack-config` alias feed the same remote-config
+// creation path — exercised here against the filestate backend, which rejects remote config, so both
+// flags fail identically while the no-flag case succeeds locally.
+//
+//nolint:paralleltest // mutates process env and working directory
+func TestNewRemoteConfigFlagRouting(t *testing.T) {
+	cases := []struct {
+		name      string
+		flag      string
+		wantError string // "" => succeeds with local config
+	}{
+		{"no flag defaults to local", "", ""},
+		{"--remote-config attempts remote", "--remote-config", "remote config is not supported"},
+		{"--remote-stack-config attempts remote", "--remote-stack-config", "remote config is not supported"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			useTempFilestateBackend(t)
+			dir := t.TempDir()
+			t.Chdir(dir)
+			args := []string{"-y", "--name", "p", "--stack", "dev"}
+			if tc.flag != "" {
+				args = append(args, tc.flag)
+			}
+			cmd := NewNewCmd()
+			cmd.SetArgs(args)
+			err := cmd.Execute()
+			if tc.wantError == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tc.wantError)
+			}
+		})
+	}
+}
+
 //nolint:paralleltest
 func TestNewCmdYesUsesCurrentDirectoryNameByDefault(t *testing.T) {
 	useTempFilestateBackend(t)
@@ -1473,4 +1510,129 @@ func TestNewCmdYesDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
 	contents, readErr := os.ReadFile(existing)
 	require.NoError(t, readErr)
 	assert.Equal(t, "name: existing\n", string(contents))
+}
+
+// TestNewRemoteConfigFlags verifies the hidden remote-config creation flags are registered. Both
+// --remote-config (the canonical name) and the --remote-stack-config alias feed the same remote
+// stack-config creation path and stay hidden through Phase 1.
+func TestNewRemoteConfigFlags(t *testing.T) {
+	t.Parallel()
+	cmd := NewNewCmd()
+	for _, name := range []string{"remote-config", "remote-stack-config"} {
+		f := cmd.PersistentFlags().Lookup(name)
+		require.NotNil(t, f, "flag --%s should be registered", name)
+		require.True(t, f.Hidden, "flag --%s should be hidden", name)
+	}
+}
+
+// TestNewRemoteConfigWritesInitialConfigToEnv verifies that creation-time config for a remote-config
+// stack is written to the linked ESC environment via the editor (not the link-only SaveRemoteConfig),
+// and that secret values are handed over as plaintext fn::secret for server-side encryption rather
+// than being encrypted into a local secure: node.
+//
+//nolint:paralleltest // shares mock backend state
+func TestNewRemoteConfigWritesInitialConfigToEnv(t *testing.T) {
+	ctx := t.Context()
+
+	env := "testProject/testStack"
+	var uploaded []byte
+	be := &backend.MockEnvironmentsBackend{
+		GetEnvironmentF: func(_ context.Context, _, _, _, _ string, _ bool) ([]byte, string, int, error) {
+			return []byte("values:\n  pulumiConfig: {}\n"), "etag", 0, nil
+		},
+		UpdateEnvironmentWithProjectF: func(
+			_ context.Context, _, _, _ string, yaml []byte, _ string,
+		) (apitype.EnvironmentDiagnostics, error) {
+			uploaded = yaml
+			return nil, nil
+		},
+	}
+	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "org/testProject/testStack",
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &env}
+		},
+		OrgNameF: func() string { return "org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	c := config.Map{
+		config.MustMakeKey("testProject", "k"):      config.NewValue("v"),
+		config.MustMakeKey("testProject", "secret"): config.NewSecureValue("supersecret"),
+	}
+
+	err := SaveConfig(ctx, nil, &pkgWorkspace.MockContext{}, s, c, "", true /*allowRemoteConfigWrite*/)
+	require.NoError(t, err)
+
+	got := string(uploaded)
+	require.Contains(t, got, "testProject:k: v")
+	require.Contains(t, got, "fn::secret: supersecret")
+	require.NotContains(t, got, "secure:")
+}
+
+// TestNewRemoteConfigWritesThroughSaveConfig verifies that SaveConfig routes a remote stack's config
+// to the linked ESC environment, overwriting existing keys and adding new ones. SaveConfig is shared
+// by pulumi new and the operation commands' -c handling, so both apply remote config the same way.
+//
+//nolint:paralleltest // shares mock backend state
+func TestNewRemoteConfigWritesThroughSaveConfig(t *testing.T) {
+	ctx := t.Context()
+
+	env := "testProject/testStack"
+	var uploaded []byte
+	be := &backend.MockEnvironmentsBackend{
+		GetEnvironmentF: func(_ context.Context, _, _, _, _ string, _ bool) ([]byte, string, int, error) {
+			return []byte("values:\n  pulumiConfig:\n    testProject:existing: keep\n"), "etag", 0, nil
+		},
+		UpdateEnvironmentWithProjectF: func(
+			_ context.Context, _, _, _ string, yaml []byte, _ string,
+		) (apitype.EnvironmentDiagnostics, error) {
+			uploaded = yaml
+			return nil, nil
+		},
+	}
+	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "org/testProject/testStack",
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &env}
+		},
+		OrgNameF: func() string { return "org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	c := config.Map{
+		config.MustMakeKey("testProject", "existing"): config.NewValue("updated"),
+		config.MustMakeKey("testProject", "new"):      config.NewValue("v"),
+	}
+	require.NoError(t, SaveConfig(ctx, nil, &pkgWorkspace.MockContext{}, s, c, "", true /*allowRemoteConfigWrite*/))
+
+	got := string(uploaded)
+	require.Contains(t, got, "testProject:new: v", "a new key is written")
+	require.Contains(t, got, "testProject:existing: updated", "an existing remote key is overwritten")
+}
+
+// TestSaveConfigRejectsRemoteWithoutAllow verifies the chokepoint: any caller that doesn't pass
+// allowRemoteConfigWrite (the operation commands' -c paths) is rejected on a remote-config stack, so
+// it can't mutate the shared ESC environment.
+func TestSaveConfigRejectsRemoteWithoutAllow(t *testing.T) {
+	t.Parallel()
+	env := "testProject/testStack"
+	s := &backend.MockStack{
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &env}
+		},
+	}
+	c := config.Map{config.MustMakeKey("testProject", "k"): config.NewValue("v")}
+	err := SaveConfig(t.Context(), nil, &pkgWorkspace.MockContext{}, s, c, "", false)
+	require.ErrorContains(t, err, "not supported for remote-config stacks")
 }

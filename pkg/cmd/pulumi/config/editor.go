@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	escEncoding "github.com/pulumi/esc/syntax/encoding"
 	"gopkg.in/yaml.v3"
@@ -58,6 +59,33 @@ func newConfigEditor(
 // the precedence in cmdStack.LoadProjectStack/SaveProjectStack.
 func configStoreIsRemote(stack backend.Stack, configFile string) bool {
 	return configFile == "" && stack.ConfigLocation().IsRemote
+}
+
+// ConfigStoreIsRemote reports whether the stack's configuration is effectively stored remotely,
+// honoring an explicit --config-file.
+func ConfigStoreIsRemote(stack backend.Stack, configFile string) bool {
+	return configStoreIsRemote(stack, configFile)
+}
+
+// SaveRemoteConfigValues writes c to the ESC environment backing a remote-config stack, overwriting
+// matching keys while preserving unrelated keys, imports, and comments. Secure values are encrypted
+// server-side. The stack must already be linked to an environment.
+func SaveRemoteConfigValues(ctx context.Context, stack backend.Stack, c config.Map) error {
+	editor, err := newESCConfigEditor(ctx, stack)
+	if err != nil {
+		return err
+	}
+	keys := make(config.KeyArray, 0, len(c))
+	for k := range c {
+		keys = append(keys, k)
+	}
+	sort.Sort(keys)
+	for _, k := range keys {
+		if err := editor.Set(ctx, k, c[k], false /*path*/); err != nil {
+			return err
+		}
+	}
+	return editor.Save(ctx)
 }
 
 // checkRemoteProjectStack guards mutation commands against a nil ProjectStack for remote stacks.

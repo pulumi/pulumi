@@ -430,6 +430,7 @@ func NewUpCmd() *cobra.Command {
 			path,
 			opts.Display,
 			configFile,
+			false, // operation commands must not persist -c to a remote stack's shared ESC env
 		); err != nil {
 			return err
 		}
