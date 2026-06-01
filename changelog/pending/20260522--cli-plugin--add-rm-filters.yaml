@@ -1,0 +1,7 @@
+changes:
+- type: feat
+  scope: cli/plugin
+  description: Add --older-than and --keep-latest filters to pulumi plugin rm with day and week duration suffixes
+- type: feat
+  scope: cli/plugin
+  description: pulumi plugin ls now prefers an explicitly recorded last-used time over filesystem atime, fixing inaccurate values on noatime mounts

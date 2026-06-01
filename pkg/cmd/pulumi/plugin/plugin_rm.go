@@ -17,6 +17,8 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -33,12 +35,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var all bool
 	var yes bool
+	var olderThan string
+	var keepLatest int
 	cmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm"},
@@ -46,9 +49,19 @@ func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 		Long: "Remove one or more plugins from the download cache.\n" +
 			"\n" +
 			"Specify KIND, NAME, and/or VERSION to narrow down what will be removed.\n" +
-			"If none are specified, the entire cache will be cleared.  If only KIND and\n" +
-			"NAME are specified, but not VERSION, all versions of the plugin with the\n" +
-			"given KIND and NAME will be removed.  VERSION may be a range.\n" +
+			"If none are specified, pass --all to clear the entire cache.  If only KIND\n" +
+			"and NAME are specified, but not VERSION, all versions of the plugin with\n" +
+			"the given KIND and NAME will be removed.  VERSION may be a range.\n" +
+			"\n" +
+			"Use --older-than to remove plugins last used longer ago than the given\n" +
+			"duration. The duration accepts Go duration syntax, plus d for days and w\n" +
+			"for weeks, such as 30d, 2w, or 72h. Plugins without a recorded last-used\n" +
+			"time are skipped by --older-than.\n" +
+			"\n" +
+			"Use --keep-latest to preserve the newest matching versions per plugin\n" +
+			"(kind, name). For example, `pulumi plugin rm resource aws --older-than\n" +
+			"30d --keep-latest 2` removes old aws resource plugins while keeping the\n" +
+			"two newest matching versions.\n" +
 			"\n" +
 			"This removal cannot be undone.  If a deleted plugin is subsequently required\n" +
 			"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
@@ -60,6 +73,29 @@ func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 			}
 
 			// Parse the filters.
+			keepLatestSet := cmd.Flags().Changed("keep-latest")
+			if keepLatest < 0 {
+				return errors.New("--keep-latest must be non-negative")
+			}
+			if keepLatestSet && keepLatest == 0 {
+				return errors.New("--keep-latest 0 is equivalent to --all; pass --all instead")
+			}
+			if len(args) == 0 && !all && olderThan == "" && !keepLatestSet {
+				return errors.New("please pass --all or a filter (--older-than, --keep-latest, or a kind)")
+			}
+			if all && (len(args) > 0 || olderThan != "" || keepLatestSet) {
+				return errors.New("--all cannot be combined with filters")
+			}
+
+			var olderThanDuration *time.Duration
+			if olderThan != "" {
+				threshold, err := parseAgeDuration(olderThan)
+				if err != nil {
+					return fmt.Errorf("--older-than: %w", err)
+				}
+				olderThanDuration = &threshold
+			}
+
 			var kind apitype.PluginKind
 			var name string
 			var version *semver.Range
@@ -68,8 +104,6 @@ func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 					return fmt.Errorf("unrecognized plugin kind: %s\n\n%v", args[0], cmd.UsageString())
 				}
 				kind = apitype.PluginKind(args[0])
-			} else if !all {
-				return errors.New("please pass --all if you'd like to remove all plugins")
 			}
 			if len(args) > 1 {
 				name = args[1]
@@ -83,18 +117,11 @@ func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 			}
 
 			// Now build a list of plugins that match.
-			var deletes []workspace.PluginInfo
 			plugins, err := pluginContext.GetPlugins(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("loading plugins: %w", err)
 			}
-			for _, plugin := range plugins {
-				if (kind == "" || plugin.Kind == kind) &&
-					(name == "" || plugin.Name == name) &&
-					(version == nil || (plugin.Version != nil && (*version)(*plugin.Version))) {
-					deletes = append(deletes, plugin)
-				}
-			}
+			deletes := selectPluginsToDelete(plugins, kind, name, version, olderThanDuration, keepLatest, time.Now())
 
 			if len(deletes) == 0 {
 				cmdutil.Diag().Infof(
@@ -114,7 +141,7 @@ func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 						fmt.Sprintf("%sThis will remove %d plugin%s from the cache:%s\n",
 							colors.SpecAttention, len(deletes), suffix, colors.Reset)))
 				for _, del := range deletes {
-					fmt.Fprintf(out, "    %s %s\n", del.Kind, del.String())
+					fmt.Fprintln(out, formatPluginDeleteLine(del))
 				}
 				if !ui.ConfirmPrompt("", "yes", opts) {
 					return nil
@@ -123,7 +150,8 @@ func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 
 			// Run the actual delete operations.
 			var result error
-			for _, plugin := range deletes {
+			for _, del := range deletes {
+				plugin := del.Plugin
 				if err := plugin.Delete(); err == nil {
 					fmt.Fprintf(out, "removed: %s %v\n", plugin.Kind, plugin)
 				} else {
@@ -151,6 +179,23 @@ func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
+	cmd.PersistentFlags().StringVar(
+		&olderThan, "older-than", "",
+		"Only remove plugins last used longer ago than this duration. "+
+			"Accepts a standalone Nd/Nw value (e.g. 30d, 2w) or a Go duration (e.g. 72h, 1h30m); "+
+			"mixed forms like 7d12h are not supported. "+
+			"Plugins with no recorded last-used time are skipped.")
+	cmd.PersistentFlags().IntVar(
+		&keepLatest, "keep-latest", 0,
+		"Keep this many of the newest matching versions per plugin (kind, name).")
 
 	return cmd
+}
+
+func formatPluginDeleteLine(del pluginDeleteSelection) string {
+	reason := ""
+	if len(del.Reasons) > 0 {
+		reason = " (" + strings.Join(del.Reasons, "; ") + ")"
+	}
+	return fmt.Sprintf("    %s %s%s", del.Plugin.Kind, del.Plugin.String(), reason)
 }

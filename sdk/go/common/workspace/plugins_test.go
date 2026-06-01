@@ -1822,6 +1822,100 @@ func TestProjectPluginsWithSymlink(t *testing.T) {
 	assert.Equal(t, filepath.Join(tempdir, "symlink", "pulumi-resource-aws"), path)
 }
 
+func TestPluginInfo_LastUsedTime_PrefersSidecar(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	pluginDir := filepath.Join(dir, "resource-aws-v7.30.0")
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
+
+	require.NoError(t, recordPluginUsage(pluginDir))
+	twoDaysAgo := time.Now().Add(-48 * time.Hour)
+	require.NoError(t, os.Chtimes(LastUsedSidecarPath(pluginDir), twoDaysAgo, twoDaysAgo))
+
+	info := &PluginInfo{Path: pluginDir}
+	got := info.LastUsedTime()
+	assert.WithinDuration(t, twoDaysAgo, got, time.Second)
+}
+
+func TestPluginInfo_Delete_RemovesSidecar(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	pluginDir := filepath.Join(dir, "resource-aws-v7.30.0")
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
+	require.NoError(t, recordPluginUsage(pluginDir))
+
+	info := &PluginInfo{Path: pluginDir}
+	require.NoError(t, info.Delete())
+
+	_, err := os.Stat(LastUsedSidecarPath(pluginDir))
+	assert.True(t, os.IsNotExist(err), "expected sidecar to be removed")
+}
+
+func TestGetPluginPath_WritesSidecarOnCacheHit(t *testing.T) {
+	ctx := t.Context()
+
+	home := t.TempDir()
+	t.Setenv("PULUMI_HOME", home)
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
+
+	pluginDir := filepath.Join(home, "plugins", "resource-aws-v7.30.0")
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "pulumi-resource-aws"), []byte("#!/bin/sh\n"), 0o600))
+
+	v := semver.MustParse("7.30.0")
+	spec := PluginDescriptor{Name: "aws", Kind: apitype.ResourcePlugin, Version: &v}
+	_, err := GetPluginPath(ctx, diagtest.LogSink(t), spec, nil)
+	require.NoError(t, err)
+
+	_, ok := RecordedLastUsedTime(pluginDir)
+	assert.True(t, ok, "expected sidecar to be written on cache hit")
+}
+
+func TestGetPluginInfo_DoesNotWriteSidecarOnCacheHit(t *testing.T) {
+	ctx := t.Context()
+
+	home := t.TempDir()
+	t.Setenv("PULUMI_HOME", home)
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
+
+	pluginDir := filepath.Join(home, "plugins", "resource-aws-v7.30.0")
+	require.NoError(t, os.MkdirAll(pluginDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "pulumi-resource-aws"), []byte("#!/bin/sh\n"), 0o600))
+
+	v := semver.MustParse("7.30.0")
+	spec := PluginDescriptor{Name: "aws", Kind: apitype.ResourcePlugin, Version: &v}
+	_, err := GetPluginInfo(ctx, diagtest.LogSink(t), spec, nil)
+	require.NoError(t, err)
+
+	_, ok := RecordedLastUsedTime(pluginDir)
+	assert.False(t, ok, "expected GetPluginInfo to leave last-used sidecar absent")
+}
+
+func TestGetPluginPath_DoesNotWriteSidecarForProjectPlugin(t *testing.T) {
+	ctx := t.Context()
+
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
+
+	pluginDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "pulumi-resource-aws"), []byte("#!/bin/sh\n"), 0o600))
+
+	path, err := GetPluginPath(ctx, diagtest.LogSink(t), PluginDescriptor{Kind: apitype.ResourcePlugin, Name: "aws"},
+		[]ProjectPlugin{
+			{
+				Name: "aws",
+				Kind: apitype.ResourcePlugin,
+				Path: pluginDir,
+			},
+		})
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(pluginDir, "pulumi-resource-aws"), path)
+
+	_, ok := RecordedLastUsedTime(pluginDir)
+	assert.False(t, ok, "expected project plugin path to leave last-used sidecar absent")
+}
+
 func TestNewPluginSpec(t *testing.T) {
 	t.Parallel()
 

@@ -1395,6 +1395,11 @@ func (info *PluginInfo) LastUsedTime() time.Time {
 		return info.lastUsedTime
 	}
 
+	if t, ok := RecordedLastUsedTime(info.Path); ok {
+		info.lastUsedTime = t
+		return t
+	}
+
 	err := info.setFileMetadata()
 	if err != nil {
 		logging.V(6).Infof("unable to get plugin last used time for %s: %v", info.Path, err)
@@ -1438,10 +1443,11 @@ func (info *PluginInfo) Delete() error {
 	if err := os.RemoveAll(dir); err != nil {
 		return err
 	}
-	// Attempt to delete any leftover .partial or .lock files.
+	// Attempt to delete any leftover .partial, .lock, or .lastused files.
 	// Don't fail the operation if we can't delete these.
 	contract.IgnoreError(os.Remove(dir + ".partial"))
 	contract.IgnoreError(os.Remove(dir + ".lock"))
+	contract.IgnoreError(os.Remove(LastUsedSidecarPath(dir)))
 	return nil
 }
 
@@ -2024,7 +2030,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins, true /* recordUsage */)
 	if err != nil {
 		return "", err
 	}
@@ -2036,7 +2042,7 @@ func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, proj
 
 func GetPluginInfo(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins, false /* recordUsage */)
 	if err != nil {
 		return nil, err
 	}
@@ -2072,6 +2078,7 @@ func getPluginInfoAndPath(
 	d diag.Sink,
 	spec PluginDescriptor,
 	projectPlugins []ProjectPlugin,
+	recordUsage bool,
 ) (*PluginInfo, string, error) {
 	filename := spec.File()
 
@@ -2216,13 +2223,23 @@ func getPluginInfoAndPath(
 		match = LegacySelectCompatiblePlugin(plugins, spec)
 	}
 
-	_, subdir := spec.LocalName()
-	// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
-	if subdir != "" && match != nil {
-		match.Path = filepath.Join(match.Path, subdir)
-	}
-
 	if match != nil {
+		basePluginPath := match.Path
+
+		_, subdir := spec.LocalName()
+		// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
+		if subdir != "" {
+			match.Path = filepath.Join(match.Path, subdir)
+		}
+
+		// Record this usage. Best-effort: never fail a plugin resolution because
+		// we couldn't update the sidecar. Use the base plugin directory, not a
+		// git plugin's subdirectory.
+		if recordUsage {
+			if err := recordPluginUsage(basePluginPath); err != nil {
+				logging.V(6).Infof("GetPluginPath: failed to record usage for %s: %v", basePluginPath, err)
+			}
+		}
 		matchPath := getPluginPath(match)
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found in cache at %s",
 			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, matchPath)
