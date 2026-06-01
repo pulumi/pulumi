@@ -39,12 +39,23 @@ const (
 	ExitInternalError       = 255
 )
 
+// An error that specifies it's own error code.
+type CustomExitCodeError interface {
+	error
+
+	CustomExitCode() int
+}
+
 // ExitCodeFor maps an error to a process exit code, based on its concrete or
 // wrapped type. This function is the single choke point for mapping errors
 // into the public exit code contract.
 func ExitCodeFor(err error) int {
 	if err == nil {
 		return ExitSuccess
+	}
+
+	if c, ok := err.(CustomExitCodeError); ok {
+		return c.CustomExitCode()
 	}
 
 	// `pulumi api` carries its own semantic exit code on the error so
