@@ -69,6 +69,6 @@ func main() {
 			}, nil
 		},
 	}); err != nil {
-		cmdutil.ExitError(err.Error())
+		cmdutil.Exit(err)
 	}
 }

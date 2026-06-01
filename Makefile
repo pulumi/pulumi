@@ -170,14 +170,17 @@ lint_pulumi_json_fix::
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
-# bin/custom-gcl is a golangci-lint binary with the requiredfield linter
-# baked in as a module plugin. Built from .custom-gcl.yml and the wrapper
-# under .golangci/plugins/requiredfield/.
+# bin/custom-gcl is a golangci-lint binary with the requiredfield and noosexit
+# linters baked in as module plugins. Built from .custom-gcl.yml and the
+# wrappers under .golangci/plugins/.
 CUSTOM_GCL := bin/custom-gcl
 CUSTOM_GCL_DEPS := .custom-gcl.yml \
 		   .golangci/plugins/requiredfield/go.mod \
 		   .golangci/plugins/requiredfield/go.sum \
-		   .golangci/plugins/requiredfield/plugin.go
+		   .golangci/plugins/requiredfield/plugin.go \
+		   .golangci/plugins/noosexit/go.mod \
+		   .golangci/plugins/noosexit/go.sum \
+		   .golangci/plugins/noosexit/plugin.go
 
 $(CUSTOM_GCL): $(CUSTOM_GCL_DEPS) .make/ensure/golangci-lint
 	golangci-lint custom
