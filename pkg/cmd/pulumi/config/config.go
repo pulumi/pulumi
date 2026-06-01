@@ -161,6 +161,7 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.AddCommand(newConfigRefreshCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
 	cmd.AddCommand(newConfigCopyCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack, &configFile))
+	cmd.AddCommand(newConfigEditCmd(ws, &stack, &configFile))
 
 	return cmd
 }
