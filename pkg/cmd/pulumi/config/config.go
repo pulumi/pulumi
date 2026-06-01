@@ -410,12 +410,14 @@ func newConfigRmCmd(ws pkgWorkspace.Context, stack *string, configFile *string) 
 				return err
 			}
 
-			err = ps.Config.Remove(key, path)
+			editor, err := newConfigEditor(ctx, stack, ps, config.NopEncrypter, *configFile)
 			if err != nil {
 				return err
 			}
-
-			return cmdStack.SaveProjectStack(ctx, stack, ps, *configFile)
+			if err = editor.Remove(ctx, key, path); err != nil {
+				return err
+			}
+			return editor.Save(ctx)
 		},
 	}
 	constrictor.AttachArguments(rmCmd, &constrictor.Arguments{
@@ -483,19 +485,22 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string, configFile *strin
 				return err
 			}
 
+			editor, err := newConfigEditor(ctx, stack, ps, config.NopEncrypter, *configFile)
+			if err != nil {
+				return err
+			}
 			for _, arg := range args {
 				key, err := ParseConfigKey(ws, arg, path)
 				if err != nil {
 					return fmt.Errorf("invalid configuration key: %w", err)
 				}
 
-				err = ps.Config.Remove(key, path)
-				if err != nil {
+				if err = editor.Remove(ctx, key, path); err != nil {
 					return err
 				}
 			}
 
-			return cmdStack.SaveProjectStack(ctx, stack, ps, *configFile)
+			return editor.Save(ctx)
 		},
 	}
 	constrictor.AttachArguments(rmAllCmd, &constrictor.Arguments{
@@ -782,22 +787,21 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
-	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-
-	// Encrypt the config value if needed.
+	// The editor encrypts secrets, so pass plaintext as a secure value plus the encrypter to use.
+	encrypter := config.NopEncrypter
 	var v config.Value
 	if c.Secret {
-		// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
-		// config data.
-		c, _, cerr := ssml.GetEncrypter(ctx, s, ps)
-		if cerr != nil {
-			return cerr
+		if !s.ConfigLocation().IsRemote {
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+			// GetEncrypter may update ps (e.g. set up a new encryption salt); Save persists ps
+			// unconditionally, so the changed-state bool can be ignored.
+			enc, _, cerr := ssml.GetEncrypter(ctx, s, ps)
+			if cerr != nil {
+				return cerr
+			}
+			encrypter = enc
 		}
-		enc, eerr := c.EncryptValue(ctx, value)
-		if eerr != nil {
-			return eerr
-		}
-		v = config.NewSecureValue(enc)
+		v = config.NewSecureValue(value)
 	} else {
 		var t config.Type
 		switch c.Type {
@@ -837,12 +841,14 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
-	err = ps.Config.Set(key, v, c.Path)
+	editor, err := newConfigEditor(ctx, s, ps, encrypter, configFile)
 	if err != nil {
+		return err
+	}
+	if err = editor.Set(ctx, key, v, c.Path); err != nil {
 		return fmt.Errorf("could not set config: %w", err)
 	}
-
-	return cmdStack.SaveProjectStack(ctx, s, ps, configFile)
+	return editor.Save(ctx)
 }
 
 func newConfigSetAllCmd(
@@ -903,7 +909,24 @@ func newConfigSetAllCmd(
 				return err
 			}
 
+			if configStoreIsRemote(stack, *configFile) {
+				configLocation := stack.ConfigLocation()
+				err := errors.New("config set-all not supported for remote stack config")
+				if configLocation.EscEnv != nil {
+					return fmt.Errorf("%w: use `pulumi env set %s pulumiConfig.<key> <value>`",
+						err, *configLocation.EscEnv)
+				}
+				return err
+			}
+
 			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, stack, *configFile)
+			if err != nil {
+				return err
+			}
+
+			// set-all pre-encrypts secrets via the encrypt closure below, so the editor is given a
+			// NopEncrypter to avoid re-encrypting already-encrypted values.
+			editor, err := newConfigEditor(ctx, stack, ps, config.NopEncrypter, *configFile)
 			if err != nil {
 				return err
 			}
@@ -915,8 +938,7 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewValue(value)
 
-				err = ps.Config.Set(key, v, path)
-				if err != nil {
+				if err = editor.Set(ctx, key, v, path); err != nil {
 					return err
 				}
 			}
@@ -955,8 +977,7 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewSecureValue(enc)
 
-				err = ps.Config.Set(key, v, path)
-				if err != nil {
+				if err = editor.Set(ctx, key, v, path); err != nil {
 					return err
 				}
 			}
@@ -1008,14 +1029,13 @@ func newConfigSetAllCmd(
 						value = config.NewValue(*jsonValue.Value)
 					}
 
-					err = ps.Config.Set(key, value, path)
-					if err != nil {
+					if err = editor.Set(ctx, key, value, path); err != nil {
 						return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
 					}
 				}
 			}
 
-			return cmdStack.SaveProjectStack(ctx, stack, ps, *configFile)
+			return editor.Save(ctx)
 		},
 	}
 

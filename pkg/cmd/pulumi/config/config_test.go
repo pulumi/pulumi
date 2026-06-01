@@ -903,6 +903,77 @@ func (m *mockEncrypterFactory) GetEncrypter(
 	return m.encrypter, cmdStack.SecretsManagerUnchanged, nil
 }
 
+// An explicit --config-file selects a local file even when the stack is linked to remote config, so
+// set-all must write that file rather than reject the stack as remote.
+func TestConfigSetAllConfigFileOverridesRemote(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	escEnv := "testProject/testStack"
+	s := backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "org/testProject/testStack",
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &escEnv}
+		},
+	}
+
+	tmpdir := t.TempDir()
+	configFile := filepath.Join(tmpdir, "Pulumi.stack.yaml")
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "testProject"}, "", nil
+		},
+	}
+
+	stackName := "testStack"
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return &backend.MockBackend{
+				GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return &s, nil
+				},
+			}, nil
+		},
+		LoginF: func(
+			ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return &backend.MockBackend{
+				GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return &s, nil
+				},
+			}, nil
+		},
+	}
+
+	mockEncrypterFactory := &mockEncrypterFactory{
+		encrypter: &secrets.MockEncrypter{
+			EncryptValueF: func(plaintext string) string {
+				return base64.StdEncoding.EncodeToString([]byte(plaintext))
+			},
+		},
+	}
+
+	cmd := newConfigSetAllCmd(ws, &stackName, lm, mockEncrypterFactory, &configFile)
+	cmd.SetContext(ctx)
+	require.NoError(t, cmd.PersistentFlags().Set("plaintext", "testProject:key1=value1"))
+
+	require.NoError(t, cmd.RunE(cmd, []string{}))
+
+	data, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	require.Equal(t, "config:\n  testProject:key1: value1\n", string(data))
+}
+
 func TestConfigRefresh(t *testing.T) {
 	t.Parallel()
 	minimalDeployment := &apitype.UntypedDeployment{
