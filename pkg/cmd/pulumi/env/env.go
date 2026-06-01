@@ -21,6 +21,7 @@ import (
 	escWorkspace "github.com/pulumi/esc/cmd/esc/cli/workspace"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -36,6 +37,18 @@ func NewEnvCmd() *cobra.Command {
 	// Add the `env` command to the root. We'll add an alias so that users can also use `pulumi esc` to run the command.
 	envCommand := escCLI.Commands()[0]
 	envCommand.Aliases = append(envCommand.Aliases, "esc")
+	markESCErrors(envCommand)
 
 	return envCommand
+}
+
+func markESCErrors(cobraCmd *cobra.Command) {
+	if runE := cobraCmd.RunE; runE != nil {
+		cobraCmd.RunE = func(cmd *cobra.Command, args []string) error {
+			return cmdCmd.MarkESCError(runE(cmd, args))
+		}
+	}
+	for _, child := range cobraCmd.Commands() {
+		markESCErrors(child)
+	}
 }
