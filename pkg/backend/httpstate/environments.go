@@ -130,3 +130,12 @@ func isConfigConflict(err error) bool {
 	}
 	return false
 }
+
+func (b *cloudBackend) DeleteEnvironmentWithProject(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+) error {
+	return b.escClient.DeleteEnvironment(ctx, org, projectName, envName)
+}

@@ -169,6 +169,12 @@ func (m *mockEnvironmentsBackend) UpdateEnvironmentWithProject(
 	return nil, nil
 }
 
+func (m *mockEnvironmentsBackend) DeleteEnvironmentWithProject(
+	context.Context, string, string, string,
+) error {
+	return nil
+}
+
 func TestResolveEnvironments(t *testing.T) {
 	t.Parallel()
 

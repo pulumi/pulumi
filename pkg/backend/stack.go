@@ -50,6 +50,9 @@ type Stack interface {
 	LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
 	// SaveRemoteConfig the stack's configuration remotely to the backend.
 	SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error
+	// RemoveRemoteConfig unlinks the stack from its remote configuration so its configuration is local
+	// again. It does not delete the backing environment.
+	RemoveRemoteConfig(ctx context.Context) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	// SnapshotStackOutputs returns the stack outputs of the latest deployment snapshot.
