@@ -58,9 +58,9 @@ func NonInteractiveCurrentBackend(
 		return BackendInstance, nil
 	}
 
-	url, err := getCurrentCloudURL(ws, project)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 	logging.V(7).Infof("Current cloud URL: %q", url)
 
@@ -76,23 +76,13 @@ func CurrentBackend(
 		return BackendInstance, nil
 	}
 
-	url, err := getCurrentCloudURL(ws, project)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 	logging.V(7).Infof("Current cloud URL: %q", url)
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 
 	// Only set current if we don't currently have a cloud URL set.
 	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color)
-}
-
-// getCurrentCloudURL returns the active cloud URL, using the shared agent
-// credentials as a fallback when an agent cannot read the default credentials.
-func getCurrentCloudURL(ws pkgWorkspace.Context, project *workspace.Project) (string, error) {
-	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
-	if err != nil {
-		return "", fmt.Errorf("could not get cloud url: %w", err)
-	}
-	return url, nil
 }

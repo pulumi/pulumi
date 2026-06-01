@@ -57,7 +57,7 @@ func TestGetCurrentCloudURLFallsBackToAgentCredentials(t *testing.T) {
 		},
 	}
 
-	url, err := getCurrentCloudURL(ws, nil)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), nil)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.agent.example", url)
 }
@@ -75,7 +75,7 @@ func TestGetCurrentCloudURLReturnsEmptyAgentCurrent(t *testing.T) {
 		},
 	}
 
-	url, err := getCurrentCloudURL(ws, nil)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), nil)
 	require.NoError(t, err)
 	assert.Empty(t, url)
 }
@@ -95,7 +95,7 @@ func TestGetCurrentCloudURLReturnsAgentCredentialReadError(t *testing.T) {
 		},
 	}
 
-	_, err := getCurrentCloudURL(ws, nil)
+	_, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), nil)
 	require.ErrorContains(t, err, "could not get cloud url from agent credentials")
 }
 
@@ -112,7 +112,7 @@ func TestGetCurrentCloudURLDoesNotFallbackWithExplicitPath(t *testing.T) {
 		},
 	}
 
-	_, err := getCurrentCloudURL(ws, nil)
+	_, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), nil)
 	require.ErrorIs(t, err, assert.AnError)
 }
 
@@ -127,7 +127,7 @@ func TestGetCurrentCloudURLReturnsDefaultCredentialErrorsOutsideAgents(t *testin
 		},
 	}
 
-	_, err := getCurrentCloudURL(ws, nil)
+	_, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), nil)
 	require.ErrorIs(t, err, assert.AnError)
 }
 
@@ -136,7 +136,7 @@ func TestGetCurrentCloudURLReturnsDefaultCloudURL(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "https://api.default-current.example.com")
 
-	url, err := getCurrentCloudURL(&pkgWorkspace.MockContext{}, nil)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(&pkgWorkspace.MockContext{}, env.Global(), nil)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.default-current.example.com", url)
 }
