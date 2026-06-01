@@ -862,6 +862,12 @@ func hasExplicitPulumiPathEnv() bool {
 	return os.Getenv(PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
 }
 
+// AgentCredentialsFallbackEnabled reports whether shared temporary agent
+// credentials may be used as an implicit fallback.
+func AgentCredentialsFallbackEnabled() bool {
+	return agentdetect.Detect(os.Getenv) != "" && !hasExplicitPulumiPathEnv()
+}
+
 func GetPulumiConfig() (PulumiConfig, error) {
 	configFile, err := getConfigFilePath()
 	if err != nil {

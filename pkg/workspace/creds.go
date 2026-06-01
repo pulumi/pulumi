@@ -15,7 +15,13 @@
 package workspace
 
 import (
+	"errors"
+	"fmt"
+	"os"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -44,6 +50,37 @@ func GetCurrentCloudURL(ws Context, e env.Env, project *workspace.Project) (stri
 	}
 
 	return url, nil
+}
+
+// GetCurrentCloudURLWithAgentFallback returns the active cloud URL, using
+// shared temporary agent credentials when an agent cannot read the default
+// credentials.
+func GetCurrentCloudURLWithAgentFallback(ws Context, e env.Env, project *workspace.Project) (string, error) {
+	url, err := GetCurrentCloudURL(ws, e, project)
+	if err == nil {
+		return url, nil
+	}
+
+	if !workspace.AgentCredentialsFallbackEnabled() {
+		logging.V(7).Infof("Could not get cloud URL from default credentials without agent fallback: %v", err)
+		return "", err
+	}
+
+	agent := agentdetect.Detect(os.Getenv)
+	logging.V(7).Infof(
+		"Could not get cloud URL from default credentials in agent mode (%s); checking shared agent credentials: %v",
+		agent, err)
+	agentCreds, agentErr := workspace.GetAgentStoredCredentials()
+	if agentErr != nil {
+		return "", fmt.Errorf("could not get cloud url from agent credentials: %w", errors.Join(err, agentErr))
+	}
+	if agentCreds.Current != "" {
+		logging.V(7).Infof("Using current cloud URL %q from shared agent credentials", agentCreds.Current)
+	} else {
+		logging.V(7).Infof("No current cloud URL found in shared agent credentials")
+	}
+
+	return agentCreds.Current, nil
 }
 
 // GetCloudInsecure returns if this cloud url is saved as one that should use insecure transport.
