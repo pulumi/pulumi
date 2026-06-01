@@ -49,6 +49,6 @@ func main() {
 			return nil, err
 		},
 	}); err != nil {
-		cmdutil.ExitError(err.Error())
+		cmdutil.Exit(err)
 	}
 }
