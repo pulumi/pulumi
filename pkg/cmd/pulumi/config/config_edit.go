@@ -59,7 +59,7 @@ func newConfigEditCmd(ws pkgWorkspace.Context, stackRef *string, configFile *str
 			"ciphertext unless --show-secrets is passed.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if impl.runEnvEdit == nil {
-				impl.runEnvEdit = runEnvEditCmd
+				impl.runEnvEdit = runEnvCmd
 			}
 			return impl.run(cmd.Context())
 		},
@@ -129,14 +129,14 @@ func (cmd *configEditCmd) editRemote(ctx context.Context, stack backend.Stack) e
 	return cmd.runEnvEdit(ctx, args)
 }
 
-func runEnvEditCmd(ctx context.Context, args []string) error {
-	return newEnvEditRoot(args).ExecuteContext(ctx)
+func runEnvCmd(ctx context.Context, args []string) error {
+	return newEnvRoot(args).ExecuteContext(ctx)
 }
 
 // cobra always executes from the root, so args are set on the root with the env command's name
 // prepended; setting them on the subcommand alone is ignored and the process's real os.Args
 // (`config edit`) would leak in and fail as an unknown esc command.
-func newEnvEditRoot(args []string) *cobra.Command {
+func newEnvRoot(args []string) *cobra.Command {
 	envCmd := cmdEnv.NewEnvCmd()
 	root := envCmd.Root()
 	if root != envCmd {

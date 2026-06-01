@@ -111,7 +111,7 @@ func TestRunEnvEditDispatchResolves(t *testing.T) {
 	// Regression: cobra executes from the root, so the env subcommand path must be on the root's args.
 	// Passing too many args makes `env edit` fail its own MaximumNArgs(1) validation, which proves
 	// dispatch resolved to `env edit` (without contacting a backend) rather than rejecting "config".
-	root := newEnvEditRoot([]string{"edit", "x", "y", "z"})
+	root := newEnvRoot([]string{"edit", "x", "y", "z"})
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)
 	err := root.ExecuteContext(t.Context())
