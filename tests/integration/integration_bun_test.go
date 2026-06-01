@@ -47,9 +47,10 @@ func TestDebuggerAttachBun(t *testing.T) {
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
+	var previewErr error
 	go func() {
 		defer wg.Done()
-		e.RunCommand("pulumi", "preview", "--attach-debugger",
+		_, _, previewErr = e.GetCommandResults("pulumi", "preview", "--attach-debugger",
 			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
 	}()
 
@@ -103,6 +104,7 @@ outer:
 	}()
 	select {
 	case <-waitDone:
+		require.NoError(t, previewErr, "pulumi preview failed")
 	case <-time.After(60 * time.Second):
 		t.Fatal("timed out waiting for program to complete")
 	}
