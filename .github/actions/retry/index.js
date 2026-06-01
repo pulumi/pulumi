@@ -227,18 +227,37 @@ function buildChildEnv(meta, withInput) {
   }
 
   // Apply defaults from the child action's action.yml.
+  // Track inputs whose defaults reference github.token but couldn't be fully resolved
+  // (e.g. complex expressions like `${{ github.server_url == '...' && github.token || '' }}`).
+  const unresolvedTokenInputs = [];
   for (const [name, cfg] of Object.entries(meta.inputs)) {
     if (cfg.default === undefined) continue;
     const envKey = `INPUT_${name.toUpperCase()}`;
     if (envKey in env) continue; // caller already set it
     const { value, ok } = evaluateExpr(cfg.default);
-    if (ok) env[envKey] = value;
+    if (ok) {
+      env[envKey] = value;
+    } else if (cfg.default.includes("github.token")) {
+      unresolvedTokenInputs.push(envKey);
+    }
   }
 
   // Apply caller-provided inputs (override defaults).
   if (withInput) {
     for (const [key, value] of Object.entries(parseFlat(withInput))) {
       env[`INPUT_${key.toUpperCase()}`] = value;
+    }
+  }
+
+  // For inputs whose defaults contained github.token but couldn't be fully evaluated
+  // (e.g. oven-sh/setup-bun's complex ternary expression), fall back to GITHUB_TOKEN
+  // if the caller didn't explicitly set the input.
+  const token = env["GITHUB_TOKEN"] || "";
+  if (token) {
+    for (const envKey of unresolvedTokenInputs) {
+      if (!(envKey in env)) {
+        env[envKey] = token;
+      }
     }
   }
 
