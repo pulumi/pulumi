@@ -1,0 +1,5 @@
+kind: feat
+body: Inject TF_TOKEN_<host> when running `pulumi package add terraform-module` against a Pulumi Cloud address so the embedded `tofu init` authenticates without a separate `terraform login` step
+component: cli/packages
+custom:
+  PR: "23398"

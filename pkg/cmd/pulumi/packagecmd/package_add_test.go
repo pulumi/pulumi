@@ -19,6 +19,8 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -310,4 +312,83 @@ func TestPrintRegistryDocsHint(t *testing.T) {
 			assert.Equal(t, tt.want, buf.String())
 		})
 	}
+}
+
+func TestTFTokenHostKey(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		host string
+		want string
+	}{
+		{"app.pulumi.com", "app_pulumi_com"},
+		{"pulumi.example.com", "pulumi_example_com"},
+		{"pulumi-internal.example.com", "pulumi__internal_example_com"},
+		{"my-host.my-domain.com", "my__host_my__domain_com"},
+		// Non-ASCII hosts are punycode-encoded first (HashiCorp convention).
+		{"café.fr", "xn____caf__dma_fr"},
+		{"xn--caf-dma.fr", "xn____caf__dma_fr"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.host, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, tfTokenHostKey(tt.host))
+		})
+	}
+}
+
+func TestDiscoverTFEHost(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		status int
+		body   string
+		want   string
+	}{
+		{"tfe.v2 present", http.StatusOK, `{"tfe.v2":"https://tfe.example.test/api/v2"}`, "tfe.example.test"},
+		{"no tfe.v2", http.StatusOK, `{"modules.v1":"/v1/modules/"}`, ""},
+		{"malformed json", http.StatusOK, `not json`, ""},
+		{"not found", http.StatusNotFound, ``, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/.well-known/terraform.json", r.URL.Path)
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer srv.Close()
+			assert.Equal(t, tt.want, discoverTFEHost(context.Background(), srv.URL))
+		})
+	}
+}
+
+func TestTFTokenForPulumiCloudAddress(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"tfe.v2":"https://tfe.example.test/api/v2"}`))
+	}))
+	defer srv.Close()
+
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+		Current:      srv.URL,
+		AccessTokens: map[string]string{srv.URL: "tok"},
+	}))
+
+	t.Run("address host is the cloud's TFE domain", func(t *testing.T) {
+		envKey, token, ok := tfTokenForPulumiCloudAddress(context.Background(), "tfe.example.test/acme/vpc/aws")
+		require.True(t, ok)
+		assert.Equal(t, "TF_TOKEN_tfe_example_test", envKey)
+		assert.Equal(t, "tok", token)
+	})
+
+	t.Run("address host is not the TFE domain", func(t *testing.T) {
+		_, _, ok := tfTokenForPulumiCloudAddress(context.Background(), "registry.terraform.io/acme/vpc/aws")
+		assert.False(t, ok)
+	})
 }

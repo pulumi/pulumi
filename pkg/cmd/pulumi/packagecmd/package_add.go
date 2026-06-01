@@ -16,12 +16,16 @@ package packagecmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -38,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/idna"
 )
 
 // Constructs the `pulumi package add` command.
@@ -136,6 +141,8 @@ from the parameters, as in:
 
 			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+
+			defer injectPulumiCloudTFToken(cmd.Context(), pluginSource, parameters.Args)()
 
 			pkg, packageSpec, diags, err := packages.InstallPackage(
 				cmd.OutOrStdout(),
@@ -302,4 +309,83 @@ func loadEnclosingTarget(ctx context.Context, wd string) (addTarget, error) {
 		panic(fmt.Sprintf("workspace.LoadBaseProjectFrom promises that it will return "+
 			"either *workspace.Project or *workspace.PluginProject, found %T", baseProject))
 	}
+}
+
+func injectPulumiCloudTFToken(ctx context.Context, pluginSource string, params []string) func() {
+	noop := func() {}
+	if pluginSource != "terraform-module" || len(params) == 0 {
+		return noop
+	}
+	envKey, token, ok := tfTokenForPulumiCloudAddress(ctx, params[0])
+	if !ok || os.Getenv(envKey) != "" {
+		return noop
+	}
+	_ = os.Setenv(envKey, token)
+	return func() { _ = os.Unsetenv(envKey) }
+}
+
+// The registry is served on the cloud's TFE domain (tfe.pulumi.com), not the API
+// host the user logs in to (api.pulumi.com), so the trusted host comes from the
+// cloud's own service-discovery document rather than creds.Current.
+func tfTokenForPulumiCloudAddress(ctx context.Context, address string) (envKey, token string, ok bool) {
+	host, _, found := strings.Cut(address, "/")
+	if !found || host == "" {
+		return "", "", false
+	}
+	creds, err := workspace.GetStoredCredentials()
+	if err != nil || creds.Current == "" {
+		return "", "", false
+	}
+	tfeHost := discoverTFEHost(ctx, creds.Current)
+	if tfeHost == "" || !strings.EqualFold(tfeHost, host) {
+		return "", "", false
+	}
+	if envToken := os.Getenv("PULUMI_ACCESS_TOKEN"); envToken != "" {
+		token = envToken
+	} else {
+		token = creds.AccessTokens[creds.Current]
+	}
+	if token == "" {
+		return "", "", false
+	}
+	return "TF_TOKEN_" + tfTokenHostKey(host), token, true
+}
+
+func discoverTFEHost(ctx context.Context, cloudURL string) string {
+	endpoint := strings.TrimSuffix(cloudURL, "/") + "/.well-known/terraform.json"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return ""
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer contract.IgnoreClose(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+	var doc struct {
+		TFEv2 string `json:"tfe.v2"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil || doc.TFEv2 == "" {
+		return ""
+	}
+	u, err := url.Parse(doc.TFEv2)
+	if err != nil {
+		return ""
+	}
+	return u.Host
+}
+
+// tfTokenHostKey encodes a host per HashiCorp's TF_TOKEN_<host> convention:
+// https://developer.hashicorp.com/terraform/cli/config/config-file#environment-variable-credentials
+func tfTokenHostKey(host string) string {
+	if ascii, err := idna.Lookup.ToASCII(host); err == nil {
+		host = ascii
+	}
+	host = strings.ReplaceAll(host, "-", "__")
+	host = strings.ReplaceAll(host, ".", "_")
+	return host
 }
