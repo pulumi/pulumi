@@ -282,21 +282,25 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" | tee -a "${GITHUB_ENV}"
       - name: Install gotestsum
-        uses: jaxxstorm/action-install-gh-release@v3.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/retry
         with:
-          repo: gotestyourself/gotestsum
-          tag: v1.13.0
-          cache: enable
+          action: jaxxstorm/action-install-gh-release@v3.0.0
+          with: |
+            repo: gotestyourself/gotestsum
+            tag: v1.13.0
+            cache: enable
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Install goteststats
-        uses: jaxxstorm/action-install-gh-release@v3.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/retry
         with:
-          repo: pulumi/goteststats
-          tag: v0.0.7
-          cache: enable
+          action: jaxxstorm/action-install-gh-release@v3.0.0
+          with: |
+            repo: pulumi/goteststats
+            tag: v0.0.7
+            cache: enable
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Generate artifact name
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         id: goenv
