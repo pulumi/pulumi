@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -26,7 +25,7 @@ func newEnvScheduleRemoveCmd(env *envCommand) *cobra.Command {
 			"You will be prompted to confirm by typing `remove` unless --yes is passed.\n",
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			yes = yes || cmdutil.IsTruthy(os.Getenv(PulumiSkipConfirmationsEnvVar))
 

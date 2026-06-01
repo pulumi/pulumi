@@ -4,7 +4,6 @@ package cli
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -121,7 +120,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			"It is only required if the arguments to the command you would like to run include\n"+
 			"flags of the form `--flag` or `-f`.\n", shell),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := envcmd.esc.getCachedClient(ctx); err != nil {
 				return err

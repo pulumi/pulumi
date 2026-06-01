@@ -23,8 +23,10 @@ type PulumiWorkspace interface {
 	GetPulumiConfig() (workspace.PulumiConfig, error)
 	GetPulumiPath(elem ...string) (string, error)
 	GetStoredCredentials() (workspace.Credentials, error)
+	GetAgentStoredCredentials() (workspace.Credentials, error)
 	StoreAccount(key string, account workspace.Account, current bool) error
 	GetAccount(key string) (workspace.Account, error)
+	GetAccountWithAgentFallback(key string) (workspace.Account, bool, error)
 	NewAuthContextForTokenExchange(organization, team, user, token, expirationDuration string) (workspace.AuthContext, error)
 }
 
@@ -58,12 +60,20 @@ func (defaultPulumiWorkspace) GetStoredCredentials() (workspace.Credentials, err
 	return workspace.GetStoredCredentials()
 }
 
+func (defaultPulumiWorkspace) GetAgentStoredCredentials() (workspace.Credentials, error) {
+	return workspace.GetAgentStoredCredentials()
+}
+
 func (defaultPulumiWorkspace) StoreAccount(key string, account workspace.Account, current bool) error {
 	return workspace.StoreAccount(key, account, current)
 }
 
 func (defaultPulumiWorkspace) GetAccount(key string) (workspace.Account, error) {
 	return workspace.GetAccount(key)
+}
+
+func (defaultPulumiWorkspace) GetAccountWithAgentFallback(key string) (workspace.Account, bool, error) {
+	return workspace.GetAccountWithAgentFallback(key)
 }
 
 func (defaultPulumiWorkspace) NewAuthContextForTokenExchange(

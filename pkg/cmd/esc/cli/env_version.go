@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -30,7 +29,7 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 			"Subcommands exist for viewing revision history and managing" +
 			"tagged versions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

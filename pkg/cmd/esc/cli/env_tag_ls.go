@@ -28,7 +28,7 @@ func newEnvTagLsCmd(env *envCommand) *cobra.Command {
 			"This command lists an environment's tags.\n",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			format, err := parseOutputFormat(output)
 			if err != nil {

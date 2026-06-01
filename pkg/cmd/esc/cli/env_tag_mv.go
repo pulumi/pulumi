@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 
 	"github.com/pulumi/esc/cmd/esc/cli/style"
@@ -22,7 +21,7 @@ func newEnvTagMvCmd(env *envCommand) *cobra.Command {
 			"This command updates a tag with the given name on the specified environment, " +
 			"changing it's name.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

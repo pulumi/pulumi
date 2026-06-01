@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -38,7 +37,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 			"When removing an environment, the environment will no longer be available\n" +
 			"once this command completes.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			yes = yes || cmdutil.IsTruthy(os.Getenv(PulumiSkipConfirmationsEnvVar))
 

@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -50,7 +49,7 @@ func newEnvProviderAzureLoginStaticCmd(env *envCommand) *cobra.Command {
 			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/azure-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -140,7 +139,7 @@ func newEnvProviderAzureLoginOIDCCmd(env *envCommand) *cobra.Command {
 			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/azure-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

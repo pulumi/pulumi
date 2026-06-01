@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -28,7 +27,7 @@ func newEnvInitCmd(env *envCommand) *cobra.Command {
 			"To create an environment in an organization when logged in to the Pulumi Cloud,\n" +
 			"prefix the stack name with the organization name and a slash (e.g. 'acmecorp/dev').\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

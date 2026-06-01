@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -23,7 +22,7 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 			"version. The environment's definition will be replaced with the\n" +
 			"definition at that version, creating a new revision.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

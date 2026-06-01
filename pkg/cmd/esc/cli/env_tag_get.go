@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 
 	"github.com/pulumi/esc/cmd/esc/cli/style"
@@ -22,7 +21,7 @@ func newEnvTagGetCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"This command get a tag with the given name on the specified environment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			format, err := parseOutputFormat(output)
 			if err != nil {

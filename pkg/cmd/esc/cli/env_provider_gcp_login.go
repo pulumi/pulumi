@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 
@@ -53,7 +52,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -173,7 +172,7 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

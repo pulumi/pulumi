@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -18,7 +17,7 @@ func newEnvTagRmCmd(env *envCommand) *cobra.Command {
 			"This command removes an environment tag using the tag name.\n",
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

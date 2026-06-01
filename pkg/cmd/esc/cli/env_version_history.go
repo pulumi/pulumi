@@ -27,7 +27,7 @@ func newEnvVersionHistoryCmd(env *envCommand) *cobra.Command {
 			"is present, the logs will start at the corresponding revision.\n",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			format, err := parseOutputFormat(output)
 			if err != nil {

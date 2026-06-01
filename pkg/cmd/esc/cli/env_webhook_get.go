@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -25,7 +24,7 @@ func newEnvWebhookGetCmd(env *envCommand) *cobra.Command {
 			"This command prints the named webhook attached to the given environment.\n",
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			format, err := parseOutputFormat(output)
 			if err != nil {

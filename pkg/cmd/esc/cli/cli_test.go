@@ -139,6 +139,11 @@ func (tfs testFS) Remove(name string) error {
 
 type testEnviron map[string]string
 
+func TestMain(m *testing.M) {
+	os.Unsetenv("PULUMI_API")
+	os.Exit(m.Run())
+}
+
 func (env testEnviron) Get(key string) string {
 	return env[key]
 }
@@ -155,6 +160,9 @@ func (env testEnviron) Vars() []string {
 type testPulumiWorkspace struct {
 	credentials workspace.Credentials
 	config      workspace.PulumiConfig
+
+	getStoredCredentialsError error
+	getPulumiConfigError      error
 }
 
 func (w *testPulumiWorkspace) DeleteAccount(backendURL string) error {
@@ -176,6 +184,9 @@ func (w *testPulumiWorkspace) SetBackendConfigDefaultOrg(backendURL, defaultOrg 
 }
 
 func (w *testPulumiWorkspace) GetPulumiConfig() (workspace.PulumiConfig, error) {
+	if w.getPulumiConfigError != nil {
+		return workspace.PulumiConfig{}, w.getPulumiConfigError
+	}
 	return w.config, nil
 }
 
@@ -184,10 +195,20 @@ func (*testPulumiWorkspace) GetPulumiPath(elem ...string) (string, error) {
 }
 
 func (w *testPulumiWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
+	if w.getStoredCredentialsError != nil {
+		return workspace.Credentials{}, w.getStoredCredentialsError
+	}
+	return w.credentials, nil
+}
+
+func (w *testPulumiWorkspace) GetAgentStoredCredentials() (workspace.Credentials, error) {
 	return w.credentials, nil
 }
 
 func (w *testPulumiWorkspace) StoreAccount(key string, account workspace.Account, current bool) error {
+	if w.credentials.Accounts == nil {
+		w.credentials.Accounts = map[string]workspace.Account{}
+	}
 	w.credentials.Accounts[key] = account
 	if current {
 		w.credentials.Current = key
@@ -197,6 +218,11 @@ func (w *testPulumiWorkspace) StoreAccount(key string, account workspace.Account
 
 func (w *testPulumiWorkspace) GetAccount(key string) (workspace.Account, error) {
 	return w.credentials.Accounts[key], nil
+}
+
+func (w *testPulumiWorkspace) GetAccountWithAgentFallback(key string) (workspace.Account, bool, error) {
+	account, ok := w.credentials.Accounts[key]
+	return account, ok, nil
 }
 
 func (w *testPulumiWorkspace) NewAuthContextForTokenExchange(
@@ -2054,6 +2080,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 }
 
 func TestCLI(t *testing.T) {
+	t.Setenv("PULUMI_API", "")
 	path := filepath.Join("testdata")
 	entries, err := os.ReadDir(path)
 	require.NoError(t, err)

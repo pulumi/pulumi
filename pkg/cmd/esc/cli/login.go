@@ -55,7 +55,7 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 			"self-hosted Pulumi Cloud.\n",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {

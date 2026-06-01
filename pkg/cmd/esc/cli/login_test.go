@@ -120,6 +120,105 @@ func TestCurrentAccountButInvalidToken(t *testing.T) {
 	assert.ErrorContains(t, err, "no credentials, please run `esc login` to log in")
 }
 
+type provisioningLoginManager struct {
+	accounts map[string]pulumi_workspace.Account
+}
+
+func (lm *provisioningLoginManager) Current(
+	ctx context.Context, cloudURL string, insecure, setCurrent bool,
+) (*pulumi_workspace.Account, error) {
+	acct, ok := lm.accounts[cloudURL]
+	if !ok {
+		return nil, nil
+	}
+	return &acct, nil
+}
+
+func (lm *provisioningLoginManager) Login(
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	command string,
+	message string,
+	welcome func(display.Options),
+	current bool,
+	opts display.Options,
+) (*pulumi_workspace.Account, error) {
+	if lm.accounts == nil {
+		lm.accounts = map[string]pulumi_workspace.Account{}
+	}
+	acct := pulumi_workspace.Account{
+		AccessToken: "agent-access-token",
+		Username:    "agent-user",
+		Insecure:    insecure,
+	}
+	lm.accounts[cloudURL] = acct
+	return &acct, nil
+}
+
+func (lm *provisioningLoginManager) LoginWithOIDCToken(
+	ctx context.Context,
+	sink diag.Sink,
+	cloudURL string,
+	insecure bool,
+	oidcTokenSource string,
+	organization string,
+	scope string,
+	expiration time.Duration,
+	setCurrent bool,
+) (*pulumi_workspace.Account, error) {
+	return nil, fmt.Errorf("not expected to call")
+}
+
+func TestAgentModeUsesPulumiAPIAndLoginManagerWhenPulumiCredentialsUnreadable(t *testing.T) {
+	t.Setenv("CODEX_SANDBOX", "seatbelt")
+	t.Setenv("PULUMI_API", "http://localhost:8080")
+
+	login := &provisioningLoginManager{}
+	esc := &escCommand{
+		command: "esc",
+		login:   login,
+		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+			assert.Equal(t, "http://localhost:8080", backendURL)
+			assert.Equal(t, "agent-access-token", accessToken)
+			return &testPulumiClient{defaultOrg: "agent-org"}
+		},
+		workspace: workspace.New(testFS{}, &testPulumiWorkspace{
+			getStoredCredentialsError: errors.New("failed to create '/Users/example/.pulumi': operation not permitted"),
+		}),
+	}
+
+	err := esc.getCachedClient(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "http://localhost:8080", esc.account.BackendURL)
+	assert.Equal(t, "agent-org", esc.account.DefaultOrg)
+	assert.Contains(t, login.accounts, "http://localhost:8080")
+}
+
+func TestPulumiBackendURLEnvOverridesPulumiAPI(t *testing.T) {
+	t.Setenv("CODEX_SANDBOX", "seatbelt")
+	t.Setenv("PULUMI_API", "http://localhost:8080")
+	t.Setenv("PULUMI_BACKEND_URL", "http://localhost:8081")
+
+	login := &provisioningLoginManager{}
+	esc := &escCommand{
+		command: "esc",
+		login:   login,
+		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+			assert.Equal(t, "http://localhost:8081", backendURL)
+			return &testPulumiClient{defaultOrg: "agent-org"}
+		},
+		workspace: workspace.New(testFS{}, &testPulumiWorkspace{
+			getStoredCredentialsError: errors.New("failed to create '/Users/example/.pulumi': operation not permitted"),
+		}),
+	}
+
+	err := esc.getCachedClient(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "http://localhost:8081", esc.account.BackendURL)
+	assert.Contains(t, login.accounts, "http://localhost:8081")
+}
+
 func TestInvalidSelfHostedBackend(t *testing.T) {
 	fs := testFS{}
 	esc := &escCommand{workspace: workspace.New(fs, &testPulumiWorkspace{

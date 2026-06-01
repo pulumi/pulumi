@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -46,7 +45,7 @@ func newEnvWebhookNewCmd(env *envCommand) *cobra.Command {
 			"  pulumi_deployments: must be of the form <project>/<stack>\n",
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

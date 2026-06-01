@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"regexp"
@@ -37,7 +36,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 			"value within it. The path to the value to set is a Pulumi property path. The value\n" +
 			"is interpreted as YAML.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

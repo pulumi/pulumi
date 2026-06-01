@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,7 +26,7 @@ func newEnvSettingsSetCmd(env *envCommand, registry *EnvSettingsRegistry) *cobra
 			"Available settings:\n" +
 			registry.GetSettingsHelpText(),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

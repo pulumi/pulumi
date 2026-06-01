@@ -31,7 +31,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 			"This command opens the environment with the given name. The result is written to\n" +
 			"stdout as JSON. If a property path is specified, only retrieves that property.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := envcmd.esc.getCachedClient(ctx); err != nil {
 				return err

@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -30,7 +29,7 @@ func newEnvCloneCmd(env *envCommand) *cobra.Command {
 			"If a project is omitted from the new environment identifier the new environment will be created\n" +
 			"within the same project as the environment being cloned.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

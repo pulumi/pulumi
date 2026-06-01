@@ -23,12 +23,17 @@ import (
 	"os"
 	"path"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // PulumiBackendURLEnvVar is an environment variable which can be used to set the backend that will be
 // used instead of the currently logged in backend or the current projects backend.
 const PulumiBackendURLEnvVar = "PULUMI_BACKEND_URL"
+
+// PulumiAPIEnvVar is the environment variable honored by the pulumi CLI for selecting a service backend.
+const PulumiAPIEnvVar = "PULUMI_API"
 
 // Account holds details about a Pulumi account.
 type Account struct {
@@ -50,7 +55,7 @@ type Credentials struct {
 // Note that the account may not be fully populated: it may only have a valid AccessToken. In that case, it is up to
 // the caller to fill in the username and last validation time.
 func (w *Workspace) GetAccount(backendURL string) (*Account, error) {
-	account, err := w.pulumi.GetAccount(backendURL)
+	account, _, err := w.pulumi.GetAccountWithAgentFallback(backendURL)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +77,9 @@ func (w *Workspace) GetCurrentCloudURL(account *Account) string {
 	if backend := os.Getenv(PulumiBackendURLEnvVar); backend != "" {
 		return backend
 	}
+	if backend := os.Getenv(PulumiAPIEnvVar); backend != "" {
+		return backend
+	}
 
 	if account != nil {
 		return account.BackendURL
@@ -80,18 +88,35 @@ func (w *Workspace) GetCurrentCloudURL(account *Account) string {
 	return "https://api.pulumi.com"
 }
 
+// TODO: Replace this with workspace.AgentCredentialsFallbackEnabled once ESC
+// depends on a Pulumi SDK release that includes it.
+func agentCredentialsEnabled() bool {
+	return agentdetect.Detect(os.Getenv) != "" &&
+		os.Getenv(workspace.PulumiCredentialsPathEnvVar) == "" &&
+		os.Getenv(env.Home.Var().Name()) == ""
+}
+
 // GetCurrentAccount returns information about the currently logged-in account.
 func (w *Workspace) GetCurrentAccount(shared bool) (*Account, bool, error) {
 	// Read esc account.
 	backendURL, err := w.getCurrentAccountName()
 	if err != nil {
+		if agentCredentialsEnabled() {
+			return nil, true, nil
+		}
 		return nil, false, fmt.Errorf("reading credentials: %w", err)
 	}
 
 	// Read Pulumi creds.
 	pulumiCreds, err := w.pulumi.GetStoredCredentials()
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, false, fmt.Errorf("reading Pulumi credentials: %w", err)
+		if !agentCredentialsEnabled() {
+			return nil, false, fmt.Errorf("reading Pulumi credentials: %w", err)
+		}
+		pulumiCreds, err = w.pulumi.GetAgentStoredCredentials()
+		if err != nil {
+			return nil, false, fmt.Errorf("reading Pulumi credentials: %w", err)
+		}
 	}
 
 	// If there is no current account, default to the current `pulumi` account.
@@ -103,23 +128,29 @@ func (w *Workspace) GetCurrentAccount(shared bool) (*Account, bool, error) {
 		shared = true
 	}
 
-	// If the account does not exist, fail.
-	account, ok := pulumiCreds.Accounts[backendURL]
-	if !ok {
-		return nil, false, fmt.Errorf("account '%s' not found, "+
-			"please re-run `esc login` to reset your credentials file", backendURL)
+	if account, ok := pulumiCreds.Accounts[backendURL]; ok {
+		config, err := w.pulumi.GetPulumiConfig()
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return nil, false, err
+		}
+
+		return &Account{
+			Account:    account,
+			BackendURL: backendURL,
+			DefaultOrg: config.BackendConfig[backendURL].DefaultOrg,
+		}, shared, nil
 	}
 
-	config, err := w.pulumi.GetPulumiConfig()
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+	account, err := w.GetAccount(backendURL)
+	if err != nil {
 		return nil, false, err
 	}
+	if account.AccessToken != "" {
+		return account, shared, nil
+	}
 
-	return &Account{
-		Account:    account,
-		BackendURL: backendURL,
-		DefaultOrg: config.BackendConfig[backendURL].DefaultOrg,
-	}, shared, nil
+	return nil, false, fmt.Errorf("account '%s' not found, "+
+		"please re-run `esc login` to reset your credentials file", backendURL)
 }
 
 // DeleteAllAccounts logs out of all accounts.

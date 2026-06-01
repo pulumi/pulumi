@@ -4,7 +4,6 @@ package cli
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 
 	"github.com/charmbracelet/glamour"
@@ -36,7 +35,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 			"argument is omitted, the name of the base environment is used. If the version portion of\n" +
 			"the second argument is omitted, the 'latest' tag is used.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

@@ -4,7 +4,6 @@ package cli
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,7 +46,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 			"If no editor is specified via the --editor flag or environment variables, edit\n" +
 			"defaults to `vi`.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

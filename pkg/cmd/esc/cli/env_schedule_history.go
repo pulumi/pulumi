@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"io"
 	"time"
@@ -29,7 +28,7 @@ func newEnvScheduleHistoryCmd(env *envCommand) *cobra.Command {
 			"This command lists past executions of a scheduled action.\n",
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			format, err := parseOutputFormat(output)
 			if err != nil {

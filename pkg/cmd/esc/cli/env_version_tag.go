@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"strings"
 
@@ -27,7 +26,7 @@ func newEnvVersionTagCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"Subcommands exist for listing and removing tagged versions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

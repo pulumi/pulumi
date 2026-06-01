@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 
 	"github.com/spf13/cobra"
@@ -21,7 +20,7 @@ func newEnvScheduleGetCmd(env *envCommand) *cobra.Command {
 			"This command retrieves details for a single scheduled action.\n",
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			format, err := parseOutputFormat(output)
 			if err != nil {

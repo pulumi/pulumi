@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -34,7 +33,7 @@ func newEnvReferrerListCmd(env *envCommand) *cobra.Command {
 			"the revision of the referenced environment.\n",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			format, err := parseOutputFormat(output)
 			if err != nil {

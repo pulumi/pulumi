@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 
 	"github.com/spf13/cobra"
@@ -29,7 +28,7 @@ func newEnvVersionRetractCmd(env *envCommand) *cobra.Command {
 			"the latest revision of an environment, first update the environment with a new\n" +
 			"definition.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

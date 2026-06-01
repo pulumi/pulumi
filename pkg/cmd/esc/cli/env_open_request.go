@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -24,7 +23,7 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 			"This command creates a request to open a protected environment. The request must be\n" +
 			"approved before the environment can be accessed.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			format, err := parseOutputFormat(output)
 			if err != nil {

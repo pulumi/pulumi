@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -32,7 +31,7 @@ func newEnvScheduleNewCmd(env *envCommand) *cobra.Command {
 			"schedule will fail. The minimum cron interval is once per day.\n",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err

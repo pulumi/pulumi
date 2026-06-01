@@ -3,7 +3,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -27,7 +26,7 @@ func newEnvTagCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"Subcommands exist for reading, listing, updating, and removing tags.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
