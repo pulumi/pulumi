@@ -100,6 +100,37 @@ func TestExplicitCredentialsPathDoesNotFallbackToTemp(t *testing.T) {
 	require.Error(t, err)
 }
 
+//nolint:paralleltest // mutates environment
+func TestAccountRefreshTokenRoundTrip(t *testing.T) {
+	// The refresh token is held off-the-wire and exchanged at /api/oauth/token for short-lived
+	// access tokens. It needs to survive credentials.json read/write so the CLI can use it across
+	// process invocations.
+	t.Setenv("PULUMI_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "credentials.json"))
+
+	const cloudURL = "https://api.example.com"
+	original := Account{
+		AccessToken:  "current-access-token",
+		RefreshToken: "long-lived-refresh-token",
+		Username:     "jane",
+	}
+	require.NoError(t, StoreAccount(cloudURL, original, true))
+
+	loaded, err := GetAccount(cloudURL)
+	require.NoError(t, err)
+	assert.Equal(t, original.AccessToken, loaded.AccessToken)
+	assert.Equal(t, original.RefreshToken, loaded.RefreshToken)
+	assert.Equal(t, original.Username, loaded.Username)
+
+	// An Account with no refresh token must still round-trip cleanly — the field is optional and
+	// must serialize as omitted, not as an empty string anyone could mistake for "no refresh".
+	plain := Account{AccessToken: "another-token"}
+	require.NoError(t, StoreAccount(cloudURL, plain, true))
+	loadedPlain, err := GetAccount(cloudURL)
+	require.NoError(t, err)
+	assert.Equal(t, "another-token", loadedPlain.AccessToken)
+	assert.Empty(t, loadedPlain.RefreshToken)
+}
+
 //nolint:paralleltest // mutates package global
 func TestAgentCredentialsAndClaim(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir

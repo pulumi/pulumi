@@ -1807,3 +1807,93 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		}
 	})
 }
+
+func TestRefreshAccessToken(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns the new access token on success", func(t *testing.T) {
+		t.Parallel()
+		var gotPath, gotMethod, gotContentType, gotBody string
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotPath = req.URL.Path
+			gotMethod = req.Method
+			gotContentType = req.Header.Get("Content-Type")
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			gotBody = string(body)
+
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:     "new-obo-access-token",
+				IssuedTokenType: "urn:ietf:params:oauth:token-type:access_token",
+				TokenType:       "Bearer",
+				ExpiresIn:       3600,
+				RefreshToken:    "rt-value", // server echoes the same refresh token (no rotation)
+			})
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		resp, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "rt-value")
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		assert.Equal(t, http.MethodPost, gotMethod)
+		assert.Equal(t, "/api/oauth/token", gotPath)
+		assert.Equal(t, "application/x-www-form-urlencoded", gotContentType)
+		assert.Contains(t, gotBody, "grant_type=refresh_token")
+		assert.Contains(t, gotBody, "refresh_token=rt-value")
+		assert.Equal(t, "new-obo-access-token", resp.AccessToken)
+		assert.Equal(t, "Bearer", resp.TokenType)
+		assert.Equal(t, int64(3600), resp.ExpiresIn)
+		assert.Equal(t, "rt-value", resp.RefreshToken)
+	})
+
+	t.Run("rejects an empty refresh token without hitting the server", func(t *testing.T) {
+		t.Parallel()
+		// Server fails the test if called — the empty-string check must short-circuit.
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			t.Errorf("server should not have been called for empty refresh token")
+		}))
+		defer server.Close()
+
+		_, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "refresh token is required")
+	})
+
+	t.Run("surfaces server-side invalid_grant errors verbatim", func(t *testing.T) {
+		t.Parallel()
+		// Mirrors what the service returns when the row is gone / wrong-type / soft-deleted (see
+		// cmd/service/api/oauth2/grant_type_refresh_token.go in the pulumi-service repo).
+		const errBody = `{"error":"invalid_grant","error_description":"refresh token is not valid"}`
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			rw.WriteHeader(http.StatusBadRequest)
+			_, err := rw.Write([]byte(errBody))
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		_, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "rt-revoked")
+		require.Error(t, err)
+		// Caller must see both the status and the original error_description so they can branch
+		// on invalid_grant (give up, prompt for login) vs unsupported_grant_type (LD kill switch,
+		// retry later).
+		assert.Contains(t, err.Error(), "400")
+		assert.Contains(t, err.Error(), "invalid_grant")
+		assert.Contains(t, err.Error(), "refresh token is not valid")
+	})
+
+	t.Run("rejects an empty access_token in the response", func(t *testing.T) {
+		t.Parallel()
+		// Defensive: a malformed 200 with no access_token must not be silently treated as success.
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			_, err := rw.Write([]byte(`{"access_token":"","token_type":"Bearer"}`))
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		_, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "rt-value")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "empty access_token")
+	})
+}

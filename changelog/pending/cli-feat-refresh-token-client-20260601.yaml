@@ -1,0 +1,8 @@
+component: cli/auth
+kind: feat
+body: Add CLI support for OAuth refresh tokens. `Account` now carries an optional
+    `refreshToken` field in `credentials.json`, and the API client exposes
+    `RefreshAccessToken` for exchanging it at `/api/oauth/token`
+    (`grant_type=refresh_token`). Wiring this into the HTTP layer's 401 handling
+    is a follow-up — this commit lays the storage and client foundation.
+time: 2026-06-01T20:30:00+00:00

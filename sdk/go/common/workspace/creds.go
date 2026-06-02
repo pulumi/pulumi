@@ -165,6 +165,10 @@ func StoreAccount(key string, account Account, current bool) error {
 type Account struct {
 	// The access token for this account.
 	AccessToken string `json:"accessToken,omitempty"`
+	// The OAuth refresh token, if the server issued one alongside the access token. When set, the
+	// CLI exchanges this token at /api/oauth/token for a fresh access token whenever the current
+	// one expires. Held off-the-wire — only sent to the token endpoint, not on every request.
+	RefreshToken string `json:"refreshToken,omitempty"`
 	// The username for this account.
 	Username string `json:"username,omitempty"`
 	// The organizations for this account.

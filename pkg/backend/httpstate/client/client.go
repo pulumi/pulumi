@@ -610,6 +610,59 @@ func (pc *Client) ExchangeOidcToken(
 	return &unmarshalledResp, nil
 }
 
+// RefreshAccessToken exchanges a Pulumi-issued refresh token for a fresh access token via
+// /api/oauth/token (grant_type=refresh_token, RFC 6749 §6). The server resolves which user the
+// refresh token is currently bound to and mints a short-lived OBO access token scoped to that
+// user's organization. Returns the parsed token response, including the refresh_token to use on
+// subsequent calls (Phase 1: the same value the caller presented; rotation may come later).
+//
+// The caller is responsible for writing the response's AccessToken back into credentials.json
+// when the exchange succeeds.
+func (pc *Client) RefreshAccessToken(
+	ctx context.Context,
+	refreshToken string,
+) (*apitype.TokenExchangeGrantResponse, error) {
+	if refreshToken == "" {
+		return nil, errors.New("refresh token is required")
+	}
+	tokenURL := pc.apiURL + "/api/oauth/token"
+	data := url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {refreshToken},
+	}
+	bodyReader := strings.NewReader(data.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("creating HTTP request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := pc.restClient.HTTPClient().Do(req, retryAllMethods)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		// Forward the server's RFC 6749 §5.2 error payload as the error message so callers can
+		// distinguish invalid_grant (token gone / revoked / wrong type) from unsupported_grant_type
+		// (LD kill switch flipped) and react accordingly.
+		return nil, fmt.Errorf("refresh_token grant failed: %s: %s", resp.Status, string(body))
+	}
+	var unmarshalledResp apitype.TokenExchangeGrantResponse
+	if err := json.Unmarshal(body, &unmarshalledResp); err != nil {
+		return nil, err
+	}
+	if unmarshalledResp.AccessToken == "" {
+		return nil, errors.New("refresh_token grant returned empty access_token")
+	}
+	return &unmarshalledResp, nil
+}
+
 // GetPulumiAccountDetails returns the user implied by the API token associated with this client.
 func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
 	if pc.apiUser == "" {
