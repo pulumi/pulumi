@@ -1,6 +1,10 @@
 {
     "name": "pulumi-resource-testcomponent",
     "main": "index.js",
+    "scripts": {
+        "build": "tsc",
+        "postinstall": "tsc"
+    },
     "devDependencies": {
         "@types/node": "ts3.9",
         "typescript": "3.9.10"
