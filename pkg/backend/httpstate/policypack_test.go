@@ -157,6 +157,18 @@ func (m *mockEnvironmentsBackend) OpenYAMLEnvironment(
 	return m.openYAMLEnvironmentF(ctx, org, yaml, duration)
 }
 
+func (m *mockEnvironmentsBackend) GetEnvironment(
+	context.Context, string, string, string, string, bool,
+) ([]byte, string, int, error) {
+	return nil, "", 0, nil
+}
+
+func (m *mockEnvironmentsBackend) UpdateEnvironmentWithProject(
+	context.Context, string, string, string, []byte, string,
+) (apitype.EnvironmentDiagnostics, error) {
+	return nil, nil
+}
+
 func TestResolveEnvironments(t *testing.T) {
 	t.Parallel()
 

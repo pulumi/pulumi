@@ -543,6 +543,24 @@ type MockEnvironmentsBackend struct {
 		yaml []byte,
 		duration time.Duration,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+
+	GetEnvironmentF func(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+		version string,
+		decrypt bool,
+	) (yaml []byte, etag string, revision int, err error)
+
+	UpdateEnvironmentWithProjectF func(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+		yaml []byte,
+		etag string,
+	) (apitype.EnvironmentDiagnostics, error)
 }
 
 func (be *MockEnvironmentsBackend) CreateEnvironment(
@@ -577,6 +595,34 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 	if be.OpenYAMLEnvironmentF != nil {
 		return be.OpenYAMLEnvironmentF(ctx, org, yaml, duration)
+	}
+	panic("not implemented")
+}
+
+func (be *MockEnvironmentsBackend) GetEnvironment(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+	version string,
+	decrypt bool,
+) (yaml []byte, etag string, revision int, err error) {
+	if be.GetEnvironmentF != nil {
+		return be.GetEnvironmentF(ctx, org, projectName, envName, version, decrypt)
+	}
+	panic("not implemented")
+}
+
+func (be *MockEnvironmentsBackend) UpdateEnvironmentWithProject(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+	yaml []byte,
+	etag string,
+) (apitype.EnvironmentDiagnostics, error) {
+	if be.UpdateEnvironmentWithProjectF != nil {
+		return be.UpdateEnvironmentWithProjectF(ctx, org, projectName, envName, yaml, etag)
 	}
 	panic("not implemented")
 }

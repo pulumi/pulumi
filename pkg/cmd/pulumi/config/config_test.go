@@ -974,6 +974,81 @@ func TestConfigSetAllConfigFileOverridesRemote(t *testing.T) {
 	require.Equal(t, "config:\n  testProject:key1: value1\n", string(data))
 }
 
+// An explicit --config-file writes to the local file even for a remote-config stack. A --secret
+// value on that path must be encrypted with the local encrypter, not stored as plaintext under a
+// secure: node (which would happen if the secret gate keyed off ConfigLocation().IsRemote alone
+// instead of the --config-file-aware configStoreIsRemote).
+func TestConfigSetAllSecretConfigFileEncryptsLocally(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	escEnv := "testProject/testStack"
+	s := backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "org/testProject/testStack",
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &escEnv}
+		},
+	}
+
+	tmpdir := t.TempDir()
+	configFile := filepath.Join(tmpdir, "Pulumi.stack.yaml")
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "testProject"}, "", nil
+		},
+	}
+
+	stackName := "testStack"
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return &backend.MockBackend{
+				GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return &s, nil
+				},
+			}, nil
+		},
+		LoginF: func(
+			ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return &backend.MockBackend{
+				GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return &s, nil
+				},
+			}, nil
+		},
+	}
+
+	mockEncrypterFactory := &mockEncrypterFactory{
+		encrypter: &secrets.MockEncrypter{
+			EncryptValueF: func(plaintext string) string {
+				return base64.StdEncoding.EncodeToString([]byte(plaintext))
+			},
+		},
+	}
+
+	cmd := newConfigSetAllCmd(ws, &stackName, lm, mockEncrypterFactory, &configFile)
+	cmd.SetContext(ctx)
+	require.NoError(t, cmd.PersistentFlags().Set("secret", "testProject:key1=supersecret"))
+
+	require.NoError(t, cmd.RunE(cmd, []string{}))
+
+	data, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	ciphertext := base64.StdEncoding.EncodeToString([]byte("supersecret"))
+	require.Contains(t, string(data), "secure: "+ciphertext)
+	require.NotContains(t, string(data), "supersecret")
+}
+
 func TestConfigRefresh(t *testing.T) {
 	t.Parallel()
 	minimalDeployment := &apitype.UntypedDeployment{

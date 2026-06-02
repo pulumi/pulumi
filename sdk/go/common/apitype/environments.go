@@ -21,10 +21,25 @@ import (
 	"github.com/pulumi/esc"
 )
 
+// EnvironmentDiagnosticSeverity is the severity of an EnvironmentDiagnostic. An empty severity is
+// treated as an error for backward compatibility with services that predate the field.
+type EnvironmentDiagnosticSeverity string
+
+const (
+	DiagError   EnvironmentDiagnosticSeverity = "error"
+	DiagWarning EnvironmentDiagnosticSeverity = "warning"
+)
+
 type EnvironmentDiagnostic struct {
-	Range   *esc.Range `json:"range,omitempty"`
-	Summary string     `json:"summary,omitempty"`
-	Detail  string     `json:"detail,omitempty"`
+	Range    *esc.Range                    `json:"range,omitempty"`
+	Summary  string                        `json:"summary,omitempty"`
+	Detail   string                        `json:"detail,omitempty"`
+	Severity EnvironmentDiagnosticSeverity `json:"severity,omitempty"`
+}
+
+// IsError reports whether the diagnostic is an error. An empty severity is treated as an error.
+func (d EnvironmentDiagnostic) IsError() bool {
+	return d.Severity == DiagError || d.Severity == ""
 }
 
 type EnvironmentDiagnostics []EnvironmentDiagnostic
@@ -36,6 +51,17 @@ func (err EnvironmentDiagnostics) Error() string {
 		fmt.Fprintf(&diags, "%v\n", d.Summary)
 	}
 	return diags.String()
+}
+
+// HasErrors reports whether any diagnostic is an error (as opposed to a warning or other non-error
+// severity). A successful environment update can still return non-error diagnostics.
+func (err EnvironmentDiagnostics) HasErrors() bool {
+	for _, d := range err {
+		if d.IsError() {
+			return true
+		}
+	}
+	return false
 }
 
 type EnvironmentDiagnosticsResponse struct {
