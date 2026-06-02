@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -591,4 +592,279 @@ Functions:
 	err = cmd.Execute()
 	require.NoError(t, err)
 	assert.Equal(t, expectedNestedModuleHelp, stdout.String())
+}
+
+func TestDoCmdUnknownTokenErrors(t *testing.T) {
+	t.Parallel()
+
+	formats := []struct {
+		name      string
+		meta      *schema.MetadataSpec
+		functions map[string]schema.FunctionSpec
+		resources map[string]schema.ResourceSpec
+		rawTokens []string
+	}{
+		{
+			name: "slash module format",
+			meta: &schema.MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
+			functions: map[string]schema.FunctionSpec{
+				"aws:s3/getObjects:getObjects": {},
+			},
+			resources: map[string]schema.ResourceSpec{
+				"aws:s3/bucket:Bucket":             {},
+				"aws:s3/bucketpolicy:BucketPolicy": {},
+			},
+			rawTokens: []string{
+				"aws:s3/getObjects:getObjects", "aws:s3/bucket:Bucket", "aws:s3/bucketpolicy:BucketPolicy",
+			},
+		},
+		{
+			name: "underscore module format",
+			meta: &schema.MetadataSpec{ModuleFormat: "(.*)(?:_[^_]*)"},
+			functions: map[string]schema.FunctionSpec{
+				"aws:s3_getObjects:getObjects": {},
+			},
+			resources: map[string]schema.ResourceSpec{
+				"aws:s3_bucket:Bucket":             {},
+				"aws:s3_bucketpolicy:BucketPolicy": {},
+			},
+			rawTokens: []string{
+				"aws:s3_getObjects:getObjects", "aws:s3_bucket:Bucket", "aws:s3_bucketpolicy:BucketPolicy",
+			},
+		},
+		{
+			name: "no module format",
+			meta: nil,
+			functions: map[string]schema.FunctionSpec{
+				"aws:s3:getObjects": {},
+			},
+			resources: map[string]schema.ResourceSpec{
+				"aws:s3:Bucket":       {},
+				"aws:s3:BucketPolicy": {},
+			},
+		},
+	}
+
+	table := []struct {
+		name           string
+		args           []string
+		wantContains   []string
+		wantNoContains []string
+	}{
+		{
+			name: "typo with downstream flag suggests function",
+			args: []string{"aws:s3:fgetObjects", "--input-file", "inputs.pcl"},
+			wantContains: []string{
+				`unknown function, resource, or module "aws:s3:fgetObjects"`, "Did you mean this?", "aws:s3:getObjects",
+			},
+			wantNoContains: []string{"unknown flag"},
+		},
+		{
+			name:         "wrong case suggests canonical token",
+			args:         []string{"aws:s3:bucket"},
+			wantContains: []string{`unknown function, resource, or module "aws:s3:bucket"`, "aws:s3:Bucket"},
+		},
+		{
+			name:         "small typo against nested-module schema",
+			args:         []string{"aws:s3:Buckt"},
+			wantContains: []string{`unknown function, resource, or module "aws:s3:Buckt"`, "aws:s3:Bucket"},
+		},
+		{
+			name:         "module typo suggests canonical sibling",
+			args:         []string{"aws:s4:Bucket"},
+			wantContains: []string{`unknown function, resource, or module "aws:s4:Bucket"`, "aws:s3:Bucket"},
+		},
+		{
+			name:           "two-segment typo suggests module",
+			args:           []string{"aws:s4"},
+			wantContains:   []string{`unknown function, resource, or module "aws:s4"`, "aws:s3"},
+			wantNoContains: []string{"aws:s3:Bucket"},
+		},
+		{
+			name:           "no near matches omits suggestion block",
+			args:           []string{"aws:s3:CompletelyDifferent"},
+			wantContains:   []string{`unknown function, resource, or module "aws:s3:CompletelyDifferent"`},
+			wantNoContains: []string{"Did you mean"},
+		},
+	}
+
+	for _, f := range formats {
+		t.Run(f.name, func(t *testing.T) {
+			t.Parallel()
+
+			loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+				return &testProvider{spec: schema.PackageSpec{
+					Name:      "aws",
+					Meta:      f.meta,
+					Functions: f.functions,
+					Resources: f.resources,
+				}}, nil
+			}
+
+			t.Run("known module resolves to help", func(t *testing.T) {
+				t.Parallel()
+
+				mlm := &cmdBackend.MockLoginManager{}
+				mws := &pkgWorkspace.MockContext{}
+
+				var stdout bytes.Buffer
+				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+				cmd.SetOut(&stdout)
+				cmd.SetErr(&stdout)
+				cmd.SetArgs([]string{"aws:s3"})
+				require.NoError(t, cmd.Execute())
+
+				out := stdout.String()
+				assert.Contains(t, out, "Functions and resources for the s3 module")
+				assert.Contains(t, out, "aws:s3:getObjects")
+				assert.Contains(t, out, "aws:s3:Bucket")
+				assert.NotContains(t, out, "unknown function, resource, or module")
+			})
+
+			for _, tc := range table {
+				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
+
+					mlm := &cmdBackend.MockLoginManager{}
+					mws := &pkgWorkspace.MockContext{}
+
+					var stdout bytes.Buffer
+					cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+					cmd.SetOut(&stdout)
+					cmd.SetErr(&stdout)
+					cmd.SetArgs(tc.args)
+					err := cmd.Execute()
+					require.Error(t, err)
+					msg := err.Error()
+					for _, want := range tc.wantContains {
+						assert.Contains(t, msg, want)
+					}
+					for _, notWant := range tc.wantNoContains {
+						assert.NotContains(t, msg, notWant)
+					}
+					// Suggestions are always canonicalized; the raw (non-canonical) token forms must
+					// never appear, regardless of module format.
+					for _, raw := range f.rawTokens {
+						assert.NotContains(t, msg, raw)
+					}
+				})
+			}
+		})
+	}
+
+	t.Run("parameterized package", func(t *testing.T) {
+		t.Parallel()
+
+		loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+			assert.Equal(t, "terraform-provider", source)
+			return &testProvider{
+				spec: schema.PackageSpec{
+					Name: "aws",
+					Meta: &schema.MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
+					Functions: map[string]schema.FunctionSpec{
+						"aws:s3/getAccessPoint:getAccessPoint": {},
+					},
+					Resources: map[string]schema.ResourceSpec{
+						"aws:s3/bucket:Bucket": {},
+					},
+				},
+				MockProvider: plugin.MockProvider{
+					ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+						args, ok := req.Parameters.(*plugin.ParameterizeArgs)
+						if assert.True(t, ok) {
+							assert.Equal(t, []string{"hashicorp/aws"}, args.Args)
+						}
+						return plugin.ParameterizeResponse{Name: "aws", Version: semver.MustParse("6.0.0")}, nil
+					},
+				},
+			}, nil
+		}
+
+		cases := []struct {
+			name           string
+			args           []string
+			wantContains   []string
+			wantNoContains []string
+		}{
+			{
+				name: "member typo suggests canonical subpackage token",
+				args: []string{"terraform-provider hashicorp/aws:s3:Buckt"},
+				wantContains: []string{
+					`unknown function, resource, or module "terraform-provider hashicorp/aws:s3:Buckt"`,
+					"Did you mean this?", "aws:s3:Bucket",
+				},
+			},
+			{
+				name:           "two-segment typo suggests canonical subpackage module",
+				args:           []string{"terraform-provider hashicorp/aws:s4"},
+				wantContains:   []string{`unknown function, resource, or module "terraform-provider hashicorp/aws:s4"`, "aws:s3"},
+				wantNoContains: []string{"aws:s3:Bucket", "terraform-provider hashicorp/aws:s3"},
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				mlm := &cmdBackend.MockLoginManager{}
+				mws := &pkgWorkspace.MockContext{}
+
+				var stdout bytes.Buffer
+				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+				cmd.SetOut(&stdout)
+				cmd.SetErr(&stdout)
+				cmd.SetArgs(tc.args)
+				err := cmd.Execute()
+				require.Error(t, err)
+				msg := err.Error()
+				for _, want := range tc.wantContains {
+					assert.Contains(t, msg, want)
+				}
+				for _, notWant := range tc.wantNoContains {
+					assert.NotContains(t, msg, notWant)
+				}
+			})
+		}
+	})
+}
+
+func TestDoCmdParameterizedModuleResolves(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "terraform-provider", source)
+		spec := schema.PackageSpec{
+			Name: "aws",
+			Meta: &schema.MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
+			Resources: map[string]schema.ResourceSpec{
+				"aws:s3/bucket:Bucket": {},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+					args, ok := req.Parameters.(*plugin.ParameterizeArgs)
+					if assert.True(t, ok) {
+						assert.Equal(t, []string{"hashicorp/aws"}, args.Args)
+					}
+					return plugin.ParameterizeResponse{Name: "aws", Version: semver.MustParse("6.0.0")}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"terraform-provider hashicorp/aws:s3"})
+	require.NoError(t, cmd.Execute())
+
+	out := stdout.String()
+	assert.Contains(t, out, "Functions and resources for the s3 module")
+	assert.Contains(t, out, "aws:s3:Bucket")
+	assert.NotContains(t, out, "unknown function, resource, or module")
 }

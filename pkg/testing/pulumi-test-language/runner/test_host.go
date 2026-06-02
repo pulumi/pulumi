@@ -186,17 +186,20 @@ func (h *testHost) ResolvePlugin(
 	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
-		for name, provider := range h.providers {
+		for key, provider := range h.providers {
 			p, err := provider()
 			if err != nil {
-				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", name, err)
+				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", key, err)
 			}
-			pkg := p.Pkg()
-			providerVersion, err := GetProviderVersion(p)
+			providerVersion, err := GetProviderVersion(context.TODO(), p)
 			if err != nil {
-				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
+				return nil, fmt.Errorf("get provider version %s: %w", key, err)
 			}
-			if spec.Name == string(pkg) && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
+			name, err := GetProviderName(context.TODO(), p)
+			if err != nil {
+				return nil, fmt.Errorf("get provider name %s: %w", key, err)
+			}
+			if spec.Name == name && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
 				return &workspace.PluginInfo{
 					Name:    spec.Name,
 					Kind:    spec.Kind,
@@ -300,6 +303,6 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
 	wrapped := plugin.NewProviderWithClient(
-		nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
+		nil, pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil
 }

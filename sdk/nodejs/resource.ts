@@ -1716,6 +1716,7 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
             "afterUpdate",
             "beforeDelete",
             "afterDelete",
+            "onError",
         ] as const;
         for (const hookType of hookTypes) {
             const destHooks = dest?.hooks?.[hookType];

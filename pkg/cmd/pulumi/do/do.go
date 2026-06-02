@@ -22,16 +22,20 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/google/shlex"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pgavlin/fx/v2/maps"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -226,7 +230,7 @@ func NewDoCmd(
 			return loadConverterPlugin(pctx, name, log)
 		}
 
-		subcmd := (&packageCommand{
+		subcmd, err := (&packageCommand{
 			pkg:               pkg,
 			args:              pargs,
 			evalContext:       evalContext,
@@ -238,6 +242,10 @@ func NewDoCmd(
 			dryrun:            dryrun,
 			showSecrets:       showSecrets,
 		}).newCommand()
+		if err != nil {
+			cleanup()
+			return nil, nil, err
+		}
 		// Replace the short name in Use with the full token so the usage
 		// string shows e.g. "pulumi do aws:s3:Bucket" instead of "pulumi do Bucket".
 		if len(pargs) > 0 {
@@ -340,7 +348,7 @@ package will be inferred from the token or passed via --package which can be a
 package name or the path to a plugin binary or folder. Further parameters can
 be passed after the package name which will be used to parameterize the plugin
 loaded.
-e.g. pulumi do --package "name@version param1 \"multi word param\"" 
+e.g. pulumi do --package "name@version param1 \"multi word param\""
 
 Resource operations: list, create, read, patch, delete
 Functions are invoked directly by name.
@@ -423,32 +431,164 @@ type packageCommand struct {
 	showSecrets       bool
 }
 
-func (pc *packageCommand) newCommand() *cobra.Command {
+func (pc *packageCommand) newCommand() (*cobra.Command, error) {
 	// Based on token (if present) we need to work out if this is a package, module, resource, or function command.
 
-	if len(pc.args) == 0 {
-		// No token, so this is just the package command.
-		return pc.newPackageCommand()
-	} else {
-		// Count the separators in the token.
-		count := strings.Count(pc.args[0], ":")
-		if count == 0 {
-			// No separators, this is a package
-			return pc.newPackageCommand()
-		}
-
-		// Try and look it up, it's either a module, resource, or function.
-		fun, ok := pc.spec.GetFunction(pc.args[0])
-		if ok {
-			return pc.newFunctionCommand(fun)
-		}
-		res, ok := pc.spec.GetResource(pc.args[0])
-		if ok {
-			return pc.newResourceCommand(res)
-		}
-
-		return pc.newModuleCommand()
+	if len(pc.args) == 0 || strings.Count(pc.args[0], ":") == 0 {
+		// No token (or just a package name), so this is just the package command.
+		return pc.newPackageCommand(), nil
 	}
+
+	// Try and look it up, it's either a module, resource, or function.
+	if fun, ok := pc.spec.GetFunction(pc.args[0]); ok {
+		return pc.newFunctionCommand(fun), nil
+	}
+	if res, ok := pc.spec.GetResource(pc.args[0]); ok {
+		return pc.newResourceCommand(res), nil
+	}
+	if pc.isKnownModule(pc.args[0]) {
+		return pc.newModuleCommand(), nil
+	}
+
+	return nil, pc.unknownTokenError(pc.args[0])
+}
+
+// isKnownModule checks whether `typed` (e.g. "aws:s3" or "pkg:mod1/mod2") matches a module in the schema.
+func (pc *packageCommand) isKnownModule(typed string) bool {
+	// inModule reports whether the token lives in module `typed` or a descendant of it. Modules nest
+	// on "/", so a parent like "pkg:mod1" matches a token in "pkg:mod1/mod2".
+	_, name, _ := strings.Cut(typed, ":")
+	if name == "" {
+		return false
+	}
+	inModule := func(token string) bool {
+		mod := pc.spec.TokenToModule(token)
+		return mod == name || strings.HasPrefix(mod, name+"/")
+	}
+	for _, fn := range pc.spec.Functions {
+		if !fn.IsMethod && inModule(fn.Token) {
+			return true
+		}
+	}
+	for _, res := range pc.spec.Resources {
+		if inModule(res.Token) {
+			return true
+		}
+	}
+	return false
+}
+
+func (pc *packageCommand) moduleToken(token string) string {
+	mod := pc.spec.TokenToModule(token)
+	if mod == "" {
+		return ""
+	}
+	return string(tokens.Token(token).Package()) + ":" + mod
+}
+
+func (pc *packageCommand) unknownTokenError(typed string) error {
+	msg := fmt.Sprintf("unknown function, resource, or module %q in package %q", typed, pc.spec.Name)
+	suggestions := pc.suggestTokens(typed)
+	if len(suggestions) == 0 {
+		return cmdCmd.ConfigurationError{Message: msg}
+	}
+	var b strings.Builder
+	b.WriteString(msg)
+	b.WriteString("\n\nDid you mean this?\n")
+	for _, s := range suggestions {
+		fmt.Fprintf(&b, "\t%s\n", s)
+	}
+	return cmdCmd.ConfigurationError{Message: b.String()}
+}
+
+// suggestTokens returns tokens whose module and name are individually close to the typed value's
+// components. The displayed form comes from spec.CanonicalizeToken.
+func (pc *packageCommand) suggestTokens(typed string) []string {
+	_, typedMod, typedName, diags := pcl.DecomposeToken(typed, hcl.Range{})
+	if diags.HasErrors() {
+		return nil
+	}
+
+	op := levenshtein.DefaultOptionsWithSub
+	op.Matches = func(r1, r2 rune) bool {
+		return unicode.ToLower(r1) == unicode.ToLower(r2)
+	}
+	// Scale the allowed edit distance with the longer string
+	closeEnough := func(a, b string) bool {
+		threshold := 2
+		if max(len(a), len(b)) < 6 {
+			threshold = 1
+		}
+		return levenshtein.DistanceForStrings([]rune(a), []rune(b), op) <= threshold
+	}
+
+	seen := map[string]struct{}{}
+	var suggestions []string
+	consider := func(token string) {
+		_, _, name, diags := pcl.DecomposeToken(token, hcl.Range{})
+		if diags.HasErrors() {
+			return
+		}
+		if !closeEnough(typedName, name) {
+			return
+		}
+		// Compare against the canonical module (the form the user types), not the raw module. Bridged providers nest
+		// submodules so the raw form looks nothing like what the user typed (e.g. "s3/bucket" vs "s3"). "index" stands
+		// in for a missing module so typing pkg:Type still ranks against tokens that live in that module.
+		canonicalMod := pc.spec.TokenToModule(token)
+		if canonicalMod == "" {
+			canonicalMod = "index"
+		}
+		modMatch := strings.EqualFold(typedMod, canonicalMod) ||
+			typedMod == "index" ||
+			closeEnough(typedMod, canonicalMod)
+		if !modMatch {
+			return
+		}
+		display := pc.spec.CanonicalizeToken(token)
+		if _, ok := seen[display]; ok {
+			return
+		}
+		seen[display] = struct{}{}
+		suggestions = append(suggestions, display)
+	}
+	for _, fn := range pc.spec.Functions {
+		if fn.IsMethod {
+			continue
+		}
+		consider(fn.Token)
+	}
+	for _, res := range pc.spec.Resources {
+		consider(res.Token)
+	}
+
+	// If the user typed a 2-segment value (pkg:something), the second segment may have been intended as a module name,
+	// e.g. "aws:s4" probably means "aws:s3". Search for modules so the suggestions aren't limited to leaf tokens.
+	if typedMod == "index" {
+		considerModule := func(token string) {
+			mod := pc.spec.TokenToModule(token)
+			if mod == "" || !closeEnough(typedName, mod) {
+				return
+			}
+			display := pc.moduleToken(token)
+			if _, ok := seen[display]; ok {
+				return
+			}
+			seen[display] = struct{}{}
+			suggestions = append(suggestions, display)
+		}
+		for _, fn := range pc.spec.Functions {
+			if !fn.IsMethod {
+				considerModule(fn.Token)
+			}
+		}
+		for _, res := range pc.spec.Resources {
+			considerModule(res.Token)
+		}
+	}
+
+	slices.Sort(suggestions)
+	return suggestions
 }
 
 func (pc *packageCommand) newPackageCommand() *cobra.Command {
@@ -481,21 +621,17 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 			continue
 		}
 
-		mod := pc.spec.TokenToModule(fn.Token)
-		if mod == "" {
+		if mod := pc.moduleToken(fn.Token); mod == "" {
 			functions[fn.Token] = fn
 		} else {
-			tok := string(tokens.Token(fn.Token).Package()) + ":" + mod
-			modules[tok] = struct{}{}
+			modules[mod] = struct{}{}
 		}
 	}
 	for _, res := range pc.spec.Resources {
-		mod := pc.spec.TokenToModule(res.Token)
-		if mod == "" {
+		if mod := pc.moduleToken(res.Token); mod == "" {
 			resources[res.Token] = res
 		} else {
-			tok := string(tokens.Token(res.Token).Package()) + ":" + mod
-			modules[tok] = struct{}{}
+			modules[mod] = struct{}{}
 		}
 	}
 
@@ -574,8 +710,7 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 		if mod == name {
 			functions[pc.spec.CanonicalizeToken(fn.Token)] = fn
 		} else if strings.HasPrefix(mod, name+"/") {
-			tok := string(tokens.Token(fn.Token).Package()) + ":" + mod
-			modules[tok] = struct{}{}
+			modules[pc.moduleToken(fn.Token)] = struct{}{}
 		}
 	}
 	for _, res := range pc.spec.Resources {
@@ -583,8 +718,7 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 		if mod == name {
 			resources[res.Token] = res
 		} else if strings.HasPrefix(mod, name+"/") {
-			tok := string(tokens.Token(res.Token).Package()) + ":" + mod
-			modules[tok] = struct{}{}
+			modules[pc.moduleToken(res.Token)] = struct{}{}
 		}
 	}
 

@@ -92,7 +92,7 @@ type stackOutputCmd struct {
 	// from tests.
 	requireStack func(
 		ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
-		name string, lopt LoadOption, opts display.Options,
+		name string, lopt LoadOption, opts display.Options, configFile string,
 	) (backend.Stack, error)
 
 	Stdout io.Writer // defaults to os.Stdout
@@ -139,6 +139,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		cmd.stackName,
 		LoadOnly,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err

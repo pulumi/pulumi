@@ -58,7 +58,7 @@ const (
 
 var errAbortCmd = errors.New("abort")
 
-func newDeploymentSettingsCmd() *cobra.Command {
+func newDeploymentSettingsCmd(configFile *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "settings",
 		Short: "Manage stack deployment settings",
@@ -75,12 +75,12 @@ func newDeploymentSettingsCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	// Commands to edit `Pulumi.<stack>.deployment.yaml`
-	cmd.AddCommand(newDeploymentSettingsInitCmd())
-	cmd.AddCommand(newDeploymentSettingsPullCmd())
-	cmd.AddCommand(newDeploymentSettingsUpdateCmd())
-	cmd.AddCommand(newDeploymentSettingsDestroyCmd())
-	cmd.AddCommand(newDeploymentSettingsEnvCmd())
-	cmd.AddCommand(newDeploymentSettingsConfigureCmd())
+	cmd.AddCommand(newDeploymentSettingsInitCmd(configFile))
+	cmd.AddCommand(newDeploymentSettingsPullCmd(configFile))
+	cmd.AddCommand(newDeploymentSettingsUpdateCmd(configFile))
+	cmd.AddCommand(newDeploymentSettingsDestroyCmd(configFile))
+	cmd.AddCommand(newDeploymentSettingsEnvCmd(configFile))
+	cmd.AddCommand(newDeploymentSettingsConfigureCmd(configFile))
 
 	// Edit the settings in cloud
 	cmd.AddCommand(newDeploymentSettingsGetCmd())
@@ -98,10 +98,11 @@ type deploymentSettingsCommandDependencies struct {
 	Ctx            context.Context
 	Prompts        prompts
 	WorkDir        string
+	ConfigFile     string
 }
 
 func initializeDeploymentSettingsCmd(
-	ctx context.Context, stdout io.Writer, ws pkgWorkspace.Context, stack string,
+	ctx context.Context, stdout io.Writer, ws pkgWorkspace.Context, stack string, configFile string,
 ) (*deploymentSettingsCommandDependencies, error) {
 	interactive := cmdutil.Interactive()
 
@@ -149,12 +150,13 @@ func initializeDeploymentSettingsCmd(
 		stack,
 		cmdStack.OfferNew|cmdStack.SetCurrent,
 		displayOpts,
+		"",
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	sd, err := loadProjectStackDeployment(s)
+	sd, err := loadProjectStackDeployment(s, configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -173,10 +175,11 @@ func initializeDeploymentSettingsCmd(
 		Ctx:            ctx,
 		Prompts:        promptHandlers{},
 		WorkDir:        wd,
+		ConfigFile:     configFile,
 	}, nil
 }
 
-func newDeploymentSettingsInitCmd() *cobra.Command {
+func newDeploymentSettingsInitCmd(configFile *string) *cobra.Command {
 	var force bool
 	var stack string
 	var gitSSHPrivateKeyPath string
@@ -189,7 +192,8 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
+			d, err := initializeDeploymentSettingsCmd(
+				cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack, *configFile)
 			if err != nil {
 				return err
 			}
@@ -290,10 +294,10 @@ func initStackDeploymentCmd(
 		return err
 	}
 
-	return saveProjectStackDeployment(d.Deployment, d.Stack)
+	return saveProjectStackDeployment(d.Deployment, d.Stack, d.ConfigFile)
 }
 
-func newDeploymentSettingsConfigureCmd() *cobra.Command {
+func newDeploymentSettingsConfigureCmd(configFile *string) *cobra.Command {
 	var stack string
 	var gitSSHPrivateKeyPath string
 	var gitSSHPrivateKeyValue string
@@ -308,7 +312,8 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 				return errors.New("configure command is only supported in interactive mode")
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
+			d, err := initializeDeploymentSettingsCmd(
+				cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack, *configFile)
 			if err != nil {
 				return err
 			}
@@ -353,7 +358,7 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 				return err
 			}
 
-			err = saveProjectStackDeployment(d.Deployment, d.Stack)
+			err = saveProjectStackDeployment(d.Deployment, d.Stack, d.ConfigFile)
 			if err != nil {
 				return err
 			}

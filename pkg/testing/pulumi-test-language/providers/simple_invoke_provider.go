@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type SimpleInvokeProvider struct {
@@ -41,10 +40,6 @@ func (p *SimpleInvokeProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *SimpleInvokeProvider) Pkg() tokens.Package {
-	return "simple-invoke"
 }
 
 func (p *SimpleInvokeProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {

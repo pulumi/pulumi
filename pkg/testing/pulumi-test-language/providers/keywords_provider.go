@@ -66,7 +66,7 @@ func (p *KeywordsProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (p *KeywordsProvider) Pkg() tokens.Package {
+func (p *KeywordsProvider) pkg() tokens.Package {
 	return "keywords"
 }
 
@@ -96,7 +96,7 @@ func (p *KeywordsProvider) GetSchema(
 	}
 
 	pkg := schema.PackageSpec{
-		Name:      p.Pkg().String(),
+		Name:      p.pkg().String(),
 		Version:   p.version(),
 		Resources: resources,
 	}

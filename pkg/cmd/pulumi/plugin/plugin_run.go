@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -34,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -198,7 +200,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return fmt.Errorf("plugin %s exited with error: %w", source, err)
 			}
 			if code != 0 {
-				os.Exit(code)
+				return pluginErrorCode{source, code}
 			}
 			return nil
 		},
@@ -218,3 +220,20 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	return cmd
 }
+
+var _ cmd.CustomExitCodeError = pluginErrorCode{}
+
+type pluginErrorCode struct {
+	plugin string
+	code   int
+}
+
+func (pec pluginErrorCode) CustomExitCode() int {
+	return pec.code
+}
+
+func (pec pluginErrorCode) Error() string {
+	return fmt.Sprintf("plugin %s exited with non-zero error code %d", pec.plugin, pec.code)
+}
+
+func (pec pluginErrorCode) Unwrap() error { return result.BailError(pec) }

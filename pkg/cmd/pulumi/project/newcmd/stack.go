@@ -60,7 +60,7 @@ func GetStack(ctx context.Context, b backend.Backend,
 // PromptAndCreateStack creates and returns a new stack (prompting for the name as needed).
 func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	b backend.Backend, prompt promptForValueFunc, stack string, root string, setCurrent bool,
-	yes bool, opts display.Options, secretsProvider string, useRemoteConfig bool,
+	yes bool, opts display.Options, secretsProvider string, useRemoteConfig bool, configFile string,
 ) (backend.Stack, error) {
 	contract.Requiref(b != nil, "b", "must not be nil")
 	contract.Requiref(root != "", "root", "must not be empty")
@@ -70,7 +70,8 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 		if err != nil {
 			return nil, err
 		}
-		s, err := cmdStack.InitStack(ctx, sink, ws, b, stackName, root, setCurrent, secretsProvider, useRemoteConfig)
+		s, err := cmdStack.InitStack(
+			ctx, sink, ws, b, stackName, root, setCurrent, secretsProvider, useRemoteConfig, configFile)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +94,8 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 		if err != nil {
 			return nil, err
 		}
-		s, err := cmdStack.InitStack(ctx, sink, ws, b, formattedStackName, root, setCurrent, secretsProvider, useRemoteConfig)
+		s, err := cmdStack.InitStack(
+			ctx, sink, ws, b, formattedStackName, root, setCurrent, secretsProvider, useRemoteConfig, configFile)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.

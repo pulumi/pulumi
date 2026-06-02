@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -239,11 +238,11 @@ func (w *recordingWorkspace) GetRequiredPackages(
 
 func (w *recordingWorkspace) RunPackage(
 	ctx context.Context,
-	rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	rootDir, pluginPath string, params plugin.ParameterizeParameters,
 	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
-	w.start("RunPackage", ctx, rootDir, pluginPath, pkgName, params)
-	provider, err := w.w.RunPackage(ctx, rootDir, pluginPath, pkgName, params, originalSpec)
+	w.start("RunPackage", ctx, rootDir, pluginPath, params)
+	provider, err := w.w.RunPackage(ctx, rootDir, pluginPath, params, originalSpec)
 	w.finish(provider, err)
 	return provider, err
 }

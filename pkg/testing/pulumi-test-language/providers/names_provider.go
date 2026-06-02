@@ -37,14 +37,14 @@ type NamesProvider struct {
 var _ plugin.Provider = (*NamesProvider)(nil)
 
 func (p *NamesProvider) Types() []string {
-	prefix := p.Pkg().Name().String() + ":index:"
+	prefix := p.pkg().Name().String() + ":index:"
 	return []string{
 		prefix + "ResMap",
 		prefix + "ResArray",
 		prefix + "ResList",
 		prefix + "ResResource",
-		p.Pkg().Name().String() + ":mod:Res",
-		p.Pkg().Name().String() + ":mod/nested:Res",
+		p.pkg().Name().String() + ":mod:Res",
+		p.pkg().Name().String() + ":mod/nested:Res",
 	}
 }
 
@@ -58,7 +58,7 @@ func (p *NamesProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (p *NamesProvider) Pkg() tokens.Package {
+func (p *NamesProvider) pkg() tokens.Package {
 	return "names"
 }
 
@@ -88,7 +88,7 @@ func (p *NamesProvider) GetSchema(
 	}
 
 	pkg := schema.PackageSpec{
-		Name:      p.Pkg().String(),
+		Name:      p.pkg().String(),
 		Version:   "6.0.0",
 		Resources: resources,
 	}

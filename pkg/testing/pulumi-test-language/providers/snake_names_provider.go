@@ -46,10 +46,6 @@ func (p *SnakeNamesProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (p *SnakeNamesProvider) Pkg() tokens.Package {
-	return "snake_names"
-}
-
 func (p *SnakeNamesProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {

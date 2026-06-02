@@ -780,7 +780,7 @@ func (m defaultLoginManager) Login(
 
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	var accessToken string
-	accountLink := client.CloudConsoleURL(cloudURL, "account", "tokens")
+	accountLink := client.CloudConsoleURL(cloudURL, "user", "settings", "tokens")
 
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.

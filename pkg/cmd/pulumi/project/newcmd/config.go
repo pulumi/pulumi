@@ -51,6 +51,7 @@ func HandleConfig(
 	yes bool,
 	path bool,
 	opts display.Options,
+	configFile string,
 ) error {
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
 	latest, err := backend.GetLatestConfiguration(ctx, s)
@@ -95,6 +96,7 @@ func HandleConfig(
 			stackConfig,
 			yes,
 			opts,
+			configFile,
 		)
 		if err != nil {
 			return err
@@ -103,7 +105,7 @@ func HandleConfig(
 
 	// Save the config.
 	if len(c) > 0 {
-		if err = SaveConfig(ctx, sink, ws, s, c); err != nil {
+		if err = SaveConfig(ctx, sink, ws, s, c, configFile); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
@@ -190,6 +192,7 @@ func promptForConfig(
 	stackConfig config.Map,
 	yes bool,
 	opts display.Options,
+	configFile string,
 ) (config.Map, error) {
 	// Convert `string` keys to `config.Key`. If a string key is missing a delimiter,
 	// the project name will be prepended.
@@ -211,7 +214,7 @@ func promptForConfig(
 	sort.Sort(keys)
 
 	// We need to load the stack config here for the secret manager
-	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack)
+	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack, configFile)
 	if err != nil {
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
@@ -221,7 +224,7 @@ func promptForConfig(
 		return nil, err
 	}
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
+		if err = cmdStack.SaveProjectStack(ctx, stack, ps, configFile); err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}
@@ -330,13 +333,15 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 }
 
 // SaveConfig saves the config for the stack.
-func SaveConfig(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
+func SaveConfig(
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, c config.Map, configFile string,
+) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
 
-	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack)
+	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack, configFile)
 	if err != nil {
 		return err
 	}
@@ -345,5 +350,5 @@ func SaveConfig(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, st
 		ps.Config[k] = v
 	}
 
-	return cmdStack.SaveProjectStack(ctx, stack, ps)
+	return cmdStack.SaveProjectStack(ctx, stack, ps, configFile)
 }

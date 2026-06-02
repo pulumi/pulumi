@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type NestedObjectProvider struct {
@@ -44,10 +43,6 @@ func (p *NestedObjectProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *NestedObjectProvider) Pkg() tokens.Package {
-	return "nestedobject"
 }
 
 func (p *NestedObjectProvider) GetSchema(

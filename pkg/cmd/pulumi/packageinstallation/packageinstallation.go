@@ -33,7 +33,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -95,7 +94,7 @@ type Context interface {
 	// directory.
 	RunPackage(
 		ctx context.Context,
-		rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+		rootDir, pluginPath string, params plugin.ParameterizeParameters,
 		originalSpec workspace.PackageSpec,
 	) (plugin.Provider, error)
 }
@@ -156,7 +155,7 @@ func InstallPlugin(
 	}
 
 	return func(ctx context.Context, wd string) (plugin.Provider, error) {
-		return ws.RunPackage(ctx, wd, runBundle.info.pluginPath, tokens.Package(runBundle.info.name),
+		return ws.RunPackage(ctx, wd, runBundle.info.pluginPath,
 			runBundle.params, resolvedSpec)
 	}, resolvedSpec, nil
 }
@@ -571,7 +570,7 @@ type generateLocalSDKStep struct {
 func (step generateLocalSDKStep) run(ctx context.Context, p state) error {
 	provider, err := p.ws.RunPackage(ctx,
 		step.project.projectDir, step.runBundle.info.pluginPath,
-		tokens.Package(step.packageName), step.runBundle.params, step.specSource)
+		step.runBundle.params, step.specSource)
 	if err != nil {
 		return err
 	}

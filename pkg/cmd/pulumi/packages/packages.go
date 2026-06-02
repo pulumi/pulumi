@@ -446,6 +446,20 @@ func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 	e env.Env, concurrency int,
 ) (plugin.Provider, workspace.PackageSpec, error) {
+	// Helper without a *cobra.Command writer; plumbing the writer into
+	// packageworkspace.New would require a much larger API change.
+	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pctx.Host, os.Stderr, os.Stderr, //nolint:forbidigo
+		nil, packageworkspace.Options{})
+	return providerFromSource(pctx, packageSource, reg, e, concurrency, installCtx)
+}
+
+// providerFromSource is the injectable core of [ProviderFromSource]. It performs all package
+// resolution, installation, and launching through installCtx, allowing tests to substitute a
+// mock [packageinstallation.Context] for the real, IO-performing [packageworkspace.Workspace].
+func providerFromSource(
+	pctx *plugin.Context, packageSource string, reg registry.Registry,
+	e env.Env, concurrency int, installCtx packageinstallation.Context,
+) (plugin.Provider, workspace.PackageSpec, error) {
 	var version string
 	if parts := strings.SplitN(packageSource, "@", 2); len(parts) > 1 {
 		packageSource = parts[0]
@@ -453,7 +467,7 @@ func ProviderFromSource(
 	}
 	packageSpec := workspace.PackageSpec{Source: packageSource, Version: version}
 	{
-		proj, _, err := ws.LoadBaseProjectFrom(pctx.Request(), pctx.Pwd)
+		proj, _, err := installCtx.LoadBaseProjectFrom(pctx.Request(), pctx.Pwd)
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return nil, workspace.PackageSpec{}, fmt.Errorf("error loading Pulumi Project: %w", err)
 		}
@@ -464,8 +478,6 @@ func ProviderFromSource(
 		}
 	}
 
-	// Helper without a *cobra.Command writer; plumbing the writer into
-	// packageworkspace.New would require a much larger API change.
 	f, spec, err := packageinstallation.InstallPlugin(pctx.Request(), packageSpec, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
 			ResolveWithRegistry:                        !e.GetBool(env.DisableRegistryResolve),
@@ -473,8 +485,7 @@ func ProviderFromSource(
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
 		Concurrency: concurrency,
-	}, reg, packageworkspace.New(pluginstorage.Instance, ws, pctx.Host, os.Stderr, os.Stderr, //nolint:forbidigo
-		nil, packageworkspace.Options{}))
+	}, reg, installCtx)
 	if err != nil {
 		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to install %s: %w", packageSpec, err)
 	}

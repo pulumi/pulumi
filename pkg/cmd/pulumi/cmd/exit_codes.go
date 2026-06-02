@@ -39,12 +39,34 @@ const (
 	ExitInternalError       = 255
 )
 
+// An error that specifies it's own error code.
+type CustomExitCodeError interface {
+	error
+
+	CustomExitCode() int
+}
+
+// ConfigurationError signals that a command was called with malformed input: an unknown
+// token, bad flag combination, unparsable argument, and so on. ExitCodeFor maps it to
+// ExitConfigurationError.
+type ConfigurationError struct {
+	Message string
+}
+
+func (e ConfigurationError) Error() string {
+	return e.Message
+}
+
 // ExitCodeFor maps an error to a process exit code, based on its concrete or
 // wrapped type. This function is the single choke point for mapping errors
 // into the public exit code contract.
 func ExitCodeFor(err error) int {
 	if err == nil {
 		return ExitSuccess
+	}
+
+	if c, ok := err.(CustomExitCodeError); ok {
+		return c.CustomExitCode()
 	}
 
 	// `pulumi api` carries its own semantic exit code on the error so
@@ -88,6 +110,11 @@ func ExitCodeFor(err error) int {
 
 	// Non-interactive mode without confirmation flags.
 	if errors.As(err, &backenderr.NoConfirmationInNonInteractiveError{}) {
+		return ExitConfigurationError
+	}
+
+	// Command was invoked with malformed input
+	if errors.As(err, &ConfigurationError{}) {
 		return ExitConfigurationError
 	}
 

@@ -24,7 +24,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type FailOnCreateProvider struct {
@@ -41,10 +40,6 @@ func (p *FailOnCreateProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *FailOnCreateProvider) Pkg() tokens.Package {
-	return "fail_on_create"
 }
 
 func (p *FailOnCreateProvider) GetSchema(
