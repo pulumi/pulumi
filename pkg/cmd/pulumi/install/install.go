@@ -195,8 +195,8 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				// already installed and linked are not reinstalled or regenerated here.
 				_, err = packageinstallation.InstallPluginSet(ctx, packages, specs, proj, filepath.Dir(projPath),
 					packageinstallation.Options{
-						Concurrency:  parallel,
-						Continuation: continuation,
+						Concurrency: parallel,
+						PriorState:  continuation,
 						Options: packageresolution.Options{
 							ResolveVersionWithLocalWorkspace:           true,
 							ResolveWithRegistry:                        !env.DisableRegistryResolve.Value(),

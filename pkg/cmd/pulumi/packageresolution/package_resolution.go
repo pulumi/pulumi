@@ -272,11 +272,8 @@ func IsPluginInstalled(
 
 	if plugin.Version == nil && options.ResolveVersionWithLocalWorkspace {
 		has, version, err := ws.HasPluginGTE(ctx, plugin)
-		if err != nil {
-			return true, nil, err
-		}
-		if has {
-			return true, version, nil
+		if err != nil || has {
+			return has, version, err
 		}
 	}
 	return false, nil, nil

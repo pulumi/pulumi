@@ -102,11 +102,11 @@ type Context interface {
 
 type MarkInstallationDone = func(success bool)
 
-// A Continuation represents the work already performed during an install.
+// A State represents the work already performed during an install.
 //
-// By passing the Continuation from one install to the next, we can assert that
+// By passing the State from one install to the next, we can assert that
 // duplicate work won't be performed.
-type Continuation struct {
+type State struct {
 	// Plugins that have been resolved/downloaded and are known to be already installed.
 	seen map[pluginHash]pluginInfo
 
@@ -121,8 +121,8 @@ type Options struct {
 	// If Concurrency is less then 1, the number of concurrent operations is unbounded.
 	Concurrency int
 
-	// A [Continuation] representing existing work done that won't be repeated.
-	Continuation Continuation
+	// A [PriorState] representing existing work done that won't be repeated.
+	PriorState State
 }
 
 // A function to run the installed plugin.
@@ -156,7 +156,7 @@ func InstallPlugin(
 	baseProject workspace.BaseProject, projectDir string,
 	options Options,
 	registry registry.Registry, ws Context,
-) (RunPlugin, workspace.PackageSpec, Continuation, error) {
+) (RunPlugin, workspace.PackageSpec, State, error) {
 	var runBundle runBundle
 	var resolvedSpec workspace.PackageSpec
 
@@ -184,7 +184,7 @@ func InstallPluginSet(
 	baseProject workspace.BaseProject, projectDir string,
 	options Options,
 	registry registry.Registry, ws Context,
-) (Continuation, error) {
+) (State, error) {
 	specs = slices.Clone(specs)
 	return runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
 		for _, resolved := range descriptors {
@@ -229,7 +229,7 @@ func InstallProjectPlugins(
 	ctx context.Context,
 	project_ workspace.BaseProject, projectDir string,
 	options Options, registry registry.Registry, ws Context,
-) (Continuation, error) {
+) (State, error) {
 	return runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
 		enqueueProjectDependencies(ctx, state, root, project[workspace.BaseProject]{
 			proj:       project_,
@@ -247,7 +247,7 @@ func runInstall(
 	ctx context.Context,
 	options Options, registry registry.Registry, ws Context,
 	enqueue func(ctx context.Context, state state, root pdag.Node) error,
-) (Continuation, error) {
+) (State, error) {
 	dag := pdag.New[step]()
 	root, rootReady := dag.NewNode(noOpStep{})
 
@@ -269,8 +269,8 @@ func runInstall(
 		cleanupM:     new(sync.Mutex),
 	}
 
-	// Apply the continuation token into state
-	for k, v := range options.Continuation.seen {
+	// Apply prior state
+	for k, v := range options.PriorState.seen {
 		n, done := dag.NewNode(noOpStep{})
 		state.seen[k] = cachedPlugin{
 			node: n,
@@ -278,7 +278,7 @@ func runInstall(
 		}
 		done()
 	}
-	maps.Copy(state.links, options.Continuation.links)
+	maps.Copy(state.links, options.PriorState.links)
 
 	defer func() {
 		for _, f := range state.cleanupFuncs {
@@ -287,7 +287,7 @@ func runInstall(
 	}()
 
 	if err := enqueue(ctx, state, root); err != nil {
-		return Continuation{}, err
+		return State{}, err
 	}
 
 	rootReady() // Now that at least one spec has been added, it's safe to mark the root as ready.
@@ -299,7 +299,7 @@ func runInstall(
 	for k, v := range state.seen {
 		seen[k] = *v.info
 	}
-	return Continuation{seen, state.links}, wrapCycleError(err)
+	return State{seen, state.links}, wrapCycleError(err)
 }
 
 type ErrorCyclicDependencies struct {

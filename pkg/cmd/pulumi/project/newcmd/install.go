@@ -67,13 +67,13 @@ func InstallPackagesFromProject(
 	ctx context.Context, proj workspace.BaseProject, root string, registry registry.Registry,
 	parallelism int, useLanguageVersionTools bool,
 	stdout, stderr io.Writer, e env.Env,
-) (packageinstallation.Continuation, error) {
+) (packageinstallation.State, error) {
 	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
 		Color: utilCmdutil.GetGlobalColorization(),
 	})
 	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil, schema.NewLoaderServerFromHost)
 	if err != nil {
-		return packageinstallation.Continuation{}, err
+		return packageinstallation.State{}, err
 	}
 	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, stdout, stderr, nil,
 		packageworkspace.Options{

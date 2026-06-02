@@ -1917,9 +1917,9 @@ func TestInstallContinuationSkipsDuplicateWork(t *testing.T) {
 		Name:    "test-project",
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 	}
-	options := func(c packageinstallation.Continuation) packageinstallation.Options {
+	options := func(c packageinstallation.State) packageinstallation.Options {
 		return packageinstallation.Options{
-			Continuation: c,
+			PriorState: c,
 			Options: packageresolution.Options{
 				ResolveVersionWithLocalWorkspace:           true,
 				AllowNonInvertableLocalWorkspaceResolution: true,
@@ -1930,7 +1930,7 @@ func TestInstallContinuationSkipsDuplicateWork(t *testing.T) {
 
 	// First install performs the work and records a continuation.
 	continuation, err := packageinstallation.InstallPluginSet(t.Context(),
-		nil, specs, proj, "/project", options(packageinstallation.Continuation{}), nil, ws)
+		nil, specs, proj, "/project", options(packageinstallation.State{}), nil, ws)
 	require.NoError(t, err)
 
 	// Replay the same install against the same workspace, passing the continuation.
@@ -1971,9 +1971,9 @@ func TestInstallContinuationLinksDifferentParameterization(t *testing.T) {
 		Name:    "test-project",
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 	}
-	options := func(c packageinstallation.Continuation) packageinstallation.Options {
+	options := func(c packageinstallation.State) packageinstallation.Options {
 		return packageinstallation.Options{
-			Continuation: c,
+			PriorState: c,
 			Options: packageresolution.Options{
 				ResolveVersionWithLocalWorkspace:           true,
 				AllowNonInvertableLocalWorkspaceResolution: true,
@@ -1984,7 +1984,7 @@ func TestInstallContinuationLinksDifferentParameterization(t *testing.T) {
 
 	// First install links the package parameterized with "paramA".
 	continuation, err := packageinstallation.InstallPluginSet(t.Context(),
-		nil, specWithParam("paramA"), proj, "/project", options(packageinstallation.Continuation{}), nil, ws)
+		nil, specWithParam("paramA"), proj, "/project", options(packageinstallation.State{}), nil, ws)
 	require.NoError(t, err)
 
 	// Replaying with a different parameterization must still link the package,
@@ -2025,9 +2025,9 @@ func TestInstallContinuationLinksDifferentProjectDir(t *testing.T) {
 		Name:    "test-project",
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 	}
-	options := func(c packageinstallation.Continuation) packageinstallation.Options {
+	options := func(c packageinstallation.State) packageinstallation.Options {
 		return packageinstallation.Options{
-			Continuation: c,
+			PriorState: c,
 			Options: packageresolution.Options{
 				ResolveVersionWithLocalWorkspace:           true,
 				AllowNonInvertableLocalWorkspaceResolution: true,
@@ -2038,7 +2038,7 @@ func TestInstallContinuationLinksDifferentProjectDir(t *testing.T) {
 
 	// First install links the package into /project1.
 	continuation, err := packageinstallation.InstallPluginSet(t.Context(),
-		nil, specs, proj, "/project1", options(packageinstallation.Continuation{}), nil, ws)
+		nil, specs, proj, "/project1", options(packageinstallation.State{}), nil, ws)
 	require.NoError(t, err)
 
 	// Replaying the same package into a different project dir must still link it
@@ -2081,9 +2081,9 @@ func TestInstallContinuationAcrossInstallsDoesNotCycle(t *testing.T) {
 		Name:    "test-project",
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 	}
-	options := func(c packageinstallation.Continuation) packageinstallation.Options {
+	options := func(c packageinstallation.State) packageinstallation.Options {
 		return packageinstallation.Options{
-			Continuation: c,
+			PriorState: c,
 			Options: packageresolution.Options{
 				ResolveVersionWithLocalWorkspace:           true,
 				AllowNonInvertableLocalWorkspaceResolution: true,
@@ -2095,7 +2095,7 @@ func TestInstallContinuationAcrossInstallsDoesNotCycle(t *testing.T) {
 	}
 
 	continuation, err := packageinstallation.InstallPluginSet(t.Context(),
-		nil, specs, proj, "/project", options(packageinstallation.Continuation{}), nil, ws)
+		nil, specs, proj, "/project", options(packageinstallation.State{}), nil, ws)
 	require.NoError(t, err)
 
 	// The second install reuses the continuation. The spec's plugin is already
