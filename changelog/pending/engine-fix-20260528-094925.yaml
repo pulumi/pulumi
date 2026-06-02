@@ -1,6 +1,0 @@
-component: engine
-kind: fix
-body: Trace cancel RPCs sent to plugins during shutdown as children of the active operation instead of emitting separate root spans
-time: 2026-05-28T09:49:25.618848+01:00
-custom:
-    PR: "23362"
