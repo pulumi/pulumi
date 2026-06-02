@@ -227,6 +227,18 @@ func getOptions(t *testing.T, name, cwd string) toolchain.PythonOptions {
 // addPackage installs a package using the specified toolchain.
 func addPackage(t *testing.T, opts toolchain.PythonOptions, name string) {
 	t.Helper()
+
+	// If name is a local source directory, copy it into a per-call tempdir. Otherwise concurrent
+	// installs from the same source race on <source>/build/ — legacy setuptools (no pyproject.toml)
+	// writes its build artifacts in place, which manifests as e.g.
+	// "Directory not empty: 'build/bdist.linux-x86_64/wheel'" under pip and as a wheel missing data
+	// files (e.g. pulumi-plugin.json) under poetry/uv.
+	if info, err := os.Stat(name); err == nil && info.IsDir() {
+		dest := filepath.Join(t.TempDir(), filepath.Base(name))
+		require.NoError(t, os.CopyFS(dest, os.DirFS(name)))
+		name = dest
+	}
+
 	switch opts.Toolchain {
 	case toolchain.Pip, toolchain.Auto:
 		tc, err := toolchain.ResolveToolchain(opts)
