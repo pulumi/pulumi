@@ -28,7 +28,7 @@ import (
 func TestEvalContextConcurrentParentChildAccess(t *testing.T) {
 	t.Parallel()
 
-	root := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil)
+	root := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil, nil)
 	root.SetVariable("shared", cty.StringVal("value"))
 
 	child := root.NewChild()

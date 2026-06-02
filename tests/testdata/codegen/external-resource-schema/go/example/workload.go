@@ -57,6 +57,12 @@ func (WorkloadState) ElementType() reflect.Type {
 	return reflect.TypeOf((*workloadState)(nil)).Elem()
 }
 
+// WorkloadExists checks whether an existing Workload resource with the given ID exists.
+func WorkloadExists(ctx *pulumi.Context,
+	id pulumi.IDInput, state *WorkloadState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("example::Workload", id, state, opts...)
+}
+
 type workloadArgs struct {
 }
 
