@@ -14,18 +14,22 @@
 
 package apitype
 
+// SessionKeyType represents the type of session key used for log encryption.
+type SessionKeyType string
+
+const (
+	// SessionKeyTypePlogV1 is the plog_v1 session key type (AES-256-GCM).
+	SessionKeyTypePlogV1 SessionKeyType = "plog_v1"
+)
+
 // LogEncryptionSessionInitRequest defines the request body for initializing an encryption session.
 type LogEncryptionSessionInitRequest struct {
-	// SessionKeyType is the type of session key to create. We currently only support "plog_v1"
-	SessionKeyType string `json:"sessionKeyType"`
+	SessionKeyType SessionKeyType `json:"sessionKeyType"`
 }
 
-// EncryptionSessionInitResponse is the response from initializing an encryption session.
+// LogEncryptionSessionInitResponse is the response from initializing an encryption session.
 type LogEncryptionSessionInitResponse struct {
-	// SessionID is the unique identifier for the encryption session.
-	SessionID string `json:"sessionID"`
-	// SessionKeyType is the type of session key that was created. Should always be the same as requested.
-	SessionKeyType string `json:"sessionKeyType"`
-	// SessionKey is the base64-encoded session key bytes.
-	SessionKey string `json:"sessionKey"`
+	SessionID      string         `json:"sessionID"`
+	SessionKeyType SessionKeyType `json:"sessionKeyType"`
+	SessionKey     string         `json:"sessionKey"`
 }
