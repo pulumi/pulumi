@@ -18,14 +18,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -60,9 +58,9 @@ func NonInteractiveCurrentBackend(
 		return BackendInstance, nil
 	}
 
-	url, err := getCurrentCloudURL(ws, project)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 	logging.V(7).Infof("Current cloud URL: %q", url)
 
@@ -78,49 +76,13 @@ func CurrentBackend(
 		return BackendInstance, nil
 	}
 
-	url, err := getCurrentCloudURL(ws, project)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 	logging.V(7).Infof("Current cloud URL: %q", url)
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 
 	// Only set current if we don't currently have a cloud URL set.
 	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color)
-}
-
-// getCurrentCloudURL returns the active cloud URL, using the shared agent
-// credentials as a fallback when an agent cannot read the default credentials.
-func getCurrentCloudURL(ws pkgWorkspace.Context, project *workspace.Project) (string, error) {
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-	if err == nil {
-		return url, nil
-	}
-
-	agent := agentdetect.Detect(os.Getenv)
-	if agent == "" || hasExplicitPulumiPathEnv() {
-		logging.V(7).Infof("Could not get cloud URL from default credentials without agent fallback: %v", err)
-		return "", fmt.Errorf("could not get cloud url: %w", err)
-	}
-
-	logging.V(7).Infof(
-		"Could not get cloud URL from default credentials in agent mode (%s); checking shared agent credentials: %v",
-		agent, err)
-	agentCreds, agentErr := workspace.GetAgentStoredCredentials()
-	if agentErr != nil {
-		return "", fmt.Errorf("could not get cloud url from agent credentials: %w", errors.Join(err, agentErr))
-	}
-	if agentCreds.Current != "" {
-		logging.V(7).Infof("Using current cloud URL %q from shared agent credentials", agentCreds.Current)
-	} else {
-		logging.V(7).Infof("No current cloud URL found in shared agent credentials")
-	}
-
-	return agentCreds.Current, nil
-}
-
-// hasExplicitPulumiPathEnv reports whether the user explicitly selected a
-// Pulumi credential or home path, disabling implicit agent fallback paths.
-func hasExplicitPulumiPathEnv() bool {
-	return os.Getenv(workspace.PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
 }

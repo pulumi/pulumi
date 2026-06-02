@@ -66,6 +66,7 @@ func runTotalStateEdit(
 		stackName,
 		cmdStack.OfferNew,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err
@@ -96,6 +97,7 @@ func runTotalStateEditWithPrompt(
 		stackName,
 		cmdStack.OfferNew,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err
@@ -253,6 +255,7 @@ func getURNFromState(
 			stackName,
 			cmdStack.LoadOnly,
 			opts,
+			"",
 		)
 		if err != nil {
 			return "", err

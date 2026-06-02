@@ -80,10 +80,6 @@ func (prov *Provider) Close() error {
 	return nil
 }
 
-func (prov *Provider) Pkg() tokens.Package {
-	return prov.Package
-}
-
 func (prov *Provider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
 		Version: &prov.Version,

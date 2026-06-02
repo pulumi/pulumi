@@ -86,6 +86,7 @@ func newDeploymentRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 				stack,
 				cmdStack.OfferNew|cmdStack.SetCurrent,
 				display,
+				"",
 			)
 			if err != nil {
 				return err

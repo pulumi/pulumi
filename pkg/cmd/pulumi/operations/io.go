@@ -44,6 +44,7 @@ func parseAndSaveConfigArray(
 	s backend.Stack,
 	configArray []string,
 	path bool,
+	configFile string,
 ) error {
 	if len(configArray) == 0 {
 		return nil
@@ -53,7 +54,7 @@ func parseAndSaveConfigArray(
 		return err
 	}
 
-	if err = newcmd.SaveConfig(ctx, sink, ws, s, commandLineConfig); err != nil {
+	if err = newcmd.SaveConfig(ctx, sink, ws, s, commandLineConfig, configFile); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil

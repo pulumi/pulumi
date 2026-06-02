@@ -75,6 +75,7 @@ a preview showing a diff of the altered state.`,
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
 				},
+				"",
 			)
 			if err != nil {
 				return err

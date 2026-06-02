@@ -117,6 +117,6 @@ func main() {
 			return pulumiprovider.NewCallResult(result)
 		},
 	}); err != nil {
-		cmdutil.ExitError(err.Error())
+		cmdutil.Exit(err)
 	}
 }

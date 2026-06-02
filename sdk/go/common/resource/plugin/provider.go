@@ -496,9 +496,6 @@ type Provider interface {
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
 
-	// Pkg fetches this provider's package.
-	Pkg() tokens.Package
-
 	// Handshake is the first call made by the engine to a provider. It is used to pass the engine's address to the
 	// provider so that it may establish its own connections back, and to establish protocol configuration that will be
 	// used to communicate between the two parties. Providers that support Handshake should return a response consistent

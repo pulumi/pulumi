@@ -50,7 +50,7 @@ func newStackGetCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			s, err := RequireStack(ctx, cmdutil.Diag(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager,
-				stackName, LoadOnly, display.Options{Color: cmdutil.GetGlobalColorization()})
+				stackName, LoadOnly, display.Options{Color: cmdutil.GetGlobalColorization()}, "")
 			if err != nil {
 				return err
 			}

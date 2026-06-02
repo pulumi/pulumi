@@ -128,12 +128,14 @@ jobs:
           cat .goreleaser.yml \
             | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
             | goreleaser release -f - -p 5 --skip=validate --clean --snapshot
-      - uses: actions/upload-artifact@v7
+      - uses: ./.github/actions/retry
         if: ${{ inputs.os != 'js' }}
         with:
-          name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}${{ inputs.artifact-suffix || ''}}
-          overwrite: true
-          retention-days: 7
-          path: |
-            goreleaser/*.tar.gz
-            goreleaser/*.zip
+          action: actions/upload-artifact@v7
+          with: |
+            name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}${{ inputs.artifact-suffix || ''}}
+            overwrite: true
+            retention-days: 7
+            path: |
+              goreleaser/*.tar.gz
+              goreleaser/*.zip

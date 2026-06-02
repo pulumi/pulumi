@@ -59,7 +59,7 @@ func Run(body RunFunc, opts ...RunOption) {
 		printRequiredPlugins()
 	}
 
-	os.Exit(constant.ExitStatusLoggedError)
+	os.Exit(constant.ExitStatusLoggedError) //nolint:noosexit // Run's contract terminates the process on failure.
 }
 
 // RunErr executes the body of a Pulumi program, granting it access to a deployment context that it may use

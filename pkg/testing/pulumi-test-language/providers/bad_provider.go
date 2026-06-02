@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type BadProvider struct {
@@ -34,10 +33,6 @@ var _ plugin.Provider = (*BadProvider)(nil)
 
 func (p *BadProvider) Close() error {
 	return nil
-}
-
-func (p *BadProvider) Pkg() tokens.Package {
-	return "bad"
 }
 
 func (p *BadProvider) GetSchema(_ context.Context, request plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {

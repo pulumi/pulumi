@@ -126,7 +126,7 @@ func defaultDeploymentGetClientFactory(
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 	s, err := cmdStack.RequireStack(ctx, cmdutil.Diag(), ws, cmdBackend.DefaultLoginManager,
-		stackFlag, cmdStack.LoadOnly, opts)
+		stackFlag, cmdStack.LoadOnly, opts, "")
 	if err != nil {
 		return nil, client.StackIdentifier{}, fmt.Errorf("resolving stack: %w", err)
 	}

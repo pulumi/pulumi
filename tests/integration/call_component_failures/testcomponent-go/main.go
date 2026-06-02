@@ -88,6 +88,6 @@ func main() {
 			return nil, perrors.NewInputPropertyError("foo", "the failure reason")
 		},
 	}); err != nil {
-		cmdutil.ExitError(err.Error())
+		cmdutil.Exit(err)
 	}
 }

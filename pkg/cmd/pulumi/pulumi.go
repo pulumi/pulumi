@@ -275,6 +275,18 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}
 			}()
 
+			// Commands like `pulumi do` set DisableFlagParsing on themselves so they can
+			// build a dynamic flag tree from a provider's schema. cobra skips flag parsing
+			// entirely for such commands, which means our root persistent flag variables
+			// (--color, --cwd, --tracing, --otel-traces, ...) are still at their defaults
+			// when this PersistentPreRunE runs, so all the flag-dependent init below is
+			// skipped. Parse what we can ourselves before continuing.
+			if cmd.DisableFlagParsing {
+				pf := cmd.Root().PersistentFlags()
+				pf.ParseErrorsAllowlist.UnknownFlags = true
+				_ = pf.Parse(args)
+			}
+
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
 			client.SetUserAgentCommand(commandPath)
 			client.SetUserAgentAIAgent(agentdetect.Detect(os.Getenv))

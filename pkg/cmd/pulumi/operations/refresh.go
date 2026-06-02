@@ -58,6 +58,7 @@ func NewRefreshCmd() *cobra.Command {
 	var execAgent string
 	var stackName string
 	var configArray []string
+	var configFile string
 	var path bool
 	var client string
 
@@ -180,7 +181,7 @@ func NewRefreshCmd() *cobra.Command {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, client, jsonDisplay, nil,
 					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
-					false, "", cmdStack.ConfigFile, runProgram)
+					false, "", configFile, runProgram)
 				if err != nil {
 					return err
 				}
@@ -218,16 +219,17 @@ func NewRefreshCmd() *cobra.Command {
 				stackName,
 				cmdStack.OfferNew,
 				opts.Display,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
 
-			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path); err != nil {
+			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path, configFile); err != nil {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -375,7 +377,7 @@ func NewRefreshCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},

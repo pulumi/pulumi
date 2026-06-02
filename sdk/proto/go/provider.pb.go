@@ -690,6 +690,8 @@ type ConfigureRequest struct {
 	//	}
 	//
 	// ```
+	//
+	// Deprecated: Marked as deprecated in pulumi/provider.proto.
 	Variables map[string]string `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// A map of input properties for the provider.
 	//
@@ -762,6 +764,7 @@ func (*ConfigureRequest) Descriptor() ([]byte, []int) {
 	return file_pulumi_provider_proto_rawDescGZIP(), []int{6}
 }
 
+// Deprecated: Marked as deprecated in pulumi/provider.proto.
 func (x *ConfigureRequest) GetVariables() map[string]string {
 	if x != nil {
 		return x.Variables
@@ -4264,9 +4267,9 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x0fsubpackage_name\x18\x02 \x01(\tR\x0esubpackageName\x12-\n" +
 	"\x12subpackage_version\x18\x03 \x01(\tR\x11subpackageVersion\"+\n" +
 	"\x11GetSchemaResponse\x12\x16\n" +
-	"\x06schema\x18\x01 \x01(\tR\x06schema\"\xfc\x03\n" +
-	"\x10ConfigureRequest\x12H\n" +
-	"\tvariables\x18\x01 \x03(\v2*.pulumirpc.ConfigureRequest.VariablesEntryR\tvariables\x12+\n" +
+	"\x06schema\x18\x01 \x01(\tR\x06schema\"\x80\x04\n" +
+	"\x10ConfigureRequest\x12L\n" +
+	"\tvariables\x18\x01 \x03(\v2*.pulumirpc.ConfigureRequest.VariablesEntryB\x02\x18\x01R\tvariables\x12+\n" +
 	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04args\x12$\n" +
 	"\racceptSecrets\x18\x03 \x01(\bR\racceptSecrets\x12(\n" +
 	"\x0facceptResources\x18\x04 \x01(\bR\x0facceptResources\x12(\n" +

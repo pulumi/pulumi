@@ -147,3 +147,39 @@ func TestLogoutCommandCloudURL(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, output.String(), "Logged out of "+cloudURL)
 }
+
+func TestLogoutCommandFallsBackToAgentCurrentCloud(t *testing.T) {
+	agentDir := t.TempDir()
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
+	t.Setenv(env.Home.Var().Name(), "")
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", agentDir)
+
+	cloudURL := "https://api.logout-agent-current.example.com"
+	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true)
+	require.NoError(t, err)
+
+	cmd := NewLogoutCmd(&pkgWorkspace.MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{}, assert.AnError
+		},
+	})
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+
+	err = cmd.Execute()
+	require.NoError(t, err)
+	assert.Contains(t, output.String(), "Logged out of "+cloudURL)
+
+	account, err := workspace.GetAgentAccount(cloudURL)
+	require.NoError(t, err)
+	assert.Empty(t, account.AccessToken)
+
+	agentCredsFile := filepath.Join(agentDir, "credentials.json")
+	contents, err := os.ReadFile(agentCredsFile)
+	if !os.IsNotExist(err) {
+		require.NoError(t, err)
+		assert.NotContains(t, string(contents), cloudURL)
+		assert.NotContains(t, string(contents), "agent-token")
+	}
+}

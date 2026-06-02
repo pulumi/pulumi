@@ -127,7 +127,7 @@ func defaultDriftListClientFactory(
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 	s, err := RequireStack(ctx, cmdutil.Diag(), ws, cmdBackend.DefaultLoginManager,
-		stackFlag, LoadOnly, opts)
+		stackFlag, LoadOnly, opts, "")
 	if err != nil {
 		return nil, client.StackIdentifier{}, fmt.Errorf("resolving stack: %w", err)
 	}

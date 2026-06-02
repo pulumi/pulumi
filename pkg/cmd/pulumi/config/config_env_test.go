@@ -84,6 +84,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 	newStackYAML *string,
 ) *configEnvCmd {
 	stackRef := "stack"
+	configFile := ""
 	return &configEnvCmd{
 		stdin:       stdin,
 		stdout:      stdout,
@@ -106,6 +107,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 			stackName string,
 			lopt cmdStack.LoadOption,
 			opts display.Options,
+			configFile string,
 		) (backend.Stack, error) {
 			return &backend.MockStack{
 				RefF: func() backend.StackReference {
@@ -133,11 +135,11 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		},
 
 		loadProjectStack: func(
-			_ context.Context, d diag.Sink, p *workspace.Project, _ backend.Stack,
+			_ context.Context, d diag.Sink, p *workspace.Project, _ backend.Stack, configFile string,
 		) (*workspace.ProjectStack, error) {
 			return workspace.LoadProjectStackBytes(d, p, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML)
 		},
-		saveProjectStack: func(_ context.Context, _ backend.Stack, ps *workspace.ProjectStack) error {
+		saveProjectStack: func(_ context.Context, _ backend.Stack, ps *workspace.ProjectStack, configFile string) error {
 			b, err := encoding.YAML.Marshal(ps)
 			if err != nil {
 				return err
@@ -145,7 +147,8 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 			*newStackYAML = string(b)
 			return nil
 		},
-		stackRef: &stackRef,
+		stackRef:   &stackRef,
+		configFile: &configFile,
 	}
 }
 

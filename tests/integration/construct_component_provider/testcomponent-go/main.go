@@ -87,6 +87,6 @@ func main() {
 
 		return pulumiprovider.NewConstructResult(component)
 	}); err != nil {
-		cmdutil.ExitError(err.Error())
+		cmdutil.Exit(err)
 	}
 }

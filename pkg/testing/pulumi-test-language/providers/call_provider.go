@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
@@ -48,10 +47,6 @@ func (p *CallProvider) Close() error {
 
 func (p *CallProvider) SignalCancellation(context.Context) error {
 	return nil
-}
-
-func (p *CallProvider) Pkg() tokens.Package {
-	return "call"
 }
 
 func (p *CallProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {

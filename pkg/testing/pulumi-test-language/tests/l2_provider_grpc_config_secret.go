@@ -95,7 +95,7 @@ func init() {
 						c.Args.Fields["objString2"].AsInterface(), "objString2")
 
 					// Secretness is not exposed in GetVariables. Instead the data is JSON-encoded.
-					v := c.GetVariables()
+					v := c.GetVariables() //nolint:staticcheck // Intentionally tested deprecated features
 					assert.Equal(l, "SECRET", v["config-grpc:config:string1"], "string1")
 					assert.Equal(l, "1234567890", v["config-grpc:config:int1"], "int1")
 					assert.Equal(l, "123456.789", v["config-grpc:config:num1"], "num1")

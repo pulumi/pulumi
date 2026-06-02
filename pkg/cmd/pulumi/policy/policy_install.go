@@ -94,7 +94,7 @@ func (cmd *policyInstallCmd) Run(
 				Color: cmdutil.GetGlobalColorization(),
 			}
 			return cmdStack.RequireStack(ctx, cmd.diag, pkgWorkspace.Instance,
-				cmdBackend.DefaultLoginManager, stackName, cmdStack.LoadOnly, displayOpts)
+				cmdBackend.DefaultLoginManager, stackName, cmdStack.LoadOnly, displayOpts, "")
 		}
 	}
 

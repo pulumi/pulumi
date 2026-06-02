@@ -27,11 +27,15 @@ linters:
     - copyloopvar
     - gocritic
     - requiredfield
+    - noosexit
   settings:
     custom:
       requiredfield:
         type: module
         description: Checks that required fields are set in struct literals (see go.abhg.dev/requiredfield)
+      noosexit:
+        type: module
+        description: Forbids process-terminating calls (os.Exit, cmdutil.Exit, cmdutil.ExitError) outside of main and TestMain
     usetesting:
       os-temp-dir: true
       context-background: true
