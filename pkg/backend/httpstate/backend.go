@@ -795,8 +795,9 @@ func (m defaultLoginManager) Login(
 	fmt.Println(opts.Color.Colorize(line1))
 	fmt.Println()
 
-	// Printed after the user responds to the prompt, regardless of which login path they choose.
-	helpLine := fmt.Sprintf("Run `%s login --help` for alternative login options.", command)
+	line2 := fmt.Sprintf("Run `%s login --help` for alternative login options.", command)
+	fmt.Println(opts.Color.Colorize(line2))
+	fmt.Println()
 
 	// In the case where we could not construct a link to the pulumi console based on the API server's hostname,
 	// don't offer magic log-in or text about where to find your access token.
@@ -809,9 +810,6 @@ func (m defaultLoginManager) Login(
 				break
 			}
 		}
-
-		fmt.Println()
-		fmt.Println(opts.Color.Colorize(helpLine))
 	} else {
 		browserLine := "Press <ENTER> to log in with your browser, or"
 		browserLine = colors.Highlight(browserLine, "<ENTER>", colors.BrightCyan+colors.Bold)
@@ -824,9 +822,6 @@ func (m defaultLoginManager) Login(
 		if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(prompt)); err != nil {
 			return nil, err
 		}
-
-		fmt.Println()
-		fmt.Println(opts.Color.Colorize(helpLine))
 
 		if accessToken == "" {
 			return loginWithBrowser(ctx, cloudURL, insecure, command, welcome, setCurrent, opts)
