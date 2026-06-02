@@ -25,6 +25,7 @@ import (
 	"sync"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
@@ -324,6 +325,13 @@ func runNeo(
 
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
 
+	// Detect the terminal background once, before bubbletea takes over stdin.
+	// Querying in-band (via tea.RequestBackgroundColor or glamour's auto-style)
+	// races bubbletea's own input reader for the terminal's reply, which leaks
+	// the response into the textarea; lipgloss queries synchronously here and
+	// consumes its own response. Defaults to dark on any error.
+	hasDarkBackground := lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
+
 	model := NewModel(ModelConfig{
 		Org:                   orgName,
 		WorkDir:               cwdFlag,
@@ -335,6 +343,7 @@ func runNeo(
 		InitialPrompt:         prompt,
 		InitialApprovalMode:   approvalMode,
 		InitialPermissionMode: permissionMode,
+		HasDarkBackground:     hasDarkBackground,
 	})
 
 	// Inline (non-alt-screen) so the transcript stays in the user's terminal

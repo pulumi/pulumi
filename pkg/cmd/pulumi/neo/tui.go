@@ -193,6 +193,11 @@ type ModelConfig struct {
 	// that want to exercise the post-task Ctrl+A / Ctrl+R path without driving
 	// a UISessionURL through the event channel.
 	TaskCreated bool
+	// HasDarkBackground selects light- or dark-friendly style variants for the
+	// whole TUI, including the textarea. runNeo detects it synchronously before
+	// the program starts (see the comment there) and defaults it to dark for
+	// terminals it can't probe.
+	HasDarkBackground bool
 }
 
 // Model is the top-level bubbletea model for the Neo TUI.
@@ -230,9 +235,9 @@ type Model struct {
 	mdRenderer *glamour.TermRenderer
 	width      int
 	height     int
-	// hasDarkBackground is populated from tea.BackgroundColorMsg. Defaults
-	// to true so first paint matches the dark-friendly look on terminals
-	// that never answer the OSC 11 query.
+	// hasDarkBackground selects light- or dark-friendly style variants. It is
+	// detected once before the program starts and seeded via
+	// ModelConfig.HasDarkBackground.
 	hasDarkBackground bool
 	// frame advances on each spinner.TickMsg while busy and drives the
 	// shimmer animation on the busy block's label.
@@ -478,7 +483,9 @@ func NewModel(cfg ModelConfig) Model {
 		}
 		return "  "
 	})
-	styles := ti.Styles()
+	// textarea.New defaults to dark styles; reselect for the detected background
+	// so the input box (cursor line, text) reads on a light terminal too.
+	styles := textarea.DefaultStyles(cfg.HasDarkBackground)
 	styles.Focused.Prompt = promptStyle
 	styles.Blurred.Prompt = promptStyle
 	ti.SetStyles(styles)
@@ -512,7 +519,7 @@ func NewModel(cfg ModelConfig) Model {
 		spinner:           sp,
 		width:             80,
 		height:            24,
-		hasDarkBackground: true,
+		hasDarkBackground: cfg.HasDarkBackground,
 		messageSent:       cfg.MessageSent,
 		taskCreated:       cfg.TaskCreated,
 		approvalMode:      cfg.InitialApprovalMode,
@@ -537,11 +544,8 @@ func NewModel(cfg ModelConfig) Model {
 }
 
 // Init returns the initial command that starts listening for events.
-// RequestBackgroundColor asks the terminal for its background polarity; the
-// reply arrives as a tea.BackgroundColorMsg that the Update handler uses to
-// pick light- or dark-friendly style variants.
 func (m Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{waitForEvent(m.eventCh), textarea.Blink, tea.RequestBackgroundColor}
+	cmds := []tea.Cmd{waitForEvent(m.eventCh), textarea.Blink}
 	if m.busy {
 		cmds = append(cmds, m.spinner.Tick)
 	}
@@ -567,7 +571,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Glamour bakes wrap width in at construction, so rebuild on resize.
-		m.rebuildMarkdownRenderer(safeWidth - 4)
+		m.rebuildMarkdownRenderer()
 		// Re-render every block at the new width. Live blocks (busy / streaming /
 		// open pulumi op) get reflected in View() on the next draw; committed
 		// blocks already in scrollback don't reflow — only the initial-prompt
@@ -594,14 +598,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, r := range msg.rendered {
 			cmds = append(cmds, m.printlnBlock(r))
 		}
-
-	case tea.BackgroundColorMsg:
-		// Bubble Tea emits this in reply to RequestBackgroundColor and again
-		// whenever the user changes the terminal theme. Rebuild glamour so
-		// its palette tracks; lipgloss-styled blocks re-read the flag on the
-		// next View().
-		m.hasDarkBackground = msg.IsDark()
-		m.rebuildMarkdownRenderer(m.liveWidth() - 4)
 
 	case ctrlCDisarmMsg:
 		// Stale tick: the user already pressed another key (gen still
@@ -1214,14 +1210,19 @@ func (m Model) modeChips() string {
 	return strings.Join(chips, " ")
 }
 
-// rebuildMarkdownRenderer constructs a new glamour renderer with the current
-// wrap width and the terminal's auto-detected style. Glamour bakes both into
-// the renderer at construction, so callers rebuild on resize and on theme
-// change.
-func (m *Model) rebuildMarkdownRenderer(wrap int) {
+// rebuildMarkdownRenderer constructs a new glamour renderer at the current
+// live width and a style matching the terminal background. Glamour bakes both
+// in at construction, so callers rebuild on resize. We pick the style
+// explicitly rather than via glamour.WithAutoStyle, which queries the terminal
+// in-band and would race bubbletea's input reader (see hasDarkBackground).
+func (m *Model) rebuildMarkdownRenderer() {
+	style := "dark"
+	if !m.hasDarkBackground {
+		style = "light"
+	}
 	if r, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(wrap),
+		glamour.WithStandardStyle(style),
+		glamour.WithWordWrap(m.liveWidth()-4),
 	); err == nil {
 		m.mdRenderer = r
 	}
