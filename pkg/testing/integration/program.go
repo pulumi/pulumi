@@ -2916,19 +2916,28 @@ func fileExists(p string) bool {
 
 // InstallProviderDependencies installs a component provider's dependencies in
 // dir and pins @pulumi/pulumi (nodejs) or pulumi (python) to the locally-built
-// SDK so the provider runs against the in-tree code. The provider's runtime
-// is read from PulumiPlugin.yaml.
+// SDK so the provider runs against the in-tree code. The runtime is read from
+// PulumiPlugin.yaml or, for consumer fixtures that aren't binary plugins, from
+// Pulumi.yaml.
 func InstallProviderDependencies(t *testing.T, dir string) {
 	t.Helper()
-	plugin, err := workspace.LoadPluginProject(filepath.Join(dir, "PulumiPlugin.yaml"))
-	require.NoError(t, err, "loading PulumiPlugin.yaml from %s", dir)
-	switch rt := plugin.Runtime.Name(); rt {
+	var runtime string
+	if fileExists(filepath.Join(dir, "PulumiPlugin.yaml")) {
+		plugin, err := workspace.LoadPluginProject(filepath.Join(dir, "PulumiPlugin.yaml"))
+		require.NoError(t, err, "loading PulumiPlugin.yaml from %s", dir)
+		runtime = plugin.Runtime.Name()
+	} else {
+		project, err := workspace.LoadProject(filepath.Join(dir, "Pulumi.yaml"))
+		require.NoError(t, err, "loading Pulumi.yaml from %s", dir)
+		runtime = project.Runtime.Name()
+	}
+	switch runtime {
 	case NodeJSRuntime:
 		installNodejsProviderDependencies(t, dir)
 	case PythonRuntime:
 		installPythonProviderDependencies(t, dir)
 	default:
-		t.Fatalf("InstallProviderDependencies: unsupported runtime %q in %s", rt, dir)
+		t.Fatalf("InstallProviderDependencies: unsupported runtime %q in %s", runtime, dir)
 	}
 }
 
