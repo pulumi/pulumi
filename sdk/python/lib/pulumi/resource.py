@@ -35,6 +35,7 @@ from .runtime._state_migration_context import _ensure_not_in_state_migration
 from .runtime.resource import (
     _pkg_from_type,
     collapse_alias_to_urn,
+    exists_resource,
     get_resource,
     read_resource,
     register_resource,

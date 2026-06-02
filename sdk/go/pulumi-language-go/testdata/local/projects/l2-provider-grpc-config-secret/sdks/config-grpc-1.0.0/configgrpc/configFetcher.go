@@ -56,6 +56,12 @@ func (ConfigFetcherState) ElementType() reflect.Type {
 	return reflect.TypeOf((*configFetcherState)(nil)).Elem()
 }
 
+// ConfigFetcherExists checks whether an existing ConfigFetcher resource with the given ID exists.
+func ConfigFetcherExists(ctx *pulumi.Context,
+	id pulumi.IDInput, state *ConfigFetcherState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("config-grpc:index:ConfigFetcher", id, state, opts...)
+}
+
 type configFetcherArgs struct {
 }
 

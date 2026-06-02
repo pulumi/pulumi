@@ -22,6 +22,16 @@ export class Foo extends pulumi.CustomResource {
         return new Foo(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Foo resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("example:index:Foo", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'example:index:Foo';
 
