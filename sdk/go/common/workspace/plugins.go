@@ -2390,19 +2390,18 @@ func SelectCompatiblePlugin(
 
 // ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
 func ReadCloserProgressBar(
-	closer io.ReadCloser, size int64, message string, colorization colors.Colorization,
+	closer io.ReadCloser, w io.Writer, size int64, message string, colorization colors.Colorization,
 ) io.ReadCloser {
-	if size == -1 {
-		return closer
-	}
-
-	if !cmdutil.Interactive() {
+	if size == -1 || !cmdutil.Interactive() {
+		// We can't render a progress bar (unknown size, or non-interactive output), but still tell the
+		// user what's happening.
+		fmt.Fprintln(w, colorization.Colorize(colors.SpecUnimportant+message+colors.Reset))
 		return closer
 	}
 
 	// If we know the length of the download, show a progress bar.
 	bar := pb.New(int(size))
-	bar.Output = os.Stderr
+	bar.Output = w
 	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
 	bar.Postfix(colorization.Colorize(colors.Reset))
 	bar.SetMaxWidth(80)
@@ -2542,6 +2541,6 @@ func (bc *barCloser) Read(dest []byte) (int, error) {
 }
 
 func (bc *barCloser) Close() error {
-	bc.bar.FinishPrint("\r")
+	bc.bar.Finish()
 	return bc.readCloser.Close()
 }
