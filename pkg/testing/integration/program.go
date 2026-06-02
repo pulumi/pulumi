@@ -2978,6 +2978,9 @@ func installNodejsProviderDependencies(t *testing.T, dir string) {
 func installPythonProviderDependencies(t *testing.T, dir string) {
 	t.Helper()
 
+	dir, err := filepath.Abs(dir)
+	require.NoError(t, err)
+
 	hasPyproject := fileExists(filepath.Join(dir, "pyproject.toml"))
 	hasRequirements := fileExists(filepath.Join(dir, "requirements.txt"))
 	if hasPyproject || hasRequirements {
