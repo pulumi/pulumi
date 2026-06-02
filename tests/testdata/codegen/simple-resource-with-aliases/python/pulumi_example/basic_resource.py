@@ -111,6 +111,16 @@ class BasicResource(pulumi.CustomResource):
         __props__.__dict__["bar"] = None
         return BasicResource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = BasicResourceArgs.__new__(BasicResourceArgs)
+
+        __props__.__dict__["bar"] = None
+        __inst__ = BasicResource.__new__(BasicResource)
+        return pulumi.runtime.exists_resource(__inst__, 'example:index:BasicResource', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def bar(self) -> pulumi.Output[_builtins.str]:

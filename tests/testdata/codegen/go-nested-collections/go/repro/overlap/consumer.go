@@ -54,6 +54,12 @@ func (ConsumerState) ElementType() reflect.Type {
 	return reflect.TypeOf((*consumerState)(nil)).Elem()
 }
 
+// ConsumerExists checks whether an existing Consumer resource with the given ID exists.
+func ConsumerExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ConsumerState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("repro:overlap:Consumer", name, id, state, opts...)
+}
+
 type consumerArgs struct {
 	Typ  map[string]*SomeType `pulumi:"typ"`
 	TypM *SomeTypeMap         `pulumi:"typM"`

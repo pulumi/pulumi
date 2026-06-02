@@ -106,6 +106,16 @@ class Target(pulumi.CustomResource):
         __props__.__dict__["name"] = None
         return Target(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = TargetArgs.__new__(TargetArgs)
+
+        __props__.__dict__["name"] = None
+        __inst__ = Target.__new__(Target)
+        return pulumi.runtime.exists_resource(__inst__, 'nestedobject:index:Target', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def name(self) -> pulumi.Output[_builtins.str]:

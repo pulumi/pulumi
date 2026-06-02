@@ -634,6 +634,31 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "\n")
 	}
 
+	// Emit a static method to check if a resource exists unless this is a provider resource or ComponentResource.
+	if !r.IsProvider && !r.IsComponent {
+		fmt.Fprintf(w, "    /**\n")
+		fmt.Fprintf(w, "     * Check whether an existing %s resource exists with the given name and ID.\n", name)
+		fmt.Fprintf(w, "     *\n")
+		fmt.Fprintf(w, "     * @param name The _unique_ name of the resulting resource.\n")
+		fmt.Fprintf(w, "     * @param id The _unique_ provider ID of the resource to lookup.\n")
+		if r.StateInputs != nil {
+			fmt.Fprintf(w, "     * @param state Any extra arguments used during the lookup.\n")
+		}
+		fmt.Fprintf(w, "     * @param opts Optional settings to control the behavior of the CustomResource.\n")
+		fmt.Fprintf(w, "     */\n")
+
+		stateParam, stateRef := "", "undefined, "
+		if r.StateInputs != nil {
+			stateParam, stateRef = fmt.Sprintf("state?: %s, ", stateType), "<any>state, "
+		}
+
+		fmt.Fprintf(w, "    public static exists(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.%s): pulumi.Output<boolean> {\n",
+			stateParam, optionsType)
+		fmt.Fprintf(w, "        return pulumi.runtime.existsResource(\"%s\", name, id, %sopts);\n", r.Token, stateRef)
+		fmt.Fprintf(w, "    }\n")
+		fmt.Fprintf(w, "\n")
+	}
+
 	pulumiType := r.Token
 	if r.IsProvider {
 		pulumiType = mod.pkg.Name()

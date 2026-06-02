@@ -17,6 +17,17 @@ export class Resource extends pulumi.CustomResource {
         return new Resource(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Resource resource exists with the given name and ID.
+     *
+     * @param name The _unique_ name of the resulting resource.
+     * @param id The _unique_ provider ID of the resource to lookup.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(name: string, id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("index-mod:indexMine/nested:Resource", name, id, undefined, opts);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'index-mod:indexMine/nested:Resource';
 

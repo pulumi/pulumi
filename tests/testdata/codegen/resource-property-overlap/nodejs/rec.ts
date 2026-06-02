@@ -19,6 +19,17 @@ export class Rec extends pulumi.CustomResource {
         return new Rec(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Rec resource exists with the given name and ID.
+     *
+     * @param name The _unique_ name of the resulting resource.
+     * @param id The _unique_ provider ID of the resource to lookup.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(name: string, id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("example::Rec", name, id, undefined, opts);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'example::Rec';
 

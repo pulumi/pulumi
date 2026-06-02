@@ -113,6 +113,19 @@ class ComplexResource(pulumi.CustomResource):
         __props__.__dict__["value"] = None
         return ComplexResource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = ComplexResourceArgs.__new__(ComplexResourceArgs)
+
+        __props__.__dict__["output_array"] = None
+        __props__.__dict__["output_map"] = None
+        __props__.__dict__["output_object"] = None
+        __props__.__dict__["value"] = None
+        __inst__ = ComplexResource.__new__(ComplexResource)
+        return pulumi.runtime.exists_resource(__inst__, 'output:index:ComplexResource', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="outputArray")
     def output_array(self) -> pulumi.Output[Sequence[_builtins.str]]:

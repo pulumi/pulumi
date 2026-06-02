@@ -131,6 +131,18 @@ class Example_resource(pulumi.CustomResource):
         __props__.__dict__["map_enum"] = None
         return Example_resource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = Example_resourceArgs.__new__(Example_resourceArgs)
+
+        __props__.__dict__["url"] = None
+        __props__.__dict__["good__urls"] = None
+        __props__.__dict__["map_enum"] = None
+        __inst__ = Example_resource.__new__(Example_resource)
+        return pulumi.runtime.exists_resource(__inst__, 'legacy_names:index:example_resource', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="URL")
     def url(self) -> pulumi.Output[Optional[_builtins.str]]:

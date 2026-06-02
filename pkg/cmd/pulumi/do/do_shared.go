@@ -297,6 +297,9 @@ func evaluatePCL(
 		func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
 			return nil, notSupported("call functions")
 		},
+		func(context.Context, *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error) {
+			return nil, notSupported("resourceExists")
+		},
 	)
 
 	result, poison, diags := ectx.EvaluateObject(attrs, inputType, properties)

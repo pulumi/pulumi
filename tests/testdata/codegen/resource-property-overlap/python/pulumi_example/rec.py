@@ -97,6 +97,16 @@ class Rec(pulumi.CustomResource):
         __props__.__dict__["rec"] = None
         return Rec(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = RecArgs.__new__(RecArgs)
+
+        __props__.__dict__["rec"] = None
+        __inst__ = Rec.__new__(Rec)
+        return pulumi.runtime.exists_resource(__inst__, 'example::Rec', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def rec(self) -> pulumi.Output[Optional['Rec']]:

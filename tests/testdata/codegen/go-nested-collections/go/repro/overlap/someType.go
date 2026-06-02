@@ -54,6 +54,12 @@ func (SomeTypeState) ElementType() reflect.Type {
 	return reflect.TypeOf((*someTypeState)(nil)).Elem()
 }
 
+// SomeTypeExists checks whether an existing SomeType resource with the given ID exists.
+func SomeTypeExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *SomeTypeState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("repro:overlap:SomeType", name, id, state, opts...)
+}
+
 type someTypeArgs struct {
 }
 

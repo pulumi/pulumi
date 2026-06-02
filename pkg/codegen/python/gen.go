@@ -1667,6 +1667,54 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "        return %s(resource_name, opts=opts, __props__=__props__)\n\n", name)
 	}
 
+	// Generate the `exists` static method for non-provider, non-component resources.
+	if !res.IsProvider && !res.IsComponent {
+		fmt.Fprintf(w, "    @staticmethod\n")
+		fmt.Fprintf(w, "    def exists(resource_name: str,\n")
+		fmt.Fprintf(w, "            id: pulumi.Input[str],\n")
+		fmt.Fprintf(w, "            opts: Optional[pulumi.ResourceOptions] = None")
+
+		if hasStateInputs {
+			for _, prop := range res.StateInputs.Properties {
+				pname := InitParamName(prop.Name)
+				ty := mod.typeString(codegen.OptionalType(prop), typeStringOpts{input: true, acceptMapping: true})
+				fmt.Fprintf(w, ",\n            %s: %s = None", pname, ty)
+			}
+		}
+		fmt.Fprintf(w, ") -> pulumi.Output[bool]:\n")
+
+		// Build __props__ exactly like get.
+		if hasStateInputs {
+			fmt.Fprintf(w, "        __props__ = _%[1]sState.__new__(_%[1]sState)\n\n", name)
+		} else {
+			fmt.Fprintf(w, "        __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
+		}
+
+		stateInputsExists := codegen.NewStringSet()
+		if res.StateInputs != nil {
+			for _, prop := range res.StateInputs.Properties {
+				stateInputsExists.Add(prop.Name)
+				fmt.Fprintf(w, "        __props__.__dict__[%q] = %s\n", PyName(prop.Name), InitParamName(prop.Name))
+			}
+		}
+		for _, prop := range res.Properties {
+			if !stateInputsExists.Has(prop.Name) {
+				fmt.Fprintf(w, "        __props__.__dict__[%q] = None\n", PyName(prop.Name))
+			}
+		}
+
+		fmt.Fprintf(w, "        __inst__ = %s.__new__(%s)\n", name, name)
+		fmt.Fprintf(w, "        return pulumi.runtime.exists_resource(__inst__, '%s', resource_name, id, __props__, opts or pulumi.ResourceOptions()", tok)
+		pkg, err = res.PackageReference.Definition()
+		if err != nil {
+			return "", err
+		}
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", package_ref=_utilities.get_package()")
+		}
+		fmt.Fprintf(w, ")\n\n")
+	}
+
 	// Write out Python property getters for each of the resource's properties.
 	mod.genProperties(w, res.Properties, false /*setters*/, "", func(prop *schema.Property) string {
 		ty := mod.typeString(prop.Type, typeStringOpts{})

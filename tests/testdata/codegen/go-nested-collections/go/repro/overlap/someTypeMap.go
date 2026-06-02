@@ -54,6 +54,12 @@ func (SomeTypeMapResourceState) ElementType() reflect.Type {
 	return reflect.TypeOf((*someTypeMapResourceState)(nil)).Elem()
 }
 
+// SomeTypeMapResourceExists checks whether an existing SomeTypeMapResource resource with the given ID exists.
+func SomeTypeMapResourceExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *SomeTypeMapResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("repro:overlap:SomeTypeMap", name, id, state, opts...)
+}
+
 type someTypeMapResourceArgs struct {
 }
 

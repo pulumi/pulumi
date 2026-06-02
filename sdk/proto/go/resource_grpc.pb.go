@@ -39,6 +39,7 @@ const (
 	ResourceMonitor_Invoke_FullMethodName                       = "/pulumirpc.ResourceMonitor/Invoke"
 	ResourceMonitor_Call_FullMethodName                         = "/pulumirpc.ResourceMonitor/Call"
 	ResourceMonitor_ReadResource_FullMethodName                 = "/pulumirpc.ResourceMonitor/ReadResource"
+	ResourceMonitor_ExistsResource_FullMethodName               = "/pulumirpc.ResourceMonitor/ExistsResource"
 	ResourceMonitor_RegisterResource_FullMethodName             = "/pulumirpc.ResourceMonitor/RegisterResource"
 	ResourceMonitor_RegisterResourceOutputs_FullMethodName      = "/pulumirpc.ResourceMonitor/RegisterResourceOutputs"
 	ResourceMonitor_RegisterStackTransform_FullMethodName       = "/pulumirpc.ResourceMonitor/RegisterStackTransform"
@@ -69,6 +70,7 @@ type ResourceMonitorClient interface {
 	Invoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
 	Call(ctx context.Context, in *ResourceCallRequest, opts ...grpc.CallOption) (*CallResponse, error)
 	ReadResource(ctx context.Context, in *ReadResourceRequest, opts ...grpc.CallOption) (*ReadResourceResponse, error)
+	ExistsResource(ctx context.Context, in *ExistsResourceRequest, opts ...grpc.CallOption) (*ExistsResourceResponse, error)
 	RegisterResource(ctx context.Context, in *RegisterResourceRequest, opts ...grpc.CallOption) (*RegisterResourceResponse, error)
 	RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Register a resource transform for the stack
@@ -146,6 +148,16 @@ func (c *resourceMonitorClient) ReadResource(ctx context.Context, in *ReadResour
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ReadResourceResponse)
 	err := c.cc.Invoke(ctx, ResourceMonitor_ReadResource_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resourceMonitorClient) ExistsResource(ctx context.Context, in *ExistsResourceRequest, opts ...grpc.CallOption) (*ExistsResourceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExistsResourceResponse)
+	err := c.cc.Invoke(ctx, ResourceMonitor_ExistsResource_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -252,6 +264,7 @@ type ResourceMonitorServer interface {
 	Invoke(context.Context, *ResourceInvokeRequest) (*InvokeResponse, error)
 	Call(context.Context, *ResourceCallRequest) (*CallResponse, error)
 	ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error)
+	ExistsResource(context.Context, *ExistsResourceRequest) (*ExistsResourceResponse, error)
 	RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error)
 	RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*emptypb.Empty, error)
 	// Register a resource transform for the stack
@@ -299,6 +312,9 @@ func (UnimplementedResourceMonitorServer) Call(context.Context, *ResourceCallReq
 }
 func (UnimplementedResourceMonitorServer) ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadResource not implemented")
+}
+func (UnimplementedResourceMonitorServer) ExistsResource(context.Context, *ExistsResourceRequest) (*ExistsResourceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExistsResource not implemented")
 }
 func (UnimplementedResourceMonitorServer) RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterResource not implemented")
@@ -431,6 +447,24 @@ func _ResourceMonitor_ReadResource_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMonitorServer).ReadResource(ctx, req.(*ReadResourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ResourceMonitor_ExistsResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExistsResourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceMonitorServer).ExistsResource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResourceMonitor_ExistsResource_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceMonitorServer).ExistsResource(ctx, req.(*ExistsResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -605,6 +639,10 @@ var ResourceMonitor_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReadResource",
 			Handler:    _ResourceMonitor_ReadResource_Handler,
+		},
+		{
+			MethodName: "ExistsResource",
+			Handler:    _ResourceMonitor_ExistsResource_Handler,
 		},
 		{
 			MethodName: "RegisterResource",

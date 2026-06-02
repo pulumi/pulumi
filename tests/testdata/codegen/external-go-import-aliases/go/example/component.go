@@ -93,6 +93,12 @@ func (ComponentState) ElementType() reflect.Type {
 	return reflect.TypeOf((*componentState)(nil)).Elem()
 }
 
+// ComponentExists checks whether an existing Component resource with the given ID exists.
+func ComponentExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ComponentState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("example::Component", name, id, state, opts...)
+}
+
 type componentArgs struct {
 	ResourceLocalAlias                *othersub.Object  `pulumi:"resourceLocalAlias"`
 	ResourceLocalInsteadOfRemoteAlias *localmod1.Res    `pulumi:"resourceLocalInsteadOfRemoteAlias"`

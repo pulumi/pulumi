@@ -111,6 +111,16 @@ class Another_resource(pulumi.CustomResource):
         __props__.__dict__["the_input"] = None
         return Another_resource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = Another_resourceArgs.__new__(Another_resourceArgs)
+
+        __props__.__dict__["the_input"] = None
+        __inst__ = Another_resource.__new__(Another_resource)
+        return pulumi.runtime.exists_resource(__inst__, 'snake_names:cool_module:another_resource', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def the_input(self) -> pulumi.Output[_builtins.str]:

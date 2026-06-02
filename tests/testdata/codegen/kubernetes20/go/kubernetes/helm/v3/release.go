@@ -66,6 +66,12 @@ func (ReleaseState) ElementType() reflect.Type {
 	return reflect.TypeOf((*releaseState)(nil)).Elem()
 }
 
+// ReleaseExists checks whether an existing Release resource with the given ID exists.
+func ReleaseExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ReleaseState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("kubernetes:helm.sh/v3:Release", name, id, state, opts...)
+}
+
 type releaseArgs struct {
 	// Chart name to be installed. A path may be used.
 	Chart string `pulumi:"chart"`

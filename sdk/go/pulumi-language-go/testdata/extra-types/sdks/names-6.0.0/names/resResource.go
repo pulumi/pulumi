@@ -60,6 +60,12 @@ func (ResResourceState) ElementType() reflect.Type {
 	return reflect.TypeOf((*resResourceState)(nil)).Elem()
 }
 
+// ResResourceExists checks whether an existing ResResource resource with the given ID exists.
+func ResResourceExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ResResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("names:index:ResResource", name, id, state, opts...)
+}
+
 type resResourceArgs struct {
 	Value bool `pulumi:"value"`
 }

@@ -123,6 +123,17 @@ class SomeResource(pulumi.CustomResource):
         __props__.__dict__["the_output"] = None
         return SomeResource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = SomeResourceArgs.__new__(SomeResourceArgs)
+
+        __props__.__dict__["resource_name"] = None
+        __props__.__dict__["the_output"] = None
+        __inst__ = SomeResource.__new__(SomeResource)
+        return pulumi.runtime.exists_resource(__inst__, 'camelNames:CoolModule:SomeResource', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="resourceName")
     def resource_name(self) -> pulumi.Output[Optional[_builtins.str]]:

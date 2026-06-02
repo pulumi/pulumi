@@ -128,6 +128,16 @@ class Cat(pulumi.CustomResource):
         __props__.__dict__["name"] = None
         return Cat(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = CatArgs.__new__(CatArgs)
+
+        __props__.__dict__["name"] = None
+        __inst__ = Cat.__new__(Cat)
+        return pulumi.runtime.exists_resource(__inst__, 'example::Cat', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def name(self) -> pulumi.Output[Optional[_builtins.str]]:

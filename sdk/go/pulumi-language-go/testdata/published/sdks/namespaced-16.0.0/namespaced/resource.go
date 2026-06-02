@@ -62,6 +62,12 @@ func (ResourceState) ElementType() reflect.Type {
 	return reflect.TypeOf((*resourceState)(nil)).Elem()
 }
 
+// ResourceExists checks whether an existing Resource resource with the given ID exists.
+func ResourceExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("namespaced:index:Resource", name, id, state, opts...)
+}
+
 type resourceArgs struct {
 	ResourceRef *component.Custom `pulumi:"resourceRef"`
 	Value       bool              `pulumi:"value"`

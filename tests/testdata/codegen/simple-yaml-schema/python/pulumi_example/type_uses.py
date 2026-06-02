@@ -170,6 +170,23 @@ class TypeUses(pulumi.CustomResource):
         __props__.__dict__["zed"] = None
         return TypeUses(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = TypeUsesArgs.__new__(TypeUsesArgs)
+
+        __props__.__dict__["alpha"] = None
+        __props__.__dict__["bar"] = None
+        __props__.__dict__["baz"] = None
+        __props__.__dict__["beta"] = None
+        __props__.__dict__["foo"] = None
+        __props__.__dict__["gamma"] = None
+        __props__.__dict__["qux"] = None
+        __props__.__dict__["zed"] = None
+        __inst__ = TypeUses.__new__(TypeUses)
+        return pulumi.runtime.exists_resource(__inst__, 'example::TypeUses', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def alpha(self) -> pulumi.Output[Optional['OutputOnlyEnumType']]:

@@ -39,9 +39,10 @@ type EvalContext struct {
 	lookupResource func(context.Context, string) (*schema.Resource, error)
 	lookupFunction func(context.Context, string) (*schema.Function, error)
 
-	invoke      func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
-	call        func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
-	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error)
+	invoke         func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
+	call           func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
+	getResource    func(context.Context, resource.ResourceReference) (resource.PropertyMap, error)
+	existsResource func(context.Context, *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error)
 
 	// we write variables to the hcl.EvalContext in parallel during execution, so we need to synchronize access to it
 	evalLock    sync.Mutex
@@ -55,6 +56,7 @@ func NewEvalContext(
 	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
 	invoke func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error),
 	call func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error),
+	existsResource func(context.Context, *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error),
 ) *EvalContext {
 	ctx := &EvalContext{
 		workingDirectory: workingDirectory,
@@ -67,6 +69,7 @@ func NewEvalContext(
 		getResource:      getResource,
 		invoke:           invoke,
 		call:             call,
+		existsResource:   existsResource,
 	}
 
 	ctx.evalContext = &hcl.EvalContext{
@@ -91,6 +94,7 @@ func (ectx *EvalContext) NewChild() *EvalContext {
 		getResource:      ectx.getResource,
 		invoke:           ectx.invoke,
 		call:             ectx.call,
+		existsResource:   ectx.existsResource,
 		evalContext:      child,
 	}
 }

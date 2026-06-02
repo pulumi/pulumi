@@ -98,6 +98,16 @@ class Foo(pulumi.CustomResource):
         __props__.__dict__["condition_sets"] = None
         return Foo(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = FooArgs.__new__(FooArgs)
+
+        __props__.__dict__["condition_sets"] = None
+        __inst__ = Foo.__new__(Foo)
+        return pulumi.runtime.exists_resource(__inst__, 'repro:index:Foo', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="conditionSets")
     def condition_sets(self) -> pulumi.Output[Optional[Sequence[Sequence[Sequence['outputs.Bar']]]]]:

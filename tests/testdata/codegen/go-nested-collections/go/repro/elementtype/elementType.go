@@ -56,6 +56,12 @@ func (ElementTypeState) ElementType() reflect.Type {
 	return reflect.TypeOf((*elementTypeState)(nil)).Elem()
 }
 
+// ElementTypeExists checks whether an existing ElementType resource with the given ID exists.
+func ElementTypeExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ElementTypeState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("repro:elementType:ElementType", name, id, state, opts...)
+}
+
 type elementTypeArgs struct {
 }
 

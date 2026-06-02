@@ -79,6 +79,12 @@ func (RubberTreeState) ElementType() reflect.Type {
 	return reflect.TypeOf((*rubberTreeState)(nil)).Elem()
 }
 
+// RubberTreeExists checks whether an existing RubberTree resource with the given ID exists.
+func RubberTreeExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *RubberTreeState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("plant:tree/v1:RubberTree", name, id, state, opts...)
+}
+
 type rubberTreeArgs struct {
 	Container *plant.Container  `pulumi:"container"`
 	Diameter  Diameter          `pulumi:"diameter"`

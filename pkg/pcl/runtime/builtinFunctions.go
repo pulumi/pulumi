@@ -574,6 +574,46 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	// resourceExists reports whether a resource of the given type with the given ID exists. The name parameter has no
+	// runtime effect--a resource being checked for existence has no logical identity--but is accepted to match the
+	// signature used by the code generators. If the ID is unknown (e.g. during preview) the result is unknown.
+	existsResourceFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "type",
+				Type: cty.String,
+			},
+			{
+				Name: "name",
+				Type: cty.String,
+			},
+			{
+				Name:        "id",
+				Type:        cty.String,
+				AllowMarked: true,
+			},
+		},
+		Type: function.StaticReturnType(cty.Bool),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			// The ID is typically an output of the resource being checked, so it carries secret and dependency
+			// marks. Strip them before reading the underlying string.
+			id, _ := args[2].Unmark()
+			// During preview the ID of a resource that has not yet been created is unknown; the runtime represents
+			// this as an empty string. We can't check existence without an ID, so the result is unknown.
+			if !id.IsKnown() || id.AsString() == "" {
+				return cty.UnknownVal(cty.Bool), nil
+			}
+			resp, err := ectx.existsResource(context.TODO(), &pulumirpc.ExistsResourceRequest{
+				Type: args[0].AsString(),
+				Id:   id.AsString(),
+			})
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("resourceExists: %w", err)
+			}
+			return cty.BoolVal(resp.GetExists()), nil
+		},
+	})
+
 	fileAssetFn := function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -1035,6 +1075,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		"getOutput":          getOutputFn,
 		"invoke":             invokeFn,
 		"call":               callFn,
+		"resourceExists":     existsResourceFn,
 		"fileAsset":          fileAssetFn,
 		"fileArchive":        fileArchiveFn,
 		"assetArchive":       assetArchiveFn,

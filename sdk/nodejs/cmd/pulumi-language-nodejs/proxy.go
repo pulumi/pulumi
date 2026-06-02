@@ -207,6 +207,12 @@ func (p *monitorProxy) ReadResource(
 	return p.target.ReadResource(ctx, req)
 }
 
+func (p *monitorProxy) ExistsResource(
+	ctx context.Context, req *pulumirpc.ExistsResourceRequest,
+) (*pulumirpc.ExistsResourceResponse, error) {
+	return p.target.ExistsResource(ctx, req)
+}
+
 func (p *monitorProxy) RegisterResource(
 	ctx context.Context, req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {

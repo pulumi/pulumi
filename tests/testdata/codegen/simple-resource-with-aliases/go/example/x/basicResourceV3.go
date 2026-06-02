@@ -70,6 +70,12 @@ func (BasicResourceV3State) ElementType() reflect.Type {
 	return reflect.TypeOf((*basicResourceV3State)(nil)).Elem()
 }
 
+// BasicResourceV3Exists checks whether an existing BasicResourceV3 resource with the given ID exists.
+func BasicResourceV3Exists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *BasicResourceV3State, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("example:index:BasicResourceV3", name, id, state, opts...)
+}
+
 type basicResourceV3Args struct {
 	Bar string `pulumi:"bar"`
 }

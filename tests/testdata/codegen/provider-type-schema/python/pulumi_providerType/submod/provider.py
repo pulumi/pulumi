@@ -110,6 +110,16 @@ class Provider(pulumi.CustomResource):
         __props__.__dict__["a"] = None
         return Provider(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = ProviderArgs.__new__(ProviderArgs)
+
+        __props__.__dict__["a"] = None
+        __inst__ = Provider.__new__(Provider)
+        return pulumi.runtime.exists_resource(__inst__, 'providerType:submod:provider', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def a(self) -> pulumi.Output[Optional[_builtins.bool]]:

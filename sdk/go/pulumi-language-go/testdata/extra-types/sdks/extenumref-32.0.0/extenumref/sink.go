@@ -57,6 +57,12 @@ func (SinkState) ElementType() reflect.Type {
 	return reflect.TypeOf((*sinkState)(nil)).Elem()
 }
 
+// SinkExists checks whether an existing Sink resource with the given ID exists.
+func SinkExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *SinkState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("extenumref:index:Sink", name, id, state, opts...)
+}
+
 type sinkArgs struct {
 	StringEnum *enum.StringEnum `pulumi:"stringEnum"`
 }

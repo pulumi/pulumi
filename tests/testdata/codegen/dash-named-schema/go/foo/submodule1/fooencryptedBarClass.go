@@ -54,6 +54,12 @@ func (FOOEncryptedBarClassState) ElementType() reflect.Type {
 	return reflect.TypeOf((*fooencryptedBarClassState)(nil)).Elem()
 }
 
+// FOOEncryptedBarClassExists checks whether an existing FOOEncryptedBarClass resource with the given ID exists.
+func FOOEncryptedBarClassExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *FOOEncryptedBarClassState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("foo-bar:submodule1:FOOEncryptedBarClass", name, id, state, opts...)
+}
+
 type fooencryptedBarClassArgs struct {
 }
 

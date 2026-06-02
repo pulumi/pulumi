@@ -73,6 +73,8 @@ type SourceResourceMonitor interface {
 	Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	ReadResource(ctx context.Context,
 		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
+	ExistsResource(ctx context.Context,
+		req *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error)
 	RegisterResource(ctx context.Context,
 		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
 	RegisterResourceOutputs(ctx context.Context,

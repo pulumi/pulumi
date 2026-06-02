@@ -909,6 +909,116 @@ def read_resource(
     asyncio.ensure_future(_get_rpc_manager().do_rpc("read resource", do_read)())
 
 
+def exists_resource(
+    res: Optional["Resource"],
+    ty: str,
+    name: str,
+    id: "Input[str]",
+    props: "Inputs",
+    opts: "ResourceOptions",
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
+) -> "Output[bool]":
+    """
+    Checks whether a resource with the given ID exists.
+
+    Returns an Output[bool] that resolves to True if the resource exists, False otherwise.
+
+    `res` is an optional backing resource used to resolve the provider and parent. It is None when there
+    is no backing resource, e.g. for the PCL `resourceExists` builtin, in which case the engine resolves
+    the default provider.
+    """
+    log.debug(f"checking resource exists: ty={ty}, name={name}, id={_safe_str(id)}")
+    monitor = settings.get_monitor()
+
+    # Create futures for the output value.
+    value_future: asyncio.Future[bool] = asyncio.Future()
+    known_future: asyncio.Future[bool] = asyncio.Future()
+    secret_future: asyncio.Future[bool] = asyncio.Future()
+
+    deps = {res} if res is not None else set()
+    result_output: Output[bool] = Output(deps, value_future, known_future, secret_future)
+
+    async def do_exists():
+        try:
+            # Resolve the ID.
+            resolved_id = await rpc.serialize_property(id, [], None)
+            log.debug(
+                f"exists prepared: ty={ty}, name={name}, id={_safe_str(id)}"
+            )
+
+            # If we have a package reference, wait for it to resolve.
+            package_ref_str = None
+            if package_ref is not None:
+                package_ref_str = await package_ref
+                if package_ref_str is not None:
+                    opts.plugin_download_url = None
+                    opts.version = None
+                    log.debug(f"Exists using package reference {package_ref_str}")
+
+            if res is not None:
+                resolver = await prepare_resource(res, ty, True, False, props, opts)
+                parent_urn = resolver.parent_urn
+                provider_ref = resolver.provider_ref
+                serialized_props = resolver.serialized_props
+            else:
+                # No backing resource: resolve the parent and provider directly from opts and let the
+                # engine resolve the default provider when none is given.
+                parent_urn = await opts.parent.urn.future() if opts.parent is not None else None
+                provider_ref = None
+                if opts.provider is not None:
+                    provider_urn = await opts.provider.urn.future()
+                    provider_id = await opts.provider.id.future()
+                    provider_ref = f"{provider_urn}::{provider_id or ''}"
+                serialized_props = (
+                    await rpc.serialize_properties(props, {}, None) if props else None
+                )
+
+            req = resource_pb2.ExistsResourceRequest(
+                type=ty,
+                id=resolved_id,
+                parent=parent_urn,
+                provider=provider_ref,
+                properties=serialized_props,
+                version=opts.version or "",
+                pluginDownloadURL=opts.plugin_download_url or "",
+                packageRef=package_ref_str or "",
+            )
+
+            def do_rpc_call():
+                if monitor is None:
+                    # If no monitor is available, return False for testing.
+                    return resource_pb2.ExistsResourceResponse(exists=False)
+
+                try:
+                    return monitor.ExistsResource(req)
+                except grpc.RpcError as exn:
+                    handle_grpc_error(exn)
+
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, wrap_with_context(do_rpc_call)
+            )
+
+        except Exception as exn:
+            log.debug(
+                f"exception when preparing or executing rpc: {traceback.format_exc()}"
+            )
+            value_future.set_exception(exn)
+            known_future.set_exception(exn)
+            secret_future.set_exception(exn)
+            raise
+
+        log.debug(f"resource exists check successful: ty={ty}, exists={resp.exists}")
+        value_future.set_result(resp.exists)
+        known_future.set_result(True)
+        secret_future.set_result(False)
+
+    asyncio.ensure_future(
+        _get_rpc_manager().do_rpc("exists resource", do_exists)()
+    )
+
+    return result_output
+
+
 def _create_custom_timeouts(
     custom_timeouts: "CustomTimeouts",
 ) -> "resource_pb2.RegisterResourceRequest.CustomTimeouts":

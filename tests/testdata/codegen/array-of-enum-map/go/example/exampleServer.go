@@ -56,6 +56,12 @@ func (ExampleServerState) ElementType() reflect.Type {
 	return reflect.TypeOf((*exampleServerState)(nil)).Elem()
 }
 
+// ExampleServerExists checks whether an existing ExampleServer resource with the given ID exists.
+func ExampleServerExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ExampleServerState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("example:index:ExampleServer", name, id, state, opts...)
+}
+
 type exampleServerArgs struct {
 	MapArrayEnum []map[string]AnnotationStoreSchemaValueType `pulumi:"mapArrayEnum"`
 }

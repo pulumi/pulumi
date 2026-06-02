@@ -161,6 +161,18 @@ class Release(pulumi.CustomResource):
         __props__.__dict__["values"] = None
         return Release(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = ReleaseArgs.__new__(ReleaseArgs)
+
+        __props__.__dict__["chart"] = None
+        __props__.__dict__["value_yaml_files"] = None
+        __props__.__dict__["values"] = None
+        __inst__ = Release.__new__(Release)
+        return pulumi.runtime.exists_resource(__inst__, 'kubernetes:helm.sh/v3:Release', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def chart(self) -> pulumi.Output[_builtins.str]:
