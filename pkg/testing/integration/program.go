@@ -2897,10 +2897,10 @@ func RunComponentSetup(t *testing.T, testDir string) {
 	}()
 
 	if dir := filepath.Join(testDir, "testcomponent"); dirExists(dir) {
-		installNodejsProviderDependencies(t, dir)
+		InstallNodejsDependencies(t, dir)
 	}
 	if dir := filepath.Join(testDir, "testcomponent-python"); dirExists(dir) {
-		installPythonProviderDependencies(t, dir)
+		InstallPythonDependencies(t, dir)
 	}
 }
 
@@ -2914,42 +2914,16 @@ func fileExists(p string) bool {
 	return err == nil
 }
 
-// InstallProviderDependencies installs a component provider's dependencies in
-// dir and pins @pulumi/pulumi (nodejs) or pulumi (python) to the locally-built
-// SDK so the provider runs against the in-tree code. The runtime is read from
-// PulumiPlugin.yaml or, for consumer fixtures that aren't binary plugins, from
-// Pulumi.yaml.
-func InstallProviderDependencies(t *testing.T, dir string) {
-	t.Helper()
-	var runtime string
-	if fileExists(filepath.Join(dir, "PulumiPlugin.yaml")) {
-		plugin, err := workspace.LoadPluginProject(filepath.Join(dir, "PulumiPlugin.yaml"))
-		require.NoError(t, err, "loading PulumiPlugin.yaml from %s", dir)
-		runtime = plugin.Runtime.Name()
-	} else {
-		project, err := workspace.LoadProject(filepath.Join(dir, "Pulumi.yaml"))
-		require.NoError(t, err, "loading Pulumi.yaml from %s", dir)
-		runtime = project.Runtime.Name()
-	}
-	switch runtime {
-	case NodeJSRuntime:
-		installNodejsProviderDependencies(t, dir)
-	case PythonRuntime:
-		installPythonProviderDependencies(t, dir)
-	default:
-		t.Fatalf("InstallProviderDependencies: unsupported runtime %q in %s", runtime, dir)
-	}
-}
-
-// installNodejsProviderDependencies installs a nodejs component provider's
-// dependencies via pnpm.
+// InstallNodejsDependencies installs the nodejs dependencies in dir via pnpm
+// and pins @pulumi/pulumi to the locally-built SDK so the project runs against
+// the in-tree code.
 //
 // @pulumi/pulumi typically arrives transitively via deps like @pulumi/random
 // or @pulumi/command. We inject a pnpm.overrides entry so every reference —
 // top-level and nested — resolves to the local SDK; otherwise two physical
 // copies of the generated proto code load and the gRPC client rejects requests
 // with "Expected argument of type pulumirpc.RegisterResourceRequest".
-func installNodejsProviderDependencies(t *testing.T, dir string) {
+func InstallNodejsDependencies(t *testing.T, dir string) {
 	t.Helper()
 	pkgJSON, err := readPackageJSON(dir)
 	require.NoError(t, err)
@@ -2974,8 +2948,8 @@ func installNodejsProviderDependencies(t *testing.T, dir string) {
 	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
 }
 
-// installPythonProviderDependencies installs a python component provider's
-// dependencies and then layers the locally-built core SDK on top.
+// InstallPythonDependencies installs the python dependencies in dir and then
+// layers the locally-built core SDK on top.
 //
 // If the dir has a project file (pyproject.toml or requirements.txt),
 // `pulumi install` resolves declared deps first. Plugin-only fixtures
@@ -2984,7 +2958,7 @@ func installNodejsProviderDependencies(t *testing.T, dir string) {
 // to do. The local SDK is then installed via `uv add --editable` (if the
 // project declares the uv toolchain *and* has a pyproject.toml uv can add to)
 // or via pip into a venv otherwise.
-func installPythonProviderDependencies(t *testing.T, dir string) {
+func InstallPythonDependencies(t *testing.T, dir string) {
 	t.Helper()
 
 	dir, err := filepath.Abs(dir)
