@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	sha256 "crypto/sha256"
@@ -57,6 +58,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -2620,6 +2622,15 @@ func (pt *ProgramTester) prepareBunProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
+func isYarnWorkspaceRoot(dir string) (bool, error) {
+	pkgJSON, err := readPackageJSON(dir)
+	if err != nil {
+		return false, err
+	}
+	_, has := pkgJSON["workspaces"]
+	return has, nil
+}
+
 // readPackageJSON unmarshals the package.json file located in pathToPackage.
 func readPackageJSON(pathToPackage string) (map[string]any, error) {
 	f, err := os.Open(filepath.Join(pathToPackage, "package.json"))
@@ -2807,13 +2818,13 @@ func (pt *ProgramTester) yarnAddPackageDeps(cwd string) error {
 		if dependency != "@pulumi/pulumi" {
 			continue
 		}
-		// `yarn add <dir>` installs the locally-built SDK as a real dependency,
-		// like `pip install -e`. We avoid `yarn link`, which needs a globally
-		// registered package that is no longer created since the pnpm migration
-		// removed sdk/nodejs/yarn.lock.
 		args := []string{"add", sdkPath}
-		// Adding a dependency to a workspace root requires -W.
-		if _, err := npm.FindWorkspaceRoot(cwd); err == nil {
+		isRoot, err := isYarnWorkspaceRoot(cwd)
+		if err != nil {
+			return err
+		}
+		if isRoot {
+			// Yarn requires -W when adding directly to a workspaces root.
 			args = []string{"add", "-W", sdkPath}
 		}
 		if err := pt.runYarnCommand("yarn-add", args, cwd); err != nil {
@@ -2851,6 +2862,103 @@ func findNodeSDKBinPath() (string, error) {
 		return "", fmt.Errorf("git rev-parse --show-toplevel: %w", err)
 	}
 	return filepath.Join(strings.TrimSpace(string(stdout)), "sdk", "nodejs", "bin"), nil
+}
+
+// InstallProviderDependencies installs a component provider's dependencies in
+// dir and pins @pulumi/pulumi (nodejs) or pulumi (python) to the locally-built
+// SDK so the provider runs against the in-tree code. The provider's runtime
+// is read from PulumiPlugin.yaml.
+func InstallProviderDependencies(t *testing.T, dir string) {
+	t.Helper()
+	plugin, err := workspace.LoadPluginProject(filepath.Join(dir, "PulumiPlugin.yaml"))
+	require.NoError(t, err, "loading PulumiPlugin.yaml from %s", dir)
+	switch rt := plugin.Runtime.Name(); rt {
+	case NodeJSRuntime:
+		installNodejsProviderDependencies(t, dir)
+	case PythonRuntime:
+		installPythonProviderDependencies(t, dir)
+	default:
+		t.Fatalf("InstallProviderDependencies: unsupported runtime %q in %s", rt, dir)
+	}
+}
+
+// installNodejsProviderDependencies installs a nodejs component provider's
+// dependencies via pnpm.
+//
+// @pulumi/pulumi typically arrives transitively via deps like @pulumi/random
+// or @pulumi/command. We inject a pnpm.overrides entry so every reference —
+// top-level and nested — resolves to the local SDK; otherwise two physical
+// copies of the generated proto code load and the gRPC client rejects requests
+// with "Expected argument of type pulumirpc.RegisterResourceRequest".
+func installNodejsProviderDependencies(t *testing.T, dir string) {
+	t.Helper()
+	pkgJSON, err := readPackageJSON(dir)
+	require.NoError(t, err)
+	pnpmCfg, _ := pkgJSON["pnpm"].(map[string]any)
+	if pnpmCfg == nil {
+		pnpmCfg = make(map[string]any)
+	}
+	overrides, _ := pnpmCfg["overrides"].(map[string]any)
+	if overrides == nil {
+		overrides = make(map[string]any)
+	}
+	overrides["@pulumi/pulumi"] = "file:" + FindNodeSDKBinPath(t)
+	pnpmCfg["overrides"] = overrides
+	pkgJSON["pnpm"] = pnpmCfg
+	require.NoError(t, writePackageJSON(dir, pkgJSON))
+
+	pm, err := npm.ResolvePackageManager(npm.PnpmPackageManager, dir)
+	require.NoError(t, err)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err = pm.Install(t.Context(), dir, false /* production */, stdout, stderr)
+	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
+}
+
+// installPythonProviderDependencies installs a python component provider's
+// dependencies via `pulumi install` (handling pyproject.toml/requirements.txt)
+// and then layers the locally-built core SDK on top.
+func installPythonProviderDependencies(t *testing.T, dir string) {
+	t.Helper()
+
+	cmd := exec.Command("pulumi", "install")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "`%s` in %s failed with output: %s", cmd.String(), cmd.Dir, string(out))
+
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+	require.NoError(t, err)
+
+	if isUvPythonProject(dir) {
+		cmd := exec.Command("uv", "add", "--editable", coreSDK)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "`uv add --editable %s` in %s failed: %s", coreSDK, dir, string(out))
+		return
+	}
+
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		Root:       dir,
+		Virtualenv: "venv",
+		Toolchain:  toolchain.Pip,
+	})
+	require.NoError(t, err)
+
+	cmd, err = tc.ModuleCommand(t.Context(), "pip", "install", coreSDK)
+	require.NoError(t, err)
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err, "output: %s", out)
+}
+
+func isUvPythonProject(dir string) bool {
+	pattern := regexp.MustCompile(`(?m)^\s+toolchain:\s*uv\s*$`)
+	for _, fname := range []string{"PulumiPlugin.yaml", "Pulumi.yaml"} {
+		data, err := os.ReadFile(filepath.Join(dir, fname))
+		if err == nil && pattern.Match(data) {
+			return true
+		}
+	}
+	return false
 }
 
 func (pt *ProgramTester) pnpmLinkPackageDeps(cwd string) error {

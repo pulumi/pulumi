@@ -1591,7 +1591,7 @@ func TestComponentProviderErrorInResourceRegistration(t *testing.T) {
 				require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 
 				// Install the provider's dependencies
-				installNodejsProviderDependencies(t, providerPath)
+				integration.InstallProviderDependencies(t, providerPath)
 
 				// Add the provider to our project
 				cmd = exec.Command("pulumi", "package", "add", providerPath)
@@ -1673,13 +1673,13 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	e.ImportDirectory("interrupt")
 	// Install the provider's dependencies
-	installPythonProviderDependencies(t, providerPath)
+	integration.InstallProviderDependencies(t, providerPath)
 	e.CWD = programPath
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "dev")
 	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
 	e.RunCommand("pulumi", "install")
-	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(e.T))
+	e.RunCommandWithRetry("npm", "install", integration.FindNodeSDKBinPath(e.T))
 	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.CWD = e.RootPath
 

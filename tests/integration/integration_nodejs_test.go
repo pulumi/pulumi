@@ -44,7 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/websocket"
@@ -1867,6 +1866,7 @@ func TestCodePathsWorkspace(t *testing.T) {
 		Dependencies:    []string{"@pulumi/pulumi"},
 		RelativeWorkDir: "infra",
 		Quick:           true,
+		PackageManager:  integration.PackageManagerYarn,
 	})
 }
 
@@ -2876,7 +2876,7 @@ func TestInstallLocalPlugin(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("packages-install-local")
-	installNodejsProviderDependencies(t, filepath.Join(e.RootPath, "provider"))
+	integration.InstallProviderDependencies(t, filepath.Join(e.RootPath, "provider"))
 	e.CWD = filepath.Join(e.RootPath, "example")
 
 	// This command should generate the SDK for the local plugin
@@ -3036,7 +3036,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("component_provider", "nodejs", "component-provider-host", "provider"))
-	installNodejsProviderDependencies(t, e.RootPath)
+	integration.InstallProviderDependencies(t, e.RootPath)
 
 	// Install the random plugin so we can use it in the component provider.
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "v4.18.0")
@@ -3169,7 +3169,7 @@ func TestNodejsComponentInjectNamespace(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("github_component", "nodejs"))
-	installNodejsProviderDependencies(t, e.RootPath)
+	integration.InstallProviderDependencies(t, e.RootPath)
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "github_component", "--create")
@@ -3200,7 +3200,7 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					installNodejsProviderDependencies(t, providerPath)
+					integration.InstallProviderDependencies(t, providerPath)
 
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
@@ -3263,21 +3263,6 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 	}
 }
 
-func installNodejsProviderDependencies(t *testing.T, dir string) {
-	t.Helper()
-
-	pm, err := npm.ResolvePackageManager(npm.YarnPackageManager, dir)
-	require.NoError(t, err)
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	err = pm.Install(t.Context(), dir, false /* production*/, stdout, stderr)
-	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
-	cmd := exec.Command("pnpm", "link", integration.FindNodeSDKBinPath(t)) //nolint:gosec // test code
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "output: %s", out)
-}
-
 func TestNodeComponentNamespaceInference(t *testing.T) {
 	t.Parallel()
 
@@ -3285,7 +3270,7 @@ func TestNodeComponentNamespaceInference(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("namespaced_component")
-	installNodejsProviderDependencies(t, e.CWD)
+	integration.InstallProviderDependencies(t, e.CWD)
 	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", ".")
 	var packageSpec schema.PackageSpec
 	require.NoError(t, json.Unmarshal([]byte(stdout), &packageSpec))
@@ -3307,7 +3292,7 @@ func TestNodeInvalidComponentName(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("namespaced_component_invalid_name")
-	installNodejsProviderDependencies(t, e.CWD)
+	integration.InstallProviderDependencies(t, e.CWD)
 	_, stderr := e.RunCommandExpectError("pulumi", "package", "get-schema", ".")
 	require.Contains(t, stderr,
 		"Error: Invalid provider name '-namespaced-component' in package.json. Provider names must start with a letter")
@@ -3320,7 +3305,7 @@ func TestNodeCanConstructNamespacedComponent(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("namespaced_component")
-	installNodejsProviderDependencies(t, e.CWD)
+	integration.InstallProviderDependencies(t, e.CWD)
 	e.CWD = filepath.Join(e.CWD, "example")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
@@ -3342,7 +3327,7 @@ func TestNodePackageAddTSC(t *testing.T) {
 			program := filepath.Join(e.RootPath, "program-"+pm)
 			bin := filepath.Join(e.RootPath, "bin")
 			e.CWD = provider
-			installNodejsProviderDependencies(t, provider)
+			integration.InstallProviderDependencies(t, provider)
 			e.CWD = program
 			// `bin` has a fake `tsc` executable that exits with an error code. If we
 			// execute this instead of the tsc that ships with the package, the
@@ -3372,7 +3357,7 @@ func TestNodePackageAddTypes(t *testing.T) {
 	provider := filepath.Join(e.RootPath, "provider")
 	program := filepath.Join(e.RootPath, "program")
 	e.CWD = provider
-	installNodejsProviderDependencies(t, provider)
+	integration.InstallProviderDependencies(t, provider)
 	e.CWD = program
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "package", "add", provider)

@@ -9,5 +9,8 @@
     "dependencies": {
         "@pulumi/pkg": "file:./sdk/nodejs",
         "@pulumi/pulumi": "*"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": ["@pulumi/pkg"]
     }
 }
