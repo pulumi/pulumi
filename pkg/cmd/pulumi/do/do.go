@@ -140,6 +140,11 @@ func NewDoCmd(
 				ProjectName:   string(proj.Name),
 				RootDirectory: root,
 			}
+			// When a stack is selected in the workspace, expose its organization and short name to the PCL
+			// runtime so input files can reference pulumi.organization / pulumi.stack the same way a program
+			// would. We deliberately read just the local selection rather than contacting a backend — `do`
+			// is meant to stay usable without a login.
+			evalContext.Organization, evalContext.Stack = currentStackIdentity(ws)
 		}
 
 		ctx := cmd.Context()
@@ -414,6 +419,34 @@ converter plugin for that format to be installed.`,
 			"param1 \\\"multi word param\\\"\"")
 
 	return cmd
+}
+
+// currentStackIdentity reads the workspace's currently selected stack and splits it into an organization
+// and short stack name. Stacks are persisted as one of:
+//   - "<org>/<project>/<stack>" — the modern form (cloud backend and the DIY backend's "organization" prefix)
+//   - "<org>/<stack>"           — legacy cloud form, no embedded project
+//   - "<stack>"                 — very old / unqualified DIY
+//
+// Errors reading the workspace are swallowed: the stack identity is best-effort context for PCL
+// evaluation, not a hard requirement, and `do` must stay usable when no workspace is configured.
+func currentStackIdentity(ws pkgWorkspace.Context) (organization, stack string) {
+	w, err := ws.New()
+	if err != nil {
+		return "", ""
+	}
+	name := w.Settings().Stack
+	if name == "" {
+		return "", ""
+	}
+	parts := strings.Split(name, "/")
+	switch len(parts) {
+	case 1:
+		return "", parts[0]
+	case 2:
+		return parts[0], parts[1]
+	default:
+		return parts[0], parts[len(parts)-1]
+	}
 }
 
 type packageCommand struct {

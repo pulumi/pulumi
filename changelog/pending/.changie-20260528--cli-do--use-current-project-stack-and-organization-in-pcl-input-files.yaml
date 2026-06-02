@@ -1,0 +1,3 @@
+kind: improvement
+body: Expose the selected stack's organization and short name to PCL input files when running `pulumi do` inside a project
+component: cli/do
