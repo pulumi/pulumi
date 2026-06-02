@@ -790,18 +790,13 @@ func (m defaultLoginManager) Login(
 
 	// If no access token is available from the environment, and we are interactive, prompt and offer to
 	// open a browser to make it easy to generate and use a fresh token.
-	line1 := "Manage your " + message + " by logging in."
-	line1len := len(line1)
-	line1 = colors.Highlight(line1, message, colors.Underline+colors.Bold)
+	line1 := "Connect to Pulumi Cloud for state storage, config management, team collaboration, and more."
+	line1 = colors.Highlight(line1, "Pulumi Cloud", colors.Underline+colors.Bold)
 	fmt.Println(opts.Color.Colorize(line1))
-	maxlen := line1len
+	fmt.Println()
 
-	line2 := fmt.Sprintf("Run `%s login --help` for alternative login options.", command)
-	line2len := len(line2)
-	fmt.Println(opts.Color.Colorize(line2))
-	if line2len > maxlen {
-		maxlen = line2len
-	}
+	// Printed after the user responds to the prompt, regardless of which login path they choose.
+	helpLine := fmt.Sprintf("Run `%s login --help` for alternative login options.", command)
 
 	// In the case where we could not construct a link to the pulumi console based on the API server's hostname,
 	// don't offer magic log-in or text about where to find your access token.
@@ -814,26 +809,24 @@ func (m defaultLoginManager) Login(
 				break
 			}
 		}
+
+		fmt.Println()
+		fmt.Println(opts.Color.Colorize(helpLine))
 	} else {
-		line3 := "Enter your access token from " + accountLink
-		line3len := len(line3)
-		line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
-		line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
-		fmt.Println(opts.Color.Colorize(line3))
-		if line3len > maxlen {
-			maxlen = line3len
-		}
+		browserLine := "Press <ENTER> to log in with your browser, or"
+		browserLine = colors.Highlight(browserLine, "<ENTER>", colors.BrightCyan+colors.Bold)
+		fmt.Println(opts.Color.Colorize(browserLine))
 
-		line4 := "    or hit <ENTER> to log in using your browser"
-		var padding string
-		if pad := maxlen - len(line4); pad > 0 {
-			padding = strings.Repeat(" ", pad)
-		}
-		line4 = colors.Highlight(line4, "<ENTER>", colors.BrightCyan+colors.Bold)
+		prompt := "paste an access token from " + accountLink
+		prompt = colors.Highlight(prompt, "access token", colors.BrightCyan+colors.Bold)
+		prompt = colors.Highlight(prompt, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
 
-		if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line4) + padding); err != nil {
+		if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(prompt)); err != nil {
 			return nil, err
 		}
+
+		fmt.Println()
+		fmt.Println(opts.Color.Colorize(helpLine))
 
 		if accessToken == "" {
 			return loginWithBrowser(ctx, cloudURL, insecure, command, welcome, setCurrent, opts)

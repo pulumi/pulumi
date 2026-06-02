@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/cloud
+  description: Clarify the interactive `pulumi login` prompt to describe Pulumi Cloud and lead with the browser login option
