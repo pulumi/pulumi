@@ -174,3 +174,38 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		return property.Value{}
 	}
 }
+
+func FromResourcePropertyPath(path PropertyPath) property.Glob {
+	var dst []property.GlobSegment
+	for _, s := range path {
+		switch s := s.(type) {
+		case int:
+			dst = append(dst, property.NewSegment(s))
+		case string:
+			if s == "*" {
+				dst = append(dst, property.Splat)
+			} else {
+				dst = append(dst, property.NewSegment(s))
+			}
+		}
+	}
+	return property.GlobFromSegments(dst...)
+}
+
+func ToResourcePropertyPath(path property.Glob) PropertyPath {
+	if path == (property.Glob{}) {
+		return nil
+	}
+	var dst PropertyPath
+	for s := range path.Segments {
+		switch s := s.(type) {
+		case property.IndexSegment:
+			dst = append(dst, s.Index())
+		case property.KeySegment:
+			dst = append(dst, s.Key())
+		case property.SplatSegment:
+			dst = append(dst, "*")
+		}
+	}
+	return dst
+}

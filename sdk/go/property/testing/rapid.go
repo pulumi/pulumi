@@ -106,3 +106,15 @@ func URN() *rapid.Generator[urn.URN] {
 		return urn.URN(rapid.String().Draw(t, "urn-body"))
 	})
 }
+
+func Glob() *rapid.Generator[property.Glob] {
+	return rapid.Map(rapid.SliceOf(rapid.OneOf(
+		rapid.Just[property.GlobSegment](property.Splat),
+		rapid.Map(rapid.String(), func(s string) property.GlobSegment {
+			return property.NewSegment(s)
+		}),
+		rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 }), func(s int) property.GlobSegment {
+			return property.NewSegment(s)
+		}),
+	)), func(s []property.GlobSegment) property.Glob { return property.GlobFromSegments(s...) })
+}

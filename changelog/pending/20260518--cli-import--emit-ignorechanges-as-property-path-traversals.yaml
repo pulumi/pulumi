@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/import
+  description: Emit `ignoreChanges` paths in generated PCL as property-path traversals, correctly quoting non-identifier keys and escaping HCL template sequences

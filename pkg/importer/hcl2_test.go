@@ -240,7 +240,7 @@ func renderResource(t require.TestingT, r *pcl.Resource) *resource.State {
 	var parent resource.URN
 	var providerRef string
 	var importID resource.ID
-	var ignoreChanges []string
+	var ignoreChanges []property.Glob
 	if r.Options != nil {
 		if r.Options.Protect != nil {
 			v, diags := r.Options.Protect.Evaluate(&hcl.EvalContext{})
@@ -272,7 +272,9 @@ func renderResource(t require.TestingT, r *pcl.Resource) *resource.State {
 			if assert.True(t, v.IsArray()) {
 				for _, item := range v.AsArray().All {
 					if assert.True(t, item.IsString()) {
-						ignoreChanges = append(ignoreChanges, item.AsString())
+						var p property.Glob
+						require.NoError(t, p.UnmarshalText([]byte(item.AsString())))
+						ignoreChanges = append(ignoreChanges, p)
 					}
 				}
 			}
@@ -337,7 +339,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:aws",
 					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
+					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				},
@@ -347,7 +349,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:random",
 					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
+					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:random::default_123",
 				},
@@ -357,7 +359,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:pkg",
 					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
+					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
 				},
@@ -475,6 +477,168 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 			},
 		},
 	}}, block.Body.Items, "expected region to be set on custom provider")
+}
+
+func TestGenerateHCL2DefinitionEmitsIgnoreChangesAsTraversal(t *testing.T) {
+	t.Parallel()
+
+	pkg, diags, err := schema.BindSpec(schema.PackageSpec{
+		Name:     "pkg",
+		Version:  "1.0.0",
+		Provider: schema.ResourceSpec{ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"}},
+		Resources: map[string]schema.ResourceSpec{
+			"pkg:index:Res": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"foo": {TypeSpec: schema.TypeSpec{Type: "object"}},
+					},
+				},
+			},
+		},
+	}, nil, schema.ValidationOptions{})
+	require.NoError(t, err)
+	require.Falsef(t, diags.HasErrors(), "schema diagnostics: %v", diags.Error())
+	loader := &stubSchemaLoader{pkg: pkg}
+
+	cases := []struct {
+		name     string
+		glob     property.Glob
+		expected string
+	}{
+		{
+			name:     "bare identifier root",
+			glob:     property.MustParseGlob("foo"),
+			expected: "foo",
+		},
+		{
+			name:     "dotted identifier path",
+			glob:     property.MustParseGlob("foo.bar"),
+			expected: "foo.bar",
+		},
+		{
+			name:     "numeric index",
+			glob:     property.MustParseGlob("foo[3]"),
+			expected: "foo[3]",
+		},
+		{
+			name:     "bracketed key needing quotes",
+			glob:     property.MustParseGlob(`foo["bar-baz"]`),
+			expected: `foo["bar-baz"]`,
+		},
+		{
+			name:     "key containing a template-interpolation sequence is escaped",
+			glob:     property.MustParseGlob(`foo["${bar}"]`),
+			expected: `foo["$${bar}"]`,
+		},
+		{
+			name:     "key containing a double-quote is escaped",
+			glob:     property.MustParseGlob(`foo["a\"b"]`),
+			expected: `foo["a\"b"]`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			providerURN := resource.NewURN("s", "p", "", "pulumi:providers:pkg", "default")
+			state := &resource.State{
+				Type:          "pkg:index:Res",
+				URN:           resource.NewURN("s", "p", "", "pkg:index:Res", "R"),
+				Custom:        true,
+				Provider:      string(providerURN) + "::id",
+				Inputs:        resource.PropertyMap{},
+				IgnoreChanges: []property.Glob{tc.glob},
+			}
+			importState := ImportState{
+				Snapshot: []*resource.State{{
+					ID:     "id",
+					Custom: true,
+					Type:   "pulumi:providers:pkg",
+					URN:    providerURN,
+				}},
+			}
+			block, _, err := GenerateHCL2Definition(loader, state, importState)
+			require.NoError(t, err)
+
+			text := fmt.Sprint(block)
+			require.Containsf(t, text, tc.expected,
+				"emitted block did not contain expected traversal %q:\n%s", tc.expected, text)
+
+			parser := syntax.NewParser()
+			require.NoError(t, parser.ParseFile(strings.NewReader(text), "test.pp"))
+			require.Falsef(t, parser.Diagnostics.HasErrors(),
+				"parse diagnostics: %v\nblock:\n%s", parser.Diagnostics.Error(), text)
+
+			_, bindDiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+			require.NoErrorf(t, err, "bind diagnostics: %v\nblock:\n%s", bindDiags.Error(), text)
+			require.Falsef(t, bindDiags.HasErrors(),
+				"bind diagnostics: %v\nblock:\n%s", bindDiags.Error(), text)
+		})
+	}
+}
+
+func TestGenerateHCL2DefinitionDropsInexpressibleIgnoreChangesPaths(t *testing.T) {
+	t.Parallel()
+
+	pkg, diags, err := schema.BindSpec(schema.PackageSpec{
+		Name:     "pkg",
+		Version:  "1.0.0",
+		Provider: schema.ResourceSpec{ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"}},
+		Resources: map[string]schema.ResourceSpec{
+			"pkg:index:Res": {ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"}},
+		},
+	}, nil, schema.ValidationOptions{})
+	require.NoError(t, err)
+	require.Falsef(t, diags.HasErrors(), "schema diagnostics: %v", diags.Error())
+	loader := &stubSchemaLoader{pkg: pkg}
+
+	providerURN := resource.NewURN("s", "p", "", "pulumi:providers:pkg", "default")
+	state := &resource.State{
+		Type:     "pkg:index:Res",
+		URN:      resource.NewURN("s", "p", "", "pkg:index:Res", "R"),
+		Custom:   true,
+		Provider: string(providerURN) + "::id",
+		Inputs:   resource.PropertyMap{},
+		IgnoreChanges: []property.Glob{
+			property.MustParseGlob(`["a-"]`),
+			property.MustParseGlob("good"),
+		},
+	}
+	importState := ImportState{
+		Snapshot: []*resource.State{{
+			ID:     "id",
+			Custom: true,
+			Type:   "pulumi:providers:pkg",
+			URN:    providerURN,
+		}},
+	}
+	block, _, err := GenerateHCL2Definition(loader, state, importState)
+	require.NoError(t, err)
+
+	text := fmt.Sprint(block)
+	assert.Equal(t, `resource R "pkg:index:Res" {
+options {
+
+// WARNING: dropped ignoreChanges path ["a-"] (path root "a-" is not a valid HCL identifier)
+ignoreChanges =[
+            good]
+
+}
+
+}
+`, text)
+
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(strings.NewReader(text), "test.pp"))
+	require.Falsef(t, parser.Diagnostics.HasErrors(),
+		"parse diagnostics: %v\nblock:\n%s", parser.Diagnostics.Error(), text)
+
+	_, bindDiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+	require.NoErrorf(t, err, "bind diagnostics: %v\nblock:\n%s", bindDiags.Error(), text)
+	require.Falsef(t, bindDiags.HasErrors(),
+		"bind diagnostics: %v\nblock:\n%s", bindDiags.Error(), text)
 }
 
 // Tests that HCL definitions can be generated even if there is a mismatch in the version of the provider in the

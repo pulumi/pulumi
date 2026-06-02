@@ -57,7 +57,7 @@ type GoalV1 struct {
 	// true if this resource should be deleted prior to replacement.
 	DeleteBeforeReplace *bool `json:"deleteBeforeReplace,omitempty"`
 	// a list of property names to ignore during changes.
-	IgnoreChanges []string `json:"ignoreChanges,omitempty"`
+	IgnoreChanges resource.BackCompatPropertyPathList `json:"ignoreChanges,omitempty"`
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty"`
 	// additional URNs that should be aliased to this resource.

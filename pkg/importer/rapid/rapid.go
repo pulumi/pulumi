@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Sample is a generated resource state and the snapshot needed to import it.
@@ -106,8 +107,8 @@ func drawSample(t *rapid.T, pkg *schema.Package, pickable []*schema.Resource) *S
 		External:            rapid.Bool().Draw(t, "external"),
 		RefreshBeforeUpdate: rapid.Bool().Draw(t, "refresh-before-update"),
 		ImportID:            drawOptionalResourceID(t, "import-id"),
-		IgnoreChanges:       drawPropertyNames(t, "ignore-changes", r.InputProperties),
-		ReplaceOnChanges:    drawPropertyNames(t, "replace-on-changes", r.InputProperties),
+		IgnoreChanges:       propertyNamesAsGlobs(drawPropertyNames(t, "ignore-changes", r.InputProperties)),
+		ReplaceOnChanges:    propertyNamesAsGlobs(drawPropertyNames(t, "replace-on-changes", r.InputProperties)),
 		Aliases:             drawAliases(t, typ),
 	}
 
@@ -210,11 +211,24 @@ func drawPropertyNames(t *rapid.T, label string, props []*schema.Property) []str
 		return nil
 	}
 	names := make([]string, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		idx := rapid.IntRange(0, len(props)-1).Draw(t, fmt.Sprintf("%s:%d", label, i))
 		names[i] = props[idx].Name
 	}
 	return names
+}
+
+// propertyNamesAsGlobs lifts a list of bare property names into single-segment [property.Glob]s
+// for fields like [resource.State.IgnoreChanges] that hold structured property paths.
+func propertyNamesAsGlobs(names []string) []property.Glob {
+	if len(names) == 0 {
+		return nil
+	}
+	globs := make([]property.Glob, len(names))
+	for i, n := range names {
+		globs[i] = property.GlobFromSegments(property.NewSegment(n))
+	}
+	return globs
 }
 
 func drawAliases(t *rapid.T, typ tokens.Type) []resource.URN {

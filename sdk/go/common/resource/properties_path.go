@@ -16,14 +16,77 @@ package resource
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
+
+// BackCompatPropertyPathList represents a list of [property.Glob] that used to be represented as a list of unvalidated
+// string. It should only be used to replace a value represented as []string. If the value was represented as
+// []resource.PropertyPath, then []BackCompatPropertyPath should be used instead.
+//
+// It parses using [BackCompatPropertyPath], skipping unparsable property paths.
+type BackCompatPropertyPathList []property.Glob
+
+var _ json.Unmarshaler = (*BackCompatPropertyPathList)(nil)
+
+func (list *BackCompatPropertyPathList) UnmarshalJSON(bytes []byte) error {
+	var original []string
+	if err := json.Unmarshal(bytes, &original); err != nil {
+		return err
+	}
+	list.unmarshalFromList(original)
+	return nil
+}
+
+func (list *BackCompatPropertyPathList) UnmarshalYAML(unmarshal func(any) error) error {
+	var obj []string
+	if err := unmarshal(obj); err != nil {
+		return err
+	}
+	list.unmarshalFromList(obj)
+	return nil
+}
+
+func (list *BackCompatPropertyPathList) unmarshalFromList(src []string) {
+	(*list) = make(BackCompatPropertyPathList, 0, len(src))
+	for _, v := range src {
+		var path BackCompatPropertyPath
+		if err := path.UnmarshalText([]byte(v)); err != nil {
+			slog.Warn("discarding invalid property value", slog.String("property path", v))
+			continue
+		}
+		(*list) = append(*list, property.Glob(path))
+	}
+}
+
+// BackCompatPropertyPath represents a [property.Glob] that allows serializing non-strict property paths to avoid
+// breaking existing state. Property paths will always be re-serialized as valid [property.Glob] values.
+//
+// Invalid property paths will still error.
+type BackCompatPropertyPath property.Glob
+
+func (p BackCompatPropertyPath) MarshalText() ([]byte, error) { return property.Glob(p).MarshalText() }
+
+func (p *BackCompatPropertyPath) UnmarshalText(b []byte) error {
+	// If we are able to parse strictly, then we do so
+	if err := ((*property.Glob)(p)).UnmarshalText(b); err == nil {
+		return nil
+	}
+	var oldP PropertyPath
+	if err := oldP.UnmarshalText(b); err != nil {
+		return err
+	}
+	*p = BackCompatPropertyPath(FromResourcePropertyPath(oldP))
+	return nil
+}
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
 // in ObjectProperty values) and integers (which access elements of ArrayProperty values).
