@@ -38,7 +38,7 @@ import (
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
 
-	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
+	esc_client "github.com/pulumi/pulumi/sdk/v3/go/esc/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"

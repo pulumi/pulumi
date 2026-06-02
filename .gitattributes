@@ -1,1 +1,7 @@
 pkg/engine/lifecycletest/testdata/** linguist-generated=true
+
+# ESC SDK REST clients are generated from sdk/esc/swagger.yaml via
+# `make generate-esc-sdks` (openapi-generator-cli). Treat as generated.
+# (The C# client is generated and published from pulumi/pulumi-dotnet.)
+sdk/python/esc-sdk/pulumi_esc_sdk/** linguist-generated=true
+sdk/nodejs/esc/raw/** linguist-generated=true

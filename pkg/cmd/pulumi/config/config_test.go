@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"

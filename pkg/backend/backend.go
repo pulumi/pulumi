@@ -22,7 +22,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"

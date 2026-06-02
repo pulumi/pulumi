@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/esc"
-	"github.com/pulumi/esc/cmd/esc/cli"
+	"github.com/pulumi/pulumi/sdk/v3/go/esc"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"

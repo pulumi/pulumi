@@ -172,6 +172,16 @@ linters:
       - legacy
       - std-error-handling
     rules:
+      # The ESC engine, CLI and Go REST clients were merged in from pulumi/esc
+      # and pulumi/esc-sdk. esc's golangci config disabled lll and paralleltest;
+      # preserve that posture for the imported trees (and allow the CLI to print
+      # directly). Tighten incrementally rather than churn the whole import.
+      - linters:
+          - lll
+          - paralleltest
+          - forbidigo
+          - exhaustive
+        path: ^(sdk/go/esc/|pkg/cmd/esc/cli/)
       - linters:
           - revive
         text: 'unused-parameter: parameter \S+ seems to be unused, consider removing or renaming it as _'
@@ -226,6 +236,8 @@ linters:
       - testdata$
       - third_party$
       - vendor$
+      # Generated OpenAPI ESC SDK client (sourced from sdk/esc/swagger.yaml).
+      - sdk/go/esc/sdk
 formatters:
   enable:
     - gofumpt

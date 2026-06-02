@@ -1,0 +1,55 @@
+{
+    "name": "@pulumi/esc-sdk",
+    "version": "${VERSION}",
+    "description": "NodeJS SDK for Pulumi ESC",
+    "keywords": [
+        "pulumi",
+        "esc",
+        "sdk",
+        "category/cloud"
+    ],
+    "main": "esc/index.js",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/pulumi/esc-sdk.git",
+        "directory": "sdk/typescript"
+    },
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/pulumi/esc-sdk/issues"
+    },
+    "homepage": "https://github.com/pulumi/esc-sdk#readme",
+    "devDependencies": {
+        "@types/js-yaml": "^4.0.9",
+        "@types/node": "^20.10.5",
+        "@typescript-eslint/eslint-plugin": "^6.15.0",
+        "@typescript-eslint/parser": "^6.15.0",
+        "eslint": "^8.56.0",
+        "eslint-config-prettier": "^9.1.0",
+        "eslint-plugin-prettier": "^5.1.2",
+        "jasmine": "^5.1.0",
+        "prettier": "^3.1.1",
+        "tsx": "^4.7.0",
+        "typescript": "^5.4.5"
+    },
+    "dependencies": {
+        "axios": "^1.12.2",
+        "js-yaml": "^4.1.0",
+        "yaml": "^2.3.4"
+    },
+    "overrides": {
+        "braces": "3.0.3",
+        "esbuild": "0.25.0"
+    },
+    "scripts": {
+        "format": "prettier --write .",
+        "lint": "eslint --ext .ts .",
+        "build": "rm -rf ./bin && tsc",
+        "test": "tsx --test ./test/*.ts"
+    },
+    "prettier": {
+        "printWidth": 120,
+        "tabWidth": 4,
+        "trailingComma": "all"
+    }
+}

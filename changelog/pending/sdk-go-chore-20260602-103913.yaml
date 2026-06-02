@@ -1,0 +1,6 @@
+component: sdk/go
+kind: chore
+body: The ESC engine and Go API client now live in the Pulumi SDK at `sdk/v3/go/esc` and `sdk/v3/go/esc/cloud`
+time: 2026-06-02T10:39:13.030973+02:00
+custom:
+    PR: ""

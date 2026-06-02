@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/esc"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"

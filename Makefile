@@ -103,6 +103,45 @@ generate-go-automation-api:: generate-cli-spec
 test-go-automation-api::
 	cd sdk && go test ./go/tools/automation/...
 
+# ESC SDK REST clients (Python / TypeScript).
+#
+# The hand-written OpenAPI spec at sdk/esc/swagger.yaml is the source of truth for
+# every language ESC SDK; per-language templates live at sdk/esc/templates/. Go has
+# no codegen — it uses the hand-rolled client promoted to sdk/go/esc/cloud. C# is
+# generated and published from pulumi/pulumi-dotnet (which syncs this spec).
+#
+# Generators use openapi-generator 7.6.0, pinned in ./openapitools.json and driven
+# by the @openapitools/openapi-generator-cli npm wrapper. Keep that pinned version
+# in sync with whatever produced the committed clients, or `check-esc-sdks` will
+# report spurious drift.
+ESC_SDK_SPEC      := sdk/esc/swagger.yaml
+ESC_SDK_TEMPLATES := sdk/esc/templates
+OPENAPI_GENERATOR := npx --yes @openapitools/openapi-generator-cli generate
+
+.PHONY: generate-esc-sdk-python
+generate-esc-sdk-python::
+	PYTHON_SDK_VERSION="$$(echo '${VERSION}' | sed 's/-/./g')"; \
+	$(OPENAPI_GENERATOR) -i ./$(ESC_SDK_SPEC) \
+		-p packageName=pulumi_esc_sdk,httpUserAgent=esc-sdk/python/${VERSION},packageVersion=$$PYTHON_SDK_VERSION \
+		-t ./$(ESC_SDK_TEMPLATES)/python -g python -o ./sdk/python/esc-sdk \
+		--git-repo-id esc-sdk --git-user-id pulumi
+
+.PHONY: generate-esc-sdk-typescript
+generate-esc-sdk-typescript::
+	$(OPENAPI_GENERATOR) -i ./$(ESC_SDK_SPEC) \
+		-p npmName=@pulumi/esc-sdk,userAgent=esc-sdk/ts/${VERSION} \
+		-t ./$(ESC_SDK_TEMPLATES)/typescript --enable-post-process-file \
+		-g typescript-axios -o ./sdk/nodejs/esc/raw \
+		--git-repo-id esc-sdk --git-user-id pulumi
+
+.PHONY: generate-esc-sdks
+generate-esc-sdks:: generate-esc-sdk-python generate-esc-sdk-typescript
+
+# Drift check: regenerate the committed SDK clients and fail if anything changed.
+.PHONY: check-esc-sdks
+check-esc-sdks:: generate-esc-sdks
+	git diff --exit-code -- sdk/python/esc-sdk sdk/nodejs/esc
+
 # For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
 # dead code elimation due to the usage of certain reflection methods.
 bin/pulumi: GO_BUILD_TAGS =

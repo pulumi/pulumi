@@ -1,0 +1,7 @@
+# flake8: noqa
+
+# Copyright 2024, Pulumi Corporation.  All rights reserved.
+
+# import apis into api package
+{{#apiInfo}}{{#apis}}from {{apiPackage}}.{{classFilename}} import {{classname}}
+{{/apis}}{{/apiInfo}}

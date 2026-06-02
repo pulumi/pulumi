@@ -1,0 +1,2700 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"missing\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 4,
+                    "Column": 25,
+                    "Byte": 57
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 35,
+                    "Byte": 67
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[0][\"fn::open::test\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"missing\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 5,
+                    "Column": 25,
+                    "Byte": 96
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 35,
+                    "Byte": 106
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[1][\"fn::join\"][1]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected string, got number",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 6,
+                    "Column": 27,
+                    "Byte": 139
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 36,
+                    "Byte": 148
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[2][\"fn::join\"][1][0]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"missing\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 7,
+                    "Column": 23,
+                    "Byte": 179
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 33,
+                    "Byte": 189
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[3][\"fn::toBase64\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected string, got number",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 8,
+                    "Column": 23,
+                    "Byte": 216
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 32,
+                    "Byte": 225
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[4][\"fn::toBase64\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"missing\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 9,
+                    "Column": 21,
+                    "Byte": 250
+                },
+                "End": {
+                    "Line": 9,
+                    "Column": 31,
+                    "Byte": 260
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[5][\"fn::toJSON\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"missing\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 10,
+                    "Column": 23,
+                    "Byte": 287
+                },
+                "End": {
+                    "Line": 10,
+                    "Column": 33,
+                    "Byte": 297
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[6][\"fn::toString\"]"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "builtins": {
+                "range": {
+                    "environment": "builtin-errs",
+                    "begin": {
+                        "line": 4,
+                        "column": 5,
+                        "byte": 37
+                    },
+                    "end": {
+                        "line": 10,
+                        "column": 33,
+                        "byte": 297
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        true,
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 4,
+                                "column": 7,
+                                "byte": 39
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 35,
+                                "byte": 67
+                            }
+                        },
+                        "schema": true,
+                        "builtin": {
+                            "name": "fn::open::test",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 9,
+                                    "byte": 41
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 23,
+                                    "byte": 55
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 25,
+                                        "byte": 57
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 35,
+                                        "byte": 67
+                                    }
+                                },
+                                "schema": true,
+                                "symbol": [
+                                    {
+                                        "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 4,
+                                                "column": 25,
+                                                "byte": 57
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 35,
+                                                "byte": 67
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 5,
+                                "column": 7,
+                                "byte": 78
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 35,
+                                "byte": 106
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::join",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 9,
+                                    "byte": 80
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 17,
+                                    "byte": 88
+                                }
+                            },
+                            "argSchema": {
+                                "prefixItems": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
+                                ],
+                                "items": false,
+                                "type": "array"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 19,
+                                        "byte": 90
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 35,
+                                        "byte": 106
+                                    }
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 5,
+                                                "column": 20,
+                                                "byte": 91
+                                            },
+                                            "end": {
+                                                "line": 5,
+                                                "column": 21,
+                                                "byte": 92
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": ","
+                                        },
+                                        "literal": ","
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 5,
+                                                "column": 25,
+                                                "byte": 96
+                                            },
+                                            "end": {
+                                                "line": 5,
+                                                "column": 35,
+                                                "byte": 106
+                                            }
+                                        },
+                                        "schema": true,
+                                        "symbol": [
+                                            {
+                                                "key": "missing",
+                                                "range": {
+                                                    "environment": "builtin-errs",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-errs",
+                                                    "begin": {
+                                                        "line": 5,
+                                                        "column": 25,
+                                                        "byte": 96
+                                                    },
+                                                    "end": {
+                                                        "line": 5,
+                                                        "column": 35,
+                                                        "byte": 106
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 6,
+                                "column": 7,
+                                "byte": 119
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 36,
+                                "byte": 148
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::join",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 9,
+                                    "byte": 121
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 17,
+                                    "byte": 129
+                                }
+                            },
+                            "argSchema": {
+                                "prefixItems": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
+                                ],
+                                "items": false,
+                                "type": "array"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 19,
+                                        "byte": 131
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 36,
+                                        "byte": 148
+                                    }
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 6,
+                                                "column": 20,
+                                                "byte": 132
+                                            },
+                                            "end": {
+                                                "line": 6,
+                                                "column": 21,
+                                                "byte": 133
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": ","
+                                        },
+                                        "literal": ","
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 6,
+                                                "column": 25,
+                                                "byte": 137
+                                            },
+                                            "end": {
+                                                "line": 6,
+                                                "column": 36,
+                                                "byte": 148
+                                            }
+                                        },
+                                        "schema": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "number",
+                                                    "const": 42
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "list": [
+                                            {
+                                                "range": {
+                                                    "environment": "builtin-errs",
+                                                    "begin": {
+                                                        "line": 6,
+                                                        "column": 27,
+                                                        "byte": 139
+                                                    },
+                                                    "end": {
+                                                        "line": 6,
+                                                        "column": 36,
+                                                        "byte": 148
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "number",
+                                                    "const": 42
+                                                },
+                                                "symbol": [
+                                                    {
+                                                        "key": "number",
+                                                        "range": {
+                                                            "environment": "builtin-errs",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "builtin-errs",
+                                                            "begin": {
+                                                                "line": 2,
+                                                                "column": 11,
+                                                                "byte": 18
+                                                            },
+                                                            "end": {
+                                                                "line": 2,
+                                                                "column": 13,
+                                                                "byte": 20
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 163
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 33,
+                                "byte": 189
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toBase64",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 9,
+                                    "byte": 165
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 21,
+                                    "byte": 177
+                                }
+                            },
+                            "argSchema": {
+                                "type": "string"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 23,
+                                        "byte": 179
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 33,
+                                        "byte": 189
+                                    }
+                                },
+                                "schema": true,
+                                "symbol": [
+                                    {
+                                        "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 23,
+                                                "byte": 179
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 33,
+                                                "byte": 189
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 200
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 32,
+                                "byte": 225
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toBase64",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 9,
+                                    "byte": 202
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 21,
+                                    "byte": 214
+                                }
+                            },
+                            "argSchema": {
+                                "type": "string"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 23,
+                                        "byte": 216
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 32,
+                                        "byte": 225
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "number",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 2,
+                                                "column": 11,
+                                                "byte": 18
+                                            },
+                                            "end": {
+                                                "line": 2,
+                                                "column": 13,
+                                                "byte": 20
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 9,
+                                "column": 7,
+                                "byte": 236
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 31,
+                                "byte": 260
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toJSON",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 9,
+                                    "byte": 238
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 19,
+                                    "byte": 248
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 21,
+                                        "byte": 250
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 31,
+                                        "byte": 260
+                                    }
+                                },
+                                "schema": true,
+                                "symbol": [
+                                    {
+                                        "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 9,
+                                                "column": 21,
+                                                "byte": 250
+                                            },
+                                            "end": {
+                                                "line": 9,
+                                                "column": 31,
+                                                "byte": 260
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 10,
+                                "column": 7,
+                                "byte": 271
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 33,
+                                "byte": 297
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toString",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 9,
+                                    "byte": 273
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 21,
+                                    "byte": 285
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 23,
+                                        "byte": 287
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 33,
+                                        "byte": 297
+                                    }
+                                },
+                                "schema": true,
+                                "symbol": [
+                                    {
+                                        "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 10,
+                                                "column": 23,
+                                                "byte": 287
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 33,
+                                                "byte": 297
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "number": {
+                "range": {
+                    "environment": "builtin-errs",
+                    "begin": {
+                        "line": 2,
+                        "column": 11,
+                        "byte": 18
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 13,
+                        "byte": 20
+                    }
+                },
+                "schema": {
+                    "type": "number",
+                    "const": 42
+                },
+                "literal": 42
+            }
+        },
+        "properties": {
+            "builtins": {
+                "value": [
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 39
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 35,
+                                    "byte": 67
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 7,
+                                    "byte": 78
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 35,
+                                    "byte": 106
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 7,
+                                    "byte": 119
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 36,
+                                    "byte": 148
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 163
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 33,
+                                    "byte": 189
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 200
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 32,
+                                    "byte": 225
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 7,
+                                    "byte": 236
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 31,
+                                    "byte": 260
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 271
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 33,
+                                    "byte": 297
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-errs",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 37
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 33,
+                            "byte": 297
+                        }
+                    }
+                }
+            },
+            "number": {
+                "value": 42,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-errs",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 13,
+                            "byte": 20
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "builtins": {
+                    "prefixItems": [
+                        true,
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "number": {
+                    "type": "number",
+                    "const": 42
+                }
+            },
+            "type": "object",
+            "required": [
+                "builtins",
+                "number"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-errs",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-errs",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-errs"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-errs"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "builtins": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ],
+        "number": 42
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"missing\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 4,
+                    "Column": 25,
+                    "Byte": 57
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 35,
+                    "Byte": 67
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[0][\"fn::open::test\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"missing\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 5,
+                    "Column": 25,
+                    "Byte": 96
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 35,
+                    "Byte": 106
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[1][\"fn::join\"][1]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected string, got number",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 6,
+                    "Column": 27,
+                    "Byte": 139
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 36,
+                    "Byte": 148
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[2][\"fn::join\"][1][0]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"missing\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 7,
+                    "Column": 23,
+                    "Byte": 179
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 33,
+                    "Byte": 189
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[3][\"fn::toBase64\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected string, got number",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 8,
+                    "Column": 23,
+                    "Byte": 216
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 32,
+                    "Byte": 225
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[4][\"fn::toBase64\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"missing\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 9,
+                    "Column": 21,
+                    "Byte": 250
+                },
+                "End": {
+                    "Line": 9,
+                    "Column": 31,
+                    "Byte": 260
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[5][\"fn::toJSON\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"missing\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-errs",
+                "Start": {
+                    "Line": 10,
+                    "Column": 23,
+                    "Byte": 287
+                },
+                "End": {
+                    "Line": 10,
+                    "Column": 33,
+                    "Byte": 297
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.builtins[6][\"fn::toString\"]"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "builtins": {
+                "range": {
+                    "environment": "builtin-errs",
+                    "begin": {
+                        "line": 4,
+                        "column": 5,
+                        "byte": 37
+                    },
+                    "end": {
+                        "line": 10,
+                        "column": 33,
+                        "byte": 297
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        true,
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 4,
+                                "column": 7,
+                                "byte": 39
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 35,
+                                "byte": 67
+                            }
+                        },
+                        "schema": true,
+                        "builtin": {
+                            "name": "fn::open::test",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 9,
+                                    "byte": 41
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 23,
+                                    "byte": 55
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 25,
+                                        "byte": 57
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 35,
+                                        "byte": 67
+                                    }
+                                },
+                                "schema": true,
+                                "symbol": [
+                                    {
+                                        "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 4,
+                                                "column": 25,
+                                                "byte": 57
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 35,
+                                                "byte": 67
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 5,
+                                "column": 7,
+                                "byte": 78
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 35,
+                                "byte": 106
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::join",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 9,
+                                    "byte": 80
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 17,
+                                    "byte": 88
+                                }
+                            },
+                            "argSchema": {
+                                "prefixItems": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
+                                ],
+                                "items": false,
+                                "type": "array"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 19,
+                                        "byte": 90
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 35,
+                                        "byte": 106
+                                    }
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 5,
+                                                "column": 20,
+                                                "byte": 91
+                                            },
+                                            "end": {
+                                                "line": 5,
+                                                "column": 21,
+                                                "byte": 92
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": ","
+                                        },
+                                        "literal": ","
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 5,
+                                                "column": 25,
+                                                "byte": 96
+                                            },
+                                            "end": {
+                                                "line": 5,
+                                                "column": 35,
+                                                "byte": 106
+                                            }
+                                        },
+                                        "schema": true,
+                                        "symbol": [
+                                            {
+                                                "key": "missing",
+                                                "range": {
+                                                    "environment": "builtin-errs",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-errs",
+                                                    "begin": {
+                                                        "line": 5,
+                                                        "column": 25,
+                                                        "byte": 96
+                                                    },
+                                                    "end": {
+                                                        "line": 5,
+                                                        "column": 35,
+                                                        "byte": 106
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 6,
+                                "column": 7,
+                                "byte": 119
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 36,
+                                "byte": 148
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::join",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 9,
+                                    "byte": 121
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 17,
+                                    "byte": 129
+                                }
+                            },
+                            "argSchema": {
+                                "prefixItems": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
+                                ],
+                                "items": false,
+                                "type": "array"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 19,
+                                        "byte": 131
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 36,
+                                        "byte": 148
+                                    }
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 6,
+                                                "column": 20,
+                                                "byte": 132
+                                            },
+                                            "end": {
+                                                "line": 6,
+                                                "column": 21,
+                                                "byte": 133
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": ","
+                                        },
+                                        "literal": ","
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 6,
+                                                "column": 25,
+                                                "byte": 137
+                                            },
+                                            "end": {
+                                                "line": 6,
+                                                "column": 36,
+                                                "byte": 148
+                                            }
+                                        },
+                                        "schema": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "number",
+                                                    "const": 42
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "list": [
+                                            {
+                                                "range": {
+                                                    "environment": "builtin-errs",
+                                                    "begin": {
+                                                        "line": 6,
+                                                        "column": 27,
+                                                        "byte": 139
+                                                    },
+                                                    "end": {
+                                                        "line": 6,
+                                                        "column": 36,
+                                                        "byte": 148
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "number",
+                                                    "const": 42
+                                                },
+                                                "symbol": [
+                                                    {
+                                                        "key": "number",
+                                                        "range": {
+                                                            "environment": "builtin-errs",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "builtin-errs",
+                                                            "begin": {
+                                                                "line": 2,
+                                                                "column": 11,
+                                                                "byte": 18
+                                                            },
+                                                            "end": {
+                                                                "line": 2,
+                                                                "column": 13,
+                                                                "byte": 20
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 163
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 33,
+                                "byte": 189
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toBase64",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 9,
+                                    "byte": 165
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 21,
+                                    "byte": 177
+                                }
+                            },
+                            "argSchema": {
+                                "type": "string"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 23,
+                                        "byte": 179
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 33,
+                                        "byte": 189
+                                    }
+                                },
+                                "schema": true,
+                                "symbol": [
+                                    {
+                                        "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 23,
+                                                "byte": 179
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 33,
+                                                "byte": 189
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 200
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 32,
+                                "byte": 225
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toBase64",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 9,
+                                    "byte": 202
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 21,
+                                    "byte": 214
+                                }
+                            },
+                            "argSchema": {
+                                "type": "string"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 23,
+                                        "byte": 216
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 32,
+                                        "byte": 225
+                                    }
+                                },
+                                "schema": {
+                                    "type": "number",
+                                    "const": 42
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "number",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 2,
+                                                "column": 11,
+                                                "byte": 18
+                                            },
+                                            "end": {
+                                                "line": 2,
+                                                "column": 13,
+                                                "byte": 20
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 9,
+                                "column": 7,
+                                "byte": 236
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 31,
+                                "byte": 260
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toJSON",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 9,
+                                    "byte": 238
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 19,
+                                    "byte": 248
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 21,
+                                        "byte": 250
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 31,
+                                        "byte": 260
+                                    }
+                                },
+                                "schema": true,
+                                "symbol": [
+                                    {
+                                        "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 9,
+                                                "column": 21,
+                                                "byte": 250
+                                            },
+                                            "end": {
+                                                "line": 9,
+                                                "column": 31,
+                                                "byte": 260
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 10,
+                                "column": 7,
+                                "byte": 271
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 33,
+                                "byte": 297
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toString",
+                            "nameRange": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 9,
+                                    "byte": 273
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 21,
+                                    "byte": 285
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 23,
+                                        "byte": 287
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 33,
+                                        "byte": 297
+                                    }
+                                },
+                                "schema": true,
+                                "symbol": [
+                                    {
+                                        "key": "missing",
+                                        "range": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 10,
+                                                "column": 23,
+                                                "byte": 287
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 33,
+                                                "byte": 297
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "number": {
+                "range": {
+                    "environment": "builtin-errs",
+                    "begin": {
+                        "line": 2,
+                        "column": 11,
+                        "byte": 18
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 13,
+                        "byte": 20
+                    }
+                },
+                "schema": {
+                    "type": "number",
+                    "const": 42
+                },
+                "literal": 42
+            }
+        },
+        "properties": {
+            "builtins": {
+                "value": [
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 39
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 35,
+                                    "byte": 67
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 7,
+                                    "byte": 78
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 35,
+                                    "byte": 106
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 7,
+                                    "byte": 119
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 36,
+                                    "byte": 148
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 163
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 33,
+                                    "byte": 189
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 200
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 32,
+                                    "byte": 225
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 7,
+                                    "byte": 236
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 31,
+                                    "byte": 260
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-errs",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 271
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 33,
+                                    "byte": 297
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-errs",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 37
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 33,
+                            "byte": 297
+                        }
+                    }
+                }
+            },
+            "number": {
+                "value": 42,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-errs",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 13,
+                            "byte": 20
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "builtins": {
+                    "prefixItems": [
+                        true,
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "number": {
+                    "type": "number",
+                    "const": 42
+                }
+            },
+            "type": "object",
+            "required": [
+                "builtins",
+                "number"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-errs",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-errs",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-errs",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-errs",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-errs",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-errs"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-errs"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "builtins": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ],
+        "number": 42
+    },
+    "evalJSONRevealed": {
+        "builtins": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ],
+        "number": 42
+    }
+}

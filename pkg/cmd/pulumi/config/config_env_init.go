@@ -25,8 +25,8 @@ import (
 	"text/template"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/pulumi/esc"
-	"github.com/pulumi/esc/eval"
+	"github.com/pulumi/pulumi/sdk/v3/go/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/esc/eval"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
