@@ -1,0 +1,28 @@
+# Copyright 2026, Pulumi Corporation.  All rights reserved.
+
+name: "Retry Action"
+description: "Retries a GitHub Action (uses: step) on failure"
+inputs:
+  action:
+    description: "The action to run, e.g. actions/checkout@v6"
+    required: true
+  with:
+    description: "Inputs for the action (YAML key: value format)"
+    required: false
+    default: ""
+  attempt_limit:
+    description: "Maximum number of attempts"
+    required: false
+    default: "3"
+  attempt_delay:
+    description: "Delay between attempts in milliseconds"
+    required: false
+    default: "5000"
+  github_token:
+    description: "GitHub token passed through to child actions (resolves github.token expressions)"
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: "node24"
+  main: "index.js"
+  post: "post.js"

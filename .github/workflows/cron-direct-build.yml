@@ -13,9 +13,11 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.25"
-      - uses: jdx/mise-action@v2
+      - uses: ./.github/actions/retry
         with:
-          experimental: true
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
       - name: Build
         shell: bash
         run: GOPROXY=direct SDKS="" make build
