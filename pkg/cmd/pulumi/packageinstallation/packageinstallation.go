@@ -1004,7 +1004,7 @@ type gatherPackageDependenciesStep struct {
 }
 
 func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) error {
-	pkgs, _, err := p.ws.GetRequiredPackages(ctx, step.project.projectDir, step.project.proj)
+	pkgs, specs, err := p.ws.GetRequiredPackages(ctx, step.project.projectDir, step.project.proj)
 	if err != nil {
 		return err
 	}
@@ -1047,6 +1047,11 @@ func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) erro
 		contract.AssertNoErrorf(p.dag.NewEdge(download, spec), "new nodes cannot be cyclic")
 		downloadReady()
 	}
+
+	enqueuePackageSpecLinkedSDKs(ctx, p, gatheredDependenciesDone, project[workspace.BaseProject]{
+		proj:       step.project.proj,
+		projectDir: step.project.projectDir,
+	}, specs)
 
 	return nil
 }

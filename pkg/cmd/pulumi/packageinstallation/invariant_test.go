@@ -112,6 +112,7 @@ type invariantPlugin struct {
 	projectDetected  bool
 	project          *workspace.PluginProject
 	requiredPackages []workspace.PackageDescriptor
+	requiredSpecs    []workspace.PackageSpec
 
 	linked []string
 }
@@ -364,10 +365,10 @@ func (w invariantWorkspace) GetRequiredPackages(
 		assert.Failf(w.t, "", "GetRequiredPackages(%q) called on non-visible plugin", dirPath)
 		return nil, nil, assert.AnError
 	}
-	if pl.requiredPackages == nil {
+	if pl.requiredPackages == nil && pl.requiredSpecs == nil {
 		return nil, nil, nil
 	}
-	return pl.requiredPackages, nil, nil
+	return pl.requiredPackages, pl.requiredSpecs, nil
 }
 
 func (w invariantWorkspace) RunPackage(

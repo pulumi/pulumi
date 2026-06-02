@@ -336,9 +336,14 @@ func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plu
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
 
-	pkgs, _, err := lang.GetRequiredPackages(plugctx.Request(), info)
+	pkgs, specs, err := lang.GetRequiredPackages(plugctx.Request(), info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover package requirements: %w", err)
+	}
+	if len(specs) > 0 {
+		return nil, fmt.Errorf("language runtime %q returned %d unresolved package spec(s), "+
+			"which are not supported during this operation; run `pulumi install` to resolve them",
+			runtime, len(specs))
 	}
 
 	set := NewPackageSet()
