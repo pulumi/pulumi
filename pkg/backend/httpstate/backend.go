@@ -791,11 +791,13 @@ func (m defaultLoginManager) Login(
 	// If no access token is available from the environment, and we are interactive, prompt and offer to
 	// open a browser to make it easy to generate and use a fresh token.
 	line1 := "Connect to Pulumi Cloud for state storage, config management, team collaboration, and more."
-	line1 = colors.Highlight(line1, "Pulumi Cloud", colors.Underline+colors.Bold)
+	line1 = colors.Highlight(line1, "Pulumi Cloud", colors.SpecHeadline)
 	fmt.Println(opts.Color.Colorize(line1))
 	fmt.Println()
 
+	// Dim the help line so it reads as a secondary aside next to the headline and prompt.
 	line2 := fmt.Sprintf("Run `%s login --help` for alternative login options.", command)
+	line2 = colors.BrightBlack + line2 + colors.Reset
 	fmt.Println(opts.Color.Colorize(line2))
 	fmt.Println()
 
@@ -812,12 +814,12 @@ func (m defaultLoginManager) Login(
 		}
 	} else {
 		browserLine := "Press <ENTER> to log in with your browser, or"
-		browserLine = colors.Highlight(browserLine, "<ENTER>", colors.BrightCyan+colors.Bold)
+		browserLine = colors.Highlight(browserLine, "<ENTER>", colors.SpecPrompt)
 		fmt.Println(opts.Color.Colorize(browserLine))
 
 		prompt := "paste an access token from " + accountLink
-		prompt = colors.Highlight(prompt, "access token", colors.BrightCyan+colors.Bold)
-		prompt = colors.Highlight(prompt, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
+		prompt = colors.Highlight(prompt, "access token", colors.SpecPrompt)
+		prompt = colors.Highlight(prompt, accountLink, colors.BrightBlue+colors.Underline)
 
 		if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(prompt)); err != nil {
 			return nil, err
