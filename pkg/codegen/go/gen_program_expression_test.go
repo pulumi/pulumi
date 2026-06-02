@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -385,6 +386,29 @@ func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
 
 	g.Fgenf(&index, "%v", expr)
 	assert.Equal(t, "pulumi.String(notSecret)", index.String())
+}
+
+// Regression test for pulumi/pulumi#22256.
+func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	var index bytes.Buffer
+
+	// Resource argument Input<T> binds as union(T, Output<T>) annotated with
+	// schema.InputType.
+	inputType := model.NewUnionTypeAnnotated(
+		[]model.Type{model.StringType, model.NewOutputType(model.StringType)},
+		&schema.InputType{ElementType: schema.StringType},
+	)
+
+	expr := pcl.NewConvertCall(
+		model.VariableReference(&model.Variable{Name: "bucketName", VariableType: model.StringType}),
+		inputType,
+	)
+
+	g.Fgenf(&index, "%v", expr)
+	assert.Equal(t, "pulumi.String(bucketName)", index.String())
 }
 
 func TestTupleConsExpression(t *testing.T) {

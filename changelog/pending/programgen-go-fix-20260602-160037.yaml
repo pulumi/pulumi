@@ -1,0 +1,6 @@
+component: programgen/go
+kind: fix
+body: double-wrapping of plain values passed to input types when generating Go programs
+time: 2026-06-02T16:00:37.164204131-05:00
+custom:
+    PR: "23418"
