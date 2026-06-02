@@ -135,6 +135,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 		cmd.Args.Stack,
 		cmdStack.OfferNew,
 		displayOpts,
+		"",
 	)
 	if err != nil {
 		return err

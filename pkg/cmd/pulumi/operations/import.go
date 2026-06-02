@@ -613,6 +613,7 @@ func NewImportCmd() *cobra.Command {
 	var debug bool
 	var message string
 	var stackName string
+	var configFile string
 	var execKind string
 	var execAgent string
 
@@ -917,12 +918,13 @@ func NewImportCmd() *cobra.Command {
 				stackName,
 				cmdStack.LoadOnly,
 				opts.Display,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -1110,7 +1112,7 @@ func NewImportCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
 	// Flags for engine.UpdateOptions.

@@ -195,7 +195,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 
 	teams := sanitizeTeams(cmd.teams)
 	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, teams,
-		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig)
+		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig, "")
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+
@@ -218,17 +218,18 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 			cmd.stackToCopy,
 			LoadOnly,
 			opts,
+			"",
 		)
 		if err != nil {
 			return err
 		}
-		copyProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, copyStack)
+		copyProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, copyStack, "")
 		if err != nil {
 			return err
 		}
 
 		// get the project for the newly created stack
-		newProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, newStack)
+		newProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, newStack, "")
 		if err != nil {
 			return err
 		}
@@ -249,7 +250,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		// The use of `requiresSaving` here ensures that there was actually some config
 		// that needed saved, otherwise it's an unnecessary save call
 		if requiresSaving {
-			err := SaveProjectStack(ctx, newStack, newProjectStack)
+			err := SaveProjectStack(ctx, newStack, newProjectStack, "")
 			if err != nil {
 				return err
 			}

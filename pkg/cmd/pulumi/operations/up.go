@@ -91,6 +91,7 @@ func NewUpCmd() *cobra.Command {
 	var execAgent string
 	var stackName string
 	var configArray []string
+	var configFile string
 	var path bool
 	var client string
 
@@ -155,13 +156,14 @@ func NewUpCmd() *cobra.Command {
 			stackName,
 			cmdStack.OfferNew,
 			opts.Display,
+			configFile,
 		)
 		if err != nil {
 			return err
 		}
 
 		// Save any config values passed via flags.
-		if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path); err != nil {
+		if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path, configFile); err != nil {
 			return err
 		}
 
@@ -170,7 +172,7 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -406,7 +408,7 @@ func NewUpCmd() *cobra.Command {
 		// Create the stack, if needed.
 		if s == nil {
 			if s, err = newcmd.PromptAndCreateStack(ctx, cmdutil.Diag(), ws, b, ui.PromptForValue, stackName, root,
-				false /*setCurrent*/, yes, opts.Display, secretsProvider, false /*useRemoteConfig*/); err != nil {
+				false /*setCurrent*/, yes, opts.Display, secretsProvider, false /*useRemoteConfig*/, configFile); err != nil {
 				return err
 			}
 			// The backend will print "Created stack '<stack>'." on success.
@@ -427,6 +429,7 @@ func NewUpCmd() *cobra.Command {
 			yes,
 			path,
 			opts.Display,
+			configFile,
 		); err != nil {
 			return err
 		}
@@ -447,7 +450,7 @@ func NewUpCmd() *cobra.Command {
 			}
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, pctx.Diag, ssml, s, proj)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, pctx.Diag, ssml, s, proj, configFile)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -639,7 +642,7 @@ func NewUpCmd() *cobra.Command {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
 					showReads, suppressOutputs, secretsProvider, &targets, &excludes, replaces, targetReplaces,
-					targetDependents, planFilePath, cmdStack.ConfigFile, runProgram)
+					targetDependents, planFilePath, configFile, runProgram)
 				if err != nil {
 					return err
 				}
@@ -714,7 +717,7 @@ func NewUpCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},

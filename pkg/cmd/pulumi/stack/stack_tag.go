@@ -80,6 +80,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 				*stack,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -126,6 +127,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 				*stack,
 				SetCurrent,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -189,6 +191,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 				*stack,
 				SetCurrent,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -233,6 +236,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 				*stack,
 				SetCurrent,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err

@@ -79,6 +79,7 @@ func NewStackCmd() *cobra.Command {
 				stackName,
 				OfferNew,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err

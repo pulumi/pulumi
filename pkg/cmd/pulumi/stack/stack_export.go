@@ -65,6 +65,7 @@ func newStackExportCmd() *cobra.Command {
 				stackName,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
