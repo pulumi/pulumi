@@ -2864,6 +2864,56 @@ func findNodeSDKBinPath() (string, error) {
 	return filepath.Join(strings.TrimSpace(string(stdout)), "sdk", "nodejs", "bin"), nil
 }
 
+// RunComponentSetup builds the testcomponent and/or testcomponent-python
+// fixtures under testDir for use as binary provider plugins (invoked via the
+// pulumi-resource-* wrapper scripts). The convention encodes the runtime, so
+// no PulumiPlugin.yaml lookup is needed here. The nodejs fixture is expected
+// to declare `postinstall: tsc` in its package.json so pnpm install also
+// builds bin/.
+//
+// Serializes concurrent callers against the same testDir (across goroutines
+// and across processes) so parallel tests sharing a fixture don't race on
+// pnpm/pip install.
+func RunComponentSetup(t *testing.T, testDir string) {
+	t.Helper()
+
+	ptesting.YarnInstallMutex.Lock()
+	defer ptesting.YarnInstallMutex.Unlock()
+
+	lockfile := filepath.Join(testDir, ".lock")
+	mu := fsutil.NewFileMutex(lockfile)
+	deadline := time.Now().Add(10 * time.Minute)
+	for {
+		if err := mu.Lock(); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for lock on %s", lockfile)
+		}
+		time.Sleep(time.Second)
+	}
+	defer func() {
+		require.NoError(t, mu.Unlock())
+	}()
+
+	if dir := filepath.Join(testDir, "testcomponent"); dirExists(dir) {
+		installNodejsProviderDependencies(t, dir)
+	}
+	if dir := filepath.Join(testDir, "testcomponent-python"); dirExists(dir) {
+		installPythonProviderDependencies(t, dir)
+	}
+}
+
+func dirExists(p string) bool {
+	stat, err := os.Stat(p)
+	return err == nil && stat.IsDir()
+}
+
+func fileExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
+}
+
 // InstallProviderDependencies installs a component provider's dependencies in
 // dir and pins @pulumi/pulumi (nodejs) or pulumi (python) to the locally-built
 // SDK so the provider runs against the in-tree code. The provider's runtime
@@ -2916,20 +2966,31 @@ func installNodejsProviderDependencies(t *testing.T, dir string) {
 }
 
 // installPythonProviderDependencies installs a python component provider's
-// dependencies via `pulumi install` (handling pyproject.toml/requirements.txt)
-// and then layers the locally-built core SDK on top.
+// dependencies and then layers the locally-built core SDK on top.
+//
+// If the dir has a project file (pyproject.toml or requirements.txt),
+// `pulumi install` resolves declared deps first. Plugin-only fixtures
+// (PulumiPlugin.yaml + __main__.py, like testcomponent-python) skip this
+// step — there are no project deps and `pulumi install` would have nothing
+// to do. The local SDK is then installed via `uv add --editable` (if the
+// project declares the uv toolchain *and* has a pyproject.toml uv can add to)
+// or via pip into a venv otherwise.
 func installPythonProviderDependencies(t *testing.T, dir string) {
 	t.Helper()
 
-	cmd := exec.Command("pulumi", "install")
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "`%s` in %s failed with output: %s", cmd.String(), cmd.Dir, string(out))
+	hasPyproject := fileExists(filepath.Join(dir, "pyproject.toml"))
+	hasRequirements := fileExists(filepath.Join(dir, "requirements.txt"))
+	if hasPyproject || hasRequirements {
+		cmd := exec.Command("pulumi", "install")
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "`%s` in %s failed with output: %s", cmd.String(), cmd.Dir, string(out))
+	}
 
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
 	require.NoError(t, err)
 
-	if isUvPythonProject(dir) {
+	if isUvPythonProject(dir) && hasPyproject {
 		cmd := exec.Command("uv", "add", "--editable", coreSDK)
 		cmd.Dir = dir
 		out, err := cmd.CombinedOutput()
@@ -2943,11 +3004,15 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 		Toolchain:  toolchain.Pip,
 	})
 	require.NoError(t, err)
-
-	cmd, err = tc.ModuleCommand(t.Context(), "pip", "install", coreSDK)
+	err = tc.EnsureVenv(t.Context(), dir,
+		false /* useLanguageVersionTools */, false, /* showOutput */
+		io.Discard, io.Discard)
 	require.NoError(t, err)
-	out, err = cmd.CombinedOutput()
-	require.NoError(t, err, "output: %s", out)
+
+	cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", "-e", coreSDK)
+	require.NoError(t, err)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "pip install -e %s in %s failed: %s", coreSDK, dir, out)
 }
 
 func isUvPythonProject(dir string) bool {

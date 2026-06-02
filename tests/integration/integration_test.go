@@ -850,7 +850,7 @@ func testConstructProviderPropagation(t *testing.T, lang string, deps []string) 
 		testDir      = "construct_component_provider_propagation"
 		componentDir = "testcomponent-go"
 	)
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join(testDir, lang),
@@ -892,7 +892,7 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 		testDir      = "construct_component_resource_options"
 		componentDir = "testcomponent-go"
 	)
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	validate := func(t *testing.T, resources []apitype.ResourceV3) {
 		urns := make(map[string]resource.URN) // name => URN

@@ -981,7 +981,7 @@ func TestConstructSlowNode(t *testing.T) {
 	var opts *integration.ProgramTestOptions
 
 	testDir := "construct_component_slow"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	opts = &integration.ProgramTestOptions{
 		Dir:            filepath.Join(testDir, "nodejs"),
@@ -1006,7 +1006,7 @@ func TestConstructPlainNode(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_plain"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -1064,7 +1064,7 @@ func TestConstructMethodsNode(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_methods"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -1123,7 +1123,7 @@ func TestConstructProviderNode(t *testing.T) {
 	t.Parallel()
 
 	const testDir = "construct_component_provider"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -1194,7 +1194,7 @@ func TestConstructNodeErrorApply(t *testing.T) {
 	dir := "construct_component_error_apply"
 	componentDir := "testcomponent"
 
-	runComponentSetup(t, dir)
+	integration.RunComponentSetup(t, dir)
 
 	stderr := &bytes.Buffer{}
 	expectedError := "intentional error from within an apply"
