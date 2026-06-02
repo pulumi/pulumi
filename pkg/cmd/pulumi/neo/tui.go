@@ -195,8 +195,7 @@ type ModelConfig struct {
 	TaskCreated bool
 	// HasDarkBackground selects light- or dark-friendly style variants for the
 	// whole TUI, including the textarea. runNeo detects it synchronously before
-	// the program starts (see the comment there) and defaults it to dark for
-	// terminals it can't probe.
+	// the program starts and defaults it to dark for terminals it can't probe.
 	HasDarkBackground bool
 }
 
@@ -235,9 +234,8 @@ type Model struct {
 	mdRenderer *glamour.TermRenderer
 	width      int
 	height     int
-	// hasDarkBackground selects light- or dark-friendly style variants. It is
-	// detected once before the program starts and seeded via
-	// ModelConfig.HasDarkBackground.
+	// hasDarkBackground selects light- or dark-friendly style variants;
+	// seeded from ModelConfig.HasDarkBackground.
 	hasDarkBackground bool
 	// frame advances on each spinner.TickMsg while busy and drives the
 	// shimmer animation on the busy block's label.
@@ -570,7 +568,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overlay.Refresh(m.toolHistory)
 		}
 
-		// Glamour bakes wrap width in at construction, so rebuild on resize.
 		m.rebuildMarkdownRenderer()
 		// Re-render every block at the new width. Live blocks (busy / streaming /
 		// open pulumi op) get reflected in View() on the next draw; committed
@@ -1214,7 +1211,7 @@ func (m Model) modeChips() string {
 // live width and a style matching the terminal background. Glamour bakes both
 // in at construction, so callers rebuild on resize. We pick the style
 // explicitly rather than via glamour.WithAutoStyle, which queries the terminal
-// in-band and would race bubbletea's input reader (see hasDarkBackground).
+// in-band and would race bubbletea's input reader (see runNeo).
 func (m *Model) rebuildMarkdownRenderer() {
 	style := "dark"
 	if !m.hasDarkBackground {
