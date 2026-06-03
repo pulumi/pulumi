@@ -62,6 +62,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -805,7 +806,12 @@ func NewImportCmd() *cobra.Command {
 					Args:         args,
 				})
 				if err != nil {
-					return err
+					rpcErr := rpcerror.Convert(err)
+					msg := strings.TrimSpace(rpcErr.Message())
+					if msg == "" {
+						return fmt.Errorf("converter %q failed: %w", from, err)
+					}
+					return fmt.Errorf("converter %q failed: %s", from, msg)
 				}
 
 				cmdDiag.PrintDiagnostics(sink, resp.Diagnostics)
