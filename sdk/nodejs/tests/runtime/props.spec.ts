@@ -514,9 +514,8 @@ describe("runtime", () => {
             const ok = Promise.resolve("fine");
             const rejected = Promise.reject(new Error("inner boom"));
 
-            await assert.rejects(
-                runtime.serializeProperties("test", { good: ok, badProp: rejected }),
-                (err: Error) => err.message.includes('"badProp"'),
+            await assert.rejects(runtime.serializeProperties("test", { good: ok, badProp: rejected }), (err: Error) =>
+                err.message.includes('"badProp"'),
             );
         });
 
@@ -524,9 +523,8 @@ describe("runtime", () => {
             const circular: any = {};
             circular.self = circular;
 
-            await assert.rejects(
-                runtime.serializeProperties("test", { badProp: circular }),
-                (err: Error) => err.message.includes('"badProp"'),
+            await assert.rejects(runtime.serializeProperties("test", { badProp: circular }), (err: Error) =>
+                err.message.includes('"badProp"'),
             );
         });
     });
