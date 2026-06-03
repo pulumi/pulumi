@@ -68,6 +68,7 @@ func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 				stack,
 				cmdStack.LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err

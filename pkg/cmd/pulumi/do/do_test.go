@@ -18,17 +18,22 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -591,4 +596,487 @@ Functions:
 	err = cmd.Execute()
 	require.NoError(t, err)
 	assert.Equal(t, expectedNestedModuleHelp, stdout.String())
+}
+
+func TestDoCmdUnknownTokenErrors(t *testing.T) {
+	t.Parallel()
+
+	formats := []struct {
+		name      string
+		meta      *schema.MetadataSpec
+		functions map[string]schema.FunctionSpec
+		resources map[string]schema.ResourceSpec
+		rawTokens []string
+	}{
+		{
+			name: "slash module format",
+			meta: &schema.MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
+			functions: map[string]schema.FunctionSpec{
+				"aws:s3/getObjects:getObjects": {},
+			},
+			resources: map[string]schema.ResourceSpec{
+				"aws:s3/bucket:Bucket":             {},
+				"aws:s3/bucketpolicy:BucketPolicy": {},
+			},
+			rawTokens: []string{
+				"aws:s3/getObjects:getObjects", "aws:s3/bucket:Bucket", "aws:s3/bucketpolicy:BucketPolicy",
+			},
+		},
+		{
+			name: "underscore module format",
+			meta: &schema.MetadataSpec{ModuleFormat: "(.*)(?:_[^_]*)"},
+			functions: map[string]schema.FunctionSpec{
+				"aws:s3_getObjects:getObjects": {},
+			},
+			resources: map[string]schema.ResourceSpec{
+				"aws:s3_bucket:Bucket":             {},
+				"aws:s3_bucketpolicy:BucketPolicy": {},
+			},
+			rawTokens: []string{
+				"aws:s3_getObjects:getObjects", "aws:s3_bucket:Bucket", "aws:s3_bucketpolicy:BucketPolicy",
+			},
+		},
+		{
+			name: "no module format",
+			meta: nil,
+			functions: map[string]schema.FunctionSpec{
+				"aws:s3:getObjects": {},
+			},
+			resources: map[string]schema.ResourceSpec{
+				"aws:s3:Bucket":       {},
+				"aws:s3:BucketPolicy": {},
+			},
+		},
+	}
+
+	table := []struct {
+		name           string
+		args           []string
+		wantContains   []string
+		wantNoContains []string
+	}{
+		{
+			name: "typo with downstream flag suggests function",
+			args: []string{"aws:s3:fgetObjects", "--input-file", "inputs.pcl"},
+			wantContains: []string{
+				`unknown function, resource, or module "aws:s3:fgetObjects"`, "Did you mean this?", "aws:s3:getObjects",
+			},
+			wantNoContains: []string{"unknown flag"},
+		},
+		{
+			name:         "wrong case suggests canonical token",
+			args:         []string{"aws:s3:bucket"},
+			wantContains: []string{`unknown function, resource, or module "aws:s3:bucket"`, "aws:s3:Bucket"},
+		},
+		{
+			name:         "small typo against nested-module schema",
+			args:         []string{"aws:s3:Buckt"},
+			wantContains: []string{`unknown function, resource, or module "aws:s3:Buckt"`, "aws:s3:Bucket"},
+		},
+		{
+			name:         "module typo suggests canonical sibling",
+			args:         []string{"aws:s4:Bucket"},
+			wantContains: []string{`unknown function, resource, or module "aws:s4:Bucket"`, "aws:s3:Bucket"},
+		},
+		{
+			name:           "two-segment typo suggests module",
+			args:           []string{"aws:s4"},
+			wantContains:   []string{`unknown function, resource, or module "aws:s4"`, "aws:s3"},
+			wantNoContains: []string{"aws:s3:Bucket"},
+		},
+		{
+			name:           "no near matches omits suggestion block",
+			args:           []string{"aws:s3:CompletelyDifferent"},
+			wantContains:   []string{`unknown function, resource, or module "aws:s3:CompletelyDifferent"`},
+			wantNoContains: []string{"Did you mean"},
+		},
+	}
+
+	for _, f := range formats {
+		t.Run(f.name, func(t *testing.T) {
+			t.Parallel()
+
+			loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+				return &testProvider{spec: schema.PackageSpec{
+					Name:      "aws",
+					Meta:      f.meta,
+					Functions: f.functions,
+					Resources: f.resources,
+				}}, nil
+			}
+
+			t.Run("known module resolves to help", func(t *testing.T) {
+				t.Parallel()
+
+				mlm := &cmdBackend.MockLoginManager{}
+				mws := &pkgWorkspace.MockContext{}
+
+				var stdout bytes.Buffer
+				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+				cmd.SetOut(&stdout)
+				cmd.SetErr(&stdout)
+				cmd.SetArgs([]string{"aws:s3"})
+				require.NoError(t, cmd.Execute())
+
+				out := stdout.String()
+				assert.Contains(t, out, "Functions and resources for the s3 module")
+				assert.Contains(t, out, "aws:s3:getObjects")
+				assert.Contains(t, out, "aws:s3:Bucket")
+				assert.NotContains(t, out, "unknown function, resource, or module")
+			})
+
+			for _, tc := range table {
+				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
+
+					mlm := &cmdBackend.MockLoginManager{}
+					mws := &pkgWorkspace.MockContext{}
+
+					var stdout bytes.Buffer
+					cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+					cmd.SetOut(&stdout)
+					cmd.SetErr(&stdout)
+					cmd.SetArgs(tc.args)
+					err := cmd.Execute()
+					require.Error(t, err)
+					msg := err.Error()
+					for _, want := range tc.wantContains {
+						assert.Contains(t, msg, want)
+					}
+					for _, notWant := range tc.wantNoContains {
+						assert.NotContains(t, msg, notWant)
+					}
+					// Suggestions are always canonicalized; the raw (non-canonical) token forms must
+					// never appear, regardless of module format.
+					for _, raw := range f.rawTokens {
+						assert.NotContains(t, msg, raw)
+					}
+				})
+			}
+		})
+	}
+
+	t.Run("parameterized package", func(t *testing.T) {
+		t.Parallel()
+
+		loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+			assert.Equal(t, "terraform-provider", source)
+			return &testProvider{
+				spec: schema.PackageSpec{
+					Name: "aws",
+					Meta: &schema.MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
+					Functions: map[string]schema.FunctionSpec{
+						"aws:s3/getAccessPoint:getAccessPoint": {},
+					},
+					Resources: map[string]schema.ResourceSpec{
+						"aws:s3/bucket:Bucket": {},
+					},
+				},
+				MockProvider: plugin.MockProvider{
+					ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+						args, ok := req.Parameters.(*plugin.ParameterizeArgs)
+						if assert.True(t, ok) {
+							assert.Equal(t, []string{"hashicorp/aws"}, args.Args)
+						}
+						return plugin.ParameterizeResponse{Name: "aws", Version: semver.MustParse("6.0.0")}, nil
+					},
+				},
+			}, nil
+		}
+
+		cases := []struct {
+			name           string
+			args           []string
+			wantContains   []string
+			wantNoContains []string
+		}{
+			{
+				name: "member typo suggests canonical subpackage token",
+				args: []string{"terraform-provider hashicorp/aws:s3:Buckt"},
+				wantContains: []string{
+					`unknown function, resource, or module "terraform-provider hashicorp/aws:s3:Buckt"`,
+					"Did you mean this?", "aws:s3:Bucket",
+				},
+			},
+			{
+				name:           "two-segment typo suggests canonical subpackage module",
+				args:           []string{"terraform-provider hashicorp/aws:s4"},
+				wantContains:   []string{`unknown function, resource, or module "terraform-provider hashicorp/aws:s4"`, "aws:s3"},
+				wantNoContains: []string{"aws:s3:Bucket", "terraform-provider hashicorp/aws:s3"},
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				mlm := &cmdBackend.MockLoginManager{}
+				mws := &pkgWorkspace.MockContext{}
+
+				var stdout bytes.Buffer
+				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+				cmd.SetOut(&stdout)
+				cmd.SetErr(&stdout)
+				cmd.SetArgs(tc.args)
+				err := cmd.Execute()
+				require.Error(t, err)
+				msg := err.Error()
+				for _, want := range tc.wantContains {
+					assert.Contains(t, msg, want)
+				}
+				for _, notWant := range tc.wantNoContains {
+					assert.NotContains(t, msg, notWant)
+				}
+			})
+		}
+	})
+}
+
+func TestDoCmdParameterizedModuleResolves(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "terraform-provider", source)
+		spec := schema.PackageSpec{
+			Name: "aws",
+			Meta: &schema.MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
+			Resources: map[string]schema.ResourceSpec{
+				"aws:s3/bucket:Bucket": {},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+					args, ok := req.Parameters.(*plugin.ParameterizeArgs)
+					if assert.True(t, ok) {
+						assert.Equal(t, []string{"hashicorp/aws"}, args.Args)
+					}
+					return plugin.ParameterizeResponse{Name: "aws", Version: semver.MustParse("6.0.0")}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"terraform-provider hashicorp/aws:s3"})
+	require.NoError(t, cmd.Execute())
+
+	out := stdout.String()
+	assert.Contains(t, out, "Functions and resources for the s3 module")
+	assert.Contains(t, out, "aws:s3:Bucket")
+	assert.NotContains(t, out, "unknown function, resource, or module")
+}
+
+func TestCurrentStackIdentity(t *testing.T) {
+	t.Parallel()
+
+	mockWS := func(stack string, newErr error) *pkgWorkspace.MockContext {
+		return &pkgWorkspace.MockContext{
+			NewF: func() (pkgWorkspace.W, error) {
+				if newErr != nil {
+					return nil, newErr
+				}
+				return &pkgWorkspace.MockW{
+					SettingsF: func() *pkgWorkspace.Settings {
+						return &pkgWorkspace.Settings{Stack: stack}
+					},
+				}, nil
+			},
+		}
+	}
+
+	table := []struct {
+		name    string
+		ws      pkgWorkspace.Context
+		wantOrg string
+		wantStk string
+	}{
+		{name: "fully qualified", ws: mockWS("acme/my-project/dev", nil), wantOrg: "acme", wantStk: "dev"},
+		{name: "legacy two-part", ws: mockWS("acme/dev", nil), wantOrg: "acme", wantStk: "dev"},
+		{name: "bare stack name", ws: mockWS("dev", nil), wantOrg: "", wantStk: "dev"},
+		{name: "no stack selected", ws: mockWS("", nil), wantOrg: "", wantStk: ""},
+		// New() can fail (e.g. no credentials file yet). The helper must not propagate that —
+		// `do` should still run with no project context.
+		{name: "workspace open fails", ws: mockWS("", errors.New("boom")), wantOrg: "", wantStk: ""},
+	}
+
+	for _, tc := range table {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			org, stk := currentStackIdentity(tc.ws)
+			assert.Equal(t, tc.wantOrg, org)
+			assert.Equal(t, tc.wantStk, stk)
+		})
+	}
+}
+
+// TestDoCmdFunctionInvokeWithStackContext exercises the end-to-end wiring: when a project is on disk
+// and a stack is selected in the workspace, `do` should expose the organization and short stack name
+// to PCL input files via the pulumi.organization / pulumi.stack builtins.
+func TestDoCmdFunctionInvokeWithStackContext(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name:    tokens.PackageName("my-project"),
+				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
+			}, root, nil
+		},
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "acme/my-project/dev"}
+				},
+			}, nil
+		},
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"organization": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"project":      {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"stack":        {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"ok": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "acme", req.Args["organization"].StringValue())
+					assert.Equal(t, "my-project", req.Args["project"].StringValue())
+					assert.Equal(t, "dev", req.Args["stack"].StringValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{
+							"ok": resource.NewProperty(true),
+						},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	inputFile := writeHCLFile(t, "inputs.pcl", `
+organization = organization()
+project = project()
+stack = stack()
+`)
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	require.NoError(t, cmd.Execute())
+}
+
+// TestDoCmdFunctionInvokeWithoutStackContext asserts that when a project is present but no stack is
+// selected in the workspace, `do` still runs — and calling pulumi.organization() / pulumi.stack() in
+// the input file surfaces a clear "not supported" error rather than crashing or silently passing an
+// empty string. Mirrors the behavior of the PCL builtin when the eval context's value is empty.
+func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name:    tokens.PackageName("my-project"),
+				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
+			}, root, nil
+		},
+		// Default NewF returns workspace.ErrProjectNotFound which currentStackIdentity must tolerate.
+	}
+
+	makeSpec := func() schema.PackageSpec {
+		return schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"project":      {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"organization": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"stack":        {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"ok": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	// Sub-case 1: only project() is referenced — currentStackIdentity returns ("", "") but the
+	// command should still succeed because project() doesn't depend on the stack identity.
+	t.Run("project-only input succeeds", func(t *testing.T) {
+		t.Parallel()
+		loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+			return &testProvider{
+				spec: makeSpec(),
+				MockProvider: plugin.MockProvider{
+					InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+						assert.Equal(t, "my-project", req.Args["project"].StringValue())
+						return plugin.InvokeResponse{
+							Properties: resource.PropertyMap{"ok": resource.NewProperty(true)},
+						}, nil
+					},
+				},
+			}, nil
+		}
+
+		inputFile := writeHCLFile(t, "inputs.pcl", `project = project()`)
+
+		var stdout bytes.Buffer
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+		cmd.SetOut(&stdout)
+		cmd.SetErr(&stdout)
+		cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+		require.NoError(t, cmd.Execute())
+	})
+
+	// Sub-case 2: referencing organization() / stack() with no stack selected errors with the
+	// "not supported" message from the PCL runtime (same behavior as `pulumi up` outside a stack).
+	t.Run("organization/stack reference errors", func(t *testing.T) {
+		t.Parallel()
+		loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+			return &testProvider{spec: makeSpec()}, nil
+		}
+
+		inputFile := writeHCLFile(t, "inputs.pcl", `organization = organization()`)
+
+		var stdout bytes.Buffer
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+		cmd.SetOut(&stdout)
+		cmd.SetErr(&stdout)
+		cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+		err := cmd.Execute()
+		require.ErrorContains(t, err, "organization is not supported")
+	})
 }

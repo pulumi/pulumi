@@ -40,6 +40,7 @@ import (
 
 func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stackName string
+	var configFile string
 	var follow bool
 	var since string
 	var resource string
@@ -74,12 +75,13 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 				stackName,
 				cmdStack.LoadOnly,
 				opts,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -201,7 +203,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	logsCmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	logsCmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")

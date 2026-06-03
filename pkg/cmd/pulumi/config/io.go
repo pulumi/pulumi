@@ -44,8 +44,9 @@ func GetStackConfiguration(
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
+	configFile string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil)
+	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile)
 }
 
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
@@ -60,6 +61,7 @@ func GetStackConfigurationOrLatest(
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
+	configFile string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(
 		ctx, sink, ssml, stack, project,
@@ -71,7 +73,8 @@ func GetStackConfigurationOrLatest(
 				return latest.Config, err
 			}
 			return nil, err
-		})
+		},
+		configFile)
 }
 
 func getStackConfigurationWithFallback(
@@ -81,8 +84,9 @@ func getStackConfigurationWithFallback(
 	s backend.Stack,
 	project *workspace.Project,
 	fallbackGetConfig func(err error) (config.Map, error), // optional
+	configFile string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	workspaceStack, err := cmdStack.LoadProjectStack(ctx, sink, project, s)
+	workspaceStack, err := cmdStack.LoadProjectStack(ctx, sink, project, s, configFile)
 	if err != nil || workspaceStack == nil {
 		if fallbackGetConfig == nil {
 			return backend.StackConfiguration{}, nil, err
@@ -98,7 +102,7 @@ func getStackConfigurationWithFallback(
 		}
 	}
 
-	sm, err := getAndSaveSecretsManager(ctx, ssml, s, workspaceStack)
+	sm, err := getAndSaveSecretsManager(ctx, ssml, s, workspaceStack, configFile)
 	if err != nil {
 		return backend.StackConfiguration{}, nil, err
 	}
@@ -178,13 +182,14 @@ func getAndSaveSecretsManager(
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
+	configFile string,
 ) (secrets.Manager, error) {
 	sm, state, err := ssml.GetSecretsManager(ctx, stack, workspaceStack)
 	if err != nil {
 		return nil, fmt.Errorf("get stack secrets manager: %w", err)
 	}
 	if state != cmdStack.SecretsManagerUnchanged {
-		err = cmdStack.SaveProjectStack(ctx, stack, workspaceStack)
+		err = cmdStack.SaveProjectStack(ctx, stack, workspaceStack, configFile)
 		if err != nil && state == cmdStack.SecretsManagerMustSave {
 			return nil, fmt.Errorf("save stack config: %w", err)
 		}
@@ -250,6 +255,7 @@ func copySingleConfigKey(
 	currentProjectStack *workspace.ProjectStack,
 	destinationStack backend.Stack,
 	destinationProjectStack *workspace.ProjectStack,
+	configFile string,
 ) error {
 	var decrypter config.Decrypter
 	key, err := ParseConfigKey(pkgWorkspace.Instance, configKey, path)
@@ -293,7 +299,7 @@ func copySingleConfigKey(
 		return err
 	}
 
-	return cmdStack.SaveProjectStack(ctx, destinationStack, destinationProjectStack)
+	return cmdStack.SaveProjectStack(ctx, destinationStack, destinationProjectStack, configFile)
 }
 
 func parseKeyValuePair(pair string, path bool) (config.Key, string, error) {

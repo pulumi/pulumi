@@ -91,6 +91,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
 				},
+				"",
 			)
 			if err != nil {
 				return err
@@ -106,6 +107,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
 				},
+				"",
 			)
 			if err != nil {
 				return err
@@ -211,7 +213,7 @@ func (cmd *stateMoveCmd) Run(
 		if err != nil {
 			return err
 		}
-		ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, dest)
+		ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, dest, "")
 		if err != nil {
 			return err
 		}

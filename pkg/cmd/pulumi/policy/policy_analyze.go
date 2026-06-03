@@ -102,7 +102,7 @@ func newPolicyAnalyzeCmd(
 
 			// Get the stack.
 			displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-			s, err := cmdStack.RequireStack(ctx, cmdutil.Diag(), ws, lm, stack, cmdStack.LoadOnly, displayOpts)
+			s, err := cmdStack.RequireStack(ctx, cmdutil.Diag(), ws, lm, stack, cmdStack.LoadOnly, displayOpts, "")
 			if err != nil {
 				return err
 			}

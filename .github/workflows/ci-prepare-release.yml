@@ -61,9 +61,11 @@ jobs:
           SHA=$(git rev-parse HEAD)
           ./.github/scripts/set-output sha "$SHA"
       - name: Download all artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          path: artifacts.tmp
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            path: artifacts.tmp
       - name: Remove performance test artifacts
         run: rm -rf artifacts.tmp/*-perf
       - name: Remove integration test artifacts
@@ -93,21 +95,23 @@ jobs:
         run: |
           mkdir -p ./artifacts
           mv ./artifacts.tmp/artifacts-*/* ./artifacts
-      - uses: ncipollo/release-action@3d2de22e3d0beab188d8129c27f103d8e91bf13a
+      - uses: ./.github/actions/retry
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          name: v${{ inputs.version }}
-          tag: v${{ inputs.version }}
-          commit: "${{ fromJSON(steps.commit-info.outputs.sha) }}"
-          draft: ${{ inputs.draft }}
-          prerelease: ${{ inputs.prerelease }}
-          allowUpdates: true
+          action: ncipollo/release-action@3d2de22e3d0beab188d8129c27f103d8e91bf13a
+          with: |
+            token: ${{ secrets.GITHUB_TOKEN }}
+            name: v${{ inputs.version }}
+            tag: v${{ inputs.version }}
+            commit: "${{ fromJSON(steps.commit-info.outputs.sha) }}"
+            draft: ${{ inputs.draft }}
+            prerelease: ${{ inputs.prerelease }}
+            allowUpdates: true
 
-          body: |
-            ${{ inputs.release-notes }}
+            body: |
+              ${{ inputs.release-notes }}
 
-          removeArtifacts: true
-          replacesArtifacts: true
-          artifactErrorsFailBuild: true
-          artifacts: |
-            artifacts/*
+            removeArtifacts: true
+            replacesArtifacts: true
+            artifactErrorsFailBuild: true
+            artifacts: |
+              artifacts/*

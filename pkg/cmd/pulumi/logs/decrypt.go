@@ -134,7 +134,7 @@ func decryptPLOG(
 	s, err := cmdStack.RequireStack(
 		ctx, cmdutil.Diag(), ws,
 		cmdBackend.DefaultLoginManager,
-		stackName, cmdStack.LoadOnly, opts,
+		stackName, cmdStack.LoadOnly, opts, "",
 	)
 	if err != nil {
 		return fmt.Errorf("loading stack %q for decryption: %w", stackName, err)

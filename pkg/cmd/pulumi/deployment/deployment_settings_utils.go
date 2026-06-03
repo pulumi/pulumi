@@ -30,20 +30,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-var stackDeploymentConfigFile string
-
-func loadProjectStackDeployment(stack backend.Stack) (*workspace.ProjectStackDeployment, error) {
-	if stackDeploymentConfigFile == "" {
+func loadProjectStackDeployment(
+	stack backend.Stack, configFile string,
+) (*workspace.ProjectStackDeployment, error) {
+	if configFile == "" {
 		return workspace.DetectProjectStackDeployment(stack.Ref().Name().Q())
 	}
-	return workspace.LoadProjectStackDeployment(stackDeploymentConfigFile)
+	return workspace.LoadProjectStackDeployment(configFile)
 }
 
-func saveProjectStackDeployment(psd *workspace.ProjectStackDeployment, stack backend.Stack) error {
-	if stackDeploymentConfigFile == "" {
+func saveProjectStackDeployment(
+	psd *workspace.ProjectStackDeployment, stack backend.Stack, configFile string,
+) error {
+	if configFile == "" {
 		return workspace.SaveProjectStackDeployment(stack.Ref().Name().Q(), psd)
 	}
-	return psd.Save(stackDeploymentConfigFile)
+	return psd.Save(configFile)
 }
 
 type prompts interface {

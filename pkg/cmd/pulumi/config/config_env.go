@@ -36,7 +36,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
+func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string, configFile *string) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		diags:            cmdutil.Diag(),
@@ -45,6 +45,7 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 		loadProjectStack: cmdStack.LoadProjectStack,
 		saveProjectStack: cmdStack.SaveProjectStack,
 		stackRef:         stackRef,
+		configFile:       configFile,
 	}
 
 	cmd := &cobra.Command{
@@ -86,6 +87,7 @@ type configEnvCmd struct {
 		stackName string,
 		lopt cmdStack.LoadOption,
 		opts display.Options,
+		configFile string,
 	) (backend.Stack, error)
 
 	loadProjectStack func(
@@ -93,11 +95,13 @@ type configEnvCmd struct {
 		diags diag.Sink,
 		project *workspace.Project,
 		stack backend.Stack,
+		configFile string,
 	) (*workspace.ProjectStack, error)
 
-	saveProjectStack func(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) error
+	saveProjectStack func(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack, configFile string) error
 
-	stackRef *string
+	stackRef   *string
+	configFile *string
 }
 
 func (cmd *configEnvCmd) initArgs() {
@@ -124,6 +128,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		*cmd.stackRef,
 		cmdStack.OfferNew|cmdStack.SetCurrent,
 		opts,
+		*cmd.configFile,
 	)
 	if err != nil {
 		return nil, nil, nil, err
@@ -134,7 +139,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	projectStack, err := cmd.loadProjectStack(ctx, cmd.diags, project, stack)
+	projectStack, err := cmd.loadProjectStack(ctx, cmd.diags, project, stack, *cmd.configFile)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -207,6 +212,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		showSecrets,
 		false, /*jsonOut*/
 		false, /*openEnvironment*/
+		*cmd.configFile,
 	); err != nil {
 		return err
 	}
@@ -222,7 +228,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		}
 	}
 
-	if err = cmd.saveProjectStack(ctx, *stack, projectStack); err != nil {
+	if err = cmd.saveProjectStack(ctx, *stack, projectStack, *cmd.configFile); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil

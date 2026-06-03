@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: sdk/go.mod
       - uses: miniscruff/changie-action@v2

@@ -1,0 +1,6 @@
+component: cli/do
+kind: improvement
+body: Suggest similar tokens when an unknown token is passed to `pulumi do`
+time: 2026-05-28T12:51:38.035196+02:00
+custom:
+    PR: 23341

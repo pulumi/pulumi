@@ -22,6 +22,7 @@ import (
 )
 
 func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
+	var stackDeploymentConfigFile string
 	cmd := &cobra.Command{
 		Use:   "deployment",
 		Short: "[EXPERIMENTAL] Manage stack deployments on Pulumi Cloud",
@@ -39,7 +40,7 @@ func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 		&stackDeploymentConfigFile, "config-file", "",
 		"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml")
 
-	cmd.AddCommand(newDeploymentSettingsCmd())
+	cmd.AddCommand(newDeploymentSettingsCmd(&stackDeploymentConfigFile))
 	cmd.AddCommand(newDeploymentRunCmd(ws))
 	cmd.AddCommand(newDeploymentListCmd())
 	cmd.AddCommand(newDeploymentGetCmd())
