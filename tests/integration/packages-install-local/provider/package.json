@@ -1,4 +1,6 @@
 {
     "name": "provider",
-    "dependencies": {}
+    "dependencies": {
+        "@pulumi/pulumi": "latest"
+    }
 }

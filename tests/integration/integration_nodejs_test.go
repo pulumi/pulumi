@@ -3169,7 +3169,11 @@ func TestNodejsComponentInjectNamespace(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("github_component", "nodejs"))
-	integration.InstallNodejsDependencies(t, e.RootPath)
+	// Use npm so the subsequent `pulumi install` (which mutates package.json
+	// to add the moolumi SDK) doesn't trip pnpm's frozen-lockfile default
+	// in CI. See pnpm-notes.md.
+	e.CWD = e.RootPath
+	e.RunCommandWithRetry("npm", "install", integration.FindNodeSDKBinPath(e.T))
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "github_component", "--create")
