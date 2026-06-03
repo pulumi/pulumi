@@ -524,12 +524,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderBlock(&m.blocks[i])
 		}
 		if firstSize {
-			rendered := []string{m.welcome.View()}
-			for _, b := range m.blocks {
-				if isCommittedKind(b) && b.rendered != "" {
-					rendered = append(rendered, b.rendered)
-				}
-			}
+			rendered := m.committedScrollback()
 			// 50ms covers ~3 ticks at bubbletea's 60Hz default — see
 			// firstFlushReadyMsg for why we defer at all.
 			cmds = append(cmds, tea.Tick(50*time.Millisecond, func(time.Time) tea.Msg {
@@ -541,6 +536,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, r := range msg.rendered {
 			cmds = append(cmds, m.printlnBlock(r))
 		}
+
+	case tea.ResumeMsg:
+		// Resuming from a Ctrl+Z suspend (via `fg`): bubbletea repaints only the
+		// live frame, but the committed transcript was emitted to scrollback via
+		// tea.Println and isn't redrawn. Clear the viewport and re-emit the
+		// committed blocks so the session reads continuously after `fg`. Reset
+		// hasEmittedScrollback so the first re-emitted block skips its leading
+		// blank line, matching the initial flush. Sequence keeps the clear ahead
+		// of the prints and the prints in transcript order.
+		m.hasEmittedScrollback = false
+		seq := []tea.Cmd{tea.ClearScreen}
+		for _, r := range m.committedScrollback() {
+			seq = append(seq, m.printlnBlock(r))
+		}
+		return m, tea.Sequence(seq...)
 
 	case ctrlCDisarmMsg:
 		// Stale tick: the user already pressed another key (gen still
@@ -1216,6 +1226,20 @@ func (m *Model) commitBlock(b block) tea.Cmd {
 		return nil
 	}
 	return m.printlnBlock(b.rendered)
+}
+
+// committedScrollback returns the welcome banner followed by every committed
+// block's rendered text, in transcript order — i.e. everything that belongs in
+// terminal scrollback. Used for the initial flush and to re-emit the transcript
+// after a suspend/resume.
+func (m Model) committedScrollback() []string {
+	out := []string{m.welcome.View()}
+	for _, b := range m.blocks {
+		if isCommittedKind(b) && b.rendered != "" {
+			out = append(out, b.rendered)
+		}
+	}
+	return out
 }
 
 // printlnBlock emits rendered to scrollback, prepending a blank line so each

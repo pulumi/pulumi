@@ -59,6 +59,16 @@ func collectPrintln(cmd tea.Cmd) []string {
 		}
 		return out
 	}
+	// tea.Sequence yields an unexported sequenceMsg ([]Cmd); walk it like a batch.
+	if sv := reflect.ValueOf(msg); sv.Kind() == reflect.Slice && sv.Type().Name() == "sequenceMsg" {
+		var out []string
+		for i := range sv.Len() {
+			if c, ok := sv.Index(i).Interface().(tea.Cmd); ok {
+				out = append(out, collectPrintln(c)...)
+			}
+		}
+		return out
+	}
 	v := reflect.ValueOf(msg)
 	if v.Kind() == reflect.Struct && v.Type().Name() == "printLineMessage" {
 		if f := v.FieldByName("messageBody"); f.IsValid() && f.Kind() == reflect.String {
@@ -527,6 +537,50 @@ func TestModel_Update_KeyCtrlZ_Suspends(t *testing.T) {
 		_, ok := cmd().(tea.SuspendMsg)
 		assert.True(t, ok, "Ctrl+Z must suspend even while the agent is busy")
 	})
+}
+
+func TestModel_CommittedScrollback(t *testing.T) {
+	t.Parallel()
+
+	// committedScrollback feeds both the initial flush and the resume reprint:
+	// the welcome banner first, then committed blocks in order, skipping live
+	// blocks (e.g. the busy spinner) and empty renders.
+	m := NewModel(ModelConfig{})
+	m.blocks = []block{
+		{kind: blockUserMessage, rendered: "user one"},
+		{kind: blockBusy, rendered: "spinner"}, // live — excluded
+		{kind: blockAssistantFinal, rendered: "assistant one"},
+		{kind: blockError, rendered: ""}, // empty — excluded
+	}
+
+	got := m.committedScrollback()
+	require.GreaterOrEqual(t, len(got), 3, "want welcome + two committed blocks")
+	assert.Equal(t, m.welcome.View(), got[0], "welcome banner must lead")
+	assert.Equal(t, []string{"user one", "assistant one"}, got[1:],
+		"committed blocks in order, live and empty blocks dropped")
+}
+
+func TestModel_Update_Resume_ReprintsTranscript(t *testing.T) {
+	t.Parallel()
+
+	// On resume from a Ctrl+Z suspend, the committed transcript must be re-emitted
+	// to scrollback, since bubbletea only repaints the live frame. The first
+	// re-emitted block carries no leading blank line (hasEmittedScrollback reset),
+	// matching the initial flush.
+	m := NewModel(ModelConfig{})
+	m.hasEmittedScrollback = true // simulate a session that already printed
+	m.blocks = []block{
+		{kind: blockUserMessage, rendered: "user one"},
+		{kind: blockAssistantFinal, rendered: "assistant one"},
+	}
+
+	_, cmd := m.Update(tea.ResumeMsg{})
+	require.NotNil(t, cmd)
+
+	printed := collectPrintln(cmd)
+	want := []string{m.welcome.View(), "\nuser one", "\nassistant one"}
+	assert.Equal(t, want, printed,
+		"resume must reprint welcome + committed blocks, first without a leading blank")
 }
 
 func TestModel_Update_KeyCtrlD_BehavesLikeCtrlC(t *testing.T) {
