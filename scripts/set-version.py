@@ -26,6 +26,14 @@ def main():
     with open("sdk/.version", "w+") as f:
         f.write(version + "\n")
 
+    # Drop a marker so the on-merge gate can block any other PR from merging
+    # between the freeze PR and the post-release changelog/go.mod PR (which
+    # removes this file). Stage it eagerly so it can't be left out of the
+    # freeze commit by accident.
+    with open(".release-pending", "w") as f:
+        f.write(f"v{version}\n")
+    subprocess.run(["git", "add", ".release-pending"], check=True)
+
     node = open("sdk/nodejs/package.json").readlines()
     replace_line(node, "    \"version\":", f'    "version": "{version}",\n')
     with open("sdk/nodejs/package.json", "w") as f:
