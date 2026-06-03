@@ -59,17 +59,17 @@ func collectPrintln(cmd tea.Cmd) []string {
 		}
 		return out
 	}
+	v := reflect.ValueOf(msg)
 	// tea.Sequence yields an unexported sequenceMsg ([]Cmd); walk it like a batch.
-	if sv := reflect.ValueOf(msg); sv.Kind() == reflect.Slice && sv.Type().Name() == "sequenceMsg" {
+	if v.Kind() == reflect.Slice && v.Type().Name() == "sequenceMsg" {
 		var out []string
-		for i := range sv.Len() {
-			if c, ok := sv.Index(i).Interface().(tea.Cmd); ok {
+		for i := 0; i < v.Len(); i++ {
+			if c, ok := v.Index(i).Interface().(tea.Cmd); ok {
 				out = append(out, collectPrintln(c)...)
 			}
 		}
 		return out
 	}
-	v := reflect.ValueOf(msg)
 	if v.Kind() == reflect.Struct && v.Type().Name() == "printLineMessage" {
 		if f := v.FieldByName("messageBody"); f.IsValid() && f.Kind() == reflect.String {
 			return []string{f.String()}
@@ -554,10 +554,9 @@ func TestModel_CommittedScrollback(t *testing.T) {
 	}
 
 	got := m.committedScrollback()
-	require.GreaterOrEqual(t, len(got), 3, "want welcome + two committed blocks")
-	assert.Equal(t, m.welcome.View(), got[0], "welcome banner must lead")
-	assert.Equal(t, []string{"user one", "assistant one"}, got[1:],
-		"committed blocks in order, live and empty blocks dropped")
+	want := []string{m.welcome.View(), "user one", "assistant one"}
+	assert.Equal(t, want, got,
+		"welcome leads, committed blocks follow in order, live and empty blocks dropped")
 }
 
 func TestModel_Update_Resume_ReprintsTranscript(t *testing.T) {
