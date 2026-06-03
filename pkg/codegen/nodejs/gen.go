@@ -399,7 +399,7 @@ func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, in
 		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType:
 			return base, true
 		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty:
-			property = camel(ref.Property)
+			property = cgstrings.Camel(ref.Property)
 		}
 
 		if property == "" {
