@@ -546,8 +546,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// blank line, matching the initial flush. Sequence keeps the clear ahead
 		// of the prints and the prints in transcript order.
 		m.hasEmittedScrollback = false
-		seq := []tea.Cmd{tea.ClearScreen}
-		for _, r := range m.committedScrollback() {
+		scrollback := m.committedScrollback()
+		seq := make([]tea.Cmd, 0, 1+len(scrollback))
+		seq = append(seq, tea.ClearScreen)
+		for _, r := range scrollback {
 			seq = append(seq, m.printlnBlock(r))
 		}
 		return m, tea.Sequence(seq...)
