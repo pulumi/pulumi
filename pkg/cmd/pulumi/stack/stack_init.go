@@ -41,8 +41,9 @@ const (
 func newStackInitCmd() *cobra.Command {
 	var sicmd stackInitCmd
 	cmd := &cobra.Command{
-		Use:   "init",
-		Short: "Create an empty stack with the given name, ready for updates",
+		Use:     "init",
+		Aliases: []string{"new"},
+		Short:   "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
 			"This command creates an empty stack with the given name.  It has no resources,\n" +

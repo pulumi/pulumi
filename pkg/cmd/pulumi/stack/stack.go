@@ -120,7 +120,6 @@ func NewStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackChangeSecretsProviderCmd())
 	cmd.AddCommand(newStackHistoryCmd())
 	cmd.AddCommand(newStackUnselectCmd())
-	cmd.AddCommand(newStackNewCmd())
 	cmd.AddCommand(newStackGetCmd())
 	cmd.AddCommand(newStackDriftCmd())
 	cmd.AddCommand(newStackScheduleCmd())
