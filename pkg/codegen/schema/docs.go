@@ -15,9 +15,11 @@
 package schema
 
 import (
+	"context"
 	"net/url"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -55,13 +57,19 @@ func interpretPulumiRefs(
 		case DocRefKindUnknown:
 			subdiags = hcl.Diagnostics{errorf(path, "invalid doc ref: %s", cref.Destination)}
 		case DocRefKindResource, DocRefKindResourceProperty, DocRefKindResourceInputProperty:
-			res, ok := types.resources[string(iref.Token)]
-			if !ok {
+			res, ok, err := types.lookupResourceForDocRef(iref)
+			switch {
+			case err != nil:
+				subdiags = hcl.Diagnostics{errorf(path,
+					"resolving reference to resource '%s': %v", iref.Ref[1:], err)}
+			case !ok:
 				subdiags = hcl.Diagnostics{errorf(path, "reference to resource '%s' not found in package %s",
 					iref.Ref[1:], types.pkg.Name)}
-			} else {
+			default:
 				ref.Type = res
 				switch iref.Kind { //nolint:exhaustive
+				case DocRefKindResource:
+					// Top-level resource ref; no property to validate.
 				case DocRefKindResourceProperty:
 					if !hasPropertyNamed(res.Resource.Properties, iref.Property) {
 						subdiags = hcl.Diagnostics{errorf(path,
@@ -77,11 +85,15 @@ func interpretPulumiRefs(
 				}
 			}
 		case DocRefKindType, DocRefKindTypeProperty:
-			typ, ok := types.typeDefs[string(iref.Token)]
-			if !ok {
+			typ, ok, err := types.lookupTypeForDocRef(iref)
+			switch {
+			case err != nil:
+				subdiags = hcl.Diagnostics{errorf(path,
+					"resolving reference to type '%s': %v", iref.Ref[1:], err)}
+			case !ok:
 				subdiags = hcl.Diagnostics{errorf(path, "reference to type '%s' not found in package %s",
 					iref.Ref[1:], types.pkg.Name)}
-			} else {
+			default:
 				ref.Type = typ
 				if iref.Kind == DocRefKindTypeProperty {
 					obj, isObj := typ.(*ObjectType)
@@ -95,13 +107,19 @@ func interpretPulumiRefs(
 				}
 			}
 		case DocRefKindFunction, DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
-			fun, has := types.functionDefs[string(iref.Token)]
-			if !has {
+			fun, has, err := types.lookupFunctionForDocRef(iref)
+			switch {
+			case err != nil:
+				subdiags = hcl.Diagnostics{errorf(path,
+					"resolving reference to function '%s': %v", iref.Ref[1:], err)}
+			case !has:
 				subdiags = hcl.Diagnostics{errorf(path, "reference to function '%s' not found in package %s",
 					iref.Ref[1:], types.pkg.Name)}
-			} else {
+			default:
 				ref.Function = fun
 				switch iref.Kind { //nolint:exhaustive
+				case DocRefKindFunction:
+					// Top-level function ref; no property to validate.
 				case DocRefKindFunctionInputProperty:
 					if fun.Inputs == nil {
 						subdiags = hcl.Diagnostics{errorf(path,
@@ -163,6 +181,80 @@ func hasPropertyNamed(props []*Property, name string) bool {
 		}
 	}
 	return false
+}
+
+// externalPackageForDocRef loads the external package the ref points to, or returns (nil, false, nil)
+// if the ref is into the current package. The descriptor is taken from the current package's
+// Dependencies list when one matches the ref's package name and version; otherwise a bare descriptor
+// constructed from the ref's package name and version is used.
+func (t *types) externalPackageForDocRef(iref internalDocRef) (PackageReference, bool, error) {
+	if iref.Package == "" {
+		return nil, false, nil
+	}
+	var descriptor *PackageDescriptor
+	for i := range t.pkg.Dependencies {
+		d := &t.pkg.Dependencies[i]
+		name := d.Name
+		version := d.Version
+		if d.Parameterization != nil {
+			name = d.Parameterization.Name
+			version = &d.Parameterization.Version
+		}
+		if name == iref.Package && versionEquals(version, iref.Version) {
+			descriptor = d
+			break
+		}
+	}
+	if descriptor == nil {
+		descriptor = &PackageDescriptor{Name: iref.Package, Version: iref.Version}
+	}
+	pkg, err := LoadPackageReferenceV2(context.TODO(), t.loader, descriptor)
+	if err != nil {
+		return nil, true, err
+	}
+	return pkg, true, nil
+}
+
+// lookupResourceForDocRef resolves a resource doc ref to its *ResourceType, in either the current
+// package or an external package reachable via Dependencies.
+func (t *types) lookupResourceForDocRef(iref internalDocRef) (*ResourceType, bool, error) {
+	pkg, external, err := t.externalPackageForDocRef(iref)
+	if err != nil {
+		return nil, false, err
+	}
+	if !external {
+		rt, ok := t.resources[string(iref.Token)]
+		return rt, ok, nil
+	}
+	return pkg.Resources().GetType(string(iref.Token))
+}
+
+// lookupTypeForDocRef resolves a type doc ref to its Type definition, in either the current package
+// or an external package reachable via Dependencies.
+func (t *types) lookupTypeForDocRef(iref internalDocRef) (Type, bool, error) {
+	pkg, external, err := t.externalPackageForDocRef(iref)
+	if err != nil {
+		return nil, false, err
+	}
+	if !external {
+		typ, ok := t.typeDefs[string(iref.Token)]
+		return typ, ok, nil
+	}
+	return pkg.Types().Get(string(iref.Token))
+}
+
+// lookupFunctionForDocRef resolves a function doc ref to its *Function, in either the current package
+// or an external package reachable via Dependencies.
+func (t *types) lookupFunctionForDocRef(iref internalDocRef) (*Function, bool, error) {
+	pkg, external, err := t.externalPackageForDocRef(iref)
+	if err != nil {
+		return nil, false, err
+	}
+	if !external {
+		fun, ok := t.functionDefs[string(iref.Token)]
+		return fun, ok, nil
+	}
+	return pkg.Functions().Get(string(iref.Token))
 }
 
 // DocRefKind identifies what kind of schema entity a doc ref points to (a resource, function, type, or a
@@ -287,32 +379,67 @@ type internalDocRef struct {
 	Ref string
 	// The type of the parsed ref
 	Kind DocRefKind
+	// Package is the name of the package the ref points to. Empty for refs into the current package.
+	Package string
+	// Version is the version of the external package the ref points to, or nil if not specified.
+	Version *semver.Version
 	// The token of the resource, function, or type, or empty if not applicable.
 	Token tokens.Type
 	// The referenced property name, or empty if not applicable.
 	Property string
 }
 
-// Parses a doc reference string into a DocRef struct.
-// The supported formats of the ref is:
+// Parses a doc reference string into an internalDocRef. The supported formats mirror schema `$ref`: a
+// fragment-only ref points to the current package, and a ref with a `/{pkg}/{version}/schema.json`
+// path prefix points to a package in the Dependencies list.
 //
 //	#/resources/{token}
 //	#/functions/{token}
 //	#/types/{token}
 //	#/resources/{token}/properties/{property}
 //	#/resources/{token}/inputProperties/{property}
-//	#/functions/{token}/inputProperties/{property}
-//	#/functions/{token}/outputProperties/{property}
+//	#/functions/{token}/inputs/properties/{property}
+//	#/functions/{token}/outputs/properties/{property}
 //	#/types/{token}/properties/{property}
+//	/{pkg}/{version}/schema.json#/resources/{token}
+//	...etc, with any of the fragments above.
 //
 // Note: Tokens containing a slash ("/") must be encoded as "%2F".
 func parseDocRef(ref string) internalDocRef {
 	docRefUnknown := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
-	parts := strings.Split(ref, "/")
-	if len(parts) < 3 || parts[0] != "#" {
+
+	parsedURL, err := url.Parse(ref)
+	if err != nil {
 		return docRefUnknown
 	}
-	// Extract which top-level type the ref is referring to.
+
+	// A path indicates an external schema (e.g. `/aws/v6.0.0/schema.json`); a bare fragment refers
+	// to the current package.
+	var pkgName string
+	var pkgVersion *semver.Version
+	if parsedURL.Path != "" {
+		pathStr, err := url.PathUnescape(parsedURL.Path)
+		if err != nil {
+			return docRefUnknown
+		}
+		m := refPathRegex.FindStringSubmatch(pathStr)
+		if len(m) != 3 {
+			return docRefUnknown
+		}
+		pkgName = m[1]
+		v, err := semver.ParseTolerant(m[2])
+		if err != nil {
+			return docRefUnknown
+		}
+		pkgVersion = &v
+	}
+
+	parts := strings.Split(parsedURL.EscapedFragment(), "/")
+	// EscapedFragment returns "/resources/token" for `#/resources/token`, so parts[0] is the empty
+	// string between the leading slash and the rest.
+	if len(parts) < 3 || parts[0] != "" {
+		return docRefUnknown
+	}
 	var topLevelType string
 	switch parts[1] {
 	case "resources", "functions", "types":
@@ -330,8 +457,11 @@ func parseDocRef(ref string) internalDocRef {
 		return docRefUnknown
 	}
 
+	base := internalDocRef{Ref: ref, Package: pkgName, Version: pkgVersion, Token: token}
+
 	if len(parts) == 3 {
-		return internalDocRef{Ref: ref, Kind: DocRefKind(topLevelType), Token: token}
+		base.Kind = DocRefKind(topLevelType)
+		return base
 	}
 
 	if len(parts) < 5 {
@@ -349,45 +479,41 @@ func parseDocRef(ref string) internalDocRef {
 		switch topLevelType {
 		case "resource", "type":
 			if len(parts) == 5 {
-				return internalDocRef{Ref: ref, Kind: DocRefKind(topLevelType + "Property"), Token: token, Property: property}
+				base.Kind = DocRefKind(topLevelType + "Property")
+				base.Property = property
+				return base
 			}
-			return docRefUnknown
-		default:
-			// Properties isn't a valid ref
-			return docRefUnknown
 		}
+		return docRefUnknown
 	case "inputProperties":
-		switch {
-		case topLevelType == "resource" && len(parts) == 5:
-			return internalDocRef{Ref: ref, Kind: DocRefKind(topLevelType + "InputProperty"), Token: token, Property: property}
-		default:
-			// Properties isn't a valid ref
-			return docRefUnknown
+		if topLevelType == "resource" && len(parts) == 5 {
+			base.Kind = DocRefKind(topLevelType + "InputProperty")
+			base.Property = property
+			return base
 		}
+		return docRefUnknown
 	case "inputs":
-		switch {
-		case topLevelType == "function" && parts[4] == "properties" && len(parts) == 6:
+		if topLevelType == "function" && parts[4] == "properties" && len(parts) == 6 {
 			property, err := url.PathUnescape(parts[5])
 			if err != nil || property == "" {
 				return docRefUnknown
 			}
-			return internalDocRef{Ref: ref, Kind: DocRefKindFunctionInputProperty, Token: token, Property: property}
-		default:
-			// Inputs isn't a valid ref
-			return docRefUnknown
+			base.Kind = DocRefKindFunctionInputProperty
+			base.Property = property
+			return base
 		}
+		return docRefUnknown
 	case "outputs":
-		switch {
-		case topLevelType == "function" && parts[4] == "properties" && len(parts) == 6:
+		if topLevelType == "function" && parts[4] == "properties" && len(parts) == 6 {
 			property, err := url.PathUnescape(parts[5])
 			if err != nil || property == "" {
 				return docRefUnknown
 			}
-			return internalDocRef{Ref: ref, Kind: DocRefKindFunctionOutputProperty, Token: token, Property: property}
-		default:
-			// Outputs isn't a valid ref
-			return docRefUnknown
+			base.Kind = DocRefKindFunctionOutputProperty
+			base.Property = property
+			return base
 		}
+		return docRefUnknown
 	default:
 		return docRefUnknown
 	}

@@ -15,8 +15,10 @@
 package codegen
 
 import (
+	"context"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -226,4 +228,89 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		})
 		require.ErrorContains(t, err, "invalid doc ref: bad")
 	})
+
+	t.Run("ResolvesExternalRefs", func(t *testing.T) {
+		t.Parallel()
+
+		// Build an "extdep" package separately. Doc refs in the current package can resolve into it
+		// by way of the Dependencies list, just like `$ref` does for schema types.
+		extSpec := schema.PackageSpec{
+			Name:    "extdep",
+			Version: "1.0.0",
+			Resources: map[string]schema.ResourceSpec{
+				"extdep:mod:ExtResource": {
+					ObjectTypeSpec: schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"extProp": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"extdep:mod:extFunction": {},
+			},
+			Types: map[string]schema.ComplexTypeSpec{
+				"extdep:mod:ExtType": {
+					ObjectTypeSpec: schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"extField": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		extPkg, err := schema.ImportSpec(extSpec, nil, schema.ValidationOptions{})
+		require.NoError(t, err)
+
+		loader := &stubSchemaLoader{pkg: extPkg}
+
+		extVersion := semver.MustParse("1.0.0")
+		spec := schema.PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Description: "Refers to an external type " +
+				"{{% ref /extdep/v1.0.0/schema.json#/types/extdep:mod:ExtType %}}, " +
+				"resource {{% ref /extdep/v1.0.0/schema.json#/resources/extdep:mod:ExtResource %}}, and " +
+				"function {{% ref /extdep/v1.0.0/schema.json#/functions/extdep:mod:extFunction %}}.",
+			Dependencies: []schema.PackageDescriptor{{Name: "extdep", Version: &extVersion}},
+		}
+		pkg, diags, err := schema.BindSpec(spec, loader, schema.ValidationOptions{})
+		require.NoError(t, err)
+		require.False(t, diags.HasErrors(), "diags: %v", diags)
+
+		result, err := pkg.InterpretPulumiRefs(pkg.Description, func(ref schema.DocRef) (string, bool) {
+			switch ref.Kind {
+			case schema.DocRefKindResource:
+				return ref.Type.(*schema.ResourceType).Token, true
+			case schema.DocRefKindType:
+				if obj, ok := ref.Type.(*schema.ObjectType); ok {
+					return obj.Token, true
+				}
+			case schema.DocRefKindFunction:
+				return ref.Function.Token, true
+			}
+			return "", false
+		})
+		require.NoError(t, err)
+		assert.Contains(t, result, "extdep:mod:ExtType")
+		assert.Contains(t, result, "extdep:mod:ExtResource")
+		assert.Contains(t, result, "extdep:mod:extFunction")
+	})
+}
+
+// stubSchemaLoader is a schema.Loader that always returns the same package, used by tests that need
+// to bind a package whose Dependencies list references one external package.
+type stubSchemaLoader struct {
+	pkg *schema.Package
+}
+
+var _ schema.Loader = (*stubSchemaLoader)(nil)
+
+func (l *stubSchemaLoader) LoadPackage(name string, version *semver.Version) (*schema.Package, error) {
+	return l.pkg, nil
+}
+
+func (l *stubSchemaLoader) LoadPackageV2(_ context.Context, _ *schema.PackageDescriptor) (*schema.Package, error) {
+	return l.pkg, nil
 }
