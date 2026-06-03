@@ -219,7 +219,7 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 		Snapshot:  nil,
 	}
 	query := operations.LogQuery{}
-	res, err := GetLogsForTarget(target, query)
+	res, err := GetLogsForTarget(t.Context(), target, query)
 	require.NoError(t, err)
 	assert.Nil(t, res)
 }

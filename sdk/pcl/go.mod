@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/pulumi/pulumi/pkg/v3 v3.232.0
 	github.com/pulumi/pulumi/sdk/v3 v3.244.0
-	github.com/spf13/afero v1.9.5
+	github.com/spf13/afero v1.15.0
 	github.com/stretchr/testify v1.11.1
 	github.com/zclconf/go-cty v1.16.3
 	google.golang.org/grpc v1.81.1
@@ -43,7 +43,7 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/djherbis/times v1.5.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
@@ -89,7 +89,7 @@ require (
 	github.com/pjbgf/sha1cd v0.6.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
 	github.com/pulumi/esc v0.24.0 // indirect
 	github.com/pulumi/inflector v0.1.1 // indirect

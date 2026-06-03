@@ -15,17 +15,19 @@
 package operations
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	cwltypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -39,6 +41,7 @@ import (
 // AWSOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
 // underlying resources of the `@pulumi/aws` implementation.
 func AWSOperationsProvider(
+	ctx context.Context,
 	config map[config.Key]string,
 	component *Resource,
 ) (Provider, error) {
@@ -68,13 +71,13 @@ func AWSOperationsProvider(
 		awsProfile = getPropertyMapStringValue(outputs, "profile")
 	}
 
-	sess, err := getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile, true)
+	cfg, err := getAWSConfig(ctx, awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile, true)
 	if err != nil {
 		return nil, err
 	}
 
 	connection := &awsConnection{
-		logSvc: cloudwatchlogs.New(sess),
+		logSvc: cloudwatchlogs.NewFromConfig(cfg),
 	}
 
 	prov := &awsOpsProvider{
@@ -117,7 +120,7 @@ const (
 	awsLogGroupType = tokens.Type("aws:cloudwatch/logGroup:LogGroup")
 )
 
-func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *awsOpsProvider) GetLogs(ctx context.Context, query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
 	//exhaustive:ignore
@@ -125,6 +128,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	case awsFunctionType:
 		functionName := state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
+			ctx,
 			[]string{functionName},
 			[]string{"/aws/lambda/" + functionName},
 			query.StartTime,
@@ -138,6 +142,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	case awsLogGroupType:
 		name := state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
+			ctx,
 			[]string{name},
 			[]string{name},
 			query.StartTime,
@@ -156,95 +161,99 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 }
 
 type awsConnection struct {
-	logSvc *cloudwatchlogs.CloudWatchLogs
+	logSvc *cloudwatchlogs.Client
 }
 
 var (
-	awsDefaultSessions     map[string]*session.Session = map[string]*session.Session{}
-	awsDefaultSessionMutex sync.Mutex
+	awsDefaultConfigs     = map[string]aws.Config{}
+	awsDefaultConfigMutex sync.Mutex
 )
 
-// getSession gets or creates a Session instance to use for making AWS SDK calls using the provided credentials
-// and configuration.  If `validated` is true, it also uses the credentials to make an AWS call to get the caller
+// getAWSConfig gets or creates an aws.Config instance to use for making AWS SDK calls using the provided credentials
+// and configuration.  If `validate` is true, it also uses the credentials to make an AWS call to get the caller
 // identity to ensure they are valid, and return an error if not.
-func getAWSSession(
+func getAWSConfig(
+	ctx context.Context,
 	awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile string,
 	validate bool,
-) (*session.Session, error) {
-	// AWS SDK for Go documentation: "Sessions should be cached when possible"
-	// We keep a default session around and then make cheap copies of it.
-	awsDefaultSessionMutex.Lock()
-	defer awsDefaultSessionMutex.Unlock()
+) (aws.Config, error) {
+	// AWS SDK for Go documentation: configs should be cached when possible.
+	// We keep a default config around and then make cheap copies of it.
+	awsDefaultConfigMutex.Lock()
+	defer awsDefaultConfigMutex.Unlock()
 
 	key := awsRegion + awsAccessKey + awsSecretKey + awsToken + awsProfile
-	awsDefaultSession, ok := awsDefaultSessions[key]
+	cfg, ok := awsDefaultConfigs[key]
 	if !ok {
-		config := aws.Config{
-			Region: aws.String(awsRegion),
+		opts := []func(*awsconfig.LoadOptions) error{
+			awsconfig.WithRegion(awsRegion),
+		}
+		if awsProfile != "" {
+			opts = append(opts, awsconfig.WithSharedConfigProfile(awsProfile))
 		}
 		if awsAccessKey != "" || awsSecretKey != "" || awsToken != "" {
-			config.Credentials = credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, awsToken)
+			opts = append(opts, awsconfig.WithCredentialsProvider(
+				credentials.NewStaticCredentialsProvider(awsAccessKey, awsSecretKey, awsToken),
+			))
 		}
 
-		sess, err := session.NewSessionWithOptions(session.Options{
-			Profile:           awsProfile,
-			SharedConfigState: session.SharedConfigEnable,
-			Config:            config,
-		})
+		loaded, err := awsconfig.LoadDefaultConfig(ctx, opts...)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create AWS session: %w", err)
+			return aws.Config{}, fmt.Errorf("failed to load AWS config: %w", err)
 		}
 
 		if validate {
-			// Make a call to STS to ensure the session is valid and fail early if not
-			stsSvc := sts.New(sess)
-			_, err = stsSvc.GetCallerIdentity(&sts.GetCallerIdentityInput{})
-			if err != nil {
-				return nil, err
+			// Make a call to STS to ensure the credentials are valid and fail early if not.
+			stsSvc := sts.NewFromConfig(loaded)
+			if _, err := stsSvc.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{}); err != nil {
+				return aws.Config{}, err
 			}
 		}
 
-		awsDefaultSession = sess
-		awsDefaultSessions[key] = sess
+		cfg = loaded
+		awsDefaultConfigs[key] = cfg
 	}
-	return awsDefaultSession, nil
+	return cfg, nil
 }
 
 func (p *awsConnection) getLogsForLogGroupsConcurrently(
+	ctx context.Context,
 	names []string,
 	logGroups []string,
 	startTime *time.Time,
 	endTime *time.Time,
 ) []LogEntry {
 	// Create a channel for collecting log event outputs
-	ch := make(chan []*cloudwatchlogs.FilteredLogEvent, len(logGroups))
+	ch := make(chan []cwltypes.FilteredLogEvent, len(logGroups))
 
 	var startMilli *int64
 	if startTime != nil {
-		startMilli = aws.Int64(aws.TimeUnixMilli(*startTime))
+		startMilli = aws.Int64(startTime.UnixMilli())
 	}
 	var endMilli *int64
 	if endTime != nil {
-		endMilli = aws.Int64(aws.TimeUnixMilli(*endTime))
+		endMilli = aws.Int64(endTime.UnixMilli())
 	}
 
 	// Run FilterLogEvents for each log group in parallel
 	for _, logGroup := range logGroups {
 		go func(logGroup string) {
-			var ret []*cloudwatchlogs.FilteredLogEvent
-			err := p.logSvc.FilterLogEventsPages(&cloudwatchlogs.FilterLogEventsInput{
+			var ret []cwltypes.FilteredLogEvent
+			paginator := cloudwatchlogs.NewFilterLogEventsPaginator(p.logSvc, &cloudwatchlogs.FilterLogEventsInput{
 				LogGroupName: aws.String(logGroup),
 				StartTime:    startMilli,
 				EndTime:      endMilli,
-			}, func(resp *cloudwatchlogs.FilterLogEventsOutput, lastPage bool) bool {
+			})
+			for paginator.HasMorePages() {
+				resp, err := paginator.NextPage(ctx)
+				if err != nil {
+					logging.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
+					break
+				}
 				ret = append(ret, resp.Events...)
-				if !lastPage {
+				if paginator.HasMorePages() {
 					logging.V(5).Infof("[getLogs] Getting more logs for %v...\n", logGroup)
 				}
-				return true
-			})
-			if err != nil {
-				logging.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
 			}
 			ch <- ret
 		}(logGroup)
@@ -257,8 +266,8 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 		for _, event := range logEvents {
 			logs = append(logs, LogEntry{
 				ID:        names[i],
-				Message:   aws.StringValue(event.Message),
-				Timestamp: aws.Int64Value(event.Timestamp),
+				Message:   aws.ToString(event.Message),
+				Timestamp: aws.ToInt64(event.Timestamp),
 			})
 		}
 	}

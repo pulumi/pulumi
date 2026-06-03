@@ -2312,7 +2312,7 @@ func (b *cloudBackend) GetLogs(ctx context.Context,
 	if targetErr != nil {
 		return nil, targetErr
 	}
-	return diy.GetLogsForTarget(target, logQuery)
+	return diy.GetLogsForTarget(ctx, target, logQuery)
 }
 
 // ExportDeployment exports a deployment _from_ the backend service.

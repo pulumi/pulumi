@@ -83,7 +83,7 @@ func RunCommandPulumiHome(
 	if opts.ReportStats != nil {
 		// Note: This data is archived and used by external analytics tools.  Take care if changing the schema or format
 		// of this data.
-		opts.ReportStats.ReportCommand(TestCommandStats{
+		opts.ReportStats.ReportCommand(t.Context(), TestCommandStats{
 			StartTime:      startTime.Format("2006/01/02 15:04:05"),
 			EndTime:        endTime.Format("2006/01/02 15:04:05"),
 			ElapsedSeconds: float64((endTime.Sub(startTime)).Nanoseconds()) / 1000000000,

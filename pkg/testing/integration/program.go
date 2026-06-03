@@ -138,7 +138,7 @@ type TestCommandStats struct {
 
 // TestStatsReporter reports results and metadata from a test run.
 type TestStatsReporter interface {
-	ReportCommand(stats TestCommandStats)
+	ReportCommand(ctx context.Context, stats TestCommandStats)
 }
 
 // Environment is used to create environments for use by test programs.
@@ -777,7 +777,7 @@ func GetLogs(
 	ops := tree.OperationsProvider(cfg)
 
 	// Validate logs from example
-	logs, err := ops.GetLogs(query)
+	logs, err := ops.GetLogs(t.Context(), query)
 	require.NoError(t, err)
 
 	return logs
@@ -835,7 +835,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 				t.Errorf("report config should be set to a value of the form: <aws-region>:<bucket-name>:<keyPrefix>")
 			}
 
-			opts.ReportStats = NewS3Reporter(splits[0], splits[1], splits[2])
+			opts.ReportStats = NewS3Reporter(t.Context(), splits[0], splits[1], splits[2])
 		}
 	}
 
@@ -2967,7 +2967,7 @@ type AssertPerfBenchmark struct {
 	MaxEmptyUpdateDuration time.Duration
 }
 
-func (t AssertPerfBenchmark) ReportCommand(stats TestCommandStats) {
+func (t AssertPerfBenchmark) ReportCommand(ctx context.Context, stats TestCommandStats) {
 	var maxDuration *time.Duration
 	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
 		maxDuration = &t.MaxPreviewDuration

@@ -15,6 +15,7 @@
 package operations
 
 import (
+	"context"
 	"encoding/json"
 	"regexp"
 	"time"
@@ -57,7 +58,7 @@ const (
 	awsLogGroupTypeName       = "aws:cloudwatch/logGroup:LogGroup"
 )
 
-func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *cloudOpsProvider) GetLogs(ctx context.Context, query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
 	//exhaustive:ignore
@@ -72,7 +73,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
 			return nil, nil
 		}
-		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
+		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(ctx, query)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +102,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
 			return nil, nil
 		}
-		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
+		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(ctx, query)
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +150,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLogGroupTypeName, name)
 			return nil, nil
 		}
-		rawLogs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)
+		rawLogs, err := logGroup.OperationsProvider(ops.config).GetLogs(ctx, query)
 		if err != nil {
 			return nil, err
 		}
