@@ -396,6 +396,13 @@ func nextPermissionMode(m client.NeoPermissionMode) client.NeoPermissionMode {
 	return client.NeoPermissionModeReadOnly
 }
 
+// recallInput replaces the textarea contents with a recalled prompt and parks
+// the cursor at the end, ready to edit or resend.
+func (m *Model) recallInput(s string) {
+	m.textInput.SetValue(s)
+	m.textInput.MoveToEnd()
+}
+
 // historyPrev steps to an older prompt. It returns true when it handled the
 // key (so the caller swallows it). The first step out of the live draft
 // stashes that draft in historyDraft so a later Down can restore it.
@@ -410,8 +417,7 @@ func (m *Model) historyPrev() bool {
 		m.historyDraft = m.textInput.Value()
 	}
 	m.historyIdx--
-	m.textInput.SetValue(m.history[m.historyIdx])
-	m.textInput.MoveToEnd()
+	m.recallInput(m.history[m.historyIdx])
 	return true
 }
 
@@ -424,11 +430,10 @@ func (m *Model) historyNext() bool {
 	}
 	m.historyIdx++
 	if m.historyIdx == len(m.history) {
-		m.textInput.SetValue(m.historyDraft)
+		m.recallInput(m.historyDraft)
 	} else {
-		m.textInput.SetValue(m.history[m.historyIdx])
+		m.recallInput(m.history[m.historyIdx])
 	}
-	m.textInput.MoveToEnd()
 	return true
 }
 

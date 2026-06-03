@@ -3059,11 +3059,17 @@ func TestRenderApprovalAuto_VerbVariants(t *testing.T) {
 func submitPrompt(t *testing.T, m Model, text string) Model {
 	t.Helper()
 	m.textInput.SetValue(text)
-	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = updated.(Model)
+	m = pressKey(t, m, tea.KeyEnter)
 	// Submitting puts the model in the busy state; clear it as the agent does
 	// at the end of its turn so a follow-up submit isn't swallowed.
-	updated, _ = m.Update(UITaskIdle{})
+	updated, _ := m.Update(UITaskIdle{})
+	return updated.(Model)
+}
+
+// pressKey feeds a single keypress to the model and returns the updated model.
+func pressKey(t *testing.T, m Model, code rune) Model {
+	t.Helper()
+	updated, _ := m.Update(tea.KeyPressMsg{Code: code})
 	return updated.(Model)
 }
 
@@ -3077,27 +3083,22 @@ func TestModel_PromptHistory_RecallAfterSubmit(t *testing.T) {
 	require.Empty(t, m.textInput.Value(), "input clears after submit")
 
 	// Up recalls the newest, then the older.
-	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	m = updated.(Model)
+	m = pressKey(t, m, tea.KeyUp)
 	assert.Equal(t, "second", m.textInput.Value())
 
-	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	m = updated.(Model)
+	m = pressKey(t, m, tea.KeyUp)
 	assert.Equal(t, "first", m.textInput.Value())
 
 	// Up at the oldest entry pins there.
-	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	m = updated.(Model)
+	m = pressKey(t, m, tea.KeyUp)
 	assert.Equal(t, "first", m.textInput.Value())
 
 	// Down walks back toward newer prompts, then past the newest to the
 	// (empty) draft.
-	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	m = updated.(Model)
+	m = pressKey(t, m, tea.KeyDown)
 	assert.Equal(t, "second", m.textInput.Value())
 
-	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	m = updated.(Model)
+	m = pressKey(t, m, tea.KeyDown)
 	assert.Empty(t, m.textInput.Value(), "Down past newest restores the empty draft")
 }
 
@@ -3111,12 +3112,10 @@ func TestModel_PromptHistory_PreservesDraft(t *testing.T) {
 	// Type an unsent draft, recall history with Up, then Down past the newest
 	// must restore the draft rather than leave the recalled prompt behind.
 	m.textInput.SetValue("draft in progress")
-	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	m = updated.(Model)
+	m = pressKey(t, m, tea.KeyUp)
 	assert.Equal(t, "sent", m.textInput.Value())
 
-	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	m = updated.(Model)
+	m = pressKey(t, m, tea.KeyDown)
 	assert.Equal(t, "draft in progress", m.textInput.Value())
 }
 
