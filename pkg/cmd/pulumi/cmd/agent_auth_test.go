@@ -181,7 +181,7 @@ func TestProcessCmdErrorsDoesNotPrintClaimURLForUnauthorizedClaimedAccount(t *te
 }
 
 //nolint:paralleltest // mutates shared temporary agent credentials
-func TestProcessCmdErrorsPrintsAgentAuthRequiredInstructionForESCAPIUnauthorized(t *testing.T) {
+func TestProcessCmdErrorsPrintsAgentAuthRequiredInstructionForAPIUnauthorized(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
 	oldAgentClaim, err := workspace.GetAgentClaim()
@@ -212,10 +212,10 @@ func TestProcessCmdErrorsPrintsAgentAuthRequiredInstructionForESCAPIUnauthorized
 	require.NoError(t, err)
 
 	var output bytes.Buffer
-	err = processCmdErrors(t.Context(), MarkESCError(&apitype.ErrorResponse{
+	err = processCmdErrors(t.Context(), &apitype.ErrorResponse{
 		Code:    http.StatusUnauthorized,
 		Message: "No credentials provided or are invalid.",
-	}), &output)
+	}, &output)
 
 	assert.True(t, result.IsBail(err))
 	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
@@ -223,7 +223,7 @@ func TestProcessCmdErrorsPrintsAgentAuthRequiredInstructionForESCAPIUnauthorized
 }
 
 //nolint:paralleltest // mutates shared temporary agent credentials
-func TestProcessCmdErrorsDoesNotPrintAgentAuthRequiredInstructionForNonESCAPIUnauthorized(t *testing.T) {
+func TestProcessCmdErrorsDoesNotPrintAgentAuthRequiredInstructionForAPINonUnauthorized(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
 	oldAgentClaim, err := workspace.GetAgentClaim()
@@ -254,8 +254,8 @@ func TestProcessCmdErrorsDoesNotPrintAgentAuthRequiredInstructionForNonESCAPIUna
 	require.NoError(t, err)
 
 	inputErr := &apitype.ErrorResponse{
-		Code:    http.StatusUnauthorized,
-		Message: "No credentials provided or are invalid.",
+		Code:    http.StatusForbidden,
+		Message: "Forbidden.",
 	}
 	var output bytes.Buffer
 	err = processCmdErrors(t.Context(), inputErr, &output)
