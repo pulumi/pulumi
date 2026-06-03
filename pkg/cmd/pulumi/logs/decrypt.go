@@ -45,6 +45,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -389,7 +390,7 @@ func formatLogRecords(r io.Reader, w io.Writer) error {
 			sort.Strings(argKeys)
 			args := make([]any, len(argKeys))
 			for i, k := range argKeys {
-				args[i] = rec[k]
+				args[i] = decodePropertyArg(rec[k])
 				delete(rec, k)
 			}
 			if msg, ok := rec["msg"].(string); ok {
@@ -402,4 +403,15 @@ func formatLogRecords(r io.Reader, w io.Writer) error {
 		}
 	}
 	return scanner.Err()
+}
+
+func decodePropertyArg(v any) any {
+	s, ok := v.(string)
+	if !ok {
+		return v
+	}
+	if sv, err := logging.DecodeStructValueFromLog([]byte(s)); err == nil {
+		return sv.AsInterface()
+	}
+	return v
 }
