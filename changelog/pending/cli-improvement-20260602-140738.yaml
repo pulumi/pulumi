@@ -1,0 +1,6 @@
+component: cli
+kind: improvement
+body: Show download and unpack progress when installing provider plugins
+time: 2026-06-02T14:07:38.04998+02:00
+custom:
+    PR: https://github.com/pulumi/pulumi/issues/23408

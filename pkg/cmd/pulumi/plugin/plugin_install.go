@@ -64,6 +64,7 @@ func newPluginInstallCmd() *cobra.Command {
 			"the plugin, though the result is not guaranteed.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			picmd.stderr = cmd.ErrOrStderr()
 			return picmd.Run(ctx, args)
 		},
 	}
@@ -106,6 +107,7 @@ type pluginInstallCmd struct {
 	env      env.Env
 	color    colors.Colorization
 	registry registry.Registry
+	stderr   io.Writer
 
 	pluginGetLatestVersion func(
 		workspace.PluginDescriptor, context.Context,
@@ -114,7 +116,7 @@ type pluginInstallCmd struct {
 	installPluginSpec func(
 		ctx context.Context, label string,
 		install workspace.PluginDescriptor, file string,
-		sink diag.Sink, color colors.Colorization, reinstall bool,
+		sink diag.Sink, stderr io.Writer, color colors.Colorization, reinstall bool,
 	) error // == installPluginSpec
 }
 
@@ -133,6 +135,9 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	}
 	if cmd.installPluginSpec == nil {
 		cmd.installPluginSpec = installPluginSpec
+	}
+	if cmd.stderr == nil {
+		cmd.stderr = io.Discard
 	}
 	if cmd.registry == nil {
 		cmd.registry = cmdCmd.NewDefaultRegistry(
@@ -284,7 +289,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		cmd.diag.Infoerrf(diag.Message("", "%s installing"), label)
-		err := cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, cmd.color, cmd.reinstall)
+		err := cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, cmd.stderr, cmd.color, cmd.reinstall)
 		if err != nil {
 			return err
 		}
@@ -296,7 +301,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 func installPluginSpec(
 	ctx context.Context, label string,
 	install workspace.PluginDescriptor, file string,
-	sink diag.Sink, color colors.Colorization, reinstall bool,
+	sink diag.Sink, stderr io.Writer, color colors.Colorization, reinstall bool,
 ) error {
 	// If we got here, actually try to do the download.
 	var source string
@@ -304,7 +309,7 @@ func installPluginSpec(
 	var err error
 	if file == "" {
 		withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-			return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", color)
+			return workspace.ReadCloserProgressBar(stream, stderr, size, "Downloading plugin", color)
 		}
 		retry := func(err error, attempt int, limit int, delay time.Duration) {
 			sink.Warningf(
@@ -317,7 +322,15 @@ func installPluginSpec(
 		}
 		defer func() { contract.IgnoreError(os.Remove(r.Name())) }()
 
-		payload = pluginstorage.TarPlugin(r)
+		// Wrap the downloaded tarball with a progress bar sized by the downloaded tarball, so extraction shows progress
+		// during unpacking. [pluginstorage.UnpackContents], called via [pkgWorkspace.InstallPluginContent] closes the
+		// content (and thus this stream) when it returns, which is what finishes the bar.
+		var unpackStream io.ReadCloser = r
+		if fi, statErr := r.Stat(); statErr == nil {
+			unpackStream = workspace.ReadCloserProgressBar(r, stderr, fi.Size(), "Unpacking plugin", color)
+		}
+
+		payload = pluginstorage.TarPlugin(unpackStream)
 	} else {
 		source = file
 		logging.V(1).Infof("%s opening tarball from %s", label, file)

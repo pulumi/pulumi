@@ -174,9 +174,9 @@ func (w Workspace) DownloadPlugin(
 	}
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		// Log at info but to stderr so we don't pollute stdout for commands like `package get-schema`
-		fmt.Fprintf(w.stderr, "Downloading provider: %s\n", pluginSpec.Name)
-		return stream
+		// Renders a progress bar to stderr in interactive terminals and prints a plain message otherwise.
+		return workspace.ReadCloserProgressBar(
+			stream, w.stderr, size, "Downloading provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
 	}
 
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
@@ -191,8 +191,17 @@ func (w Workspace) DownloadPlugin(
 	}
 
 	logging.V(1).Infof("unpacking provider %s", pluginSpec.Name)
+	// Wrap the downloaded tarball with a progress bar sized by the downloaded tarball, so extraction shows progress
+	// during unpacking. [pluginstorage.UnpackContents] closes the content (and thus this stream) when it returns, which
+	// is what finishes the bar.
+	var unpackStream io.ReadCloser = downloadedFile
+	if fi, statErr := downloadedFile.Stat(); statErr == nil {
+		unpackStream = workspace.ReadCloserProgressBar(
+			downloadedFile, w.stderr, fi.Size(),
+			"Unpacking provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
+	}
 	cleanup, err := pluginstorage.UnpackContents(
-		ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), true, /* reinstall */
+		ctx, pluginSpec, pluginstorage.TarPlugin(unpackStream), true, /* reinstall */
 	)
 	if err != nil {
 		return "", nil, err

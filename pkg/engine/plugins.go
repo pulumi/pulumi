@@ -607,6 +607,7 @@ func installPlugin(
 		withDownloadProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {
 			return workspace.ReadCloserProgressBar(
 				stream,
+				os.Stderr,
 				size,
 				downloadMessage,
 				cmdutil.GetGlobalColorization(),
