@@ -631,7 +631,7 @@ func TestInstall(t *testing.T) {
 
 			// Ensure `install` works and subsequent `up` and `destroy` operations work.
 			_, stderr := e.RunCommand("pulumi", "install")
-			assert.Regexp(t, regexp.MustCompile(`Downloading provider: random`), stderr)
+			assert.Regexp(t, regexp.MustCompile(`Downloading provider random`), stderr)
 			e.RunCommand("pulumi", "stack", "init", "test")
 			e.RunCommand("pulumi", "up", "--yes")
 			e.RunCommand("pulumi", "destroy", "--yes")
