@@ -40,6 +40,7 @@ import (
 	_ "github.com/golang/glog"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type Filter interface {
@@ -193,7 +194,11 @@ func Warningf(format string, args ...any) {
 func fmtAttrs(args []any, extra ...any) []any {
 	out := make([]any, 0, len(args)*2+len(extra))
 	for i, a := range args {
-		out = append(out, fmt.Sprintf("pulumi.log.arg%d", i), a)
+		key := fmt.Sprintf("pulumi.log.arg%d", i)
+		if s, ok := a.(*structpb.Struct); ok {
+			a = NewPropertyValue(key, s)
+		}
+		out = append(out, key, a)
 	}
 	return append(out, extra...)
 }

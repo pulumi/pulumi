@@ -79,8 +79,7 @@ func (p *testloggingProvider) Check(_ context.Context, req *rpc.CheckRequest) (*
 
 func (p *testloggingProvider) Create(_ context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
 	props := req.GetProperties()
-	logging.Infof("plugin-log-test-marker: creating resource with inputs %v",
-		logging.NewPropertyValue("inputs", props))
+	logging.Infof("plugin-log-test-marker: creating resource with inputs %v", props)
 	return &rpc.CreateResponse{
 		Id:         "test-id-1",
 		Properties: props,
