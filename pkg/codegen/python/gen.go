@@ -354,6 +354,18 @@ func (mod *modContext) tokenToResource(tok string) string {
 	return fmt.Sprintf("%s%s", modName, name)
 }
 
+// resourceArgsClassName returns the name of the resource's args class. Normally this is
+// `<Resource>Args`, but when an input ObjectType shares a token with the resource (e.g. Kubernetes
+// `StorageClass`) genResource falls back to `<Resource>InitArgs`. Mirror that decision so
+// references in doc comments resolve to the same class name.
+func (mod *modContext) resourceArgsClassName(rt *schema.ResourceType) string {
+	base := mod.tokenToResource(rt.Token)
+	if _, exists, _ := mod.pkg.Types().Get(rt.Token); exists {
+		return base + "InitArgs"
+	}
+	return base + "Args"
+}
+
 func tokenToName(tok string) string {
 	// token := pkg : module : member
 	// module := path/to/module
@@ -2577,7 +2589,7 @@ func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterE
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
 			base = mod.tokenToResource(ref.ResourceToken())
 		case schema.DocRefKindResourceInputProperty:
-			base = mod.tokenToResource(ref.ResourceToken()) + "Args"
+			base = mod.resourceArgsClassName(ref.Type.(*schema.ResourceType))
 		case schema.DocRefKindFunction:
 			base = PyName(tokenToName(ref.Function.Token))
 		case schema.DocRefKindFunctionInputProperty:
@@ -2585,7 +2597,12 @@ func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterE
 		case schema.DocRefKindFunctionOutputProperty:
 			base = title(PyName(tokenToName(ref.Function.Token))) + "Result"
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
-			base = title(PyName(ref.Type.String()))
+			switch t := ref.Type.(type) {
+			case *schema.ObjectType:
+				base = tokenToName(t.Token) + "Args"
+			case *schema.EnumType:
+				base = tokenToName(t.Token)
+			}
 		case schema.DocRefKindUnknown:
 			return "", false
 		}
