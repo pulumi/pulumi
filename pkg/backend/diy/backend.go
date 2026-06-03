@@ -768,7 +768,11 @@ func (b *diyBackend) CreateStack(
 	}
 
 	if initialState != nil {
-		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, initialState)
+		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+			diyJSONMarshaler,
+			stackName,
+			initialState,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -1021,15 +1025,9 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 		}
 	}
 
-	chkJSON, err := encoding.JSON.Marshal(chk)
+	versionedCheckpoint, err := marshalVersionedCheckpoint(version, features, *chk)
 	if err != nil {
-		return fmt.Errorf("marshalling checkpoint: %w", err)
-	}
-
-	versionedCheckpoint := &apitype.VersionedCheckpoint{
-		Version:    version,
-		Features:   features,
-		Checkpoint: json.RawMessage(chkJSON),
+		return err
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
@@ -1196,7 +1194,8 @@ func (b *diyBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
+		op.Opts.Display.Type != display.DisplayWatch {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -1348,7 +1347,8 @@ func (b *diyBackend) apply(
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
+	if !op.Opts.Display.SuppressPermalink && opts.ShowLink &&
+		!op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
@@ -1480,7 +1480,11 @@ func (b *diyBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	defer b.Unlock(ctx, diyStackRef)
 
 	stackName := diyStackRef.FullyQualifiedName()
-	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, deployment)
+	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+		diyJSONMarshaler,
+		stackName,
+		deployment,
+	)
 	if err != nil {
 		return err
 	}

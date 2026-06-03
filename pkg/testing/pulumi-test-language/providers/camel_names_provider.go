@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // CamelNamesProvider is used to test camel naming features in the Pulumi SDK, and that they are used
@@ -45,10 +44,6 @@ func (p *CamelNamesProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *CamelNamesProvider) Pkg() tokens.Package {
-	return "camelNames"
 }
 
 func (p *CamelNamesProvider) GetSchema(

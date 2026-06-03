@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -75,6 +76,59 @@ func TestShowEvents(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(read), "not-filtered")
 	assert.Contains(t, string(read), "this-is-filtered-from-display")
+}
+
+func TestStartEventLogger_ClosesOutputOnInputClose(t *testing.T) {
+	t.Parallel()
+
+	// startEventLogger must close its output channel when the input is exhausted,
+	// so consumers can rely on standard `for range` semantics rather than having
+	// to break on CancelEvent.
+	eventLog, err := os.CreateTemp(t.TempDir(), "event-log-")
+	require.NoError(t, err)
+
+	events := make(chan engine.StampedEvent, 1)
+	events <- engine.StampedEvent{Event: engine.NewCancelEvent()}
+	close(events)
+
+	done := make(chan bool)
+	outEvents, outDone := startEventLogger(events, done, Options{
+		EventLogPath: eventLog.Name(),
+	})
+
+	drained := make(chan struct{})
+	go func() {
+		for range outEvents { //nolint:revive // intentional drain
+		}
+		close(drained)
+	}()
+
+	select {
+	case <-drained:
+	case <-time.After(2 * time.Second):
+		t.Fatal("outEvents was not closed after the input was drained")
+	}
+
+	close(outDone)
+	<-done
+}
+
+func TestStartEventLogger_TCPFallsBackOnInvalidTarget(t *testing.T) {
+	t.Parallel()
+
+	// If the TCP target is unusable, startEventLogger must fall back to the
+	// original (events, done) so the rest of the display pipeline still runs.
+	// "tcp://" with an empty address makes grpc.NewClient fail synchronously.
+	events := make(chan engine.StampedEvent)
+	done := make(chan bool)
+
+	outEvents, outDone := startEventLogger(events, done, Options{
+		EventLogPath: "tcp://",
+	})
+
+	// The originals are returned unchanged — same channel identity.
+	assert.Equal(t, (<-chan engine.StampedEvent)(events), outEvents)
+	assert.Equal(t, (chan<- bool)(done), outDone)
 }
 
 func TestEscapeURN(t *testing.T) {

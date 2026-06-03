@@ -1,6 +1,0 @@
-name: large_resource_python
-runtime:
-  name: python
-  options:
-    toolchain: uv
-description: A python program with a >4mb string resource

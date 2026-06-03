@@ -33,8 +33,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -88,8 +88,8 @@ func newPackageNewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
-		Short:      "Create a new Pulumi package",
-		Long: "Create a new Pulumi package from a template.\n" +
+		Short:      "[EXPERIMENTAL] Create a new Pulumi package",
+		Long: "[EXPERIMENTAL] Create a new Pulumi package from a template.\n" +
 			"\n" +
 			"To create a package from a specific template, pass the template name (such as\n" +
 			"`component-nodejs` or `component-python`). If no template name is provided, a list of\n" +
@@ -146,7 +146,7 @@ func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) erro
 	}
 
 	if !opts.IsInteractive && !args.yes {
-		return backenderr.NonInteractiveRequiresYesError{}
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	if args.name != "" {
@@ -271,7 +271,7 @@ func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) erro
 	}
 
 	if !args.generateOnly {
-		if err := policy.InstallPluginDependencies(ctx, cwd, plugin.Runtime); err != nil {
+		if err := policy.InstallPluginDependencies(ctx, out, out, cwd, plugin.Runtime); err != nil {
 			return err
 		}
 	}

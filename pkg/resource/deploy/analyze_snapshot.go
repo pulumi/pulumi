@@ -36,6 +36,7 @@ import (
 // Returns (invalid, sawError) where invalid is true if any mandatory violation was found
 // (unless dryRun is true), and sawError is true if any mandatory violation was found.
 func analyzeResource(
+	ctx context.Context,
 	analyzers []plugin.Analyzer,
 	r plugin.AnalyzerResource,
 	events PolicyEvents,
@@ -55,12 +56,12 @@ func analyzeResource(
 
 	for _, analyzer := range analyzers {
 		g.Go(func() error {
-			info, err := analyzer.GetAnalyzerInfo()
+			info, err := analyzer.GetAnalyzerInfo(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get analyzer info: %w", err)
 			}
 
-			response, err := analyzer.Analyze(r)
+			response, err := analyzer.Analyze(ctx, r)
 			if err != nil {
 				return fmt.Errorf("failed to run policy: %w", err)
 			}
@@ -175,12 +176,12 @@ func AnalyzeSnapshot(
 		// First pass: report remediations for this resource. Unlike during a deployment,
 		// we report what would be changed but do not apply the changes.
 		for _, analyzer := range analyzers {
-			info, err := analyzer.GetAnalyzerInfo()
+			info, err := analyzer.GetAnalyzerInfo(ctx)
 			if err != nil {
 				return false, fmt.Errorf("failed to get analyzer info: %w", err)
 			}
 
-			response, err := analyzer.Remediate(analyzerRes)
+			response, err := analyzer.Remediate(ctx, analyzerRes)
 			if err != nil {
 				return false, fmt.Errorf("failed to run remediation: %w", err)
 			}
@@ -208,7 +209,7 @@ func AnalyzeSnapshot(
 
 		// Second pass: run analysis in parallel. We use dryRun=true because we're not
 		// executing a deployment; violations are reported but do not fail the resource.
-		_, sawError, err := analyzeResource(analyzers, analyzerRes, events, true /*dryRun*/)
+		_, sawError, err := analyzeResource(ctx, analyzers, analyzerRes, events, true /*dryRun*/)
 		if err != nil {
 			return false, err
 		}
@@ -241,12 +242,12 @@ func AnalyzeSnapshot(
 
 	for _, analyzer := range analyzers {
 		g.Go(func() error {
-			info, err := analyzer.GetAnalyzerInfo()
+			info, err := analyzer.GetAnalyzerInfo(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get analyzer info: %w", err)
 			}
 
-			response, err := analyzer.AnalyzeStack(stackResources)
+			response, err := analyzer.AnalyzeStack(ctx, stackResources)
 			if err != nil {
 				return fmt.Errorf("failed to run stack policy: %w", err)
 			}

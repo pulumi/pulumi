@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var proto = { codegen: { }, pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
@@ -11757,7 +11757,8 @@ proto.pulumirpc.RegisterResourceHookRequest.toObject = function(includeInstance,
   var f, obj = {
 name: jspb.Message.getFieldWithDefault(msg, 1, ""),
 callback: (f = msg.getCallback()) && pulumi_callback_pb.Callback.toObject(includeInstance, f),
-onDryRun: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
+onDryRun: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+ignoreErrors: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -11807,6 +11808,10 @@ proto.pulumirpc.RegisterResourceHookRequest.deserializeBinaryFromReader = functi
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setOnDryRun(value);
       break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setIgnoreErrors(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -11855,6 +11860,13 @@ proto.pulumirpc.RegisterResourceHookRequest.serializeBinaryToWriter = function(m
   if (f) {
     writer.writeBool(
       3,
+      f
+    );
+  }
+  f = message.getIgnoreErrors();
+  if (f) {
+    writer.writeBool(
+      4,
       f
     );
   }
@@ -11931,6 +11943,24 @@ proto.pulumirpc.RegisterResourceHookRequest.prototype.getOnDryRun = function() {
  */
 proto.pulumirpc.RegisterResourceHookRequest.prototype.setOnDryRun = function(value) {
   return jspb.Message.setProto3BooleanField(this, 3, value);
+};
+
+
+/**
+ * optional bool ignore_errors = 4;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceHookRequest.prototype.getIgnoreErrors = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceHookRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceHookRequest.prototype.setIgnoreErrors = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 

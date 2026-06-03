@@ -91,6 +91,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
 				},
+				"",
 			)
 			if err != nil {
 				return err
@@ -106,6 +107,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
 				},
+				"",
 			)
 			if err != nil {
 				return err
@@ -121,6 +123,9 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 				StackName: destStack.Ref().FullyQualifiedName().String(),
 			}
 
+			if stateMove.Stdout == nil {
+				stateMove.Stdout = cmd.OutOrStdout()
+			}
 			return stateMove.Run(ctx, sourceStack, destStack, args, sourceSecretsProvider, destSecretsProvider)
 		},
 	}
@@ -150,7 +155,7 @@ func (cmd *stateMoveCmd) Run(
 		cmd.Stdin = os.Stdin
 	}
 	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
+		cmd.Stdout = io.Discard
 	}
 	if cmd.ws == nil {
 		cmd.ws = pkgWorkspace.Instance
@@ -208,7 +213,7 @@ func (cmd *stateMoveCmd) Run(
 		if err != nil {
 			return err
 		}
-		ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, dest)
+		ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, dest, "")
 		if err != nil {
 			return err
 		}
@@ -457,7 +462,7 @@ func (cmd *stateMoveCmd) Run(
 		case yes:
 		// continue
 		case no:
-			fmt.Println("Confirmation denied, not proceeding with the state move")
+			fmt.Fprintln(cmd.Stdout, "Confirmation denied, not proceeding with the state move")
 			return nil
 		}
 	}
@@ -495,10 +500,9 @@ None of the resources have been moved, it is safe to try again`, err)
 			var deleteCommands strings.Builder
 			// Iterate over the resources in reverse order, so resources with no dependencies will be deleted first.
 			for i := len(resourcesToMoveOrdered) - 1; i >= 0; i-- {
-				deleteCommands.WriteString(fmt.Sprintf(
-					"\n    pulumi state delete --stack %s '%s'",
+				fmt.Fprintf(&deleteCommands, "\n    pulumi state delete --stack %s '%s'",
 					source.Ref().FullyQualifiedName(),
-					resourcesToMoveOrdered[i].URN))
+					resourcesToMoveOrdered[i].URN)
 			}
 			return fmt.Errorf(`failed to save source snapshot: %w
 

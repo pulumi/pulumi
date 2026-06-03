@@ -22,7 +22,7 @@ import (
 type outputFormat int
 
 const (
-	// outputDefault is "no --format passed" — the command picks its own
+	// outputDefault is "no --output passed" — the command picks its own
 	// human-friendly format and may auto-switch when non-interactive
 	// (e.g. `list` flips to JSON).
 	outputDefault outputFormat = iota
@@ -36,7 +36,7 @@ const (
 	outputMarkdown
 )
 
-// resolveOutput decides the effective output mode given the --format flag.
+// resolveOutput decides the effective output mode given the --output flag.
 func resolveOutput(explicit string) (outputFormat, error) {
 	switch explicit {
 	case "", "auto", "default":
@@ -51,7 +51,7 @@ func resolveOutput(explicit string) (outputFormat, error) {
 		return outputMarkdown, nil
 	default:
 		return outputDefault, NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags,
-			"invalid --format value: "+explicit).
-			WithSuggestions("--format=json", "--format=markdown", "--format=table", "--format=raw")
+			"invalid --output value: "+explicit).
+			WithSuggestions("--output=json", "--output=markdown", "--output=table", "--output=raw")
 	}
 }

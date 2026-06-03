@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -69,6 +68,9 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			if scspcmd.stdout == nil {
+				scspcmd.stdout = cmd.OutOrStdout()
+			}
 			return scspcmd.Run(ctx, args)
 		},
 	}
@@ -89,9 +91,6 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 
 func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string) error {
 	stdout := cmd.stdout
-	if stdout == nil {
-		stdout = os.Stdout
-	}
 	if cmd.secretsProvider == nil {
 		cmd.secretsProvider = backend_secrets.DefaultProvider
 	}
@@ -123,12 +122,13 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		cmd.stack,
 		LoadOnly,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err
 	}
 
-	currentProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), project, currentStack)
+	currentProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), project, currentStack, "")
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	decrypter config.Decrypter,
 ) error {
 	// Reload the project stack after the new secrets provider is in place
-	reloadedProjectStack, err := LoadProjectStack(ctx, sink, project, currentStack)
+	reloadedProjectStack, err := LoadProjectStack(ctx, sink, project, currentStack, "")
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 		}
 	}
 
-	if err := SaveProjectStack(ctx, currentStack, reloadedProjectStack); err != nil {
+	if err := SaveProjectStack(ctx, currentStack, reloadedProjectStack, ""); err != nil {
 		return err
 	}
 

@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"golang.org/x/term"
 )
 
 // formatJSON pretty-prints JSON output to w, falling back to raw bytes when
@@ -52,12 +53,17 @@ func formatText(w io.Writer, body []byte) error {
 }
 
 // formatBinary writes binary content to w when not interactive, or prints a
-// hint to stderr when w is the terminal so we don't blast bytes at the user.
-func formatBinary(w io.Writer, body []byte) error {
-	if w == os.Stdout && cmdutil.Interactive() {
-		fmt.Fprintf(os.Stderr, "Binary response (%d bytes). Redirect stdout to save to a file.\n", len(body))
+// hint to errW when w is a terminal so we don't blast bytes at the user.
+func formatBinary(w, errW io.Writer, body []byte) error {
+	if isTerminal(w) && cmdutil.Interactive() {
+		fmt.Fprintf(errW, "Binary response (%d bytes). Redirect stdout to save to a file.\n", len(body))
 		return nil
 	}
 	_, err := w.Write(body)
 	return err
+}
+
+func isTerminal(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
 }

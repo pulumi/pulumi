@@ -33,7 +33,7 @@ type ExternalEnumRefProvider struct {
 
 var _ plugin.Provider = (*ExternalEnumRefProvider)(nil)
 
-func (p *ExternalEnumRefProvider) Pkg() tokens.Package {
+func (p *ExternalEnumRefProvider) pkg() tokens.Package {
 	return "extenumref"
 }
 
@@ -47,25 +47,25 @@ func (p *ExternalEnumRefProvider) GetSchema(
 	enumProvider := &EnumProvider{}
 	enumVersion := enumProvider.version()
 	pkg := schema.PackageSpec{
-		Name:    p.Pkg().String(),
+		Name:    p.pkg().String(),
 		Version: p.version().String(),
 		Dependencies: []schema.PackageDescriptor{
-			{Name: enumProvider.Pkg().String(), Version: &enumVersion},
+			{Name: enumProvider.pkg().String(), Version: &enumVersion},
 		},
 		Resources: map[string]schema.ResourceSpec{
-			p.Pkg().String() + ":index:Sink": {
+			p.pkg().String() + ":index:Sink": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Properties: map[string]schema.PropertySpec{
 						"stringEnum": {TypeSpec: schema.TypeSpec{
 							Ref: fmt.Sprintf("/%s/v%s/schema.json#/types/%s:index:StringEnum",
-								enumProvider.Pkg(), enumProvider.version(), enumProvider.Pkg()),
+								enumProvider.pkg(), enumProvider.version(), enumProvider.pkg()),
 						}},
 					},
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"stringEnum": {TypeSpec: schema.TypeSpec{
 						Ref: fmt.Sprintf("/%s/v%s/schema.json#/types/%s:index:StringEnum",
-							enumProvider.Pkg(), enumProvider.version(), enumProvider.Pkg()),
+							enumProvider.pkg(), enumProvider.version(), enumProvider.pkg()),
 					}},
 				},
 			},
@@ -94,7 +94,7 @@ func (p *ExternalEnumRefProvider) CheckConfig(
 
 func (p *ExternalEnumRefProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ref(p.version()),
+		Version: ptr(p.version()),
 	}, nil
 }
 
@@ -124,7 +124,7 @@ func (p *ExternalEnumRefProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
 	switch req.URN.Type().String() {
-	case fmt.Sprintf("%s:index:Sink", p.Pkg()):
+	case fmt.Sprintf("%s:index:Sink", p.pkg()):
 		return plugin.CheckResponse{Properties: req.News}, nil
 	default:
 		return plugin.CheckResponse{
@@ -137,7 +137,7 @@ func (p *ExternalEnumRefProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
 	switch req.URN.Type().String() {
-	case fmt.Sprintf("%s:index:Sink", p.Pkg()):
+	case fmt.Sprintf("%s:index:Sink", p.pkg()):
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
 			Properties: req.Properties,

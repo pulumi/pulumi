@@ -40,28 +40,27 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// apiCommand carries state and api for `pulumi cloud api` and the
-// dispatcher path beneath it. refreshSpec is persistent and inherits
-// into subcommands (list/describe); the rest are local to the dispatcher
-// invocation (`pulumi cloud api <path>`).
+// apiCommand carries state and api for `pulumi api` and the dispatcher
+// path beneath it. refreshSpec is persistent and inherits into subcommands
+// (list/describe); the rest are local to the dispatcher invocation
+// (`pulumi api <path>`).
 type apiCommand struct {
 	// Persistent flag inherited by subcommands.
 	refreshSpec bool
 
-	// Local api for the dispatcher path. Flag names are a stable contract
-	// matching `gh api`.
+	// Local api for the dispatcher path.
 	method          string
 	fields          []string
 	rawFields       []string
 	headers         []string
 	input           string
 	body            string
-	paginate        bool
+	all             bool
 	include         bool
 	silent          bool
 	verbose         bool
 	dryRun          bool
-	format          string
+	output          string
 	envelopeVersion int
 }
 
@@ -89,7 +88,7 @@ func bindFlags(cmd *cobra.Command, api *apiCommand) {
 	pf.StringVar(&api.body, "body", "",
 		"Inline request body sent verbatim (default Content-Type: application/json). "+
 			"Mutually exclusive with --input")
-	pf.BoolVar(&api.paginate, "paginate", false,
+	pf.BoolVar(&api.all, "all", false,
 		"Follow pagination cursors and emit the combined result")
 	pf.BoolVarP(&api.include, "include", "i", false,
 		"Include HTTP status line and response headers in output")
@@ -99,7 +98,7 @@ func bindFlags(cmd *cobra.Command, api *apiCommand) {
 		"Dump full request and response to stderr")
 	pf.BoolVar(&api.dryRun, "dry-run", false,
 		"Print the resolved request without sending it")
-	pf.StringVar(&api.format, "format", "",
+	pf.StringVar(&api.output, "output", "",
 		"Drive content negotiation and rendering. Default uses the op's primary "+
 			"response content type (usually JSON). `json` or `markdown` request that "+
 			"format via the Accept header — rejected if the op's spec doesn't declare it. "+
@@ -108,19 +107,21 @@ func bindFlags(cmd *cobra.Command, api *apiCommand) {
 		"Pin the JSON envelope version the caller expects")
 }
 
-func newAPICmd() *cobra.Command {
+// NewAPICmd creates the top-level `pulumi api` command for calling any
+// Pulumi Cloud REST API endpoint.
+func NewAPICmd() *cobra.Command {
 	api := &apiCommand{envelopeVersion: SchemaVersion}
 
 	cmd := &cobra.Command{
 		Use:   "api",
 		Short: "Call any Pulumi Cloud API endpoint",
-		Long: "Call any Pulumi Cloud API endpoint.\n" +
+		Long: "[EXPERIMENTAL] Call any Pulumi Cloud API endpoint.\n" +
 			"\n" +
-			"The positional argument may be: a path (with optional {template} variables, e.g.\n" +
-			"`/api/orgs/{orgName}/members`), an operation ID as shown in `list` (e.g.\n" +
-			"`ListOrgMembers`), or a paste-friendly row (`GET /api/...`). Template variables\n" +
-			"are resolved from the current Pulumi project / selected stack, or supplied\n" +
-			"with -F (e.g. `-F orgName=acme`).\n" +
+			"The positional argument may be: a path (with optional {template} variables,\n" +
+			"e.g. `/api/orgs/{orgName}/members`), an operation ID as shown in `list` (e.g.\n" +
+			"`ListOrganizationMembers`), or a paste-friendly row (`GET /api/...`). Template\n" +
+			"variables are resolved from the current Pulumi project / selected stack, or\n" +
+			"supplied with -F (e.g. `-F orgName=acme`).\n" +
 			"\n" +
 			"Fields provided via -F/--field and -f/--raw-field are sent as query parameters\n" +
 			"on GET/HEAD requests and as a JSON request body on POST/PUT/PATCH/DELETE. Method\n" +
@@ -150,40 +151,44 @@ func newAPICmd() *cobra.Command {
 			"\n" +
 			"Exit codes: 0 success; 1 caller error; 2 invalid flags; 3 auth; 8 cancelled;\n" +
 			"255 internal.",
-		Example: "  # Inspect the currently authenticated user.\n" +
-			"  pulumi cloud api /api/user\n\n" +
+		Example: "  # Verify an op's parameters and schemas with `describe` before calling it.\n" +
+			"  pulumi api describe AddStackTag\n\n" +
+			"  # Inspect the currently authenticated user.\n" +
+			"  pulumi api /api/user\n\n" +
 			"  # Call by raw path with template variables filled from -F.\n" +
-			"  pulumi cloud api /api/orgs/{orgName}/members -F orgName=acme\n\n" +
+			"  pulumi api /api/orgs/{orgName}/members -F orgName=acme\n\n" +
 			"  # Multiple template variables in the path are filled the same way.\n" +
-			"  pulumi cloud api /api/stacks/{orgName}/{projectName}/{stackName} \\\n" +
+			"  pulumi api /api/stacks/{orgName}/{projectName}/{stackName} \\\n" +
 			"    -F orgName=acme -F projectName=web -F stackName=prod\n\n" +
 			"  # Call by operation ID — orgName is taken from the current Pulumi project.\n" +
-			"  pulumi cloud api ListOrgMembers\n\n" +
+			"  pulumi api ListOrganizationMembers\n\n" +
 			"  # Pass path variables explicitly when no project context is available.\n" +
-			"  pulumi cloud api GetStack -F orgName=acme -F projectName=web -F stackName=prod\n\n" +
+			"  pulumi api GetStack -F orgName=acme -F projectName=web -F stackName=prod\n\n" +
 			"  # Create a resource via POST; body fields go into a JSON body automatically.\n" +
-			"  pulumi cloud api CreateStackTag -F orgName=acme -F projectName=web \\\n" +
+			"  pulumi api AddStackTag -F orgName=acme -F projectName=web \\\n" +
 			"    -F stackName=prod -F name=env -F value=prod\n\n" +
 			"  # Build a nested body by mixing scalar fields with an inline JSON object.\n" +
-			"  pulumi cloud api CreateStack -F orgName=acme -F projectName=web \\\n" +
+			"  pulumi api CreateStack -F orgName=acme -F projectName=web \\\n" +
 			"    -F stackName=prod -F 'tags={\"env\":\"prod\",\"team\":\"platform\"}'\n\n" +
 			"  # Send an array of items using a JSON literal.\n" +
-			"  pulumi cloud api AddTeamMembers -F orgName=acme -F teamName=eng \\\n" +
-			"    -F 'members=[\"alice\",\"bob\",\"carol\"]'\n\n" +
+			"  pulumi api CreateStack -F orgName=acme -F projectName=web \\\n" +
+			"    -F stackName=prod -F 'teams=[\"platform\",\"sre\"]'\n\n" +
 			"  # Pass the entire request body inline with --body.\n" +
-			"  pulumi cloud api UpdateStack -F orgName=acme -F projectName=web -F stackName=prod \\\n" +
-			"    --body '{\"description\":\"managed by agent\"}'\n\n" +
+			"  pulumi api UpdateStackTags -F orgName=acme -F projectName=web -F stackName=prod \\\n" +
+			"    --body '{\"env\":\"production\",\"team\":\"platform\"}'\n\n" +
 			"  # Read a JSON body from a file, or from stdin with `-`.\n" +
-			"  pulumi cloud api UpdateStackTag --input ./tag.json\n" +
-			"  cat tag.json | pulumi cloud api UpdateStackTag --input -\n\n" +
+			"  pulumi api UpdateStackTag -F orgName=acme -F projectName=web \\\n" +
+			"    -F stackName=prod -F tagName=env --input ./tag.json\n" +
+			"  cat tag.json | pulumi api UpdateStackTag -F orgName=acme -F projectName=web \\\n" +
+			"    -F stackName=prod -F tagName=env --input -\n\n" +
 			"  # Filter the JSON response with jq.\n" +
-			"  pulumi cloud api /api/user --format=json | jq '.githubLogin'\n\n" +
+			"  pulumi api /api/user --output=json | jq '.githubLogin'\n\n" +
 			"  # Follow pagination cursors and stream the combined result to jq.\n" +
-			"  pulumi cloud api ListStacks --paginate | jq '.stacks[].name'\n\n" +
+			"  pulumi api ListUserStacks --all | jq '.stacks[].stackName'\n\n" +
 			"  # Extract just the status line + headers without the body.\n" +
-			"  pulumi cloud api /api/user --include --silent\n\n" +
+			"  pulumi api /api/user --include --silent\n\n" +
 			"  # Preview the resolved request without sending it.\n" +
-			"  pulumi cloud api CreateStackTag -F orgName=acme --dry-run",
+			"  pulumi api AddStackTag -F orgName=acme --dry-run",
 	}
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "path-or-operation-id"}},
@@ -212,10 +217,10 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 			"no endpoint provided").
 			WithField("path").
 			WithSuggestions(
-				"pass a path, e.g. `pulumi cloud api /api/user`",
-				"or an operation ID, e.g. `pulumi cloud api ListAccounts`",
-				"run `pulumi cloud api list` to see available endpoints",
-				"run `pulumi cloud api describe <path-or-operation-id>` to inspect one",
+				"pass a path, e.g. `pulumi api /api/user`",
+				"or an operation ID, e.g. `pulumi api ListAccounts`",
+				"run `pulumi api list` to see available endpoints",
+				"run `pulumi api describe <path-or-operation-id>` to inspect one",
 			)
 	}
 	userArg := strings.TrimSpace(args[0])
@@ -266,7 +271,7 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 
 	query := mergeQuery(rawQuery, queryExtras)
 
-	accept, err := negotiateAccept(mr.Op, api.format)
+	accept, err := negotiateAccept(mr.Op, api.output)
 	if err != nil {
 		return err
 	}
@@ -321,7 +326,7 @@ func executeLive(
 			fmt.Sprintf("parsing query string %q: %v", query, err)).WithField("path")
 	}
 
-	if api.paginate {
+	if api.all {
 		return runPaginate(ctx, w, apiClient, paginateRequest{
 			Method:      method,
 			Path:        concretePath,
@@ -419,7 +424,7 @@ func handleResponse(w, errW io.Writer, resp *http.Response, api *apiCommand) err
 		return nil
 	}
 
-	return renderBody(w, resp.Header.Get("Content-Type"), body)
+	return renderBody(w, errW, resp.Header.Get("Content-Type"), body)
 }
 
 // writeStatusAndHeaders writes the status line + sorted headers to w.
@@ -440,14 +445,23 @@ func writeStatusAndHeaders(w io.Writer, resp *http.Response) {
 }
 
 // negotiateAccept picks the Accept header value to send for op based on the
-// user's --format flag. When --format is unset we use the op's primary
-// response content type (historically JSON for Pulumi Cloud). When the user
-// explicitly asks for JSON or markdown we validate against the op's declared
-// response content types so the call fails fast with a helpful message
-// instead of surprising the caller with a 406 from the server.
-func negotiateAccept(op *Operation, format string) (string, error) {
-	switch strings.ToLower(format) {
+// user's --output flag. An explicit --output that the op doesn't declare is
+// rejected here so the caller sees a helpful error instead of a 406 from
+// the server.
+func negotiateAccept(op *Operation, output string) (string, error) {
+	switch strings.ToLower(output) {
 	case "", "raw", "auto", "default":
+		if declaresMarkdown(op.SuccessContentTypes) {
+			// Fallback chain so a server that can't produce markdown still
+			// returns a usable body instead of a 406.
+			accept := []string{"text/markdown"}
+			for _, ct := range op.SuccessContentTypes {
+				if !strings.EqualFold(strings.TrimSpace(strings.SplitN(ct, ";", 2)[0]), "text/markdown") {
+					accept = append(accept, ct)
+				}
+			}
+			return strings.Join(accept, ", "), nil
+		}
 		if op.ResponseContentType != "" {
 			return op.ResponseContentType, nil
 		}
@@ -458,35 +472,44 @@ func negotiateAccept(op *Operation, format string) (string, error) {
 				return ct, nil
 			}
 		}
-		return "", unsupportedFormatError(op, "json", "application/json")
+		return "", unsupportedOutputError(op, "json", "application/json")
 	case "markdown", "md":
 		for _, ct := range op.SuccessContentTypes {
 			if strings.EqualFold(ct, "text/markdown") {
 				return ct, nil
 			}
 		}
-		return "", unsupportedFormatError(op, "markdown", "text/markdown")
+		return "", unsupportedOutputError(op, "markdown", "text/markdown")
 	default:
 		return "", NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags,
-			"invalid --format value: "+format).
-			WithField("format").
-			WithSuggestions("--format=json", "--format=markdown", "--format=raw")
+			"invalid --output value: "+output).
+			WithField("output").
+			WithSuggestions("--output=json", "--output=markdown", "--output=raw")
 	}
 }
 
-// unsupportedFormatError returns a caller-actionable error when the user
-// asks for a format the op doesn't declare. The suggestions surface the
-// content types the op does declare so the user can pick one that works.
-func unsupportedFormatError(op *Operation, want, mediaType string) error {
+// unsupportedOutputError returns a caller-actionable error when the user
+// asks for an output format the op doesn't declare. The suggestions surface
+// the content types the op does declare so the user can pick one that works.
+func unsupportedOutputError(op *Operation, want, mediaType string) error {
 	msg := fmt.Sprintf("operation %s does not declare a %s response", op.OperationID, mediaType)
-	suggestions := []string{"omit --format to use the op's default content type"}
+	suggestions := []string{"omit --output to use the op's default content type"}
 	if len(op.SuccessContentTypes) > 0 {
 		suggestions = append(suggestions,
 			"declared response content types: "+strings.Join(op.SuccessContentTypes, ", "))
 	}
 	return NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags, msg).
-		WithField("format").
+		WithField("output").
 		WithSuggestions(suggestions...)
+}
+
+func declaresMarkdown(contentTypes []string) bool {
+	for _, ct := range contentTypes {
+		if strings.EqualFold(strings.TrimSpace(strings.SplitN(ct, ";", 2)[0]), "text/markdown") {
+			return true
+		}
+	}
+	return false
 }
 
 // isJSONContentType loosely matches `application/json` plus any `+json`
@@ -502,7 +525,7 @@ func isJSONContentType(ct string) bool {
 // renderBody writes body to w, pretty-printing JSON when the content type
 // indicates JSON, passing through text/binary otherwise. A thin adapter
 // over format.go's existing helpers.
-func renderBody(w io.Writer, contentType string, body []byte) error {
+func renderBody(w, errW io.Writer, contentType string, body []byte) error {
 	ct := strings.ToLower(contentType)
 	switch {
 	case isJSONContentType(contentType), ct == "":
@@ -513,9 +536,9 @@ func renderBody(w io.Writer, contentType string, body []byte) error {
 		return formatText(w, body)
 	case strings.Contains(ct, "application/x-tar"),
 		strings.Contains(ct, "application/octet-stream"):
-		return formatBinary(w, body)
+		return formatBinary(w, errW, body)
 	default:
-		return formatBinary(w, body)
+		return formatBinary(w, errW, body)
 	}
 }
 

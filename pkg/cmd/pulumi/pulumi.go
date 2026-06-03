@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -44,8 +45,10 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -57,20 +60,21 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/insights"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
-	cmdMetadata "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
@@ -84,6 +88,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
@@ -116,7 +121,7 @@ func (c *commandGroup) commandWidth() int {
 	return width
 }
 
-func displayCommands(cgs []commandGroup) {
+func displayCommands(w io.Writer, cgs []commandGroup) {
 	width := 0
 	for _, cg := range cgs {
 		newWidth := cg.commandWidth()
@@ -129,15 +134,15 @@ func displayCommands(cgs []commandGroup) {
 		if cg.commandWidth() == 0 {
 			continue
 		}
-		fmt.Printf("%s:\n", cg.Name)
+		fmt.Fprintf(w, "%s:\n", cg.Name)
 		for _, com := range cg.Commands {
 			if com.Hidden {
 				continue
 			}
 			spacing := strings.Repeat(" ", width-len(com.Name()))
-			fmt.Println("  " + com.Name() + spacing + strings.Repeat(" ", 8) + com.Short)
+			fmt.Fprintln(w, "  "+com.Name()+spacing+strings.Repeat(" ", 8)+com.Short)
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
 }
 
@@ -149,31 +154,32 @@ func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
 	}
 
 	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		w := c.OutOrStdout()
 		header := c.Long
 		if header == "" {
 			header = c.Short
 		}
 
 		if header != "" {
-			fmt.Println(strings.TrimSpace(header))
-			fmt.Println()
+			fmt.Fprintln(w, strings.TrimSpace(header))
+			fmt.Fprintln(w)
 		}
 
 		if c != cmd.Root() {
-			fmt.Print(c.UsageString())
+			fmt.Fprint(w, c.UsageString())
 			return
 		}
 
-		fmt.Println("Usage:")
-		fmt.Println("  pulumi [command]")
-		fmt.Println()
+		fmt.Fprintln(w, "Usage:")
+		fmt.Fprintln(w, "  pulumi [command]")
+		fmt.Fprintln(w)
 
-		displayCommands(rootCgs)
+		displayCommands(w, rootCgs)
 
-		fmt.Println("Flags:")
-		fmt.Println(cmd.Flags().FlagUsages())
+		fmt.Fprintln(w, "Flags:")
+		fmt.Fprintln(w, cmd.Flags().FlagUsages())
 
-		fmt.Println("Use `pulumi [command] --help` for more information about a command.")
+		fmt.Fprintln(w, "Use `pulumi [command] --help` for more information about a command.")
 	})
 }
 
@@ -203,6 +209,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 	updateCheckResult := make(chan *updateCheckResult)
 
+	var cmd *cobra.Command
 	cleanup := func() {
 		// Logger.Close is a no-op when autoLogger is nil.
 		if err := autoLogger.Close(); err != nil {
@@ -222,7 +229,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				logging.Warningf("could not find the log file: %s", err)
 				logging.Flush()
 			} else {
-				fmt.Fprintf(os.Stderr, "The log file for this run is at %s\n", logFile)
+				fmt.Fprintf(cmd.ErrOrStderr(), "The log file for this run is at %s\n", logFile)
 			}
 		}
 
@@ -237,7 +244,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// to understand ANSI escape codes.
 	_, _, _ = term.StdStreams()
 
-	cmd := &cobra.Command{
+	cmd = &cobra.Command{
 		Use:           "pulumi",
 		Short:         "Pulumi command line",
 		SilenceErrors: true,
@@ -268,9 +275,21 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}
 			}()
 
+			// Commands like `pulumi do` set DisableFlagParsing on themselves so they can
+			// build a dynamic flag tree from a provider's schema. cobra skips flag parsing
+			// entirely for such commands, which means our root persistent flag variables
+			// (--color, --cwd, --tracing, --otel-traces, ...) are still at their defaults
+			// when this PersistentPreRunE runs, so all the flag-dependent init below is
+			// skipped. Parse what we can ourselves before continuing.
+			if cmd.DisableFlagParsing {
+				pf := cmd.Root().PersistentFlags()
+				pf.ParseErrorsAllowlist.UnknownFlags = true
+				_ = pf.Parse(args)
+			}
+
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
 			client.SetUserAgentCommand(commandPath)
-			client.SetUserAgentAIAgent(cmdMetadata.DetectAIAgent(os.Getenv))
+			client.SetUserAgentAIAgent(agentdetect.Detect(os.Getenv))
 
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't
@@ -306,7 +325,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
-			if err := cmdutil.InitOtelReceiver(otelTracesFlag); err != nil {
+			if err := cmdutil.InitOtelReceiver(otelTracesFlag, nil); err != nil {
 				logging.V(3).Infof("failed to initialize OTLP receiver: %v", err)
 			}
 
@@ -352,6 +371,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				cmdutil.SetAppDashTraceParent(sc.TraceID(), sc.SpanID())
 			}
 			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
+			ctx = httpstate.ContextWithAgentCredentialUse(ctx)
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
@@ -393,6 +413,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			agentauth.MaybePrintClaimWarning(cmd.Context(), cmd.ErrOrStderr())
+
 			// Before exiting, if there is a new version of the CLI available, print it out.
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
@@ -481,7 +503,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
-				cloud.NewCloudCmd(),
+				cloud.NewAPICmd(),
+				insights.NewInsightsCmd(),
+				cmdDo.NewDoCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, nil, nil),
 			},
 		},
 		{
@@ -496,7 +520,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
 				packagecmd.NewPackageCmd(),
-				templatecmd.NewTemplateCmd(),
 			},
 		},
 		{
@@ -524,6 +547,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				convert.NewConvertCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance),
 				operations.NewWatchCmd(),
 				logs.NewLogsCmd(pkgWorkspace.Instance),
+				templatecmd.NewTemplateCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
@@ -683,7 +707,24 @@ func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 
 	if command == "pulumi plugin run" {
 		if len(args) > 0 {
-			command += " " + args[0]
+			positionals := positionalArgs(cmd, args)
+			if len(positionals) > 0 {
+				command += " " + positionals[0]
+			}
+		}
+	}
+
+	if command == "pulumi do" {
+		positionals := positionalArgs(cmd, args)
+		// Include the resource/function token
+		if len(positionals) > 0 {
+			command += " " + positionals[0]
+		}
+		if len(positionals) > 1 {
+			switch positionals[1] {
+			case "create", "read", "patch", "delete", "list":
+				command += " " + positionals[1]
+			}
 		}
 	}
 
@@ -703,6 +744,32 @@ func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 	}
 
 	return metadata
+}
+
+// positionalArgs extracts positional arguments from a raw argument list,
+// filtering out flags. This is used for commands with DisableFlagParsing
+// where args contains everything including flags. Known flags from the
+// command are registered so pflag can skip over their values correctly;
+// unknown flags are also tolerated.
+func positionalArgs(cmd *cobra.Command, args []string) []string {
+	fs := pflag.NewFlagSet("telemetry", pflag.ContinueOnError)
+	fs.ParseErrorsAllowlist.UnknownFlags = true
+	// Register the command's own flags so pflag can correctly skip their
+	// values (e.g. --package "foo" should not treat "foo" as positional).
+	// Visit both Flags() and PersistentFlags() to cover all defined flags;
+	// cobra merges them during Execute(), but we may run before that merge.
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		fs.AddFlag(f)
+	})
+	cmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		if fs.Lookup(f.Name) == nil {
+			fs.AddFlag(f)
+		}
+	})
+	// Silence any output from parsing errors.
+	fs.SetOutput(io.Discard)
+	_ = fs.Parse(args)
+	return fs.Args()
 }
 
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be

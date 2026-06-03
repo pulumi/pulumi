@@ -30,7 +30,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -38,6 +40,18 @@ import (
 const (
 	go19Version = "go1.9"
 )
+
+func TestBadArchiveOfAssets(t *testing.T) {
+	t.Parallel()
+	skipWindows(t) // Windows doesn't error here
+
+	textAsset, err := asset.FromText("A")
+	require.NoError(t, err)
+	inner, err := archive.FromAssets(map[string]any{"..": textAsset})
+	require.NoError(t, err)
+	_, err = archive.FromAssets(map[string]any{"/": inner})
+	require.Error(t, err, "can't path above /")
+}
 
 // TODO[pulumi/pulumi#8647]
 func skipWindows(t *testing.T) {

@@ -180,12 +180,52 @@ func TestResolveBindings_NullFieldRejected(t *testing.T) {
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 }
 
-// TestNegotiateAccept_Default uses the op's declared primary response content type.
-func TestNegotiateAccept_Default(t *testing.T) {
+// TestNegotiateAccept_DefaultPrefersMarkdownWithFallback pins the fallback
+// chain that protects against a 406 when the server can't produce markdown.
+func TestNegotiateAccept_DefaultPrefersMarkdownWithFallback(t *testing.T) {
 	t.Parallel()
 	op := &Operation{
 		ResponseContentType: "application/json",
 		SuccessContentTypes: []string{"application/json", "text/markdown"},
+	}
+	got, err := negotiateAccept(op, "")
+	require.NoError(t, err)
+	assert.Equal(t, "text/markdown, application/json", got)
+}
+
+// TestNegotiateAccept_DefaultPrefersMarkdownFallbacksInSpecOrder pins
+// spec order as the fallback ordering.
+func TestNegotiateAccept_DefaultPrefersMarkdownFallbacksInSpecOrder(t *testing.T) {
+	t.Parallel()
+	op := &Operation{
+		ResponseContentType: "application/json",
+		SuccessContentTypes: []string{"application/json", "text/markdown", "application/x-yaml"},
+	}
+	got, err := negotiateAccept(op, "")
+	require.NoError(t, err)
+	assert.Equal(t, "text/markdown, application/json, application/x-yaml", got)
+}
+
+// TestNegotiateAccept_DefaultMarkdownOnly pins that no redundant fallback is
+// appended when markdown is the sole declared type.
+func TestNegotiateAccept_DefaultMarkdownOnly(t *testing.T) {
+	t.Parallel()
+	op := &Operation{
+		ResponseContentType: "text/markdown",
+		SuccessContentTypes: []string{"text/markdown"},
+	}
+	got, err := negotiateAccept(op, "")
+	require.NoError(t, err)
+	assert.Equal(t, "text/markdown", got)
+}
+
+// TestNegotiateAccept_DefaultFallsBackToJSON pins that ops without markdown
+// keep the existing default.
+func TestNegotiateAccept_DefaultFallsBackToJSON(t *testing.T) {
+	t.Parallel()
+	op := &Operation{
+		ResponseContentType: "application/json",
+		SuccessContentTypes: []string{"application/json"},
 	}
 	got, err := negotiateAccept(op, "")
 	require.NoError(t, err)
@@ -227,7 +267,7 @@ func TestNegotiateAccept_MarkdownNotDeclared(t *testing.T) {
 	assert.Contains(t, joined, "application/json")
 }
 
-// TestNegotiateAccept_InvalidValue rejects unknown --format values.
+// TestNegotiateAccept_InvalidValue rejects unknown --output values.
 func TestNegotiateAccept_InvalidValue(t *testing.T) {
 	t.Parallel()
 	_, err := negotiateAccept(&Operation{}, "yaml")

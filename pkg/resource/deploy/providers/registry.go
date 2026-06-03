@@ -371,7 +371,7 @@ var _ plugin.Provider = (*Registry)(nil)
 func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
 	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider, e env.Env,
 ) (plugin.Provider, error) {
-	if builtins != nil && pkg == builtins.Pkg() {
+	if builtins != nil && pkg == "pulumi" {
 		return builtins, nil
 	}
 
@@ -554,10 +554,6 @@ func (r *Registry) deleteProvider(ref providers.Reference) (plugin.Provider, boo
 
 func (r *Registry) Close() error {
 	return nil
-}
-
-func (r *Registry) Pkg() tokens.Package {
-	return "pulumi"
 }
 
 func (r *Registry) label() string {
@@ -1034,6 +1030,10 @@ func (r *Registry) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.D
 
 func (r *Registry) Read(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 	return plugin.ReadResponse{}, errors.New("provider resources may not be read")
+}
+
+func (r *Registry) List(context.Context, plugin.ListRequest) (*plugin.ListStream, error) {
+	return nil, errors.New("provider resources may not be listed")
 }
 
 func (r *Registry) Construct(context.Context, plugin.ConstructRequest) (plugin.ConstructResponse, error) {

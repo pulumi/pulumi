@@ -95,7 +95,7 @@ func main() {
 		return makeProvider(host, providerName, version)
 	})
 	if err != nil {
-		cmdutil.ExitError(err.Error())
+		cmdutil.Exit(err)
 	}
 }
 

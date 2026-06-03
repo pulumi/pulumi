@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // A small provider with a single resource "Resource" that has a "public" and "private" field, plus two nested
@@ -44,10 +43,6 @@ func (p *SecretProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *SecretProvider) Pkg() tokens.Package {
-	return "secret"
 }
 
 func (p *SecretProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {

@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type ReadProvider struct {
@@ -39,10 +38,6 @@ func (p *ReadProvider) Close() error {
 
 func (p *ReadProvider) Configure(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *ReadProvider) Pkg() tokens.Package {
-	return "read"
 }
 
 func (p *ReadProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
@@ -156,7 +151,7 @@ func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.R
 
 func (p *ReadProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ref(semver.MustParse("39.0.0")),
+		Version: ptr(semver.MustParse("39.0.0")),
 	}, nil
 }
 

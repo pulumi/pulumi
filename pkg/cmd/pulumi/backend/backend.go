@@ -58,7 +58,7 @@ func NonInteractiveCurrentBackend(
 		return BackendInstance, nil
 	}
 
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
@@ -76,7 +76,7 @@ func CurrentBackend(
 		return BackendInstance, nil
 	}
 
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}

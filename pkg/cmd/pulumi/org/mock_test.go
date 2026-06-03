@@ -1,0 +1,113 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package org
+
+import (
+	"context"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+)
+
+// mockOrgRoleClient is a fake orgRoleClient used by tests across the
+// `pulumi org role ...` commands. Tests may set the returned values directly
+// and read back the captured request fields after invocation.
+type mockOrgRoleClient struct {
+	roles           []apitype.Role
+	listErr         error
+	capturedOrg     string
+	capturedPurpose string
+
+	createResp apitype.Role
+	createErr  error
+	createReq  apitype.CreateRoleRequest
+
+	getResp apitype.Role
+	getErr  error
+	getID   string
+
+	updateResp apitype.Role
+	updateErr  error
+	updateID   string
+	updateReq  apitype.UpdateRoleRequest
+
+	deleteErr   error
+	deleteID    string
+	deleteForce bool
+
+	assignErr  error
+	assignTeam string
+	assignID   string
+}
+
+func (m *mockOrgRoleClient) ListOrgRoles(_ context.Context, orgName, uxPurpose string) ([]apitype.Role, error) {
+	m.capturedOrg = orgName
+	m.capturedPurpose = uxPurpose
+	return m.roles, m.listErr
+}
+
+func (m *mockOrgRoleClient) CreateOrgRole(
+	_ context.Context, orgName string, req apitype.CreateRoleRequest,
+) (apitype.Role, error) {
+	m.capturedOrg = orgName
+	m.createReq = req
+	return m.createResp, m.createErr
+}
+
+func (m *mockOrgRoleClient) GetOrgRole(
+	_ context.Context, orgName, roleID string,
+) (apitype.Role, error) {
+	m.capturedOrg = orgName
+	m.getID = roleID
+	return m.getResp, m.getErr
+}
+
+func (m *mockOrgRoleClient) UpdateOrgRole(
+	_ context.Context, orgName, roleID string, req apitype.UpdateRoleRequest,
+) (apitype.Role, error) {
+	m.capturedOrg = orgName
+	m.updateID = roleID
+	m.updateReq = req
+	return m.updateResp, m.updateErr
+}
+
+func (m *mockOrgRoleClient) DeleteOrgRole(
+	_ context.Context, orgName, roleID string, force bool,
+) error {
+	m.capturedOrg = orgName
+	m.deleteID = roleID
+	m.deleteForce = force
+	return m.deleteErr
+}
+
+func (m *mockOrgRoleClient) AssignTeamRole(
+	_ context.Context, orgName, teamName, roleID string,
+) error {
+	m.capturedOrg = orgName
+	m.assignTeam = teamName
+	m.assignID = roleID
+	return m.assignErr
+}
+
+func stubRoleFactory(c orgRoleClient, orgName string) orgRoleClientFactory {
+	return func(_ context.Context, _ string) (orgRoleClient, string, error) {
+		return c, orgName, nil
+	}
+}
+
+func failingRoleFactory(err error) orgRoleClientFactory {
+	return func(_ context.Context, _ string) (orgRoleClient, string, error) {
+		return nil, "", err
+	}
+}

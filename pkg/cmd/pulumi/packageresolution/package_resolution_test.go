@@ -810,3 +810,43 @@ func TestResolvePackage(t *testing.T) {
 		})
 	}
 }
+
+func TestVCSURLHint(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		source    string
+		expectHas bool
+	}{
+		{name: "unknown host", source: "https://example.com/owner/repo/sub", expectHas: false},
+		{name: "two-segment gitlab", source: "https://gitlab.com/owner/repo", expectHas: false},
+		{name: "two-segment github", source: "https://github.com/owner/repo", expectHas: false},
+		{name: "two-segment bitbucket", source: "https://bitbucket.org/owner/repo", expectHas: false},
+		{name: "gitlab with .git suffix", source: "https://gitlab.com/group/sub/repo.git", expectHas: false},
+		{name: "github with .git boundary", source: "https://github.com/owner/repo.git/sub", expectHas: false},
+		{name: "bitbucket with .git suffix", source: "https://bitbucket.org/ws/repo.git", expectHas: false},
+		{name: "ambiguous gitlab subgroup", source: "https://gitlab.com/group/sub/repo", expectHas: true},
+		{name: "ambiguous deep gitlab", source: "https://gitlab.com/a/b/c/d/repo", expectHas: true},
+		{name: "ambiguous github with subpath", source: "https://github.com/owner/repo/subdir", expectHas: true},
+		{name: "ambiguous bitbucket with subpath", source: "https://bitbucket.org/ws/repo/subdir", expectHas: true},
+		{name: "ambiguous with www prefix", source: "https://www.gitlab.com/g/sg/repo", expectHas: true},
+		{name: "valid azure devops", source: "https://dev.azure.com/org/proj/_git/repo", expectHas: false},
+		{name: "azure devops short path", source: "https://dev.azure.com/org/repo", expectHas: false},
+		{name: "azure devops missing _git", source: "https://dev.azure.com/org/proj/repo", expectHas: true},
+		{name: "empty", source: "", expectHas: false},
+		{name: "garbage", source: "://not-a-url", expectHas: false},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			hint := vcsURLHint(tt.source)
+			if tt.expectHas {
+				assert.NotEmpty(t, hint)
+				assert.Contains(t, hint, "git")
+			} else {
+				assert.Empty(t, hint)
+			}
+		})
+	}
+}

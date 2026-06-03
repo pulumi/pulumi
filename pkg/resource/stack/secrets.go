@@ -533,10 +533,9 @@ func BatchEncrypt[T any](
 	ctx context.Context,
 	sm secrets.Manager,
 	fn func(context.Context, config.Encrypter) (T, error),
-) (T, error) {
+) (result T, err error) {
 	enc := sm.Encrypter()
 
-	var err error
 	if batchingSecretsManager, ok := sm.(BatchingSecretsManager); ok {
 		var completeBatch CompleteCrypterBatch
 		enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
@@ -546,7 +545,7 @@ func BatchEncrypt[T any](
 	result, fnerr := fn(ctx, enc)
 	err = errors.Join(err, fnerr)
 
-	return result, nil
+	return result, err
 }
 
 // BatchDecrypt is a helper function that encapsulates the pattern of checking if a secrets manager
@@ -556,10 +555,9 @@ func BatchDecrypt[T any](
 	ctx context.Context,
 	sm secrets.Manager,
 	fn func(context.Context, config.Decrypter) (T, error),
-) (T, error) {
+) (result T, err error) {
 	var dec config.Decrypter
 
-	var err error
 	if sm != nil {
 		if batchingSecretsManager, ok := sm.(BatchingSecretsManager); ok {
 			var completeBatch CompleteCrypterBatch

@@ -65,11 +65,12 @@ func NewOrgCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Current Backend: %s\n", cloudURL)
+			out := cmd.OutOrStdout()
+			fmt.Fprintf(out, "Current Backend: %s\n", cloudURL)
 			if defaultOrg != "" {
-				fmt.Printf("Default Org: %s\n", defaultOrg)
+				fmt.Fprintf(out, "Default Org: %s\n", defaultOrg)
 			} else {
-				fmt.Println("No Default Org Specified")
+				fmt.Fprintln(out, "No Default Org Specified")
 			}
 
 			return nil
@@ -81,6 +82,11 @@ func NewOrgCmd() *cobra.Command {
 	cmd.AddCommand(newOrgSetDefaultCmd())
 	cmd.AddCommand(newOrgGetDefaultCmd())
 	cmd.AddCommand(newSearchCmd())
+	cmd.AddCommand(newOrgWebhookCmd())
+	cmd.AddCommand(newOrgRoleCmd())
+	cmd.AddCommand(newOrgMemberCmd())
+	cmd.AddCommand(newOrgAuditLogCmd())
+	cmd.AddCommand(newOrgUsageCmd())
 
 	return cmd
 }
@@ -180,9 +186,9 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			}
 
 			if defaultOrg != "" {
-				fmt.Println(defaultOrg)
+				fmt.Fprintln(cmd.OutOrStdout(), defaultOrg)
 			} else {
-				fmt.Println("No Default Org Specified")
+				fmt.Fprintln(cmd.OutOrStdout(), "No Default Org Specified")
 			}
 
 			return nil

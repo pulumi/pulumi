@@ -37,7 +37,7 @@ type mockRegistry struct {
 	getTemplate func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
-	listTemplates func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+	listTemplates func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.TemplateMetadata, error]
 
 	downloadTemplate func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
@@ -58,8 +58,10 @@ func (r mockRegistry) GetTemplate(
 	return r.getTemplate(ctx, source, publisher, name, version)
 }
 
-func (r mockRegistry) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-	return r.listTemplates(ctx, name)
+func (r mockRegistry) ListTemplates(
+	ctx context.Context, opts ListTemplatesOptions,
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	return r.listTemplates(ctx, opts)
 }
 
 func (r mockRegistry) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {

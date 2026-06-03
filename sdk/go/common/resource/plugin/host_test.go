@@ -214,7 +214,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 
 	// Create a context for testing
 	ctx := &Context{
-		Root: tempDir,
+		baseContext: t.Context(),
+		Root:        tempDir,
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -276,7 +277,8 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 
 	// Create a context for testing
 	ctx := &Context{
-		Root: tempDir,
+		baseContext: t.Context(),
+		Root:        tempDir,
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -319,7 +321,8 @@ func TestNewDefaultHost_LoaderAddress(t *testing.T) {
 	t.Parallel()
 
 	ctx := &Context{
-		Root: t.TempDir(),
+		baseContext: t.Context(),
+		Root:        t.TempDir(),
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),

@@ -15,16 +15,19 @@
 package neo
 
 import (
+	"sort"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -43,6 +46,34 @@ type ctrlCDisarmMsg struct {
 	gen int
 }
 
+// modeToggleDebounce is the trailing-edge window for Ctrl+A / Ctrl+R: each
+// press updates local state immediately but only schedules a PATCH against the
+// live task after the user stops pressing for this long. Rapid mashing
+// collapses to one PATCH carrying the final value, so the cloud and the
+// dispatcher both see the user's intent instead of a noisy burst of updates.
+const modeToggleDebounce = 500 * time.Millisecond
+
+// approvalDebounceTickMsg / permissionDebounceTickMsg fire `modeToggleDebounce`
+// after each Ctrl+A / Ctrl+R press. They carry the generation they were
+// scheduled under so a newer press (which advances the generation) cancels the
+// stale tick by gen-mismatch.
+type approvalDebounceTickMsg struct {
+	gen int
+}
+
+type permissionDebounceTickMsg struct {
+	gen int
+}
+
+// firstFlushReadyMsg defers the welcome banner / pre-seeded blocks to
+// tea.Println until after bubbletea v2's first renderer flush. Calling
+// Println inside the WindowSizeMsg handler runs while cellbuf is still
+// sized to the terminal, so insertAbove would scroll a screenful of blank
+// lines above the prompt.
+type firstFlushReadyMsg struct {
+	rendered []string
+}
+
 // blockKind identifies the type of rendered block in the output log.
 type blockKind int
 
@@ -57,9 +88,11 @@ const (
 	blockApprovalPlan
 	blockApprovalGeneral
 	blockApprovalChoice
+	blockApprovalAuto
 	blockQuestion
 	blockAnswerSubmitted
 	blockPulumiOp
+	blockTodoList
 )
 
 type block struct {
@@ -74,12 +107,21 @@ type block struct {
 	// label and shimmer apply to blockBusy only.
 	label   string
 	shimmer shimmerKind
-	// approved applies to blockApprovalChoice only.
+	// approved applies to blockApprovalChoice and blockApprovalAuto. For
+	// blockApprovalAuto it carries the "ok" field from the cloud's
+	// user_confirmation (true=auto-approved, false=auto-denied).
 	approved bool
+	// autoIsQuestion applies to blockApprovalAuto only — true if the underlying
+	// request was an ask-user call (so the renderer says "Auto-answered" rather
+	// than "Auto-approved").
+	autoIsQuestion bool
 	// pulumi carries per-block state for blockPulumiOp. It is mutated in place
 	// as UIPulumiResource / UIPulumiDiag / UIPulumiEnd events arrive, then
 	// re-rendered by renderBlock on every update.
 	pulumi *pulumiBlockState
+	// todos is populated for blockTodoList and folded into blockApprovalPlan
+	// as a Tasks: subsection.
+	todos []UITodoItem
 }
 
 // pulumiBlockState accumulates the live state of a blockPulumiOp. Resources are
@@ -137,10 +179,20 @@ type ModelConfig struct {
 	// which is sent to the backend via CreateNeoTask rather than outCh and
 	// would otherwise only appear once the SSE stream echoes it back.
 	InitialPrompt string
+	// InitialApprovalMode and InitialPermissionMode seed the TUI's view of the
+	// task's approval / permission policy. These come from the --approval-mode /
+	// --permission-mode flags (or their defaults) and are sent on the first
+	// user_message; subsequent toggles via Ctrl+A / Ctrl+R PATCH the live task.
+	InitialApprovalMode   client.NeoApprovalMode
+	InitialPermissionMode client.NeoPermissionMode
 	// MessageSent seeds the post-first-message gate. Set it to true in tests
 	// that want to exercise the Shift+Tab post-send warning path without
 	// having to simulate a full Enter-driven send first.
 	MessageSent bool
+	// TaskCreated seeds the post-task-creation gate. Set it to true in tests
+	// that want to exercise the post-task Ctrl+A / Ctrl+R path without driving
+	// a UISessionURL through the event channel.
+	TaskCreated bool
 }
 
 // Model is the top-level bubbletea model for the Neo TUI.
@@ -153,10 +205,16 @@ type ModelConfig struct {
 // an in-flight pulumi op that hasn't received UIPulumiEnd yet.
 type Model struct {
 	welcome   welcomeModel
-	textInput textinput.Model
-	blocks    []block
-	eventCh   <-chan UIEvent
-	outCh     chan<- outboundEvent
+	textInput textarea.Model
+	// approvalPromptText, when non-empty, is rendered as a header line above
+	// the textarea. Used in pending-approval and ask-user-question states
+	// where the chrome that used to live in textinput.Prompt has nowhere to
+	// go in a multi-line textarea (textarea's Prompt is per-line, not a
+	// global prefix). Cleared by clearPendingPrompt.
+	approvalPromptText string
+	blocks             []block
+	eventCh            <-chan UIEvent
+	outCh              chan<- outboundEvent
 	// sizeReceived flips on the first WindowSizeMsg. The first resize is also
 	// the moment we know the terminal width, so it's when we emit the welcome
 	// banner and any pre-seeded committed blocks (e.g. an InitialPrompt user
@@ -189,10 +247,35 @@ type Model struct {
 	// true, Shift+Tab stops toggling and planMode is effectively frozen
 	// (further changes happen only via plan-approval auto-clear below).
 	planMode bool
+	// approvalMode is the current approval policy, cycled via Ctrl+A. Pre-first-
+	// message it's purely local — the value is snapshotted into CreateNeoTask on
+	// the first user_message. Post-send toggles dispatch an outboundEvent.update
+	// that the runNeo dispatcher routes through UpdateNeoTask, so cloud
+	// ApprovalHandler picks up the change without restarting the session.
+	approvalMode client.NeoApprovalMode
+	// permissionMode is the current capability scope, toggled via Ctrl+R. Same
+	// pre/post-send semantics as approvalMode.
+	permissionMode client.NeoPermissionMode
+	// approvalDebounceGen / permissionDebounceGen increment on every post-send
+	// Ctrl+A / Ctrl+R press. Each press schedules a tea.Tick carrying the
+	// current generation; the tick handler dispatches the PATCH only if the
+	// gen still matches, so rapid presses collapse to a single update with the
+	// final mode value.
+	approvalDebounceGen   int
+	permissionDebounceGen int
 	// messageSent flips to true when the TUI successfully dispatches its
 	// first user_message on outCh. From that point on, Shift+Tab emits the
 	// "plan mode is task-level" warning instead of toggling.
 	messageSent bool
+	// taskCreated flips to true when UISessionURL arrives — the dispatcher
+	// emits that immediately after CreateNeoTask returns OK, so it's the
+	// natural signal that the task is now addressable for PATCH. The window
+	// between messageSent and taskCreated is the race the Ctrl+A / Ctrl+R
+	// handlers gate on: in that window the dispatcher would silently drop a
+	// UpdateNeoTaskOptions event (no taskID yet), leaving the local mode out
+	// of sync with the cloud. Swallow the keypress instead so the status bar
+	// can't lie about what the cloud is enforcing.
+	taskCreated bool
 	// pendingApprovalType is the raw wire approval_type for the currently
 	// pending approval (empty when none). The Enter handler checks for
 	// approvalTypePlanExit so it can auto-clear planMode on approval.
@@ -222,6 +305,12 @@ type Model struct {
 	// emissions prepend a blank line so each committed block has visual
 	// breathing room from whatever came before.
 	hasEmittedScrollback bool
+	// pendingTodos buffers the latest UITodoList while planMode is true so
+	// the list lands inside the same block as the Proposed plan, not above it.
+	pendingTodos  []UITodoItem
+	toolHistory   []toolCallRecord
+	overlayActive bool
+	overlay       overlayModel
 }
 
 var (
@@ -237,6 +326,11 @@ var (
 	// planAccentStyle is a distinct cyan+bold used for both the footer banner
 	// and the "Proposed plan" block header so they read as the same visual cue.
 	planAccentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
+	// Styles for in-progress and completed todo items. Pending items render
+	// in the default style — no entry here.
+	todoActiveStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
+	todoCompletedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Faint(true)
+	todoListHeader     = lipgloss.NewStyle().Bold(true).Render("⏺ TODO")
 )
 
 // renderLeftBracket decorates content with a left-only bracket border: a
@@ -265,6 +359,30 @@ func renderLeftBracket(borderStyle lipgloss.Style, content string) string {
 	return strings.Join(out, "\n")
 }
 
+// nextApprovalMode returns the next value in the manual → balanced → auto →
+// manual cycle. Empty input is treated as manual so cycling from the zero value
+// lands on a real first state.
+func nextApprovalMode(m client.NeoApprovalMode) client.NeoApprovalMode {
+	switch m {
+	case client.NeoApprovalModeManual:
+		return client.NeoApprovalModeBalanced
+	case client.NeoApprovalModeBalanced:
+		return client.NeoApprovalModeAuto
+	case client.NeoApprovalModeAuto:
+		return client.NeoApprovalModeManual
+	}
+	return client.NeoApprovalModeManual
+}
+
+// nextPermissionMode flips between default and read-only. Anything else
+// (including empty) collapses back to default.
+func nextPermissionMode(m client.NeoPermissionMode) client.NeoPermissionMode {
+	if m == client.NeoPermissionModeReadOnly {
+		return client.NeoPermissionModeDefault
+	}
+	return client.NeoPermissionModeReadOnly
+}
+
 // renderIndented word-wraps content (ANSI-safe) to termWidth minus the
 // 2-space transcript gutter, or returns un-wrapped if the width is too
 // small to wrap into. URLs in the post-wrap output are wrapped in OSC 8
@@ -280,12 +398,42 @@ func renderIndented(style lipgloss.Style, termWidth int, content string) string 
 
 // NewModel creates a new TUI Model.
 func NewModel(cfg ModelConfig) Model {
-	ti := textinput.New()
-	ti.Prompt = "❯ "
-	ti.PromptStyle = promptStyle
+	ti := textarea.New()
 	ti.Placeholder = "Send a message..."
-	ti.Focus()
 	ti.CharLimit = 4096
+	ti.ShowLineNumbers = false
+	// DynamicHeight starts the input at one visible line and grows it as the
+	// user adds newlines, capped at MaxHeight so a long paste scrolls inside
+	// the textarea rather than pushing scrollback off-screen.
+	ti.DynamicHeight = true
+	ti.MinHeight = 1
+	// MaxHeight=0 disables both the visual cap and atContentLimit, so the
+	// textarea grows with content. CharLimit is the real upper bound.
+	ti.MaxHeight = 0
+	// textarea defaults to height 6 and only recalculates inside SetWidth.
+	// Force the first frame to 1 line so there's no gap above the welcome
+	// banner before the WindowSizeMsg handler fires.
+	ti.SetHeight(1)
+	// First line carries the prompt chevron; subsequent lines indent to keep
+	// continuation lines visually aligned under the chevron.
+	ti.SetPromptFunc(2, func(info textarea.PromptInfo) string {
+		if info.LineNumber == 0 {
+			return "❯ "
+		}
+		return "  "
+	})
+	styles := ti.Styles()
+	styles.Focused.Prompt = promptStyle
+	styles.Blurred.Prompt = promptStyle
+	ti.SetStyles(styles)
+	// Keep Enter as submit. Shift+Enter / Alt+Enter need kitty keyboard
+	// protocol; Ctrl+J (== LF) is the portable fallback. Trailing backslash
+	// + Enter inserts a newline via the bare-Enter branch of Update.
+	ti.KeyMap.InsertNewline = key.NewBinding(
+		key.WithKeys("shift+enter", "alt+enter", "ctrl+j"),
+		key.WithHelp("shift+enter / alt+enter / ctrl+j", "newline"),
+	)
+	ti.Focus()
 
 	sp := spinner.New(
 		spinner.WithSpinner(spinner.MiniDot),
@@ -301,14 +449,18 @@ func NewModel(cfg ModelConfig) Model {
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
-		textInput:   ti,
-		eventCh:     cfg.EventCh,
-		outCh:       cfg.OutCh,
-		busy:        cfg.Busy,
-		spinner:     sp,
-		width:       80,
-		height:      24,
-		messageSent: cfg.MessageSent,
+		textInput:      ti,
+		eventCh:        cfg.EventCh,
+		outCh:          cfg.OutCh,
+		busy:           cfg.Busy,
+		spinner:        sp,
+		width:          80,
+		height:         24,
+		messageSent:    cfg.MessageSent,
+		taskCreated:    cfg.TaskCreated,
+		approvalMode:   cfg.InitialApprovalMode,
+		permissionMode: cfg.InitialPermissionMode,
+		overlay:        newOverlayModel(80, 24),
 	}
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
@@ -329,7 +481,7 @@ func NewModel(cfg ModelConfig) Model {
 
 // Init returns the initial command that starts listening for events.
 func (m Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{waitForEvent(m.eventCh), textinput.Blink}
+	cmds := []tea.Cmd{waitForEvent(m.eventCh), textarea.Blink}
 	if m.busy {
 		cmds = append(cmds, m.spinner.Tick)
 	}
@@ -347,7 +499,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		safeWidth := m.liveWidth()
 		m.welcome.termWidth = safeWidth
-		m.textInput.Width = max(safeWidth-lipgloss.Width(m.textInput.Prompt)-1, 1)
+		// SetWidth accounts for the prompt width registered via SetPromptFunc.
+		m.textInput.SetWidth(max(safeWidth, 3))
+		m.overlay.SetSize(m.width, m.height)
+		if m.overlayActive {
+			m.overlay.Refresh(m.toolHistory)
+		}
 
 		// Glamour's wrap width is baked in at construction, so rebuild on resize.
 		// Wrap at liveWidth-4 so glamour-rendered output (assistant finals, plan
@@ -367,12 +524,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderBlock(&m.blocks[i])
 		}
 		if firstSize {
-			cmds = append(cmds, m.printlnBlock(m.welcome.View()))
+			rendered := []string{m.welcome.View()}
 			for _, b := range m.blocks {
 				if isCommittedKind(b) && b.rendered != "" {
-					cmds = append(cmds, m.printlnBlock(b.rendered))
+					rendered = append(rendered, b.rendered)
 				}
 			}
+			// 50ms covers ~3 ticks at bubbletea's 60Hz default — see
+			// firstFlushReadyMsg for why we defer at all.
+			cmds = append(cmds, tea.Tick(50*time.Millisecond, func(time.Time) tea.Msg {
+				return firstFlushReadyMsg{rendered: rendered}
+			}))
+		}
+
+	case firstFlushReadyMsg:
+		for _, r := range msg.rendered {
+			cmds = append(cmds, m.printlnBlock(r))
 		}
 
 	case ctrlCDisarmMsg:
@@ -384,11 +551,52 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyMsg:
+	case approvalDebounceTickMsg:
+		// Trailing-edge debounce: dispatch the PATCH only if the user hasn't
+		// pressed Ctrl+A again since this tick was scheduled. A newer press
+		// advances approvalDebounceGen, so a stale tick is silently dropped
+		// here. taskCreated is guaranteed by the Ctrl+A handler that
+		// scheduled this tick.
+		if msg.gen == m.approvalDebounceGen {
+			next := m.approvalMode
+			m.sendOut(outboundEvent{
+				update: &client.UpdateNeoTaskOptions{ApprovalMode: &next},
+			})
+		}
+		return m, nil
+
+	case permissionDebounceTickMsg:
+		if msg.gen == m.permissionDebounceGen {
+			next := m.permissionMode
+			m.sendOut(outboundEvent{
+				update: &client.UpdateNeoTaskOptions{PermissionMode: &next},
+			})
+		}
+		return m, nil
+
+	case tea.KeyPressMsg:
+		keyStr := msg.String()
+		// While the overlay is open, ctrl+o / esc / ctrl+c / ctrl+d all close
+		// it; scroll keys go to the viewport; everything else is swallowed so
+		// it can't leak into the hidden input bar. Closing on ctrl+c/d means a
+		// reflexive "abort" tap dismisses the overlay rather than killing the
+		// session — the user can press ctrl+c again from the inline view to
+		// quit. Alt-screen toggling happens in View() via tea.View.AltScreen.
+		if m.overlayActive {
+			switch keyStr {
+			case "ctrl+o", "esc", "ctrl+c", "ctrl+d":
+				m.overlayActive = false
+				return m, nil
+			case "up", "down", "pgup", "pgdown", "home", "end":
+				return m, m.overlay.Update(msg)
+			default:
+				return m, nil
+			}
+		}
 		// Ctrl+D mirrors Ctrl+C: same arm/quit gate, same cancel-when-busy
 		// semantics. Two bindings is friendlier than picking one and forcing
 		// users to discover it.
-		if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyCtrlD {
+		if keyStr == "ctrl+c" || keyStr == "ctrl+d" {
 			if m.ctrlCArmed {
 				return m, tea.Quit
 			}
@@ -412,12 +620,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// will fire later but no-op because ctrlCArmed is already false.
 		m.ctrlCArmed = false
 
+		// Ctrl+O opens the overlay. Sits above the busy/approval gates so
+		// users can peek mid-turn. Closing is handled by the overlayActive
+		// branch above. Alt-screen toggling happens in View() via the
+		// tea.View.AltScreen field.
+		if keyStr == "ctrl+o" {
+			m.overlayActive = true
+			m.overlay.SetSize(m.width, m.height)
+			m.overlay.Refresh(m.toolHistory)
+			return m, nil
+		}
+
 		// Shift+Tab toggles plan mode. The toggle must run before the approval
 		// and busy guards so users can flip the indicator at any point in the
 		// pre-task window, even while the startup spinner is up. It also has to
-		// intercept the key before textinput.Update sees it, since textinput
+		// intercept the key before textarea.Update sees it, since textarea
 		// otherwise treats Shift+Tab as a keypress with no visible effect.
-		if msg.Type == tea.KeyShiftTab {
+		if keyStr == "shift+tab" {
 			if m.messageSent {
 				// Plan mode is task-level on the wire and gets snapshotted at
 				// the moment the first message is sent. A post-send toggle
@@ -429,13 +648,53 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// ESC asks the agent to abort the current turn. Posts user_cancel
-		// upstream and flips the local cancelling flag so the spinner label
-		// switches to "Cancelling..." until the backend acknowledges via
-		// cancelled / error / a new final assistant_message. Ignored when the
-		// TUI isn't busy or is already waiting on an approval (where the
-		// agent is paused for us anyway).
-		if msg.Type == tea.KeyEsc {
+		// Ctrl+A cycles the approval mode (manual → balanced → auto → manual).
+		// Pre-message the value just updates the local snapshot; post-message
+		// each press updates local state immediately but the PATCH against the
+		// live task is debounced via approvalDebounceTickMsg so rapid mashing
+		// collapses to one UpdateNeoTask carrying the final value (the cloud
+		// would otherwise see a noisy burst).
+		//
+		// The window between messageSent and taskCreated is a separate race:
+		// the dispatcher has no taskID to PATCH against yet and would silently
+		// drop the update. Swallow the keypress in that window so the status
+		// bar can't get out of sync with the cloud — the user can press again
+		// once the task URL arrives.
+		if keyStr == "ctrl+a" {
+			if m.messageSent && !m.taskCreated {
+				return m, nil
+			}
+			m.approvalMode = nextApprovalMode(m.approvalMode)
+			if m.messageSent {
+				return m, m.scheduleApprovalDebounce()
+			}
+			return m, nil
+		}
+
+		// Ctrl+R toggles the permission mode (default ↔ read-only). Same
+		// pre/post-send semantics — and the same create-task race window and
+		// debounce mechanics — as the approval-mode cycle above.
+		if keyStr == "ctrl+r" {
+			if m.messageSent && !m.taskCreated {
+				return m, nil
+			}
+			m.permissionMode = nextPermissionMode(m.permissionMode)
+			if m.messageSent {
+				return m, m.schedulePermissionDebounce()
+			}
+			return m, nil
+		}
+
+		// ESC clears a non-empty textarea; with an empty box it asks the
+		// agent to abort. The cancelling flag overrides the spinner label
+		// until the backend acknowledges via cancelled / error / a new
+		// final assistant_message. Skipped during a pending approval — the
+		// agent is already paused for us there.
+		if keyStr == "esc" {
+			if m.textInput.Value() != "" {
+				m.textInput.Reset()
+				return m, nil
+			}
 			if m.busy && !m.pendingApproval && !m.cancelling {
 				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
 				m.cancelling = true
@@ -447,7 +706,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handled before the busy check because the agent is intentionally
 		// paused here waiting for the user.
 		if m.pendingApproval {
-			if msg.Type == tea.KeyEnter {
+			if keyStr == "enter" {
 				text := strings.TrimSpace(m.textInput.Value())
 				if m.pendingIsQuestion {
 					if text == "" {
@@ -504,13 +763,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tiCmd
 		}
 
-		if msg.Type == tea.KeyEnter {
+		if keyStr == "enter" {
 			if m.busy {
 				// Agent is mid-turn — leave the typed text in the input so
 				// the user can send it after the next UITaskIdle.
 				return m, nil
 			}
-			text := strings.TrimSpace(m.textInput.Value())
+			raw := m.textInput.Value()
+			// Backslash-Enter: a trailing `\` rewrites this Enter from submit
+			// to newline, so users on terminals that can't distinguish
+			// Shift+Enter still have a way to add a line.
+			if stripped, ok := strings.CutSuffix(raw, "\\"); ok {
+				m.textInput.SetValue(stripped)
+				m.textInput.InsertRune('\n')
+				return m, nil
+			}
+			text := strings.TrimSpace(raw)
 			// Typing `quit` or `exit` and pressing Enter cleanly closes the
 			// session, complementing Ctrl+C / Ctrl+D for users who reach for
 			// shell-style commands first. Strict whole-input match so messages
@@ -525,7 +793,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Type:    userEventUserMessage,
 						Content: text,
 					},
-					planMode: m.planMode,
+					planMode:       m.planMode,
+					approvalMode:   m.approvalMode,
+					permissionMode: m.permissionMode,
 				})
 				if sent {
 					// Render optimistically so the user sees their message in
@@ -570,6 +840,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolStarted:
+		m.toolHistory = appendToolStart(m.toolHistory, msg.Name, msg.Args)
+		if m.overlayActive {
+			m.overlay.Refresh(m.toolHistory)
+		}
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -578,6 +852,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolCompleted:
+		completeToolCall(m.toolHistory, msg.Name, msg.Result, msg.IsError)
+		if m.overlayActive {
+			m.overlay.Refresh(m.toolHistory)
+		}
 		marker := toolOKMarker
 		if msg.IsError {
 			marker = toolErrMarker
@@ -615,6 +893,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// arrives, so emit the URL as its own line rather than re-rendering.
 		// OSC 8 wraps the URL so supporting terminals render it as clickable.
 		m.welcome.consoleURL = msg.URL
+		// CreateNeoTask sends UISessionURL immediately after taskID is set,
+		// so this is the natural moment to lift the post-Enter toggle freeze.
+		m.taskCreated = true
 		cmds = append(cmds, m.printlnBlock("  "+inputHintStyle.Render("⟡ "+osc8Hyperlink(msg.URL, msg.URL))))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -703,34 +984,66 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
+	case UITodoList:
+		// In plan mode, hold the list until plan_exit so the tasks land
+		// inside the same block as the plan. Outside plan mode commit
+		// immediately so status flips show up in scrollback.
+		if len(msg.Items) > 0 {
+			if m.planMode {
+				m.pendingTodos = msg.Items
+			} else {
+				cmds = append(cmds, m.commitBlock(block{kind: blockTodoList, todos: msg.Items}))
+			}
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
 	case UIApprovalRequest:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.pendingApproval = true
 		m.pendingApprovalID = msg.ApprovalID
 		m.pendingApprovalType = msg.ApprovalType
 		m.pendingIsQuestion = false
-		m.textInput.PromptStyle = warningStyle
 		m.textInput.Placeholder = ""
 		m.textInput.Reset()
 		switch {
 		case m.pendingApprovalType == approvalTypePlanExit:
 			// The plan body is authored as markdown and lives in
 			// PlanDescription; msg.Message is just a generic intro.
-			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription}))
-			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
+			planBlock := block{kind: blockApprovalPlan, raw: msg.PlanDescription, todos: m.pendingTodos}
+			m.pendingTodos = nil
+			cmds = append(cmds, m.commitBlock(planBlock))
+			m.approvalPromptText = warningStyle.Render("Approve plan? [y to approve / reason to deny]:")
 		case isAskUserToolName(msg.ToolName):
 			m.pendingIsQuestion = true
 			cmds = append(cmds, m.commitBlock(block{kind: blockQuestion, raw: msg.Message}))
-			m.textInput.Prompt = "Your answer: "
-			m.textInput.PromptStyle = promptStyle
+			m.approvalPromptText = promptStyle.Render("Your answer:")
 		default:
 			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalGeneral, raw: msg.Message}))
-			m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
+			m.approvalPromptText = warningStyle.Render("Approve? [y to approve / reason to deny]:")
+		}
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIApprovalResolved:
+		// Discriminator: pendingApproval is still true iff the cloud auto-
+		// resolved this request server-side (under ApprovalMode=auto/balanced).
+		// The manual path clears state locally on Enter before sending its
+		// user_confirmation upstream, so when the cloud echoes that back here
+		// pendingApproval is already false — and we no-op, which is correct.
+		// The ID match guards against a stale resolved event arriving after
+		// the user has already moved on to a different approval.
+		if m.pendingApproval && msg.ApprovalID == m.pendingApprovalID {
+			cmds = append(cmds, m.commitBlock(block{
+				kind:           blockApprovalAuto,
+				approved:       msg.Approved,
+				autoIsQuestion: m.pendingIsQuestion,
+			}))
+			m.clearPendingPrompt()
 		}
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	default:
-		// Pass unhandled messages to textinput (e.g. blink).
+		// Pass unhandled messages to the textarea (e.g. blink).
 		var tiCmd tea.Cmd
 		m.textInput, tiCmd = m.textInput.Update(msg)
 		cmds = append(cmds, tiCmd)
@@ -742,15 +1055,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View returns the rendered live frame: live blocks (busy spinner, in-flight
 // streaming, in-flight pulumi op) above the input bar. Completed blocks aren't
 // drawn here — they were committed to terminal scrollback via tea.Println as
-// soon as they reached a terminal state.
-func (m Model) View() string {
-	hintText := "enter to send · shift+tab to toggle plan mode · ctrl+c to quit"
+// soon as they reached a terminal state. When the overlay is open the
+// inline frame is suspended and the alt-screen overlay view is returned
+// instead (with View.AltScreen=true so bubbletea v2 enters the alt buffer).
+func (m Model) View() tea.View {
+	if m.overlayActive {
+		v := tea.NewView(m.overlay.View())
+		v.AltScreen = true
+		return v
+	}
+	return tea.NewView(m.viewString())
+}
+
+// viewString builds the live frame as a plain string. Kept separate from View
+// so tests (and the View() wrapper) can compose its output without unpacking
+// the tea.View struct.
+func (m Model) viewString() string {
+	hintText := "enter to send · shift+tab plan · ctrl+a auto-approval · " +
+		"ctrl+r read-only · ctrl+o tool details · ctrl+c to quit"
 	if m.busy {
-		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
+		hintText = "agent is working · enter disabled · ctrl+o tool details · esc or ctrl+c to cancel"
 	}
 	hint := "  "
-	if m.planMode {
-		hint += planAccentStyle.Render("⏸ plan mode")
+	chips := m.modeChips()
+	if chips != "" {
+		hint += chips
 		hintText = " · " + hintText
 	}
 	if m.ctrlCArmed {
@@ -768,18 +1097,43 @@ func (m Model) View() string {
 	// as part of the same input zone, and a chat-style spinner pinned to the
 	// prompt is what users expect. The prompt and hint stay adjacent for
 	// the same reason.
-	parts := make([]string, 0, 4)
+	parts := make([]string, 0, 5)
 	parts = append(parts, "")
 	if live := m.liveView(); live != "" {
 		parts = append(parts, live)
+	}
+	if m.approvalPromptText != "" {
+		parts = append(parts, "  "+m.approvalPromptText)
 	}
 	parts = append(parts, m.textInput.View(), hint)
 	return strings.Join(parts, "\n")
 }
 
+// modeChips renders the status-bar chips for the three independent mode axes
+// (plan, approval, permission). Default values are omitted so the status bar
+// stays uncluttered until the user opts into something non-default.
+func (m Model) modeChips() string {
+	var chips []string
+	if m.planMode {
+		chips = append(chips, planAccentStyle.Render("⏸ plan mode"))
+	}
+	switch m.approvalMode {
+	case client.NeoApprovalModeBalanced:
+		chips = append(chips, planAccentStyle.Render("⚖ balanced"))
+	case client.NeoApprovalModeAuto:
+		chips = append(chips, planAccentStyle.Render("⚡ auto-approve"))
+	case client.NeoApprovalModeManual:
+		// Manual is the default — no chip, the status bar stays uncluttered.
+	}
+	if m.permissionMode == client.NeoPermissionModeReadOnly {
+		chips = append(chips, planAccentStyle.Render("⊘ read-only"))
+	}
+	return strings.Join(chips, " ")
+}
+
 // liveWidth returns the width to use when rendering live-frame content:
 // the terminal width minus a small cushion that keeps glamour, lipgloss,
-// and the textinput off the wrap column.
+// and the textarea off the wrap column.
 func (m *Model) liveWidth() int {
 	const (
 		margin         = 4
@@ -835,8 +1189,8 @@ func isLiveKind(b block) bool {
 		return b.pulumi != nil && !b.pulumi.done
 	case blockToolComplete, blockAssistantFinal, blockError, blockWarning,
 		blockCancelled, blockUserMessage, blockApprovalPlan,
-		blockApprovalGeneral, blockApprovalChoice,
-		blockQuestion, blockAnswerSubmitted:
+		blockApprovalGeneral, blockApprovalChoice, blockApprovalAuto,
+		blockTodoList, blockQuestion, blockAnswerSubmitted:
 		return false
 	}
 	return false
@@ -960,8 +1314,7 @@ func (m *Model) clearPendingPrompt() {
 	m.pendingApprovalID = ""
 	m.pendingApprovalType = ""
 	m.pendingIsQuestion = false
-	m.textInput.Prompt = "❯ "
-	m.textInput.PromptStyle = promptStyle
+	m.approvalPromptText = ""
 	m.textInput.Placeholder = "Send a message..."
 	m.textInput.Reset()
 }
@@ -984,6 +1337,29 @@ func (m *Model) scheduleCtrlCDisarm() tea.Cmd {
 	gen := m.ctrlCArmGen
 	return tea.Tick(ctrlCArmTimeout, func(time.Time) tea.Msg {
 		return ctrlCDisarmMsg{gen: gen}
+	})
+}
+
+// scheduleApprovalDebounce advances the approval-debounce generation and
+// returns a tea.Cmd that posts an approvalDebounceTickMsg after
+// modeToggleDebounce. The Update handler dispatches the PATCH only if the
+// tick's gen still matches the current one — a subsequent Ctrl+A press
+// advances the gen and silently retires the stale tick.
+func (m *Model) scheduleApprovalDebounce() tea.Cmd {
+	m.approvalDebounceGen++
+	gen := m.approvalDebounceGen
+	return tea.Tick(modeToggleDebounce, func(time.Time) tea.Msg {
+		return approvalDebounceTickMsg{gen: gen}
+	})
+}
+
+// schedulePermissionDebounce is the permission-mode counterpart to
+// scheduleApprovalDebounce.
+func (m *Model) schedulePermissionDebounce() tea.Cmd {
+	m.permissionDebounceGen++
+	gen := m.permissionDebounceGen
+	return tea.Tick(modeToggleDebounce, func(time.Time) tea.Msg {
+		return permissionDebounceTickMsg{gen: gen}
 	})
 }
 
@@ -1029,15 +1405,24 @@ func (m *Model) findBlockKind(kind blockKind) int {
 }
 
 // renderBlock recomputes b.rendered from b.raw using the current terminal
-// width and markdown renderer. blockApprovalChoice is the one kind that
-// still renders when raw is empty (its verdict is carried by b.approved).
+// width and markdown renderer. blockApprovalChoice and blockApprovalAuto are
+// the two kinds that still render when raw is empty (their state is carried
+// by b.approved / b.autoIsQuestion instead).
 func (m *Model) renderBlock(b *block) {
 	if b.kind == blockApprovalChoice {
 		m.renderApprovalChoice(b)
 		return
 	}
+	if b.kind == blockApprovalAuto {
+		m.renderApprovalAuto(b)
+		return
+	}
 	if b.kind == blockPulumiOp {
 		b.rendered = m.renderPulumiBlock(b.pulumi)
+		return
+	}
+	if b.kind == blockTodoList {
+		b.rendered = renderHeaderedBlock(todoListHeader, renderTodoLines(b.todos))
 		return
 	}
 	if b.raw == "" {
@@ -1056,7 +1441,14 @@ func (m *Model) renderBlock(b *block) {
 		b.rendered = renderAssistantFinal(m.renderMarkdown(b.raw))
 	case blockApprovalPlan:
 		header := planAccentStyle.Render("⏺ Proposed plan")
-		b.rendered = renderHeaderedBlock(header, m.renderMarkdown(b.raw))
+		body := m.renderMarkdown(b.raw)
+		// Fold any todos buffered during plan mode into the plan body. A
+		// blank line separates them from the plan markdown so glamour's
+		// last paragraph doesn't visually run into the Tasks header.
+		if len(b.todos) > 0 {
+			body = strings.TrimRight(body, "\n") + "\n\nTasks:\n" + renderTodoLines(b.todos)
+		}
+		b.rendered = renderHeaderedBlock(header, body)
 	case blockApprovalGeneral:
 		header := warningStyle.Render("⚠ Approval required")
 		b.rendered = renderHeaderedBlock(header, m.wrapPlain(b.raw))
@@ -1071,9 +1463,50 @@ func (m *Model) renderBlock(b *block) {
 	case blockBusy, blockToolComplete:
 		// No raw: blockBusy renders live from label, blockToolComplete is
 		// pre-styled at event time.
-	case blockApprovalChoice, blockPulumiOp:
-		// Unreachable: both are handled by early returns above.
+	case blockApprovalChoice, blockApprovalAuto, blockPulumiOp, blockTodoList:
+		// Unreachable: handled by early returns above.
 	}
+}
+
+// renderTodoLines formats todos as one ASCII checkbox per line, sorted by
+// Index so the agent's intended ordering survives JSON round-tripping.
+func renderTodoLines(items []UITodoItem) string {
+	if len(items) == 0 {
+		return ""
+	}
+	sorted := append([]UITodoItem(nil), items...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Index < sorted[j].Index })
+	lines := make([]string, 0, len(sorted))
+	for _, it := range sorted {
+		var marker, content string
+		switch it.Status {
+		case "completed":
+			marker, content = "[x]", todoCompletedStyle.Render(it.Content)
+		case "in_progress":
+			marker, content = "[~]", todoActiveStyle.Render(it.Content)
+		default:
+			marker, content = "[ ]", it.Content
+		}
+		lines = append(lines, marker+" "+content)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// renderApprovalAuto renders a feedback block committed when the cloud
+// auto-resolves a pending approval/question under ApprovalMode=auto or
+// balanced. The verb depends on what was asked (approval vs ask-user) and
+// whether the cloud reported ok=true; today auto-deny doesn't exist on the
+// cloud side but we render it anyway in case that changes.
+func (m *Model) renderApprovalAuto(b *block) {
+	verb := "Auto-approved"
+	switch {
+	case !b.approved:
+		verb = "Auto-denied"
+	case b.autoIsQuestion:
+		verb = "Auto-answered"
+	}
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	b.rendered = "  " + style.Render("⚡ "+verb)
 }
 
 func (m *Model) renderApprovalChoice(b *block) {

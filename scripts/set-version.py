@@ -19,6 +19,10 @@ def main():
 
     version = sys.argv[1]
 
+    if version.startswith("v"):
+        print("Version should not start with v")
+        sys.exit(1)
+
     with open("sdk/.version", "w+") as f:
         f.write(version + "\n")
 
@@ -31,6 +35,11 @@ def main():
     replace_line(node, "export const version = ", f'export const version = "{version}";\n')
     with open("sdk/nodejs/version.ts", "w") as f:
         f.write("".join(node))
+
+    npm = open("npm/package.json").readlines()
+    replace_line(npm, "    \"version\":", f'    "version": "{version}",\n')
+    with open("npm/package.json", "w") as f:
+        f.write("".join(npm))
 
     python = open("sdk/python/lib/pulumi/_version.py").readlines()
     replace_line(python, "_VERSION = ", f'_VERSION = "{version}"\n')

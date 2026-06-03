@@ -26,6 +26,8 @@ class Data(dict):
             suggest = "inner_data"
         elif key == "stringMap":
             suggest = "string_map"
+        elif key == "optionalInner":
+            suggest = "optional_inner"
 
         if suggest:
             pulumi.log.warn(f"Key '{key}' not found in Data. Access the value via the '{suggest}' property getter instead.")
@@ -45,7 +47,8 @@ class Data(dict):
                  inner_data: 'outputs.InnerData',
                  integer: _builtins.int,
                  string: _builtins.str,
-                 string_map: Mapping[str, _builtins.str]):
+                 string_map: Mapping[str, _builtins.str],
+                 optional_inner: Optional['outputs.InnerData'] = None):
         pulumi.set(__self__, "bool_array", bool_array)
         pulumi.set(__self__, "boolean", boolean)
         pulumi.set(__self__, "float", float)
@@ -53,6 +56,8 @@ class Data(dict):
         pulumi.set(__self__, "integer", integer)
         pulumi.set(__self__, "string", string)
         pulumi.set(__self__, "string_map", string_map)
+        if optional_inner is not None:
+            pulumi.set(__self__, "optional_inner", optional_inner)
 
     @_builtins.property
     @pulumi.getter(name="boolArray")
@@ -88,6 +93,11 @@ class Data(dict):
     @pulumi.getter(name="stringMap")
     def string_map(self) -> Mapping[str, _builtins.str]:
         return pulumi.get(self, "string_map")
+
+    @_builtins.property
+    @pulumi.getter(name="optionalInner")
+    def optional_inner(self) -> Optional['outputs.InnerData']:
+        return pulumi.get(self, "optional_inner")
 
 
 @pulumi.output_type

@@ -22,10 +22,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -687,10 +689,11 @@ func TestListTemplates(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		// Call ListTemplates and collect results
-		searchName := "my-template"
 		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
-		for tmpl, err := range mockClient.ListTemplates(t.Context(), &searchName) {
+		for tmpl, err := range mockClient.ListTemplates(
+			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},
+		) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, tmpl)
 		}
@@ -759,7 +762,7 @@ func TestListTemplates(t *testing.T) {
 				require.NoError(t, err)
 			case 1:
 				assert.Equal(t,
-					"/api/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-1",
+					"/api/registry/templates?continuationToken=next-page-token-1&limit=499&name=my-template",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
@@ -769,7 +772,7 @@ func TestListTemplates(t *testing.T) {
 				require.NoError(t, err)
 			case 2:
 				assert.Equal(t,
-					"/api/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-2",
+					"/api/registry/templates?continuationToken=next-page-token-2&limit=499&name=my-template",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
@@ -785,15 +788,16 @@ func TestListTemplates(t *testing.T) {
 
 		mockClient := newMockClient(mockServer)
 
-		searchName := "my-template"
 		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
-		for tmpl, err := range mockClient.ListTemplates(t.Context(), &searchName) {
+		for tmpl, err := range mockClient.ListTemplates(
+			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},
+		) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, tmpl)
 		}
 
-		expectedTemplates := append(append(firstPageTemplates, secondPageTemplates...), thirdPageTemplates...)
+		expectedTemplates := slices.Concat(firstPageTemplates, secondPageTemplates, thirdPageTemplates)
 		assert.Equal(t, expectedTemplates, searchResults)
 		assert.Equal(t, 3, requestCount) // Ensure all three requests were made
 	})

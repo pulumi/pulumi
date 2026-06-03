@@ -22,9 +22,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -269,8 +271,9 @@ func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 	assert.Nil(t, version, "should return nil when plugin installation fails")
 }
 
-//nolint:paralleltest // Cannot use t.Parallel() because this test executes a subprocess
 func TestPluginRunCommand(t *testing.T) {
+	t.Parallel()
+
 	// Skip on Windows - test uses bash script which is not cross-platform
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows - test requires bash")
@@ -320,4 +323,44 @@ exit 0
 	assert.Contains(t, outputStr, "PULUMI_RPC_TARGET=", "Plugin should receive PULUMI_RPC_TARGET")
 	assert.Contains(t, outputStr, "PULUMI_API="+cloudURL, "Plugin should receive PULUMI_API")
 	assert.Contains(t, outputStr, "PULUMI_ACCESS_TOKEN="+token, "Plugin should receive PULUMI_ACCESS_TOKEN")
+}
+
+func TestPluginRunCommandError(t *testing.T) {
+	t.Parallel()
+
+	// Skip on Windows - test uses bash script which is not cross-platform
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows - test requires bash")
+	}
+
+	// Create a temporary directory for our test plugin
+	tmpDir := t.TempDir()
+
+	// Create a simple test plugin that writes its environment variables to a file
+	pluginPath := filepath.Join(tmpDir, "pulumi-tool-testplugin")
+	pluginScript := `#!/bin/bash
+exit 42
+`
+	//nolint:gosec // G306: File needs to be executable (0755)
+	err := os.WriteFile(pluginPath, []byte(pluginScript), 0o755)
+	require.NoError(t, err)
+
+	// Create mock workspace with credentials
+	cloudURL := "https://api.test-pulumi.com"
+	token := "test-token-123"
+	mockWs := mockWorkspaceWithProject(cloudURL, token)
+
+	// Create the command
+	runCmd := newPluginRunCmd(mockWs)
+	runCmd.SetArgs([]string{pluginPath})
+
+	// Execute the command
+	ctx := t.Context()
+	runCmd.SetContext(ctx)
+	err = runCmd.Execute()
+	require.True(t, result.IsBail(err))
+
+	var cec cmd.CustomExitCodeError
+	require.ErrorAs(t, err, &cec)
+	assert.Equal(t, 42, cec.CustomExitCode())
 }

@@ -1,10 +1,11 @@
 [tools]
 github-cli = "latest"
 "go:github.com/go-delve/delve/cmd/dlv" = "latest"
-"go:golang.org/x/tools/gopls" = "latest"
+# gopls v0.22+ requires Go 1.26; pin to the latest version compatible with Go 1.25.
+"go:golang.org/x/tools/gopls" = "0.21.0"
 go = "1.25"
-gofumpt = "latest"
-golangci-lint = "2.9.0"
+changie = "1.21.0"
+golangci-lint = "2.12.2"
 jq = "latest"
 node = "20"
 "npm:pnpm" = "10"
@@ -19,16 +20,15 @@ uv = "0.10.0"
 protoc = "29.5"
 "go:google.golang.org/protobuf/cmd/protoc-gen-go" = "v1.36.6"
 "go:google.golang.org/grpc/cmd/protoc-gen-go-grpc" = "v1.5.1"
-"npm:grpc-tools" = "1.13.0"
+"npm:grpc-tools" = { version = "1.13.0", npm_args = "--ignore-scripts=false" }
 "npm:grpc_tools_node_protoc_ts" = "5.3.3"
 # This is a dev only dependency that fails to install on windows
-"npm:protoc-gen-js" = { version = "3.21.4", os = ["linux", "macos"] }
+"npm:protoc-gen-js" = { version = "3.21.4", os = ["linux", "macos"], npm_args = "--ignore-scripts=false" }
 "go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.8.0"
 "github:WebAssembly/wabt" = "1.0.37"
 dotnet = "8"
 java = "temurin-11"
 gradle = "7.6"
-"github:gotestyourself/gotestsum" = "1.8.1"
 "github:pulumi/goteststats" = "0.0.7"
 
 [tool_alias]

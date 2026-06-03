@@ -99,23 +99,26 @@ jobs:
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
+      - uses: ./.github/actions/retry
+        with:
+          action: actions/checkout@v6
+          with: |
+            repository: dnephin/gotestsum
+            ref: d09768c81065b404caed0855eb3ab8f11a2a4431
+            path: vendor/gotestsum
+      - run: |
+          cd vendor/gotestsum
+          go install .
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
-      - uses: jdx/mise-action@v2
+      - uses: ./.github/actions/retry
         with:
-          experimental: true
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          repository: dnephin/gotestsum
-          ref: d09768c81065b404caed0855eb3ab8f11a2a4431
-          path: vendor/gotestsum
-      - run: |
-          cd vendor/gotestsum
-          go install .
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
@@ -509,11 +512,13 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - name: Retrieve code coverage reports
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          pattern: coverage-*
-          merge-multiple: true
-          path: coverage
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            pattern: coverage-*
+            merge-multiple: true
+            path: coverage
       # For PRs we need to set the merge base manually, otherwise it is sometimes incorrect.  See https://github.com/pulumi/pulumi/pull/17204#issuecomment-2405599310
       - name: Set codecov PR base
         if: github.event_name == 'pull_request'

@@ -96,6 +96,7 @@ func init() {
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}", "getStackUpdate")
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/files", "getUpdateContentsFiles")
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/file/{path:.*}", "getUpdateContentsFilePath")
+	addEndpoint("GET", "/api/orgs/{orgName}/members", "listOrganizationMembers")
 	addEndpoint("GET", "/api/orgs/{orgName}/templates", "listTemplates")
 	addEndpoint("GET", "/api/orgs/{orgName}/templates/download", "downloadTemplates")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/batch-decrypt", "batchDecrypt")
@@ -109,6 +110,8 @@ func init() {
 	addEndpoint("PUT", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/settings", "updateDeploymentSettings")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/settings/encrypt", "encryptDeploymentSecret")
 	addEndpoint("DELETE", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/settings", "destroyDeploymentSettings")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments", "listStackDeployments")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/{deploymentId}/cancel", "cancelStackDeployment")
 
 	// The APIs for performing updates of various kind all have the same set of API endpoints. Only
 	// differentiate the "create update of kind X" APIs, and introduce a pseudo route param "updateKind".
@@ -134,9 +137,19 @@ func init() {
 	addEndpoint("POST", "/api/orgs/{orgName}/policypacks", "publishPolicyPack")
 	addEndpoint("POST", "/api/orgs/{orgName}/policypacks/{policyPackName}/{versionTag}/complete", "completePolicyPackPublish")
 
+	// APIs for usage summaries (Resources Under Management).
+	addEndpoint("GET", "/api/orgs/{orgName}/resources/summary", "getUsageSummaryResourceHours")
+
 	// APIs for managing Search capabilities
 	addEndpoint("GET", "/api/orgs/{orgName}/search/resources", "getSearchResources")
 	addEndpoint("GET", "/api/orgs/{orgName}/search/resources/parse", "getSearchResourcesParse")
+	addEndpoint("GET", "/api/orgs/{orgName}/search/resourcesv2", "getOrgResourceSearchV2")
+
+	// APIs for managing Pulumi Insights
+	addEndpoint("GET", "/api/preview/insights/{orgName}/accounts", "listInsightsAccounts")
+	addEndpoint("GET",
+		"/api/preview/insights/{orgName}/accounts/{accountName}/scans/{scanId}/logs",
+		"getScanLogs")
 
 	// APIs for interacting with the Package Registry
 	addEndpoint("POST", "/api/registry/packages/{source}/{publisher}/{name}/versions", "publishPackage")

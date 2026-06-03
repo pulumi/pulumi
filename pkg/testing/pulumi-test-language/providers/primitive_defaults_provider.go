@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // Like PrimitiveProvider but with all fields optional in schema and defaults specified there.
@@ -43,10 +42,6 @@ func (p *PrimitiveDefaultsProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *PrimitiveDefaultsProvider) Pkg() tokens.Package {
-	return "primitive-defaults"
 }
 
 func (p *PrimitiveDefaultsProvider) GetSchema(

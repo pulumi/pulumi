@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"runtime"
 	"sort"
 	"strings"
@@ -53,6 +52,9 @@ func newStackOutputCmd() *cobra.Command {
 			"By default, this command lists all output properties exported from a stack.\n" +
 			"If a specific property-name is supplied, just that property's value is shown.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if socmd.Stdout == nil {
+				socmd.Stdout = cmd.OutOrStdout()
+			}
 			return socmd.Run(cmd.Context(), args)
 		},
 	}
@@ -90,7 +92,7 @@ type stackOutputCmd struct {
 	// from tests.
 	requireStack func(
 		ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
-		name string, lopt LoadOption, opts display.Options,
+		name string, lopt LoadOption, opts display.Options, configFile string,
 	) (backend.Stack, error)
 
 	Stdout io.Writer // defaults to os.Stdout
@@ -115,10 +117,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		osys = cmd.OS
 	}
 
-	stdout := io.Writer(os.Stdout)
-	if cmd.Stdout != nil {
-		stdout = cmd.Stdout
-	}
+	stdout := cmd.Stdout
 
 	var outw stackOutputWriter
 	if cmd.shellOut && cmd.jsonOut {
@@ -140,6 +139,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		cmd.stackName,
 		LoadOnly,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err

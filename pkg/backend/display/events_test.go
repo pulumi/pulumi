@@ -101,7 +101,7 @@ func TestConvertJSONEventExhaustive(t *testing.T) {
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
 		// Only consider exported pointer-to-struct fields.
-		if f.PkgPath != "" || f.Type.Kind() != reflect.Ptr || f.Type.Elem().Kind() != reflect.Struct {
+		if f.PkgPath != "" || f.Type.Kind() != reflect.Pointer || f.Type.Elem().Kind() != reflect.Struct {
 			continue
 		}
 

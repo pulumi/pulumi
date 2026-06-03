@@ -171,17 +171,14 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 		},
 	}
 
-	pCtx, err := NewContext(t.Context(), nil, nil, nil, nil, "", nil, false, nil, nil)
-	require.NoError(t, err)
 	host := &langhost{
-		ctx:     pCtx,
 		runtime: "go",
 		plug:    nil,
 		client:  mockLanguageRuntime,
 	}
 
 	// Test that the plugin is run with the correct working directory.
-	_, _, _, err = host.RunPlugin(pCtx.Request(), RunPluginInfo{
+	_, _, _, err := host.RunPlugin(t.Context(), RunPluginInfo{
 		WorkingDirectory: "/tmp",
 	})
 	require.Equal(t, returnErr, err)
@@ -201,23 +198,13 @@ func TestRunPluginPassesLoaderAddress(t *testing.T) {
 		},
 	}
 
-	mockHost := &MockHost{
-		LoaderAddrF: func() string {
-			return expectedLoaderAddr
-		},
-	}
-
-	pCtx, err := NewContext(t.Context(), nil, nil, mockHost, nil, "", nil, false, nil, nil)
-	require.NoError(t, err)
-
 	host := &langhost{
-		ctx:     pCtx,
 		runtime: "test",
 		plug:    nil,
 		client:  mockLanguageRuntime,
 	}
 
-	_, _, _, err = host.RunPlugin(pCtx.Request(), RunPluginInfo{
+	_, _, _, err := host.RunPlugin(t.Context(), RunPluginInfo{
 		WorkingDirectory: "/tmp",
 		LoaderAddress:    expectedLoaderAddr,
 	})

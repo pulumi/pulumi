@@ -45,18 +45,18 @@ type Analyzer interface {
 	Name() tokens.QName
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
 	// Is called before the resource is modified.
-	Analyze(r AnalyzerResource) (AnalyzeResponse, error)
+	Analyze(ctx context.Context, r AnalyzerResource) (AnalyzeResponse, error)
 	// AnalyzeStack analyzes all resources after a successful preview or update.
 	// Is called after all resources have been processed, and all changes applied.
-	AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeResponse, error)
+	AnalyzeStack(ctx context.Context, resources []AnalyzerStackResource) (AnalyzeResponse, error)
 	// Remediate is given the opportunity to optionally transform a single resource's properties.
-	Remediate(r AnalyzerResource) (RemediateResponse, error)
+	Remediate(ctx context.Context, r AnalyzerResource) (RemediateResponse, error)
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
-	GetAnalyzerInfo() (AnalyzerInfo, error)
+	GetAnalyzerInfo(ctx context.Context) (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (PluginInfo, error)
+	GetPluginInfo(ctx context.Context) (PluginInfo, error)
 	// Configure configures the analyzer, passing configuration properties for each policy.
-	Configure(policyConfig map[string]AnalyzerPolicyConfig) error
+	Configure(ctx context.Context, policyConfig map[string]AnalyzerPolicyConfig) error
 	// Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
 	// Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
 	// it is up to the host to decide how long to wait after Cancel is called before (e.g.)

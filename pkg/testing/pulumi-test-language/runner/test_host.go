@@ -19,11 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"slices"
 	"strings"
 	"sync"
 
-	mapset "github.com/deckarep/golang-set/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -55,8 +53,6 @@ type testHost struct {
 	policies []plugin.Analyzer
 
 	closeMutex sync.Mutex
-
-	skipEnsurePluginsValidation bool
 
 	loaderAddress string
 }
@@ -186,71 +182,24 @@ func (h *testHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, erro
 	return h.runtime, nil
 }
 
-func (h *testHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
-	// Remove the builtin "pulumi" provider, as that's always available.
-	filtered := make([]workspace.PluginDescriptor, 0, len(plugins))
-	for _, plugin := range plugins {
-		if plugin.Kind == apitype.ResourcePlugin && plugin.Name == "pulumi" {
-			continue
-		}
-		filtered = append(filtered, plugin)
-	}
-	plugins = filtered
-
-	// Skip validation if requested (e.g., for tests using version resource option)
-	if h.skipEnsurePluginsValidation {
-		return nil
-	}
-
-	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
-	// that that returned the expected plugins (with expected versions).
-	expected := mapset.NewSet[string]()
-	for name, provider := range h.providers {
-		p, err := provider()
-		if err != nil {
-			return fmt.Errorf("initializing provider %s for ensure plugins: %w", name, err)
-		}
-		pkg := p.Pkg()
-		version, err := GetProviderVersion(p)
-		if err != nil {
-			return fmt.Errorf("get provider version %s: %w", pkg, err)
-		}
-		expected.Add(fmt.Sprintf("resource-%s@%s", pkg, version))
-	}
-
-	actual := mapset.NewSetWithSize[string](len(plugins))
-	for _, plugin := range plugins {
-		actual.Add(fmt.Sprintf("%s-%s@%s", plugin.Kind, plugin.Name, plugin.Version))
-	}
-
-	// Symmetric difference, we want to know if there are any unexpected plugins, or any missing plugins.
-	diff := expected.SymmetricDifference(actual)
-	if !diff.IsEmpty() {
-		expectedSlice := expected.ToSlice()
-		slices.Sort(expectedSlice)
-		actualSlice := actual.ToSlice()
-		slices.Sort(actualSlice)
-		return fmt.Errorf("unexpected required plugins: actual %v, expected %v", actualSlice, expectedSlice)
-	}
-
-	return nil
-}
-
 func (h *testHost) ResolvePlugin(
 	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
-		for name, provider := range h.providers {
+		for key, provider := range h.providers {
 			p, err := provider()
 			if err != nil {
-				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", name, err)
+				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", key, err)
 			}
-			pkg := p.Pkg()
-			providerVersion, err := GetProviderVersion(p)
+			providerVersion, err := GetProviderVersion(context.TODO(), p)
 			if err != nil {
-				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
+				return nil, fmt.Errorf("get provider version %s: %w", key, err)
 			}
-			if spec.Name == string(pkg) && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
+			name, err := GetProviderName(context.TODO(), p)
+			if err != nil {
+				return nil, fmt.Errorf("get provider name %s: %w", key, err)
+			}
+			if spec.Name == name && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
 				return &workspace.PluginInfo{
 					Name:    spec.Name,
 					Kind:    spec.Kind,
@@ -354,6 +303,6 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
 	wrapped := plugin.NewProviderWithClient(
-		nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
+		nil, pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil
 }

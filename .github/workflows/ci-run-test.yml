@@ -115,10 +115,21 @@ jobs:
         name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
         with:
+          # tool-cache stays off: tests need Node and Python from /opt/hostedtoolcache.
           tool-cache: false
           swap-storage: false
-          large-packages: false
-          dotnet: false
+          large-packages: true
+          dotnet: true
+
+      # `large-packages: true` strips the runner's pre-installed `azure-cli`,
+      # which TestAzureLoginAzLogin in tests/integration/backend/diy invokes
+      # via exec.Command("az", "login", ...) when the AZURE_CLIENT_* secrets
+      # are set. Put it back. None of the other packages stripped by
+      # `large-packages` are exercised by these tests.
+      - if: contains(inputs.platform, 'ubuntu')
+        name: Reinstall Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
       # Create a coverage file to register a testing job was started.
       # This artifact will be overwritten with "OK" at the end of the job.
@@ -151,6 +162,10 @@ jobs:
           } >> "$GITHUB_ENV"
           # For debugging:
           ps aux
+      - name: Install tsc on windows and macos
+        if: ${{ runner.os == 'windows' || runner.os == 'macOS' }}
+        run: |
+          npm install typescript -g
       - name: "macOS use coreutils"
         if: ${{ runner.os == 'macOS' }}
         run: |
@@ -183,32 +198,63 @@ jobs:
           coverdir="$(mktemp -d)"
           echo "PULUMI_GOCOVERDIR=$coverdir" >> "$GITHUB_ENV"
           echo "GOCOVERDIR=$coverdir" >> "$GITHUB_ENV"
-      - name: Set tool versions from version-set
+      - name: Configure Go Cache Key
         env:
-          VERSION_SET: ${{ inputs.version-set }}
-        run: |
-          {
-            echo '[tools]'
-            echo "go     = \"$(echo "$VERSION_SET" | jq -r '.go'     | sed 's/\.x$//')\""
-            echo "node   = \"$(echo "$VERSION_SET" | jq -r '.nodejs' | sed 's/\.x$//')\""
-            echo "python = \"$(echo "$VERSION_SET" | jq -r '.python' | sed 's/\.x$//')\""
-            echo "dotnet = \"$(echo "$VERSION_SET" | jq -r '.dotnet' | sed 's/\.x$//')\""
-          } > .mise.local.toml
-      - name: Set mise data dir for Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          echo "MISE_DATA_DIR=$($env:RUNNER_TEMP | Split-Path)\mise" >> $env:GITHUB_ENV
-      - uses: jdx/mise-action@v2
+          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - uses: actions/setup-go@v6
+        id: setup-go
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
         with:
-          experimental: true
-      - uses: actions/cache@v4
+          go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
+      - name: Prime Go cache
+        if: ${{ ! steps.setup-go.outputs.cache-hit }}
+        # Compile every test to ensure we populate a good cache entry.
+        run: |
+          ( cd sdk && go test -run "_________" ./... )
+          ( cd pkg && go test -run "_________" ./... )
+      - name: Install delve
+        run: |
+          go install github.com/go-delve/delve/cmd/dlv@latest
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
         with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pkg/go.sum', 'sdk/go.sum') }}
-          restore-keys: go-${{ runner.os }}-${{ runner.arch }}-
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
+      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ fromJson(inputs.version-set).python }}
+      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
+        uses: ./.github/actions/retry
+        with:
+          action: actions/setup-dotnet@v5
+          with: |
+            dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+            dotnet-quality: ga
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Set up JDK 11
+        uses: actions/setup-java@v5
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: ./.github/actions/retry
+        with:
+          action: gradle/actions/setup-gradle@v6
+          with: |
+            gradle-version: "7.6"
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
@@ -216,19 +262,18 @@ jobs:
             echo "Deleting pulumi"
             rm -rf "$(command -v pulumi.exe)/../pulumi*"
           fi
+      - name: Install yarn and pnpm
+        run: |
+          npm install -g yarn pnpm@10
+      - name: Install bun
+        uses: ./.github/actions/retry
+        with:
+          action: oven-sh/setup-bun@v2
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
       - name: Install Poetry
-        run: |
-          python -m pip install poetry
-          echo "$(python -m site --user-base)/bin" >> "$GITHUB_PATH"
-      - name: Add Python scripts to PATH (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $scriptsDir = python -c "import sysconfig; print(sysconfig.get_path('scripts'))"
-          echo $scriptsDir >> $env:GITHUB_PATH
+        run: python -m pip install poetry
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -236,6 +281,26 @@ jobs:
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" | tee -a "${GITHUB_ENV}"
+      - name: Install gotestsum
+        uses: ./.github/actions/retry
+        with:
+          action: jaxxstorm/action-install-gh-release@v3.0.0
+          with: |
+            repo: gotestyourself/gotestsum
+            tag: v1.13.0
+            cache: enable
+          attempt_limit: 3
+          attempt_delay: 5000
+      - name: Install goteststats
+        uses: ./.github/actions/retry
+        with:
+          action: jaxxstorm/action-install-gh-release@v3.0.0
+          with: |
+            repo: pulumi/goteststats
+            tag: v0.0.7
+            cache: enable
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Generate artifact name
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         id: goenv
@@ -263,16 +328,20 @@ jobs:
       # Integration and performance test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-integration-test }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
-          path: artifacts/cli
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
+            path: artifacts/cli
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-performance-test }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
-          path: artifacts/cli
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
+            path: artifacts/cli
       - name: Install Pulumi Go Binaries
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         run: |
@@ -379,14 +448,16 @@ jobs:
             rm -rf "$MERGED_DIR"
           fi
       - name: Upload code coverage
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/retry
         if: ${{ inputs.enable-coverage }}
         continue-on-error: true
         with:
-          name: coverage-${{ env.TEST_HASH_ID }}
-          path: |
-            coverage/*
-            !coverage/.gitkeep
+          action: actions/upload-artifact@v7
+          with: |
+            name: coverage-${{ env.TEST_HASH_ID }}
+            path: |
+              coverage/*
+              !coverage/.gitkeep
       - name: Upload codecov test results
         uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1
         continue-on-error: true
@@ -421,7 +492,9 @@ jobs:
           if [[ exit_status -eq 0 || exit_status -eq 141 ]]; then true; else exit $exit_status; fi
       - name: Upload artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/retry
         with:
-          name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
-          path: test-results/*.json
+          action: actions/upload-artifact@v7
+          with: |
+            name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
+            path: test-results/*.json

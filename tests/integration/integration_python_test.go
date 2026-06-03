@@ -537,7 +537,7 @@ func TestDynamicPythonDisableSerializationAsSecret(t *testing.T) {
 				}
 			},
 		}},
-		UseSharedVirtualEnv: boolPointer(false),
+		UseSharedVirtualEnv: ptr(false),
 	})
 }
 
@@ -614,18 +614,6 @@ func TestPartialValuesPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python"),
 		},
 		AllowEmptyPreviewChanges: true,
-	})
-}
-
-// Tests a resource with a large (>4mb) string prop in Python
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestLargeResourcePython(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("large_resource", "python"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python"),
-		},
 	})
 }
 

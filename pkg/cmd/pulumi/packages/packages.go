@@ -66,7 +66,7 @@ func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
 
 // InstallPackage installs a package to the project by generating an SDK and linking it.
 // It returns the path to the installed package.
-func InstallPackage(ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
+func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
 	language, root, schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry, e env.Env, concurrency int,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
@@ -110,7 +110,7 @@ func InstallPackage(ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *p
 	}
 
 	out := filepath.Join(root, "sdks")
-	fmt.Printf("Successfully generated an SDK for the %s package at %s\n", pkg.Name, out)
+	fmt.Fprintf(stdout, "Successfully generated an SDK for the %s package at %s\n", pkg.Name, out)
 
 	err = os.MkdirAll(out, 0o755)
 	if err != nil {
@@ -137,7 +137,7 @@ func InstallPackage(ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *p
 
 	// Link the package to the project
 	if err := LinkPackages(&LinkPackagesContext{
-		Writer:        os.Stdout,
+		Writer:        stdout,
 		Project:       proj,
 		Language:      language,
 		Root:          root,
@@ -201,7 +201,8 @@ func GenSDK(
 		}
 		defer contract.IgnoreClose(grpcServer)
 
-		diags, err := languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil, local)
+		diags, err := languagePlugin.GeneratePackage(
+			ctx, directory, string(jsonBytes), extraFiles, grpcServer.Addr(), nil, local)
 		if err != nil {
 			return diags, err
 		}
@@ -308,15 +309,16 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 		})
 	}
 	programInfo := plugin.NewProgramInfo(root, root, ".", ctx.Project.RuntimeInfo().Options())
-	instructions, err := languagePlugin.Link(programInfo, deps, grpcServer.Addr())
+	instructions, err := languagePlugin.Link(ctx.PluginContext.Request(), programInfo, deps, grpcServer.Addr())
 	if err != nil {
 		return fmt.Errorf("linking package: %w", err)
 	}
 
 	if ctx.Install {
-		if err = pkgCmdUtil.InstallDependencies(languagePlugin, plugin.InstallDependenciesRequest{
-			Info: programInfo,
-		}, ctx.Writer, ctx.Writer); err != nil {
+		if err = pkgCmdUtil.InstallDependencies(
+			ctx.PluginContext.Request(), languagePlugin, plugin.InstallDependenciesRequest{
+				Info: programInfo,
+			}, ctx.Writer, ctx.Writer); err != nil {
 			return errutil.ErrorWithStderr(err, "installing dependencies")
 		}
 	}
@@ -326,7 +328,9 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 }
 
 func NewPluginContext(cwd string) (*plugin.Context, error) {
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+	// Helper used by callers without a *cobra.Command writer; emits to
+	// process stderr.
+	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{ //nolint:forbidigo
 		Color: cmdutil.GetGlobalColorization(),
 	})
 	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil,
@@ -442,6 +446,20 @@ func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 	e env.Env, concurrency int,
 ) (plugin.Provider, workspace.PackageSpec, error) {
+	// Helper without a *cobra.Command writer; plumbing the writer into
+	// packageworkspace.New would require a much larger API change.
+	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pctx.Host, os.Stderr, os.Stderr, //nolint:forbidigo
+		nil, packageworkspace.Options{})
+	return providerFromSource(pctx, packageSource, reg, e, concurrency, installCtx)
+}
+
+// providerFromSource is the injectable core of [ProviderFromSource]. It performs all package
+// resolution, installation, and launching through installCtx, allowing tests to substitute a
+// mock [packageinstallation.Context] for the real, IO-performing [packageworkspace.Workspace].
+func providerFromSource(
+	pctx *plugin.Context, packageSource string, reg registry.Registry,
+	e env.Env, concurrency int, installCtx packageinstallation.Context,
+) (plugin.Provider, workspace.PackageSpec, error) {
 	var version string
 	if parts := strings.SplitN(packageSource, "@", 2); len(parts) > 1 {
 		packageSource = parts[0]
@@ -449,7 +467,7 @@ func ProviderFromSource(
 	}
 	packageSpec := workspace.PackageSpec{Source: packageSource, Version: version}
 	{
-		proj, _, err := ws.LoadBaseProjectFrom(pctx.Request(), pctx.Pwd)
+		proj, _, err := installCtx.LoadBaseProjectFrom(pctx.Request(), pctx.Pwd)
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return nil, workspace.PackageSpec{}, fmt.Errorf("error loading Pulumi Project: %w", err)
 		}
@@ -467,8 +485,7 @@ func ProviderFromSource(
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
 		Concurrency: concurrency,
-	}, reg, packageworkspace.New(pluginstorage.Instance, ws, pctx.Host, os.Stderr, os.Stderr,
-		nil, packageworkspace.Options{}))
+	}, reg, installCtx)
 	if err != nil {
 		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to install %s: %w", packageSpec, err)
 	}

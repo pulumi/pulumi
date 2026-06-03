@@ -16,6 +16,7 @@ package promise
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -154,5 +155,12 @@ func Run[T any](f func() (T, error)) *Promise[T] {
 			ps.Fulfill(value)
 		}
 	}()
+	return ps.Promise()
+}
+
+// Errorf creates a promise that is rejected with the given error.
+func Errorf[T any](format string, a ...any) *Promise[T] {
+	ps := &CompletionSource[T]{}
+	ps.Reject(fmt.Errorf(format, a...))
 	return ps.Promise()
 }

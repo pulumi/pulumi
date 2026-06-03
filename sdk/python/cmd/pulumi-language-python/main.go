@@ -1891,7 +1891,7 @@ func (host *pythonLanguageHost) Handshake(ctx context.Context,
 	}()
 	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
 	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
+		return nil, fmt.Errorf("could not start health check host RPC server: %w", err)
 	}
 
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
@@ -1988,7 +1988,7 @@ func (host *pythonLanguageHost) Link(
 			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
 		}
 		packages[packageName] = dep.Path
-		imports.WriteString(fmt.Sprintf("  import %s as %s\n", packageName, importName))
+		fmt.Fprintf(&imports, "  import %s as %s\n", packageName, importName)
 	}
 	instructions += imports.String()
 

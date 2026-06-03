@@ -292,7 +292,7 @@ func LoadLocalPolicyPackAnalyzers(
 		if err != nil {
 			return nil, err
 		}
-		info, err := analyzer.GetAnalyzerInfo()
+		info, err := analyzer.GetAnalyzerInfo(plugctx.Request())
 		if err != nil {
 			return nil, err
 		}
@@ -318,7 +318,7 @@ func LoadLocalPolicyPackAnalyzers(
 				return nil, fmt.Errorf("validating policy config for %q: %s",
 					info.Name, strings.Join(validationErrors, "; "))
 			}
-			if err = analyzer.Configure(config); err != nil {
+			if err = analyzer.Configure(plugctx.Request(), config); err != nil {
 				return nil, fmt.Errorf("configuring policy pack %q: %w", info.Name, err)
 			}
 		}
@@ -424,6 +424,11 @@ type UpdateOptions struct {
 
 	// ShowSecrets is true if the engine should display secrets in the CLI.
 	ShowSecrets bool
+
+	// SkipPluginPreInstall is true if the engine should skip the up-front plugin install step that
+	// otherwise happens during engine setup. Missing plugins will still be installed lazily by
+	// the provider registry when they are actually requested.
+	SkipPluginPreInstall bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -521,12 +526,17 @@ func installPlugins(
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.Host.GetProjectPlugins(),
-		false /*reinstall*/, false /*explicitInstall*/, manager); err != nil {
-		if returnInstallErrors {
-			return nil, nil, err
+	//
+	// When SkipPluginPreInstall is set we skip this up-front install attempt — the provider registry will install
+	// plugins lazily when they are actually requested.
+	if opts == nil || !opts.SkipPluginPreInstall {
+		if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.Host.GetProjectPlugins(),
+			false /*reinstall*/, false /*explicitInstall*/, manager); err != nil {
+			if returnInstallErrors {
+				return nil, nil, err
+			}
+			logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 		}
-		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 	}
 
 	if waitNeeded {
@@ -661,7 +671,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			analyzerInfo, err := analyzer.GetAnalyzerInfo(plugctx.Request())
 			if err != nil {
 				errs <- err
 				return
@@ -694,7 +704,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-			if err = analyzer.Configure(config); err != nil {
+			if err = analyzer.Configure(plugctx.Request(), config); err != nil {
 				errs <- fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
 				return
 			}
@@ -763,7 +773,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			}
 
 			// Update the Policy Pack names now that we have loaded the plugins and can access the name.
-			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			analyzerInfo, err := analyzer.GetAnalyzerInfo(plugctx.Request())
 			if err != nil {
 				errs <- err
 				return
@@ -805,7 +815,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-			if err = analyzer.Configure(config); err != nil {
+			if err = analyzer.Configure(plugctx.Request(), config); err != nil {
 				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
 				return
 			}
@@ -901,21 +911,28 @@ func newUpdateSource(ctx context.Context,
 		args = []string{plugctx.Host.ServerAddr()}
 	}
 
-	// If that succeeded, create a new source that will perform interpretation of the compiled program.
-	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
+	runinfo := &deploy.EvalRunInfo{
 		Proj:        proj,
 		Pwd:         pwd,
 		Program:     main,
 		ProjectRoot: projectRoot,
 		Args:        args,
 		Target:      target,
-	}, defaultProviderVersions, resourceHooks, deploy.EvalSourceOptions{
+	}
+
+	evalOpts := deploy.EvalSourceOptions{
 		DryRun:                    opts.DryRun,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
-	}, panicErrs), nil
+	}
+
+	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
+
+	// If that succeeded, create a new source that will perform interpretation of the compiled program.
+	return deploy.NewEvalSource(plugctx, runinfo,
+		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, program), nil
 }
 
 func update(

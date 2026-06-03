@@ -39,7 +39,7 @@ func (UnionProvider) version() string {
 	return "18.0.0"
 }
 
-func (p *UnionProvider) Pkg() tokens.Package {
+func (p *UnionProvider) pkg() tokens.Package {
 	return "union"
 }
 
@@ -73,7 +73,7 @@ func (p *UnionProvider) GetSchema(
 
 	typeRef := func(name string) schema.TypeSpec {
 		return schema.TypeSpec{
-			Ref: fmt.Sprintf("#/types/%s:index:%s", p.Pkg(), name),
+			Ref: fmt.Sprintf("#/types/%s:index:%s", p.pkg(), name),
 		}
 	}
 
@@ -101,10 +101,10 @@ func (p *UnionProvider) GetSchema(
 	}
 
 	pkg := schema.PackageSpec{
-		Name:    string(p.Pkg()),
+		Name:    string(p.pkg()),
 		Version: p.version(),
 		Types: map[string]schema.ComplexTypeSpec{
-			fmt.Sprintf("%s:index:AccessRights", p.Pkg()): {
+			fmt.Sprintf("%s:index:AccessRights", p.pkg()): {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "string",
 				},
@@ -114,7 +114,7 @@ func (p *UnionProvider) GetSchema(
 					{Value: "Send"},
 				},
 			},
-			fmt.Sprintf("%s:index:BlobType", p.Pkg()): {
+			fmt.Sprintf("%s:index:BlobType", p.pkg()): {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "string",
 				},
@@ -126,14 +126,14 @@ func (p *UnionProvider) GetSchema(
 			},
 		},
 		Resources: map[string]schema.ResourceSpec{
-			fmt.Sprintf("%s:index:Example", p.Pkg()): {
+			fmt.Sprintf("%s:index:Example", p.pkg()): {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: resourceProperties,
 				},
 				InputProperties: resourceProperties,
 			},
-			fmt.Sprintf("%s:index:EnumOutput", p.Pkg()): {
+			fmt.Sprintf("%s:index:EnumOutput", p.pkg()): {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: enumOutputProperties,
@@ -198,8 +198,8 @@ func (p *UnionProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
 	urnType := string(req.URN.Type())
-	exampleType := fmt.Sprintf("%s:index:Example", p.Pkg())
-	enumOutputType := fmt.Sprintf("%s:index:EnumOutput", p.Pkg())
+	exampleType := fmt.Sprintf("%s:index:Example", p.pkg())
+	enumOutputType := fmt.Sprintf("%s:index:EnumOutput", p.pkg())
 	if urnType != exampleType && urnType != enumOutputType {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -213,8 +213,8 @@ func (p *UnionProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
 	urnType := string(req.URN.Type())
-	exampleType := fmt.Sprintf("%s:index:Example", p.Pkg())
-	enumOutputType := fmt.Sprintf("%s:index:EnumOutput", p.Pkg())
+	exampleType := fmt.Sprintf("%s:index:Example", p.pkg())
+	enumOutputType := fmt.Sprintf("%s:index:EnumOutput", p.pkg())
 
 	if urnType == exampleType {
 		return plugin.CreateResponse{

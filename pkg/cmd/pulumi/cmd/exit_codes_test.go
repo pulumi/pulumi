@@ -91,6 +91,11 @@ func TestExitCodeFor_KnownErrors(t *testing.T) {
 			want: ExitConfigurationError,
 		},
 		{
+			name: "invalid invocation",
+			err:  ConfigurationError{Message: "unknown function..."},
+			want: ExitConfigurationError,
+		},
+		{
 			name: "wrapped auth error",
 			err:  wrap(errors.New("outer"), backenderr.LoginRequiredError{}),
 			want: ExitAuthenticationError,

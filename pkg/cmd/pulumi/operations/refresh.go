@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -59,6 +58,7 @@ func NewRefreshCmd() *cobra.Command {
 	var execAgent string
 	var stackName string
 	var configArray []string
+	var configFile string
 	var path bool
 	var client string
 
@@ -67,6 +67,7 @@ func NewRefreshCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var output string
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int32
@@ -84,6 +85,7 @@ func NewRefreshCmd() *cobra.Command {
 	var targetDependents bool
 	var excludes *[]string
 	var excludeDependents bool
+	var skipPluginPreInstall bool
 
 	// Flags for handling pending creates
 	var skipPendingCreates bool
@@ -131,6 +133,16 @@ func NewRefreshCmd() *cobra.Command {
 					"must be passed in to proceed when running in non-interactive mode")
 			}
 
+			// Validate --output up front. We keep the existing --json flag (which
+			// emits a JSONL stream of engine events) backwards compatible, and
+			// only emit the structured operation summary when --output=json.
+			switch output {
+			case "default", "json":
+				// No-op.
+			default:
+				return fmt.Errorf("invalid --output value %q (expected %q or %q)", output, "default", "json")
+			}
+
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
 				return err
@@ -154,6 +166,7 @@ func NewRefreshCmd() *cobra.Command {
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
 				JSONDisplay:          jsonDisplay,
+				SummaryJSON:          output == "json",
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -168,7 +181,7 @@ func NewRefreshCmd() *cobra.Command {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, client, jsonDisplay, nil,
 					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
-					false, "", cmdStack.ConfigFile, runProgram)
+					false, "", configFile, runProgram)
 				if err != nil {
 					return err
 				}
@@ -206,16 +219,17 @@ func NewRefreshCmd() *cobra.Command {
 				stackName,
 				cmdStack.OfferNew,
 				opts.Display,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
 
-			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path); err != nil {
+			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path, configFile); err != nil {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -250,7 +264,7 @@ func NewRefreshCmd() *cobra.Command {
 			if importPendingCreates != nil && len(*importPendingCreates) > 0 {
 				stderr := opts.Display.Stderr
 				if stderr == nil {
-					stderr = os.Stderr
+					stderr = cmd.ErrOrStderr()
 				}
 				if unused, err := pendingCreatesToImports(ctx, s, yes, opts.Display, *importPendingCreates); err != nil {
 					return err
@@ -313,6 +327,7 @@ func NewRefreshCmd() *cobra.Command {
 				Experimental:              env.Experimental.Value(),
 				ExecKind:                  execKind,
 				RefreshProgram:            runProgram,
+				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
 			changes, err := backend.RefreshStack(ctx, s, backend.UpdateOperation{
@@ -362,7 +377,7 @@ func NewRefreshCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
@@ -391,6 +406,12 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the refresh diffs, operations, and overall output as JSON")
+	cmd.Flags().StringVar(
+		&output, "output", "default",
+		"Output format. Supported values are: default, json")
+	// Hidden until --output is wired up across all operations.
+	_ = cmd.Flags().MarkHidden("output")
+	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
@@ -439,6 +460,10 @@ func NewRefreshCmd() *cobra.Command {
 	importPendingCreates = cmd.PersistentFlags().StringArray(
 		"import-pending-creates", nil,
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
+
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

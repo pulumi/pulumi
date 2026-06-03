@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -52,6 +53,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
+			agent := agentdetect.Detect(os.Getenv)
 
 			wd, err := os.Getwd()
 			if err != nil {
@@ -88,13 +90,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				}
 				pkg.Version = &pkgVersion
 			}
-			// Normalize from well known language names the matching runtime names.
-			switch language {
-			case "csharp", "c#":
-				language = "dotnet"
-			case "typescript":
-				language = "nodejs"
-			}
+			language = cmdCmd.NormalizeRuntimeName(language)
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
@@ -104,7 +100,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 						return err
 					}
 				}
-				fmt.Fprintf(os.Stderr, "SDKs have been written to %s\n", out)
+				fmt.Fprintf(cmd.ErrOrStderr(), "SDKs have been written to %s\n", out)
+				printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), registry, pkg)
 				return nil
 			}
 			diags, err := packages.GenSDK(cmd.Context(), language, out, pkg, overlays, local)
@@ -112,7 +109,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(os.Stderr, "SDK has been written to %s\n", filepath.Join(out, language))
+			fmt.Fprintf(cmd.ErrOrStderr(), "SDK has been written to %s\n", filepath.Join(out, language))
+			printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), registry, pkg)
 			return nil
 		},
 	}

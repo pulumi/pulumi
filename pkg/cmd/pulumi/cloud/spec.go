@@ -32,7 +32,7 @@ import (
 )
 
 // ParamSpec describes a single parameter for an API operation.
-// JSON tags are part of the `describe --format=json` envelope contract
+// JSON tags are part of the `describe --output=json` envelope contract
 // (SchemaVersion 1).
 type ParamSpec struct {
 	Name        string   `json:"name"`
@@ -78,22 +78,22 @@ type Operation struct {
 	// SuccessContentTypes lists every content type declared on the primary
 	// 2xx response, in spec order. An endpoint that offers both
 	// `application/json` and `text/markdown` will carry both, which lets the
-	// dispatcher drive content negotiation via --format. The legacy
+	// dispatcher drive content negotiation via --output. The legacy
 	// ResponseContentType field is still populated with the first preferred
 	// entry so human/JSON describe output stays stable.
 	SuccessContentTypes []string
 	BodySchemaText      string
 	ResponseSchemaText  string
-	// Request/response schemas serialized with all $refs inlined, so `describe --format=json`
+	// Request/response schemas serialized with all $refs inlined, so `describe --output=json`
 	// consumers can walk the structure programmatically.
 	BodySchemaJSON     json.RawMessage
 	ResponseSchemaJSON json.RawMessage
-	// Markdown-rendered request body schema for --format=markdown and the TUI.
+	// Markdown-rendered request body schema for --output=markdown and the TUI.
 	BodySchemaMarkdown string
 	// InlineResponses carries every response that has a schema (both success and
 	// error). The primary success response is duplicated into the flat
 	// ResponseContentType/ResponseSchemaText/ResponseSchemaJSON fields above so
-	// the text and `--format=json` outputs both keep a stable primary body.
+	// the text and `--output=json` outputs both keep a stable primary body.
 	InlineResponses []ResponseSpec
 	// StockErrors lists response codes with no schema — docs renders these as a
 	// compact chip row.
@@ -112,7 +112,7 @@ type Operation struct {
 type Index struct {
 	Operations  []*Operation
 	ByKey       map[string]*Operation // "GET /api/user" -> op
-	SpecVersion string                // the spec's own info.version, surfaced in `list --format=json`
+	SpecVersion string                // the spec's own info.version, surfaced in `list --output=json`
 	// router is a gorilla/mux router with one named route per operation
 	// (route name == op.Key()). Routes are registered in specificity order
 	// consistent with the pulumi-service codegen
@@ -278,7 +278,7 @@ func parseOperation(path, method string, op *v3high.Operation, renderer *schemaR
 // `InlineResponses` (has a schema) vs `StockErrors` (no schema). The first
 // 2xx success response is also duplicated into the flat
 // ResponseContentType/ResponseSchemaText/ResponseSchemaJSON fields so the
-// `describe` text and `--format=json` outputs both have a primary body.
+// `describe` text and `--output=json` outputs both have a primary body.
 func populateResponses(out *Operation, op *v3high.Operation, renderer *schemaRenderer) {
 	if op.Responses == nil {
 		return
@@ -341,9 +341,9 @@ func populateResponses(out *Operation, op *v3high.Operation, renderer *schemaRen
 		out.InlineResponses = append(out.InlineResponses, spec)
 
 		// Mirror the first success response into the flat fields so the text
-		// and `--format=json` outputs both still see the "primary" body.
+		// and `--output=json` outputs both still see the "primary" body.
 		// Also snapshot the full list of content types the spec declares for
-		// that response — the dispatcher uses it to drive --format-based
+		// that response — the dispatcher uses it to drive --output-based
 		// content negotiation.
 		if out.ResponseSchemaText == "" && isSuccessStatus(e.status) {
 			out.ResponseContentType = spec.ContentType

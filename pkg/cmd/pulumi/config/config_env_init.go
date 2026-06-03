@@ -101,7 +101,7 @@ type configEnvInitCmd struct {
 
 func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.yes && !cmd.parent.interactive {
-		return backenderr.NonInteractiveRequiresYesError{}
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	opts := display.Options{Color: cmd.parent.color}
@@ -119,6 +119,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		*cmd.parent.stackRef,
 		cmdStack.OfferNew|cmdStack.SetCurrent,
 		opts,
+		*cmd.parent.configFile,
 	)
 	if err != nil {
 		return err
@@ -196,7 +197,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.keepConfig {
 		projectStack.Config = nil
 	}
-	if err = cmd.parent.saveProjectStack(ctx, stack, projectStack); err != nil {
+	if err = cmd.parent.saveProjectStack(ctx, stack, projectStack, *cmd.parent.configFile); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil
@@ -208,7 +209,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	project *workspace.Project,
 	stack backend.Stack,
 ) (*workspace.ProjectStack, property.Map, error) {
-	ps, err := cmd.parent.loadProjectStack(ctx, sink, project, stack)
+	ps, err := cmd.parent.loadProjectStack(ctx, sink, project, stack, *cmd.parent.configFile)
 	if err != nil {
 		return nil, property.Map{}, err
 	}
@@ -219,7 +220,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	}
 	// This may have setup the stack's secrets provider, so save the stack if needed.
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmd.parent.saveProjectStack(ctx, stack, ps); err != nil {
+		if err = cmd.parent.saveProjectStack(ctx, stack, ps, *cmd.parent.configFile); err != nil {
 			return nil, property.Map{}, fmt.Errorf("saving stack config: %w", err)
 		}
 	}

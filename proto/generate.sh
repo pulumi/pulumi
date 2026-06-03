@@ -87,7 +87,7 @@ protoc \
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.ts" -exec perl -i -pe 's|\.\./pulumi/|./|g' {} \;
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.ts" -exec perl -i -pe 's|/\./|/|g' {} \;
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.js" -exec perl -i -0777 -pe \
-    's/^var global\s*=.*?Function\(.*?this.*?\)\(\);/var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;/ms' {} \;
+    's/^var global\s*=.*?Function\(.*?this.*?\)\(\);/var proto = { codegen: { }, pulumirpc: { codegen: { }, testing: { } } }, global = proto;/ms' {} \;
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.js" -exec perl -i -pe "s|require\('../pulumi/|require('./|g" {} \;
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.js" -exec perl -i -pe "s|require\('../../pulumi/|require('../|g" {} \;
 

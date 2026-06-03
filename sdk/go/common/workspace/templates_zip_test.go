@@ -28,6 +28,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDrainBody_NilResponse(t *testing.T) {
+	t.Parallel()
+	// drainBody must not panic when called with a nil response,
+	// which happens when RoundTrip returns (nil, err).
+	assert.NotPanics(t, func() {
+		drainBody(nil)
+	})
+}
+
 func TestSanitizeArchivePath(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

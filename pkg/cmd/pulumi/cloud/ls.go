@@ -30,11 +30,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// newLsCmd builds `pulumi cloud api list` — a stable, agent-first listing of
+// newLsCmd builds `pulumi api list` — a stable, agent-first listing of
 // every operation exposed by the embedded OpenAPI spec. api carries the
 // parent command's persistent flags (--refresh-spec).
 func newLsCmd(api *apiCommand) *cobra.Command {
-	var format string
+	var output string
 	includePreview := true
 	includeDeprecated := false
 
@@ -47,34 +47,34 @@ func newLsCmd(api *apiCommand) *cobra.Command {
 			"Output is sorted by (tag asc, path asc, method precedence). The default is a\n" +
 			"human-readable table when interactive; when non-interactive, list switches to\n" +
 			"the JSON envelope so downstream parsers don't have to deal with the table's\n" +
-			"box-drawing characters. Pass --format=json to request JSON explicitly, or\n" +
-			"--format=table to keep the table when redirecting.\n" +
+			"box-drawing characters. Pass --output=json to request JSON explicitly, or\n" +
+			"--output=table to keep the table when redirecting.\n" +
 			"\n" +
 			"Preview endpoints are listed by default; deprecated endpoints are hidden. Use\n" +
 			"--include-preview=false or --include-deprecated to change that.",
 		Example: "  # Print the table of stable endpoints.\n" +
-			"  pulumi cloud api list\n\n" +
+			"  pulumi api list\n\n" +
 			"  # Grab every operation as JSON (the default when piped).\n" +
-			"  pulumi cloud api list --format=json\n\n" +
+			"  pulumi api list --output=json\n\n" +
 			"  # Count endpoints per tag with jq.\n" +
-			"  pulumi cloud api list --format=json | jq '[.operations[] | .tag] | group_by(.) |\n" +
+			"  pulumi api list --output=json | jq '[.operations[] | .tag] | group_by(.) |\n" +
 			"    map({tag: .[0], count: length})'\n\n" +
 			"  # Find all stack-related GETs.\n" +
-			"  pulumi cloud api list --format=json | jq '.operations[] |\n" +
+			"  pulumi api list --output=json | jq '.operations[] |\n" +
 			"    select(.method==\"GET\" and (.path | contains(\"/stacks\"))) | .operationId'\n\n" +
 			"  # Full-text search descriptions for deployment-related endpoints.\n" +
-			"  pulumi cloud api list --format=json | jq '.operations[] |\n" +
+			"  pulumi api list --output=json | jq '.operations[] |\n" +
 			"    select(.description | test(\"deployment\"; \"i\")) |\n" +
 			"    {operationId, path, description}'\n\n" +
 			"  # Include deprecated endpoints (hidden by default).\n" +
-			"  pulumi cloud api list --include-deprecated\n\n" +
+			"  pulumi api list --include-deprecated\n\n" +
 			"  # Hide preview endpoints.\n" +
-			"  pulumi cloud api list --include-preview=false",
+			"  pulumi api list --include-preview=false",
 	}
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-	cmd.Flags().StringVar(&format, "format", "",
+	cmd.Flags().StringVar(&output, "output", "",
 		"Output format: `table` (human-readable, default when interactive), `json` "+
-			"(stable agent envelope, default when non-interactive). Use --format=table "+
+			"(stable agent envelope, default when non-interactive). Use --output=table "+
 			"to keep the table when redirecting.")
 	cmd.Flags().BoolVar(&includePreview, "include-preview", true,
 		"Include endpoints marked as preview")
@@ -82,7 +82,7 @@ func newLsCmd(api *apiCommand) *cobra.Command {
 		"Include endpoints marked as deprecated")
 
 	cmd.RunE = runWithEnvelope(func(cmd *cobra.Command, args []string) error {
-		return runLs(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), format,
+		return runLs(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), output,
 			includePreview, includeDeprecated, api.refreshSpec)
 	})
 	return cmd
@@ -91,10 +91,10 @@ func newLsCmd(api *apiCommand) *cobra.Command {
 func runLs(
 	ctx context.Context,
 	w, warnW io.Writer,
-	format string,
+	output string,
 	includePreview, includeDeprecated, refresh bool,
 ) error {
-	mode, err := resolveOutput(format)
+	mode, err := resolveOutput(output)
 	if err != nil {
 		return err
 	}
@@ -102,9 +102,9 @@ func runLs(
 	// `describe` and the raw dispatcher, so reject them here explicitly.
 	if mode == outputRaw || mode == outputMarkdown {
 		return NewAPIError(cmdutil.ExitConfigurationError, ErrInvalidFlags,
-			"--format="+format+" is not supported for list").
-			WithField("format").
-			WithSuggestions("--format=json", "--format=table")
+			"--output="+output+" is not supported for list").
+			WithField("output").
+			WithSuggestions("--output=json", "--output=table")
 	}
 
 	if mode == outputDefault && !cmdutil.Interactive() {
@@ -202,7 +202,7 @@ func emitLsTable(w io.Writer, idx *Index) error {
 		}
 	}
 	summaryWidth := min(maxSummary, lsSummaryHardMax)
-	cols := stdoutWidth(lsFallbackCols)
+	cols := writerWidth(w, lsFallbackCols)
 	pathWidth := max(lsMinPathWidth, min(maxPath, cols-maxTag-lsMethodWidth-summaryWidth-lsBorderWidth))
 
 	t := table.NewWriter()
@@ -218,18 +218,22 @@ func emitLsTable(w io.Writer, idx *Index) error {
 		{Name: "SUMMARY", WidthMax: summaryWidth, WidthMaxEnforcer: text.WrapText},
 	})
 	t.Render()
-	fmt.Fprintf(w, "\n%d operations. Pass --format=json for a stable, scriptable contract.\n",
+	fmt.Fprintf(w, "\n%d operations. Pass --output=json for a stable, scriptable contract.\n",
 		len(idx.Operations))
 	return nil
 }
 
-// stdoutWidth reports the column count of stdout, falling back to fallback
-// when stdout isn't a terminal or the size can't be determined (e.g. when
-// the user piped --format=table to a file but still wants the table).
-func stdoutWidth(fallback int) int {
-	w, _, err := term.GetSize(int(os.Stdout.Fd()))
-	if err != nil || w <= 0 {
+// writerWidth reports the column count of w when it is a terminal, falling
+// back to fallback otherwise (e.g. when --output=table is piped to a file
+// but the user still wants table formatting).
+func writerWidth(w io.Writer, fallback int) int {
+	f, ok := w.(*os.File)
+	if !ok {
 		return fallback
 	}
-	return w
+	cols, _, err := term.GetSize(int(f.Fd()))
+	if err != nil || cols <= 0 {
+		return fallback
+	}
+	return cols
 }

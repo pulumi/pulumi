@@ -26,7 +26,16 @@ linters:
     - whitespace
     - copyloopvar
     - gocritic
+    - requiredfield
+    - noosexit
   settings:
+    custom:
+      requiredfield:
+        type: module
+        description: Checks that required fields are set in struct literals (see go.abhg.dev/requiredfield)
+      noosexit:
+        type: module
+        description: Forbids process-terminating calls (os.Exit, cmdutil.Exit, cmdutil.ExitError) outside of main and TestMain
     usetesting:
       os-temp-dir: true
       context-background: true
@@ -97,6 +106,20 @@ linters:
         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
         See the License for the specific language governing permissions and
         limitations under the License.
+    gosec:
+      excludes:
+        # Taint analysis rules produce excessive false positives in a CLI
+        # tool where virtually all file and command operations use
+        # user-provided paths.
+        - G115 # Integer overflow conversion via taint analysis
+        - G117 # Marshaled struct field matches secret pattern
+        - G122 # Filesystem TOCTOU in filepath.Walk callbacks
+        - G204 # Subprocess launched with tainted input
+        - G602 # Slice index out of range via taint analysis
+        - G701 # SQL injection via taint analysis
+        - G702 # Command injection via taint analysis
+        - G703 # Path traversal via taint analysis
+        - G704 # SSRF via taint analysis
     govet:
       enable:
         - nilness
@@ -129,6 +152,15 @@ linters:
           msg: Use resource.NewProperty instead
         - pattern: ^os.Rename$
           msg: "`os.Rename` does not work across file systems and is not atomic for windows. Use with caution"
+        # Scoped to non-test code under pkg/cmd/ via exclusion rules below.
+        # Cobra commands should use cmd.OutOrStdout() / cmd.ErrOrStderr() so
+        # output can be captured, redirected, or tested.
+        - pattern: ^os\.Stdout$
+          msg: "use cmd.OutOrStdout() instead of os.Stdout in pkg/cmd"
+        - pattern: ^os\.Stderr$
+          msg: "use cmd.ErrOrStderr() instead of os.Stderr in pkg/cmd"
+        - pattern: ^fmt\.Print(f|ln)?$
+          msg: "use fmt.Fprint*(cmd.OutOrStdout(), ...) instead of fmt.Print* in pkg/cmd"
     revive:
       rules:
         - name: use-any
@@ -169,6 +201,24 @@ linters:
       - linters:
           - staticcheck
         text: 'other import of'
+      - linters:
+          - goheader
+        path: pkg/cmd/pulumi/logs/timestamp\.go$
+      # Scope the cmd.OutOrStdout/ErrOrStderr/fmt.Fprint* forbidigo rules to
+      # non-test code under pkg/cmd/. Paths reported by golangci-lint are
+      # relative to the repo root regardless of which module is being linted.
+      - linters:
+          - gosec
+        path: _test\.go$
+        text: 'G101:'
+      - linters:
+          - forbidigo
+        path-except: ^pkg/cmd/
+        text: 'use (cmd\.OutOrStdout|cmd\.ErrOrStderr|fmt\.Fprint\*)'
+      - linters:
+          - forbidigo
+        path: _test\.go$
+        text: 'use (cmd\.OutOrStdout|cmd\.ErrOrStderr|fmt\.Fprint\*)'
     paths:
       - Godeps$
       - builtin$
@@ -184,6 +234,7 @@ formatters:
     paths:
       - Godeps$
       - builtin$
+      - compilation_error
       - node_modules
       - testdata$
       - third_party$

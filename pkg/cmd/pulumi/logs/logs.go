@@ -21,8 +21,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	mobytime "github.com/moby/moby/api/types/time"
-
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
@@ -42,6 +40,7 @@ import (
 
 func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stackName string
+	var configFile string
 	var follow bool
 	var since string
 	var resource string
@@ -76,12 +75,13 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 				stackName,
 				cmdStack.LoadOnly,
 				opts,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -112,8 +112,10 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 				resourceFilter = &rf
 			}
 
+			out := cobraCmd.OutOrStdout()
 			if !jsonOut {
-				fmt.Printf(
+				fmt.Fprintf(
+					out,
 					opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
 					s.Ref().String(),
 					cmd.FormatTime(*startTime),
@@ -154,7 +156,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 						}
 					}
 
-					return ui.PrintJSON(entries)
+					return ui.FprintJSON(out, entries)
 				}
 
 				for _, logEntry := range logs {
@@ -162,14 +164,15 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
 						if !jsonOut {
-							fmt.Printf(
+							fmt.Fprintf(
+								out,
 								"%30.30s[%30.30s] %v\n",
 								cmd.FormatTime(eventTime),
 								logEntry.ID,
 								strings.TrimRight(logEntry.Message, "\n"),
 							)
 						} else {
-							err = ui.PrintJSON(logEntryJSON{
+							err = ui.FprintJSON(out, logEntryJSON{
 								ID:        logEntry.ID,
 								Timestamp: cmd.FormatTime(eventTime.UTC()),
 								Message:   logEntry.Message,
@@ -200,7 +203,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	logsCmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	logsCmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
@@ -219,11 +222,11 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 }
 
 func parseSince(since string, reference time.Time) (*time.Time, error) {
-	startTimestamp, err := mobytime.GetTimestamp(since, reference)
+	startTimestamp, err := getTimestamp(since, reference)
 	if err != nil {
 		return nil, err
 	}
-	startTimeSec, startTimeNs, err := mobytime.ParseTimestamps(startTimestamp, 0)
+	startTimeSec, startTimeNs, err := parseTimestamps(startTimestamp, 0)
 	if err != nil {
 		return nil, err
 	}

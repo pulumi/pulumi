@@ -46,7 +46,7 @@ type Type interface {
 	isType()
 }
 
-type primitiveType int
+type primitiveType uint16
 
 const (
 	boolType        primitiveType = 1
@@ -926,6 +926,16 @@ func (pkg *Package) Equals(other *Package) bool {
 }
 
 var defaultModuleFormat = regexp.MustCompile("(.*)")
+
+func (pkg *Package) CanonicalizeToken(tok string) string {
+	pkgName, _, member, _ := decomposeToken(tok)
+
+	mod := pkg.TokenToModule(tok)
+	if mod != "" {
+		return fmt.Sprintf("%s:%s:%s", pkgName, mod, member)
+	}
+	return fmt.Sprintf("%s:%s", pkgName, member)
+}
 
 func (pkg *Package) TokenToModule(tok string) string {
 	// token := pkg ":" module ":" member

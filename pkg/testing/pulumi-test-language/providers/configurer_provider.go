@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
@@ -65,7 +64,6 @@ const (
 
 func (p *ConfigurerProvider) Close() error                             { return nil }
 func (p *ConfigurerProvider) SignalCancellation(context.Context) error { return nil }
-func (p *ConfigurerProvider) Pkg() tokens.Package                      { return configurerPkg }
 
 func (p *ConfigurerProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	v := semver.MustParse(configurerVersion)

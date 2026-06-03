@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func newStackExportCmd() *cobra.Command {
@@ -64,6 +65,7 @@ func newStackExportCmd() *cobra.Command {
 				stackName,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -93,12 +95,14 @@ func newStackExportCmd() *cobra.Command {
 			}
 
 			// Read from stdin or a specified file.
-			writer := os.Stdout
+			writer := cmd.OutOrStdout()
 			if file != "" {
-				writer, err = os.Create(file)
+				f, err := os.Create(file)
 				if err != nil {
 					return fmt.Errorf("could not open file: %w", err)
 				}
+				defer contract.IgnoreClose(f)
+				writer = f
 			}
 
 			if showSecrets {

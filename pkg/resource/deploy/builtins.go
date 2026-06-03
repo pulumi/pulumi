@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
@@ -66,10 +65,6 @@ func newBuiltinProvider(
 
 func (p *builtinProvider) Close() error {
 	return nil
-}
-
-func (p *builtinProvider) Pkg() tokens.Package {
-	return "pulumi"
 }
 
 func (p *builtinProvider) Handshake(
@@ -269,6 +264,10 @@ func (p *builtinProvider) Delete(_ context.Context, req plugin.DeleteRequest) (p
 		"expected resource type %v or %v, got %v", stackReferenceType, stashType, req.URN.Type())
 
 	return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+}
+
+func (p *builtinProvider) List(context.Context, plugin.ListRequest) (*plugin.ListStream, error) {
+	return nil, errors.New("the builtin provider does not support List")
 }
 
 func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {

@@ -91,6 +91,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 			},
 		},
 		nil,
+		"",
 	)
 }
 
@@ -127,6 +128,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 			},
 		},
 		nil,
+		"",
 	)
 	if !called {
 		t.Fatalf("GetLatestConfiguration should be called in getStackConfigurationOrLatest.")

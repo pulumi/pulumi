@@ -62,9 +62,9 @@ func TestWriteErrorEnvelope_NonInteractiveIsCompactJSON(t *testing.T) {
 
 func TestWriteErrorEnvelope_InteractiveIsHumanReadable(t *testing.T) {
 	t.Parallel()
-	apiErr := NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags, "--format=yaml is not supported").
-		WithField("format").
-		WithSuggestions("--format=json", "--format=table")
+	apiErr := NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags, "--output=yaml is not supported").
+		WithField("output").
+		WithSuggestions("--output=json", "--output=table")
 
 	var buf bytes.Buffer
 	require.NoError(t, WriteErrorEnvelope(&buf, apiErr, true))
@@ -73,11 +73,11 @@ func TestWriteErrorEnvelope_InteractiveIsHumanReadable(t *testing.T) {
 	// Plain text — must NOT be JSON.
 	assert.False(t, strings.HasPrefix(strings.TrimSpace(out), "{"),
 		"interactive output should be human text, not JSON")
-	assert.Contains(t, out, "error: --format=yaml is not supported")
-	assert.Contains(t, out, "field: format")
+	assert.Contains(t, out, "error: --output=yaml is not supported")
+	assert.Contains(t, out, "field: output")
 	assert.Contains(t, out, "Suggestions:")
-	assert.Contains(t, out, "- --format=json")
-	assert.Contains(t, out, "- --format=table")
+	assert.Contains(t, out, "- --output=json")
+	assert.Contains(t, out, "- --output=table")
 }
 
 func TestWriteErrorEnvelope_InteractiveHTTPStatus(t *testing.T) {

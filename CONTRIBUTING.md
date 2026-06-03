@@ -36,23 +36,23 @@ For contributors we use the [standard fork based workflow](https://gist.github.c
 Before you open a pull request, make sure all lint checks pass:
 
 ```bash
-$ make lint
+make lint
 ```
 
-If you see formatting failures, fix them by running [gofumpt](https://github.com/mvdan/gofumpt) on your code:
+If you see formatting failures, fix them with `make format`. To format a single file or directory directly:
 
 ```bash
-$ gofumpt -w path/to/file.go
+golangci-lint fmt path/to/file.go
 # or
-$ gofumpt -w path/to/dir
+golangci-lint fmt path/to/dir
 ```
 
-We require a changelog entry for all PR that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…
+We require a changelog entry for all PRs that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…
 
 ```bash
-$ make changelog
-````
-…and follow the prompts on screen.
+make changelog
+```
+…and follow the prompts on screen. This requires [changie](https://changie.dev/guide/installation/) to be installed. If you use [mise](https://mise.jdx.dev/), it is included in `.mise.toml` and will be installed automatically. Otherwise, install it manually (`brew install changie` on macOS, or `go install github.com/miniscruff/changie@v1.21` otherwise).
 
 ### Pull Request Descriptions
 
@@ -77,7 +77,7 @@ Good examples for changelog entries are:
 - Exit immediately from state edit when no change was made
 - Fix root and program paths to always be absolute
 
-Here's some examples of what we're trying to avoid:
+Here are some examples of what we're trying to avoid:
 - Fixes a bug
 - Adds a feature
 - Feature now does something
@@ -130,7 +130,7 @@ If `sdk/.version` is the version we want to release, we need to "freeze" that dr
 
 If `sdk/.version` is not the version we want to release yet, usually in the case of a minor release, bump the version to the right version first, and merge that first (always using `scripts/set-version.py`).  Once that's merged the current release can be frozen as above.
 
-For these version bump PRs it's useful for reviewers if the expected changelog is included.  This can be generated using `GITHUB_REPOSITORY=pulumi/pulumi go run github.com/pulumi/go-change@v0.1.3 render`, at the root of the repository.
+For these version bump PRs it's useful for reviewers if the expected changelog is included.  This can be generated using `changie batch auto --dry-run` at the root of the repository.
 
 The next step, to gain some additional confidence in the release is to run the [Test examples](https://github.com/pulumi/examples/actions/workflows/test-examples.yml), and [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) test suites.  These run the tests in the `pulumi/examples` and `pulumi/templates` repositories using the latest `pulumi/pulumi` dev version, thus including all the latest changes.
 

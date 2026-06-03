@@ -58,7 +58,7 @@ func NewViewTraceCmd() *cobra.Command {
 			}
 			app.Store, app.Queryer = store, store
 
-			fmt.Printf("Displaying trace at %v\n", url)
+			fmt.Fprintf(cmd.OutOrStdout(), "Displaying trace at %v\n", url)
 			return http.ListenAndServe(fmt.Sprintf(":%d", port), app) //nolint:gosec
 		},
 	}

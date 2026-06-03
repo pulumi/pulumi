@@ -17,6 +17,7 @@ package operations
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"testing"
 
 	"github.com/blang/semver"
@@ -611,4 +612,33 @@ func TestImportFileMarshal(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotContains(t, buffer.String(), "providerInputs")
 	})
+}
+
+// TestImportCmd_OutputFlagRegistered verifies that `pulumi import` exposes
+// the `--output` flag with the expected default and hidden state. The
+// display-layer behaviour is covered by TestUp_OutputJSONSummary; here we
+// just check the flag is plumbed.
+func TestImportCmd_OutputFlagRegistered(t *testing.T) {
+	t.Parallel()
+	cmd := NewImportCmd()
+	flag := cmd.Flags().Lookup("output")
+	require.NotNil(t, flag, "expected --output flag on `pulumi import`")
+	assert.Equal(t, "default", flag.DefValue, "--output default value")
+	assert.True(t, flag.Hidden, "--output should be hidden until parity is reached")
+}
+
+// TestImportCmd_OutputAndJSONMutuallyExclusive verifies that passing both
+// --json and --output is rejected by cobra's flag-group validation before
+// RunE is invoked, so the command never starts a real import.
+func TestImportCmd_OutputAndJSONMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+	cmd := NewImportCmd()
+	cmd.SetArgs([]string{"--json", "--output", "json"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "none of the others can be",
+		"expected cobra's mutually-exclusive error, got: %v", err)
 }

@@ -365,9 +365,16 @@ func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
 		}
 	}
 
+	if ignoreErrors, ok := block.Body.Attribute("ignoreErrors"); ok {
+		node.IgnoreErrors = ignoreErrors.Value
+		if model.InputType(model.BoolType).ConversionFrom(node.IgnoreErrors.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(model.BoolType), node.IgnoreErrors))
+		}
+	}
+
 	// Error on any other attribute
 	for _, i := range block.Body.Items {
-		valid := []string{"onDryRun", "command"}
+		valid := []string{"onDryRun", "ignoreErrors", "command"}
 		switch item := i.(type) {
 		case *model.Attribute:
 			if !slices.Contains(valid, item.Name) {

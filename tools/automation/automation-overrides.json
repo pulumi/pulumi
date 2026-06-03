@@ -158,6 +158,18 @@
             "flags": {}
         },
         {
+            "path": ["api"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["cloud"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
             "path": ["console"],
             "propagate": true,
             "exclude": true,
@@ -182,6 +194,18 @@
             "flags": {}
         },
         {
+            "path": ["do"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["events"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
             "path": ["gen-completion"],
             "propagate": true,
             "exclude": true,
@@ -201,6 +225,12 @@
         },
         {
             "path": ["help"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["insights"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -237,6 +267,36 @@
         {
             "path": ["org"],
             "propagate": true,
+            "flags": {}
+        },
+        {
+            "path": ["org", "audit-log"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["org", "member"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["org", "role"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["org", "usage"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["org", "webhook"],
+            "propagate": true,
+            "exclude": true,
             "flags": {}
         },
         {

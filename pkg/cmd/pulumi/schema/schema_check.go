@@ -66,7 +66,7 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 			_, diags, err := schema.BindSpec(*spec, nil, schema.ValidationOptions{
 				AllowDanglingReferences: schemaCheckArgs.allowDanglingReferences,
 			})
-			diagWriter := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 0, true)
+			diagWriter := hcl.NewDiagnosticTextWriter(cmd.ErrOrStderr(), nil, 0, true)
 			wrErr := diagWriter.WriteDiagnostics(diags)
 			contract.IgnoreError(wrErr)
 			if err == nil && diags.HasErrors() {

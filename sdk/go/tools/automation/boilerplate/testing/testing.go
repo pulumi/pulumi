@@ -22,7 +22,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/boilerplate/base"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 )
 
 // API is the same public shape as the production boilerplate. The generator
@@ -39,11 +39,7 @@ func New(_ base.PulumiCommand) *API {
 // run returns the rendered `pulumi ...` command line in CommandResult.Stdout.
 // The BaseOptions and ctx parameters are accepted and ignored.
 //
-// The generator appends method declarations to a copy of this file in
-// output/automation/, where `run` becomes used. The linter sees this file
-// in isolation and cannot tell.
-//
-//nolint:unused
+//nolint:unused // used by generated commands.go in the same package
 func (a *API) run(
 	_ context.Context,
 	_ base.BaseOptions,

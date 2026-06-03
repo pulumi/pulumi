@@ -1116,6 +1116,10 @@ export interface ResourceHookOptions {
      * Run the hook during dry run (preview) operations. Defaults to false.
      */
     onDryRun?: boolean;
+    /**
+     * If true, errors from this hook are logged as warnings instead of failing the program.
+     */
+    ignoreErrors?: boolean;
 }
 
 /**
@@ -1712,6 +1716,7 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
             "afterUpdate",
             "beforeDelete",
             "afterDelete",
+            "onError",
         ] as const;
         for (const hookType of hookTypes) {
             const destHooks = dest?.hooks?.[hookType];

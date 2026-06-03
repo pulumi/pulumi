@@ -38,13 +38,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
-	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
+	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -90,6 +91,7 @@ func NewUpCmd() *cobra.Command {
 	var execAgent string
 	var stackName string
 	var configArray []string
+	var configFile string
 	var path bool
 	var client string
 
@@ -98,6 +100,7 @@ func NewUpCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	output := outputflag.OutputFlag[bool]{RenderJSON: true}
 	var policyPackPaths []string
 	var policyPackConfigPaths []string
 	var diffDisplay bool
@@ -129,6 +132,7 @@ func NewUpCmd() *cobra.Command {
 	var planFilePath string
 	var attachDebugger []string
 	var strict bool
+	var skipPluginPreInstall bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -152,13 +156,14 @@ func NewUpCmd() *cobra.Command {
 			stackName,
 			cmdStack.OfferNew,
 			opts.Display,
+			configFile,
 		)
 		if err != nil {
 			return err
 		}
 
 		// Save any config values passed via flags.
-		if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path); err != nil {
+		if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path, configFile); err != nil {
 			return err
 		}
 
@@ -167,7 +172,7 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -236,12 +241,13 @@ func NewUpCmd() *cobra.Command {
 			ExcludeDependents:         excludeDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan:    env.Experimental.Value() || strict,
-			Experimental:    env.Experimental.Value(),
-			Strict:          strict,
-			ContinueOnError: continueOnError,
-			AttachDebugger:  attachDebugger,
-			Autonamer:       autonamer,
+			GeneratePlan:         env.Experimental.Value() || strict,
+			Experimental:         env.Experimental.Value(),
+			Strict:               strict,
+			ContinueOnError:      continueOnError,
+			AttachDebugger:       attachDebugger,
+			Autonamer:            autonamer,
+			SkipPluginPreInstall: skipPluginPreInstall,
 		}
 
 		if planFilePath != "" {
@@ -402,7 +408,7 @@ func NewUpCmd() *cobra.Command {
 		// Create the stack, if needed.
 		if s == nil {
 			if s, err = newcmd.PromptAndCreateStack(ctx, cmdutil.Diag(), ws, b, ui.PromptForValue, stackName, root,
-				false /*setCurrent*/, yes, opts.Display, secretsProvider, false /*useRemoteConfig*/); err != nil {
+				false /*setCurrent*/, yes, opts.Display, secretsProvider, false /*useRemoteConfig*/, configFile); err != nil {
 				return err
 			}
 			// The backend will print "Created stack '<stack>'." on success.
@@ -423,6 +429,7 @@ func NewUpCmd() *cobra.Command {
 			yes,
 			path,
 			opts.Display,
+			configFile,
 		); err != nil {
 			return err
 		}
@@ -437,12 +444,13 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		defer pctx.Close()
-
-		if err = newcmd.InstallDependencies(pctx, &proj.Runtime, main); err != nil {
-			return err
+		if !skipPluginPreInstall {
+			if err = newcmd.InstallDependencies(pctx, &proj.Runtime, main); err != nil {
+				return err
+			}
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, pctx.Diag, ssml, s, proj)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, pctx.Diag, ssml, s, proj, configFile)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -490,7 +498,8 @@ func NewUpCmd() *cobra.Command {
 			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
 
-			AttachDebugger: attachDebugger,
+			AttachDebugger:       attachDebugger,
+			SkipPluginPreInstall: skipPluginPreInstall,
 		}
 
 		start := time.Now()
@@ -617,6 +626,7 @@ func NewUpCmd() *cobra.Command {
 				EventLogPath:           eventLogPath,
 				Debug:                  debug,
 				JSONDisplay:            jsonDisplay,
+				SummaryJSON:            output.Get(),
 				ShowSecrets:            showSecrets,
 			}
 
@@ -632,7 +642,7 @@ func NewUpCmd() *cobra.Command {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
 					showReads, suppressOutputs, secretsProvider, &targets, &excludes, replaces, targetReplaces,
-					targetDependents, planFilePath, cmdStack.ConfigFile, runProgram)
+					targetDependents, planFilePath, configFile, runProgram)
 				if err != nil {
 					return err
 				}
@@ -661,7 +671,6 @@ func NewUpCmd() *cobra.Command {
 			}
 
 			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
-			// Currently only available for `pulumi up`.
 			logging.V(7).Infof("PULUMI_SUPPRESS_NEO_LINK=%v", env.SuppressNeoLink.Value())
 			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
@@ -708,7 +717,7 @@ func NewUpCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
@@ -770,6 +779,10 @@ func NewUpCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the update diffs, operations, and overall output as JSON")
+	outputflag.Var(cmd.Flags(), &output)
+	// Hidden until --output is wired up across all operations (destroy, preview, refresh, ...).
+	contract.AssertNoErrorf(cmd.Flags().MarkHidden("output"), `Could not mark "output" as hidden`)
+	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
@@ -846,6 +859,11 @@ func NewUpCmd() *cobra.Command {
 		&strict, "strict", false,
 		"[EXPERIMENTAL] Enable strict plan behavior: generate a plan during preview and constrain the update "+
 			"to that plan (opt-in). Cannot be used with --skip-preview.")
+
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine. "+
+			"When deploying from a template, also skips installing the project's runtime dependencies.")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

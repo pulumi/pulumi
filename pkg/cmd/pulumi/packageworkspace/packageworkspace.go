@@ -37,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	diagutils "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -115,7 +114,7 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 	}
 
 	info := plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options())
-	return cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
+	return cmdutil.InstallDependencies(ctx, lang, plugin.InstallDependenciesRequest{
 		Info:                    info,
 		UseLanguageVersionTools: w.options.UseLanguageVersionTools,
 		IsPlugin:                true,
@@ -137,7 +136,7 @@ func (w Workspace) GetRequiredPackages(
 			return nil, err
 		}
 	}
-	return lang.GetRequiredPackages(plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options()))
+	return lang.GetRequiredPackages(ctx, plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options()))
 }
 
 // IsExecutable returns if the file at binaryPath can be executed.
@@ -315,6 +314,7 @@ func (w Workspace) LinkIntoProject(
 	}
 
 	instructions, err := servers.lang.Link(
+		ctx,
 		plugin.NewProgramInfo(projectDir, projectDir, ".", runtimeInfo.Options()),
 		packageDescriptors,
 		servers.grpc.Addr(),
@@ -396,7 +396,7 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 		return "", errors.Join(err, os.RemoveAll(tmpDir))
 	}
 
-	diags, err := s.lang.GeneratePackage(tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
+	diags, err := s.lang.GeneratePackage(ctx, tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
 	if err != nil {
 		return "", errors.Join(err, s.Close(), os.RemoveAll(tmpDir))
 	}
@@ -411,13 +411,12 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 
 // Run a package from a directory, parameterized by params.
 func (w Workspace) RunPackage(
-	ctx context.Context, rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	ctx context.Context, rootDir, pluginPath string, params plugin.ParameterizeParameters,
 	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := diagutils.StartSpan(ctx, tracer, "run-plugin",
 		trace.WithAttributes(
-			attribute.String("plugin", string(pkgName)),
 			attribute.String("path", pluginPath),
 		))
 	defer span.End()
@@ -427,7 +426,7 @@ func (w Workspace) RunPackage(
 	})
 
 	pctx := plugin.NewContextWithHost(ctx, d, d, w.host, rootDir, rootDir, w.parentSpan)
-	p, err := plugin.NewProviderFromPath(w.host, pctx, pkgName, pluginPath)
+	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
 	}

@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
@@ -84,7 +85,7 @@ func GetLanguageRuntimeMetadata(
 			return nil, err
 		}
 
-		res, err := lang.About(programInfo)
+		res, err := lang.About(ctx, programInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -234,62 +235,11 @@ func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgen
 	}
 	env[backend.ExecutionKind] = execKind
 	if execAgent == "" {
-		execAgent = DetectAIAgent(os.Getenv)
+		execAgent = agentdetect.Detect(os.Getenv)
 	}
 	if execAgent != "" {
 		env[backend.ExecutionAgent] = execAgent
 	}
-}
-
-// DetectAIAgent returns the AI agent driving the CLI, inferred from AI_AGENT
-// or well-known agent-specific environment variables, or "" if none is found.
-func DetectAIAgent(getEnv func(string) string) string {
-	normalized := func(agent string) string {
-		agent = strings.TrimSpace(strings.ToLower(agent))
-		switch agent {
-		case "github-copilot-cli":
-			return "github-copilot"
-		default:
-			return agent
-		}
-	}
-	if agent := normalized(getEnv("AI_AGENT")); agent != "" {
-		return agent
-	}
-
-	type detector struct {
-		name string
-		envs []string
-	}
-	// These are sourced from https://github.com/unjs/std-env/blob/main/src/agents.ts and
-	// https://github.com/vercel/vercel/blob/main/packages/detect-agent/src/index.ts, as a reference for common
-	// environment variables set by AI agents and tools.
-	//
-	// Order matters: specific forms should be identified before broad IDE/tool markers.
-	agents := []detector{
-		{name: "cursor", envs: []string{"CURSOR_TRACE_ID"}},
-		{name: "cursor-cli", envs: []string{"CURSOR_AGENT"}},
-		{name: "gemini", envs: []string{"GEMINI_CLI"}},
-		{name: "codex", envs: []string{"CODEX_SANDBOX", "CODEX_CI", "CODEX_THREAD_ID"}},
-		{name: "antigravity", envs: []string{"ANTIGRAVITY_AGENT"}},
-		{name: "augment-cli", envs: []string{"AUGMENT_AGENT"}},
-		{name: "opencode", envs: []string{"OPENCODE", "OPENCODE_CALLER", "OPENCODE_CLIENT"}},
-		{name: "cowork", envs: []string{"CLAUDE_CODE_IS_COWORK"}},
-		{name: "claude", envs: []string{"CLAUDECODE", "CLAUDE_CODE"}},
-		{name: "replit", envs: []string{"REPL_ID"}},
-		{name: "github-copilot", envs: []string{"COPILOT_MODEL", "COPILOT_ALLOW_ALL", "COPILOT_GITHUB_TOKEN"}},
-		{name: "goose", envs: []string{"GOOSE_PROVIDER"}},
-	}
-
-	for _, d := range agents {
-		for _, envVar := range d.envs {
-			if getEnv(envVar) != "" {
-				return d.name
-			}
-		}
-	}
-
-	return ""
 }
 
 // addUpdatePlanMetadataToEnvironment populates the environment metadata bag with update plan related values.
@@ -437,11 +387,24 @@ func addGitRemoteMetadataToMap(repo *git.Repository, projectRoot string, env map
 	if err != nil {
 		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
 	} else {
-		rel, err := filepath.Rel(tree.Filesystem.Root(), projectRoot)
+		// Resolve symlinks on both paths so filepath.Rel works correctly when
+		// they go through different symlink chains (e.g. on macOS where /var
+		// is a symlink to /private/var).
+		repoRoot, err := filepath.EvalSymlinks(tree.Filesystem.Root())
 		if err != nil {
-			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
-		} else if !strings.HasPrefix(rel, "..") {
-			env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
+		} else {
+			resolvedProjectRoot, err := filepath.EvalSymlinks(projectRoot)
+			if err != nil {
+				allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+			} else {
+				rel, err := filepath.Rel(repoRoot, resolvedProjectRoot)
+				if err != nil {
+					allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+				} else if !strings.HasPrefix(rel, "..") {
+					env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+				}
+			}
 		}
 	}
 
@@ -584,12 +547,23 @@ func addHgRemoteMetadataToMap(repo *hgutil.Repository, projectRoot string, env m
 		}
 	}
 
-	// Add the repository root path.
-	rel, err := filepath.Rel(repo.Root, projectRoot)
+	// Add the repository root path. Resolve symlinks so filepath.Rel works correctly
+	// when paths go through different symlink chains.
+	resolvedRepoRoot, err := filepath.EvalSymlinks(repo.Root)
 	if err != nil {
-		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
-	} else if !strings.HasPrefix(rel, "..") {
-		env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
+	} else {
+		resolvedProjectRoot, err := filepath.EvalSymlinks(projectRoot)
+		if err != nil {
+			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+		} else {
+			rel, err := filepath.Rel(resolvedRepoRoot, resolvedProjectRoot)
+			if err != nil {
+				allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+			} else if !strings.HasPrefix(rel, "..") {
+				env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+			}
+		}
 	}
 
 	return allErrors.ErrorOrNil()

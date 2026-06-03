@@ -53,7 +53,7 @@ type ResolvedContext struct {
 	LoggedIn  bool
 }
 
-// ResolveContext returns the Pulumi Cloud context for a `pulumi cloud api`
+// ResolveContext returns the Pulumi Cloud context for a `pulumi api`
 // invocation. The resolved OrgName comes from pkgBackend.GetDefaultOrg
 // (which prefers a locally-configured default and falls back to the
 // backend's opinion) so {orgName} template vars resolve sensibly even
@@ -108,7 +108,7 @@ func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 	}
 	cloudBe, ok := be.(httpstate.Backend)
 	if !ok {
-		return nil, errors.New("`pulumi cloud api` requires the Pulumi Cloud backend; " +
+		return nil, errors.New("`pulumi api` requires the Pulumi Cloud backend; " +
 			"run `pulumi login`")
 	}
 

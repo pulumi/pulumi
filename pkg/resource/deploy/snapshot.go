@@ -291,11 +291,11 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 	if len(snap.PendingOperations) != len(expected.PendingOperations) {
 		var snapPendingOps strings.Builder
 		for _, op := range snap.PendingOperations {
-			snapPendingOps.WriteString(fmt.Sprintf("%v (%v), ", op.Type, op.Resource))
+			fmt.Fprintf(&snapPendingOps, "%v (%v), ", op.Type, op.Resource)
 		}
 		var expectedPendingOps strings.Builder
 		for _, op := range expected.PendingOperations {
-			expectedPendingOps.WriteString(fmt.Sprintf("%v (%v), ", op.Type, op.Resource))
+			fmt.Fprintf(&expectedPendingOps, "%v (%v), ", op.Type, op.Resource)
 		}
 		return fmt.Errorf("actual and expected pending operations differ, %d in actual (have %v), %d in expected (have %v)",
 			len(snap.PendingOperations), snapPendingOps.String(), len(expected.PendingOperations), expectedPendingOps.String())
@@ -312,7 +312,7 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		for _, mop := range pendingOpsMap[jop.Resource.URN] {
 			if diff := deep.Equal(jop, mop); diff != nil {
 				if jop.Resource.URN == mop.Resource.URN {
-					diffStr.WriteString(fmt.Sprintf("%s\n", diff))
+					fmt.Fprintf(&diffStr, "%s\n", diff)
 				}
 			} else {
 				found = true
@@ -322,11 +322,11 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		if !found {
 			var pendingOps strings.Builder
 			for _, op := range snap.PendingOperations {
-				pendingOps.WriteString(fmt.Sprintf("%v (%v)\n", op.Type, op.Resource))
+				fmt.Fprintf(&pendingOps, "%v (%v)\n", op.Type, op.Resource)
 			}
 			var expectedPendingOps strings.Builder
 			for _, op := range expected.PendingOperations {
-				expectedPendingOps.WriteString(fmt.Sprintf("%v (%v)\n", op.Type, op.Resource))
+				fmt.Fprintf(&expectedPendingOps, "%v (%v)\n", op.Type, op.Resource)
 			}
 			return fmt.Errorf("actual and expected pending operations differ, %v (%v) not found in expected\n"+
 				"Actual: %v\nExpected: %v\nDiffs: %v",
@@ -337,11 +337,11 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 	if len(snap.Resources) != len(expected.Resources) {
 		var snapResources strings.Builder
 		for _, r := range snap.Resources {
-			snapResources.WriteString(fmt.Sprintf("%v %v, ", r.URN, r.Delete))
+			fmt.Fprintf(&snapResources, "%v %v, ", r.URN, r.Delete)
 		}
 		var expectedResources strings.Builder
 		for _, r := range expected.Resources {
-			expectedResources.WriteString(fmt.Sprintf("%v %v, ", r.URN, r.Delete))
+			fmt.Fprintf(&expectedResources, "%v %v, ", r.URN, r.Delete)
 		}
 		return fmt.Errorf("actual and expected resources differ, %d in actual (have %v), %d in expected (have %v)",
 			len(snap.Resources), snapResources.String(), len(expected.Resources), expectedResources.String())
@@ -398,7 +398,7 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		for _, mr := range resourcesMap[jr.URN] {
 			if diff := deep.Equal(jr, mr); diff != nil {
 				if jr.URN == mr.URN {
-					diffStr.WriteString(fmt.Sprintf("%s\n", diff))
+					fmt.Fprintf(&diffStr, "%s\n", diff)
 				}
 			} else {
 				found = true
@@ -408,11 +408,11 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		if !found {
 			var snapResources strings.Builder
 			for _, jr := range snap.Resources {
-				snapResources.WriteString(fmt.Sprintf("Actual resource: %v\n", jr))
+				fmt.Fprintf(&snapResources, "Actual resource: %v\n", jr)
 			}
 			var expectedResources strings.Builder
 			for _, mr := range expected.Resources {
-				expectedResources.WriteString(fmt.Sprintf("Expected resource: %v\n", mr))
+				fmt.Fprintf(&expectedResources, "Expected resource: %v\n", mr)
 			}
 			return fmt.Errorf("actual and expected resources differ, %v not found in expected.\n"+
 				"Actual: %v\nExpected: %v\nDiffs: %v",

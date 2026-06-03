@@ -102,7 +102,7 @@ func main() {
 	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
 	}); err != nil {
-		cmdutil.ExitError(err.Error())
+		cmdutil.Exit(err)
 	}
 }
 

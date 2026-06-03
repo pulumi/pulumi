@@ -545,7 +545,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 				errMsg.WriteString("You will need to copy and paste the generated code into your Pulumi application and manually edit it to correct any errors.\n\n") //nolint:lll
 			}
 			fmt.Fprintf(&errMsg, "%v\n", v)
-			fmt.Print(errMsg.String())
+			fmt.Fprint(out, errMsg.String())
 		}
 	}()
 
@@ -613,11 +613,13 @@ func NewImportCmd() *cobra.Command {
 	var debug bool
 	var message string
 	var stackName string
+	var configFile string
 	var execKind string
 	var execAgent string
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var outputFormat string
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int32
@@ -631,6 +633,7 @@ func NewImportCmd() *cobra.Command {
 	var yes bool
 	var protectResources bool
 	var properties []string
+	var skipPluginPreInstall bool
 
 	var from string
 	var generateResources string
@@ -697,6 +700,16 @@ func NewImportCmd() *cobra.Command {
 			"resource IDs.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			// Validate --output up front. We keep the existing --json flag (which
+			// emits a JSONL stream of engine events) backwards compatible, and
+			// only emit the structured operation summary when --output=json.
+			switch outputFormat {
+			case "default", "json":
+				// No-op.
+			default:
+				return fmt.Errorf("invalid --output value %q (expected %q or %q)", outputFormat, "default", "json")
+			}
 
 			ws := pkgWorkspace.Instance
 
@@ -833,7 +846,7 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			if !generateCode && outputFilePath != "" {
-				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
+				fmt.Fprintln(cmd.ErrOrStderr(), "Output file will not be used as --generate-code is false.")
 			}
 
 			var outputResult bytes.Buffer
@@ -874,6 +887,7 @@ func NewImportCmd() *cobra.Command {
 				EventLogPath:     eventLogPath,
 				Debug:            debug,
 				JSONDisplay:      jsonDisplay,
+				SummaryJSON:      outputFormat == "json",
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -904,12 +918,13 @@ func NewImportCmd() *cobra.Command {
 				stackName,
 				cmdStack.LoadOnly,
 				opts.Display,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -953,7 +968,8 @@ func NewImportCmd() *cobra.Command {
 				// this is because we might generate unbound variables in the generated code that reference
 				// a parent resource or a provider
 				strict := false
-				files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
+				files, diagnostics, err := languagePlugin.GenerateProgram(
+					pCtx.Request(), program.Source(), grpcServer.Addr(), strict)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -986,6 +1002,7 @@ func NewImportCmd() *cobra.Command {
 				UseLegacyDiff:        env.EnableLegacyDiff.Value(),
 				UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 				Experimental:         env.Experimental.Value(),
+				SkipPluginPreInstall: skipPluginPreInstall,
 			}
 
 			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
@@ -1021,16 +1038,18 @@ func NewImportCmd() *cobra.Command {
 					// in a codegen call
 					// It's a little bit more memory but is a better experience that writing to stdout and then an error
 					// occurring
-					if outputFilePath == "" && !jsonDisplay {
-						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
-							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
+					if outputFilePath == "" && !jsonDisplay && outputFormat != "json" {
+						outW := cmd.OutOrStdout()
+						fmt.Fprint(outW,
+							"Please copy the following code into your Pulumi application. Not doing so\n"+
+								"will cause Pulumi to report that an update will happen on the next update command.\n\n")
 						if protectResources {
-							fmt.Print(("Please note that the imported resources are marked as protected. " +
-								"To destroy them\n" +
-								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
-								"the destroy will take effect.\n\n"))
+							fmt.Fprint(outW, "Please note that the imported resources are marked as protected. "+
+								"To destroy them\n"+
+								"you will need to remove the `protect` option and run `pulumi update` *before*\n"+
+								"the destroy will take effect.\n\n")
 						}
-						fmt.Print(outputResult.String())
+						fmt.Fprint(outW, outputResult.String())
 					}
 				}
 			}
@@ -1093,7 +1112,7 @@ func NewImportCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
 	// Flags for engine.UpdateOptions.
@@ -1112,6 +1131,12 @@ func NewImportCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the import diffs, operations, and overall output as JSON")
+	cmd.Flags().StringVar(
+		&outputFormat, "output", "default",
+		"Output format. Supported values are: default, json")
+	// Hidden until --output is wired up across all operations.
+	_ = cmd.Flags().MarkHidden("output")
+	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
@@ -1138,6 +1163,9 @@ func NewImportCmd() *cobra.Command {
 		&generateResources, "generate-resources", "",
 		//nolint:lll
 		"When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path")
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(

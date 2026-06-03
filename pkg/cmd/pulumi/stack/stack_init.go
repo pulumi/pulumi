@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -73,6 +74,7 @@ func newStackInitCmd() *cobra.Command {
 			"* `pulumi stack init --copy-config-from dev`",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sicmd.stdout = cmd.OutOrStdout()
 			return sicmd.Run(ctx, args)
 		},
 	}
@@ -110,6 +112,7 @@ type stackInitCmd struct {
 	noSelect        bool
 	teams           []string
 	remoteConfig    bool
+	stdout          io.Writer
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
@@ -160,8 +163,8 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 
 	if cmd.stackName == "" && cmdutil.Interactive() {
 		if b.SupportsOrganizations() {
-			fmt.Print("Please enter your desired stack name.\n" +
-				"To create a stack in an organization, " +
+			fmt.Fprint(cmd.stdout, "Please enter your desired stack name.\n"+
+				"To create a stack in an organization, "+
 				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
 		}
 
@@ -192,7 +195,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 
 	teams := sanitizeTeams(cmd.teams)
 	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, teams,
-		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig)
+		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig, "")
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+
@@ -215,17 +218,18 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 			cmd.stackToCopy,
 			LoadOnly,
 			opts,
+			"",
 		)
 		if err != nil {
 			return err
 		}
-		copyProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, copyStack)
+		copyProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, copyStack, "")
 		if err != nil {
 			return err
 		}
 
 		// get the project for the newly created stack
-		newProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, newStack)
+		newProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, newStack, "")
 		if err != nil {
 			return err
 		}
@@ -246,7 +250,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		// The use of `requiresSaving` here ensures that there was actually some config
 		// that needed saved, otherwise it's an unnecessary save call
 		if requiresSaving {
-			err := SaveProjectStack(ctx, newStack, newProjectStack)
+			err := SaveProjectStack(ctx, newStack, newProjectStack, "")
 			if err != nil {
 				return err
 			}

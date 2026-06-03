@@ -33,9 +33,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs/tstypes"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
@@ -48,9 +48,11 @@ import (
 
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
-	MinimumValidSDKVersion   string = "^3.142.0"
-	MinimumTypescriptVersion string = "^4.7.0"
-	MinimumNodeTypesVersion  string = "^20"
+	MinimumValidSDKVersion string = "^3.142.0"
+	// The minimum version of @pulumi/pulumi that supports parameterization.
+	MinimumValidParameterizationSDKVersion string = "^3.238.0"
+	MinimumTypescriptVersion               string = "^4.7.0"
+	MinimumNodeTypesVersion                string = "^20"
 )
 
 type typeDetails struct {
@@ -58,45 +60,6 @@ type typeDetails struct {
 	inputType  bool
 
 	usedInFunctionOutputVersionInputs bool // helps decide naming under the tfbridge20 flag
-}
-
-// title capitalizes the first rune in s.
-//
-// Examples:
-// "hello"   => "Hello"
-// "hiAlice" => "HiAlice"
-// "hi.Bob"  => "Hi.Bob"
-//
-// Note: This is expected to work on strings which are not valid identifiers.
-func title(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
-}
-
-// camel converts s to camel case.
-//
-// Examples:
-// "helloWorld"    => "helloWorld"
-// "HelloWorld"    => "helloWorld"
-// "JSONObject"    => "jsonobject"
-// "My-FRIEND.Bob" => "my-FRIEND.Bob"
-func camel(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	res := slice.Prealloc[rune](len(runes))
-	for i, r := range runes {
-		if unicode.IsLower(r) {
-			res = append(res, runes[i:]...)
-			break
-		}
-		res = append(res, unicode.ToLower(r))
-	}
-	return string(res)
 }
 
 // pascal converts s to pascal case. Word breaks are signified by illegal
@@ -108,8 +71,9 @@ func camel(s string) string {
 // "JSONObject"     => "JSONObject"'
 // "a-glad-dayTime" => "AGladDayTime"
 //
-// Note: because camel aggressively down-cases the first continuous sub-string
-// of uppercase characters, we cannot define pascal as title(camel(x)).
+// Note: because cgstrings.Camel aggressively down-cases the first continuous
+// sub-string of uppercase characters, we cannot define pascal as
+// cgstrings.UppercaseFirst(cgstrings.Camel(x)).
 func pascal(s string) string {
 	split := [][]rune{{}}
 	for _, r := range s {
@@ -121,7 +85,7 @@ func pascal(s string) string {
 	}
 	words := make([]string, len(split))
 	for i, v := range split {
-		words[i] = title(string(v))
+		words[i] = cgstrings.UppercaseFirst(string(v))
 	}
 	return strings.Join(words, "")
 }
@@ -231,7 +195,7 @@ func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDeta
 		if external {
 			prefix = pkgName
 		}
-		return prefix + modName + title(name)
+		return prefix + modName + cgstrings.UppercaseFirst(name)
 	}
 
 	if args && input && details != nil && details.usedInFunctionOutputVersionInputs {
@@ -240,7 +204,7 @@ func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDeta
 		name += "Args"
 	}
 
-	return pkgName + root + modName + title(name)
+	return pkgName + root + modName + cgstrings.UppercaseFirst(name)
 }
 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
@@ -261,19 +225,19 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	namingCtx, pkgName, external := mod.namingContext(pkg)
 	if !external {
 		name := tokenToName(r.Token)
-		return title(name)
+		return cgstrings.UppercaseFirst(name)
 	}
 
 	pkgName = externalModuleName(pkgName)
 	modName, name := namingCtx.tokenToModName(r.Token), tokenToName(r.Token)
 
-	return pkgName + modName + title(name)
+	return pkgName + modName + cgstrings.UppercaseFirst(name)
 }
 
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-	return title(components[2])
+	return cgstrings.UppercaseFirst(components[2])
 }
 
 func resourceName(r *schema.Resource) string {
@@ -284,15 +248,15 @@ func resourceName(r *schema.Resource) string {
 }
 
 func (mod *modContext) resourceFileName(r *schema.Resource) string {
-	fileName := camel(resourceName(r)) + ".ts"
+	fileName := cgstrings.Camel(resourceName(r)) + ".ts"
 	if mod.isReservedSourceFileName(fileName) {
-		fileName = camel(resourceName(r)) + "_.ts"
+		fileName = cgstrings.Camel(resourceName(r)) + "_.ts"
 	}
 	return fileName
 }
 
 func tokenToFunctionName(tok string) string {
-	return camel(tokenToName(tok))
+	return cgstrings.Camel(tokenToName(tok))
 }
 
 func (mod *modContext) typeAst(t schema.Type, input bool, constValue any) tstypes.TypeAst {
@@ -580,8 +544,8 @@ func provideDefaultsFuncNameFromName(typeName string) string {
 	if in := strings.LastIndex(typeName, "."); in != -1 {
 		i = in
 	}
-	// path + camel(name) + ProvideDefaults suffix
-	return typeName[:i] + camel(typeName[i:]) + "ProvideDefaults"
+	// path + cgstrings.Camel(name) + ProvideDefaults suffix
+	return typeName[:i] + cgstrings.Camel(typeName[i:]) + "ProvideDefaults"
 }
 
 // The name of the function used to set defaults on the plain type.
@@ -650,9 +614,9 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 		}
 
 		var envVars strings.Builder
-		envVars.WriteString(fmt.Sprintf("%q", dv.Environment[0]))
+		fmt.Fprintf(&envVars, "%q", dv.Environment[0])
 		for _, e := range dv.Environment[1:] {
-			envVars.WriteString(fmt.Sprintf(", %q", e))
+			fmt.Fprintf(&envVars, ", %q", e)
 		}
 
 		cast := ""
@@ -1015,7 +979,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 	// Generate methods.
 	genMethod := func(method *schema.Method) error {
-		methodName := camel(method.Name)
+		methodName := cgstrings.Camel(method.Name)
 		fun := method.Function
 
 		var objectReturnType *schema.ObjectType
@@ -1061,7 +1025,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				if argsOptional {
 					optFlag = "?"
 				}
-				argsig = fmt.Sprintf("args%s: %s.%sArgs", optFlag, name, title(method.Name))
+				argsig = fmt.Sprintf("args%s: %s.%sArgs", optFlag, name, cgstrings.UppercaseFirst(method.Name))
 			}
 		}
 		var retty string
@@ -1072,13 +1036,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			if objectReturnType == nil {
 				innerType = mod.typeString(fun.ReturnType, false, nil)
 			} else {
-				innerType = fmt.Sprintf("%s.%sResult", name, title(method.Name))
+				innerType = fmt.Sprintf("%s.%sResult", name, cgstrings.UppercaseFirst(method.Name))
 			}
 			retty = fmt.Sprintf("Promise<%s>", innerType)
 		} else if liftReturn {
 			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(objectReturnType.Properties[0].Type, false, nil))
 		} else {
-			retty = fmt.Sprintf("pulumi.Output<%s.%sResult>", name, title(method.Name))
+			retty = fmt.Sprintf("pulumi.Output<%s.%sResult>", name, cgstrings.UppercaseFirst(method.Name))
 		}
 		fmt.Fprintf(w, "    %s(%s): %s {\n", methodName, argsig, retty)
 		if fun.DeprecationMessage != "" {
@@ -1095,7 +1059,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		var ret string
 		if fun.ReturnType != nil {
 			if liftReturn {
-				ret = fmt.Sprintf("const result: pulumi.Output<%s.%sResult> = ", name, title(method.Name))
+				ret = fmt.Sprintf("const result: pulumi.Output<%s.%sResult> = ", name, cgstrings.UppercaseFirst(method.Name))
 			} else {
 				ret = "return "
 			}
@@ -1138,7 +1102,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, ");\n")
 
 		if liftReturn {
-			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
+			fmt.Fprintf(w, "        return result.%s;\n", cgstrings.Camel(objectReturnType.Properties[0].Name))
 		}
 		fmt.Fprintf(w, "    }\n")
 		return nil
@@ -1174,7 +1138,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	// https://www.typescriptlang.org/docs/handbook/declaration-merging.html#merging-namespaces-with-classes
 	genMethodTypes := func(w io.Writer, method *schema.Method) error {
 		fun := method.Function
-		methodName := title(method.Name)
+		methodName := cgstrings.UppercaseFirst(method.Name)
 		if fun.Inputs != nil {
 			args := slice.Prealloc[*schema.Property](len(fun.Inputs.InputShape.Properties))
 			for _, arg := range fun.Inputs.InputShape.Properties {
@@ -1239,7 +1203,7 @@ func (mod *modContext) functionReturnType(fun *schema.Function) string {
 	}
 
 	if _, isObject := fun.ReturnType.(*schema.ObjectType); isObject && fun.InlineObjectAsReturnType {
-		return title(name) + "Result"
+		return cgstrings.UppercaseFirst(name) + "Result"
 	}
 
 	return mod.typeString(fun.ReturnType, false, nil)
@@ -1302,7 +1266,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 			suffix = "OutputArgs"
 		}
 
-		argsType := title(name) + suffix
+		argsType := cgstrings.UppercaseFirst(name) + suffix
 		argsig = fmt.Sprintf("args%s: %s, ", optFlag, argsType)
 
 		if !plain && len(fun.Inputs.Properties) == 0 {
@@ -1411,11 +1375,11 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil && !fun.MultiArgumentInputs {
 		fmt.Fprintf(w, "\n")
-		argsInterfaceName := title(name) + "Args"
+		argsInterfaceName := cgstrings.UppercaseFirst(name) + "Args"
 		info.functionArgsInterfaceName = argsInterfaceName
 		properties := fun.Inputs.Properties
 		if !plain {
-			argsInterfaceName = title(name) + "OutputArgs"
+			argsInterfaceName = cgstrings.UppercaseFirst(name) + "OutputArgs"
 			properties = fun.Inputs.InputShape.Properties
 			info.functionOutputVersionArgsInterfaceName = argsInterfaceName
 		} else {
@@ -1440,7 +1404,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		}
 	}
 
-	resultInterfaceName := title(name) + "Result"
+	resultInterfaceName := cgstrings.UppercaseFirst(name) + "Result"
 	// if the return type is an inline object definition (not a reference), emit it.
 	// only emit the plain result type T since output-versioned invokes will use Output<T> for the non-plain variant
 	if fun.ReturnType != nil {
@@ -2195,9 +2159,9 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			return err
 		}
 
-		fileName := camel(tokenToName(f.Token)) + ".ts"
+		fileName := cgstrings.Camel(tokenToName(f.Token)) + ".ts"
 		if mod.isReservedSourceFileName(fileName) {
-			fileName = camel(tokenToName(f.Token)) + "_.ts"
+			fileName = cgstrings.Camel(tokenToName(f.Token)) + "_.ts"
 		}
 		addFunctionFile(funInfo, fileName, buffer.String())
 	}
@@ -2333,10 +2297,10 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 		sorted := directChildren.SortedValues()
 
 		for _, mod := range sorted {
-			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
+			fmt.Fprintf(w, "import * as %s from \"./%s\";\n", submoduleImportIdentifier(mod), mod)
 		}
 
-		printExports(w, sorted)
+		printSubmoduleExports(w, sorted)
 	}
 
 	// If there are resources in this module, register the module with the runtime.
@@ -2417,11 +2381,26 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 	}
 }
 
-func printExports(w io.Writer, exports []string) {
+func submoduleImportIdentifier(name string) string {
+	ident := makeValidIdentifier(name)
+	switch ident {
+	case "module", "exports", "require":
+		return ident + "_"
+	default:
+		return ident
+	}
+}
+
+func printSubmoduleExports(w io.Writer, exports []string) {
 	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "export {\n")
 	for _, mod := range exports {
-		fmt.Fprintf(w, "    %s,\n", mod)
+		ident := submoduleImportIdentifier(mod)
+		if ident == mod {
+			fmt.Fprintf(w, "    %s,\n", mod)
+		} else {
+			fmt.Fprintf(w, "    %s as %s,\n", ident, mod)
+		}
 	}
 	fmt.Fprintf(w, "};\n")
 }
@@ -2462,9 +2441,9 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 			sorted := directChildren.SortedValues()
 
 			for _, mod := range sorted {
-				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
+				fmt.Fprintf(buffer, "import * as %s from \"./%s\";\n", submoduleImportIdentifier(mod), mod)
 			}
-			printExports(buffer, sorted)
+			printSubmoduleExports(buffer, sorted)
 		}
 	}
 	if len(enums) > 0 {
@@ -2541,9 +2520,6 @@ func genNPMPackageMetadata(
 	}
 
 	dependencies := map[string]string{}
-	if pkg.Parameterization != nil {
-		dependencies["async-mutex"] = "^0.5.0"
-	}
 	devDependencies := map[string]string{}
 	// Local SDKs require typescript as a normal dependency, so that we can
 	// compile the SDK in the postinstall script.
@@ -2673,6 +2649,8 @@ func genNPMPackageMetadata(
 		}
 		if path, ok := localDependencies["pulumi"]; ok {
 			npminfo.Dependencies[sdkPack] = path
+		} else if pkg.Parameterization != nil {
+			npminfo.Dependencies[sdkPack] = MinimumValidParameterizationSDKVersion
 		} else {
 			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersion
 		}
@@ -3031,12 +3009,6 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 		return err
 	}
 
-	if def.Parameterization != nil {
-		fmt.Fprintf(w, `import * as resproto from "@pulumi/pulumi/proto/resource_pb";
-import * as mutex from "async-mutex";
-`)
-	}
-
 	code := utilitiesFile
 
 	if url := def.PluginDownloadURL; url != "" {
@@ -3052,48 +3024,26 @@ import * as mutex from "async-mutex";
 	}
 
 	if def.Parameterization != nil {
-		parameterValue := fmt.Sprintf("Uint8Array.from(atob(%q), c => c.charCodeAt(0))", base64.StdEncoding.EncodeToString(def.Parameterization.Parameter))
+		base64Parameter := base64.StdEncoding.EncodeToString(def.Parameterization.Parameter)
 
 		_, err = fmt.Fprintf(w, `
-const _packageLock = new mutex.Mutex();
-var _packageRef : undefined | string = undefined;
-export async function getPackage() : Promise<string | undefined> {
-	if (_packageRef === undefined) {
-		if (!runtime.supportsParameterization()) {
-			throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
-		}
-
-		await _packageLock.acquire();
-		if (_packageRef === undefined) {
-			const monitor = runtime.getMonitor();
-			const params = new resproto.Parameterization();
-			params.setName("%s");
-			params.setVersion("%s");
-			params.setValue(%s);
-
-			const req = new resproto.RegisterPackageRequest();
-			req.setName("%s");
-			req.setVersion("%s");
-			req.setDownloadUrl("%s");
-			req.setParameterization(params);
-			const resp : any = await new Promise((resolve, reject) => {
-				monitor!.registerPackage(req, (err: any, resp: any) => {
-					if (err) {
-						reject(err);
-					} else {
-						resolve(resp);
-					}
-				});
-			});
-			_packageRef = resp.getRef();
-		}
-		_packageLock.release();
-	}
-	return _packageRef as string;
+export async function getPackage(): Promise<string | undefined> {
+	return runtime.registerPackage({
+		baseProviderName: "%s",
+		baseProviderVersion: "%s",
+		baseProviderDownloadUrl: "%s",
+		packageName: "%s",
+		packageVersion: "%s",
+		base64Parameter: "%s",
+	});
 }
 `,
-			def.Name, def.Version, parameterValue,
-			def.Parameterization.BaseProvider.Name, def.Parameterization.BaseProvider.Version.String(), def.PluginDownloadURL)
+			def.Parameterization.BaseProvider.Name,
+			def.Parameterization.BaseProvider.Version.String(),
+			def.PluginDownloadURL,
+			def.Name,
+			def.Version,
+			base64Parameter)
 	}
 
 	return err

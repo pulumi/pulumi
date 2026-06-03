@@ -273,19 +273,21 @@ func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+func (t *ObjectType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ObjectType:
-			if seen != nil {
-				if _, ok := seen[t]; ok {
-					return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{invalidRecursiveType(t)} }
-				}
-			} else {
-				seen = map[Type]struct{}{}
+			// A `(t, src)` pair already in flight is a true coinductive cycle:
+			// assume it converts and let the outer frame's per-property checks
+			// verify the (always finite) leaves.
+			if seen.has(t, src) {
+				return SafeConversion, nil
 			}
-			seen[t] = struct{}{}
-			defer delete(seen, t)
+			if seen == nil {
+				seen = cycleSet{}
+			}
+			seen.push(t, src)
+			defer seen.pop(t, src)
 
 			if unifying {
 				var unifier objectTypeUnifier

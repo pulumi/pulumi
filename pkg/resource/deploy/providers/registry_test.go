@@ -89,10 +89,6 @@ func (host *testPluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime
 	return nil, errors.New("unsupported")
 }
 
-func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
-	return nil
-}
-
 func (host *testPluginHost) ResolvePlugin(
 	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
@@ -127,10 +123,6 @@ type testProvider struct {
 		resource.PropertyMap, bool) (resource.PropertyMap, []plugin.CheckFailure, error)
 	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
 	config     func(resource.PropertyMap) error
-}
-
-func (prov *testProvider) Pkg() tokens.Package {
-	return prov.pkg
 }
 
 func (prov *testProvider) GetSchema(
@@ -331,7 +323,7 @@ func TestNewRegistryOldState(t *testing.T) {
 
 		assert.True(t, p.(*testProvider).configured)
 
-		assert.Equal(t, providers.GetProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, providers.GetProviderPackage(old.Type), p.(*testProvider).pkg)
 
 		ver, err := GetProviderVersion(old.Inputs)
 		require.NoError(t, err)
@@ -378,7 +370,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 		require.NotNil(t, p)
 
-		assert.Equal(t, providers.GetProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, providers.GetProviderPackage(old.Type), p.(*testProvider).pkg)
 	}
 
 	// Create a new provider for each package.
@@ -564,7 +556,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 		require.NotNil(t, p)
 
-		assert.Equal(t, providers.GetProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, providers.GetProviderPackage(old.Type), p.(*testProvider).pkg)
 	}
 
 	// Create a new provider for each package.
@@ -906,11 +898,6 @@ func TestRegistry(t *testing.T) {
 		assert.Nil(t, r.Close())
 		// Ensure idempotent.
 		assert.Nil(t, r.Close())
-	})
-	t.Run("Pkg", func(t *testing.T) {
-		t.Parallel()
-		r := &Registry{}
-		assert.Equal(t, tokens.Package("pulumi"), r.Pkg())
 	})
 	t.Run("GetSchema", func(t *testing.T) {
 		t.Parallel()

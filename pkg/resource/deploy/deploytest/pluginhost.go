@@ -199,7 +199,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		contract.IgnoreClose(wrapper)
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
-	wrapped := plugin.NewProviderWithClient(nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
+	wrapped := plugin.NewProviderWithClient(nil, pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil
 }
 
@@ -227,7 +227,7 @@ func wrapAnalyzerWithGrpc(analyzer plugin.Analyzer) (plugin.Analyzer, io.Closer,
 		contract.IgnoreClose(wrapper)
 		return nil, nil, fmt.Errorf("could not connect to policy analyzer service: %w", err)
 	}
-	wrapped := plugin.NewAnalyzerWithClient(nil, analyzer.Name(), pulumirpc.NewAnalyzerClient(conn))
+	wrapped := plugin.NewAnalyzerWithClient(analyzer.Name(), pulumirpc.NewAnalyzerClient(conn))
 	return wrapped, wrapper, nil
 }
 
@@ -485,7 +485,7 @@ func (host *pluginHost) SignalCancellation() error {
 	}
 
 	if host.languageRuntime != nil {
-		if lErr := host.languageRuntime.Cancel(); lErr != nil {
+		if lErr := host.languageRuntime.Cancel(context.TODO()); lErr != nil {
 			err = lErr
 		}
 	}
@@ -544,13 +544,6 @@ func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.PolicyAnalyzer(nm, "", nil)
 }
 
-func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
-	if host.isClosed() {
-		return ErrHostIsClosed
-	}
-	return nil
-}
-
 func (host *pluginHost) ResolvePlugin(
 	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
@@ -585,7 +578,7 @@ func (host *pluginHost) GetRequiredPackages(
 	info plugin.ProgramInfo,
 	kinds plugin.Flags,
 ) ([]workspace.PackageDescriptor, error) {
-	return host.languageRuntime.GetRequiredPackages(info)
+	return host.languageRuntime.GetRequiredPackages(context.TODO(), info)
 }
 
 func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {

@@ -91,6 +91,18 @@ generate-python-automation-api:: generate-cli-spec
 test-python-automation-api::
 	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python -m unittest tests.test_commands -v
 
+.PHONY: generate-go-automation-api
+generate-go-automation-api:: generate-cli-spec
+	go run -C sdk ./go/tools/automation \
+		../tools/automation/specification.json \
+		boilerplate/standard \
+		go/auto/automation \
+		github.com/pulumi/pulumi/sdk/v3/go/auto/automation
+
+.PHONY: test-go-automation-api
+test-go-automation-api::
+	cd sdk && go test ./go/tools/automation/...
+
 # For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
 # dead code elimation due to the usage of certain reflection methods.
 bin/pulumi: GO_BUILD_TAGS =
@@ -130,7 +142,14 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json
+lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json lint_changelog
+
+lint_changelog::
+	@if [ -n "$$(find changelog/pending -maxdepth 1 -name '*.yaml' -print -quit)" ]; then \
+		changie batch auto --dry-run; \
+	else \
+		echo "No pending changelog entries; skipping changie batch."; \
+	fi
 
 lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
@@ -151,21 +170,34 @@ lint_pulumi_json_fix::
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
+# bin/custom-gcl is a golangci-lint binary with the requiredfield and noosexit
+# linters baked in as module plugins. Built from .custom-gcl.yml and the
+# wrappers under .golangci/plugins/.
+CUSTOM_GCL := bin/custom-gcl
+CUSTOM_GCL_DEPS := .custom-gcl.yml \
+		   .golangci/plugins/requiredfield/go.mod \
+		   .golangci/plugins/requiredfield/go.sum \
+		   .golangci/plugins/requiredfield/plugin.go \
+		   .golangci/plugins/noosexit/go.mod \
+		   .golangci/plugins/noosexit/go.sum \
+		   .golangci/plugins/noosexit/plugin.go
+
+$(CUSTOM_GCL): $(CUSTOM_GCL_DEPS) .make/ensure/golangci-lint
+	golangci-lint custom
+
 define lint_golang_pkg
 	@echo "[golangci-lint] Linting $(1)..."
-	@(cd $(1) && golangci-lint run $(GOLANGCI_LINT_ARGS) \
+	@(cd $(1) && $(abspath $(CUSTOM_GCL)) run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
 			--max-same-issues 0 \
 			--max-issues-per-linter 0 \
 			--timeout 5m)
-	@echo "[requiredfield] Linting $(1)..."
-	@(cd $(1) && go vet -tags all -vettool=$$(which requiredfield) github.com/pulumi/pulumi/$(1)/...)
 
 endef
 
 .PHONY: lint_golang lint_golang_fix
 lint_golang: GOLANGCI_LINT_CONFIG=$(shell pwd)/.golangci.yml
-lint_golang: .make/ensure/golangci-lint .make/ensure/requiredfield
+lint_golang: $(CUSTOM_GCL)
 	$(foreach pkg,$(LINT_GOLANG_PKGS),$(call lint_golang_pkg,${pkg}))
 
 lint_golang_fix: GOLANGCI_LINT_ARGS=--fix
@@ -284,7 +316,7 @@ get_schemas: \
 
 .PHONY: changelog
 changelog:
-	go run github.com/pulumi/go-change@v0.1.3 create
+	changie new
 
 clean::
 	rm -rf bin/*

@@ -17,6 +17,7 @@ package httpstate
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,6 +33,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -39,6 +43,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -95,6 +101,14 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 //nolint:paralleltest // mutates env vars and global state
 func TestMissingPulumiAccessToken(t *testing.T) {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	t.Setenv("AI_AGENT", "")
+	t.Setenv("CODEX_SANDBOX", "")
+	t.Setenv("CODEX_CI", "")
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("CURSOR_TRACE_ID", "")
+	t.Setenv("CURSOR_AGENT", "")
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CLAUDE_CODE", "")
 
 	{ // Disable interactive mode
 		disableInteractive := cmdutil.DisableInteractive
@@ -111,6 +125,489 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 	if assert.ErrorAs(t, err, &expectedErr) {
 		assert.Equal(t, env.AccessToken.Var(), expectedErr.Var)
 	}
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	badCredentialsDir := t.TempDir()
+	badCredentialsPath := badCredentialsDir + "/not-a-directory"
+	require.NoError(t, os.WriteFile(badCredentialsPath, []byte("not a directory"), 0o600))
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, badCredentialsPath)
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	err = workspace.StoreAgentAccount("https://api.example.com", workspace.Account{AccessToken: "agent-token"}, true)
+	require.NoError(t, err)
+
+	account, err := getBackendAccount(t.Context(), "https://api.example.com")
+	require.Error(t, err)
+	assert.Empty(t, account.AccessToken)
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	badCredentialsDir := t.TempDir()
+	badCredentialsPath := badCredentialsDir + "/not-a-directory"
+	require.NoError(t, os.WriteFile(badCredentialsPath, []byte("not a directory"), 0o600))
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, badCredentialsPath)
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		require.Equal(t, "/api/user", req.URL.Path)
+		err := json.NewEncoder(rw).Encode(map[string]any{
+			"githubLogin":   "agent-user",
+			"organizations": []map[string]string{},
+		})
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.Error(t, err)
+	assert.Nil(t, account)
+
+	agentAccount, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Empty(t, agentAccount.AccessToken)
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		require.Equal(t, "/api/user", req.URL.Path)
+		err := json.NewEncoder(rw).Encode(map[string]any{
+			"githubLogin":   "agent-user",
+			"organizations": []map[string]string{},
+		})
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "env-token", account.AccessToken)
+
+	defaultAccount, err := workspace.GetAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "env-token", defaultAccount.AccessToken)
+	agentAccount, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Empty(t, agentAccount.AccessToken)
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/api/agents/signup" {
+			signupCalls++
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	expiredAt := time.Now().Add(-time.Hour)
+	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken: "expired-agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiredAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
+		ValidUntil: time.Now().Add(time.Hour),
+		CloudURL:   server.URL,
+	})
+	require.NoError(t, err)
+
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	require.ErrorIs(t, err, ErrUnauthorized)
+	assert.Nil(t, account)
+	assert.Equal(t, 0, signupCalls)
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/user":
+			rw.WriteHeader(http.StatusUnauthorized)
+		case "/api/agents/signup":
+			signupCalls++
+			rw.WriteHeader(http.StatusInternalServerError)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	expiresAt := time.Now().Add(time.Hour)
+	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken: "locally-unexpired-agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
+		ValidUntil: time.Now().Add(-time.Hour),
+		CloudURL:   server.URL,
+	})
+	require.NoError(t, err)
+
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	require.ErrorIs(t, err, ErrUnauthorized)
+	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
+	assert.ErrorContains(t, err, "ask the user to run `pulumi login`")
+	assert.Nil(t, account)
+	assert.Equal(t, 0, signupCalls)
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/api/agents/signup" {
+			signupCalls++
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	expiresAt := time.Now().Add(time.Hour)
+	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken:     "valid-agent-token",
+		Username:        "agent-user",
+		Organizations:   []string{"agent-org"},
+		LastValidatedAt: time.Now(),
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
+		ValidUntil: time.Now().Add(-time.Hour),
+		CloudURL:   server.URL,
+	})
+	require.NoError(t, err)
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "valid-agent-token", account.AccessToken)
+	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
+	assert.Equal(t, 0, signupCalls)
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials and console env
+func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+
+	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	claimTokenValidUntil := accessTokenValidUntil.Add(24 * time.Hour)
+	var signupMethods []string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/agents/signup":
+			signupMethods = append(signupMethods, req.Method)
+			switch req.Method {
+			case http.MethodGet:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+					ChallengeID:   "challenge-1",
+					ChallengeData: "v1:abcdef:8",
+				})
+				require.NoError(t, err)
+			case http.MethodPost:
+				var signupReq struct {
+					ChallengeID     string `json:"challengeID"`
+					ChallengeResult string `json:"challengeResult"`
+					AgentName       string `json:"agentName"`
+				}
+				require.NoError(t, json.NewDecoder(req.Body).Decode(&signupReq))
+				assert.Equal(t, "challenge-1", signupReq.ChallengeID)
+				assert.NotEmpty(t, signupReq.ChallengeResult)
+				assert.Equal(t, "codex", signupReq.AgentName)
+				err := json.NewEncoder(rw).Encode(client.AgentSignupResponse{
+					AccessToken:           "agent-token",
+					AccessTokenValidUntil: accessTokenValidUntil,
+					ClaimToken:            "claim-token",
+					ClaimTokenValidUntil:  claimTokenValidUntil,
+				})
+				require.NoError(t, err)
+			default:
+				rw.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		case "/api/user":
+			assert.Equal(t, "token agent-token", req.Header.Get("Authorization"))
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin": "agent-user",
+				"organizations": []map[string]string{
+					{"githubLogin": "agent-org"},
+				},
+			})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "agent-token", account.AccessToken)
+	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
+	require.NotNil(t, account.TokenInformation)
+	require.NotNil(t, account.TokenInformation.ExpiresAt)
+	assert.True(t, account.TokenInformation.ExpiresAt.Equal(accessTokenValidUntil))
+	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods)
+
+	claim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	assert.Equal(t, "http://app.example.com/claim/claim-token", claim.ClaimURL)
+	assert.Equal(t, "claim-token", claim.ClaimToken)
+	assert.True(t, claim.ValidUntil.Equal(claimTokenValidUntil))
+	assert.Equal(t, server.URL, claim.CloudURL)
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
+	tests := []struct {
+		name     string
+		response client.AgentSignupResponse
+		wantErr  string
+	}{
+		{
+			name: "missing access token",
+			response: client.AgentSignupResponse{
+				AccessTokenValidUntil: time.Now().UTC().Add(time.Hour),
+				ClaimToken:            "claim-token",
+				ClaimTokenValidUntil:  time.Now().UTC().Add(2 * time.Hour),
+			},
+			wantErr: "signup response did not include an access token",
+		},
+		{
+			name: "missing access token expiration",
+			response: client.AgentSignupResponse{
+				AccessToken:          "agent-token",
+				ClaimToken:           "claim-token",
+				ClaimTokenValidUntil: time.Now().UTC().Add(2 * time.Hour),
+			},
+			wantErr: "signup response did not include accessTokenValidUntil",
+		},
+		{
+			name: "missing claim token",
+			response: client.AgentSignupResponse{
+				AccessToken:           "agent-token",
+				AccessTokenValidUntil: time.Now().UTC().Add(time.Hour),
+				ClaimTokenValidUntil:  time.Now().UTC().Add(2 * time.Hour),
+			},
+			wantErr: "signup response did not include a claim token",
+		},
+		{
+			name: "missing claim token expiration",
+			response: client.AgentSignupResponse{
+				AccessToken:           "agent-token",
+				AccessTokenValidUntil: time.Now().UTC().Add(time.Hour),
+				ClaimToken:            "claim-token",
+			},
+			wantErr: "signup response did not include claimTokenValidUntil",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				assert.Equal(t, "/api/agents/signup", req.URL.Path)
+				switch req.Method {
+				case http.MethodGet:
+					err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+						ChallengeID:   "challenge-1",
+						ChallengeData: "v1:abcdef:8",
+					})
+					require.NoError(t, err)
+				case http.MethodPost:
+					err := json.NewEncoder(rw).Encode(tt.response)
+					require.NoError(t, err)
+				default:
+					rw.WriteHeader(http.StatusMethodNotAllowed)
+				}
+			}))
+			t.Cleanup(server.Close)
+
+			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+			require.ErrorContains(t, err, tt.wantErr)
+			assert.Nil(t, account)
+		})
+	}
+}
+
+//nolint:paralleltest // mutates env vars, global interactive mode, shared temporary agent credentials, and console env
+func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	disableInteractive := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = true
+	t.Cleanup(func() {
+		cmdutil.DisableInteractive = disableInteractive
+	})
+
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+
+	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	claimTokenValidUntil := accessTokenValidUntil.Add(24 * time.Hour)
+	var signupMethods []string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/agents/signup":
+			signupMethods = append(signupMethods, req.Method)
+			switch req.Method {
+			case http.MethodGet:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+					ChallengeID:   "challenge-1",
+					ChallengeData: "v1:abcdef:8",
+				})
+				require.NoError(t, err)
+			case http.MethodPost:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupResponse{
+					AccessToken:           "agent-token",
+					AccessTokenValidUntil: accessTokenValidUntil,
+					ClaimToken:            "claim-token",
+					ClaimTokenValidUntil:  claimTokenValidUntil,
+				})
+				require.NoError(t, err)
+			default:
+				rw.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		case "/api/user":
+			assert.Equal(t, "token agent-token", req.Header.Get("Authorization"))
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "agent-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := NewLoginManager().Login(ctx, server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
+		display.Options{})
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "agent-token", account.AccessToken)
+	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods)
+	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
 }
 
 //nolint:paralleltest // mutates global configuration
@@ -1529,4 +2026,215 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, resp)
 	})
+}
+
+func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
+	t.Parallel()
+
+	stackName, err := tokens.ParseStackName("stack")
+	require.NoError(t, err)
+	mgr := failingSecretsManager{err: errors.New("encrypt boom")}
+	snap := &deploy.Snapshot{
+		Resources: []*resource.State{{
+			Type: tokens.Type("test:index:Resource"),
+			URN: resource.NewURN(
+				stackName.Q(), tokens.PackageName("project"), "",
+				tokens.Type("test:index:Resource"), "resource"),
+			Outputs: resource.PropertyMap{
+				"secret": resource.MakeSecret(resource.NewProperty("value")),
+			},
+		}},
+	}
+	fx := newRunEngineActionFixture(t, snap, nil, mgr)
+
+	var runErr error
+	require.NotPanics(t, func() {
+		_, _, runErr = fx.backend.runEngineAction(
+			t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
+			"lease-token", "", nil, false, 0,
+		)
+	})
+	require.Error(t, runErr)
+	require.ErrorContains(t, runErr, "encrypt boom")
+}
+
+type failingSecretsManager struct{ err error }
+
+func (m failingSecretsManager) Type() string                { return "failing" }
+func (m failingSecretsManager) State() json.RawMessage      { return nil }
+func (m failingSecretsManager) Encrypter() config.Encrypter { return m }
+func (m failingSecretsManager) Decrypter() config.Decrypter { return config.NopDecrypter }
+
+func (m failingSecretsManager) EncryptValue(context.Context, string) (string, error) {
+	return "", m.err
+}
+
+func (m failingSecretsManager) BatchEncrypt(context.Context, []string) ([]string, error) {
+	return nil, m.err
+}
+
+func TestRunEngineActionPropagatesJournalManagerError(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		journalVersion int64
+		snap           *deploy.Snapshot
+		provider       secrets.Provider
+		wantWrap       string
+	}{
+		{
+			name:           "journalVersion=1",
+			journalVersion: 1,
+			snap:           &deploy.Snapshot{},
+			provider:       nil,
+			// Wrap from cloudJournaler.AddJournalEntry.
+			wantWrap: "serializing journal entry",
+		},
+		{
+			name:           "journalVersion=0",
+			journalVersion: 0,
+			snap:           &deploy.Snapshot{SecretsManager: b64.NewBase64SecretsManager()},
+			provider: (&secrets.MockProvider{}).Add(b64.Type, func(json.RawMessage) (secrets.Manager, error) {
+				return b64.NewBase64SecretsManager(), nil
+			}),
+			wantWrap: "failed to serialize journal entry",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			mgr := failingBatchingSecretsManager{err: errors.New("batch boom")}
+			fx := newRunEngineActionFixture(t, tc.snap, tc.provider, mgr)
+
+			var runErr error
+			require.NotPanics(t, func() {
+				_, _, runErr = fx.backend.runEngineAction(
+					t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
+					"lease-token", "", nil, false, tc.journalVersion,
+				)
+			})
+			require.Error(t, runErr)
+			require.ErrorContains(t, runErr, "batch boom")
+			require.ErrorContains(t, runErr, tc.wantWrap)
+		})
+	}
+}
+
+type runEngineActionFixture struct {
+	backend  *cloudBackend
+	stackRef cloudBackendReference
+	op       backend.UpdateOperation
+	update   client.UpdateIdentifier
+}
+
+func newRunEngineActionFixture(
+	t *testing.T,
+	snap *deploy.Snapshot,
+	secretsProvider secrets.Provider,
+	opSecretsManager secrets.Manager,
+) runEngineActionFixture {
+	t.Helper()
+
+	stackName, err := tokens.ParseStackName("stack")
+	require.NoError(t, err)
+
+	deployment, err := stack.SerializeUntypedDeployment(t.Context(), snap, &stack.SerializeOptions{ShowSecrets: true})
+	require.NoError(t, err)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/stacks/owner/project/stack/export":
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ExportStackResponse(*deployment)))
+		case "/api/stacks/owner/project/stack":
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.Stack{
+				OrgName: "owner", ProjectName: "project", StackName: stackName.Q(),
+			}))
+		default:
+			http.Error(w, "unexpected path "+r.URL.Path, http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	apiClient := client.NewClient(server.URL, "token", false, sink).WithHTTPClient(server.Client())
+	b := &cloudBackend{
+		d:      sink,
+		url:    server.URL,
+		client: apiClient,
+		capabilities: promise.Run(func() (apitype.Capabilities, error) {
+			return apitype.Capabilities{}, nil
+		}),
+	}
+	stackRef := cloudBackendReference{
+		name:    stackName,
+		project: tokens.Name("project"),
+		owner:   "owner",
+		b:       b,
+	}
+
+	op := backend.UpdateOperation{
+		Proj: &workspace.Project{
+			Name:    tokens.PackageName("project"),
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		},
+		Opts:            backend.UpdateOptions{Display: display.Options{Color: colors.Never}},
+		SecretsManager:  opSecretsManager,
+		SecretsProvider: secretsProvider,
+		StackConfiguration: backend.StackConfiguration{
+			Config:    config.Map{},
+			Decrypter: opSecretsManager.Decrypter(),
+		},
+	}
+	update := client.UpdateIdentifier{
+		StackIdentifier: client.StackIdentifier{Owner: "owner", Project: "project", Stack: stackName},
+		UpdateID:        "update-id",
+	}
+
+	return runEngineActionFixture{backend: b, stackRef: stackRef, op: op, update: update}
+}
+
+type failingBatchingSecretsManager struct{ err error }
+
+func (m failingBatchingSecretsManager) Type() string                { return "failing-batch" }
+func (m failingBatchingSecretsManager) State() json.RawMessage      { return nil }
+func (m failingBatchingSecretsManager) Encrypter() config.Encrypter { return config.NopEncrypter }
+func (m failingBatchingSecretsManager) Decrypter() config.Decrypter { return config.NopDecrypter }
+
+func (m failingBatchingSecretsManager) BeginBatchEncryption() (stack.BatchEncrypter, stack.CompleteCrypterBatch) {
+	return nopBatchEncrypter{}, func(context.Context) error { return m.err }
+}
+
+func (m failingBatchingSecretsManager) BeginBatchDecryption() (stack.BatchDecrypter, stack.CompleteCrypterBatch) {
+	return nopBatchDecrypter{}, func(context.Context) error { return nil }
+}
+
+type nopBatchEncrypter struct{}
+
+func (nopBatchEncrypter) EncryptValue(context.Context, string) (string, error) {
+	return "", nil
+}
+
+func (nopBatchEncrypter) BatchEncrypt(context.Context, []string) ([]string, error) {
+	return nil, nil
+}
+
+func (nopBatchEncrypter) Enqueue(context.Context, *resource.Secret, string, *apitype.SecretV1) error {
+	return nil
+}
+
+type nopBatchDecrypter struct{}
+
+func (nopBatchDecrypter) DecryptValue(context.Context, string) (string, error) {
+	return "", nil
+}
+
+func (nopBatchDecrypter) BatchDecrypt(context.Context, []string) ([]string, error) {
+	return nil, nil
+}
+
+func (nopBatchDecrypter) Enqueue(context.Context, string, *resource.Secret) error {
+	return nil
 }

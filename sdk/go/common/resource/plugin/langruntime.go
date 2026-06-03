@@ -123,7 +123,7 @@ type LanguageRuntime interface {
 	// Closer closes any underlying OS resources associated with this plugin (like processes, RPC channels, etc).
 	io.Closer
 	// GetRequiredPackages computes the complete set of anticipated packages required by a program.
-	GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDescriptor, error)
+	GetRequiredPackages(ctx context.Context, info ProgramInfo) ([]workspace.PackageDescriptor, error)
 	// Run executes a program in the language runtime for planning or deployment purposes.  If
 	// info.DryRun is true, the code must not assume that side-effects or final values resulting
 	// from resource deployments are actually available.  If it is false, on the other hand, a real
@@ -131,57 +131,62 @@ type LanguageRuntime interface {
 	//
 	// Returns a triple of "error message", "bail", or real "error".  If "bail", the caller should
 	// return result.Bail immediately and not print any further messages to the user.
-	Run(info RunInfo) (string, bool, error)
+	Run(ctx context.Context, info RunInfo) (string, bool, error)
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (PluginInfo, error)
+	GetPluginInfo(ctx context.Context) (PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	// It returns io.Readers for stdout and stderr as well as a channel that will be closed when the operation is
 	// complete, producing an error if one occurred. Callers *must* drain the stdout and stderr readers if they await the
 	// done channel to avoid deadlocks.
-	InstallDependencies(request InstallDependenciesRequest) (io.Reader, io.Reader, <-chan error, error)
+	InstallDependencies(
+		ctx context.Context, request InstallDependenciesRequest,
+	) (io.Reader, io.Reader, <-chan error, error)
 
 	// RuntimeOptionsPrompts returns additional options that can be set for the runtime.
-	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)
+	RuntimeOptionsPrompts(ctx context.Context, info ProgramInfo) ([]RuntimeOptionPrompt, error)
 
 	// Template allows the language runtime to perform additional templating on a newly instantiated project template.
-	Template(info ProgramInfo, projectName tokens.PackageName) error
+	Template(ctx context.Context, info ProgramInfo, projectName tokens.PackageName) error
 
 	// About returns information about the language runtime.
-	About(info ProgramInfo) (AboutInfo, error)
+	About(ctx context.Context, info ProgramInfo) (AboutInfo, error)
 
 	// GetProgramDependencies returns information about the dependencies for the given program.
-	GetProgramDependencies(info ProgramInfo, transitiveDependencies bool) ([]DependencyInfo, error)
+	GetProgramDependencies(ctx context.Context, info ProgramInfo, transitiveDependencies bool) ([]DependencyInfo, error)
 
 	// RunPlugin executes a plugin program and returns its result asynchronously.
 	RunPlugin(ctx context.Context, info RunPluginInfo) (io.Reader, io.Reader, *promise.Promise[int32], error)
 
 	// GenerateProject generates a program project in the given directory. This will include metadata files such
 	// as Pulumi.yaml and package.json.
-	GenerateProject(sourceDirectory, targetDirectory, project string,
+	GenerateProject(ctx context.Context, sourceDirectory, targetDirectory, project string,
 		strict bool, loaderTarget string, localDependencies map[string]string) (hcl.Diagnostics, error)
 
 	// GeneratePackage generates an SDK package.
 	GeneratePackage(
-		directory string, schema string, extraFiles map[string][]byte,
+		ctx context.Context, directory string, schema string, extraFiles map[string][]byte,
 		loaderTarget string, localDependencies map[string]string,
 		local bool,
 	) (hcl.Diagnostics, error)
 
 	// GenerateProgram is similar to GenerateProject but doesn't include any metadata files, just the program
 	// source code.
-	GenerateProgram(program map[string]string, loaderTarget string,
+	GenerateProgram(ctx context.Context, program map[string]string, loaderTarget string,
 		strict bool) (map[string][]byte, hcl.Diagnostics, error)
 
 	// Pack packs a library package into a language specific artifact in the given destination directory.
-	Pack(packageDirectory string, destinationDirectory string) (string, error)
+	Pack(ctx context.Context, packageDirectory string, destinationDirectory string) (string, error)
 
 	// Link links a set of local dependencies into the given program directory.
-	Link(info ProgramInfo, localDependencies []workspace.LinkablePackageDescriptor, loaderTarget string) (string, error)
+	Link(
+		ctx context.Context, info ProgramInfo, localDependencies []workspace.LinkablePackageDescriptor,
+		loaderTarget string,
+	) (string, error)
 
 	// Cancel signals the language runtime to gracefully shut down and abort any ongoing operations.
 	// Operations aborted in this way will return an error.
-	Cancel() error
+	Cancel(ctx context.Context) error
 }
 
 // DependencyInfo contains information about a dependency reported by a language runtime.
@@ -225,6 +230,7 @@ type RunInfo struct {
 	Parallel         int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	Organization     string                // the organization name housing the program being run (might be empty).
 	LoaderAddress    string                // the RPC address of the host's schema loader.
+	MapperAddress    string                // the RPC address of the host's mapping service.
 	AttachDebugger   bool                  // true if we are starting the program under a debugger.
 }
 

@@ -78,6 +78,9 @@ type PackageReference interface {
 	// Definition fully loads the referenced package and returns the result.
 	Definition() (*Package, error)
 
+	// CanonicalizeToken returns the canonical form of a token. This takes into account moduleFormat and index elision.
+	CanonicalizeToken(token string) string
+
 	// InterpretPulumiRefs returns the result of interpreting any references in the given string.
 	InterpretPulumiRefs(string, PulumiRefResolver) (string, error)
 }
@@ -232,6 +235,10 @@ func (p packageDefRef) Functions() PackageFunctions {
 
 func (p packageDefRef) Language(language string) (any, error) {
 	return p.pkg.Language[language], nil
+}
+
+func (p packageDefRef) CanonicalizeToken(token string) string {
+	return p.pkg.CanonicalizeToken(token)
 }
 
 func (p packageDefRef) TokenToModule(token string) string {
@@ -591,6 +598,17 @@ func (p *PartialPackage) Language(language string) (any, error) {
 	p.def.Language[language] = imported
 
 	return imported, nil
+}
+
+func (p *PartialPackage) CanonicalizeToken(token string) string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.CanonicalizeToken(token)
+	}
+
+	return p.types.pkg.CanonicalizeToken(token)
 }
 
 func (p *PartialPackage) TokenToModule(token string) string {

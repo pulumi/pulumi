@@ -19,6 +19,8 @@ import (
 	"io"
 
 	"github.com/hashicorp/hcl/v2"
+
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 type ResourceImport struct {
@@ -56,10 +58,30 @@ type ConvertProgramResponse struct {
 	Diagnostics hcl.Diagnostics
 }
 
+type ConvertSnippetRequest struct {
+	Filename     string
+	Source       []byte
+	TargetLoader string
+	// Package identifies the package (and any parameterization) the snippet belongs to so the converter can load
+	// the same schema we did when invoking the provider.
+	Package    *codegenrpc.GetSchemaRequest
+	Token      string
+	Attributes map[string]string
+}
+
+type ConvertSnippetResponse struct {
+	Diagnostics hcl.Diagnostics
+	Filename    string
+	Source      []byte
+	Attributes  map[string]string
+}
+
 type Converter interface {
 	io.Closer
 
 	ConvertState(ctx context.Context, req *ConvertStateRequest) (*ConvertStateResponse, error)
 
 	ConvertProgram(ctx context.Context, req *ConvertProgramRequest) (*ConvertProgramResponse, error)
+
+	ConvertSnippet(ctx context.Context, req *ConvertSnippetRequest) (*ConvertSnippetResponse, error)
 }

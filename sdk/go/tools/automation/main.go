@@ -38,7 +38,8 @@ func main() {
 
 func run() int {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "Usage: go run ./sdk/go/tools/automation <path-to-specification.json> [boilerplate-dir]")
+		fmt.Fprintln(os.Stderr,
+			"Usage: go run ./sdk/go/tools/automation <spec.json> [boilerplate-dir] [output-dir] [api-import-base]")
 		return 1
 	}
 	specPath, err := filepath.Abs(os.Args[1])
@@ -55,6 +56,35 @@ func run() int {
 		boilerplateDir = os.Args[2]
 	}
 
+	// outputDir is where api.go, commands.go and the per-command opt
+	// packages are written. Default lands next to the generator source,
+	// stable across CWDs via runtime.Caller. Production callers pass an
+	// absolute path under sdk/go/auto/.
+	outputDir := ""
+	if len(os.Args) >= 4 {
+		outputDir = os.Args[3]
+	}
+	// apiImportBase is the Go import path of outputDir. It is the prefix
+	// the generated commands.go uses to reach each per-command opt
+	// package (e.g. <apiImportBase>/optcancel). Defaults to match the
+	// default output path.
+	apiImportBase := ""
+	if len(os.Args) >= 5 {
+		apiImportBase = os.Args[4]
+	}
+
+	if outputDir == "" {
+		dir, err := defaultOutputDir()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to resolve output directory: %v\n", err)
+			return 1
+		}
+		outputDir = dir
+	}
+	if apiImportBase == "" {
+		apiImportBase = defaultAPIImportBase
+	}
+
 	specBytes, err := os.ReadFile(specPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to read specification: %v\n", err)
@@ -67,14 +97,6 @@ func run() int {
 		return 1
 	}
 
-	// Output goes next to the generator source, regardless of CWD. The test
-	// suite, `go generate`, and ad-hoc manual runs all end up in the same
-	// place. `runtime.Caller(0)` gives us this file's absolute path.
-	outputDir, err := defaultOutputDir()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to resolve output directory: %v\n", err)
-		return 1
-	}
 	// Best-effort removal of the legacy single-file output, if present.
 	_ = os.Remove(filepath.Join(outputDir, "main.go"))
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
@@ -127,32 +149,26 @@ func run() int {
 		}
 	}
 
-	// The API host package is a verbatim copy of the chosen boilerplate
-	// plus a generated commands.go that appends one method per executable
-	// CLI node.
-	automationDir := filepath.Join(outputDir, "automation")
-	if err := os.MkdirAll(automationDir, 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create automation directory: %v\n", err)
-		return 1
-	}
-
+	// api.go is a verbatim copy of the chosen boilerplate, modulo a
+	// best-effort rewrite that points the boilerplate's own opt-package
+	// imports (none today, but possible in the future) at apiImportBase.
 	apiSource, err := readBoilerplateFile(boilerplateDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to read boilerplate: %v\n", err)
 		return 1
 	}
-	if err := os.WriteFile(filepath.Join(automationDir, "api.go"), apiSource, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(outputDir, "api.go"), apiSource, 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write api.go: %v\n", err)
 		return 1
 	}
 
-	commandsSource, err := generateCommandsFile(spec)
+	commandsSource, err := generateCommandsFile(spec, apiImportBase)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to generate commands: %v\n", err)
 		return 1
 	}
 	commandsSource = append([]byte(copyrightHeader+generatedMarker), commandsSource...)
-	if err := os.WriteFile(filepath.Join(automationDir, "commands.go"), commandsSource, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(outputDir, "commands.go"), commandsSource, 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write commands.go: %v\n", err)
 		return 1
 	}
@@ -210,6 +226,11 @@ func fixCommentPositions(fset *token.FileSet, decls []ast.Decl) {
 			if !ok {
 				continue
 			}
+			// Anchor the struct's opening brace one line above the first
+			// field so go/printer doesn't see a multi-line gap and decide
+			// to insert a blank separator at the top of the body.
+			st.Fields.Opening = file.LineStart(line)
+			line++
 			for _, f := range st.Fields.List {
 				if f.Doc != nil {
 					for _, c := range f.Doc.List {
@@ -312,7 +333,8 @@ func walkStructure(node Structure, breadcrumbs []string, inherited map[string]Fl
 }
 
 // buildOptionsImports returns the `import ( ... )` declaration that every
-// generated options file needs so it can embed base.BaseOptions.
+// generated options file needs so its inlined BaseOptions fields can refer
+// to io.Writer and io.Reader.
 func buildOptionsImports() *ast.GenDecl {
 	return &ast.GenDecl{
 		Tok: token.IMPORT,
@@ -320,7 +342,7 @@ func buildOptionsImports() *ast.GenDecl {
 			&ast.ImportSpec{
 				Path: &ast.BasicLit{
 					Kind:  token.STRING,
-					Value: `"` + basePackageImportPath + `"`,
+					Value: `"io"`,
 				},
 			},
 		},
@@ -328,9 +350,57 @@ func buildOptionsImports() *ast.GenDecl {
 }
 
 // basePackageImportPath is the canonical location of the `base` package
-// that generated code consumes. The integration PR (#4) is where this flips
-// over to the real sdk/go/auto address.
-const basePackageImportPath = "github.com/pulumi/pulumi/sdk/v3/go/tools/automation/boilerplate/base"
+// that generated code consumes.
+const basePackageImportPath = "github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
+
+// defaultAPIImportBase is the Go import path of the default outputDir.
+// It anchors the per-command opt-package imports emitted by commands.go
+// (each becomes `<defaultAPIImportBase>/optfoo`).
+const defaultAPIImportBase = "github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation"
+
+// acronyms lists the words that `toGoCamel` uppercases wholesale to match
+// the Go convention golint enforces (and the broader stdlib style).
+// `strcase.ToCamel` only knows one-word-at-a-time PascalCase, so without
+// this post-pass a flag like `--ai` would surface as `Ai`. Only the
+// acronyms actually produced by the current spec are listed; extend as
+// new specs require.
+var acronyms = map[string]struct{}{
+	"AI": {},
+}
+
+// toGoCamel converts a hyphen/underscore-separated flag name to a
+// PascalCase Go identifier, uppercasing any word that matches an entry in
+// `acronyms`. For example "ai" becomes "AI" and "secrets-provider"
+// becomes "SecretsProvider".
+func toGoCamel(name string) string {
+	camel := strcase.ToCamel(name)
+	if camel == "" {
+		return camel
+	}
+	// Walk the camel-cased string and identify word boundaries: each one
+	// starts at an uppercase ASCII letter. We rebuild the result word by
+	// word, swapping in the all-uppercase form for any word whose
+	// uppercased value appears in acronyms.
+	var b strings.Builder
+	b.Grow(len(camel))
+	runes := []rune(camel)
+	for i := 0; i < len(runes); {
+		// Find the end of the current word: next uppercase letter or end.
+		j := i + 1
+		for j < len(runes) && (runes[j] < 'A' || runes[j] > 'Z') {
+			j++
+		}
+		word := string(runes[i:j])
+		upper := strings.ToUpper(word)
+		if _, ok := acronyms[upper]; ok {
+			b.WriteString(upper)
+		} else {
+			b.WriteString(word)
+		}
+		i = j
+	}
+	return b.String()
+}
 
 // copyrightHeader is prepended to every file written by the generator. The
 // repository's lint setup checks for it via `goheader`.
@@ -373,18 +443,28 @@ func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, []
 	}
 	sort.Strings(names)
 
-	// Every generated Options struct embeds base.BaseOptions so that the
-	// API's `run` method has somewhere to read ambient invocation config
-	// (cwd, env, stdout/stderr, stdin) from.
-	fields := make([]*ast.Field, 0, len(names)+1)
-	fields = append(fields, &ast.Field{
-		Type: &ast.SelectorExpr{
-			X:   ast.NewIdent("base"),
-			Sel: ast.NewIdent("BaseOptions"),
-		},
-	})
+	// Every generated Options struct lifts the fields of base.BaseOptions
+	// inline rather than embedding the type. Embedding would block
+	// composite-literal initialisation of promoted fields, which the
+	// existing public Workspace API in sdk/go/auto relies on
+	// (`&optnew.Options{Stdout: os.Stdout}`). The shape is the Go
+	// counterpart of the Python TypedDict flattening done by #22657 and
+	// #22658.
+	baseFields := baseOptionFields()
+	fields := make([]*ast.Field, 0, len(baseFields)+len(names))
+	meta := make([]optionField, 0, len(baseFields)+len(names))
+	for _, bf := range baseFields {
+		field := &ast.Field{
+			Names: []*ast.Ident{{Name: bf.name}},
+			Type:  bf.typ,
+		}
+		if bf.doc != "" {
+			field.Doc = toComment(bf.doc)
+		}
+		fields = append(fields, field)
+		meta = append(meta, optionField{name: bf.name, typ: bf.typ})
+	}
 
-	meta := make([]optionField, 0, len(names))
 	for _, name := range names {
 		flag := flags[name]
 
@@ -393,7 +473,7 @@ func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, []
 			return nil, nil, err
 		}
 
-		fieldName := strcase.ToCamel(flag.Name)
+		fieldName := toGoCamel(flag.Name)
 		field := &ast.Field{
 			Names: []*ast.Ident{{Name: fieldName}},
 			Type:  goType,
@@ -411,6 +491,58 @@ func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, []
 			Fields: &ast.FieldList{List: fields},
 		},
 	}, meta, nil
+}
+
+// baseOptionField describes one field that the generator inlines into
+// every Options struct, mirroring base.BaseOptions one-for-one.
+type baseOptionField struct {
+	name string
+	typ  ast.Expr
+	doc  string
+}
+
+// baseOptionFields returns the inlined BaseOptions fields in declaration
+// order. Each entry's name, type, and doc comment matches the source
+// definition in sdk/go/tools/automation/boilerplate/base/base.go; the
+// generator's output for the BaseOptions surface is structurally
+// identical to the embedded form, just expanded so composite-literal
+// initialisation works.
+func baseOptionFields() []baseOptionField {
+	stringType := ast.NewIdent("string")
+	stringMap := &ast.MapType{
+		Key:   ast.NewIdent("string"),
+		Value: ast.NewIdent("string"),
+	}
+	ioWriter := &ast.SelectorExpr{X: ast.NewIdent("io"), Sel: ast.NewIdent("Writer")}
+	ioReader := &ast.SelectorExpr{X: ast.NewIdent("io"), Sel: ast.NewIdent("Reader")}
+	return []baseOptionField{
+		{
+			name: "Cwd",
+			typ:  stringType,
+			doc: "Cwd is the working directory in which to run the pulumi CLI. " +
+				"When empty the caller's process-level cwd is used.",
+		},
+		{
+			name: "AdditionalEnv",
+			typ:  stringMap,
+			doc:  "AdditionalEnv is merged over the process environment before running the command.",
+		},
+		{
+			name: "Stdout",
+			typ:  ioWriter,
+			doc:  "Stdout, when non-nil, receives a copy of the child process' stdout in real time.",
+		},
+		{
+			name: "Stderr",
+			typ:  ioWriter,
+			doc:  "Stderr, when non-nil, receives a copy of the child process' stderr in real time.",
+		},
+		{
+			name: "Stdin",
+			typ:  ioReader,
+			doc:  "Stdin, when non-nil, is connected to the child process' stdin.",
+		},
+	}
 }
 
 func buildOptionHelpers(typeName, command string, fields []optionField) []ast.Decl {
@@ -451,8 +583,18 @@ func buildOptionHelpers(typeName, command string, fields []optionField) []ast.De
 		Specs: []ast.Spec{optionType},
 	})
 
+	// Helpers are emitted in alphabetical order regardless of the field
+	// layout in the struct. The struct keeps BaseOptions fields at the top
+	// (mirroring the previous embedded form) but the helper surface is
+	// flat and easier to scan when sorted.
+	sortedFields := make([]optionField, len(fields))
+	copy(sortedFields, fields)
+	sort.Slice(sortedFields, func(i, j int) bool {
+		return sortedFields[i].name < sortedFields[j].name
+	})
+
 	// One helper per field, named after the field itself.
-	for _, f := range fields {
+	for _, f := range sortedFields {
 		funcName := f.name
 
 		// func <Field>(v <T>) Option
@@ -540,6 +682,25 @@ func toComment(desc string) *ast.CommentGroup {
 	return &ast.CommentGroup{List: list}
 }
 
+// docCommentLines splits a CLI description into trimmed non-empty lines,
+// ready to be rendered as a `// `-prefixed comment block in commands.go.
+// Embedding a multi-line description as a single `// {{.DocComment}}` line
+// would push the body of the description outside the comment block and
+// break gofmt; callers that need a Go doc comment must iterate over the
+// returned lines.
+func docCommentLines(desc string) []string {
+	desc = strings.TrimSpace(desc)
+	if desc == "" {
+		return nil
+	}
+	raw := strings.Split(desc, "\n")
+	lines := make([]string, 0, len(raw))
+	for _, line := range raw {
+		lines = append(lines, strings.TrimRight(line, " \t"))
+	}
+	return lines
+}
+
 func astTypeFor(typ string, repeatable bool) (ast.Expr, error) {
 	var base *ast.Ident
 	switch typ {
@@ -600,13 +761,15 @@ func generatorDir() (string, error) {
 	return filepath.Dir(thisFile), nil
 }
 
-// defaultOutputDir returns `<generatorDir>/output`.
+// defaultOutputDir returns `<generatorDir>/output/automation`. The trailing
+// `automation` segment matches the package name written into api.go and
+// commands.go and is reflected in defaultAPIImportBase.
 func defaultOutputDir() (string, error) {
 	dir, err := generatorDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "output"), nil
+	return filepath.Join(dir, "output", "automation"), nil
 }
 
 // readBoilerplateFile returns the contents of the single .go file inside dir.
@@ -635,13 +798,17 @@ func readBoilerplateFile(dir string) ([]byte, error) {
 
 // commandMethod is the template payload for one generated method.
 type commandMethod struct {
-	Name         string
-	OptPkg       string
-	Breadcrumbs  []string
-	DocComment   string
-	RequiredArgs []methodArg
-	OptionalArgs []methodArg
-	VariadicArg  *methodArg
+	Name        string
+	OptPkg      string
+	Breadcrumbs []string
+	// DocCommentLines is the per-line breakdown of the spec's description.
+	// The template emits one `// ` prefixed line per entry so multi-line
+	// descriptions (e.g. for `pulumi new`, `pulumi cancel`) stay inside the
+	// comment block and survive gofmt.
+	DocCommentLines []string
+	RequiredArgs    []methodArg
+	OptionalArgs    []methodArg
+	VariadicArg     *methodArg
 	// Presets are pre-rendered Go statements appending preset flag values.
 	Presets []string
 	// Flags are pre-rendered Go statements appending user-supplied flag values.
@@ -655,8 +822,10 @@ type methodArg struct {
 }
 
 // generateCommandsFile walks the spec and produces the contents of
-// output/automation/commands.go — one method per executable command/menu.
-func generateCommandsFile(root Structure) ([]byte, error) {
+// commands.go — one method per executable command/menu. apiImportBase
+// is the Go import path of the directory commands.go is written into;
+// the per-command opt-package imports are derived from it.
+func generateCommandsFile(root Structure, apiImportBase string) ([]byte, error) {
 	var methods []commandMethod
 	optPkgs := map[string]struct{}{}
 	if err := walkCommands(root, nil, nil, &methods, optPkgs); err != nil {
@@ -671,13 +840,15 @@ func generateCommandsFile(root Structure) ([]byte, error) {
 	sort.Strings(imports)
 
 	data := struct {
-		BasePkg    string
-		OptImports []string
-		Methods    []commandMethod
+		BasePkg       string
+		APIImportBase string
+		OptImports    []string
+		Methods       []commandMethod
 	}{
-		BasePkg:    basePackageImportPath,
-		OptImports: imports,
-		Methods:    methods,
+		BasePkg:       basePackageImportPath,
+		APIImportBase: apiImportBase,
+		OptImports:    imports,
+		Methods:       methods,
 	}
 
 	var buf bytes.Buffer
@@ -751,10 +922,10 @@ func walkCommands(
 // node: method name, positional arguments, pre-rendered preset/flag bodies.
 func buildCommandMethod(node Structure, breadcrumbs []string, flags map[string]Flag) (commandMethod, error) {
 	m := commandMethod{
-		Name:        methodNameFor(breadcrumbs),
-		OptPkg:      packageNameFor(breadcrumbs),
-		Breadcrumbs: append([]string(nil), breadcrumbs...),
-		DocComment:  strings.TrimSpace(node.Description),
+		Name:            methodNameFor(breadcrumbs),
+		OptPkg:          packageNameFor(breadcrumbs),
+		Breadcrumbs:     append([]string(nil), breadcrumbs...),
+		DocCommentLines: docCommentLines(node.Description),
 	}
 
 	// Positional arguments. When `requiredArguments` is absent from the spec
@@ -844,7 +1015,7 @@ func buildCommandMethod(node Structure, breadcrumbs []string, flags map[string]F
 // methodNameFor converts CLI breadcrumbs to a Go method name. For example:
 // [] → "Pulumi" (unused — we never emit a root method), ["cancel"] →
 // "Cancel", ["stack", "rm"] → "StackRm", ["org", "search", "ai"] →
-// "OrgSearchAi".
+// "OrgSearchAI" (acronyms uppercased per the Go style golint enforces).
 func methodNameFor(breadcrumbs []string) string {
 	if len(breadcrumbs) == 0 {
 		return "Pulumi"
@@ -853,7 +1024,7 @@ func methodNameFor(breadcrumbs []string) string {
 	// Normalise separators strcase.ToCamel doesn't touch on its own.
 	joined = strings.ReplaceAll(joined, "-", "_")
 	joined = strings.ReplaceAll(joined, "/", "_")
-	return strcase.ToCamel(joined)
+	return toGoCamel(joined)
 }
 
 // argToMethodArg turns a spec Argument into a template-ready methodArg.
@@ -882,7 +1053,7 @@ func argToMethodArg(a Argument) (methodArg, error) {
 // distinguish the zero value from "unset" should mark the flag required
 // or extend the spec.
 func renderFlag(flag Flag) (string, error) {
-	fieldName := strcase.ToCamel(flag.Name)
+	fieldName := toGoCamel(flag.Name)
 	cliName := "--" + flag.Name
 	switch {
 	case flag.Repeatable:
@@ -922,7 +1093,7 @@ func renderPreset(flag Flag) (string, error) {
 		return valueSnippet, nil
 	}
 	// Guard on zero value of the exposed field.
-	fieldName := strcase.ToCamel(flag.Name)
+	fieldName := toGoCamel(flag.Name)
 	var cond string
 	switch {
 	case flag.Repeatable:
@@ -982,7 +1153,7 @@ import (
 	"fmt"
 
 	"{{.BasePkg}}"
-{{range .OptImports}}	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/{{.}}"
+{{range .OptImports}}	"{{$.APIImportBase}}/{{.}}"
 {{end}})
 
 // Silence unused-import warnings when a spec has no commands with args.
@@ -990,11 +1161,13 @@ var _ = fmt.Sprint
 var _ = context.Background
 
 {{range .Methods}}
-{{if .DocComment}}// {{.Name}} corresponds to ` + "`pulumi {{range $i, $c := .Breadcrumbs}}{{if $i}} {{end}}{{$c}}{{end}}`" + `.
+// {{.Name}} corresponds to ` + "`pulumi {{range $i, $c := .Breadcrumbs}}{{if $i}} {{end}}{{$c}}{{end}}`" + `.
+{{- if .DocCommentLines}}
 //
-// {{.DocComment}}
-{{else}}// {{.Name}} corresponds to ` + "`pulumi {{range $i, $c := .Breadcrumbs}}{{if $i}} {{end}}{{$c}}{{end}}`" + `.
-{{end -}}
+{{- range .DocCommentLines}}
+// {{.}}
+{{- end}}
+{{- end}}
 func (a *API) {{.Name}}(
 	ctx context.Context,
 {{- range .RequiredArgs}}
@@ -1040,6 +1213,12 @@ func (a *API) {{.Name}}(
 		final = append(final, args...)
 	}
 {{end}}
-	return a.run(ctx, o.BaseOptions, final)
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
 }
 {{end}}`))

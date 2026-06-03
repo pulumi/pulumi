@@ -25,8 +25,8 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -73,7 +73,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return policy.InstallPluginDependencies(ctx, root, proj.Runtime)
+					return policy.InstallPluginDependencies(ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), root, proj.Runtime)
 				}
 			}
 
@@ -107,7 +107,8 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
 
-					return policy.InstallPluginDependencies(ctx, filepath.Dir(pluginPath), proj.Runtime)
+					return policy.InstallPluginDependencies(
+						ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), filepath.Dir(pluginPath), proj.Runtime)
 				}
 			}
 
@@ -157,7 +158,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			programInfo := plugin.NewProgramInfo(pctx.Root, pwd, main, runtime.Options())
 
 			if !noDependencies {
-				err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
+				err = pkgCmdUtil.InstallDependencies(ctx, lang, plugin.InstallDependenciesRequest{
 					Info:                    programInfo,
 					UseLanguageVersionTools: useLanguageVersionTools,
 					IsPlugin:                false,
@@ -169,7 +170,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			if !noPlugins {
 				// Compute the set of plugins the current project needs.
-				packages, err := lang.GetRequiredPackages(programInfo)
+				packages, err := lang.GetRequiredPackages(ctx, programInfo)
 				if err != nil {
 					return err
 				}

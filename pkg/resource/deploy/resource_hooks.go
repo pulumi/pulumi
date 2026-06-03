@@ -62,9 +62,10 @@ type ErrorHookFunction func(
 
 // ResourceHook represents a resource hook with its (wrapped) callback and options.
 type ResourceHook struct {
-	Name     string               // The unqiue name of the hook.
-	Callback ResourceHookFunction // The callback of the hook.
-	OnDryRun bool                 // Whether to run this hook for previews or not.
+	Name         string               // The unqiue name of the hook.
+	Callback     ResourceHookFunction // The callback of the hook.
+	OnDryRun     bool                 // Whether to run this hook for previews or not.
+	IgnoreErrors bool                 // If true, errors are logged as warnings instead of failing the program.
 }
 
 // ErrorHook represents an error hook with its (wrapped) callback and options.

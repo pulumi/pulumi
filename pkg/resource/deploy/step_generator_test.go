@@ -889,7 +889,7 @@ func TestStepGenerator(t *testing.T) {
 					source: &nullSource{},
 				},
 			}
-			_, _, err := sg.generateSteps(&registerResourceEvent{
+			_, _, err := sg.generateSteps(t.Context(), &registerResourceEvent{
 				goal: &resource.Goal{
 					Parent: "does-not-exist",
 				},

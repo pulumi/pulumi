@@ -241,7 +241,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				return err
 			}
 
-			fmt.Println("Resource renamed")
+			fmt.Fprintln(cmd.OutOrStdout(), "Resource renamed")
 			return nil
 		},
 	}

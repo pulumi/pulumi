@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -145,7 +145,7 @@ func TestBusy_CancellingSubstate(t *testing.T) {
 	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: true}))
 
 	// Press ESC mid-turn.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m := model.(Model)
 	assert.True(t, m.cancelling, "ESC must set the cancelling flag")
 	assert.True(t, m.busy, "spinner stays on while we wait for the backend to confirm")
@@ -192,7 +192,7 @@ func TestBusy_EscIgnoredWhenIdle(t *testing.T) {
 	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh}))
 	assert.False(t, model.(Model).busy)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m := model.(Model)
 	assert.False(t, m.cancelling)
 	assert.False(t, m.busy)
@@ -201,6 +201,47 @@ func TestBusy_EscIgnoredWhenIdle(t *testing.T) {
 	case <-outCh:
 		t.Fatal("ESC when idle must not post a user event")
 	default:
+	}
+}
+
+// TestBusy_EscClearsDraftBeforeCancel — ESC with a draft in the textarea
+// wipes the draft instead of cancelling, so users can scrap a half-typed
+// message without taking down the agent's current turn. The cancel branch
+// only fires once the textarea is empty (see TestBusy_CancellingSubstate).
+func TestBusy_EscClearsDraftBeforeCancel(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		busy bool
+	}{
+		{"idle", false},
+		{"busy", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ch := make(chan UIEvent, 4)
+			outCh := make(chan outboundEvent, 4)
+			model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: tc.busy}))
+			m := model.(Model)
+			m.textInput.SetValue("half-written draft")
+			require.Equal(t, "half-written draft", m.textInput.Value())
+
+			model, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+			um := model.(Model)
+
+			assert.Equal(t, "", um.textInput.Value(), "ESC with content must clear the textarea")
+			assert.False(t, um.cancelling, "ESC must not cancel while the textarea has a draft")
+			assert.Equal(t, tc.busy, um.busy, "ESC must not change the busy flag when clearing a draft")
+
+			select {
+			case ev := <-outCh:
+				t.Fatalf("ESC must not post any user event when clearing a draft, got %T", ev.event)
+			default:
+			}
+		})
 	}
 }
 
@@ -218,7 +259,7 @@ func TestBusy_EscIgnoredWhileApprovalPending(t *testing.T) {
 	require.True(t, model.(Model).pendingApproval)
 
 	// ESC must not post anything.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	assert.False(t, model.(Model).cancelling)
 	select {
 	case <-outCh:

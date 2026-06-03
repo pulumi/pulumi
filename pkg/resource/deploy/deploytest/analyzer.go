@@ -43,32 +43,34 @@ func (a *Analyzer) Name() tokens.QName {
 	return tokens.QName(a.Info.Name)
 }
 
-func (a *Analyzer) Analyze(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+func (a *Analyzer) Analyze(ctx context.Context, r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 	if a.AnalyzeF != nil {
 		return a.AnalyzeF(r)
 	}
 	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *Analyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+func (a *Analyzer) AnalyzeStack(
+	ctx context.Context, resources []plugin.AnalyzerStackResource,
+) (plugin.AnalyzeResponse, error) {
 	if a.AnalyzeStackF != nil {
 		return a.AnalyzeStackF(resources)
 	}
 	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *Analyzer) Remediate(r plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
+func (a *Analyzer) Remediate(ctx context.Context, r plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 	if a.RemediateF != nil {
 		return a.RemediateF(r)
 	}
 	return plugin.RemediateResponse{}, nil
 }
 
-func (a *Analyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
+func (a *Analyzer) GetAnalyzerInfo(ctx context.Context) (plugin.AnalyzerInfo, error) {
 	return a.Info, nil
 }
 
-func (a *Analyzer) GetPluginInfo() (plugin.PluginInfo, error) {
+func (a *Analyzer) GetPluginInfo(ctx context.Context) (plugin.PluginInfo, error) {
 	var version *semver.Version
 	if a.Info.Version != "" {
 		sv, err := semver.ParseTolerant(a.Info.Version)
@@ -83,7 +85,7 @@ func (a *Analyzer) GetPluginInfo() (plugin.PluginInfo, error) {
 	}, nil
 }
 
-func (a *Analyzer) Configure(policyConfig map[string]plugin.AnalyzerPolicyConfig) error {
+func (a *Analyzer) Configure(ctx context.Context, policyConfig map[string]plugin.AnalyzerPolicyConfig) error {
 	if a.ConfigureF != nil {
 		return a.ConfigureF(policyConfig)
 	}

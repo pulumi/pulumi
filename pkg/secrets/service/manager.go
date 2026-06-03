@@ -208,7 +208,7 @@ func NewServiceSecretsManagerFromState(ctx context.Context, state json.RawMessag
 		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
-	account, err := workspace.GetAccount(s.URL)
+	account, err := getServiceSecretsAccount(s.URL)
 	if err != nil {
 		return nil, fmt.Errorf("getting access token: %w", err)
 	}
@@ -238,4 +238,12 @@ func NewServiceSecretsManagerFromState(ctx context.Context, state json.RawMessag
 		state:   state,
 		crypter: cachedCrypter,
 	}, nil
+}
+
+// getServiceSecretsAccount returns credentials for a service secrets manager,
+// falling back to shared agent credentials when an agent cannot use default
+// credentials and no explicit Pulumi credential path was configured.
+func getServiceSecretsAccount(cloudURL string) (workspace.Account, error) {
+	account, _, err := workspace.GetAccountWithAgentFallback(cloudURL)
+	return account, err
 }

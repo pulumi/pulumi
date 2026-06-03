@@ -63,6 +63,7 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 				stackName,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -99,7 +100,7 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 				project, _, loadErr := ws.ReadProject()
 				var ps *workspace.ProjectStack
 				if loadErr == nil {
-					ps, loadErr = LoadProjectStack(ctx, diag, project, s)
+					ps, loadErr = LoadProjectStack(ctx, diag, project, s, "")
 				}
 				if loadErr != nil {
 					// Default to an empty ProjectStack if we fail to load the existing one
@@ -119,7 +120,7 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 					if loadErr != nil {
 						return fmt.Errorf("could not load existing project stack to update secrets manager configuration: %w", loadErr)
 					}
-					if err = SaveProjectStack(ctx, s, ps); err != nil {
+					if err = SaveProjectStack(ctx, s, ps, ""); err != nil {
 						return fmt.Errorf("saving stack config: %w", err)
 					}
 				}

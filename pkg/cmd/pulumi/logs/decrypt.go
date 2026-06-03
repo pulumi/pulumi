@@ -76,7 +76,7 @@ func newDecryptCmd(ws pkgWorkspace.Context) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				fmt.Fprintf(os.Stderr, "Decrypting %s\n", filename)
+				fmt.Fprintf(cmd.ErrOrStderr(), "Decrypting %s\n", filename)
 			}
 
 			f, err := os.Open(filename)
@@ -93,7 +93,7 @@ func newDecryptCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return fmt.Errorf("seeking log file: %w", err)
 			}
 
-			out := bufio.NewWriter(os.Stdout)
+			out := bufio.NewWriter(cmd.OutOrStdout())
 			defer out.Flush()
 
 			if string(magic[:]) == encryptedlog.Magic {
@@ -134,7 +134,7 @@ func decryptPLOG(
 	s, err := cmdStack.RequireStack(
 		ctx, cmdutil.Diag(), ws,
 		cmdBackend.DefaultLoginManager,
-		stackName, cmdStack.LoadOnly, opts,
+		stackName, cmdStack.LoadOnly, opts, "",
 	)
 	if err != nil {
 		return fmt.Errorf("loading stack %q for decryption: %w", stackName, err)

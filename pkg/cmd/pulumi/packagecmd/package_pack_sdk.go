@@ -52,12 +52,12 @@ func newPackagePackSdkCmd() *cobra.Command {
 				return err
 			}
 
-			artifact, err := languagePlugin.Pack(path, cwd)
+			artifact, err := languagePlugin.Pack(pCtx.Request(), path, cwd)
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("%s", artifact)
+			fmt.Fprintf(cmd.OutOrStdout(), "%s", artifact)
 
 			return nil
 		},

@@ -841,7 +841,7 @@ func (ctx *Context) invokePackageRaw(
 }
 
 func validInvokeResult(resultV reflect.Value) bool {
-	isPointer := resultV.Kind() == reflect.Ptr
+	isPointer := resultV.Kind() == reflect.Pointer
 	isMap := resultV.Elem().Kind() == reflect.Map && resultV.Elem().Type().Key().Kind() == reflect.String
 	structOrMap := resultV.Elem().Kind() == reflect.Struct || isMap
 	return isPointer && structOrMap
@@ -1219,7 +1219,7 @@ func (ctx *Context) CallPackageSingle(
 		// if the result is an object return the first element
 		v := reflect.ValueOf(r)
 
-		if v.Kind() == reflect.Ptr {
+		if v.Kind() == reflect.Pointer {
 			// Check if the pointer is nil
 			if v.IsNil() {
 				return zeroType, errors.New("input cannot be a nil pointer")
@@ -1328,7 +1328,7 @@ func (ctx *Context) readPackageResource(
 
 	if props != nil {
 		propsType := reflect.TypeOf(props)
-		if propsType.Kind() == reflect.Ptr {
+		if propsType.Kind() == reflect.Pointer {
 			propsType = propsType.Elem()
 		}
 		//nolint:staticcheck // Not applying de-morgens law right now
@@ -1686,7 +1686,7 @@ func (ctx *Context) registerResource(
 
 	if props != nil {
 		propsType := reflect.TypeOf(props)
-		if propsType.Kind() == reflect.Ptr {
+		if propsType.Kind() == reflect.Pointer {
 			propsType = propsType.Elem()
 		}
 		//nolint:staticcheck // Not applying de-morgens law right now
@@ -2181,7 +2181,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	// ought to.
 	res := reflect.ValueOf(resourceV)
 	typ := res.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return &resourceState{}
 	}
 	res, typ = res.Elem(), typ.Elem()
@@ -2986,13 +2986,16 @@ func (ctx *Context) RegisterResourceHook(
 			return
 		}
 		onDryRun := false
+		ignoreErrors := false
 		if opts != nil {
 			onDryRun = opts.OnDryRun
+			ignoreErrors = opts.IgnoreErrors
 		}
 		req := &pulumirpc.RegisterResourceHookRequest{
-			Name:     name,
-			Callback: cb,
-			OnDryRun: onDryRun,
+			Name:         name,
+			Callback:     cb,
+			OnDryRun:     onDryRun,
+			IgnoreErrors: ignoreErrors,
 		}
 		_, err = ctx.state.monitor.RegisterResourceHook(ctx.ctx, req)
 		if err != nil {

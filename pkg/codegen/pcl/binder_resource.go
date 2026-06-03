@@ -46,13 +46,11 @@ func baseResourceSyntax(node BaseResource) *hclsyntax.Block {
 }
 
 func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnostics {
-	var diagnostics hcl.Diagnostics
-
 	typeDiags := b.bindResourceTypes(ctx, node)
-	diagnostics = append(diagnostics, typeDiags...)
 
 	bodyDiags := b.bindResourceBody(node)
-	diagnostics = append(diagnostics, bodyDiags...)
+
+	diagnostics := slices.Concat(typeDiags, bodyDiags)
 
 	return diagnostics
 }

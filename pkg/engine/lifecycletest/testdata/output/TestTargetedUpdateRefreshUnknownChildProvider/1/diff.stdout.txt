@@ -1,0 +1,17 @@
+<{%reset%}>  pkgA:index:Component: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pkgA:index:Component::comp]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgB: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::childProv]
+<{%reset%}><{%reset%}>    <{%reset%}>  pulumi:providers:pkgB: (same)
+<{%reset%}>        [id=3]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test-stack::test-project::pkgA:index:Component$pulumi:providers:pkgB::childProv]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgB:index:ResA: (same)
+<{%reset%}>        [id=1]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test-stack::test-project::pkgA:index:Component$pkgB:index:ResA::resA]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:test-stack::test-project::pkgA:index:Component$pulumi:providers:pkgB::childProv::id-childProv]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    3 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

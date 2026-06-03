@@ -18,9 +18,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/blang/semver"
@@ -33,8 +35,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -97,6 +99,8 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 
 			return runConvert(
 				cmd.Context(),
+				cmd.OutOrStdout(),
+				cmd.ErrOrStderr(),
 				lm,
 				ws,
 				env.Global(),
@@ -183,6 +187,7 @@ type projectGeneratorFunction func(
 
 func runConvert(
 	ctx context.Context,
+	stdout, stderr io.Writer,
 	lm cmdBackend.LoginManager,
 	ws pkgWorkspace.Context,
 	e env.Env,
@@ -224,13 +229,7 @@ func runConvert(
 		from = "yaml"
 	}
 
-	// Translate well known languages to runtimes
-	switch language {
-	case "csharp", "c#":
-		language = "dotnet"
-	case "typescript":
-		language = "nodejs"
-	}
+	language = cmdCmd.NormalizeRuntimeName(language)
 
 	var projectGenerator projectGeneratorFunction
 	switch language {
@@ -266,7 +265,7 @@ func runConvert(
 			projectJSON := string(projectBytes)
 
 			var diags hcl.Diagnostics
-			ds, err := languagePlugin.GenerateProject(
+			ds, err := languagePlugin.GenerateProject(ctx,
 				sourceDirectory, targetDirectory, projectJSON,
 				strict, grpcServer.Addr(), nil /*localDependencies*/)
 			diags = append(diags, ds...)
@@ -308,6 +307,7 @@ func runConvert(
 
 			err = generateAndLinkSdksForPackages(
 				pCtx,
+				stdout,
 				language,
 				targetDirectory,
 				packageBlockDescriptors,
@@ -450,12 +450,12 @@ func runConvert(
 	if diagnostics.HasErrors() {
 		// Don't print the notice about this being a bug if we're in strict mode
 		if !strict {
-			fmt.Fprintln(os.Stderr, "================================================================================")
-			fmt.Fprintln(os.Stderr, "The Pulumi CLI encountered a code generation error. This is a bug!")
-			fmt.Fprintln(os.Stderr, "We would appreciate a report: https://github.com/pulumi/pulumi/issues/")
-			fmt.Fprintln(os.Stderr, "Please provide all of the below text in your report.")
-			fmt.Fprintln(os.Stderr, "================================================================================")
-			fmt.Fprintf(os.Stderr, "Pulumi Version:   %s\n", version.Version)
+			fmt.Fprintln(stderr, "================================================================================")
+			fmt.Fprintln(stderr, "The Pulumi CLI encountered a code generation error. This is a bug!")
+			fmt.Fprintln(stderr, "We would appreciate a report: https://github.com/pulumi/pulumi/issues/")
+			fmt.Fprintln(stderr, "Please provide all of the below text in your report.")
+			fmt.Fprintln(stderr, "================================================================================")
+			fmt.Fprintf(stderr, "Pulumi Version:   %s\n", version.Version)
 		}
 		cmdDiag.PrintDiagnostics(pCtx.Diag, diagnostics)
 		if err != nil {
@@ -507,17 +507,15 @@ func runConvert(
 func getPackagesToGenerateSdks(
 	sourceDirectory string,
 ) (map[string]*schema.PackageDescriptor, hcl.Diagnostics, error) {
-	var diagnostics hcl.Diagnostics
-
 	parser := hclsyntax.NewParser()
 	parseDiagnostics, err := pcl.ParseDirectory(parser, sourceDirectory)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not parse PCL files: %w", err)
 	}
-	diagnostics = append(diagnostics, parseDiagnostics...)
 
 	allPackageDescriptors, packageDiagnostics := pcl.ReadAllPackageDescriptors(parser.Files)
-	diagnostics = append(diagnostics, packageDiagnostics...)
+
+	diagnostics := slices.Concat(parseDiagnostics, packageDiagnostics)
 
 	if len(diagnostics) != 0 {
 		var errorDiags hcl.Diagnostics
@@ -537,6 +535,7 @@ func getPackagesToGenerateSdks(
 
 func generateAndLinkSdksForPackages(
 	pctx *plugin.Context,
+	stdout io.Writer,
 	language string,
 	targetDirectory string,
 	pkgs map[string]*schema.PackageDescriptor,
@@ -608,11 +607,11 @@ func generateAndLinkSdksForPackages(
 
 		packagesToLink = append(packagesToLink, packages.PackageToLink{Pkg: pkgSchema, Out: sdkOut})
 
-		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
+		fmt.Fprintf(stdout, "Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
 	}
 
 	if err := packages.LinkPackages(&packages.LinkPackagesContext{
-		Writer:        os.Stdout,
+		Writer:        stdout,
 		Project:       proj,
 		Language:      language,
 		Root:          targetDirectory,

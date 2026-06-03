@@ -2726,10 +2726,16 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 	case *schema.OptionalType:
 		// Rewrite Optional(Input(T)) to Input(Optional(T)) so that it accepts Output(Optional(T))
 		if lifted := codegen.PushOptionalIntoInput(t); lifted != t {
-			// Clear forDict so the inner Optional renders as Optional, not NotRequired.
-			innerOpts := opts
-			innerOpts.forDict = false
-			result := mod.typeString(lifted, innerOpts)
+			innerElem := lifted.(*schema.InputType).ElementType.(*schema.OptionalType).ElementType
+			elemStr := mod.typeString(innerElem, opts)
+			if elemStr == "Any" {
+				// Drop the Input wrapper around Optional[Any]: Any already accepts Output[...] values
+				if opts.forDict {
+					return "NotRequired[Any]"
+				}
+				return "Optional[Any]"
+			}
+			result := fmt.Sprintf("pulumi.Input[Optional[%s]]", elemStr)
 			if opts.forDict {
 				return fmt.Sprintf("NotRequired[%s]", result)
 			}
@@ -3208,9 +3214,9 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 		}
 
 		var envVars strings.Builder
-		envVars.WriteString(fmt.Sprintf("'%s'", dv.Environment[0]))
+		fmt.Fprintf(&envVars, "'%s'", dv.Environment[0])
 		for _, e := range dv.Environment[1:] {
-			envVars.WriteString(fmt.Sprintf(", '%s'", e))
+			fmt.Fprintf(&envVars, ", '%s'", e)
 		}
 		if defaultValue == "" {
 			defaultValue = fmt.Sprintf("%s(%s)", envFunc, envVars.String())

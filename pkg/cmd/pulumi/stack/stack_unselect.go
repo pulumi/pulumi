@@ -47,9 +47,9 @@ func newStackUnselectCmd() *cobra.Command {
 				err = currentWorkspace.Save()
 				if err == nil {
 					// saving changes was successful
-					fmt.Println("Stack was unselected")
+					fmt.Fprintln(cmd.OutOrStdout(), "Stack was unselected")
 				} else {
-					fmt.Printf("Could not unselect the current stack from the workspace: %s", err)
+					fmt.Fprintf(cmd.OutOrStdout(), "Could not unselect the current stack from the workspace: %s", err)
 				}
 
 				return err

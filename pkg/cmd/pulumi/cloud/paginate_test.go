@@ -264,7 +264,7 @@ func TestMarshalAccumulated_BareArray(t *testing.T) {
 func TestMarshalAccumulated_PreservesEnvelope(t *testing.T) {
 	t.Parallel()
 	// When the server returned an object envelope, we rewrap so downstream
-	// `| jq` filters like '.accounts[]' keep working across --paginate.
+	// `| jq` filters like '.accounts[]' keep working across --all.
 	items := []json.RawMessage{json.RawMessage(`{"id":"a"}`), json.RawMessage(`{"id":"b"}`)}
 	out, err := marshalAccumulated(items, "accounts")
 	require.NoError(t, err)
@@ -339,6 +339,70 @@ func TestRunPaginate_TruncationEmitsPartialPaginationError(t *testing.T) {
 	assert.True(t, apiErr.Silent, "truncation error must be Silent so stderr is not double-written")
 	assert.Contains(t, apiErr.Envelope.Error.Message, "truncated at 3 pages")
 	assert.Equal(t, 3, pagesServed)
+}
+
+func TestRunPaginate_FirstPageShapeErrorEmitsEnvelope(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"organizations":[{"name":"o1"}],"identities":[{"name":"i1"}]}`)
+	}))
+	t.Cleanup(srv.Close)
+
+	apiClient := client.NewClient(srv.URL, "", false, nil)
+	req := paginateRequest{Method: "GET", Path: "/api/user", BaseQuery: url.Values{}, Accept: "application/json"}
+	var buf bytes.Buffer
+	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
+	require.Error(t, err)
+	var apiErr *APIError
+	require.True(t, errors.As(err, &apiErr))
+	assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
+	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
+	assert.False(t, apiErr.Silent, "first-page failure must not be Silent; user needs the diagnostic on stderr")
+	assert.Empty(t, strings.TrimSpace(buf.String()),
+		"first-page failure must not write a misleading empty envelope to stdout")
+}
+
+func TestRunPaginate_FirstPageHTTPErrorEmitsEnvelope(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"message":"boom"}`, http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	apiClient := client.NewClient(srv.URL, "", false, nil)
+	req := paginateRequest{Method: "GET", Path: "/list", BaseQuery: url.Values{}, Accept: "application/json"}
+	var buf bytes.Buffer
+	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
+	require.Error(t, err)
+	var apiErr *APIError
+	require.True(t, errors.As(err, &apiErr))
+	assert.False(t, apiErr.Silent, "first-page HTTP failure must not be Silent")
+	assert.Empty(t, strings.TrimSpace(buf.String()), "first-page HTTP failure must not write to stdout")
+}
+
+func TestRunPaginate_LaterPageErrorStaysSilent(t *testing.T) {
+	t.Parallel()
+	var page int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page++
+		if page == 1 {
+			fmt.Fprintln(w, `{"items":[{"id":"a"}],"continuationToken":"next"}`)
+			return
+		}
+		http.Error(w, `{"message":"boom"}`, http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	apiClient := client.NewClient(srv.URL, "", false, nil)
+	req := paginateRequest{Method: "GET", Path: "/list", BaseQuery: url.Values{}, Accept: "application/json"}
+	var buf bytes.Buffer
+	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
+	require.Error(t, err)
+	var apiErr *APIError
+	require.True(t, errors.As(err, &apiErr))
+	assert.True(t, apiErr.Silent, "partial failure with accumulated pages must stay Silent")
+	assert.Contains(t, buf.String(), `"items"`, "partial failure must flush accumulated pages to stdout")
+	assert.Contains(t, buf.String(), `"id":"a"`)
 }
 
 // TestHTTPErrorEnvelopeBytes_ExitCodes pins the exit-code contract:
