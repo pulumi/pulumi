@@ -280,7 +280,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		require.False(t, diags.HasErrors(), "diags: %v", diags)
 
 		result, err := pkg.InterpretPulumiRefs(pkg.Description, func(ref schema.DocRef) (string, bool) {
-			switch ref.Kind {
+			switch ref.Kind { //nolint:exhaustive // test doesn't care about other cases
 			case schema.DocRefKindResource:
 				return ref.Type.(*schema.ResourceType).Token, true
 			case schema.DocRefKindType:
