@@ -134,7 +134,8 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			pluginArgs := args[1:]
 
-			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil, schema.NewLoaderServerFromHost)
+			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil,
+				schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}

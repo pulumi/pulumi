@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -110,6 +111,38 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 	return pluginSpec.Version, nil
 }
 
+// EnsureLanguageInstalled downloads and installs the named language runtime if it is not
+// bundled with the CLI and not already cached. This is the language-plugin analogue of
+// EnsurePluginsAreInstalled: it lets the CLI transparently fetch unbundled language runtimes
+// on first use, just like a resource provider.
+//
+// It satisfies plugin.LanguageInstaller and is wired into the plugin host at construction so
+// that every load of a language runtime through a default host triggers the install, rather
+// than each caller of Host.LanguageRuntime having to ensure the plugin is present.
+func EnsureLanguageInstalled(ctx context.Context, runtime string, newLoader plugin.NewLoaderFunc) error {
+	if runtime == "" {
+		return nil
+	}
+	if workspace.IsPluginBundled(apitype.LanguagePlugin, runtime) {
+		return nil
+	}
+	spec := workspace.PluginDescriptor{
+		Kind: apitype.LanguagePlugin,
+		Name: runtime,
+	}
+	if !util.SetKnownPluginDownloadURL(&spec) {
+		return nil
+	}
+	if pluginstorage.Instance.HasPlugin(ctx, spec) {
+		return nil
+	}
+	log := func(sev diag.Severity, msg string) {
+		logging.V(7).Infof("EnsureLanguageInstalled(%s): %s", runtime, msg)
+	}
+	_, err := InstallPlugin(ctx, spec, log, newLoader)
+	return err
+}
+
 // InstallPluginContent installs a plugin's tarball into the cache, then installs it's
 // dependencies.
 //
@@ -163,6 +196,7 @@ func installDependenciesForPluginSpec(
 		nil, // config
 		nil, // debugging
 		newLoader,
+		EnsureLanguageInstalled,
 	)
 	if err != nil {
 		return err

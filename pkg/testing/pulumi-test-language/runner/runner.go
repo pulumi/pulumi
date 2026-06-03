@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -534,7 +535,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 	// Start up a plugin context
 	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, nil, "", "", nil, false, nil, nil, nil, nil,
-		nil, schema.NewLoaderServerFromHost)
+		nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -720,7 +721,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	// Start up a plugin context
 	pctx, err := plugin.NewContextWithRoot(
 		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil,
-		nil, schema.NewLoaderServerFromHost)
+		nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}

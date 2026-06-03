@@ -163,7 +163,8 @@ func (cmd *packagePublishCmd) Run(
 		return err
 	}
 	sink := cmdutil.Diag()
-	pctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, wd, nil, false, nil, schema.NewLoaderServerFromHost)
+	pctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, wd, nil, false, nil,
+		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return err
 	}

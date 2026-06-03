@@ -156,7 +156,7 @@ func NewDoCmd(
 
 		pctx, err := plugin.NewContext(
 			ctx, sink, sink, host, nil, wd, nil, false,
-			nil, schema.NewLoaderServerFromHost)
+			nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}

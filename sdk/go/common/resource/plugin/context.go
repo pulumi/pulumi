@@ -61,7 +61,7 @@ type Context struct {
 // host's.
 func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]any, disableProviderPreview bool,
-	parentSpan opentracing.Span, newLoader NewLoaderFunc,
+	parentSpan opentracing.Span, newLoader NewLoaderFunc, installLang LanguageInstaller,
 ) (*Context, error) {
 	// TODO: really this ought to just take plugins *workspace.Plugins and packages map[string]workspace.PackageSpec
 	// as args, but yaml depends on this function so *sigh*. For now just see if there's a project we should be using,
@@ -78,7 +78,7 @@ func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSo
 	}
 
 	return NewContextWithRoot(ctx, d, statusD, host, pwd, pwd, runtimeOptions,
-		disableProviderPreview, parentSpan, plugins, packages, nil, nil, newLoader)
+		disableProviderPreview, parentSpan, plugins, packages, nil, nil, newLoader, installLang)
 }
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
@@ -86,6 +86,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
 	config map[config.Key]string, debugging DebugContext, newLoader NewLoaderFunc,
+	installLang LanguageInstaller,
 ) (*Context, error) {
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
@@ -119,7 +120,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	if host == nil {
 		h, err := NewDefaultHost(
 			pctx, runtimeOptions, disableProviderPreview, plugins, packages, config, debugging, projectName,
-			newLoader,
+			newLoader, installLang,
 		)
 		if err != nil {
 			return nil, err

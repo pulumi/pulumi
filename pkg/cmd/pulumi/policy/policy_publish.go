@@ -126,7 +126,8 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	}
 
 	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, nil, schema.NewLoaderServerFromHost)
+		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, nil, schema.NewLoaderServerFromHost,
+		pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return err
 	}

@@ -127,7 +127,8 @@ from the parameters, as in:
 
 			sink := cmdutil.Diag()
 			pctx, err := plugin.NewContext(cmd.Context(),
-				sink, sink, nil, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromHost)
+				sink, sink, nil, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromHost,
+				pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return err
 			}
