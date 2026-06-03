@@ -69,6 +69,8 @@ require (
 )
 
 require (
+	cloud.google.com/go/logging v1.9.0 // indirect
+	cloud.google.com/go/longrunning v0.5.5 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
@@ -147,6 +149,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
+	google.golang.org/genproto v0.0.0-20240311173647-c811ad7063a7
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 	gopkg.in/warnings.v0 v0.1.2 // indirect
