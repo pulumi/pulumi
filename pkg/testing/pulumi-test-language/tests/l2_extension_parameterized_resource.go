@@ -40,6 +40,10 @@ func init() {
 						resource.NewProperty("Hello"),
 						stack.Outputs["parameterValue"],
 						"parameter value should be the extension's parameter")
+					require.Equal(l,
+						resource.NewProperty("HelloComponent"),
+						stack.Outputs["parameterValueFromComponent"],
+						"component parameter value should be the extension's parameter + Component")
 
 					// The Greeting custom resource lives under the BASE provider's
 					// namespace, not the extension's. Its state must carry an

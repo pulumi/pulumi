@@ -448,6 +448,12 @@ type resmon struct {
 	// A map of UUIDs to the provider extension they respond to
 	extensionRefMap map[string]apitype.Extension
 
+	// parameterizedExtensions tracks (providerRef, packageRef) pairs already
+	// passed to Parameterize so remote-component Construct calls don't repeat
+	// the RPC. Keyed by "providerRef|packageRef".
+	parameterizedExtensionsLock sync.Mutex
+	parameterizedExtensions     map[string]bool
+
 	// the organization name for the deployment.
 	organization string
 }
@@ -505,9 +511,10 @@ func newResourceMonitor(
 		callbacks:           map[string]*CallbacksClient{},
 		resourceHooks:       src.resourceHooks,
 		resourceTransforms:  map[resource.URN][]TransformFunction{},
-		packageRefMap:       map[string]providers.ProviderRequest{},
-		extensionRefMap:     map[string]apitype.Extension{},
-		grpcDialOptions:     src.plugctx.DialOptions,
+		packageRefMap:           map[string]providers.ProviderRequest{},
+		extensionRefMap:         map[string]apitype.Extension{},
+		parameterizedExtensions: map[string]bool{},
+		grpcDialOptions:         src.plugctx.DialOptions,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -792,6 +799,53 @@ func (rm *resmon) lookupPackageRef(ref string) (providers.ProviderRequest, bool)
 	defer rm.packageRefLock.RUnlock()
 	req, has := rm.packageRefMap[ref]
 	return req, has
+}
+
+// ensureExtensionParameterizedForConstruct calls Parameterize on provider for
+// the extension behind packageRef if it has not been called for this
+// (providerRef, packageRef) pair yet. Remote-component Construct bypasses the
+// step generator, so this is the only place that lazy parameterization fires.
+func (rm *resmon) ensureExtensionParameterizedForConstruct(
+	ctx context.Context, provider plugin.Provider,
+	providerRef sdkproviders.Reference, packageRef string,
+) error {
+	if packageRef == "" {
+		return nil
+	}
+	rm.extensionRefLock.RLock()
+	ext, isExtension := rm.extensionRefMap[packageRef]
+	rm.extensionRefLock.RUnlock()
+	if !isExtension {
+		return nil
+	}
+
+	key := providerRef.String() + "|" + packageRef
+	rm.parameterizedExtensionsLock.Lock()
+	if rm.parameterizedExtensions[key] {
+		rm.parameterizedExtensionsLock.Unlock()
+		return nil
+	}
+	rm.parameterizedExtensions[key] = true
+	rm.parameterizedExtensionsLock.Unlock()
+
+	version, err := semver.Parse(ext.Version)
+	if err != nil {
+		return fmt.Errorf("parse extension version %q: %w", ext.Version, err)
+	}
+	if _, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
+		Parameters: &plugin.ParameterizeValue{
+			Name:    ext.Name,
+			Version: version,
+			Value:   ext.Value,
+		},
+	}); err != nil {
+		// Roll back the dedup entry so a retry can succeed.
+		rm.parameterizedExtensionsLock.Lock()
+		delete(rm.parameterizedExtensions, key)
+		rm.parameterizedExtensionsLock.Unlock()
+		return fmt.Errorf("parameterize provider for extension component: %w", err)
+	}
+	return nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
@@ -2552,6 +2606,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		if !ok {
 			return nil, fmt.Errorf("unknown provider '%v'", providerRef)
+		}
+
+		// Remote components don't go through the step generator, so the
+		// custom-resource path's lazy parameterize doesn't fire. Ensure the
+		// provider has been parameterized for any extension this packageRef
+		// represents before invoking Construct.
+		if err := rm.ensureExtensionParameterizedForConstruct(
+			ctx, provider, providerRef, req.GetPackageRef()); err != nil {
+			return nil, err
 		}
 
 		// Invoke the provider's Construct RPC method.

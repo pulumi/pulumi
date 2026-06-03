@@ -190,16 +190,39 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) Run(
 		return res.Object.Fields["parameterValue"], nil
 	})
 
+	// Component (remote): also under the base namespace.
+	greetingComp := promise.Run(func() (*structpb.Value, error) {
+		ref, err := myextRef.Result(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("could not get package reference: %w", err)
+		}
+		res, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+			Type:       "extbase:index:GreetingComponent",
+			Remote:     true,
+			Name:       "greetingComp",
+			PackageRef: ref,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("could not register greeting component: %w", err)
+		}
+		return res.Object.Fields["parameterValue"], nil
+	})
+
 	g, err := greeting.Result(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("could not get greeting result: %w", err)
+	}
+	gc, err := greetingComp.Result(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not get greeting component result: %w", err)
 	}
 
 	if _, err := monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn: stack.Urn,
 		Outputs: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
-				"parameterValue": g,
+				"parameterValue":              g,
+				"parameterValueFromComponent": gc,
 			},
 		},
 	}); err != nil {

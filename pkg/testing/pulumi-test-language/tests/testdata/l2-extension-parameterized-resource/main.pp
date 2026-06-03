@@ -13,6 +13,12 @@ package {
 
 resource greeting "extbase:index:Greeting" { }
 
+resource greetingComp "extbase:index:GreetingComponent" { }
+
 output "parameterValue" {
     value = greeting.parameterValue
+}
+
+output "parameterValueFromComponent" {
+    value = greetingComp.parameterValue
 }
