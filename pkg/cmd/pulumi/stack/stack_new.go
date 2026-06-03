@@ -38,11 +38,11 @@ const (
 		"(possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)"
 )
 
-func newStackInitCmd() *cobra.Command {
-	var sicmd stackInitCmd
+func newStackNewCmd() *cobra.Command {
+	var sicmd stackNewCmd
 	cmd := &cobra.Command{
-		Use:     "init",
-		Aliases: []string{"new"},
+		Use:     "new",
+		Aliases: []string{"init"},
 		Short:   "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
@@ -59,20 +59,20 @@ func newStackInitCmd() *cobra.Command {
 			"\n" +
 			"To use the `passphrase` secrets provider with the pulumi.com backend, use:\n" +
 			"\n" +
-			"* `pulumi stack init --secrets-provider=passphrase`\n" +
+			"* `pulumi stack new --secrets-provider=passphrase`\n" +
 			"\n" +
 			"To use a cloud secrets provider with any backend, use one of the following:\n" +
 			"\n" +
-			"* `pulumi stack init --secrets-provider=\"awskms://alias/ExampleAlias?region=us-east-1\"`\n" +
-			"* `pulumi stack init --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
-			"* `pulumi stack init --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
-			"* `pulumi stack init --secrets-provider=\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
-			"* `pulumi stack init --secrets-provider=\"hashivault://mykey\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"awskms://alias/ExampleAlias?region=us-east-1\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"hashivault://mykey\"`\n" +
 			"\n" +
 			"A stack can be created based on the configuration of an existing stack by passing the\n" +
 			"`--copy-config-from` flag:\n" +
 			"\n" +
-			"* `pulumi stack init --copy-config-from dev`",
+			"* `pulumi stack new --copy-config-from dev`",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sicmd.stdout = cmd.OutOrStdout()
@@ -102,17 +102,21 @@ func newStackInitCmd() *cobra.Command {
 		&sicmd.remoteConfig, "remote-config", false, "Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-config")
+	cmd.PersistentFlags().BoolVarP(
+		&sicmd.yes, "yes", "y", false,
+		"Skip interactive prompts; fail if required information is missing")
 	return cmd
 }
 
-// stackInitCmd implements the `pulumi stack init` command.
-type stackInitCmd struct {
+// stackNewCmd implements the `pulumi stack new` command.
+type stackNewCmd struct {
 	secretsProvider string
 	stackName       string
 	stackToCopy     string
 	noSelect        bool
 	teams           []string
 	remoteConfig    bool
+	yes             bool
 	stdout          io.Writer
 
 	// currentBackend is a reference to the top-level currentBackend function.
@@ -122,7 +126,12 @@ type stackInitCmd struct {
 	) (backend.Backend, error)
 }
 
-func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
+func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
+	if cmd.yes {
+		defer func(prev bool) { cmdutil.DisableInteractive = prev }(cmdutil.DisableInteractive)
+		cmdutil.DisableInteractive = true
+	}
+
 	if cmd.secretsProvider == "" {
 		cmd.secretsProvider = "default"
 	}

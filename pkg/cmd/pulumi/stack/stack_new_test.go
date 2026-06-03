@@ -30,7 +30,7 @@ import (
 
 // When a backend doesn't support the --teams flag,
 // stack creation should fail.
-func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
+func TestStackNew_teamsUnsupportedByBackend(t *testing.T) {
 	t.Parallel()
 
 	mockBackend := &backend.MockBackend{
@@ -58,7 +58,7 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 			return nil, nil
 		},
 	}
-	cmd := &stackInitCmd{
+	cmd := &stackNewCmd{
 		teams:     []string{"red", "blue"},
 		stackName: "dev",
 		currentBackend: func(
