@@ -38,6 +38,7 @@ type Snapshot struct {
 	Resources         []*resource.State    // fetches all resources and their associated states.
 	PendingOperations []resource.Operation // all currently pending resource operations.
 	Metadata          SnapshotMetadata     // metadata associated with the snapshot.
+	Snippets          []resource.Snippet   // any PCL snippets associated with the snapshot.
 }
 
 // SnapshotMetadata contains metadata about a snapshot.
@@ -61,7 +62,7 @@ type SnapshotIntegrityErrorMetadata struct {
 // This property is not checked; for verification, please refer to the VerifyIntegrity function below.
 func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 	resources []*resource.State, ops []resource.Operation,
-	metadata SnapshotMetadata,
+	metadata SnapshotMetadata, snippets []resource.Snippet,
 ) *Snapshot {
 	return &Snapshot{
 		Manifest:          manifest,
@@ -69,6 +70,7 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 		Resources:         resources,
 		PendingOperations: ops,
 		Metadata:          metadata,
+		Snippets:          snippets,
 	}
 }
 
@@ -574,7 +576,46 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 			build()
 	}
 
-	return snap.withUpdatedResources(fixResource), nil
+	newSnap := snap.withUpdatedResources(fixResource)
+
+	// Rewrite References on every snippet. Each value is a URN that may have been an alias for a resource that
+	// is now stored under its canonical URN; updating in place keeps future updates resolving cleanly through
+	// the broker.
+	if len(newSnap.Snippets) > 0 {
+		snippets := make([]resource.Snippet, len(newSnap.Snippets))
+		edited := false
+		for i, s := range newSnap.Snippets {
+			snippets[i] = s
+			if len(s.References) == 0 {
+				continue
+			}
+			var newRefs map[string]string
+			for k, v := range s.References {
+				fixed := string(fixUrn(resource.URN(v)))
+				if fixed == v {
+					continue
+				}
+				if newRefs == nil {
+					newRefs = make(map[string]string, len(s.References))
+					for kk, vv := range s.References {
+						newRefs[kk] = vv
+					}
+				}
+				newRefs[k] = fixed
+			}
+			if newRefs != nil {
+				snippets[i].References = newRefs
+				edited = true
+			}
+		}
+		if edited {
+			out := *newSnap // shallow copy
+			out.Snippets = snippets
+			newSnap = &out
+		}
+	}
+
+	return newSnap, nil
 }
 
 // VerifyIntegrity checks a snapshot to ensure it is well-formed.  Because of the cost of this operation,

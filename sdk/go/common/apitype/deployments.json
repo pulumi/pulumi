@@ -79,6 +79,17 @@
                             "items": {
                                 "$ref": "#/$defs/operationV2"
                             }
+                        },
+                        "metadata": {
+                            "description": "Metadata associated with the snapshot.",
+                            "type": "object"
+                        },
+                        "snippets": {
+                            "description": "PCL snippets evaluated by the engine on every update.",
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/snippetV1"
+                            }
                         }
                     },
                     "required": ["manifest"],
@@ -174,6 +185,85 @@
                 }
             },
             "required": ["resource", "type"],
+            "additionalProperties": false
+        },
+        "snippetV1": {
+            "title": "PCL Snippet V1",
+            "description": "A PCL snippet stored alongside a snapshot. The engine evaluates these on every update.",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "The logical name of the resource this snippet registers.",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The type token of the resource this snippet registers.",
+                    "type": "string"
+                },
+                "code": {
+                    "description": "The PCL source for the body of the resource.",
+                    "type": "string"
+                },
+                "descriptor": {
+                    "description": "The package descriptor for the resource type.",
+                    "$ref": "#/$defs/packageDescriptorV1"
+                },
+                "references": {
+                    "description": "External resources the snippet code may refer to by HCL identifier. The map key is the identifier used inside the code; the value is the URN of the target resource.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": ["name", "type", "code", "descriptor"],
+            "additionalProperties": false
+        },
+        "packageDescriptorV1": {
+            "title": "Package Descriptor V1",
+            "description": "Identifies the package and optional parameterization for a snippet's resource type.",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "The simple name of the plugin.",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "The optional semver version of the plugin.",
+                    "type": "string"
+                },
+                "downloadURL": {
+                    "description": "The optional URL to use when downloading the provider plugin binary.",
+                    "type": "string"
+                },
+                "parameterization": {
+                    "description": "The optional parameterization of the package.",
+                    "$ref": "#/$defs/parameterizationDescriptorV1"
+                }
+            },
+            "required": ["name"],
+            "additionalProperties": false
+        },
+        "parameterizationDescriptorV1": {
+            "title": "Parameterization Descriptor V1",
+            "description": "Parameterization data for a packaged plugin.",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "The name of the parameterized package.",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "The semver version of the parameterized package.",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "The base64-encoded parameter value.",
+                    "type": "string",
+                    "contentEncoding": "base64"
+                }
+            },
+            "required": ["name", "version", "value"],
             "additionalProperties": false
         }
     }

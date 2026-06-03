@@ -251,7 +251,7 @@ func makeUntypedDeploymentTimestamp(
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil)
 
 	udep, err := stack.SerializeUntypedDeployment(t.Context(), snap, nil /*opts*/)
 	if err != nil {
@@ -665,7 +665,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		rParent,
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil, deploy.SnapshotMetadata{})
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil, deploy.SnapshotMetadata{}, nil)
 	ctx = t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
@@ -786,7 +786,7 @@ func TestHtmlEscaping(t *testing.T) {
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil)
 	ctx := t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
