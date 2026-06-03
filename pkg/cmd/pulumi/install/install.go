@@ -25,8 +25,12 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -102,7 +106,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					// plugin. Use the global default registry.
 					reg := cmdCmd.NewDefaultRegistry(
 						ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
-					if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
+					if _, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
 						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
@@ -141,9 +145,10 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
 			registry := cmdCmd.NewDefaultRegistry(
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, pctx.Diag, env.Global())
-			if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
+			continuation, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
 				registry, parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
-			); err != nil {
+			)
+			if err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
 			}
 
@@ -170,19 +175,36 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			if !noPlugins {
 				// Compute the set of plugins the current project needs.
-				packages, err := lang.GetRequiredPackages(ctx, programInfo)
+				packages, specs, err := lang.GetRequiredPackages(ctx, programInfo)
 				if err != nil {
 					return err
 				}
 
-				pluginSet := engine.NewPluginSet()
-				for _, pkg := range packages {
-					pluginSet.Add(pkg.PluginDescriptor)
+				projPath, err := workspace.DetectProjectPathFrom(root)
+				if err != nil {
+					return fmt.Errorf("locating Pulumi.yaml: %w", err)
 				}
 
-				if err = engine.EnsurePluginsAreInstalled(ctx, nil, pctx.Diag, pluginSet,
-					pctx.Host.GetProjectPlugins(), reinstall, true); err != nil {
-					return err
+				ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance,
+					pctx.Host, cmd.OutOrStderr(), cmd.ErrOrStderr(), nil,
+					packageworkspace.Options{
+						UseLanguageVersionTools: useLanguageVersionTools,
+					})
+
+				// Pass the continuation from InstallPackagesFromProject so the packages it
+				// already installed and linked are not reinstalled or regenerated here.
+				_, err = packageinstallation.InstallPluginSet(ctx, packages, specs, proj, filepath.Dir(projPath),
+					packageinstallation.Options{
+						Concurrency: parallel,
+						PriorState:  continuation,
+						Options: packageresolution.Options{
+							ResolveVersionWithLocalWorkspace:           true,
+							ResolveWithRegistry:                        !env.DisableRegistryResolve.Value(),
+							AllowNonInvertableLocalWorkspaceResolution: true,
+						},
+					}, registry, ws)
+				if err != nil {
+					return fmt.Errorf("installing packages: %w", err)
 				}
 			}
 

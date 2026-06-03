@@ -1411,7 +1411,7 @@ func runLanguageTests(
 		// plugins inline, the runner checks GetRequiredPackages directly here. Tests opt out of the check with
 		// SkipEnsurePluginsValidation when the program intentionally diverges (e.g. version-pinning tests).
 		if !test.SkipEnsurePluginsValidation {
-			packages, err := languageClient.GetRequiredPackages(ctx, programInfo)
+			packages, _, err := languageClient.GetRequiredPackages(ctx, programInfo)
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
 			}

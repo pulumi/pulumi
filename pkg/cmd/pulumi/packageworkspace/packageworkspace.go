@@ -124,16 +124,16 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 // Get a list of packages required by the source based plugin at dirPath.
 func (w Workspace) GetRequiredPackages(
 	ctx context.Context, dirPath string, project *workspace.PluginProject,
-) ([]workspace.PackageDescriptor, error) {
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
 	lang, err := w.host.LanguageRuntime(project.Runtime.Name())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !filepath.IsAbs(dirPath) {
 		dirPath, err = filepath.Abs(dirPath)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	return lang.GetRequiredPackages(ctx, plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options()))

@@ -71,11 +71,11 @@ func (p *languageRuntime) Close() error {
 
 func (p *languageRuntime) GetRequiredPackages(
 	ctx context.Context, info plugin.ProgramInfo,
-) ([]workspace.PackageDescriptor, error) {
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
 	if p.closed {
-		return nil, ErrLanguageRuntimeIsClosed
+		return nil, nil, ErrLanguageRuntimeIsClosed
 	}
-	return p.requiredPackages, nil
+	return p.requiredPackages, nil, nil
 }
 
 func (p *languageRuntime) Run(

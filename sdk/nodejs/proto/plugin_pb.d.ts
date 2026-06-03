@@ -147,3 +147,39 @@ export namespace PackageDependency {
         parameterization?: PackageParameterization.AsObject,
     }
 }
+
+export class PackageSpec extends jspb.Message { 
+    getSource(): string;
+    setSource(value: string): PackageSpec;
+    getVersion(): string;
+    setVersion(value: string): PackageSpec;
+    clearParametersList(): void;
+    getParametersList(): Array<string>;
+    setParametersList(value: Array<string>): PackageSpec;
+    addParameters(value: string, index?: number): string;
+
+    getChecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearChecksumsMap(): void;
+    getServer(): string;
+    setServer(value: string): PackageSpec;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackageSpec.AsObject;
+    static toObject(includeInstance: boolean, msg: PackageSpec): PackageSpec.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackageSpec, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackageSpec;
+    static deserializeBinaryFromReader(message: PackageSpec, reader: jspb.BinaryReader): PackageSpec;
+}
+
+export namespace PackageSpec {
+    export type AsObject = {
+        source: string,
+        version: string,
+        parametersList: Array<string>,
+
+        checksumsMap: Array<[string, Uint8Array | string]>,
+        server: string,
+    }
+}

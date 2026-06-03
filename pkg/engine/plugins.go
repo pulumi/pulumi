@@ -315,7 +315,7 @@ func GetRequiredPlugins(
 	// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
 	//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
 	//     later than we do (right now, we do it up front, but at that point we don't know the version).
-	deps, err := lang.GetRequiredPackages(ctx, info)
+	deps, _, err := lang.GetRequiredPackages(ctx, info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover plugin requirements: %w", err)
 	}
@@ -336,9 +336,14 @@ func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plu
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
 
-	pkgs, err := lang.GetRequiredPackages(plugctx.Request(), info)
+	pkgs, specs, err := lang.GetRequiredPackages(plugctx.Request(), info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover package requirements: %w", err)
+	}
+	if len(specs) > 0 {
+		return nil, fmt.Errorf("language runtime %q returned %d unresolved package spec(s), "+
+			"which are not supported during this operation; run `pulumi install` to resolve them",
+			runtime, len(specs))
 	}
 
 	set := NewPackageSet()

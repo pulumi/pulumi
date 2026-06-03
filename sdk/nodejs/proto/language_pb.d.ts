@@ -255,6 +255,10 @@ export class GetRequiredPackagesResponse extends jspb.Message {
     getPackagesList(): Array<pulumi_plugin_pb.PackageDependency>;
     setPackagesList(value: Array<pulumi_plugin_pb.PackageDependency>): GetRequiredPackagesResponse;
     addPackages(value?: pulumi_plugin_pb.PackageDependency, index?: number): pulumi_plugin_pb.PackageDependency;
+    clearSpecsList(): void;
+    getSpecsList(): Array<pulumi_plugin_pb.PackageSpec>;
+    setSpecsList(value: Array<pulumi_plugin_pb.PackageSpec>): GetRequiredPackagesResponse;
+    addSpecs(value?: pulumi_plugin_pb.PackageSpec, index?: number): pulumi_plugin_pb.PackageSpec;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetRequiredPackagesResponse.AsObject;
@@ -269,6 +273,7 @@ export class GetRequiredPackagesResponse extends jspb.Message {
 export namespace GetRequiredPackagesResponse {
     export type AsObject = {
         packagesList: Array<pulumi_plugin_pb.PackageDependency.AsObject>,
+        specsList: Array<pulumi_plugin_pb.PackageSpec.AsObject>,
     }
 }
 

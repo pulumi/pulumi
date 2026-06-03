@@ -365,16 +365,25 @@ class GetRequiredPackagesResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PACKAGES_FIELD_NUMBER: builtins.int
+    SPECS_FIELD_NUMBER: builtins.int
     @property
     def packages(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.plugin_pb2.PackageDependency]:
         """The packages required by the program specified by the request."""
+
+    @property
+    def specs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.plugin_pb2.PackageSpec]:
+        """The package specs required by the program specified by the request.
+
+        Only specs not included in packages should be included.
+        """
 
     def __init__(
         self,
         *,
         packages: collections.abc.Iterable[pulumi.plugin_pb2.PackageDependency] | None = ...,
+        specs: collections.abc.Iterable[pulumi.plugin_pb2.PackageSpec] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["packages", b"packages"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["packages", b"packages", "specs", b"specs"]) -> None: ...
 
 global___GetRequiredPackagesResponse = GetRequiredPackagesResponse
 

@@ -64,3 +64,23 @@ message PackageDependency {
     // The optional parameterization for this package.
     PackageParameterization parameterization = 6;
 }
+
+message PackageSpec {
+    // The "name" of the plugin.
+    //
+    // Source may be one of:
+    // - A simple name, like "pkg"
+    // - A registry double or triple: "org/pkg", "source/org/pkg"
+    // - A git URL, "git://github.com/pulumi/pulumi-example/path"
+    // - An un-prefixed URL, like github.com/pulumi/pulumi-example/path
+    // - A local path, like /usr/bin/pkg
+    string source = 1;
+    // The version of the provider, may be Semver 2.0 or a git hash.
+    string version = 2;
+    // Any parameters needed to configure the package.
+    repeated string parameters = 3;
+    // if set will be used to validate the plugin downloaded matches. This is keyed by
+    // "$os-$arch", e.g. "linux-x64".
+    map<string, bytes> checksums = 4;
+    string server = 5; // the URL of a server that can be used to download this plugin, if needed.
+}

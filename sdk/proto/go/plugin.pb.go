@@ -356,6 +356,94 @@ func (x *PackageDependency) GetParameterization() *PackageParameterization {
 	return nil
 }
 
+type PackageSpec struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The "name" of the plugin.
+	//
+	// Source may be one of:
+	// - A simple name, like "pkg"
+	// - A registry double or triple: "org/pkg", "source/org/pkg"
+	// - A git URL, "git://github.com/pulumi/pulumi-example/path"
+	// - An un-prefixed URL, like github.com/pulumi/pulumi-example/path
+	// - A local path, like /usr/bin/pkg
+	Source string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// The version of the provider, may be Semver 2.0 or a git hash.
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	// Any parameters needed to configure the package.
+	Parameters []string `protobuf:"bytes,3,rep,name=parameters,proto3" json:"parameters,omitempty"`
+	// if set will be used to validate the plugin downloaded matches. This is keyed by
+	// "$os-$arch", e.g. "linux-x64".
+	Checksums     map[string][]byte `protobuf:"bytes,4,rep,name=checksums,proto3" json:"checksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Server        string            `protobuf:"bytes,5,opt,name=server,proto3" json:"server,omitempty"` // the URL of a server that can be used to download this plugin, if needed.
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PackageSpec) Reset() {
+	*x = PackageSpec{}
+	mi := &file_pulumi_plugin_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PackageSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PackageSpec) ProtoMessage() {}
+
+func (x *PackageSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_plugin_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PackageSpec.ProtoReflect.Descriptor instead.
+func (*PackageSpec) Descriptor() ([]byte, []int) {
+	return file_pulumi_plugin_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *PackageSpec) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *PackageSpec) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *PackageSpec) GetParameters() []string {
+	if x != nil {
+		return x.Parameters
+	}
+	return nil
+}
+
+func (x *PackageSpec) GetChecksums() map[string][]byte {
+	if x != nil {
+		return x.Checksums
+	}
+	return nil
+}
+
+func (x *PackageSpec) GetServer() string {
+	if x != nil {
+		return x.Server
+	}
+	return ""
+}
+
 var File_pulumi_plugin_proto protoreflect.FileDescriptor
 
 const file_pulumi_plugin_proto_rawDesc = "" +
@@ -388,6 +476,17 @@ const file_pulumi_plugin_proto_rawDesc = "" +
 	"\x10parameterization\x18\x06 \x01(\v2\".pulumirpc.PackageParameterizationR\x10parameterization\x1a<\n" +
 	"\x0eChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xfa\x01\n" +
+	"\vPackageSpec\x12\x16\n" +
+	"\x06source\x18\x01 \x01(\tR\x06source\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12\x1e\n" +
+	"\n" +
+	"parameters\x18\x03 \x03(\tR\n" +
+	"parameters\x12C\n" +
+	"\tchecksums\x18\x04 \x03(\v2%.pulumirpc.PackageSpec.ChecksumsEntryR\tchecksums\x12\x16\n" +
+	"\x06server\x18\x05 \x01(\tR\x06server\x1a<\n" +
+	"\x0eChecksumsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
@@ -402,25 +501,28 @@ func file_pulumi_plugin_proto_rawDescGZIP() []byte {
 	return file_pulumi_plugin_proto_rawDescData
 }
 
-var file_pulumi_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_pulumi_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_pulumi_plugin_proto_goTypes = []any{
 	(*PluginInfo)(nil),              // 0: pulumirpc.PluginInfo
 	(*PluginDependency)(nil),        // 1: pulumirpc.PluginDependency
 	(*PluginAttach)(nil),            // 2: pulumirpc.PluginAttach
 	(*PackageParameterization)(nil), // 3: pulumirpc.PackageParameterization
 	(*PackageDependency)(nil),       // 4: pulumirpc.PackageDependency
-	nil,                             // 5: pulumirpc.PluginDependency.ChecksumsEntry
-	nil,                             // 6: pulumirpc.PackageDependency.ChecksumsEntry
+	(*PackageSpec)(nil),             // 5: pulumirpc.PackageSpec
+	nil,                             // 6: pulumirpc.PluginDependency.ChecksumsEntry
+	nil,                             // 7: pulumirpc.PackageDependency.ChecksumsEntry
+	nil,                             // 8: pulumirpc.PackageSpec.ChecksumsEntry
 }
 var file_pulumi_plugin_proto_depIdxs = []int32{
-	5, // 0: pulumirpc.PluginDependency.checksums:type_name -> pulumirpc.PluginDependency.ChecksumsEntry
-	6, // 1: pulumirpc.PackageDependency.checksums:type_name -> pulumirpc.PackageDependency.ChecksumsEntry
+	6, // 0: pulumirpc.PluginDependency.checksums:type_name -> pulumirpc.PluginDependency.ChecksumsEntry
+	7, // 1: pulumirpc.PackageDependency.checksums:type_name -> pulumirpc.PackageDependency.ChecksumsEntry
 	3, // 2: pulumirpc.PackageDependency.parameterization:type_name -> pulumirpc.PackageParameterization
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	8, // 3: pulumirpc.PackageSpec.checksums:type_name -> pulumirpc.PackageSpec.ChecksumsEntry
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_plugin_proto_init() }
@@ -434,7 +536,7 @@ func file_pulumi_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_plugin_proto_rawDesc), len(file_pulumi_plugin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

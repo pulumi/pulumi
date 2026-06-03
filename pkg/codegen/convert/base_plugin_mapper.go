@@ -58,6 +58,23 @@ type basePluginMapperSpec struct {
 	version semver.Version
 }
 
+// parseDebugProviderNames returns the provider names listed in a
+// PULUMI_DEBUG_PROVIDERS env var (format: name:port[,name:port…]).
+func parseDebugProviderNames(env string) []string {
+	if env == "" {
+		return nil
+	}
+	var out []string
+	for entry := range strings.SplitSeq(env, ",") {
+		k, _, ok := strings.Cut(entry, ":")
+		if !ok {
+			continue
+		}
+		out = append(out, strings.TrimSpace(k))
+	}
+	return out
+}
+
 // Workspace encapsulates an environment containing an enumerable set of plugins.
 // NewBasePluginMapper creates a new plugin mapper backed by the supplied plugin context.
 func NewBasePluginMapper(
@@ -101,6 +118,7 @@ func NewBasePluginMapper(
 	// We now have a list of plugin specs (i.e. a name and version). Save that list because we don't want to iterate all
 	// the plugins now because the convert might not even ask for any mappings.
 	plugins := []basePluginMapperSpec{}
+	seen := map[string]bool{}
 	for _, plugin := range allPlugins {
 		if plugin.Kind != apitype.ResourcePlugin {
 			continue
@@ -113,6 +131,17 @@ func NewBasePluginMapper(
 			name:    plugin.Name,
 			version: version,
 		})
+		seen[plugin.Name] = true
+	}
+
+	// Also enumerate providers attached via PULUMI_DEBUG_PROVIDERS so the
+	// mapper considers them alongside installed plugins. The host's Provider
+	// loader respects the same env var, so providerFactory will dial them.
+	for _, name := range parseDebugProviderNames(os.Getenv("PULUMI_DEBUG_PROVIDERS")) {
+		if seen[name] {
+			continue
+		}
+		plugins = append(plugins, basePluginMapperSpec{name: name})
 	}
 
 	// Explicitly supplied mappings take precedence over any plugin returned mappings, but we want to error early if we

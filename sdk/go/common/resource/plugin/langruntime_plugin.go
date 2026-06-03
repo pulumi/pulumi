@@ -219,13 +219,15 @@ func NewLanguageRuntimeClient(runtime string, client pulumirpc.LanguageRuntimeCl
 }
 
 // GetRequiredPackages computes the complete set of anticipated plugins required by a program.
-func (h *langhost) GetRequiredPackages(ctx context.Context, info ProgramInfo) ([]workspace.PackageDescriptor, error) {
+func (h *langhost) GetRequiredPackages(
+	ctx context.Context, info ProgramInfo,
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
 	logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) executing",
 		h.runtime, info)
 
 	minfo, err := info.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	resp, err := h.client.GetRequiredPackages(ctx, &pulumirpc.GetRequiredPackagesRequest{
@@ -241,7 +243,7 @@ func (h *langhost) GetRequiredPackages(ctx context.Context, info ProgramInfo) ([
 		if rpcError.Code() == codes.Unimplemented {
 			plugins, err := h.getRequiredPlugins(ctx, info)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			packages := make([]workspace.PackageDescriptor, len(plugins))
 			for i, plugin := range plugins {
@@ -249,30 +251,31 @@ func (h *langhost) GetRequiredPackages(ctx context.Context, info ProgramInfo) ([
 					PluginDescriptor: plugin,
 				}
 			}
-			return packages, nil
+			return packages, nil, nil
 		}
 
-		return nil, rpcError
+		return nil, nil, rpcError
 	}
 
-	results := slice.Prealloc[workspace.PackageDescriptor](len(resp.Packages))
+	packageDescriptors := slice.Prealloc[workspace.PackageDescriptor](len(resp.Packages))
+	packageSpecs := slice.Prealloc[workspace.PackageSpec](len(resp.Specs))
 	for _, info := range resp.Packages {
 		var version *semver.Version
 		if v := info.GetVersion(); v != "" {
 			sv, err := semver.ParseTolerant(v)
 			if err != nil {
-				return nil, fmt.Errorf("illegal semver returned by language host: %s@%s: %w", info.GetName(), v, err)
+				return nil, nil, fmt.Errorf("illegal semver returned by language host: %s@%s: %w", info.GetName(), v, err)
 			}
 			version = &sv
 		}
 		if !apitype.IsPluginKind(info.Kind) {
-			return nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
+			return nil, nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
 		var parameterization *workspace.Parameterization
 		if info.Parameterization != nil {
 			sv, err := semver.ParseTolerant(info.Parameterization.Version)
 			if err != nil {
-				return nil, fmt.Errorf(
+				return nil, nil, fmt.Errorf(
 					"illegal semver returned by language host: %s@%s: %w",
 					info.GetName(), info.Parameterization.Version, err)
 			}
@@ -284,7 +287,7 @@ func (h *langhost) GetRequiredPackages(ctx context.Context, info ProgramInfo) ([
 			}
 		}
 
-		results = append(results, workspace.PackageDescriptor{
+		packageDescriptors = append(packageDescriptors, workspace.PackageDescriptor{
 			PluginDescriptor: workspace.PluginDescriptor{
 				Name:              info.Name,
 				Kind:              apitype.PluginKind(info.Kind),
@@ -296,9 +299,19 @@ func (h *langhost) GetRequiredPackages(ctx context.Context, info ProgramInfo) ([
 		})
 	}
 
+	for _, spec := range resp.Specs {
+		packageSpecs = append(packageSpecs, workspace.PackageSpec{
+			Source:            spec.GetSource(),
+			Version:           spec.GetVersion(),
+			Parameters:        spec.GetParameters(),
+			Checksums:         spec.GetChecksums(),
+			PluginDownloadURL: spec.GetServer(),
+		})
+	}
+
 	logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) success: #versions=%d",
-		h.runtime, info, len(results))
-	return results, nil
+		h.runtime, info, len(packageDescriptors))
+	return packageDescriptors, packageSpecs, nil
 }
 
 // getRequiredPlugins computes the complete set of anticipated plugins required by a program.

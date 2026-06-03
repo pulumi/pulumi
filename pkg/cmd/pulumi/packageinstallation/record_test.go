@@ -229,11 +229,11 @@ func (w *recordingWorkspace) LinkIntoProject(
 
 func (w *recordingWorkspace) GetRequiredPackages(
 	ctx context.Context, dirPath string, project *workspace.PluginProject,
-) ([]workspace.PackageDescriptor, error) {
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
 	w.start("GetRequiredPackages", ctx, dirPath, project)
-	packages, err := w.w.GetRequiredPackages(ctx, dirPath, project)
-	w.finish(packages, err)
-	return packages, err
+	packages, specs, err := w.w.GetRequiredPackages(ctx, dirPath, project)
+	w.finish(packages, specs, err)
+	return packages, specs, err
 }
 
 func (w *recordingWorkspace) RunPackage(

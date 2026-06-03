@@ -1,0 +1,5 @@
+HasPlugin{PluginDescriptor{Name:"aws", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://example.com/aws.tar.gz"}} -> {false}
+DownloadPlugin{ctx, PluginDescriptor{Name:"aws", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://example.com/aws.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-aws-v1.0.0", <func(bool)>, nil}
+LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-aws-v1.0.0"} -> {nil, "", wrapErrors{msg:"no project file found and no plugin file found", errs:[2]{errorString{s:"no project file found"}, errorString{s:"no plugin file found"}}}}
+IsExecutable{ctx, "$HOME/.pulumi/plugins/resource-aws-v1.0.0/pulumi-resource-aws"} -> {true, nil}
+DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"aws", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://example.com/aws.tar.gz"}, true} -> {}

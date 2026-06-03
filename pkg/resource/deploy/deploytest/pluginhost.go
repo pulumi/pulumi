@@ -577,7 +577,7 @@ func (host *pluginHost) ResolvePlugin(
 func (host *pluginHost) GetRequiredPackages(
 	info plugin.ProgramInfo,
 	kinds plugin.Flags,
-) ([]workspace.PackageDescriptor, error) {
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
 	return host.languageRuntime.GetRequiredPackages(context.TODO(), info)
 }
 
