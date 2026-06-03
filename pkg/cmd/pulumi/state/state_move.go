@@ -467,6 +467,15 @@ func (cmd *stateMoveCmd) Run(
 		}
 	}
 
+	// Carry extension blobs across the move so any moved resource's ExtensionRef
+	// still resolves on the destination. Drop blobs the source no longer references.
+	destExts, missing := deploy.MaterializeExtensions(destSnapshot.Resources, destSnapshot.Extensions, sourceSnapshot)
+	if len(missing) > 0 {
+		return fmt.Errorf("source snapshot is missing extension blob(s) %v referenced by moved resources", missing)
+	}
+	destSnapshot.Extensions = destExts
+	sourceSnapshot.Extensions, _ = deploy.MaterializeExtensions(sourceSnapshot.Resources, sourceSnapshot.Extensions, nil)
+
 	err = destSnapshot.VerifyIntegrity()
 	if err != nil {
 		return fmt.Errorf(`failed to verify integrity of destination snapshot: %w
