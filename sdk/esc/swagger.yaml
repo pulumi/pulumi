@@ -1,0 +1,1343 @@
+---
+openapi: "3.0.3"
+info:
+  title: ESC (Environments, Secrets, Config) API
+  description: "Pulumi ESC allows you to compose and manage hierarchical collections\
+    \ of configuration and secrets and consume them in various ways."
+  version: "0.1.0"
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: https://api.pulumi.com/api/esc
+    description: Pulumi Cloud Production Preview API
+components:
+  securitySchemes:
+    Authorization:
+      type: apiKey
+      name: Authorization
+      in: header
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: integer
+      required:
+        - message
+        - code
+    ProjectName:
+      type: string
+      minLength: 1
+      maxLength: 100
+      pattern: ^(?!(\.|\.\.|default))[a-zA-Z0-9-_.]+$
+    EnvName:
+      type: string
+      minLength: 1
+      maxLength: 100
+      pattern: ^(?!(\.|\.\.|open|yaml))[a-zA-Z0-9-_.]+$
+    Range:
+      type: object
+      properties:
+        environment:
+          type: string
+        begin:
+          $ref: "#/components/schemas/Pos"
+        end:
+          $ref: "#/components/schemas/Pos"
+      required:
+      - environment
+      - begin
+      - end
+    Reference:
+      type: object
+      required:
+        - $ref
+      properties:
+        $ref:
+          type: string
+          format: uri-reference
+    Accessor:
+      type: object
+      properties:
+        index:
+          type: integer
+        key:
+          type: string
+        range:
+          $ref: "#/components/schemas/Range"
+      required:
+      - key
+      - range
+    PropertyAccessor:
+      allOf:
+        - $ref: "#/components/schemas/Accessor"
+        - type: object
+          properties:
+            value:
+              $ref: "#/components/schemas/Range"
+    Access:
+      type: object
+      properties:
+        receiver:
+          $ref: "#/components/schemas/Range"
+        accessors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Accessor"
+    Interpolation:
+      type: object
+      properties:
+        text:
+          type: string
+        value:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyAccessor"
+    CreateEnvironment:
+      type: object
+      properties:
+        project:
+          $ref: "#/components/schemas/ProjectName"
+        name:
+          $ref: "#/components/schemas/EnvName"
+      required:
+        - project
+        - name
+    CloneEnvironment:
+      type: object
+      properties:
+        project:
+          $ref: "#/components/schemas/ProjectName"
+        name:
+          $ref: "#/components/schemas/EnvName"
+        preserveAccess:
+          type: boolean
+        preserveEnvironmentTags:
+          type: boolean
+        preserveHistory:
+          type: boolean
+        preserveRevisionTags:
+          type: boolean
+      required:
+        - project
+        - name
+    ExprBuiltin:
+      type: object
+      properties:
+        name:
+          type: string
+        nameRange:
+          $ref: "#/components/schemas/Range"
+        argSchema: {}
+        arg:
+          $ref: "#/components/schemas/Expr"
+      required:
+      - name
+    Expr:
+      type: object
+      properties:
+        range:
+          $ref: "#/components/schemas/Range"
+        base:
+          $ref: "#/components/schemas/Expr"
+        schema: {}
+        keyRanges:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Range"
+        literal: {}
+        interpolate: 
+          type: array
+          items:
+            $ref: "#/components/schemas/Interpolation"
+        symbol:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyAccessor"
+        access:
+          type: array
+          items:
+            $ref: "#/components/schemas/Access"
+        list:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expr"
+        object:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Expr"
+        builtin:
+          $ref: "#/components/schemas/ExprBuiltin"
+    EvaluatedExecutionContext:
+      type: object
+      properties:
+        properties:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Value"
+        schema: {}
+    Environment:
+      type: object
+      properties:
+        exprs:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Expr"
+        properties:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Value"
+        schema: {}
+        executionContext:
+          $ref: "#/components/schemas/EvaluatedExecutionContext"
+    EnvironmentTag:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+        created:
+          type: string
+        modified:
+          type: string
+        editorLogin:
+          type: string
+        editorName:
+          type: string
+      required:
+        - name
+        - created
+        - modified
+        - editorLogin
+        - editorName
+    ListEnvironmentTags:
+      type: object
+      properties:
+        tags:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/EnvironmentTag"
+        nextToken:
+          type: string
+      required:
+        - tags
+        - nextToken
+    CreateEnvironmentTag:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+      required:
+        - name
+        - value
+    UpdateEnvironmentTag:
+      type: object
+      properties:
+        currentTag:
+          type: object
+          properties:
+            value:
+              type: string
+          required:
+            - value
+        newTag:
+          type: object
+          properties:
+            name:
+              type: string
+            value:
+              type: string
+          required:
+            - name
+            - value
+      required:
+        - currentTag
+        - newTag
+    CheckEnvironment:
+      type: object
+      allOf:     
+      - $ref: "#/components/schemas/Environment"
+      - $ref: "#/components/schemas/EnvironmentDiagnostics"
+    Trace:
+      type: object
+      properties:
+        def: 
+          $ref: "#/components/schemas/Range"
+        base:
+          $ref: "#/components/schemas/Value"
+    Value:
+      type: object
+      properties:
+        value: {}
+        secret:
+          type: boolean
+        unknown:
+          type: boolean
+        trace:
+          $ref: "#/components/schemas/Trace"
+      required:
+      - trace
+      - value
+    Pos:
+      type: object
+      properties:
+        line:
+          type: integer
+          description: "Line is the source code line where this position points. Lines are counted starting at 1 and incremented for each newline character encountered."
+        column:
+          type: integer
+          description: "Column is the source code column where this position points. Columns are counted in visual cells starting at 1, and are incremented roughly per grapheme cluster encountered."
+        byte:
+          type: integer
+          description: "Byte is the byte offset into the file where the indicated position begins."
+      required:
+      - line
+      - column
+      - byte
+    EnvironmentDiagnostic:
+      type: object
+      properties:
+        summary:
+          type: string
+        path:
+          type: string
+        range:
+          $ref: "#/components/schemas/Range"
+      additionalProperties:
+        type: object
+      required:
+        - summary
+    EnvironmentDiagnostics:
+      type: object
+      properties:
+        diagnostics:
+          type: array
+          items:
+            $ref: "#/components/schemas/EnvironmentDiagnostic"
+    EnvironmentDefinitionValues:
+      type: object
+      properties:
+        pulumiConfig:
+          type: object
+          additionalProperties: true
+        environmentVariables:
+          type: object
+          additionalProperties:
+            type: string
+        files:
+          type: object
+          additionalProperties:
+            type: string
+      additionalProperties:
+        type: object
+    EnvironmentDefinition:
+      type: object
+      properties:
+        imports:
+          type: array
+          items:
+            type: string
+        values:
+          $ref: "#/components/schemas/EnvironmentDefinitionValues"
+      example:
+        application/x-yaml:
+          imports:
+          - base-env
+          values:
+            foo: bar
+          pulumiConfig:
+            foo: ${foo}
+          environmentVariables:
+            MY_KEY: my-value
+    OrgEnvironment:
+      type: object
+      properties:
+        organization:
+          type: string
+        project:
+          type: string
+        name:
+          type: string
+        created:
+          type: string
+        modified:
+          type: string
+      additionalProperties:
+          type: object
+      required: 
+      - project
+      - name
+      - created
+      - modified
+    OpenEnvironment:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Open environment session identifier
+        diagnostics:
+           $ref: "#/components/schemas/EnvironmentDiagnostics"
+      required:
+        - id
+      example:
+        application/json:
+          id: "42562"
+    OrgEnvironments:
+      type: object
+      properties:
+        environments:
+          type: array
+          items:
+            $ref:  "#/components/schemas/OrgEnvironment"
+        nextToken: 
+          type: string
+    EnvironmentRevision:
+      type: object
+      properties:
+        number:
+          type: integer
+        creatorLogin:
+          type: string
+        created:
+          type: string
+        creatorName:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - number
+    EnvironmentRevisionTag:
+      type: object
+      properties:
+        revision:
+          type: integer
+        name:
+          type: string
+        created:
+          type: string
+        modified:
+          type: string
+        editorLogin:
+          type: string
+        editorName:
+          type: string
+      required:
+        - revision
+        - name
+    EnvironmentRevisionTags:
+      type: object
+      properties:
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/EnvironmentRevisionTag"
+        nextToken:
+          type: string
+    CreateEnvironmentRevisionTag:
+      type: object
+      properties:
+        name:
+          type: string
+        revision:
+          type: integer
+      required:
+        - name
+        - revision
+    UpdateEnvironmentRevisionTag:
+      type: object
+      properties:
+        revision:
+          type: integer
+      required:
+        - revision
+  parameters:
+    orgName:
+      name: orgName
+      in: path
+      description: Organization name
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 40
+        pattern: ^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$
+      required: true
+      allowEmptyValue: false
+    projectName:
+      name: projectName
+      in: path
+      description: Project name
+      required: true
+      schema:
+        $ref: "#/components/schemas/ProjectName"
+    envName:
+      name: envName
+      in: path
+      description: Environment name
+      schema:
+        $ref: "#/components/schemas/EnvName"
+      required: true
+      allowEmptyValue: false
+    version:
+      name: version
+      in: path
+      required: true
+      description:  Revision or tag
+      schema: 
+        type: string
+    duration:
+      name: duration
+      in: query
+      required: false
+      description:  open duration - A duration string is a possibly signed sequence of decimal numbers, each with optional fraction and a unit suffix, such as “300ms”, “1.5h” or “2h45m”. Valid time units are “ns”, “us” (or “µs”), “ms”, “s”, “m”, “h”.
+      schema: 
+        type: string
+        pattern: ^(\d*\.\d+|\d+)(ns|us|µs|ms|s|m|h)?(\d*\.\d+|\d+)?(ns|us|µs|ms|s|m|h)?$
+        default: 1h
+
+  responses:
+    ListOrgEnvironments:
+      description: List of environments
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OrgEnvironments"
+    ListEnvironmentTags:
+      description: List of environment tags
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ListEnvironmentTags"
+    CreateEnvironmentTag:
+      description: Create environment tag
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateEnvironmentTag"
+    UpdateEnvironmentTag:
+      description: Update environment tag
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateEnvironmentTag"
+    EnvironmentTag:
+      description: Create environment tag response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EnvironmentTag"
+    SuccessWithoutContent:
+      description: Success
+    SuccessWithDiagnostics:
+      description: Success with diagnostics
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EnvironmentDiagnostics"
+          example:
+            diagnostics: ""
+            code: "200"
+    HeadSuccess:
+      description: Success
+      headers:
+        Etag:
+          description: Specific version of the environment
+          schema:
+            type: string
+    CheckSuccess:
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CheckEnvironment"
+    CheckBadRequest:
+      description: BadRequest
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CheckEnvironment"
+    DecryptSuccess:
+      description: Success
+      content:
+        application/x-yaml:
+          schema:
+            $ref: "#/components/schemas/EnvironmentDefinition"
+    OpenEnvironmentSuccess:
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OpenEnvironment"
+    ReadOpenEnvironmentSuccess:
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Environment"
+    ReadOpenEnvironmentPropertySuccess:
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Value"
+    BadRequestWithDiagnostics:
+      description: Bad Request with diagnostics
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EnvironmentDiagnostics"
+          example:
+            message: Bad request
+            code: "400"
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            message: Bad request
+            code: "400"
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            message: Conflict
+            code: 409
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            message: Unauthorized
+            code: 401
+    InternalServerError:
+      description: "Internal Server Error"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            message: Internal Server Error
+            code: 500
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            message: Not Found
+            code: 404
+    ListEnvironmentRevisions:
+      description: List of environment revisions
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/EnvironmentRevision"
+    ListEnvironmentRevisionTags:
+      description: List of environment revision tags
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EnvironmentRevisionTags"              
+security:
+  - Authorization: []
+paths:
+  /environments/{orgName}:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+    get:
+      parameters:
+        - name: continuationToken
+          in: query
+          required: false
+          description: continuation Token from previous query to fetch next page of results
+          schema: 
+            type: string
+      tags:
+      - esc
+      operationId: ListEnvironments
+      summary: List environments in the organization
+      description: List environments in the organization available to the current user
+      responses:
+        "200":
+          $ref: "#/components/responses/ListOrgEnvironments"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+            $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+      - esc
+      operationId: CreateEnvironment
+      summary: Create a new environment
+      requestBody:
+        description: Create Environment
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEnvironment"
+      description: Creates an environment in the given org with the given name.
+      responses:
+        "204":
+          $ref: '#/components/responses/SuccessWithoutContent'
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+    patch:
+      tags:
+      - esc
+      operationId: UpdateEnvironmentYaml
+      summary: Update an existing environment with Yaml file
+      description: Validates and updates the given environment's definition.
+      requestBody: 
+        description: Environment Yaml content
+        required: true
+        content:
+          application/x-yaml:
+            schema:
+              type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessWithDiagnostics"
+        "400":
+          $ref: "#/components/responses/BadRequestWithDiagnostics"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+    head:
+      tags:
+      - esc
+      operationId: GetEnvironmentETag
+      summary: Return an Environment ETag
+      description: Returns the ETag for the given environment if it exists.
+      responses:
+        "200":
+          $ref: "#/components/responses/HeadSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Not Found
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags:
+      - esc
+      operationId: GetEnvironment
+      summary: Read an environment
+      description: Read an environment
+      responses:
+        "200":
+          description: Success
+          content:
+            application/x-yaml:
+              schema:
+                $ref: "#/components/schemas/EnvironmentDefinition"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+      - esc
+      operationId: DeleteEnvironment
+      summary: Delete an environment
+      description: Delete an environment
+      responses:
+        "204":
+          $ref: '#/components/responses/SuccessWithoutContent'
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/clone:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+    post:
+      tags:
+      - esc
+      operationId: CloneEnvironment
+      summary: Clones an environment
+      description: Clones an environment
+      requestBody:
+        description: Clone environment
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloneEnvironment"
+      responses:
+        "204":
+          description: The environment was cloned successfully.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+
+  /environments/{orgName}/yaml/check:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+    post:
+      tags:
+      - esc
+      operationId: CheckEnvironmentYaml
+      summary: Checks an environment definition for errors
+      description: Checks an environment definition for errors
+      requestBody: 
+        description: Environment Yaml content
+        required: true
+        content:
+          application/x-yaml:
+            schema:
+              type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/CheckSuccess"
+        "400":
+          $ref: "#/components/responses/CheckBadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/decrypt:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+    get:
+      tags:
+      - esc
+      operationId: DecryptEnvironment
+      summary: Reads the definition for the given environment with static secrets in plaintext
+      description: Reads the definition for the given environment with static secrets in plaintext
+      responses:
+        "200":
+          $ref: "#/components/responses/DecryptSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/open:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+      - $ref: "#/components/parameters/duration"
+    post:
+      tags:
+      - esc
+      operationId: OpenEnvironment
+      summary: Open an environment session
+      description: Opens a session the given environment for the indicated duration. This returns a session id that can be used to then read values. The default duration is 1 hour.
+      responses:
+        "200":
+          $ref: "#/components/responses/OpenEnvironmentSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequestWithDiagnostics"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/open/{openSessionID}:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+      - name: openSessionID
+        in: path
+        required: true
+        description:  Open session ID returned from environment open
+        schema: 
+          type: string
+    get:
+      tags:
+      - esc
+      operationId: ReadOpenEnvironment
+      summary: Read an open environment
+      description: Reads and decrypts secrets including retrieving dynamic secrets from providers.
+      responses:
+        "200":
+          $ref: "#/components/responses/ReadOpenEnvironmentSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/open//{openSessionID}:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+      - name: openSessionID
+        in: path
+        required: true
+        description:  Open session ID returned from environment open
+        schema: 
+          type: string
+      - name: property
+        in: query
+        required: true
+        description: Path to a specific property using Pulumi path syntax https://www.pulumi.com/docs/concepts/config/#structured-configuration
+        schema: 
+          type: string
+    get:
+      tags:
+      - esc
+      operationId: ReadOpenEnvironmentProperty
+      summary: Read an open environment
+      description: Reads and decrypts secrets including retrieving dynamic secrets from providers.
+      responses:
+        "200":
+          $ref: "#/components/responses/ReadOpenEnvironmentPropertySuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/tags:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+    get:
+      tags:
+      - esc
+      operationId: ListEnvironmentTags
+      summary: List environment tags
+      description:  List environment tags
+      parameters:
+        - name: after
+          in: query
+          required: false
+          description: after tag for pagination
+          schema: 
+            type: string
+        - name: count
+          in: query
+          required: false
+          description: limit of tags to return
+          schema: 
+            type: integer
+      responses:
+        "200":
+          $ref: "#/components/responses/ListEnvironmentTags"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+      - esc
+      operationId: CreateEnvironmentTag
+      summary: Create environment tag
+      description:  Create environment tag
+      requestBody: 
+        description: Create environment tag
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEnvironmentTag"
+      responses:
+        "200":
+          $ref: "#/components/responses/EnvironmentTag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/tags/{tagName}:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+      - name: tagName
+        in: path
+        required: true
+        description:  Tag name
+        schema: 
+          type: string
+    get:
+      tags:
+      - esc
+      operationId: GetEnvironmentTag
+      summary: Read an environment tag
+      description: Read an environment tag
+      responses:
+        "200":
+          $ref: "#/components/responses/EnvironmentTag"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+      - esc
+      operationId: UpdateEnvironmentTag
+      summary: Update an environment tag
+      description: Update an environment tag
+      requestBody: 
+        description: Update environment tag
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEnvironmentTag"
+      responses:
+        "200":
+          $ref: "#/components/responses/EnvironmentTag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+      - esc
+      operationId: DeleteEnvironmentTag
+      summary: Delete environment tag
+      description:  Delete environment tag
+      responses:
+        "204":
+          description: The environment tag was deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"  
+  /environments/{orgName}/{projectName}/{envName}/versions:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+      - name: before
+        in: query
+        required: false
+        description: before revision number for pagination
+        schema: 
+          type: integer
+      - name: count
+        in: query
+        required: false
+        description: limit of revisions to return
+        schema: 
+          type: integer
+    get:
+      tags:
+      - esc
+      operationId: ListEnvironmentRevisions
+      summary: List environment revisions
+      description:  List environment revisions
+      responses:
+        "200":
+          $ref: "#/components/responses/ListEnvironmentRevisions"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+            $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/versions/{version}:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+      - name: version
+        in: path
+        required: true
+        description:  Revision or tag
+        schema: 
+          type: string
+    get:
+      tags:
+      - esc
+      operationId: GetEnvironmentAtVersion
+      summary: Read an environment at a specific version
+      description: Read an environmentat a specific revision or tag
+      responses:
+        "200":
+          description: Success
+          content:
+            application/x-yaml:
+              schema:
+                $ref: "#/components/schemas/EnvironmentDefinition"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/versions/{version}/open:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+      - $ref: "#/components/parameters/version"
+      - $ref: "#/components/parameters/duration"
+    post:
+      tags:
+      - esc
+      operationId: OpenEnvironmentAtVersion
+      summary: Open an environment session at a specific version
+      description: Opens a session the given environment at a specific version for the indicated duration. This returns a session id that can be used to then read values. The default duration is 1 hour.
+      responses:
+        "200":
+          $ref: "#/components/responses/OpenEnvironmentSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequestWithDiagnostics"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/versions/tags:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+    get:
+      tags:
+      - esc
+      parameters:
+      - name: after
+        in: query
+        required: false
+        description: after tag for pagination
+        schema: 
+          type: string
+      - name: count
+        in: query
+        required: false
+        description: limit of tags to return
+        schema: 
+          type: integer
+      operationId: ListEnvironmentRevisionTags
+      summary: List environment revisions
+      description:  List environment revisions
+      responses:
+        "200":
+          $ref: "#/components/responses/ListEnvironmentRevisionTags"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+      - esc
+      operationId: CreateEnvironmentRevisionTag
+      summary: Create environment revision tag
+      description:  Create environment revision tag
+      requestBody: 
+        description: Create environment revision tag
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEnvironmentRevisionTag"
+      responses:
+        "204":
+          description: The revision tag was created successfully.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+  /environments/{orgName}/{projectName}/{envName}/versions/tags/{tagName}:
+    parameters:
+      - $ref: "#/components/parameters/orgName"
+      - $ref: "#/components/parameters/projectName"
+      - $ref: "#/components/parameters/envName"
+      - name: tagName
+        in: path
+        required: true
+        description:  Tag name
+        schema: 
+          type: string
+    patch:
+      tags:
+      - esc
+      operationId: UpdateEnvironmentRevisionTag
+      summary: Update environment revision tag
+      description:  Update environment revision tag
+      requestBody: 
+        description: Update environment revision tag
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEnvironmentRevisionTag"
+      responses:
+        "204":
+          description: The revision tag was updated successfully.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+            $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+      - esc
+      operationId: DeleteEnvironmentRevisionTag
+      summary: Delete environment revision tag
+      description:  Delete environment revision tag
+      responses:
+        "204":
+          description: The revision tag was deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"
+    get:
+      tags:
+      - esc
+      operationId: GetEnvironmentRevisionTag
+      summary: Read environment revision tag
+      description:  Read environment revision tag
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvironmentRevisionTag"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+            $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "default":
+          $ref: "#/components/responses/InternalServerError"

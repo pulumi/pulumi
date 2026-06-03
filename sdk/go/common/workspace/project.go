@@ -30,8 +30,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/esc/ast"
-	"github.com/pulumi/esc/eval"
+	"github.com/pulumi/pulumi/sdk/v3/go/esc/ast"
+	"github.com/pulumi/pulumi/sdk/v3/go/esc/eval"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	"github.com/hashicorp/go-multierror"

@@ -1,0 +1,13 @@
+run: |
+  esc env settings set default/test deletion-protected invalid
+error: exit status 1
+environments:
+  test-user/default/test:
+    values: {}
+
+---
+> esc env settings set default/test deletion-protected invalid
+
+---
+> esc env settings set default/test deletion-protected invalid
+Error: invalid value for deletion-protected: invalid (expected true or false)

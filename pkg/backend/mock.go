@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/esc"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -39,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 

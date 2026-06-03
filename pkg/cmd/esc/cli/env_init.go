@@ -1,0 +1,97 @@
+// Copyright 2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package cli
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
+
+	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+)
+
+func newEnvInitCmd(env *envCommand) *cobra.Command {
+	var file string
+
+	cmd := &cobra.Command{
+		Use:     "init [<org-name>/][<project-name>/]<environment-name>",
+		Aliases: []string{"new"},
+		Args:    cobra.MaximumNArgs(1),
+		Short:   "Create an empty environment with the given name.",
+		Long: "Create an empty environment with the given name, ready for editing\n" +
+			"\n" +
+			"This command creates an empty environment with the given name. It has no definition,\n" +
+			"but afterwards it can be edited using the `edit` command.\n" +
+			"\n" +
+			"To create an environment in an organization when logged in to the Pulumi Cloud,\n" +
+			"prefix the stack name with the organization name and a slash (e.g. 'acmecorp/dev').\n",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			if err := env.esc.getCachedClient(ctx); err != nil {
+				return err
+			}
+
+			ref, args, err := env.getNewEnvRef(ctx, args)
+			if err != nil {
+				return err
+			}
+			if ref.version != "" {
+				return errors.New("the init command does not accept versions")
+			}
+			_ = args
+
+			var yaml []byte
+			switch file {
+			case "":
+				// OK
+			case "-":
+				yaml, err = io.ReadAll(env.esc.stdin)
+			default:
+				yaml, err = fs.ReadFile(env.esc.fs, file)
+			}
+			if err != nil {
+				return fmt.Errorf("reading environment definition: %w", err)
+			}
+
+			if err := env.esc.client.CreateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName); err != nil {
+				return fmt.Errorf("creating environment: %w", err)
+			}
+			fmt.Fprintf(env.esc.stdout, "Environment created: %v\n", ref.String())
+			if len(yaml) != 0 {
+				diags, err := env.esc.client.UpdateEnvironmentWithProject(ctx, ref.orgName, ref.projectName, ref.envName, yaml, "")
+				if err != nil {
+					return fmt.Errorf("updating environment definition: %w", err)
+				}
+				if len(diags) != 0 {
+					err = env.writeYAMLEnvironmentDiagnostics(env.esc.stderr, ref.projectName+"/"+ref.envName, yaml, diags)
+					contract.IgnoreError(err)
+
+					return errors.New("updating environment definition: too many errors")
+				}
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&file,
+		"file", "f", "",
+		"the file to use to initialize the environment, if any. Pass `-` to read from standard input.")
+
+	return cmd
+}

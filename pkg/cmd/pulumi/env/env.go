@@ -17,11 +17,11 @@ package env
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/esc/cmd/esc/cli"
-	escWorkspace "github.com/pulumi/esc/cmd/esc/cli/workspace"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	escWorkspace "github.com/pulumi/pulumi/sdk/v3/go/esc/workspace"
 )
 
 func NewEnvCmd() *cobra.Command {

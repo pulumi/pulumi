@@ -21,6 +21,15 @@ module.exports = {
         "tests/provider/experimental/testdata/**/*.ts",
         "tools/automation/output/**/*.ts",
         "vendor/",
+        "esc/**/*.ts",
+    ],
+    overrides: [
+        {
+            // Generated CLI-wrapping automation API; option names mirror CLI flags
+            // (e.g. `pulumi env set --string`), which can collide with id-blacklist.
+            files: ["automation/interface/**/*.ts"],
+            rules: { "id-blacklist": "off" },
+        },
     ],
     rules: {
         "header/header": [
