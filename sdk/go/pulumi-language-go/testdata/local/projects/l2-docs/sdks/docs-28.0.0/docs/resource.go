@@ -12,15 +12,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resource is a basic resource. Use Fun to set In using Fun.Out.
+// Resource is a basic resource. Use Fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using Fun.Out.
 type Resource struct {
 	pulumi.CustomResourceState
 
 	// ResourceData.State will have internal data about this resource.
 	Data ResourceDataOutput `pulumi:"data"`
-	// Will be set to the same as ResourceArgs.In.
+	// Will be set to the same as In.
 	In pulumi.BoolPtrOutput `pulumi:"in"`
-	// Will be set to the opposite of ResourceArgs.In.
+	// Will be set to the opposite of In.
 	Out pulumi.BoolOutput `pulumi:"out"`
 }
 
@@ -67,13 +67,13 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
-	// Will be used to set ResourceArgs.In and Resource.Out.
+	// Will be used to set In and Out.
 	In bool `pulumi:"in"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	// Will be used to set ResourceArgs.In and Resource.Out.
+	// Will be used to set In and Out.
 	In pulumi.BoolInput
 }
 
@@ -119,12 +119,12 @@ func (o ResourceOutput) Data() ResourceDataOutput {
 	return o.ApplyT(func(v *Resource) ResourceDataOutput { return v.Data }).(ResourceDataOutput)
 }
 
-// Will be set to the same as ResourceArgs.In.
+// Will be set to the same as In.
 func (o ResourceOutput) In() pulumi.BoolPtrOutput {
 	return o.ApplyT(func(v *Resource) pulumi.BoolPtrOutput { return v.In }).(pulumi.BoolPtrOutput)
 }
 
-// Will be set to the opposite of ResourceArgs.In.
+// Will be set to the opposite of In.
 func (o ResourceOutput) Out() pulumi.BoolOutput {
 	return o.ApplyT(func(v *Resource) pulumi.BoolOutput { return v.Out }).(pulumi.BoolOutput)
 }

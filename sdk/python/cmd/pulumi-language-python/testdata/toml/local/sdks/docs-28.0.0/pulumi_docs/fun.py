@@ -52,7 +52,7 @@ def fun(in_: Optional[_builtins.bool] = None,
     fun is a basic function for setting ResourceArgs.in_ on Resource.
 
 
-    :param _builtins.bool in_: Will be used to set FunResult.out.
+    :param _builtins.bool in_: Will be used to set out.
     """
     __args__ = dict()
     __args__['in'] = in_
@@ -61,13 +61,13 @@ def fun(in_: Optional[_builtins.bool] = None,
 
     return AwaitableFunResult(
         out=pulumi.get(__ret__, 'out'))
-def fun_output(in_: Optional[pulumi.Input[_builtins.bool]] = None,
+def fun_output(in_: pulumi.Input[Optional[_builtins.bool]] = None,
                opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FunResult]:
     """
     fun is a basic function for setting ResourceArgs.in_ on Resource.
 
 
-    :param _builtins.bool in_: Will be used to set FunResult.out.
+    :param _builtins.bool in_: Will be used to set out.
     """
     __args__ = dict()
     __args__['in'] = in_

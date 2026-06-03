@@ -42,15 +42,15 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 in_: Optional[pulumi.Input[_builtins.bool]] = None,
+                 in_: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         """
-        Resource is a basic resource. Use fun to set in_ using FunResult.out.
+        Resource is a basic resource. Use fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using FunResult.out.
 
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[_builtins.bool] in_: Will be used to set ResourceArgs.in_ and Resource.out.
+        :param pulumi.Input[_builtins.bool] in_: Will be used to set in_ and out.
         """
         ...
     @overload
@@ -59,7 +59,7 @@ class Resource(pulumi.CustomResource):
                  args: ResourceArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Resource is a basic resource. Use fun to set in_ using FunResult.out.
+        Resource is a basic resource. Use fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using FunResult.out.
 
 
         :param str resource_name: The name of the resource.
@@ -77,7 +77,7 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 in_: Optional[pulumi.Input[_builtins.bool]] = None,
+                 in_: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -123,7 +123,7 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter
     def data(self) -> pulumi.Output['outputs.ResourceData']:
         """
-        Docs_index__resource_data.state will have internal data about this resource.
+        ResourceDataArgs.state will have internal data about this resource.
         """
         return pulumi.get(self, "data")
 

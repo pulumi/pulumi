@@ -7,7 +7,7 @@ import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
 /**
- * Resource is a basic resource. Use fun to set ResourceArgs.in using FunResult.out.
+ * Resource is a basic resource. Use fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using FunResult.out.
  */
 export class Resource extends pulumi.CustomResource {
     /**
