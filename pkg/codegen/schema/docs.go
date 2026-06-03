@@ -26,6 +26,8 @@ import (
 
 type PulumiRefResolver func(ref DocRef) (string, bool)
 
+// interpretPulumiRefs parses a {{% ref %}} shortcode node and passes it to the `resolveRefToName` function to replace
+// the shortcode with literal text.
 func interpretPulumiRefs(
 	path string, types *types, options ValidationOptions,
 	node ast.Node, resolveRefToName PulumiRefResolver,
@@ -38,115 +40,115 @@ func interpretPulumiRefs(
 		diags = append(diags, subdiags...)
 
 		next = c.NextSibling()
-		switch c := c.(type) {
-		case *Ref:
-			var subdiags hcl.Diagnostics
-			var ref DocRef
 
-			iref := parseDocRef(c.Destination)
-			ref = DocRef{Ref: iref.Ref, Kind: iref.Kind, Property: iref.Property}
-			switch iref.Kind {
-			case DocRefKindUnknown:
-				subdiags = hcl.Diagnostics{errorf(path, "invalid doc ref: %s", c.Destination)}
-			case DocRefKindResource, DocRefKindResourceProperty, DocRefKindResourceInputProperty:
-				res, ok := types.resources[string(iref.Token)]
-				if !ok {
-					subdiags = hcl.Diagnostics{errorf(path, "reference to resource '%s' not found in package %s",
-						iref.Ref[1:], types.pkg.Name)}
-				} else {
-					ref.Type = res
-					switch iref.Kind { //nolint:exhaustive
-					case DocRefKindResourceProperty:
-						if !hasPropertyNamed(res.Resource.Properties, iref.Property) {
-							subdiags = hcl.Diagnostics{errorf(path,
-								"property '%s' not found on resource '%s'", iref.Property, iref.Token)}
-						}
-					case DocRefKindResourceInputProperty:
-						if !hasPropertyNamed(res.Resource.InputProperties, iref.Property) {
-							subdiags = hcl.Diagnostics{errorf(path,
-								"input property '%s' not found on resource '%s'", iref.Property, iref.Token)}
-						}
-					default:
-						contract.Failf("unexpected resource ref kind: %v", iref.Kind)
-					}
-				}
-			case DocRefKindType, DocRefKindTypeProperty:
-				typ, ok := types.typeDefs[string(iref.Token)]
-				if !ok {
-					subdiags = hcl.Diagnostics{errorf(path, "reference to type '%s' not found in package %s",
-						iref.Ref[1:], types.pkg.Name)}
-				} else {
-					ref.Type = typ
-					if iref.Kind == DocRefKindTypeProperty {
-						obj, isObj := typ.(*ObjectType)
-						if !isObj {
-							subdiags = hcl.Diagnostics{errorf(path,
-								"type '%s' is not an object type", iref.Token)}
-						} else if _, ok := obj.Property(iref.Property); !ok {
-							subdiags = hcl.Diagnostics{errorf(path,
-								"property '%s' not found on type '%s'", iref.Property, iref.Token)}
-						}
-					}
-				}
-			case DocRefKindFunction, DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
-				fun, has := types.functionDefs[string(iref.Token)]
-				if !has {
-					subdiags = hcl.Diagnostics{errorf(path, "reference to function '%s' not found in package %s",
-						iref.Ref[1:], types.pkg.Name)}
-				} else {
-					ref.Function = fun
-					switch iref.Kind { //nolint:exhaustive
-					case DocRefKindFunctionInputProperty:
-						if fun.Inputs == nil {
-							subdiags = hcl.Diagnostics{errorf(path,
-								"function '%s' has no inputs", iref.Token)}
-						} else if _, ok := fun.Inputs.Property(iref.Property); !ok {
-							subdiags = hcl.Diagnostics{errorf(path,
-								"input property '%s' not found on function '%s'", iref.Property, iref.Token)}
-						}
-					case DocRefKindFunctionOutputProperty:
-						outputs := fun.Outputs
-						if outputs == nil {
-							if obj, ok := fun.ReturnType.(*ObjectType); ok {
-								outputs = obj
-							}
-						}
-						if outputs == nil {
-							subdiags = hcl.Diagnostics{errorf(path,
-								"function '%s' has no outputs", iref.Token)}
-						} else if _, ok := outputs.Property(iref.Property); !ok {
-							subdiags = hcl.Diagnostics{errorf(path,
-								"output property '%s' not found on function '%s'", iref.Property, iref.Token)}
-						}
-					default:
-						contract.Failf("unexpected resource ref kind: %v", iref.Kind)
-					}
-				}
-			}
-
-			var name string
-			var ok bool
-			if !subdiags.HasErrors() {
-				name, ok = resolveRefToName(ref)
-			}
-			diags = append(diags, subdiags...)
-
-			if !ok {
-				if ref.Property != "" {
-					name = ref.Property
-				} else if ref.Type != nil {
-					name = ref.Type.String()
-				} else if ref.Function != nil {
-					name = ref.Function.Token
-				} else {
-					name = ref.Ref
-				}
-			}
-
-			textNode := ast.NewString([]byte(name))
-			node.InsertAfter(node, c, textNode)
-			node.RemoveChild(node, c)
+		cref, ok := c.(*Ref)
+		if !ok {
+			continue
 		}
+
+		iref := parseDocRef(cref.Destination)
+		ref := DocRef{Ref: iref.Ref, Kind: iref.Kind, Property: iref.Property}
+		switch iref.Kind {
+		case DocRefKindUnknown:
+			subdiags = hcl.Diagnostics{errorf(path, "invalid doc ref: %s", cref.Destination)}
+		case DocRefKindResource, DocRefKindResourceProperty, DocRefKindResourceInputProperty:
+			res, ok := types.resources[string(iref.Token)]
+			if !ok {
+				subdiags = hcl.Diagnostics{errorf(path, "reference to resource '%s' not found in package %s",
+					iref.Ref[1:], types.pkg.Name)}
+			} else {
+				ref.Type = res
+				switch iref.Kind { //nolint:exhaustive
+				case DocRefKindResourceProperty:
+					if !hasPropertyNamed(res.Resource.Properties, iref.Property) {
+						subdiags = hcl.Diagnostics{errorf(path,
+							"property '%s' not found on resource '%s'", iref.Property, iref.Token)}
+					}
+				case DocRefKindResourceInputProperty:
+					if !hasPropertyNamed(res.Resource.InputProperties, iref.Property) {
+						subdiags = hcl.Diagnostics{errorf(path,
+							"input property '%s' not found on resource '%s'", iref.Property, iref.Token)}
+					}
+				default:
+					contract.Failf("unexpected resource ref kind: %v", iref.Kind)
+				}
+			}
+		case DocRefKindType, DocRefKindTypeProperty:
+			typ, ok := types.typeDefs[string(iref.Token)]
+			if !ok {
+				subdiags = hcl.Diagnostics{errorf(path, "reference to type '%s' not found in package %s",
+					iref.Ref[1:], types.pkg.Name)}
+			} else {
+				ref.Type = typ
+				if iref.Kind == DocRefKindTypeProperty {
+					obj, isObj := typ.(*ObjectType)
+					if !isObj {
+						subdiags = hcl.Diagnostics{errorf(path,
+							"type '%s' is not an object type", iref.Token)}
+					} else if _, ok := obj.Property(iref.Property); !ok {
+						subdiags = hcl.Diagnostics{errorf(path,
+							"property '%s' not found on type '%s'", iref.Property, iref.Token)}
+					}
+				}
+			}
+		case DocRefKindFunction, DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
+			fun, has := types.functionDefs[string(iref.Token)]
+			if !has {
+				subdiags = hcl.Diagnostics{errorf(path, "reference to function '%s' not found in package %s",
+					iref.Ref[1:], types.pkg.Name)}
+			} else {
+				ref.Function = fun
+				switch iref.Kind { //nolint:exhaustive
+				case DocRefKindFunctionInputProperty:
+					if fun.Inputs == nil {
+						subdiags = hcl.Diagnostics{errorf(path,
+							"function '%s' has no inputs", iref.Token)}
+					} else if _, ok := fun.Inputs.Property(iref.Property); !ok {
+						subdiags = hcl.Diagnostics{errorf(path,
+							"input property '%s' not found on function '%s'", iref.Property, iref.Token)}
+					}
+				case DocRefKindFunctionOutputProperty:
+					outputs := fun.Outputs
+					if outputs == nil {
+						if obj, ok := fun.ReturnType.(*ObjectType); ok {
+							outputs = obj
+						}
+					}
+					if outputs == nil {
+						subdiags = hcl.Diagnostics{errorf(path,
+							"function '%s' has no outputs", iref.Token)}
+					} else if _, ok := outputs.Property(iref.Property); !ok {
+						subdiags = hcl.Diagnostics{errorf(path,
+							"output property '%s' not found on function '%s'", iref.Property, iref.Token)}
+					}
+				default:
+					contract.Failf("unexpected resource ref kind: %v", iref.Kind)
+				}
+			}
+		}
+
+		var name string
+		if !subdiags.HasErrors() {
+			name, ok = resolveRefToName(ref)
+		}
+		diags = append(diags, subdiags...)
+
+		if !ok {
+			// If we didn't resolve the ref via `resolveRefToName` then just return a sensible default textual value.
+			if ref.Property != "" {
+				name = ref.Property
+			} else if ref.Type != nil {
+				name = ref.Type.String()
+			} else if ref.Function != nil {
+				name = ref.Function.Token
+			} else {
+				name = ref.Ref
+			}
+		}
+
+		textNode := ast.NewString([]byte(name))
+		node.InsertAfter(node, c, textNode)
+		node.RemoveChild(node, c)
 	}
 	return diags
 }
