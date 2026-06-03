@@ -64,12 +64,13 @@ const (
 	floatSignature = "8ad145fe-0d11-4827-bfd7-1abcbf086f5c"
 
 	// Feature names for deployment features.
-	refreshBeforeUpdateFeature = "refreshBeforeUpdate"
-	viewsFeature               = "views"
-	hooksFeature               = "hooks"
-	taintFeature               = "taint"
-	replaceWithFeature         = "replaceWith"
-	snippetsFeature            = "snippets-prototype"
+	refreshBeforeUpdateFeature       = "refreshBeforeUpdate"
+	viewsFeature                     = "views"
+	hooksFeature                     = "hooks"
+	taintFeature                     = "taint"
+	replaceWithFeature               = "replaceWith"
+	snippetsFeature                  = "snippets-prototype"
+	extensionParameterizationFeature = "extensionParameterization"
 )
 
 var (
@@ -121,12 +122,13 @@ func init() {
 // supportedFeatures is a map of features that are currently supported.
 // Any features not in this map will be rejected.
 var supportedFeatures = map[string]bool{
-	refreshBeforeUpdateFeature: true,
-	viewsFeature:               true,
-	hooksFeature:               true,
-	taintFeature:               true,
-	replaceWithFeature:         true,
-	snippetsFeature:            true,
+	refreshBeforeUpdateFeature:       true,
+	viewsFeature:                     true,
+	hooksFeature:                     true,
+	taintFeature:                     true,
+	replaceWithFeature:               true,
+	snippetsFeature:                  true,
+	extensionParameterizationFeature: true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -159,6 +161,9 @@ func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	}
 	if len(res.ReplaceWith) > 0 {
 		features[replaceWithFeature] = true
+	}
+	if res.ExtensionRef != "" {
+		features[extensionParameterizationFeature] = true
 	}
 }
 
