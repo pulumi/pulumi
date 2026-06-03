@@ -95,6 +95,60 @@ func NewRef(destination string) *Ref {
 	return &Ref{Destination: destination}
 }
 
+// parseShortcodeOpen parses a `{{% [/]name [body] %}}` sequence beginning at line[pos:]. On success it
+// returns the name, the trimmed body (the text between the name and the closing `%}}`), the position
+// just past the closing `%}}`, and whether the shortcode is a closing shortcode (`{{% /name %}}`).
+func parseShortcodeOpen(line []byte, pos int) (name, body []byte, end int, isClose, ok bool) {
+	// Look for `{{%` to open the shortcode.
+	text := line[pos:]
+	if len(text) < 3 || text[0] != '{' || text[1] != '{' || text[2] != '%' {
+		return nil, nil, 0, false, false
+	}
+	text, pos = text[3:], pos+3
+
+	// Scan through whitespace.
+	for {
+		if len(text) == 0 {
+			return nil, nil, 0, false, false
+		}
+
+		r, sz := utf8.DecodeRune(text)
+		if !unicode.IsSpace(r) {
+			break
+		}
+		text, pos = text[sz:], pos+sz
+	}
+
+	// Check for a '/' to indicate that this is a closing shortcode.
+	if text[0] == '/' {
+		isClose = true
+		text, pos = text[1:], pos+1
+	}
+
+	// Find the end of the name and the closing delimiter (`%}}`) for this shortcode.
+	nameStart, nameEnd, inName := pos, pos, true
+	for {
+		if len(text) == 0 {
+			return nil, nil, 0, false, false
+		}
+
+		if len(text) >= 3 && text[0] == '%' && text[1] == '}' && text[2] == '}' {
+			if inName {
+				nameEnd = pos
+			}
+			name = line[nameStart:nameEnd]
+			body = bytes.TrimSpace(line[nameEnd:pos])
+			return name, body, pos + 3, isClose, true
+		}
+
+		r, sz := utf8.DecodeRune(text)
+		if inName && unicode.IsSpace(r) {
+			nameEnd, inName = pos, false
+		}
+		text, pos = text[sz:], pos+sz
+	}
+}
+
 type shortcodeParser int
 
 // NewShortcodeParser returns a BlockParser that parses shortcode (e.g. `{{% examples %}}`).
@@ -106,73 +160,17 @@ func (shortcodeParser) Trigger() []byte {
 	return []byte{'{'}
 }
 
-func (shortcodeParser) parseShortcode(line []byte, pos int) (int, int, int, bool, bool) {
-	// Look for `{{%` to open the shortcode.
-	text := line[pos:]
-	if len(text) < 3 || text[0] != '{' || text[1] != '{' || text[2] != '%' {
-		return 0, 0, 0, false, false
-	}
-	text, pos = text[3:], pos+3
-
-	// Scan through whitespace.
-	for {
-		if len(text) == 0 {
-			return 0, 0, 0, false, false
-		}
-
-		r, sz := utf8.DecodeRune(text)
-		if !unicode.IsSpace(r) {
-			break
-		}
-		text, pos = text[sz:], pos+sz
-	}
-
-	// Check for a '/' to indicate that this is a closing shortcode.
-	isClose := false
-	if text[0] == '/' {
-		isClose = true
-		text, pos = text[1:], pos+1
-	}
-
-	// Find the end of the name and the closing delimiter (`%}}`) for this shortcode.
-	nameStart, nameEnd, inName := pos, pos, true
-	for {
-		if len(text) == 0 {
-			return 0, 0, 0, false, false
-		}
-
-		if len(text) >= 3 && text[0] == '%' && text[1] == '}' && text[2] == '}' {
-			if inName {
-				nameEnd = pos
-			}
-			pos = pos + 3
-			// We don't need to update text
-			// because we return after this break.
-			break
-		}
-
-		r, sz := utf8.DecodeRune(text)
-		if inName && unicode.IsSpace(r) {
-			nameEnd, inName = pos, false
-		}
-		text, pos = text[sz:], pos+sz
-	}
-
-	return nameStart, nameEnd, pos, isClose, true
-}
-
-func (p shortcodeParser) Open(parent ast.Node, reader text.Reader, pc parser.Context) (ast.Node, parser.State) {
+func (shortcodeParser) Open(parent ast.Node, reader text.Reader, pc parser.Context) (ast.Node, parser.State) {
 	line, _ := reader.PeekLine()
 	pos := pc.BlockOffset()
 	if pos < 0 {
 		return nil, parser.NoChildren
 	}
 
-	nameStart, nameEnd, shortcodeEnd, isClose, ok := p.parseShortcode(line, pos)
+	name, _, shortcodeEnd, isClose, ok := parseShortcodeOpen(line, pos)
 	if !ok || isClose {
 		return nil, parser.NoChildren
 	}
-	name := line[nameStart:nameEnd]
 
 	// Skip "ref" shortcodes - they are handled as inline elements.
 	if bytes.Equal(name, []byte(RefShortcode)) {
@@ -193,13 +191,13 @@ func (p shortcodeParser) Continue(node ast.Node, reader text.Reader, pc parser.C
 		return parser.Continue | parser.HasChildren
 	}
 
-	nameStart, nameEnd, shortcodeEnd, isClose, ok := p.parseShortcode(line, pos)
+	name, _, shortcodeEnd, isClose, ok := parseShortcodeOpen(line, pos)
 	if !ok || !isClose {
 		return parser.Continue | parser.HasChildren
 	}
 
 	shortcode := node.(*Shortcode)
-	if !bytes.Equal(line[nameStart:nameEnd], shortcode.Name) {
+	if !bytes.Equal(name, shortcode.Name) {
 		return parser.Continue | parser.HasChildren
 	}
 
@@ -233,44 +231,22 @@ func (refParser) Trigger() []byte {
 
 func (refParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) ast.Node {
 	line, _ := block.PeekLine()
-	if len(line) < 3 || line[0] != '{' || line[1] != '{' || line[2] != '%' {
+
+	name, body, end, isClose, ok := parseShortcodeOpen(line, 0)
+	if !ok || isClose {
 		return nil
 	}
 
-	// Look for the closing `%}}`.
-	end := bytes.Index(line, []byte("%}}"))
-	if end == -1 {
+	// Only handle `{{% ref destination %}}`. Other shortcodes are block-level.
+	if !bytes.Equal(name, []byte(RefShortcode)) {
+		return nil
+	}
+	if len(body) == 0 {
 		return nil
 	}
 
-	// Extract content between `{{%` and `%}}`.
-	content := line[3:end]
-
-	// Trim leading and trailing whitespace.
-	content = bytes.TrimSpace(content)
-
-	// Check if this is a `ref` shortcode. Require that "ref" is followed by
-	// whitespace (or nothing) to avoid matching shortcodes like `{{% refXxx %}}`.
-	if !bytes.HasPrefix(content, []byte("ref")) {
-		return nil
-	}
-	if len(content) > 3 {
-		r, _ := utf8.DecodeRune(content[3:])
-		if !unicode.IsSpace(r) {
-			return nil
-		}
-	}
-
-	// Extract the destination (everything after "ref").
-	destination := bytes.TrimSpace(content[3:])
-	if len(destination) == 0 {
-		return nil
-	}
-
-	// Advance past the entire shortcode.
-	block.Advance(end + 3) // advance past `%}}`
-
-	return NewRef(string(destination))
+	block.Advance(end)
+	return NewRef(string(body))
 }
 
 // ParseDocs parses the given documentation text as Markdown with shortcodes and returns the AST.
