@@ -1,0 +1,6 @@
+component: cli/neo
+kind: improvement
+body: Support up/down arrows to scroll through prompt history in `pulumi neo`
+time: 2026-06-03T00:00:00.000000+00:00
+custom:
+    PR: ""

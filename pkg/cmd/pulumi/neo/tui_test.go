@@ -3053,3 +3053,112 @@ func TestRenderApprovalAuto_VerbVariants(t *testing.T) {
 		})
 	}
 }
+
+// submitPrompt types text into the model and presses Enter, returning the
+// resulting model. The OutCh must be buffered enough for the test's sends.
+func submitPrompt(t *testing.T, m Model, text string) Model {
+	t.Helper()
+	m.textInput.SetValue(text)
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = updated.(Model)
+	// Submitting puts the model in the busy state; clear it as the agent does
+	// at the end of its turn so a follow-up submit isn't swallowed.
+	updated, _ = m.Update(UITaskIdle{})
+	return updated.(Model)
+}
+
+func TestModel_PromptHistory_RecallAfterSubmit(t *testing.T) {
+	t.Parallel()
+
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh})
+	m = submitPrompt(t, m, "first")
+	m = submitPrompt(t, m, "second")
+	require.Empty(t, m.textInput.Value(), "input clears after submit")
+
+	// Up recalls the newest, then the older.
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	m = updated.(Model)
+	assert.Equal(t, "second", m.textInput.Value())
+
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	m = updated.(Model)
+	assert.Equal(t, "first", m.textInput.Value())
+
+	// Up at the oldest entry pins there.
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	m = updated.(Model)
+	assert.Equal(t, "first", m.textInput.Value())
+
+	// Down walks back toward newer prompts, then past the newest to the
+	// (empty) draft.
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m = updated.(Model)
+	assert.Equal(t, "second", m.textInput.Value())
+
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m = updated.(Model)
+	assert.Empty(t, m.textInput.Value(), "Down past newest restores the empty draft")
+}
+
+func TestModel_PromptHistory_PreservesDraft(t *testing.T) {
+	t.Parallel()
+
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh})
+	m = submitPrompt(t, m, "sent")
+
+	// Type an unsent draft, recall history with Up, then Down past the newest
+	// must restore the draft rather than leave the recalled prompt behind.
+	m.textInput.SetValue("draft in progress")
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	m = updated.(Model)
+	assert.Equal(t, "sent", m.textInput.Value())
+
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m = updated.(Model)
+	assert.Equal(t, "draft in progress", m.textInput.Value())
+}
+
+func TestModel_PromptHistory_DedupesConsecutive(t *testing.T) {
+	t.Parallel()
+
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh})
+	m = submitPrompt(t, m, "same")
+	m = submitPrompt(t, m, "same")
+
+	assert.Equal(t, []string{"same"}, m.history,
+		"consecutive duplicate prompts collapse to one history entry")
+}
+
+func TestModel_PromptHistory_MidBufferUpDoesNotRecall(t *testing.T) {
+	t.Parallel()
+
+	// With the cursor on a middle line of a multi-line draft, Up must move the
+	// cursor (textarea default) rather than recall history.
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh})
+	m = submitPrompt(t, m, "history entry")
+
+	m.textInput.SetValue("line1\nline2\nline3")
+	m.textInput.MoveToEnd()
+	m.textInput.CursorUp() // now on the middle line
+	require.NotEqual(t, 0, m.textInput.Line(), "cursor must not be on the first line")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	m = updated.(Model)
+	assert.Equal(t, "line1\nline2\nline3", m.textInput.Value(),
+		"Up mid-buffer must not recall history")
+}
+
+func TestModel_PromptHistory_NoFooterHint(t *testing.T) {
+	t.Parallel()
+
+	// Per the issue, the shortcut is intentionally undocumented in the footer.
+	m := NewModel(ModelConfig{})
+	view := m.viewString()
+	assert.NotContains(t, view, "history")
+	assert.NotContains(t, view, "↑")
+	assert.NotContains(t, view, "↓")
+}

@@ -311,6 +311,19 @@ type Model struct {
 	toolHistory   []toolCallRecord
 	overlayActive bool
 	overlay       overlayModel
+	// history holds the prompts the user has submitted this session, oldest
+	// first, recalled with the up/down arrows. There is intentionally no
+	// footer hint for it — the affordance mirrors shell history and is
+	// meant to be discovered by muscle memory.
+	history []string
+	// historyIdx is the cursor into history during up/down navigation. It
+	// equals len(history) when not navigating, i.e. the user is editing the
+	// live draft; stepping back with Up walks it down toward the oldest entry.
+	historyIdx int
+	// historyDraft stashes the in-progress draft when history navigation
+	// begins, so pressing Down past the newest entry restores what the user
+	// had typed rather than leaving a recalled prompt behind.
+	historyDraft string
 }
 
 var (
@@ -381,6 +394,42 @@ func nextPermissionMode(m client.NeoPermissionMode) client.NeoPermissionMode {
 		return client.NeoPermissionModeDefault
 	}
 	return client.NeoPermissionModeReadOnly
+}
+
+// historyPrev steps to an older prompt. It returns true when it handled the
+// key (so the caller swallows it). The first step out of the live draft
+// stashes that draft in historyDraft so a later Down can restore it.
+func (m *Model) historyPrev() bool {
+	if len(m.history) == 0 {
+		return false
+	}
+	if m.historyIdx == 0 {
+		return true // already at the oldest entry; pin here
+	}
+	if m.historyIdx == len(m.history) {
+		m.historyDraft = m.textInput.Value()
+	}
+	m.historyIdx--
+	m.textInput.SetValue(m.history[m.historyIdx])
+	m.textInput.MoveToEnd()
+	return true
+}
+
+// historyNext steps toward newer prompts; past the newest it restores the
+// saved draft. It returns false when not currently navigating so Down falls
+// through to the textarea's own cursor movement.
+func (m *Model) historyNext() bool {
+	if m.historyIdx >= len(m.history) {
+		return false
+	}
+	m.historyIdx++
+	if m.historyIdx == len(m.history) {
+		m.textInput.SetValue(m.historyDraft)
+	} else {
+		m.textInput.SetValue(m.history[m.historyIdx])
+	}
+	m.textInput.MoveToEnd()
+	return true
 }
 
 // renderIndented word-wraps content (ANSI-safe) to termWidth minus the
@@ -804,6 +853,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// UIUserMessage handler to avoid duplicates.
 					userCmd := m.appendUserMessageBlock(text)
 					m.pendingUserEchoes = append(m.pendingUserEchoes, text)
+					// Record the prompt for up/down history recall. Skip a
+					// consecutive duplicate so mashing the same message
+					// doesn't bloat the history.
+					if n := len(m.history); n == 0 || m.history[n-1] != text {
+						m.history = append(m.history, text)
+					}
+					m.historyIdx = len(m.history)
+					m.historyDraft = ""
 					// Freeze the plan-mode affordance: planMode has now been
 					// committed to the dispatcher and any later Shift+Tab
 					// would be a no-op on the server.
@@ -812,6 +869,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+		}
+
+		// Up/Down recall prompt history when the cursor sits on the edge line
+		// of the input — mirroring shell history. Mid-buffer they fall through
+		// to the textarea's line movement. No footer hint is shown, by design.
+		if keyStr == "up" && m.textInput.Line() == 0 {
+			if m.historyPrev() {
+				return m, nil
+			}
+		}
+		if keyStr == "down" && m.textInput.Line() == m.textInput.LineCount()-1 {
+			if m.historyNext() {
+				return m, nil
+			}
 		}
 
 		// Pass to text input for typing. The terminal's own scrollback is
