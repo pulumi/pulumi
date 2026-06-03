@@ -24,6 +24,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// PulumiRefResolver resolves a parsed doc reference to the textual name that should be substituted into the
+// surrounding documentation. It returns the substituted name and a boolean indicating whether the ref was
+// resolved; if false, the caller falls back to a default rendering of the ref.
 type PulumiRefResolver func(ref DocRef) (string, bool)
 
 // interpretPulumiRefs parses a {{% ref %}} shortcode node and passes it to the `resolveRefToName` function to replace
@@ -162,30 +165,49 @@ func hasPropertyNamed(props []*Property, name string) bool {
 	return false
 }
 
+// DocRefKind identifies what kind of schema entity a doc ref points to (a resource, function, type, or a
+// property of one of those).
 type DocRefKind string
 
 const (
-	DocRefKindUnknown                DocRefKind = ""
-	DocRefKindResource               DocRefKind = "resource"
-	DocRefKindFunction               DocRefKind = "function"
-	DocRefKindType                   DocRefKind = "type"
-	DocRefKindResourceProperty       DocRefKind = "resourceProperty"
-	DocRefKindResourceInputProperty  DocRefKind = "resourceInputProperty"
-	DocRefKindFunctionInputProperty  DocRefKind = "functionInputProperty"
+	// DocRefKindUnknown is used for doc refs that could not be parsed or did not resolve to a known entity.
+	DocRefKindUnknown DocRefKind = ""
+	// DocRefKindResource refers to a resource (`#/resources/{token}`).
+	DocRefKindResource DocRefKind = "resource"
+	// DocRefKindFunction refers to a function (`#/functions/{token}`).
+	DocRefKindFunction DocRefKind = "function"
+	// DocRefKindType refers to a named type — an object type or enum (`#/types/{token}`).
+	DocRefKindType DocRefKind = "type"
+	// DocRefKindResourceProperty refers to an output property on a resource
+	// (`#/resources/{token}/properties/{property}`).
+	DocRefKindResourceProperty DocRefKind = "resourceProperty"
+	// DocRefKindResourceInputProperty refers to an input property on a resource
+	// (`#/resources/{token}/inputProperties/{property}`).
+	DocRefKindResourceInputProperty DocRefKind = "resourceInputProperty"
+	// DocRefKindFunctionInputProperty refers to an input property on a function
+	// (`#/functions/{token}/inputs/properties/{property}`).
+	DocRefKindFunctionInputProperty DocRefKind = "functionInputProperty"
+	// DocRefKindFunctionOutputProperty refers to an output property on a function
+	// (`#/functions/{token}/outputs/properties/{property}`).
 	DocRefKindFunctionOutputProperty DocRefKind = "functionOutputProperty"
-	DocRefKindTypeProperty           DocRefKind = "typeProperty"
+	// DocRefKindTypeProperty refers to a property on a named object type
+	// (`#/types/{token}/properties/{property}`).
+	DocRefKindTypeProperty DocRefKind = "typeProperty"
 )
 
+// DocRef is a parsed and (when possible) bound reference to a schema entity that appears in a documentation
+// string. It carries enough information for language-specific codegen to render the reference as a name in
+// the target language.
 type DocRef struct {
-	// Original parsed ref
+	// Ref is the original ref string as it appeared in the source documentation (e.g. `#/resources/foo:bar:Baz`).
 	Ref string
-	// The type of the parsed ref
+	// Kind identifies what sort of entity the ref points to. See the DocRefKind constants.
 	Kind DocRefKind
-	// If a ref for a resource or type, the bound type.
+	// Type is the bound schema type, if Kind refers to a resource or named type. Nil otherwise.
 	Type Type
-	// If a ref for a function, the bound function.
+	// Function is the bound schema function, if Kind refers to a function or one of its properties. Nil otherwise.
 	Function *Function
-	// The referenced property name, or empty if not applicable.
+	// Property is the referenced property name for property-kind refs, or empty if the ref is to a top-level entity.
 	Property string
 }
 
