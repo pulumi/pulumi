@@ -15,7 +15,9 @@
 package rapidschema
 
 import (
+	"reflect"
 	"testing"
+	"unsafe"
 
 	"pgregory.net/rapid"
 
@@ -41,6 +43,13 @@ func TestVersionRoundTrips(t *testing.T) {
 // marshaling valid schemas.
 func TestPackageBindsMarshalsAndRoundTrips(t *testing.T) {
 	t.Parallel()
+	clearInterpretPulumiRefs := func(pkg *schema.Package) {
+		v := reflect.ValueOf(pkg).Elem().FieldByName("interpretPulumiRefs")
+		reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).
+			Elem().
+			Set(reflect.Zero(v.Type()))
+	}
+
 	rapid.Check(t, func(t *rapid.T) {
 		pkg := Package().Draw(t, "pkg")
 		spec, err := pkg.MarshalSpec()
@@ -48,6 +57,10 @@ func TestPackageBindsMarshalsAndRoundTrips(t *testing.T) {
 		pkg2, diags, err := schema.BindSpec(*spec, schema.Loader(nil), schema.ValidationOptions{})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
+		// interpretPulumiRefs is a closure so never equal, just reset it for this test. It would be nicer
+		// to use EqualExportedValues but that stack crashes on schemas.
+		clearInterpretPulumiRefs(pkg)
+		clearInterpretPulumiRefs(pkg2)
 		assert.Equal(t, pkg, pkg2)
 	})
 }
