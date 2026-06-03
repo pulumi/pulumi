@@ -1,4 +1,4 @@
-// Copyright 2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,259 +14,273 @@
 
 package stack
 
-// AI Generated - needs human review
-
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// stackNewClient is the narrow subset of the cloud client used by the new
-// command. Tests stub this with a recording mock.
-type stackNewClient interface {
-	CreateStack(
-		ctx context.Context,
-		stackID client.StackIdentifier,
-		tags map[apitype.StackTagName]string,
-		teams []string,
-		state *apitype.UntypedDeployment,
-		config *apitype.StackConfig,
-	) (apitype.Stack, client.CreateStackDetails, error)
-}
-
-// stackNewClientFactory resolves a cloud client plus the organization the
-// stack should be created in. orgFlag is the raw value of --org (empty means
-// "use the default org").
-type stackNewClientFactory func(
-	ctx context.Context, orgFlag string,
-) (stackNewClient, string, error)
-
-// stackNewArgs collects the flag values for runStackNew.
-type stackNewArgs struct {
-	org             string
-	environment     string
-	secretsProvider string
-	encryptedKey    string
-	encryptionSalt  string
-	outputFormat    outputflag.OutputFlag[stackNewRenderFunc]
-}
-
-// defaultStackNewOutputFormat wires the OutputFlag to the per-format renderers
-// so `--output` selects between them.
-func defaultStackNewOutputFormat() outputflag.OutputFlag[stackNewRenderFunc] {
-	return outputflag.OutputFlag[stackNewRenderFunc]{
-		RenderForTerminal: renderStackNewText,
-		RenderJSON:        renderStackNewJSON,
-	}
-}
+const (
+	possibleSecretsProviderChoices = "The type of the provider that should be used to encrypt and decrypt secrets\n" +
+		"(possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)"
+)
 
 func newStackNewCmd() *cobra.Command {
-	return newStackNewCmdWith(defaultStackNewClientFactory)
-}
-
-func newStackNewCmdWith(factory stackNewClientFactory) *cobra.Command {
-	contract.Assertf(factory != nil, "stackNewClientFactory must not be nil")
-	var args stackNewArgs
-	args.outputFormat = defaultStackNewOutputFormat()
-
+	var sicmd stackNewCmd
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "new <project> <name>",
-		Short:  "[EXPERIMENTAL] Create a new stack",
-		Long: "[EXPERIMENTAL] Create a new stack.\n" +
+		Use:     "new",
+		Aliases: []string{"init"},
+		Short:   "Create an empty stack with the given name, ready for updates",
+		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
-			"Creates a new stack within a project in the organization. If the project\n" +
-			"does not exist it will be created. A stack is an isolated, independently\n" +
-			"configurable instance of a Pulumi program, typically representing a\n" +
-			"deployment environment (e.g. development, staging, production). The\n" +
-			"stack name must be unique within the project. This command does not\n" +
-			"select the new stack as the current stack or write any local project\n" +
-			"files.\n" +
+			"This command creates an empty stack with the given name.  It has no resources,\n" +
+			"but afterwards it can become the target of a deployment using the `update` command.\n" +
 			"\n" +
-			"Default output is a human-readable confirmation; pass --output=json for\n" +
-			"the created stack identity and any backend messages as JSON.",
-		Example: "  # Create a stack in the default organization\n" +
-			"  pulumi stack new my-project dev\n\n" +
-			"  # Create a stack in a specific organization with an ESC environment\n" +
-			"  pulumi stack new my-project prod --org acme --environment acme/prod\n\n" +
-			"  # Create a stack and emit JSON for scripting\n" +
-			"  pulumi stack new my-project dev --output json",
-		RunE: func(cmd *cobra.Command, posArgs []string) error {
-			return runStackNew(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], posArgs[1], args)
+			"To create a stack in an organization when logged in to the Pulumi Cloud,\n" +
+			"prefix the stack name with the organization name and a slash (e.g. 'acmecorp/dev')\n" +
+			"\n" +
+			"By default, a stack created using the pulumi.com backend will use the pulumi.com secrets\n" +
+			"provider and a stack created using the local or cloud object storage backend will use the\n" +
+			"`passphrase` secrets provider.  A different secrets provider can be selected by passing the\n" +
+			"`--secrets-provider` flag.\n" +
+			"\n" +
+			"To use the `passphrase` secrets provider with the pulumi.com backend, use:\n" +
+			"\n" +
+			"* `pulumi stack new --secrets-provider=passphrase`\n" +
+			"\n" +
+			"To use a cloud secrets provider with any backend, use one of the following:\n" +
+			"\n" +
+			"* `pulumi stack new --secrets-provider=\"awskms://alias/ExampleAlias?region=us-east-1\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"hashivault://mykey\"`\n" +
+			"\n" +
+			"A stack can be created based on the configuration of an existing stack by passing the\n" +
+			"`--copy-config-from` flag:\n" +
+			"\n" +
+			"* `pulumi stack new --copy-config-from dev`",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			sicmd.stdout = cmd.OutOrStdout()
+			return sicmd.Run(ctx, args)
 		},
 	}
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
-			{Name: "project"},
-			{Name: "name"},
+			{Name: "stack-name", Usage: "[org-name/]<stack-name>"},
 		},
-		Required: 2,
+		Required: 0,
 	})
 
-	cmd.Flags().StringVar(&args.org, "org", "", "The organization to create the stack in")
-	cmd.Flags().StringVar(&args.environment, "environment", "",
-		"Reference to an ESC environment for storing stack configuration")
-	cmd.Flags().StringVar(&args.secretsProvider, "secrets-provider", "",
-		"The secrets provider for the stack")
-	cmd.Flags().StringVar(&args.encryptedKey, "encrypted-key", "",
-		"KMS-encrypted ciphertext for the data key (cloud-based secrets providers)")
-	cmd.Flags().StringVar(&args.encryptionSalt, "encryption-salt", "",
-		"Base64-encoded encryption salt (passphrase-based secrets providers)")
-	outputflag.VarP(cmd.Flags(), &args.outputFormat)
-
+	cmd.PersistentFlags().StringVarP(
+		&sicmd.stackName, "stack", "s", "", "The name of the stack to create")
+	cmd.PersistentFlags().StringVar(
+		&sicmd.secretsProvider, "secrets-provider", "", possibleSecretsProviderChoices)
+	cmd.PersistentFlags().StringVar(
+		&sicmd.stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
+	cmd.PersistentFlags().BoolVar(
+		&sicmd.noSelect, "no-select", false, "Do not select the stack")
+	cmd.PersistentFlags().StringArrayVar(&sicmd.teams, "teams", nil, "A list of team "+
+		"names that should have permission to read and update this stack,"+
+		" once created")
+	cmd.PersistentFlags().BoolVar(
+		&sicmd.remoteConfig, "remote-config", false, "Store stack configuration remotely",
+	)
+	_ = cmd.PersistentFlags().MarkHidden("remote-config")
+	cmd.PersistentFlags().BoolVarP(
+		&sicmd.yes, "yes", "y", false,
+		"Skip interactive prompts; fail if required information is missing")
 	return cmd
 }
 
-// defaultStackNewClientFactory is the production wiring: resolve the cloud
-// backend, pick the effective organization, and hand back the underlying
-// *client.Client.
-func defaultStackNewClientFactory(
-	ctx context.Context, orgFlag string,
-) (stackNewClient, string, error) {
-	ws := pkgWorkspace.Instance
-	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+// stackNewCmd implements the `pulumi stack new` command.
+type stackNewCmd struct {
+	secretsProvider string
+	stackName       string
+	stackToCopy     string
+	noSelect        bool
+	teams           []string
+	remoteConfig    bool
+	yes             bool
+	stdout          io.Writer
 
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, nil, opts)
-	if err != nil {
-		return nil, "", err
-	}
-	cloudBackend, ok := be.(httpstate.Backend)
-	if !ok {
-		return nil, "", errors.New(
-			"creating a stack requires the Pulumi Cloud backend; run `pulumi login`")
-	}
-
-	userName, orgs, _, err := cloudBackend.CurrentUser()
-	if err != nil {
-		return nil, "", err
-	}
-
-	org := orgFlag
-	if org == "" {
-		defaultOrg, err := cloudBackend.GetDefaultOrg(ctx)
-		if err != nil {
-			return nil, "", err
-		}
-		org = defaultOrg
-	}
-	if org == "" {
-		org = userName
-	}
-
-	if !slices.Contains(orgs, org) && org != userName {
-		return nil, "", fmt.Errorf("user %s is not a member of organization %s", userName, org)
-	}
-
-	return cloudBackend.Client(), org, nil
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(
+		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+	) (backend.Backend, error)
 }
 
-// runStackNew is the cobra-decoupled body of `pulumi stack new`, so tests can
-// drive it directly with a buffer.
-func runStackNew(
-	ctx context.Context,
-	w io.Writer,
-	factory stackNewClientFactory,
-	project, name string,
-	args stackNewArgs,
-) error {
-	stackName, err := tokens.ParseStackName(name)
-	if err != nil {
-		return fmt.Errorf("creating stack: %w", err)
+func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
+	if cmd.yes {
+		defer func(prev bool) { cmdutil.DisableInteractive = prev }(cmdutil.DisableInteractive)
+		cmdutil.DisableInteractive = true
 	}
 
-	c, org, err := factory(ctx, args.org)
+	if cmd.secretsProvider == "" {
+		cmd.secretsProvider = "default"
+	}
+	if cmd.currentBackend == nil {
+		cmd.currentBackend = cmdBackend.CurrentBackend
+	}
+	currentBackend := cmd.currentBackend // shadow the top-level function
+
+	opts := display.Options{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+
+	ssml := NewStackSecretsManagerLoaderFromEnv()
+	ws := pkgWorkspace.Instance
+
+	// Try to read the current project
+	project, _, err := ws.ReadProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return err
+	}
+
+	b, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
 	if err != nil {
 		return err
 	}
 
-	stackID := client.StackIdentifier{
-		Owner:   org,
-		Project: project,
-		Stack:   stackName,
+	if len(args) > 0 {
+		if cmd.stackName != "" {
+			return errors.New("only one of --stack or argument stack name may be specified, not both")
+		}
+
+		cmd.stackName = args[0]
 	}
 
-	cfg := buildStackNewConfig(args)
+	// Validate secrets provider type
+	if err := ValidateSecretsProvider(cmd.secretsProvider); err != nil {
+		return err
+	}
 
-	_, details, err := c.CreateStack(ctx, stackID, nil, nil, nil, cfg)
+	if cmd.stackName == "" && cmdutil.Interactive() {
+		if b.SupportsOrganizations() {
+			fmt.Fprint(cmd.stdout, "Please enter your desired stack name.\n"+
+				"To create a stack in an organization, "+
+				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
+		}
+
+		name, nameErr := ui.PromptForValue(false, "stack name", "dev", false, b.ValidateStackName, opts)
+		if nameErr != nil {
+			return nameErr
+		}
+		cmd.stackName = name
+	}
+
+	if cmd.stackName == "" {
+		return errors.New("missing stack name")
+	}
+
+	if err := b.ValidateStackName(cmd.stackName); err != nil {
+		return err
+	}
+
+	stackRef, err := b.ParseStackReference(cmd.stackName)
 	if err != nil {
-		return fmt.Errorf("creating stack: %w", err)
+		return err
 	}
 
-	return args.outputFormat.Get()(w, stackID, details)
-}
-
-// buildStackNewConfig returns a *StackConfig only if at least one of the
-// config-shaped flags is set; otherwise nil so we don't send an empty config
-// object to the backend.
-func buildStackNewConfig(args stackNewArgs) *apitype.StackConfig {
-	if args.environment == "" && args.secretsProvider == "" &&
-		args.encryptedKey == "" && args.encryptionSalt == "" {
-		return nil
+	proj, root, projectErr := ws.ReadProject()
+	if projectErr != nil && !errors.Is(projectErr, workspace.ErrProjectNotFound) {
+		return projectErr
 	}
-	return &apitype.StackConfig{
-		Environment:     args.environment,
-		SecretsProvider: args.secretsProvider,
-		EncryptedKey:    args.encryptedKey,
-		EncryptionSalt:  args.encryptionSalt,
-	}
-}
 
-type stackNewRenderFunc func(w io.Writer, stackID client.StackIdentifier, details client.CreateStackDetails) error
-
-func renderStackNewText(
-	w io.Writer, stackID client.StackIdentifier, details client.CreateStackDetails,
-) error {
-	fmt.Fprintf(w, "Created stack %s\n", stackID)
-	fmt.Fprintf(w, "%-15s %s\n", "Organization:", stackID.Owner)
-	fmt.Fprintf(w, "%-15s %s\n", "Project:", stackID.Project)
-	fmt.Fprintf(w, "%-15s %s\n", "Stack:", stackID.Stack.String())
-	for _, m := range details.Messages {
-		fmt.Fprintln(w, m.Message)
+	teams := sanitizeTeams(cmd.teams)
+	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, teams,
+		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig, "")
+	if err != nil {
+		if errors.Is(err, backend.ErrTeamsNotSupported) {
+			return fmt.Errorf("stack %s uses the %s backend: "+
+				"%s does not support --teams", cmd.stackName, b.Name(), b.Name())
+		}
+		return err
 	}
+
+	if cmd.stackToCopy != "" {
+		if projectErr != nil {
+			return projectErr
+		}
+
+		// load the old stack and its project
+		copyStack, err := RequireStack(
+			ctx,
+			cmdutil.Diag(),
+			ws,
+			cmdBackend.DefaultLoginManager,
+			cmd.stackToCopy,
+			LoadOnly,
+			opts,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		copyProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, copyStack, "")
+		if err != nil {
+			return err
+		}
+
+		// get the project for the newly created stack
+		newProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, newStack, "")
+		if err != nil {
+			return err
+		}
+
+		// copy the config from the old to the new
+		requiresSaving, err := CopyEntireConfigMap(
+			ctx,
+			ssml,
+			copyStack,
+			copyProjectStack,
+			newStack,
+			newProjectStack,
+		)
+		if err != nil {
+			return err
+		}
+
+		// The use of `requiresSaving` here ensures that there was actually some config
+		// that needed saved, otherwise it's an unnecessary save call
+		if requiresSaving {
+			err := SaveProjectStack(ctx, newStack, newProjectStack, "")
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
-// stackNewJSON is the JSON envelope emitted by `pulumi stack new --output=json`.
-type stackNewJSON struct {
-	OrganizationName string            `json:"organizationName"`
-	ProjectName      string            `json:"projectName"`
-	StackName        string            `json:"stackName"`
-	Messages         []apitype.Message `json:"messages"`
-}
-
-func renderStackNewJSON(
-	w io.Writer, stackID client.StackIdentifier, details client.CreateStackDetails,
-) error {
-	messages := details.Messages
-	if messages == nil {
-		messages = []apitype.Message{}
+// newCreateStackOptions constructs a backend.CreateStackOptions object
+// from the provided options.
+func sanitizeTeams(teams []string) []string {
+	// Remove any strings from the list that are empty or just whitespace.
+	validTeams := teams[:0] // reuse storage.
+	for _, team := range teams {
+		team = strings.TrimSpace(team)
+		if len(team) > 0 {
+			validTeams = append(validTeams, team)
+		}
 	}
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	return enc.Encode(stackNewJSON{
-		OrganizationName: stackID.Owner,
-		ProjectName:      stackID.Project,
-		StackName:        stackID.Stack.String(),
-		Messages:         messages,
-	})
+
+	return validTeams
 }
