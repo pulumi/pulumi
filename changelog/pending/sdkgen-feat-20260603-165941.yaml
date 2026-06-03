@@ -1,0 +1,6 @@
+component: sdkgen
+kind: feat
+body: Adds support for language agnostic cross references in schemas. Use the form `{{% ref <target> %}}` to reference other schema components in markdown descriptions. Such as `{{% ref #/resources/pkg:index:Res %}}` to reference a resource Res in the current schema.
+time: 2026-06-03T16:59:41.002475+01:00
+custom:
+    PR: "21369"
