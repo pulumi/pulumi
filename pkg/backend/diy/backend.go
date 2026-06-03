@@ -1414,11 +1414,13 @@ func (b *diyBackend) GetLogs(ctx context.Context,
 		return nil, err
 	}
 
-	return GetLogsForTarget(target, query)
+	return GetLogsForTarget(ctx, target, query)
 }
 
 // GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
-func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
+func GetLogsForTarget(
+	ctx context.Context, target *deploy.Target, query operations.LogQuery,
+) ([]operations.LogEntry, error) {
 	contract.Requiref(target != nil, "target", "must not be nil")
 
 	if target.Snapshot == nil {
@@ -1433,7 +1435,7 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 
 	components := operations.NewResourceTree(target.Snapshot.Resources)
 	ops := components.OperationsProvider(config)
-	logs, err := ops.GetLogs(query)
+	logs, err := ops.GetLogs(ctx, query)
 	if logs == nil {
 		return nil, err
 	}

@@ -1,6 +1,6 @@
 component: backend/diy
 kind: improvement
-body: Update gocloud.dev to 0.46
+body: Update gocloud.dev to 0.46 and aws sdk to v2
 time: 2026-06-03T09:05:26.802277+01:00
 custom:
     PR: "23421"

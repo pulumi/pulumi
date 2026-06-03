@@ -777,7 +777,7 @@ func GetLogs(
 	ops := tree.OperationsProvider(cfg)
 
 	// Validate logs from example
-	logs, err := ops.GetLogs(query)
+	logs, err := ops.GetLogs(t.Context(), query)
 	require.NoError(t, err)
 
 	return logs

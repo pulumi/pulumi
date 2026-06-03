@@ -41,6 +41,7 @@ import (
 // AWSOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
 // underlying resources of the `@pulumi/aws` implementation.
 func AWSOperationsProvider(
+	ctx context.Context,
 	config map[config.Key]string,
 	component *Resource,
 ) (Provider, error) {
@@ -70,7 +71,6 @@ func AWSOperationsProvider(
 		awsProfile = getPropertyMapStringValue(outputs, "profile")
 	}
 
-	ctx := context.TODO()
 	cfg, err := getAWSConfig(ctx, awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile, true)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ const (
 	awsLogGroupType = tokens.Type("aws:cloudwatch/logGroup:LogGroup")
 )
 
-func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *awsOpsProvider) GetLogs(ctx context.Context, query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
 	//exhaustive:ignore
@@ -128,6 +128,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	case awsFunctionType:
 		functionName := state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
+			ctx,
 			[]string{functionName},
 			[]string{"/aws/lambda/" + functionName},
 			query.StartTime,
@@ -141,6 +142,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	case awsLogGroupType:
 		name := state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
+			ctx,
 			[]string{name},
 			[]string{name},
 			query.StartTime,
@@ -215,6 +217,7 @@ func getAWSConfig(
 }
 
 func (p *awsConnection) getLogsForLogGroupsConcurrently(
+	ctx context.Context,
 	names []string,
 	logGroups []string,
 	startTime *time.Time,
@@ -235,7 +238,6 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 	// Run FilterLogEvents for each log group in parallel
 	for _, logGroup := range logGroups {
 		go func(logGroup string) {
-			ctx := context.TODO()
 			var ret []cwltypes.FilteredLogEvent
 			paginator := cloudwatchlogs.NewFilterLogEventsPaginator(p.logSvc, &cloudwatchlogs.FilterLogEventsInput{
 				LogGroupName: aws.String(logGroup),
