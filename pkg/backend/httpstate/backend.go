@@ -38,7 +38,6 @@ import (
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
 
-	esc_client "github.com/pulumi/pulumi/sdk/v3/go/esc/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -71,6 +70,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	esc_client "github.com/pulumi/pulumi/sdk/v3/go/esc/cloud"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"go.opentelemetry.io/otel"
