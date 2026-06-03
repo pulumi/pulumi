@@ -21,6 +21,7 @@ module.exports = {
         "tests/provider/experimental/testdata/**/*.ts",
         "tools/automation/output/**/*.ts",
         "vendor/",
+        "esc/**/*.ts",
     ],
     rules: {
         "header/header": [
