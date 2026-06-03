@@ -54,8 +54,6 @@ func TestPluginLoggingDecrypt(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	tracesFile := filepath.Join(e.RootPath, "traces.json")
-
 	e.Env = append(e.Env,
 		"PULUMI_ENABLE_AUTOMATIC_LOGGING=true",
 	)
@@ -82,15 +80,17 @@ plugins:
 	e.RunCommand("go", "mod", "tidy")
 
 	e.RunCommand("pulumi", "stack", "init", "dev")
-	e.RunCommand("pulumi", "up", "--yes",
-		"--otel-traces", "file://"+tracesFile)
+	e.RunCommand("pulumi", "up", "--yes")
 
-	// Find and decrypt all log files.
+	// Find and decrypt all log files. The plugin marker must appear
+	// only in the stack-specific log (received via OTLP from the
+	// plugin), not in the CLI's own log files.
 	logsDir := filepath.Join(e.HomePath, "logs")
 	entries, err := os.ReadDir(logsDir)
 	require.NoError(t, err)
 
-	var allDecrypted strings.Builder
+	timeRe := regexp.MustCompile(`,"time":"[^"]*"`)
+	var foundStructpb, foundInline, foundScalar bool
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".log") {
 			continue
@@ -101,27 +101,43 @@ plugins:
 		require.NoError(t, err)
 		assert.NotContains(t, string(raw), "plugin-log-test-marker",
 			"expected encrypted log %s to not contain plaintext marker", entry.Name())
+		assert.NotContains(t, string(raw), "plugin-log-inline-marker",
+			"expected encrypted log %s to not contain plaintext inline marker", entry.Name())
 
 		stdout, _ := e.RunCommand("pulumi", "logs", "decrypt", logFile)
-		allDecrypted.WriteString(stdout)
-	}
 
-	decrypted := allDecrypted.String()
-	timeRe := regexp.MustCompile(`,"time":"[^"]*"`)
-
-	var found bool
-	for _, line := range strings.Split(decrypted, "\n") {
-		if !strings.Contains(line, "plugin-log-test-marker") {
-			continue
+		isStackLog := strings.Contains(entry.Name(), "test-plugin-logging")
+		for _, line := range strings.Split(stdout, "\n") {
+			stripped := timeRe.ReplaceAllString(line, "")
+			if strings.Contains(line, "plugin-log-test-marker") {
+				assert.True(t, isStackLog,
+					"plugin marker should only appear in the stack log (OTLP), not in %s", entry.Name())
+				foundStructpb = true
+				assert.Equal(t,
+					`{"level":"INFO","msg":"plugin-log-test-marker: creating resource with inputs map[value:hello-from-plugin]"}`,
+					stripped)
+			}
+			if strings.Contains(line, "plugin-log-inline-marker") {
+				assert.True(t, isStackLog,
+					"inline marker should only appear in the stack log (OTLP), not in %s", entry.Name())
+				foundInline = true
+				assert.Equal(t,
+					`{"level":"INFO","msg":"plugin-log-inline-marker: inline property map[foo:bar]"}`,
+					stripped)
+			}
+			if strings.Contains(line, "plugin-log-scalar-marker") {
+				assert.True(t, isStackLog,
+					"scalar marker should only appear in the stack log (OTLP), not in %s", entry.Name())
+				foundScalar = true
+				assert.Equal(t,
+					`{"level":"INFO","msg":"plugin-log-scalar-marker: scalar value secret-val"}`,
+					stripped)
+			}
 		}
-		found = true
-		stripped := timeRe.ReplaceAllString(line, "")
-		assert.Equal(t,
-			`{"level":"INFO","msg":"plugin-log-test-marker: creating resource with inputs map[value:hello-from-plugin]"}`,
-			stripped)
-		break
 	}
-	assert.True(t, found, "expected to find a log line with plugin-log-test-marker in decrypted output")
+	assert.True(t, foundStructpb, "expected to find plugin-log-test-marker in decrypted output")
+	assert.True(t, foundInline, "expected to find plugin-log-inline-marker in decrypted output")
+	assert.True(t, foundScalar, "expected to find plugin-log-scalar-marker in decrypted output")
 }
 
 const goProgram = `package main
@@ -146,7 +162,9 @@ type Resource struct {
 	Value pulumi.StringOutput ` + "`pulumi:\"value\"`" + `
 }
 
-func NewResource(ctx *pulumi.Context, name string, args *ResourceArgs, opts ...pulumi.ResourceOption) (*Resource, error) {
+func NewResource(
+	ctx *pulumi.Context, name string, args *ResourceArgs, opts ...pulumi.ResourceOption,
+) (*Resource, error) {
 	var resource Resource
 	err := ctx.RegisterResource("testlogging:index:Resource", name, args, &resource, opts...)
 	if err != nil {

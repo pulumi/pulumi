@@ -31,12 +31,24 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-var logProvider *sdklog.LoggerProvider
+var (
+	logProvider          *sdklog.LoggerProvider
+	exportHandlerWrapper func(slog.Handler) slog.Handler
+)
 
-// initExportHandler checks for PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT and
-// sets up an OTLP log export handler if present. Called from InitLogging.
+// RegisterExportHandlerWrapper registers a function that wraps the
+// OTLP export handler when it is created.  This allows packages that
+// cannot be imported here (e.g. pkg/logging) to inject property-type
+// awareness into the export pipeline.  Must be called before
+// InitLogging (typically from an init function).
+func RegisterExportHandlerWrapper(wrap func(slog.Handler) slog.Handler) {
+	exportHandlerWrapper = wrap
+}
+
+// initExportHandler sets up an OTLP log export handler if a log
+// endpoint is available. Called from InitLogging.
 func initExportHandler(serviceName string) {
-	endpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
+	endpoint := os.Getenv("PULUMI_LOG_OTLP_ENDPOINT")
 	if endpoint == "" {
 		return
 	}
@@ -69,7 +81,11 @@ func initExportHandler(serviceName string) {
 	inner := otelslog.NewHandler(serviceName,
 		otelslog.WithLoggerProvider(provider),
 	)
-	SetExportHandler(&propertyValueExportHandler{inner: inner})
+	var h slog.Handler = &propertyValueExportHandler{inner: inner}
+	if exportHandlerWrapper != nil {
+		h = exportHandlerWrapper(h)
+	}
+	SetExportHandler(h)
 }
 
 // shutdownExportHandler flushes and closes the OTLP log provider.
@@ -83,20 +99,20 @@ func shutdownExportHandler() {
 	SetExportHandler(nil)
 }
 
-// PropertyValue wraps a *structpb.Struct for use as an slog attribute
+// PropertyValue wraps a *structpb.Value for use as an slog attribute
 // value.  When logged through the local handler it renders as JSON.
 // When logged through the export handler it is encoded as a
 // LogPropertyValue (protobuf bytes with a magic prefix) so the
 // collector can identify and process it.
 type PropertyValue struct {
-	Key    string
-	Struct *structpb.Struct
+	Key   string
+	Value *structpb.Value
 }
 
 // String implements fmt.Stringer so that PropertyValue renders as JSON
 // when used as a %v arg in Infof.
 func (pv PropertyValue) String() string {
-	b, err := json.Marshal(pv.Struct.AsMap())
+	b, err := json.Marshal(pv.Value.AsInterface())
 	if err != nil {
 		return "<error marshaling property value>"
 	}
@@ -113,7 +129,9 @@ func (pv PropertyValue) LogValue() slog.Value {
 // The key is used as the attribute name when sent to the export handler.
 // In the local log the value is rendered as JSON via fmt.Sprintf %v.
 func NewPropertyValue(key string, s *structpb.Struct) PropertyValue {
-	return PropertyValue{Key: key, Struct: s}
+	return PropertyValue{Key: key, Value: &structpb.Value{
+		Kind: &structpb.Value_StructValue{StructValue: s},
+	}}
 }
 
 // propertyValueExportHandler wraps an slog.Handler and converts
@@ -131,8 +149,7 @@ func (h *propertyValueExportHandler) Handle(ctx context.Context, r slog.Record) 
 	newRec := slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
 	r.Attrs(func(a slog.Attr) bool {
 		if pv, ok := a.Value.Any().(PropertyValue); ok {
-			sv := &structpb.Value{Kind: &structpb.Value_StructValue{StructValue: pv.Struct}}
-			encoded, err := EncodeStructValueForLog(sv)
+			encoded, err := EncodeStructValueForLog(pv.Value)
 			if err == nil {
 				newRec.AddAttrs(slog.String(a.Key, string(encoded)))
 			}

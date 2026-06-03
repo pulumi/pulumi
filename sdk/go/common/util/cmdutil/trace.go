@@ -68,6 +68,12 @@ var otelMu sync.RWMutex
 // otelEndpoint is the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
 var otelEndpoint string
 
+// logReceiverEndpoint is the OTLP gRPC endpoint for log-only
+// collection. Set when the receiver is started without an upstream
+// trace collector. Plugins use this to export log records without
+// switching to full OTel tracing mode.
+var logReceiverEndpoint string
+
 var (
 	otelReceiver       *otelreceiver.Receiver
 	otelTracerProvider *sdktrace.TracerProvider
@@ -216,58 +222,82 @@ func OTelEndpoint() string {
 	return otelEndpoint
 }
 
+// LogReceiverEndpoint returns the OTLP gRPC endpoint for log-only
+// collection. Non-empty only when the receiver was started without
+// an upstream trace collector.
+func LogReceiverEndpoint() string {
+	otelMu.RLock()
+	defer otelMu.RUnlock()
+	return logReceiverEndpoint
+}
+
 // InitOtelReceiver starts the OTLP receiver with the given endpoint and
 // optional log exporter.
 func InitOtelReceiver(endpoint string, logExporter otellog.LogExporter) error {
-	if endpoint == "" {
+	if endpoint == "" && logExporter == nil {
 		return nil
 	}
 
-	exporter, err := otelreceiver.NewExporter(endpoint)
-	if err != nil {
-		return fmt.Errorf("failed to create OTLP exporter: %w", err)
+	var spanExporter otelreceiver.SpanExporter
+	if endpoint != "" {
+		var err error
+		spanExporter, err = otelreceiver.NewExporter(endpoint)
+		if err != nil {
+			return fmt.Errorf("failed to create OTLP exporter: %w", err)
+		}
 	}
 
-	receiver, err := otelreceiver.Start(exporter, logExporter)
+	receiver, err := otelreceiver.Start(spanExporter, logExporter)
 	if err != nil {
-		_ = exporter.Shutdown(context.Background())
+		if spanExporter != nil {
+			_ = spanExporter.Shutdown(context.Background())
+		}
 		return fmt.Errorf("failed to start OTLP receiver: %w", err)
 	}
 
 	ep := receiver.Endpoint()
 
-	// Start the AppDash bridge so that legacy OpenTracing plugins can send
-	// spans that get converted to OTLP and forwarded to the same exporter.
-	bridge, err := otelreceiver.StartAppDashBridge(exporter)
-	if err != nil {
-		_ = receiver.Shutdown(context.Background())
-		_ = exporter.Shutdown(context.Background())
-		return fmt.Errorf("failed to start AppDash bridge: %w", err)
-	}
-
 	otelMu.Lock()
 	otelReceiver = receiver
-	otelEndpoint = ep
-	appdashBridge = bridge
+	logReceiverEndpoint = ep
+	if spanExporter != nil {
+		otelEndpoint = ep
+	}
 	otelMu.Unlock()
 
-	// Set TracingEndpoint to the AppDash bridge so legacy plugins
-	// (providers that only speak OpenTracing) send their spans through
-	// it.  We intentionally do NOT call InitTracing() here: the CLI
-	// uses OTel for its own spans and does not need an OpenTracing
-	// tracer.  Keeping the global tracer as a no-op avoids duplicate
-	// spans on the engine's gRPC server interceptors while still
-	// letting provider plugins connect via --tracing.  Root provider
-	// spans are grafted onto the OTel trace via SetTraceParent().
-	TracingEndpoint = bridge.Endpoint()
+	if spanExporter != nil {
+		// Start the AppDash bridge so that legacy OpenTracing plugins can send
+		// spans that get converted to OTLP and forwarded to the same exporter.
+		bridge, err := otelreceiver.StartAppDashBridge(spanExporter)
+		if err != nil {
+			_ = receiver.Shutdown(context.Background())
+			_ = spanExporter.Shutdown(context.Background())
+			return fmt.Errorf("failed to start AppDash bridge: %w", err)
+		}
 
-	logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", ep, endpoint)
-	logging.V(5).Infof("Started AppDash bridge at %s for legacy OpenTracing plugins", bridge.Endpoint())
+		otelMu.Lock()
+		appdashBridge = bridge
+		otelMu.Unlock()
 
-	// Set up Otel TracerProvider for CLI's own spans
-	// The CLI sends its spans to the local receiver, which forwards to the configured exporter
-	if err := InitOtelTracing("pulumi-cli", ep); err != nil {
-		logging.V(3).Infof("failed to initialize OTel tracer provider: %v", err)
+		// Set TracingEndpoint to the AppDash bridge so legacy plugins
+		// (providers that only speak OpenTracing) send their spans through
+		// it.  We intentionally do NOT call InitTracing() here: the CLI
+		// uses OTel for its own spans and does not need an OpenTracing
+		// tracer.  Keeping the global tracer as a no-op avoids duplicate
+		// spans on the engine's gRPC server interceptors while still
+		// letting provider plugins connect via --tracing.  Root provider
+		// spans are grafted onto the OTel trace via SetTraceParent().
+		TracingEndpoint = bridge.Endpoint()
+
+		logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", ep, endpoint)
+		logging.V(5).Infof("Started AppDash bridge at %s for legacy OpenTracing plugins", bridge.Endpoint())
+
+		// Set up Otel TracerProvider for CLI's own spans
+		if err := InitOtelTracing("pulumi-cli", ep); err != nil {
+			logging.V(3).Infof("failed to initialize OTel tracer provider: %v", err)
+		}
+	} else {
+		logging.V(5).Infof("Started local OTLP receiver at %s (logs only)", ep)
 	}
 
 	return nil
@@ -341,6 +371,7 @@ func CloseOtelTracing() {
 	bridge := appdashBridge
 	appdashBridge = nil
 	otelEndpoint = ""
+	logReceiverEndpoint = ""
 	otelMu.Unlock()
 
 	if tp != nil {

@@ -57,13 +57,8 @@ func (e *SlogLogExporter) exportRecord(lr plog.LogRecord) {
 			raw := val.Bytes().AsRaw()
 			sv, err := logging.DecodeStructValueFromLog(raw)
 			if err == nil {
-				if s := sv.GetStructValue(); s != nil {
-					// Wrap as PropertyValue so the sink handler
-					// can encode it and the primary handler can
-					// render it as a readable string.
-					attrs = append(attrs, key, logging.NewPropertyValue(key, s))
-					return true
-				}
+				attrs = append(attrs, key, logging.PropertyValue{Key: key, Value: sv})
+				return true
 			}
 		}
 		attrs = append(attrs, key, val.AsString())

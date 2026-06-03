@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -80,6 +81,10 @@ func (p *testloggingProvider) Check(_ context.Context, req *rpc.CheckRequest) (*
 func (p *testloggingProvider) Create(_ context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
 	props := req.GetProperties()
 	logging.Infof("plugin-log-test-marker: creating resource with inputs %v", props)
+	logging.Infof("plugin-log-inline-marker: inline property %v",
+		resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "bar"}))
+	logging.Infof("plugin-log-scalar-marker: scalar value %v",
+		resource.NewStringProperty("secret-val"))
 	return &rpc.CreateResponse{
 		Id:         "test-id-1",
 		Properties: props,
