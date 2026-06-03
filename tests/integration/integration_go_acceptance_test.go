@@ -43,7 +43,7 @@ func TestConstructGo(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -87,7 +87,7 @@ func TestConstructGo(t *testing.T) {
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNestedConstructGo(t *testing.T) {
 	testDir := "construct_component"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	localProviders := []integration.LocalDependency{
 		{Package: "testcomponent", Path: filepath.Join(testDir, "testcomponent-go")},

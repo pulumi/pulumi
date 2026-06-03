@@ -114,7 +114,6 @@ func TestPanickingComponentConfigure(t *testing.T) {
 		testDir      = filepath.Join("go", "component-configure-panic")
 		componentDir = "testcomponent-go"
 	)
-	runComponentSetup(t, testDir)
 
 	var stderr bytes.Buffer
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -589,7 +588,7 @@ func TestConstructSlowGo(t *testing.T) {
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
 	testDir := "construct_component_slow"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	opts := &integration.ProgramTestOptions{
 		Env: []string{testYarnLinkPulumiEnv},
@@ -617,7 +616,7 @@ func TestConstructPlainGo(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_plain"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -685,7 +684,7 @@ func TestConstructMethodsGo(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_methods"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -761,7 +760,7 @@ func TestConstructProviderGo(t *testing.T) {
 	t.Parallel()
 
 	const testDir = "construct_component_provider"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -1768,8 +1767,8 @@ func TestRunPlugin(t *testing.T) {
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	installNodejsProviderDependencies(t, filepath.Join(e.RootPath, "provider-nodejs"))
-	installPythonProviderDependencies(t, filepath.Join(e.RootPath, "provider-python"))
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider-nodejs"))
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider-python"))
 
 	e.CWD = filepath.Join(e.RootPath, "go")
 	sdkPath, err := filepath.Abs("../../sdk/")

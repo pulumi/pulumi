@@ -3,5 +3,6 @@ description: A simple Python Pulumi program that type checks with pyright.
 runtime:
   name: python
   options:
+    toolchain: uv
     virtualenv: venv
     typechecker: pyright

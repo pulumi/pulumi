@@ -265,8 +265,7 @@ func TestStackCommands(t *testing.T) {
 		e.ImportDirectory("../integration/stack_dependencies")
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-		e.RunCommandWithRetry("yarn", "install")
+		e.InstallDependencies()
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		// We're going to futz with the stack a little so that one of the resources we just created
 		// becomes invalid.
@@ -335,8 +334,7 @@ func TestStackBackups(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-		e.RunCommandWithRetry("yarn", "install")
+		e.InstallDependencies()
 
 		// Now run pulumi up.
 		before := time.Now().UnixNano()
@@ -400,8 +398,7 @@ func TestDestroySetsEncryptionsalt(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-		e.RunCommandWithRetry("yarn", "install")
+		e.InstallDependencies()
 
 		e.RunCommand("pulumi", "config", "set", "--secret", "token", "cookie")
 
@@ -609,8 +606,7 @@ func TestLocalStateLocking(t *testing.T) {
 	e.ImportDirectory("../integration/single_resource")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "foo")
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	count := 10
 	stderrs := make(chan string, count)
@@ -722,8 +718,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	e.ImportDirectory("../integration/stack_dependencies")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	assertGzipFileFormat, assertPlainFileFormat := stackFileFormatAsserters(t, e, "stack_dependencies", stackName)
@@ -852,8 +847,7 @@ func TestStackTags(t *testing.T) {
 	tags = lsTags()
 	assert.NotContains(t, tags, "tagA", "tagA should be removed")
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	tags = lsTags()
@@ -1039,8 +1033,7 @@ func TestStackExportDoesNotEscapeHTML(t *testing.T) {
 	require.NoError(t, err)
 
 	e.RunCommand("pulumi", "stack", "init", stack)
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	// No escaped HTML characters in the exported JSON.
