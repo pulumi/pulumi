@@ -1,0 +1,6 @@
+component: cli
+kind: improvement
+body: Support Ctrl+Z to suspend a running `pulumi neo` session (resume with `fg`)
+time: 2026-06-03T00:00:00.000000+00:00
+custom:
+    PR: https://github.com/pulumi/pulumi/issues/23394

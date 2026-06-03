@@ -620,6 +620,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// will fire later but no-op because ctrlCArmed is already false.
 		m.ctrlCArmed = false
 
+		// Ctrl+Z suspends via standard Unix job control (SIGTSTP); resume with
+		// `fg`. Bubbletea restores the terminal around the stop, so raw mode is
+		// fine. Not gated on busy — suspending mid-turn is the point, since
+		// cancellation isn't instant.
+		if keyStr == "ctrl+z" {
+			return m, tea.Suspend
+		}
+
 		// Ctrl+O opens the overlay. Sits above the busy/approval gates so
 		// users can peek mid-turn. Closing is handled by the overlayActive
 		// branch above. Alt-screen toggling happens in View() via the

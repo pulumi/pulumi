@@ -503,6 +503,32 @@ func TestModel_Update_KeyCtrlC_StaleDisarmIgnored(t *testing.T) {
 	assert.True(t, um.ctrlCArmed, "stale-gen disarm tick must not clear a fresh arm")
 }
 
+func TestModel_Update_KeyCtrlZ_Suspends(t *testing.T) {
+	t.Parallel()
+
+	// Ctrl+Z must hand the shell back via standard job control (SIGTSTP).
+	// Bubbletea models this as the Suspend command, which resolves to a
+	// tea.SuspendMsg. It must work mid-turn, so assert it both idle and busy.
+	t.Run("idle", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{})
+		_, cmd := m.Update(tea.KeyPressMsg{Code: 'z', Mod: tea.ModCtrl})
+		require.NotNil(t, cmd)
+		_, ok := cmd().(tea.SuspendMsg)
+		assert.True(t, ok, "Ctrl+Z must produce a tea.SuspendMsg")
+	})
+
+	t.Run("busy", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{})
+		m.busy = true
+		_, cmd := m.Update(tea.KeyPressMsg{Code: 'z', Mod: tea.ModCtrl})
+		require.NotNil(t, cmd)
+		_, ok := cmd().(tea.SuspendMsg)
+		assert.True(t, ok, "Ctrl+Z must suspend even while the agent is busy")
+	})
+}
+
 func TestModel_Update_KeyCtrlD_BehavesLikeCtrlC(t *testing.T) {
 	t.Parallel()
 
