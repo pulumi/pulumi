@@ -166,6 +166,26 @@ func TestWaitingCausesNoPanics(t *testing.T) {
 	}
 }
 
+func TestRegisterResourceMarshalErrorLogged(t *testing.T) {
+	t.Parallel()
+
+	var loggedErr error
+	logError := func(_ *Context, err error) { loggedErr = err }
+
+	mocks := &testMonitor{}
+	err := runErrInner(func(ctx *Context) error {
+		out, _, rejectOut := ctx.NewOutput()
+		rejectOut(errors.New("intentional marshaling error"))
+		var res struct{ CustomResourceState }
+		return ctx.RegisterResource("test:index:res", "test", Map{"badProp": out}, &res)
+	}, logError, WithMocks("project", "stack", mocks))
+
+	require.Error(t, err)
+	require.Error(t, loggedErr)
+	assert.Contains(t, loggedErr.Error(), "marshaling properties")
+	assert.Contains(t, loggedErr.Error(), "badProp")
+}
+
 func TestCollapseAliases(t *testing.T) {
 	t.Parallel()
 
