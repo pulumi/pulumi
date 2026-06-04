@@ -17,11 +17,15 @@ package workspace
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/stretchr/testify/assert"
@@ -112,6 +116,48 @@ func TestInstallPluginErrorText(t *testing.T) {
 			assert.EqualError(t, &tt.Err, tt.ExpectedError)
 		})
 	}
+}
+
+// TestEnsureLanguageInstalledUsesPathPlugin checks that EnsureLanguageInstalled does not download a
+// language runtime that is already present on $PATH — the version on $PATH is the one that the
+// language host will load, so downloading is wasted work.
+//
+// We assert no download happens offline by passing an already-cancelled context: EnsureLanguageInstalled
+// resolves the runtime on $PATH and returns nil before reaching any download, so the cancelled
+// context never matters. Were the $PATH check missing, it would reach DownloadToFile and fail.
+func TestEnsureLanguageInstalledUsesPathPlugin(t *testing.T) {
+	// Not parallel: mutates PATH and PULUMI_HOME via t.Setenv.
+
+	if runtime.GOOS == "windows" {
+		t.Skip("relies on the unix executable bit and $PATH lookup semantics")
+	}
+
+	// Place an executable pulumi-language-hcl on $PATH. "hcl" is an unbundled language runtime with
+	// a known download URL, so EnsureLanguageInstalled will otherwise try to fetch it.
+	pathDir := t.TempDir()
+	languageBinary := filepath.Join(pathDir, "pulumi-language-hcl")
+	require.NoError(t, os.WriteFile(languageBinary, []byte("#!/bin/sh\n"), 0o600))
+	require.NoError(t, os.Chmod(languageBinary, 0o700)) // exec.LookPath requires the executable bit.
+	t.Setenv("PATH", pathDir)
+
+	// Point PULUMI_HOME at an empty directory so the plugin cache reports a miss.
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	hcl := workspace.PluginDescriptor{Kind: apitype.LanguagePlugin, Name: "hcl"}
+
+	// The standard plugin resolver finds the runtime on $PATH, so a download is unnecessary.
+	path, err := workspace.GetPluginPath(t.Context(), diagtest.LogSink(t), hcl, nil)
+	require.NoError(t, err)
+	require.Equal(t, languageBinary, path)
+
+	// An already-cancelled context makes any download attempt fail offline, so this assertion turns
+	// "tried to download" into a deterministic failure rather than a network round-trip.
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	err = EnsureLanguageInstalled(ctx, "hcl", nil)
+
+	require.NoError(t, err, "EnsureLanguageInstalled should reuse the runtime on $PATH, not download it")
 }
 
 func TestPluginInstallCancellation(t *testing.T) {
