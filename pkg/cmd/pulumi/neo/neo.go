@@ -330,6 +330,8 @@ func runNeo(
 	// races bubbletea's own input reader for the terminal's reply, which leaks
 	// the response into the textarea; lipgloss queries synchronously here and
 	// consumes its own response. Defaults to dark on any error.
+	//
+	//nolint:forbidigo // needs the real terminal fds to query the background; cmd.OutOrStdout() is an io.Writer
 	hasDarkBackground := lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
 
 	model := NewModel(ModelConfig{
