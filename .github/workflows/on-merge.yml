@@ -126,7 +126,7 @@ jobs:
             exit 1
           fi
 
-          EXPECTED_VERSION=$(git show "$BASE_SHA":sdk/.version | tr -d '[:space:]')
+          EXPECTED_VERSION=$(git show "$BASE_SHA^":sdk/.version | tr -d '[:space:]')
           DEPENDED_VERSION=$(awk '$1 == "github.com/pulumi/pulumi/sdk/v3" && $2 ~ /^v[0-9]/ {print $2; exit}' pkg/go.mod | sed 's/^v//')
           if [ -z "$DEPENDED_VERSION" ]; then
             echo "::error::Could not read the github.com/pulumi/pulumi/sdk/v3 dependency from pkg/go.mod."
