@@ -790,6 +790,10 @@ func (m defaultLoginManager) Login(
 
 	// If no access token is available from the environment, and we are interactive, prompt and offer to
 	// open a browser to make it easy to generate and use a fresh token.
+	//
+	// TODO: The `message` parameter is no longer used now that the prompt is the same regardless of
+	// caller. It used to differentiate between "Pulumi stacks" and "Pulumi ESC environments". Once the
+	// ESC CLI is merged into the Pulumi CLI, drop the parameter from the LoginManager.Login signature.
 	line1 := "Connect to Pulumi Cloud for state storage, config management, team collaboration, and more."
 	line1 = colors.Highlight(line1, "Pulumi Cloud", colors.SpecHeadline)
 	fmt.Println(opts.Color.Colorize(line1))
