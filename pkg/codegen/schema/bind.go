@@ -2126,11 +2126,16 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 	stringProperties := slice.Prealloc[*Property](len(decl.Properties))
 	for _, prop := range decl.Properties {
 		typ := plainType(prop.Type)
-		if tokenType, isTokenType := typ.(*TokenType); isTokenType {
-			if tokenType.UnderlyingType != stringType {
+		switch typ := typ.(type) {
+		case *TokenType:
+			if typ.UnderlyingType != stringType {
 				continue
 			}
-		} else {
+		case *EnumType:
+			if typ.ElementType != stringType {
+				continue
+			}
+		default:
 			if typ != stringType {
 				continue
 			}

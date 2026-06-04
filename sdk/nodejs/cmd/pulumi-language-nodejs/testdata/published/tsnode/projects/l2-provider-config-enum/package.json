@@ -1,0 +1,11 @@
+{
+	"name": "l2-provider-config-enum",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/config-enum": "ROOT/artifacts/pulumi-config-enum-40.0.0.tgz"
+	}
+}

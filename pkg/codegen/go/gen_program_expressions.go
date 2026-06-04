@@ -264,6 +264,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			mod = g.getModOrAlias(pkg, mod, mod)
 			enumTag := fmt.Sprintf("%s.%s", mod, typ)
 			if isOutput {
+				// If the source is already typed as the same enum, emit it as-is rather than
+				// generating an Apply that coerces from the underlying primitive type.
+				fromInner := model.ResolveOutputs(fromType)
+				if fromEnum, ok := fromInner.(*model.EnumType); ok && fromEnum.Token == to.Token {
+					g.Fgenf(w, "%.v", from)
+					return
+				}
 				g.Fgenf(w,
 					"%.v.ApplyT(func(x *%[3]s) %[2]s { return %[2]s(*x) }).(%[2]sOutput)",
 					from, enumTag, underlyingType)

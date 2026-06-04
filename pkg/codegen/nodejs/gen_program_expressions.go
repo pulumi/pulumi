@@ -451,6 +451,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		switch to := to.(type) {
 		case *model.EnumType:
 			if enum, err := enumName(to); err == nil {
+				// If the source is already the same enum, emit it as-is. The reverse-mapping
+				// `Enum[x]` form below would return `undefined` for string enums (which have
+				// no TypeScript reverse map) and is unnecessary when the value is already typed.
+				if fromEnum, ok := fromType.(*model.EnumType); ok && fromEnum.Token == to.Token {
+					g.Fgenf(w, "%.v", from)
+					return
+				}
 				if isFromOutput {
 					g.Fgenf(w, "%.v.apply((x) => %s[x])", from, enum)
 				} else {

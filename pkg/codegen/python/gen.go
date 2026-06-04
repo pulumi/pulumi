@@ -2737,6 +2737,9 @@ func isStringType(t schema.Type) bool {
 	for tt, ok := t.(*schema.TokenType); ok; tt, ok = t.(*schema.TokenType) {
 		t = tt.UnderlyingType
 	}
+	if et, ok := t.(*schema.EnumType); ok {
+		t = et.ElementType
+	}
 
 	return t == schema.StringType
 }
