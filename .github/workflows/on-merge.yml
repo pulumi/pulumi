@@ -83,6 +83,11 @@ jobs:
   block-during-release:
     name: block during release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To cancel sibling jobs (ci, performance-gate, prepare-release) so the
+      # merge queue rejects this PR without waiting for the full test suite.
+      actions: write
     steps:
       - uses: actions/checkout@v6
       - name: Check release marker
@@ -138,6 +143,12 @@ jobs:
             echo "  pkg/go.mod sdk/v3:          $DEPENDED_VERSION"
             exit 1
           fi
+      - name: Cancel sibling jobs on block
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}"
 
   ci-ok:
     name: ci-ok
@@ -145,14 +156,14 @@ jobs:
     if: always() # always report a status
     runs-on: ubuntu-latest
     steps:
+      - name: Release in progress
+        if: ${{ needs.block-during-release.result != 'success' }}
+        run: exit 1
       - name: CI failed
         if: ${{ needs.ci.result != 'success' }}
         run: exit 1
       - name: Release failed
         if: ${{ needs.prepare-release.result != 'success' }}
-        run: exit 1
-      - name: Release in progress
-        if: ${{ needs.block-during-release.result != 'success' }}
         run: exit 1
       - name: CI succeeded
         run: exit 0
