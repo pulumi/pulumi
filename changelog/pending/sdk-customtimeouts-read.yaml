@@ -1,5 +1,5 @@
 component: sdk
-kind: feature
+kind: feat
 body: Add a `read` field to `customTimeouts` so users can configure a timeout for resource read operations
 time: 2026-06-04T00:00:00.000000+00:00
 custom:
