@@ -238,11 +238,11 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 
 	// Resolve the backend fresh per tool call, the same way `pulumi preview`/`pulumi up`
-	// do (stack.RequireStack -> cmdBackend.CurrentBackend -> Login). A backend frozen at
-	// `pulumi neo` startup bakes in whatever token was resolved then and never refreshes
-	// it, which can make the tool authenticate — and decrypt service-managed secrets — as
-	// a different identity than an equivalent `pulumi preview` would. Resolving here, after
-	// applyEnvVars and the chdir into the project dir, keeps the identity in lockstep.
+	// do (stack.RequireStack -> cmdBackend.CurrentBackend -> Login). Reusing the backend
+	// frozen at `pulumi neo` startup would pin the access token resolved back then, so the
+	// tool could authenticate — and decrypt service-managed secrets — as a different
+	// identity than the user's own `pulumi preview`. Resolving here, after applyEnvVars and
+	// the chdir into the project dir, keeps the two paths in lockstep.
 	be, err := cmdBackend.CurrentBackend(
 		ctx, p.Workspace, cmdBackend.DefaultLoginManager, proj, backendDisplay.Options{Color: colors.Never})
 	if err != nil {
