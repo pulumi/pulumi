@@ -16,41 +16,22 @@ package neo
 
 import "strings"
 
-// approvalPhrases mirrors APPROVAL_PHRASES in the console
-// (cmd/console2/src/app/agents/utils/text-approval.util.ts) and approvalPhrases
-// in the service (cmd/service/services/agents/approval_classifier.go). Keep the
-// shared phrases in sync so the same reply classifies identically whether it
-// arrives via CLI, console, or Slack.
-//
-// "go on", "all right", and "alright" are CLI-only additions (not in the
-// service/console lists); they only ever widen what the CLI accepts as an
-// affirmative, so they're safe to carry locally.
-var approvalPhrases = map[string]struct{}{
-	"yes": {}, "approve": {}, "approved": {}, "ok": {}, "okay": {},
-	"confirm": {}, "confirmed": {}, "go ahead": {}, "proceed": {},
-	"lgtm": {}, "go for it": {}, "do it": {}, "ship it": {}, "y": {},
-	// CLI-only additions:
-	"go on": {}, "all right": {}, "alright": {},
+// affirmativeReplies are the whole-input replies the CLI accepts as an approval.
+// The shared phrases mirror the console "Yes" button and the service classifier
+// (pulumi-service cmd/service/services/agents/approval_classifier.go) — keep them
+// in sync so a reply classifies the same via CLI, console, or Slack. "go on",
+// "all right" and "alright" are CLI-only; they only widen what counts as a yes.
+var affirmativeReplies = map[string]struct{}{
+	"yes": {}, "y": {}, "ok": {}, "okay": {}, "approve": {}, "approved": {},
+	"confirm": {}, "confirmed": {}, "proceed": {}, "go ahead": {}, "go for it": {},
+	"do it": {}, "ship it": {}, "lgtm": {}, "go on": {}, "all right": {}, "alright": {},
 }
 
-// normalizeApprovalReply lowercases, trims, and collapses internal whitespace so
-// "  Go   Ahead " matches "go ahead".
-func normalizeApprovalReply(s string) string {
-	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(s))), " ")
-}
-
-// classifyApprovalReply maps a free-text reply to a pending approval to
-// (approved, instructions). A recognized affirmative phrase approves with no
-// instructions; anything else denies and forwards the typed text as the agent's
-// instructions.
-//
-// Only whole-input affirmatives count — a compound reply like "yes but only on
-// dev" stays a denial so its instructions reach the agent. We intentionally do
-// not classify rejection phrases here: a bare "no" still denies with its text as
-// instructions, matching prior CLI behavior.
-func classifyApprovalReply(text string) (approved bool, instructions string) {
-	if _, ok := approvalPhrases[normalizeApprovalReply(text)]; ok {
-		return true, ""
-	}
-	return false, strings.TrimSpace(text)
+// isAffirmative reports whether an approval reply is a bare yes, case- and
+// whitespace-insensitive ("  Go  Ahead " == "go ahead"). A compound reply like
+// "yes but only on dev" is not affirmative, so its text still reaches the agent
+// as instructions.
+func isAffirmative(reply string) bool {
+	_, ok := affirmativeReplies[strings.Join(strings.Fields(strings.ToLower(reply)), " ")]
+	return ok
 }

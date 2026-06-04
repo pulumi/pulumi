@@ -833,14 +833,8 @@ func TestModel_Update_UIApprovalRequest_ShowsPromptAndPausesAgent(t *testing.T) 
 func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
 	t.Parallel()
 
-	cases := []string{
-		"y", "Y", "yes", "YES", "Yes",
-		"ok", "okay", "approve", "approved", "confirm", "confirmed",
-		"proceed", "lgtm", "LGTM", "ship it", "do it", "go for it",
-		"go ahead", "  Go   Ahead ",
-		// CLI-only additions.
-		"go on", "all right", "alright",
-	}
+	// Representative sample — exhaustive phrase coverage lives in TestIsAffirmative.
+	cases := []string{"y", "yes", "ok", "go ahead"}
 	for _, in := range cases {
 		t.Run(in, func(t *testing.T) {
 			t.Parallel()
@@ -881,39 +875,27 @@ func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 
 	// Anything that isn't a recognized affirmative is treated as a denial; the
 	// typed text becomes the instructions field so the agent can act on the
-	// user's reasoning. A bare "no" is NOT special-cased — it denies with "no"
-	// as instructions, matching prior CLI behavior (we don't import the
-	// service's rejection-phrase stripping).
-	cases := map[string]string{
-		"reason":      "not on prod",
-		"compound":    "yes but only on dev",
-		"bare-no":     "no",
-		"bare-cancel": "cancel",
+	// user's reasoning.
+	outCh := make(chan outboundEvent, 1)
+	m := newApprovalPendingModel(t, outCh)
+	m.textInput.SetValue("not on prod")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	um := updated.(Model)
+
+	select {
+	case got := <-outCh:
+		conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok, "expected UserConfirmation, got %T", got.event)
+		assert.False(t, conf.Approved)
+		assert.Equal(t, "appr_1", conf.ApprovalID)
+		assert.Equal(t, "not on prod", conf.Message, "denial must forward the typed reason")
+	default:
+		t.Fatal("Enter must post a confirmation event")
 	}
-	for name, reason := range cases {
-		t.Run(name, func(t *testing.T) {
-			outCh := make(chan outboundEvent, 1)
-			m := newApprovalPendingModel(t, outCh)
-			m.textInput.SetValue(reason)
 
-			updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-			um := updated.(Model)
-
-			select {
-			case got := <-outCh:
-				conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
-				require.True(t, ok, "expected UserConfirmation, got %T", got.event)
-				assert.False(t, conf.Approved)
-				assert.Equal(t, "appr_1", conf.ApprovalID)
-				assert.Equal(t, reason, conf.Message, "denial must forward the typed reason")
-			default:
-				t.Fatal("Enter must post a confirmation event")
-			}
-
-			assert.False(t, um.pendingApproval)
-			assert.False(t, um.busy, "denial must NOT re-arm busy — the agent is not running")
-		})
-	}
+	assert.False(t, um.pendingApproval)
+	assert.False(t, um.busy, "denial must NOT re-arm busy — the agent is not running")
 }
 
 func TestModel_Update_KeyEnter_Approval_DenyEmpty(t *testing.T) {

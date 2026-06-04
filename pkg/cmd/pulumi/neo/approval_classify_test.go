@@ -20,45 +20,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestClassifyApprovalReply(t *testing.T) {
+func TestIsAffirmative(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		text             string
-		wantApproved     bool
-		wantInstructions string
-	}{
-		// Affirmatives → approved, no instructions.
-		{"y", true, ""},
-		{"yes", true, ""},
-		{"YES", true, ""},
-		{"ok", true, ""},
-		{"okay", true, ""},
-		{"approve", true, ""},
-		{"approved", true, ""},
-		{"confirm", true, ""},
-		{"go ahead", true, ""},
-		{"  Go   Ahead ", true, ""}, // whitespace collapses
-		{"lgtm", true, ""},
-		{"ship it", true, ""},
-		// CLI-only additions.
-		{"go on", true, ""},
-		{"all right", true, ""},
-		{"alright", true, ""},
-		// Non-affirmatives → denial, text forwarded as instructions.
-		{"not on prod", false, "not on prod"},
-		{"yes but only on dev", false, "yes but only on dev"}, // compound is not a bare affirmative
-		{"no", false, "no"},                                   // rejection phrases are not special-cased
-		{"cancel", false, "cancel"},
-		{"  trim me  ", false, "trim me"},
-		{"", false, ""},
+	for _, s := range []string{
+		"y", "yes", "YES", "ok", "okay", "approve", "approved", "confirm",
+		"confirmed", "proceed", "go ahead", "  Go   Ahead ", "go for it",
+		"do it", "ship it", "lgtm", "go on", "all right", "alright",
+	} {
+		assert.True(t, isAffirmative(s), "%q should be affirmative", s)
 	}
-	for _, tt := range tests {
-		t.Run(tt.text, func(t *testing.T) {
-			t.Parallel()
-			approved, instructions := classifyApprovalReply(tt.text)
-			assert.Equal(t, tt.wantApproved, approved)
-			assert.Equal(t, tt.wantInstructions, instructions)
-		})
+	for _, s := range []string{"", "no", "cancel", "not on prod", "yes but only on dev"} {
+		assert.False(t, isAffirmative(s), "%q should not be affirmative", s)
 	}
 }

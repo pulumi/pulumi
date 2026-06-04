@@ -779,7 +779,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					answerCmd := m.commitBlock(block{kind: blockAnswerSubmitted, raw: text})
 					return m, tea.Batch(answerCmd, m.showBusy(thinkingLabel, shimmerVerb))
 				}
-				approved, denialMsg := classifyApprovalReply(text)
+				approved := isAffirmative(text)
+				denialMsg := ""
+				if !approved {
+					denialMsg = text
+				}
 				wasPlanApproval := m.pendingApprovalType == approvalTypePlanExit
 				m.sendOut(outboundEvent{
 					event: apitype.AgentUserEventUserConfirmation{
