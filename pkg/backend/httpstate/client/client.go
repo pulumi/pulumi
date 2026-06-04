@@ -56,8 +56,11 @@ import (
 )
 
 const (
-	// 20s before we give up on a copilot request
+	// 20s before we give up on a warm, interactive Neo request.
 	NeoRequestTimeout = 20 * time.Second
+	// Task creation can trigger a backend cold start (up to ~1 min after a new
+	// Neo version is deployed), so allow it a much longer budget than warm requests.
+	NeoCreateTaskTimeout = 120 * time.Second
 )
 
 // NeoApprovalMode controls whether the agent requires user approval before executing tools.
@@ -2663,7 +2666,7 @@ func (pc *Client) CreateNeoTask(
 	projectName string,
 	opts CreateNeoTaskOptions,
 ) (*NeoTaskResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, NeoCreateTaskTimeout)
 	defer cancel()
 
 	request := NeoTaskRequest{
