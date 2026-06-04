@@ -160,7 +160,15 @@ func (c *PackageCache) loadPackageSchema(
 	}
 
 	var versionSemver *semver.Version
-	if v, err := semver.Make(version); err == nil {
+	if v, err := semver.ParseTolerant(version); err == nil {
+		// Validate the version string is proper semver. Reject values with a "v" prefix
+		// so users get a clear error instead of their version pin being silently ignored.
+		if strings.HasPrefix(version, "v") {
+			return nil, fmt.Errorf(
+				"package %q version %q has a \"v\" prefix; semver values must not include the \"v\" prefix (use %q instead of %q)",
+				name, version, version[1:], version,
+			)
+		}
 		versionSemver = &v
 	}
 
