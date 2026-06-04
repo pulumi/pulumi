@@ -1458,6 +1458,15 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			},
 		},
 		{
+			desc: "CustomTimeouts/Read",
+			give: deploytest.ResourceOptions{
+				CustomTimeouts: &resource.CustomTimeouts{Read: 2},
+			},
+			want: plugin.ConstructOptions{
+				CustomTimeouts: &plugin.CustomTimeouts{Read: "2s"},
+			},
+		},
+		{
 			desc: "DeleteBeforeReplace/true",
 			give: deploytest.ResourceOptions{
 				DeleteBeforeReplace: &trueValue,
