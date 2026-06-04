@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -242,11 +243,24 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("reading project: %w", err))
 	}
 
-	stackRef, err := p.Backend.ParseStackReference(a.StackName)
+	// Resolve the backend fresh, exactly as `pulumi preview`/`pulumi up` do at
+	// command-run time (stack.RequireStack -> cmdBackend.CurrentBackend -> Login).
+	// The startup backend captured in p.Backend bakes in whatever token was resolved
+	// when `pulumi neo` launched and never re-resolves it, so reusing it can make the
+	// tool authenticate (and decrypt service-managed secrets) as a different identity
+	// than an equivalent `pulumi preview` would. Resolving here — after applyEnvVars
+	// and the chdir into the project dir — keeps the identity in lockstep with the CLI.
+	be, err := cmdBackend.CurrentBackend(
+		ctx, p.Workspace, cmdBackend.DefaultLoginManager, proj, backendDisplay.Options{Color: colors.Never})
+	if err != nil {
+		return failedResult(a, "", fmt.Errorf("resolving backend: %w", err))
+	}
+
+	stackRef, err := be.ParseStackReference(a.StackName)
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("parsing stack reference: %w", err))
 	}
-	s, err := p.Backend.GetStack(ctx, stackRef)
+	s, err := be.GetStack(ctx, stackRef)
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("getting stack: %w", err))
 	}

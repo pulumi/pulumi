@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -358,6 +360,111 @@ func TestPulumi_InvokeRoutesPreviewAndUp(t *testing.T) {
 				json.RawMessage(`{"project_name":"p","stack_name":"dev"}`))
 			require.Error(t, err)
 			assertFailedResult(t, value, "local_pulumi_dir is required")
+		})
+	}
+}
+
+// newProjectDir creates a canonical sandbox dir containing a minimal Pulumi.yaml so
+// run() gets past its Pulumi.yaml existence check and into backend resolution.
+func newProjectDir(t *testing.T) string {
+	t.Helper()
+	dir, err := canonicalRoot(t.TempDir())
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "Pulumi.yaml"), []byte("name: p\nruntime: nodejs\n"), 0o600))
+	return dir
+}
+
+// TestPulumi_Run_ResolvesBackendFromLiveEnv proves the tool resolves its backend
+// via cmdBackend.CurrentBackend against the live (post-applyEnvVars) environment,
+// rather than reusing the backend frozen into p.Backend at neo startup. The frozen
+// backend is wired to fail the test if it is ever consulted.
+func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
+	// Not parallel: mutates the global cmdBackend.BackendInstance and process env.
+	dir := newProjectDir(t)
+
+	var capturedToken string
+	var resolved bool
+	resolvedBackend := &backend.MockBackend{
+		ParseStackReferenceF: func(string) (backend.StackReference, error) {
+			resolved = true
+			// The agent-injected PULUMI_ACCESS_TOKEN must be visible here, proving the
+			// backend was resolved after applyEnvVars. Stop run() early with an error.
+			capturedToken = os.Getenv("PULUMI_ACCESS_TOKEN")
+			return nil, errors.New("stop after resolution")
+		},
+	}
+	prev := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = resolvedBackend
+	t.Cleanup(func() { cmdBackend.BackendInstance = prev })
+
+	frozenBackend := &backend.MockBackend{
+		ParseStackReferenceF: func(string) (backend.StackReference, error) {
+			t.Error("frozen p.Backend was used instead of the freshly resolved backend")
+			return nil, errors.New("frozen backend should not be consulted")
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "p"}, dir, nil
+		},
+	}
+	p := &Pulumi{Cwd: dir, Workspace: ws, Backend: frozenBackend}
+
+	args, err := json.Marshal(map[string]any{
+		"project_name":     "p",
+		"stack_name":       "dev",
+		"local_pulumi_dir": dir,
+		"environment_variables": map[string]any{
+			"PULUMI_ACCESS_TOKEN": map[string]any{"secret": "live-token"},
+		},
+	})
+	require.NoError(t, err)
+
+	value, err := p.Invoke(t.Context(), "pulumi_preview", args)
+	require.Error(t, err)
+	assert.True(t, resolved, "freshly resolved backend was never consulted")
+	assert.Equal(t, "live-token", capturedToken)
+	assertFailedResult(t, value, "parsing stack reference")
+	// The injected env var is restored after the call.
+	_, present := os.LookupEnv("PULUMI_ACCESS_TOKEN")
+	assert.False(t, present, "PULUMI_ACCESS_TOKEN should be restored after the tool call")
+}
+
+// TestPulumi_Run_PreviewAndUpResolveBackend proves both pulumi_preview and pulumi_up
+// share the same fresh backend resolution (they share run()).
+func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
+	for _, method := range []string{"pulumi_preview", "pulumi_up"} {
+		t.Run(method, func(t *testing.T) {
+			dir := newProjectDir(t)
+
+			var resolved bool
+			cmdBackend.BackendInstance = &backend.MockBackend{
+				ParseStackReferenceF: func(string) (backend.StackReference, error) {
+					resolved = true
+					return nil, errors.New("stop after resolution")
+				},
+			}
+			t.Cleanup(func() { cmdBackend.BackendInstance = nil })
+
+			ws := &pkgWorkspace.MockContext{
+				ReadProjectF: func() (*workspace.Project, string, error) {
+					return &workspace.Project{Name: "p"}, dir, nil
+				},
+			}
+			p := &Pulumi{Cwd: dir, Workspace: ws, Backend: newFakePulumiBackend()}
+
+			args, err := json.Marshal(map[string]any{
+				"project_name":     "p",
+				"stack_name":       "dev",
+				"local_pulumi_dir": dir,
+			})
+			require.NoError(t, err)
+
+			value, err := p.Invoke(t.Context(), method, args)
+			require.Error(t, err)
+			assert.True(t, resolved, "backend was not resolved via CurrentBackend")
+			assertFailedResult(t, value, "parsing stack reference")
 		})
 	}
 }

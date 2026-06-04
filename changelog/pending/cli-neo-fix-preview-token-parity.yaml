@@ -1,0 +1,6 @@
+component: cli/neo
+kind: fix
+body: Ensure pulumi neo resolves the same Pulumi access token as pulumi preview when running in-process preview and up operations
+time: 2026-06-04T00:00:00.000000+00:00
+custom:
+    PR: ""
