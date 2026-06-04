@@ -275,7 +275,7 @@ func runNeo(
 
 	// In non-interactive mode the sink stays nil and live events are dropped; the
 	// interactive path below sets pu.Sink to push UIEvents onto uiCh.
-	pu, err := tools.NewPulumi(cwdFlag, ws, cloudBe, nil)
+	pu, err := tools.NewPulumi(cwdFlag, ws, nil)
 	if err != nil {
 		return err
 	}

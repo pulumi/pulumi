@@ -41,22 +41,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func TestPulumi_NewPulumiRejectsMissingDependencies(t *testing.T) {
+func TestPulumi_NewPulumiRejectsMissingWorkspace(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewPulumi(t.TempDir(), nil, nil, nil)
+	_, err := NewPulumi(t.TempDir(), nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "workspace")
-}
-
-func TestPulumi_NewPulumiRejectsNilBackend(t *testing.T) {
-	t.Parallel()
-
-	// Workspace present, backend nil — covers the second guard distinct from
-	// the workspace-only case above.
-	_, err := NewPulumi(t.TempDir(), &pkgWorkspace.MockContext{}, nil, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "backend")
 }
 
 func TestPulumi_NewPulumiHappyPath(t *testing.T) {
@@ -64,10 +54,9 @@ func TestPulumi_NewPulumiHappyPath(t *testing.T) {
 
 	cwd := t.TempDir()
 	ws := &pkgWorkspace.MockContext{}
-	be := newFakePulumiBackend()
 	sink := &PulumiSink{}
 
-	pu, err := NewPulumi(cwd, ws, be, sink)
+	pu, err := NewPulumi(cwd, ws, sink)
 	require.NoError(t, err)
 	require.NotNil(t, pu)
 
@@ -79,7 +68,6 @@ func TestPulumi_NewPulumiHappyPath(t *testing.T) {
 	assert.Equal(t, want, pu.Cwd)
 
 	assert.Same(t, ws, pu.Workspace)
-	assert.Same(t, be, pu.Backend)
 	assert.Same(t, sink, pu.Sink)
 }
 
@@ -376,16 +364,18 @@ func newProjectDir(t *testing.T) string {
 }
 
 // TestPulumi_Run_ResolvesBackendFromLiveEnv proves the tool resolves its backend
-// via cmdBackend.CurrentBackend against the live (post-applyEnvVars) environment,
-// rather than reusing the backend frozen into p.Backend at neo startup. The frozen
-// backend is wired to fail the test if it is ever consulted.
+// via cmdBackend.CurrentBackend against the live (post-applyEnvVars) environment, so
+// an agent-injected PULUMI_ACCESS_TOKEN is honored rather than a token frozen at neo
+// startup — keeping the tool's identity in lockstep with `pulumi preview`.
+//
+//nolint:paralleltest // mutates the global cmdBackend.BackendInstance and process env
 func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
-	// Not parallel: mutates the global cmdBackend.BackendInstance and process env.
 	dir := newProjectDir(t)
 
 	var capturedToken string
 	var resolved bool
-	resolvedBackend := &backend.MockBackend{
+	prev := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = &backend.MockBackend{
 		ParseStackReferenceF: func(string) (backend.StackReference, error) {
 			resolved = true
 			// The agent-injected PULUMI_ACCESS_TOKEN must be visible here, proving the
@@ -394,22 +384,14 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 			return nil, errors.New("stop after resolution")
 		},
 	}
-	prev := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = resolvedBackend
 	t.Cleanup(func() { cmdBackend.BackendInstance = prev })
 
-	frozenBackend := &backend.MockBackend{
-		ParseStackReferenceF: func(string) (backend.StackReference, error) {
-			t.Error("frozen p.Backend was used instead of the freshly resolved backend")
-			return nil, errors.New("frozen backend should not be consulted")
-		},
-	}
 	ws := &pkgWorkspace.MockContext{
 		ReadProjectF: func() (*workspace.Project, string, error) {
 			return &workspace.Project{Name: "p"}, dir, nil
 		},
 	}
-	p := &Pulumi{Cwd: dir, Workspace: ws, Backend: frozenBackend}
+	p := &Pulumi{Cwd: dir, Workspace: ws}
 
 	args, err := json.Marshal(map[string]any{
 		"project_name":     "p",
@@ -433,8 +415,11 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 
 // TestPulumi_Run_PreviewAndUpResolveBackend proves both pulumi_preview and pulumi_up
 // share the same fresh backend resolution (they share run()).
+//
+//nolint:paralleltest // mutates the global cmdBackend.BackendInstance
 func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 	for _, method := range []string{"pulumi_preview", "pulumi_up"} {
+		//nolint:paralleltest // mutates the global cmdBackend.BackendInstance
 		t.Run(method, func(t *testing.T) {
 			dir := newProjectDir(t)
 
@@ -452,7 +437,7 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 					return &workspace.Project{Name: "p"}, dir, nil
 				},
 			}
-			p := &Pulumi{Cwd: dir, Workspace: ws, Backend: newFakePulumiBackend()}
+			p := &Pulumi{Cwd: dir, Workspace: ws}
 
 			args, err := json.Marshal(map[string]any{
 				"project_name":     "p",
@@ -910,21 +895,6 @@ func (f *fakeHTTPStack) StackIdentifier() client.StackIdentifier {
 	return client.StackIdentifier{}
 }
 
-// fakePulumiBackend is a backend.Backend used by NewPulumi happy-path test.
-// All cloud-specific calls are no-ops because NewPulumi only stores the
-// reference — it never dispatches anything against it at construction time.
-type fakePulumiBackend struct {
-	*backend.MockBackend
-}
-
-func newFakePulumiBackend() *fakePulumiBackend {
-	return &fakePulumiBackend{MockBackend: &backend.MockBackend{}}
-}
-
-// Compile-time assertions: fakeHTTPStack must satisfy httpstate.Stack so the
-// type assertion in autonamingStackContextFor succeeds. fakePulumiBackend
-// must satisfy backend.Backend.
-var (
-	_ httpstate.Stack = (*fakeHTTPStack)(nil)
-	_ backend.Backend = (*fakePulumiBackend)(nil)
-)
+// Compile-time assertion: fakeHTTPStack must satisfy httpstate.Stack so the
+// type assertion in autonamingStackContextFor succeeds.
+var _ httpstate.Stack = (*fakeHTTPStack)(nil)
