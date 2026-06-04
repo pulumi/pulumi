@@ -380,7 +380,14 @@ func NeedsVersionResourceOption(version model.Expression, schema *schema.Resourc
 		return true
 	}
 
-	return v.String() != optV.Value.AsString()
+	optVStr := optV.Value.AsString()
+	// Normalize the v prefix: semver.Version.String() never includes a "v" prefix,
+	// but program literals can (e.g. "v0.10.1"). Strip it for comparison.
+	if len(optVStr) > 0 && optVStr[0] == 'v' {
+		optVStr = optVStr[1:]
+	}
+
+	return v.String() != optVStr
 }
 
 func NeedsPluginDownloadURLResourceOption(pluginDownloadURL model.Expression, schema *schema.Resource) bool {
