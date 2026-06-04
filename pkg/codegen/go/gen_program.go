@@ -1467,6 +1467,8 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 					g.Fgenf(valBuffer, "Update: %v, ", item.Value)
 				case "delete":
 					g.Fgenf(valBuffer, "Delete: %v, ", item.Value)
+				case "read":
+					g.Fgenf(valBuffer, "Read: %v, ", item.Value)
 				}
 			}
 			g.Fgenf(valBuffer, "}")

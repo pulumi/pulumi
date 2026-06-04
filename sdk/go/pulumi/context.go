@@ -410,6 +410,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 					Create: rpcReq.Options.CustomTimeouts.Create,
 					Update: rpcReq.Options.CustomTimeouts.Update,
 					Delete: rpcReq.Options.CustomTimeouts.Delete,
+					Read:   rpcReq.Options.CustomTimeouts.Read,
 				}
 			}
 			if rpcReq.Options.DeleteBeforeReplace != nil {
@@ -526,6 +527,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 					Create: opts.CustomTimeouts.Create,
 					Update: opts.CustomTimeouts.Update,
 					Delete: opts.CustomTimeouts.Delete,
+					Read:   opts.CustomTimeouts.Read,
 				}
 			}
 
@@ -2728,6 +2730,7 @@ func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_Cust
 		timeouts.Update = custom.Update
 		timeouts.Create = custom.Create
 		timeouts.Delete = custom.Delete
+		timeouts.Read = custom.Read
 	}
 	return &timeouts
 }

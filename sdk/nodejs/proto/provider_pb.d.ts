@@ -958,6 +958,8 @@ export class ReadRequest extends jspb.Message {
     getOldViewsList(): Array<View>;
     setOldViewsList(value: Array<View>): ReadRequest;
     addOldViews(value?: View, index?: number): View;
+    getTimeout(): number;
+    setTimeout(value: number): ReadRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadRequest.AsObject;
@@ -980,6 +982,7 @@ export namespace ReadRequest {
         resourceStatusAddress: string,
         resourceStatusToken: string,
         oldViewsList: Array<View.AsObject>,
+        timeout: number,
     }
 }
 
@@ -1484,6 +1487,8 @@ export namespace ConstructRequest {
         setUpdate(value: string): CustomTimeouts;
         getDelete(): string;
         setDelete(value: string): CustomTimeouts;
+        getRead(): string;
+        setRead(value: string): CustomTimeouts;
 
         serializeBinary(): Uint8Array;
         toObject(includeInstance?: boolean): CustomTimeouts.AsObject;
@@ -1500,6 +1505,7 @@ export namespace ConstructRequest {
             create: string,
             update: string,
             pb_delete: string,
+            read: string,
         }
     }
 

@@ -424,6 +424,8 @@ export namespace RegisterResourceRequest {
         setUpdate(value: string): CustomTimeouts;
         getDelete(): string;
         setDelete(value: string): CustomTimeouts;
+        getRead(): string;
+        setRead(value: string): CustomTimeouts;
 
         serializeBinary(): Uint8Array;
         toObject(includeInstance?: boolean): CustomTimeouts.AsObject;
@@ -440,6 +442,7 @@ export namespace RegisterResourceRequest {
             create: string,
             update: string,
             pb_delete: string,
+            read: string,
         }
     }
 

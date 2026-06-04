@@ -2533,6 +2533,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				Create: customTimeouts.Create,
 				Update: customTimeouts.Update,
 				Delete: customTimeouts.Delete,
+				Read:   customTimeouts.Read,
 			}
 		}
 		options.DeleteBeforeReplace = opts.DeleteBeforeReplace
@@ -2630,6 +2631,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 					return nil, err
 				}
 				timeouts.Update = seconds
+			}
+			if customTimeouts.Read != "" {
+				seconds, err := generateTimeoutInSeconds(customTimeouts.Read)
+				if err != nil {
+					return nil, err
+				}
+				timeouts.Read = seconds
 			}
 		}
 

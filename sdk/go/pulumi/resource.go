@@ -327,6 +327,7 @@ type CustomTimeouts struct {
 	Create string
 	Update string
 	Delete string
+	Read   string
 }
 
 // ResourceHookOptions are the options for registering a resource hook.
