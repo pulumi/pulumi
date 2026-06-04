@@ -31,13 +31,28 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type lsRender func(c *lsCmd, entries []logEntry) error
+
+type lsCmd struct {
+	logsDir string
+	w       io.Writer
+
+	output outputflag.OutputFlag[lsRender]
+}
+
 func newLsCmd() *cobra.Command {
-	var jsonOut bool
+	lc := &lsCmd{
+		output: outputflag.OutputFlag[lsRender]{
+			RenderForTerminal: (*lsCmd).renderTable,
+			RenderJSON:        (*lsCmd).renderJSON,
+		},
+	}
 
 	c := &cobra.Command{
 		Use:     "ls",
@@ -60,19 +75,24 @@ func newLsCmd() *cobra.Command {
 				return err
 			}
 
-			out := cobraCmd.OutOrStdout()
-			if jsonOut {
-				return printLogsJSON(out, entries)
-			}
-			return printLogsTable(out, logsDir, entries)
+			lc.logsDir = logsDir
+			lc.w = cobraCmd.OutOrStdout()
+			return lc.output.Get()(lc, entries)
 		},
 	}
 
 	constrictor.AttachArguments(c, constrictor.NoArgs)
-
-	c.Flags().BoolVarP(&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.Var(c.Flags(), &lc.output)
 
 	return c
+}
+
+func (c *lsCmd) renderTable(entries []logEntry) error {
+	return printLogsTable(c.w, c.logsDir, entries)
+}
+
+func (c *lsCmd) renderJSON(entries []logEntry) error {
+	return printLogsJSON(c.w, entries)
 }
 
 type logEntry struct {

@@ -202,6 +202,18 @@ func TestPrintLogsTableEmpty(t *testing.T) {
 	require.Contains(t, buf.String(), "No log files found in "+dir)
 }
 
+func TestParseLogTimestampLocalZone(t *testing.T) {
+	t.Parallel()
+
+	// Filenames are written using time.Now().Format(...) in local time,
+	// so parsing must round-trip in the same zone — otherwise displays
+	// like "1 hour from now" appear when the offset is non-zero.
+	want := time.Date(2026, 4, 1, 12, 0, 0, 0, time.Local)
+	got, ok := parseLogTimestamp("dev-20260401T120000.log")
+	require.True(t, ok)
+	require.True(t, want.Equal(got), "expected %v, got %v", want, got)
+}
+
 func TestPrintLogsTableRenders(t *testing.T) {
 	t.Parallel()
 

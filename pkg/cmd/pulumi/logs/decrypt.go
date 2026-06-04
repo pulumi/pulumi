@@ -288,7 +288,7 @@ func parseLogTimestamp(name string) (time.Time, bool) {
 	if m == "" {
 		return time.Time{}, false
 	}
-	t, err := time.Parse("20060102T150405", m)
+	t, err := time.ParseInLocation("20060102T150405", m, time.Local)
 	if err != nil {
 		return time.Time{}, false
 	}
