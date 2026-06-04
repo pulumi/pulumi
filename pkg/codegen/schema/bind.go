@@ -33,6 +33,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -95,6 +96,15 @@ func warningf(path, message string, args ...any) *hcl.Diagnostic {
 		Severity: hcl.DiagWarning,
 		Summary:  summary,
 	}
+}
+
+func validatePrintableName(path, kind, name string) *hcl.Diagnostic {
+	for _, r := range name {
+		if !unicode.IsPrint(r) || unicode.IsSpace(r) {
+			return errorf(path, "%s must contain only printable, non-whitespace characters (found U+%04X)", kind, r)
+		}
+	}
+	return nil
 }
 
 func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
@@ -891,6 +901,9 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 
 	var diags hcl.Diagnostics
 	path := memberPath("types", token)
+	if diag := validatePrintableName(path, "type name", token); diag != nil {
+		diags = diags.Append(diag)
+	}
 	parts := strings.Split(token, ":")
 	if len(parts) == 3 {
 		name := parts[2]
@@ -1325,8 +1338,12 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 ) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 	for name := range properties {
+		propertyPath := path + "/" + url.PathEscape(name)
+		if diag := validatePrintableName(propertyPath, "property name", name); diag != nil {
+			diags = diags.Append(diag)
+		}
 		if isReservedKeyword(name) {
-			diags = diags.Append(errorf(path+"/"+name, "%s", name+" is a reserved property name"))
+			diags = diags.Append(errorf(propertyPath, "%s", name+" is a reserved property name"))
 		}
 	}
 	if diags.HasErrors() {
@@ -1970,6 +1987,9 @@ func (t *types) bindResourceDef(
 		t.resourceDefs[token] = res
 
 		path := memberPath("resources", token)
+		if diag := validatePrintableName(path, "resource name", token); diag != nil {
+			diags = diags.Append(diag)
+		}
 		parts := strings.Split(token, ":")
 		if len(parts) == 3 {
 			name := parts[2]
@@ -2185,6 +2205,9 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	var diags hcl.Diagnostics
 
 	path := memberPath("functions", token)
+	if diag := validatePrintableName(path, "function name", token); diag != nil {
+		diags = diags.Append(diag)
+	}
 	parts := strings.Split(token, ":")
 	if len(parts) == 3 {
 		name := parts[2]

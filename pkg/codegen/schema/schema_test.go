@@ -1180,6 +1180,221 @@ func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
 	assert.Nil(t, pkg)
 }
 
+func TestBindSpecPrintableNames(t *testing.T) {
+	t.Parallel()
+
+	stringProperty := PropertySpec{TypeSpec: TypeSpec{Type: "string"}}
+	tests := []struct {
+		name        string
+		spec        PackageSpec
+		wantSummary string
+	}{
+		{
+			name: "config property",
+			spec: PackageSpec{
+				Name: "test",
+				Config: ConfigSpec{
+					Variables: map[string]PropertySpec{
+						"bad\nproperty": stringProperty,
+					},
+				},
+			},
+			wantSummary: "#/config/variables/bad%0Aproperty: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "config property space",
+			spec: PackageSpec{
+				Name: "test",
+				Config: ConfigSpec{
+					Variables: map[string]PropertySpec{
+						"bad property": stringProperty,
+					},
+				},
+			},
+			wantSummary: "#/config/variables/bad%20property: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "resource output property",
+			spec: PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:TestResource": {
+						ObjectTypeSpec: ObjectTypeSpec{
+							Properties: map[string]PropertySpec{
+								"bad\tproperty": stringProperty,
+							},
+						},
+					},
+				},
+			},
+			wantSummary: "#/resources/test:index:TestResource/properties/bad%09property: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "resource input property",
+			spec: PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:TestResource": {
+						InputProperties: map[string]PropertySpec{
+							"bad\x7fproperty": stringProperty,
+						},
+					},
+				},
+			},
+			wantSummary: "#/resources/test:index:TestResource/inputProperties/bad%7Fproperty: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "object type property",
+			spec: PackageSpec{
+				Name: "test",
+				Types: map[string]ComplexTypeSpec{
+					"test:index:TestType": {
+						ObjectTypeSpec: ObjectTypeSpec{
+							Type: "object",
+							Properties: map[string]PropertySpec{
+								"bad\x00property": stringProperty,
+							},
+						},
+					},
+				},
+			},
+			wantSummary: "#/types/test:index:TestType/properties/bad%00property: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "resource name",
+			spec: PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:Bad\tResource": {},
+				},
+			},
+			wantSummary: "#/resources/test:index:Bad%09Resource: " +
+				"resource name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "resource name space",
+			spec: PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:Bad Resource": {},
+				},
+			},
+			wantSummary: "#/resources/test:index:Bad%20Resource: " +
+				"resource name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "type name",
+			spec: PackageSpec{
+				Name: "test",
+				Types: map[string]ComplexTypeSpec{
+					"test:index:Bad\x00Type": {
+						ObjectTypeSpec: ObjectTypeSpec{
+							Type: "object",
+						},
+					},
+				},
+			},
+			wantSummary: "#/types/test:index:Bad%00Type: " +
+				"type name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "type name space",
+			spec: PackageSpec{
+				Name: "test",
+				Types: map[string]ComplexTypeSpec{
+					"test:index:Bad Type": {
+						ObjectTypeSpec: ObjectTypeSpec{
+							Type: "object",
+						},
+					},
+				},
+			},
+			wantSummary: "#/types/test:index:Bad%20Type: " +
+				"type name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "function name",
+			spec: PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					"test:index:bad\x7ffunction": {},
+				},
+			},
+			wantSummary: "#/functions/test:index:bad%7Ffunction: " +
+				"function name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "function name space",
+			spec: PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					"test:index:bad function": {},
+				},
+			},
+			wantSummary: "#/functions/test:index:bad%20function: " +
+				"function name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "function input property",
+			spec: PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					"test:index:function": {
+						Inputs: &ObjectTypeSpec{
+							Properties: map[string]PropertySpec{
+								"bad\nproperty": stringProperty,
+							},
+						},
+					},
+				},
+			},
+			wantSummary: "#/functions/test:index:function/inputs/properties/bad%0Aproperty: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "function output property",
+			spec: PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					"test:index:function": {
+						Outputs: &ObjectTypeSpec{
+							Properties: map[string]PropertySpec{
+								"bad\nproperty": stringProperty,
+							},
+						},
+					},
+				},
+			},
+			wantSummary: "#/functions/test:index:function/outputs/properties/bad%0Aproperty: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, diags, _ := BindSpec(tt.spec, noOpLoader{}, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
+			require.True(t, diags.HasErrors(), "expected errors for %s", tt.name)
+			found := false
+			for _, d := range diags {
+				if strings.Contains(d.Summary, tt.wantSummary) {
+					found = true
+					break
+				}
+			}
+			assert.True(t, found, "expected diagnostic containing %q, got %v", tt.wantSummary, diags)
+		})
+	}
+}
+
 func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
