@@ -53,6 +53,7 @@ func resourceOptionsFromState(state *resource.State) *pulumirpc.ResourceOptions 
 			Create: secondsToDurationString(state.CustomTimeouts.Create),
 			Update: secondsToDurationString(state.CustomTimeouts.Update),
 			Delete: secondsToDurationString(state.CustomTimeouts.Delete),
+			Read:   secondsToDurationString(state.CustomTimeouts.Read),
 		}
 	}
 

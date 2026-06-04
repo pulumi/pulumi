@@ -629,6 +629,8 @@ func (rp *ResourcePlan) checkGoal(
 		return fmt.Errorf("update timeout changed (expected %v)", rp.Goal.CustomTimeouts.Update)
 	case rp.Goal.CustomTimeouts.Delete != programGoal.CustomTimeouts.Delete:
 		return fmt.Errorf("delete timeout changed (expected %v)", rp.Goal.CustomTimeouts.Delete)
+	case rp.Goal.CustomTimeouts.Read != programGoal.CustomTimeouts.Read:
+		return fmt.Errorf("read timeout changed (expected %v)", rp.Goal.CustomTimeouts.Read)
 	}
 
 	// Check that the ignoreChanges sets are identical.

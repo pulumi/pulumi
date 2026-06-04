@@ -31,6 +31,15 @@ resource "deleteOnly" "simple:index:Resource" {
     }
 }
 
+resource "readOnly" "simple:index:Resource" {
+    value = true
+    options {
+        customTimeouts = {
+            read = "9m"
+        }
+    }
+}
+
 resource "allTimeouts" "simple:index:Resource" {
     value = true
     options {
@@ -38,6 +47,7 @@ resource "allTimeouts" "simple:index:Resource" {
             create = "2m"
             update = "4m"
             delete = "1m"
+            read = "5m"
         }
     }
 }

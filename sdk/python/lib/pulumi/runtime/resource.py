@@ -921,6 +921,8 @@ def _create_custom_timeouts(
             result.update = custom_timeouts.update
         if custom_timeouts.delete is not None:
             result.delete = custom_timeouts.delete
+        if custom_timeouts.read is not None:
+            result.read = custom_timeouts.read
     # Or, it could be a workaround passing in a dict.
     elif isinstance(custom_timeouts, dict):
         if "create" in custom_timeouts:
@@ -929,6 +931,8 @@ def _create_custom_timeouts(
             result.update = custom_timeouts["update"]
         if "delete" in custom_timeouts:
             result.delete = custom_timeouts["delete"]
+        if "read" in custom_timeouts:
+            result.read = custom_timeouts["read"]
     else:
         raise Exception("Expected custom_timeouts to be a CustomTimeouts object")
     return result

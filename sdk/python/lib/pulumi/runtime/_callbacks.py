@@ -533,6 +533,8 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                 custom_timeouts.update = opts.custom_timeouts.update
             if opts.custom_timeouts.delete:
                 custom_timeouts.delete = opts.custom_timeouts.delete
+            if opts.custom_timeouts.read:
+                custom_timeouts.read = opts.custom_timeouts.read
             ropts.custom_timeouts = custom_timeouts
 
         if opts.deleted_with:

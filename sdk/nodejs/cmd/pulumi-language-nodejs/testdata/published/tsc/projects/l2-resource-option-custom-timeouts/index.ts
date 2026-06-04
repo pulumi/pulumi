@@ -19,11 +19,17 @@ const deleteOnly = new simple.Resource("deleteOnly", {value: true}, {
         "delete": "3m",
     },
 });
+const readOnly = new simple.Resource("readOnly", {value: true}, {
+    customTimeouts: {
+        read: "9m",
+    },
+});
 const allTimeouts = new simple.Resource("allTimeouts", {value: true}, {
     customTimeouts: {
         create: "2m",
         update: "4m",
         "delete": "1m",
+        read: "5m",
     },
 });
 const configTimeout = new simple.Resource("configTimeout", {value: true}, {

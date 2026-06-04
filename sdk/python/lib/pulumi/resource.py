@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 class CustomTimeouts:
     """
     CustomTimeouts allows specifying custom timeouts for resource operations. Timeouts can
-    be specified separately for create, update, and delete operations.
+    be specified separately for create, update, delete, and read operations.
     """
 
     create: Optional[str]
@@ -69,15 +69,22 @@ class CustomTimeouts:
     delete is the optional delete timout represented as a string e.g. 5m, 40s, 1d.
     """
 
+    read: Optional[str]
+    """
+    read is the optional read timout represented as a string e.g. 5m, 40s, 1d.
+    """
+
     def __init__(
         self,
         create: Optional[str] = None,
         update: Optional[str] = None,
         delete: Optional[str] = None,
+        read: Optional[str] = None,
     ) -> None:
         self.create = create
         self.update = update
         self.delete = delete
+        self.read = read
 
 
 ROOT_STACK_RESOURCE = None

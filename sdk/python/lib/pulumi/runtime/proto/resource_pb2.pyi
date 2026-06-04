@@ -377,20 +377,24 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         CREATE_FIELD_NUMBER: builtins.int
         UPDATE_FIELD_NUMBER: builtins.int
         DELETE_FIELD_NUMBER: builtins.int
+        READ_FIELD_NUMBER: builtins.int
         create: builtins.str
         """The create resource timeout represented as a string e.g. 5m."""
         update: builtins.str
         """The update resource timeout represented as a string e.g. 5m."""
         delete: builtins.str
         """The delete resource timeout represented as a string e.g. 5m."""
+        read: builtins.str
+        """The read resource timeout represented as a string e.g. 5m."""
         def __init__(
             self,
             *,
             create: builtins.str = ...,
             update: builtins.str = ...,
             delete: builtins.str = ...,
+            read: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "update", b"update"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "read", b"read", "update", b"update"]) -> None: ...
 
     @typing.final
     class PropertyDependenciesEntry(google.protobuf.message.Message):

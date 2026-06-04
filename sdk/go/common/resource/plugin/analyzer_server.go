@@ -413,6 +413,7 @@ func convertResourceOptions(opts *pulumirpc.AnalyzerResourceOptions) AnalyzerRes
 			Create: t.GetCreate(),
 			Update: t.GetUpdate(),
 			Delete: t.GetDelete(),
+			Read:   t.GetRead(),
 		}
 	}
 

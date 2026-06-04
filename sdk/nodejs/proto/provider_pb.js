@@ -7886,7 +7886,8 @@ type: jspb.Message.getFieldWithDefault(msg, 6, ""),
 resourceStatusAddress: jspb.Message.getFieldWithDefault(msg, 7, ""),
 resourceStatusToken: jspb.Message.getFieldWithDefault(msg, 8, ""),
 oldViewsList: jspb.Message.toObjectList(msg.getOldViewsList(),
-    proto.pulumirpc.View.toObject, includeInstance)
+    proto.pulumirpc.View.toObject, includeInstance),
+timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 10, 0.0)
   };
 
   if (includeInstance) {
@@ -7961,6 +7962,10 @@ proto.pulumirpc.ReadRequest.deserializeBinaryFromReader = function(msg, reader) 
       var value = new proto.pulumirpc.View;
       reader.readMessage(value,proto.pulumirpc.View.deserializeBinaryFromReader);
       msg.addOldViews(value);
+      break;
+    case 10:
+      var value = /** @type {number} */ (reader.readDouble());
+      msg.setTimeout(value);
       break;
     default:
       reader.skipField();
@@ -8055,6 +8060,13 @@ proto.pulumirpc.ReadRequest.serializeBinaryToWriter = function(message, writer) 
       9,
       f,
       proto.pulumirpc.View.serializeBinaryToWriter
+    );
+  }
+  f = message.getTimeout();
+  if (f !== 0.0) {
+    writer.writeDouble(
+      10,
+      f
     );
   }
 };
@@ -8277,6 +8289,24 @@ proto.pulumirpc.ReadRequest.prototype.addOldViews = function(opt_value, opt_inde
  */
 proto.pulumirpc.ReadRequest.prototype.clearOldViewsList = function() {
   return this.setOldViewsList([]);
+};
+
+
+/**
+ * optional double timeout = 10;
+ * @return {number}
+ */
+proto.pulumirpc.ReadRequest.prototype.getTimeout = function() {
+  return /** @type {number} */ (jspb.Message.getFloatingPointFieldWithDefault(this, 10, 0.0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.pulumirpc.ReadRequest} returns this
+ */
+proto.pulumirpc.ReadRequest.prototype.setTimeout = function(value) {
+  return jspb.Message.setProto3FloatField(this, 10, value);
 };
 
 
@@ -11392,7 +11422,8 @@ proto.pulumirpc.ConstructRequest.CustomTimeouts.toObject = function(includeInsta
   var f, obj = {
 create: jspb.Message.getFieldWithDefault(msg, 1, ""),
 update: jspb.Message.getFieldWithDefault(msg, 2, ""),
-pb_delete: jspb.Message.getFieldWithDefault(msg, 3, "")
+pb_delete: jspb.Message.getFieldWithDefault(msg, 3, ""),
+read: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -11441,6 +11472,10 @@ proto.pulumirpc.ConstructRequest.CustomTimeouts.deserializeBinaryFromReader = fu
       var value = /** @type {string} */ (reader.readString());
       msg.setDelete(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setRead(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -11488,6 +11523,13 @@ proto.pulumirpc.ConstructRequest.CustomTimeouts.serializeBinaryToWriter = functi
   if (f.length > 0) {
     writer.writeString(
       3,
+      f
+    );
+  }
+  f = message.getRead();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -11545,6 +11587,24 @@ proto.pulumirpc.ConstructRequest.CustomTimeouts.prototype.getDelete = function()
  */
 proto.pulumirpc.ConstructRequest.CustomTimeouts.prototype.setDelete = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string read = 4;
+ * @return {string}
+ */
+proto.pulumirpc.ConstructRequest.CustomTimeouts.prototype.getRead = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConstructRequest.CustomTimeouts} returns this
+ */
+proto.pulumirpc.ConstructRequest.CustomTimeouts.prototype.setRead = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

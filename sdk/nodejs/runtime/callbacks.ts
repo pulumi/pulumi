@@ -262,6 +262,7 @@ export class CallbackServer implements ICallbackServer {
                     create: timeouts.getCreate(),
                     update: timeouts.getUpdate(),
                     delete: timeouts.getDelete(),
+                    read: timeouts.getRead(),
                 };
             }
             ropts.hooks = hookBindingFromProto(opts.getHooks());
@@ -329,6 +330,9 @@ export class CallbackServer implements ICallbackServer {
                         }
                         if (result.opts.customTimeouts.delete !== undefined) {
                             customTimeouts.setDelete(result.opts.customTimeouts.delete);
+                        }
+                        if (result.opts.customTimeouts.read !== undefined) {
+                            customTimeouts.setRead(result.opts.customTimeouts.read);
                         }
                         opts.setCustomTimeouts(customTimeouts);
                     }
