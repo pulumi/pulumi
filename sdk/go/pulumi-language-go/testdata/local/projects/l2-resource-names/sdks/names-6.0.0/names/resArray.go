@@ -60,6 +60,12 @@ func (ResArrayState) ElementType() reflect.Type {
 	return reflect.TypeOf((*resArrayState)(nil)).Elem()
 }
 
+// ResArrayExists checks whether an existing ResArray resource with the given ID exists.
+func ResArrayExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ResArrayState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("names:index:ResArray", name, id, state, opts...)
+}
+
 type resArrayArgs struct {
 	Value bool `pulumi:"value"`
 }

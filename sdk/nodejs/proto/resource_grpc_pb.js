@@ -69,6 +69,28 @@ function deserialize_pulumirpc_DeploymentInfo(buffer_arg) {
   return pulumi_resource_pb.DeploymentInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ExistsResourceRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ExistsResourceRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ExistsResourceRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ExistsResourceRequest(buffer_arg) {
+  return pulumi_resource_pb.ExistsResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ExistsResourceResponse(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ExistsResourceResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ExistsResourceResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ExistsResourceResponse(buffer_arg) {
+  return pulumi_resource_pb.ExistsResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_InvokeResponse(arg) {
   if (!(arg instanceof pulumi_provider_pb.InvokeResponse)) {
     throw new Error('Expected argument of type pulumirpc.InvokeResponse');
@@ -289,6 +311,17 @@ getDeploymentInfo: {
     requestDeserialize: deserialize_pulumirpc_ReadResourceRequest,
     responseSerialize: serialize_pulumirpc_ReadResourceResponse,
     responseDeserialize: deserialize_pulumirpc_ReadResourceResponse,
+  },
+  existsResource: {
+    path: '/pulumirpc.ResourceMonitor/ExistsResource',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.ExistsResourceRequest,
+    responseType: pulumi_resource_pb.ExistsResourceResponse,
+    requestSerialize: serialize_pulumirpc_ExistsResourceRequest,
+    requestDeserialize: deserialize_pulumirpc_ExistsResourceRequest,
+    responseSerialize: serialize_pulumirpc_ExistsResourceResponse,
+    responseDeserialize: deserialize_pulumirpc_ExistsResourceResponse,
   },
   registerResource: {
     path: '/pulumirpc.ResourceMonitor/RegisterResource',

@@ -62,6 +62,12 @@ func (ConditionalAccessPolicyState) ElementType() reflect.Type {
 	return reflect.TypeOf((*conditionalAccessPolicyState)(nil)).Elem()
 }
 
+// ConditionalAccessPolicyExists checks whether an existing ConditionalAccessPolicy resource with the given ID exists.
+func ConditionalAccessPolicyExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ConditionalAccessPolicyState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("my8664::ConditionalAccessPolicy", name, id, state, opts...)
+}
+
 type conditionalAccessPolicyArgs struct {
 	Conditions ConditionalAccessPolicyConditions `pulumi:"conditions"`
 }

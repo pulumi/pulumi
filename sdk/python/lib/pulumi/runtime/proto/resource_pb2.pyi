@@ -345,6 +345,95 @@ class ReadResourceResponse(google.protobuf.message.Message):
 global___ReadResourceResponse = ReadResourceResponse
 
 @typing.final
+class ExistsResourceRequest(google.protobuf.message.Message):
+    """ExistsResourceRequest contains enough information to check whether a resource with a given ID exists."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    TYPE_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    PARENT_FIELD_NUMBER: builtins.int
+    PROPERTIES_FIELD_NUMBER: builtins.int
+    PROVIDER_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
+    PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
+    PACKAGEREF_FIELD_NUMBER: builtins.int
+    type: builtins.str
+    """the type of the resource object."""
+    id: builtins.str
+    """the ID of the resource to check."""
+    parent: builtins.str
+    """an optional parent URN that this child resource belongs to."""
+    provider: builtins.str
+    """an optional reference to the provider to use for this check."""
+    version: builtins.str
+    """the version of the provider to use when servicing this request."""
+    pluginDownloadURL: builtins.str
+    """the server url of the provider to use when servicing this request."""
+    packageRef: builtins.str
+    """a reference from RegisterPackageRequest."""
+    @property
+    def properties(self) -> google.protobuf.struct_pb2.Struct:
+        """optional state sufficient to uniquely identify the resource."""
+
+    @property
+    def pluginChecksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """a map of checksums of the provider to use when servicing this request."""
+
+    def __init__(
+        self,
+        *,
+        type: builtins.str = ...,
+        id: builtins.str = ...,
+        parent: builtins.str = ...,
+        properties: google.protobuf.struct_pb2.Struct | None = ...,
+        provider: builtins.str = ...,
+        version: builtins.str = ...,
+        pluginDownloadURL: builtins.str = ...,
+        pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        packageRef: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["properties", b"properties"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "type", b"type", "version", b"version"]) -> None: ...
+
+global___ExistsResourceRequest = ExistsResourceRequest
+
+@typing.final
+class ExistsResourceResponse(google.protobuf.message.Message):
+    """ExistsResourceResponse contains the result of checking whether a resource exists."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    EXISTS_FIELD_NUMBER: builtins.int
+    exists: builtins.bool
+    """true if the resource exists."""
+    def __init__(
+        self,
+        *,
+        exists: builtins.bool = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["exists", b"exists"]) -> None: ...
+
+global___ExistsResourceResponse = ExistsResourceResponse
+
+@typing.final
 class RegisterResourceRequest(google.protobuf.message.Message):
     """RegisterResourceRequest contains information about a resource object that was newly allocated."""
 

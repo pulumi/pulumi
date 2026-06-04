@@ -65,6 +65,12 @@ func (ResourceAState) ElementType() reflect.Type {
 	return reflect.TypeOf((*resourceAState)(nil)).Elem()
 }
 
+// ResourceAExists checks whether an existing ResourceA resource with the given ID exists.
+func ResourceAExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ResourceAState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("replaceonchanges:index:ResourceA", name, id, state, opts...)
+}
+
 type resourceAArgs struct {
 	ReplaceProp *bool `pulumi:"replaceProp"`
 	Value       bool  `pulumi:"value"`

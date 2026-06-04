@@ -60,6 +60,12 @@ func (ResMapState) ElementType() reflect.Type {
 	return reflect.TypeOf((*resMapState)(nil)).Elem()
 }
 
+// ResMapExists checks whether an existing ResMap resource with the given ID exists.
+func ResMapExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ResMapState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("names:index:ResMap", name, id, state, opts...)
+}
+
 type resMapArgs struct {
 	Value bool `pulumi:"value"`
 }

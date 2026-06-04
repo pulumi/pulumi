@@ -59,6 +59,12 @@ func (Example_resourceState) ElementType() reflect.Type {
 	return reflect.TypeOf((*example_resourceState)(nil)).Elem()
 }
 
+// Example_resourceExists checks whether an existing Example_resource resource with the given ID exists.
+func Example_resourceExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *Example_resourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("legacy_names:index:example_resource", name, id, state, opts...)
+}
+
 type example_resourceArgs struct {
 	Map_enum     []map[string]Enum_XYZ `pulumi:"map_enum"`
 	Request_HTTP *http_module.Request  `pulumi:"request_HTTP"`

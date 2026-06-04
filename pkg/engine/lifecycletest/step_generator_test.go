@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -527,4 +528,136 @@ func TestExternalEventMetadata(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, snap)
+}
+
+// TestExistsResourceTrue tests that ExistsResource returns true for a resource that exists.
+func TestExistsResourceTrue(t *testing.T) {
+	t.Parallel()
+
+	lt.NewTestBuilder(t, nil).
+		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{
+					ReadResult: plugin.ReadResult{
+						Outputs: resource.PropertyMap{
+							"value": resource.NewProperty(true),
+						},
+					},
+					Status: resource.StatusOK,
+				}, nil
+			},
+		}).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			exists, err := monitor.ExistsResource("pkgA:m:typA", "existing-id", "", nil, "", "", "")
+			if err != nil {
+				return fmt.Errorf("ExistsResource failed: %w", err)
+			}
+			if !exists {
+				return fmt.Errorf("expected resource to exist, got false")
+			}
+			return nil
+		}, true).
+		Then(func(snap *deploy.Snapshot, err error) {
+			require.NoError(t, err)
+			require.NotNil(t, snap)
+			// ExistsResource triggers default provider registration but doesn't register
+			// the checked resource itself. Only the default provider should be present.
+			require.Len(t, snap.Resources, 1)
+			assert.Equal(t, "pulumi:providers:pkgA", string(snap.Resources[0].Type))
+		})
+}
+
+// TestExistsResourceFalse tests that ExistsResource returns false for a resource that does not exist.
+func TestExistsResourceFalse(t *testing.T) {
+	t.Parallel()
+
+	lt.NewTestBuilder(t, nil).
+		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				// Return nil outputs to indicate the resource does not exist.
+				return plugin.ReadResponse{
+					Status: resource.StatusOK,
+				}, nil
+			},
+		}).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			exists, err := monitor.ExistsResource("pkgA:m:typA", "nonexistent-id", "", nil, "", "", "")
+			if err != nil {
+				return fmt.Errorf("ExistsResource failed: %w", err)
+			}
+			if exists {
+				return fmt.Errorf("expected resource to not exist, got true")
+			}
+			return nil
+		}, true).
+		Then(func(snap *deploy.Snapshot, err error) {
+			require.NoError(t, err)
+			require.NotNil(t, snap)
+			require.Len(t, snap.Resources, 1)
+		})
+}
+
+// TestExistsResourceProviderError tests that ExistsResource returns an error when the provider Read errors.
+func TestExistsResourceProviderError(t *testing.T) {
+	t.Parallel()
+
+	lt.NewTestBuilder(t, nil).
+		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{}, errors.New("provider error")
+			},
+		}).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.ExistsResource("pkgA:m:typA", "error-id", "", nil, "", "", "")
+			if err == nil {
+				return fmt.Errorf("expected ExistsResource to return an error")
+			}
+			return nil
+		}, true).
+		Then(func(snap *deploy.Snapshot, err error) {
+			require.NoError(t, err)
+			require.NotNil(t, snap)
+		})
+}
+
+// TestExistsResourceWithProperties tests ExistsResource with state properties passed through.
+func TestExistsResourceWithProperties(t *testing.T) {
+	t.Parallel()
+
+	var readCalled bool
+	lt.NewTestBuilder(t, nil).
+		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				readCalled = true
+				// Verify that properties were passed through.
+				if req.State["foo"].StringValue() != "bar" {
+					return plugin.ReadResponse{}, fmt.Errorf("expected foo=bar, got %v", req.State["foo"])
+				}
+				return plugin.ReadResponse{
+					ReadResult: plugin.ReadResult{
+						Outputs: resource.PropertyMap{
+							"foo": resource.NewProperty("bar"),
+						},
+					},
+					Status: resource.StatusOK,
+				}, nil
+			},
+		}).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			props := resource.PropertyMap{
+				"foo": resource.NewProperty("bar"),
+			}
+			exists, err := monitor.ExistsResource("pkgA:m:typA", "prop-id", "", props, "", "", "")
+			if err != nil {
+				return fmt.Errorf("ExistsResource failed: %w", err)
+			}
+			if !exists {
+				return fmt.Errorf("expected resource to exist, got false")
+			}
+			return nil
+		}, true).
+		Then(func(snap *deploy.Snapshot, err error) {
+			require.NoError(t, err)
+			assert.True(t, readCalled, "provider Read should have been called")
+		})
 }

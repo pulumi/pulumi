@@ -61,6 +61,12 @@ func (ContainerState) ElementType() reflect.Type {
 	return reflect.TypeOf((*containerState)(nil)).Elem()
 }
 
+// ContainerExists checks whether an existing Container resource with the given ID exists.
+func ContainerExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ContainerState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("nestedobject:index:Container", name, id, state, opts...)
+}
+
 type containerArgs struct {
 	Inputs []string `pulumi:"inputs"`
 }

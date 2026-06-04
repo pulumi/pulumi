@@ -64,6 +64,17 @@ func (GoodbyeWorldState) ElementType() reflect.Type {
 	return reflect.TypeOf((*goodbyeWorldState)(nil)).Elem()
 }
 
+// GoodbyeWorldExists checks whether an existing GoodbyeWorld resource with the given ID exists.
+func GoodbyeWorldExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *GoodbyeWorldState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	ref, err := internal.PkgGetPackageRef(ctx)
+	if err != nil {
+		var ret pulumi.BoolOutput
+		return ret
+	}
+	return ctx.ExistsPackageResource("byepackage:index:GoodbyeWorld", name, id, state, ref, opts...)
+}
+
 type goodbyeWorldArgs struct {
 }
 

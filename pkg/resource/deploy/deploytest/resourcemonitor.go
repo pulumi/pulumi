@@ -720,6 +720,41 @@ func (rm *ResourceMonitor) ReadResource(
 	return resource.URN(resp.Urn), outs, nil
 }
 
+func (rm *ResourceMonitor) ExistsResource(
+	t tokens.Type,
+	id resource.ID,
+	parent resource.URN,
+	inputs resource.PropertyMap,
+	provider,
+	version,
+	packageRef string,
+) (bool, error) {
+	// marshal inputs
+	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return false, err
+	}
+
+	// submit request
+	resp, err := rm.resmon.ExistsResource(context.Background(), &pulumirpc.ExistsResourceRequest{
+		Type:       string(t),
+		Id:         string(id),
+		Parent:     string(parent),
+		Properties: ins,
+		Provider:   provider,
+		Version:    version,
+		PackageRef: packageRef,
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return resp.Exists, nil
+}
+
 func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.PropertyMap,
 	provider string, version string, packageRef string,
 ) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {

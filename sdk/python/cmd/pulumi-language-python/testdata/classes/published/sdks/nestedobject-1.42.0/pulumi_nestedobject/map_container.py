@@ -106,6 +106,16 @@ class MapContainer(pulumi.CustomResource):
         __props__.__dict__["tags"] = None
         return MapContainer(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = MapContainerArgs.__new__(MapContainerArgs)
+
+        __props__.__dict__["tags"] = None
+        __inst__ = MapContainer.__new__(MapContainer)
+        return pulumi.runtime.exists_resource(__inst__, 'nestedobject:index:MapContainer', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def tags(self) -> pulumi.Output[Mapping[str, _builtins.str]]:

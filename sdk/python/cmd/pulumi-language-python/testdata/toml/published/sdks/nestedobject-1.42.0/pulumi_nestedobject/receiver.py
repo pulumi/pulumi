@@ -113,6 +113,16 @@ class Receiver(pulumi.CustomResource):
         __props__.__dict__["details"] = None
         return Receiver(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = ReceiverArgs.__new__(ReceiverArgs)
+
+        __props__.__dict__["details"] = None
+        __inst__ = Receiver.__new__(Receiver)
+        return pulumi.runtime.exists_resource(__inst__, 'nestedobject:index:Receiver', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def details(self) -> pulumi.Output[Sequence['outputs.Detail']]:

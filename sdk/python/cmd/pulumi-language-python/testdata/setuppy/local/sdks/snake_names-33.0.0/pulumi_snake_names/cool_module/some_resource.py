@@ -130,6 +130,16 @@ class Some_resource(pulumi.CustomResource):
         __props__.__dict__["the_output"] = None
         return Some_resource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = Some_resourceArgs.__new__(Some_resourceArgs)
+
+        __props__.__dict__["the_output"] = None
+        __inst__ = Some_resource.__new__(Some_resource)
+        return pulumi.runtime.exists_resource(__inst__, 'snake_names:cool_module:some_resource', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def the_output(self) -> pulumi.Output[Mapping[str, Sequence['outputs.Output_item']]]:

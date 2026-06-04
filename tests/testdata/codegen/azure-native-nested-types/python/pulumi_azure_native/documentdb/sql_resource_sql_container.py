@@ -228,6 +228,16 @@ class SqlResourceSqlContainer(pulumi.CustomResource):
         __props__.__dict__["resource"] = None
         return SqlResourceSqlContainer(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = SqlResourceSqlContainerArgs.__new__(SqlResourceSqlContainerArgs)
+
+        __props__.__dict__["resource"] = None
+        __inst__ = SqlResourceSqlContainer.__new__(SqlResourceSqlContainer)
+        return pulumi.runtime.exists_resource(__inst__, 'azure-native:documentdb:SqlResourceSqlContainer', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def resource(self) -> pulumi.Output[Optional['outputs.SqlContainerGetPropertiesResponseResource']]:

@@ -60,6 +60,12 @@ func (MapContainerState) ElementType() reflect.Type {
 	return reflect.TypeOf((*mapContainerState)(nil)).Elem()
 }
 
+// MapContainerExists checks whether an existing MapContainer resource with the given ID exists.
+func MapContainerExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *MapContainerState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("nestedobject:index:MapContainer", name, id, state, opts...)
+}
+
 type mapContainerArgs struct {
 	Tags map[string]string `pulumi:"tags"`
 }

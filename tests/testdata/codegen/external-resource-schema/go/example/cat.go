@@ -56,6 +56,12 @@ func (CatState) ElementType() reflect.Type {
 	return reflect.TypeOf((*catState)(nil)).Elem()
 }
 
+// CatExists checks whether an existing Cat resource with the given ID exists.
+func CatExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *CatState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("example::Cat", name, id, state, opts...)
+}
+
 type catArgs struct {
 	Age *int `pulumi:"age"`
 	Pet *Pet `pulumi:"pet"`

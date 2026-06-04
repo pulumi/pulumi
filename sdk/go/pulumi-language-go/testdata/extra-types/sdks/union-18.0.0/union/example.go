@@ -59,6 +59,12 @@ func (ExampleState) ElementType() reflect.Type {
 	return reflect.TypeOf((*exampleState)(nil)).Elem()
 }
 
+// ExampleExists checks whether an existing Example resource with the given ID exists.
+func ExampleExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ExampleState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("union:index:Example", name, id, state, opts...)
+}
+
 type exampleArgs struct {
 	MapMapUnionProperty         map[string]map[string]interface{} `pulumi:"mapMapUnionProperty"`
 	StringEnumUnionListProperty []string                          `pulumi:"stringEnumUnionListProperty"`

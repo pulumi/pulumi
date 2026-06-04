@@ -111,6 +111,16 @@ class Res(pulumi.CustomResource):
         __props__.__dict__["value"] = None
         return Res(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = ResArgs.__new__(ResArgs)
+
+        __props__.__dict__["value"] = None
+        __inst__ = Res.__new__(Res)
+        return pulumi.runtime.exists_resource(__inst__, 'names:mod:Res', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def value(self) -> pulumi.Output[_builtins.bool]:

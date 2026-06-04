@@ -60,6 +60,12 @@ func (CustomState) ElementType() reflect.Type {
 	return reflect.TypeOf((*customState)(nil)).Elem()
 }
 
+// CustomExists checks whether an existing Custom resource with the given ID exists.
+func CustomExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *CustomState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("plaincomponent:index:Custom", name, id, state, opts...)
+}
+
 type customArgs struct {
 	Value string `pulumi:"value"`
 }

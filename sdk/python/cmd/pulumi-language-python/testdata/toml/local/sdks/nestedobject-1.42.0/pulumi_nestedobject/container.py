@@ -114,6 +114,17 @@ class Container(pulumi.CustomResource):
         __props__.__dict__["inputs"] = None
         return Container(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = ContainerArgs.__new__(ContainerArgs)
+
+        __props__.__dict__["details"] = None
+        __props__.__dict__["inputs"] = None
+        __inst__ = Container.__new__(Container)
+        return pulumi.runtime.exists_resource(__inst__, 'nestedobject:index:Container', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def details(self) -> pulumi.Output[Sequence['outputs.Detail']]:

@@ -71,6 +71,12 @@ func (ConfigMapState) ElementType() reflect.Type {
 	return reflect.TypeOf((*configMapState)(nil)).Elem()
 }
 
+// ConfigMapExists checks whether an existing ConfigMap resource with the given ID exists.
+func ConfigMapExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *ConfigMapState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("kubernetes:core/v1:ConfigMap", name, id, state, opts...)
+}
+
 type configMapArgs struct {
 	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
 	ApiVersion *string `pulumi:"apiVersion"`

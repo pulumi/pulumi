@@ -562,6 +562,26 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 		// "resource type" as we do for `call` expressions.
 		"pulumiResourceType": newResourceFunction("pulumiResourceType"),
 		"pulumiResourceName": newResourceFunction("pulumiResourceName"),
+		"resourceExists": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "type",
+					Type: model.StringType,
+				},
+				{
+					Name: "name",
+					Type: model.StringType,
+				},
+				{
+					Name: "id",
+					// The ID is typed as an output so callers can pass a resource's id directly without the
+					// apply rewriter lifting it: resourceExists already returns an output and the SDK
+					// existence helpers accept an eventual id.
+					Type: model.NewOutputType(model.StringType),
+				},
+			},
+			ReturnType: model.NewOutputType(model.BoolType),
+		}),
 	}
 }
 

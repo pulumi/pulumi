@@ -69,6 +69,12 @@ func (FooState) ElementType() reflect.Type {
 	return reflect.TypeOf((*fooState)(nil)).Elem()
 }
 
+// FooExists checks whether an existing Foo resource with the given ID exists.
+func FooExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *FooState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("example:index:Foo", name, id, state, opts...)
+}
+
 type fooArgs struct {
 	Argument *string `pulumi:"argument"`
 	// Options for tuning the Kubernetes client used by a Provider.

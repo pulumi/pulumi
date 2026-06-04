@@ -35,6 +35,7 @@ from .runtime.resource import (
     register_resource,
     register_resource_outputs,
     read_resource,
+    exists_resource,
     collapse_alias_to_urn,
     create_urn as create_urn_internal,
 )

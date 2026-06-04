@@ -66,6 +66,10 @@ from ._json import (
     to_json,
 )
 
+from .resource import (
+    exists_resource,
+)
+
 from .rpc import (
     ResourceModule,
     ResourcePackage,
@@ -112,6 +116,8 @@ __all__ = [
     "call_single",
     # _json
     "to_json",
+    # resource
+    "exists_resource",
     # rpc
     "ResourceModule",
     "ResourcePackage",

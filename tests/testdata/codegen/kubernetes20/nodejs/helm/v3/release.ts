@@ -20,6 +20,17 @@ export class Release extends pulumi.CustomResource {
         return new Release(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Release resource exists with the given name and ID.
+     *
+     * @param name The _unique_ name of the resulting resource.
+     * @param id The _unique_ provider ID of the resource to lookup.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(name: string, id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("kubernetes:helm.sh/v3:Release", name, id, undefined, opts);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'kubernetes:helm.sh/v3:Release';
 

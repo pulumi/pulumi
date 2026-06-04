@@ -352,6 +352,17 @@ func (i *Interpreter) call(
 	return resp, err
 }
 
+func (i *Interpreter) existsResource(
+	ctx context.Context, req *pulumirpc.ExistsResourceRequest,
+) (*pulumirpc.ExistsResourceResponse, error) {
+	ref, err := i.getPackageRefFromToken(req.Type)
+	if err != nil {
+		return nil, err
+	}
+	req.PackageRef = ref
+	return i.monitor.ExistsResource(ctx, req)
+}
+
 func (i *Interpreter) getResource(ctx context.Context, ref resource.ResourceReference) (resource.PropertyMap, error) {
 	args, err := structpb.NewStruct(map[string]any{
 		"urn": string(ref.URN),
@@ -441,6 +452,7 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		i.getResource,
 		i.invoke,
 		i.call,
+		i.existsResource,
 	)
 
 	if diags := i.bindConfigVariables(ctx); diags.HasErrors() {
@@ -1898,6 +1910,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		i.getResource,
 		i.invoke,
 		i.call,
+		i.existsResource,
 	)
 	componentInterpreter := &Interpreter{
 		program:     component.Program,

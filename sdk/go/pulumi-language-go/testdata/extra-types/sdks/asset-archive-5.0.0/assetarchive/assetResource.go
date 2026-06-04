@@ -60,6 +60,12 @@ func (AssetResourceState) ElementType() reflect.Type {
 	return reflect.TypeOf((*assetResourceState)(nil)).Elem()
 }
 
+// AssetResourceExists checks whether an existing AssetResource resource with the given ID exists.
+func AssetResourceExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *AssetResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("asset-archive:index:AssetResource", name, id, state, opts...)
+}
+
 type assetResourceArgs struct {
 	Value pulumi.AssetOrArchive `pulumi:"value"`
 }

@@ -56,6 +56,12 @@ func (PetState) ElementType() reflect.Type {
 	return reflect.TypeOf((*petState)(nil)).Elem()
 }
 
+// PetExists checks whether an existing Pet resource with the given ID exists.
+func PetExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *PetState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("example::Pet", name, id, state, opts...)
+}
+
 type petArgs struct {
 	Name *string `pulumi:"name"`
 }

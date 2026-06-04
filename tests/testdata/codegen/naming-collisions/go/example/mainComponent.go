@@ -54,6 +54,12 @@ func (MainComponentState) ElementType() reflect.Type {
 	return reflect.TypeOf((*mainComponentState)(nil)).Elem()
 }
 
+// MainComponentExists checks whether an existing MainComponent resource with the given ID exists.
+func MainComponentExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *MainComponentState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("example::MainComponent", name, id, state, opts...)
+}
+
 type mainComponentArgs struct {
 }
 

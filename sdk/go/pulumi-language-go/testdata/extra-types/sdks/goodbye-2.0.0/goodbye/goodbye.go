@@ -64,6 +64,17 @@ func (GoodbyeState) ElementType() reflect.Type {
 	return reflect.TypeOf((*goodbyeState)(nil)).Elem()
 }
 
+// GoodbyeExists checks whether an existing Goodbye resource with the given ID exists.
+func GoodbyeExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *GoodbyeState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	ref, err := internal.PkgGetPackageRef(ctx)
+	if err != nil {
+		var ret pulumi.BoolOutput
+		return ret
+	}
+	return ctx.ExistsPackageResource("goodbye:index:Goodbye", name, id, state, ref, opts...)
+}
+
 type goodbyeArgs struct {
 }
 

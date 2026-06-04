@@ -185,6 +185,19 @@ class ConfigMapList(pulumi.CustomResource):
         __props__.__dict__["metadata"] = None
         return ConfigMapList(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = ConfigMapListArgs.__new__(ConfigMapListArgs)
+
+        __props__.__dict__["api_version"] = None
+        __props__.__dict__["items"] = None
+        __props__.__dict__["kind"] = None
+        __props__.__dict__["metadata"] = None
+        __inst__ = ConfigMapList.__new__(ConfigMapList)
+        return pulumi.runtime.exists_resource(__inst__, 'kubernetes:core/v1:ConfigMapList', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="apiVersion")
     def api_version(self) -> pulumi.Output[_builtins.str]:

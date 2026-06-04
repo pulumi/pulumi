@@ -61,6 +61,12 @@ func (EnumOutputState) ElementType() reflect.Type {
 	return reflect.TypeOf((*enumOutputState)(nil)).Elem()
 }
 
+// EnumOutputExists checks whether an existing EnumOutput resource with the given ID exists.
+func EnumOutputExists(ctx *pulumi.Context,
+	name string, id pulumi.IDInput, state *EnumOutputState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("union:index:EnumOutput", name, id, state, opts...)
+}
+
 type enumOutputArgs struct {
 	Name string `pulumi:"name"`
 }

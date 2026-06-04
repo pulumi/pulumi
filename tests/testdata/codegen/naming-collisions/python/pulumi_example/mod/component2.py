@@ -95,3 +95,12 @@ class Component2(pulumi.CustomResource):
 
         return Component2(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(resource_name: str,
+            id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = Component2Args.__new__(Component2Args)
+
+        __inst__ = Component2.__new__(Component2)
+        return pulumi.runtime.exists_resource(__inst__, 'example:mod:Component2', resource_name, id, __props__, opts or pulumi.ResourceOptions())
+
