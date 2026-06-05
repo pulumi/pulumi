@@ -3656,3 +3656,29 @@ func TestBindSpecReservedPackageNames(t *testing.T) {
 		}
 	})
 }
+
+func TestBindSpecRejectsBothParameterizationFlavors(t *testing.T) {
+	t.Parallel()
+
+	both := ParameterizationSpec{
+		BaseProvider: BaseProviderSpec{Name: "base", Version: "1.0.0"},
+		Parameter:    []byte("p"),
+	}
+	spec := PackageSpec{
+		Name:                      "ext",
+		Parameterization:          &both,
+		ExtensionParameterization: &both,
+	}
+	_, diags, err := BindSpec(spec, nil, ValidationOptions{})
+	require.NoError(t, err)
+	require.True(t, diags.HasErrors())
+	var found bool
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError &&
+			strings.Contains(d.Summary, "may not declare both parameterization and extensionParameterization") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected exclusivity diagnostic, got %v", diags)
+}

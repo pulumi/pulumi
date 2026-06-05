@@ -214,6 +214,8 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 
 	diags = diags.Extend(validateNoRequiredObjectCycles(typeList))
 
+	diags = diags.Extend(validateParameterizationExclusivity(spec.Parameterization, spec.ExtensionParameterization))
+
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
 
@@ -291,6 +293,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	if info.Parameterization != nil || info.ExtensionParameterization != nil {
 		supportPack = true
 	}
+
+	diags = diags.Extend(validateParameterizationExclusivity(info.Parameterization, info.ExtensionParameterization))
 
 	parameterization, parameterizationDiagnostics := bindParameterization(info.Parameterization)
 	diags = diags.Extend(parameterizationDiagnostics)
@@ -1948,6 +1952,19 @@ func bindMethods(
 		})
 	}
 	return result, diags, nil
+}
+
+// validateParameterizationExclusivity returns a diagnostic if a spec declares
+// both parameterization flavors; a package may declare at most one.
+func validateParameterizationExclusivity(
+	parameterization, extensionParameterization *ParameterizationSpec,
+) hcl.Diagnostics {
+	if parameterization != nil && extensionParameterization != nil {
+		return hcl.Diagnostics{errorf(
+			"#/parameterization",
+			"package may not declare both parameterization and extensionParameterization; choose one")}
+	}
+	return nil
 }
 
 func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Diagnostics) {
