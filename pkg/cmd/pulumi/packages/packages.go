@@ -440,8 +440,19 @@ func SchemaFromSchemaSource(
 	if err != nil {
 		return nil, nil, err
 	}
-	if parameterizationName != "" && spec.Parameterization != nil {
-		spec.Parameterization.Name = parameterizationName
+	if parameterizationName != "" {
+		if spec.Parameterization == nil {
+			return nil, nil, fmt.Errorf(
+				"provider returned schema without a parameterization block but parameterize identified the package as %q; "+
+					"the provider must emit a schema whose Parameterization.Name matches its parameterize response",
+				parameterizationName)
+		}
+		if spec.Parameterization.Name != parameterizationName {
+			return nil, nil, fmt.Errorf(
+				"provider returned schema parameterized as %q but parameterize identified the package as %q; "+
+					"the provider must emit a schema whose Parameterization.Name matches its parameterize response",
+				spec.Parameterization.Name, parameterizationName)
+		}
 	}
 	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
