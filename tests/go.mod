@@ -24,7 +24,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/lib/pq v1.12.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
-	github.com/pulumi/pulumi/pkg/v3 v3.225.1
+	github.com/pulumi/pulumi/pkg/v3 v3.243.0
 	github.com/pulumi/pulumi/sdk/v3 v3.245.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
@@ -223,7 +223,7 @@ require (
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/pulumi/esc v0.24.0 // indirect
+	github.com/pulumi/esc v0.25.0 // indirect
 	github.com/pulumi/inflector v0.1.1 // indirect
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

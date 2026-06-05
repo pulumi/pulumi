@@ -1,0 +1,5 @@
+kind: feat
+body: Support ephemeral agent auth instructions for ESC API unauthorized errors in detected agent sessions
+component: cli/env
+custom:
+    PR: "23402"
