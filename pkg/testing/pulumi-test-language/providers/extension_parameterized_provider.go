@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/blang/semver"
 
@@ -31,16 +32,27 @@ import (
 // parameterization arguments. The emitted schema sets Name to the extension
 // identity, leaves Provider nil, and keeps every resource token in the base
 // provider's namespace (matching kubernetes/crd2pulumi semantics).
+//
+// Parameterize and the readers below run concurrently because both the
+// custom-resource step path and the remote-component path can target the
+// same provider instance; the mutex guards the shared parameter fields.
 type ExtensionParameterizedProvider struct {
 	plugin.UnimplementedProvider
+	mu               sync.Mutex
 	extensionName    string
 	extensionVersion string
 	extensionValue   []byte
 }
 
+func (p *ExtensionParameterizedProvider) snapshot() (string, string, []byte) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.extensionName, p.extensionVersion, p.extensionValue
+}
+
 const (
 	extensionBaseName    = "extbase"
-	extensionBaseVersion = "1.0.0"
+	extensionBaseVersion = "40.0.0"
 )
 
 var _ plugin.Provider = (*ExtensionParameterizedProvider)(nil)
@@ -69,16 +81,19 @@ func (p *ExtensionParameterizedProvider) Parameterize(
 	if param.Name == "" || param.Value == nil {
 		return plugin.ParameterizeResponse{}, errors.New("extension parameterize requires name and value")
 	}
+	p.mu.Lock()
 	p.extensionName = param.Name
 	p.extensionVersion = param.Version.String()
 	p.extensionValue = param.Value
+	p.mu.Unlock()
 	return plugin.ParameterizeResponse{Name: param.Name, Version: param.Version}, nil
 }
 
 func (p *ExtensionParameterizedProvider) GetSchema(
 	_ context.Context, _ plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
-	if p.extensionName == "" {
+	name, version, value := p.snapshot()
+	if name == "" {
 		// Base-provider schema before parameterization.
 		return plugin.GetSchemaResponse{Schema: []byte(
 			`{ "name": "` + extensionBaseName + `", "version": "` + extensionBaseVersion + `" }`,
@@ -99,8 +114,8 @@ func (p *ExtensionParameterizedProvider) GetSchema(
 	}
 
 	pkg := schema.PackageSpec{
-		Name:    p.extensionName,
-		Version: p.extensionVersion,
+		Name:    name,
+		Version: version,
 		// Provider intentionally left nil — extension flavor.
 		Resources: map[string]schema.ResourceSpec{
 			token:          {ObjectTypeSpec: greetingSpec},
@@ -111,7 +126,7 @@ func (p *ExtensionParameterizedProvider) GetSchema(
 				Name:    extensionBaseName,
 				Version: extensionBaseVersion,
 			},
-			Parameter: p.extensionValue,
+			Parameter: value,
 		},
 	}
 
@@ -150,10 +165,11 @@ func (p *ExtensionParameterizedProvider) Create(
 	if req.Preview {
 		id = ""
 	}
+	_, _, value := p.snapshot()
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
 		Properties: resource.NewPropertyMapFromMap(map[string]any{
-			"parameterValue": string(p.extensionValue),
+			"parameterValue": string(value),
 		}),
 		Status: resource.StatusOK,
 	}, nil
@@ -163,10 +179,11 @@ func (p *ExtensionParameterizedProvider) Construct(
 	_ context.Context, req plugin.ConstructRequest,
 ) (plugin.ConstructResponse, error) {
 	token := extensionBaseName + ":index:GreetingComponent"
+	_, _, value := p.snapshot()
 	return plugin.ConstructResponse{
 		URN: resource.CreateURN(req.Name, token, req.Parent, req.Info.Project, req.Info.Stack),
 		Outputs: resource.PropertyMap{
-			"parameterValue": resource.NewProperty(string(p.extensionValue) + "Component"),
+			"parameterValue": resource.NewProperty(string(value) + "Component"),
 		},
 	}, nil
 }
