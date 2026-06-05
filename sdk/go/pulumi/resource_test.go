@@ -541,6 +541,78 @@ func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []Resou
 	}
 }
 
+func TestTransformationPreservesParent(t *testing.T) {
+	t.Parallel()
+
+	identity := func(args *ResourceTransformationArgs) *ResourceTransformationResult {
+		return &ResourceTransformationResult{
+			Props: args.Props,
+			Opts:  args.Opts,
+		}
+	}
+
+	parents := map[string]string{}
+	monitor := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			parents[args.Name] = args.RegisterRPC.GetParent()
+			return args.Name, resource.PropertyMap{}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var withoutT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "without-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withoutT))
+
+		var withT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "with-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withT,
+			Transformations([]ResourceTransformation{identity})))
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+
+	require.NotEmpty(t, parents["without-transform"], "baseline should have a parent")
+	assert.Equal(t, parents["without-transform"], parents["with-transform"],
+		"transformation must not drop the parent")
+}
+
+func TestTransformationCannotChangeParent(t *testing.T) {
+	t.Parallel()
+
+	parents := map[string]string{}
+	monitor := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			parents[args.Name] = args.RegisterRPC.GetParent()
+			return args.Name, resource.PropertyMap{}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var withoutT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "without-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withoutT))
+
+		var withT testResource2
+		return ctx.RegisterResource(
+			"test:resource:type", "with-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withT,
+			Transformations([]ResourceTransformation{
+				func(args *ResourceTransformationArgs) *ResourceTransformationResult {
+					return &ResourceTransformationResult{
+						Props: args.Props,
+						Opts:  append(args.Opts, Parent(&withoutT)),
+					}
+				},
+			}))
+	}, WithMocks("project", "stack", monitor))
+	assert.ErrorIs(t, err, errTransformationsCannotChangeParent)
+}
+
 func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
 	t.Parallel()
 
