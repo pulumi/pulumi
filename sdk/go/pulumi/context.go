@@ -2034,6 +2034,9 @@ type resourceState struct {
 	transformations   []ResourceTransformation
 }
 
+var errTransformationsCannotChangeParent = errors.New(
+	"transformations cannot currently be used to change the `parent` of a resource")
+
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
 func applyTransformations(t, name string, props Input, resource Resource, opts []ResourceOption,
 	options *resourceOptions,
@@ -2057,8 +2060,9 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 			resOptions := merge(res.Opts...)
 
 			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
-				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
+				return nil, nil, nil, errTransformationsCannotChangeParent
 			}
+			resOptions.Parent = options.Parent // Callers *must* re-apply the parent option, so we do it for them
 			props = res.Props
 			options = resOptions
 		}

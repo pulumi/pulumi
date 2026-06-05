@@ -1,0 +1,6 @@
+component: sdk/go
+kind: fix
+body: Applying a transformation to a resource no longer drops the resource's parent in the `RegisterResource` call
+time: 2026-06-05T14:50:22.466583+02:00
+custom:
+    PR: "14826"
