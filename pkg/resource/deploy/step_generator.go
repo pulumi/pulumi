@@ -724,10 +724,12 @@ func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResour
 			return nil, true, nil
 		}
 	}
-	return sg.generateResourceSteps(event, urn)
+	return sg.generateResourceSteps(ctx, event, urn)
 }
 
-func (sg *stepGenerator) generateResourceSteps(event RegisterResourceEvent, urn resource.URN) ([]Step, bool, error) {
+func (sg *stepGenerator) generateResourceSteps(
+	ctx context.Context, event RegisterResourceEvent, urn resource.URN,
+) ([]Step, bool, error) {
 	goal := event.Goal()
 	old, invalid, alias := sg.getOldResource(urn, goal.Name, goal.Type, goal.Parent, goal.Aliases)
 
@@ -889,9 +891,10 @@ func (sg *stepGenerator) ContinueStepsFromRefresh(
 // ContinueStepsFromExtension is called by the deployment executor after a provider has been parameterized with an
 // extension. It produces the resource's normal lifecycle steps that GenerateSteps deferred while parameterization was
 // in flight.
-func (sg *stepGenerator) ContinueStepsFromExtension(event ContinueExtensionEvent) ([]Step, bool, error) {
-
-	steps, async, err := sg.continueStepsFromExtension(event)
+func (sg *stepGenerator) ContinueStepsFromExtension(
+	ctx context.Context, event ContinueExtensionEvent,
+) ([]Step, bool, error) {
+	steps, async, err := sg.continueStepsFromExtension(ctx, event)
 	if err != nil {
 		return nil, false, err
 	}
@@ -931,10 +934,10 @@ func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, erro
 }
 
 func (sg *stepGenerator) continueStepsFromExtension(
-	_ context.Context, event ContinueExtensionEvent,
+	ctx context.Context, event ContinueExtensionEvent,
 ) ([]Step, bool, error) {
 	urn := event.URN()
-	return sg.generateResourceSteps(event, urn)
+	return sg.generateResourceSteps(ctx, event, urn)
 }
 
 func (sg *stepGenerator) continueStepsFromRefresh(

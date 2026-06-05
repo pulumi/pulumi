@@ -1049,7 +1049,7 @@ func TestStepGenerator(t *testing.T) {
 			extensionRef: apitype.ExtensionRef("extension-a"),
 		}
 
-		steps, async, err := sg.generateSteps(event)
+		steps, async, err := sg.generateSteps(t.Context(), event)
 		require.NoError(t, err)
 		assert.True(t, async)
 		require.Len(t, steps, 1)

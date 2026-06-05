@@ -599,7 +599,7 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueExtensionEvent")
 		ex.asyncEventsExpected--
 		var async bool
-		steps, async, err = ex.stepGen.ContinueStepsFromExtension(e)
+		steps, async, err = ex.stepGen.ContinueStepsFromExtension(ctx, e)
 		if async {
 			ex.asyncEventsExpected++
 		}
