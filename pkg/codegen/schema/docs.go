@@ -31,8 +31,8 @@ import (
 // resolved; if false, the caller falls back to a default rendering of the ref.
 type PulumiRefResolver func(ref DocRef) (string, bool)
 
-// interpretPulumiRefs parses a {{% ref %}} shortcode node and passes it to the `resolveRefToName` function to replace
-// the shortcode with literal text.
+// interpretPulumiRefs parses all {{% ref %}} shortcodes that descend from the given node. Each ref is passed to the
+// `resolveRefToName` callback to replace the shortcode with literal text.
 func interpretPulumiRefs(
 	path string, types *types, options ValidationOptions,
 	node ast.Node, resolveRefToName PulumiRefResolver,
