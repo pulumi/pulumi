@@ -38,7 +38,7 @@ make -C "$REPO" bin/pulumi
 # continuationToken automatically and merges pages.
 PACKAGES_JSON="$WORK_DIR/packages.json"
 echo "Listing packages..."
-"$PULUMI_BIN" cloud api ListPackages --paginate >"$PACKAGES_JSON"
+"$PULUMI_BIN" api ListPackages --all >"$PACKAGES_JSON"
 TOTAL=$(jq '.packages | length' "$PACKAGES_JSON")
 echo "Found $TOTAL packages."
 
