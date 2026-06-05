@@ -37,7 +37,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.ref }}
+          # `inputs.ref` is the release tag, which points at a commit created
+          # before the freeze PR landed. Branch off master so we pick up the
+          # freeze PR's changes (sdk/.version bump, .release-pending marker).
+          ref: master
+          fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
           go-version-file: sdk/go.mod
