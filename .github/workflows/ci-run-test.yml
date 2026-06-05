@@ -113,23 +113,15 @@ jobs:
     steps:
       - if: contains(inputs.platform, 'ubuntu')
         name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        uses: tgummerer/free-disk-space@865f5375bb031bd539c76f6309945e0bdd8d7501
         with:
           # tool-cache stays off: tests need Node and Python from /opt/hostedtoolcache.
           tool-cache: false
           swap-storage: false
           large-packages: true
+          large-packages-keep: |
+            azure-cli
           dotnet: true
-
-      # `large-packages: true` strips the runner's pre-installed `azure-cli`,
-      # which TestAzureLoginAzLogin in tests/integration/backend/diy invokes
-      # via exec.Command("az", "login", ...) when the AZURE_CLIENT_* secrets
-      # are set. Put it back. None of the other packages stripped by
-      # `large-packages` are exercised by these tests.
-      - if: contains(inputs.platform, 'ubuntu')
-        name: Reinstall Azure CLI
-        run: |
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
       # Create a coverage file to register a testing job was started.
       # This artifact will be overwritten with "OK" at the end of the job.
