@@ -29,7 +29,8 @@ const (
 	JournalEntryKindOutputs          JournalEntryKind = 4
 	JournalEntryKindWrite            JournalEntryKind = 5
 	JournalEntryKindSecretsManager   JournalEntryKind = 6
-	JournalEntryKindRebuiltBaseState JournalEntryKind = 7
+	JournalEntryKindRebuiltBaseState      JournalEntryKind = 7
+	JournalEntryKindExtensionParameterize JournalEntryKind = 8
 )
 
 func (k JournalEntryKind) String() string {
@@ -50,6 +51,8 @@ func (k JournalEntryKind) String() string {
 		return "secrets-manager"
 	case JournalEntryKindRebuiltBaseState:
 		return "rebuilt-base-state"
+	case JournalEntryKindExtensionParameterize:
+		return "extension-parameterize"
 	default:
 		return "invalid"
 	}
@@ -87,6 +90,12 @@ type JournalEntry struct {
 
 	// NewSnapshot is the new snapshot that this journal entry is associated with.
 	NewSnapshot *DeploymentV3 `json:"newSnapshot,omitempty"`
+
+	// ExtensionRef and Extension carry the (ref, blob) pair produced by an
+	// extension parameterize step so replay can rebuild DeploymentV3.Extensions.
+	// Only set for JournalEntryKindExtensionParameterize entries.
+	ExtensionRef *ExtensionRef `json:"extensionRef,omitempty"`
+	Extension    *Extension    `json:"extension,omitempty"`
 }
 
 func (e JournalEntry) String() string {
