@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-querystring/query"
@@ -169,6 +170,14 @@ type accessToken interface {
 	Get(ctx context.Context) (string, error)
 }
 
+// refreshable is the opt-in interface for access tokens that can renew themselves when the server
+// rejects the current value with 401. defaultRESTClient.Call type-asserts on this after a 401 and,
+// if the assertion succeeds, calls Refresh once and retries the request before surfacing
+// LoginRequiredError.
+type refreshable interface {
+	Refresh(ctx context.Context) error
+}
+
 type httpCallOptions struct {
 	// RetryPolicy defines the policy for retrying requests by httpClient.Do.
 	//
@@ -202,6 +211,54 @@ func (apiAccessToken) Kind() accessTokenKind {
 
 func (t apiAccessToken) Get(_ context.Context) (string, error) {
 	return string(t), nil
+}
+
+// refreshableAPIAccessToken is an apiAccessToken that can renew itself via the OAuth refresh-token
+// grant (RFC 6749 §6) when the current access token expires. defaultRESTClient.Call type-asserts
+// on the refreshable interface after a 401 and calls Refresh once before falling through to
+// LoginRequiredError.
+//
+// The refresh and writeback callbacks are decoupled so the type stays free of dependencies on the
+// Pulumi service client and credential storage: callers wire the wrapper into client.NewClient by
+// closing over Client.RefreshAccessToken and workspace.StoreAccount respectively.
+type refreshableAPIAccessToken struct {
+	mu sync.Mutex
+	// accessToken is the current short-lived bearer; sent on every request.
+	accessToken string
+	// refreshToken is the long-lived credential exchanged at /api/oauth/token for a fresh
+	// access token. Held off the request path and only ever passed to the refresh callback.
+	refreshToken string
+	// refresh exchanges refreshToken for a new access token. Returns the new (access, refresh)
+	// pair; if the server doesn't rotate (Phase 1 behavior) it returns an empty newRefreshToken
+	// and the wrapper keeps the existing one.
+	refresh func(ctx context.Context, refreshToken string) (accessToken, newRefreshToken string, err error)
+	// writeback persists the refreshed credentials. Called with the wrapper's lock held so the
+	// in-memory and on-disk views can't diverge under concurrent refreshes.
+	writeback func(accessToken, refreshToken string) error
+}
+
+func (*refreshableAPIAccessToken) Kind() accessTokenKind {
+	return accessTokenKindAPIToken
+}
+
+func (t *refreshableAPIAccessToken) Get(_ context.Context) (string, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.accessToken, nil
+}
+
+func (t *refreshableAPIAccessToken) Refresh(ctx context.Context) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	newAT, newRT, err := t.refresh(ctx, t.refreshToken)
+	if err != nil {
+		return err
+	}
+	t.accessToken = newAT
+	if newRT != "" {
+		t.refreshToken = newRT
+	}
+	return t.writeback(t.accessToken, t.refreshToken)
 }
 
 // UpdateTokenSource allows the API client to request tokens for an in-progress update as near as possible to the
@@ -624,9 +681,19 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 		}
 	}
 
-	// Make API call
+	// Make API call. If the access token can refresh itself and the server rejects it with
+	// LoginRequiredError, refresh once and retry — this lets agent CLIs survive routine access-token
+	// expiry without bouncing back through a human-driven login.
 	url, resp, err := pulumiAPICall(
 		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
+	if err != nil && errors.Is(err, backenderr.LoginRequiredError{}) {
+		if r, ok := tok.(refreshable); ok {
+			if refreshErr := r.Refresh(ctx); refreshErr == nil {
+				url, resp, err = pulumiAPICall(
+					ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
+			}
+		}
+	}
 	if err != nil {
 		otelSpan.RecordError(err)
 		otelSpan.SetStatus(codes.Error, err.Error())

@@ -27,6 +27,7 @@ import (
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -85,7 +86,7 @@ func newMockClient(server *httptest.Server) *Client {
 
 	return &Client{
 		apiURL:   server.URL,
-		apiToken: "",
+		apiToken: apiAccessToken(""),
 		apiUser:  "",
 		diag:     nil,
 		restClient: &defaultRESTClient{
@@ -1895,5 +1896,173 @@ func TestRefreshAccessToken(t *testing.T) {
 		_, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "rt-value")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "empty access_token")
+	})
+}
+
+func TestRefreshableAPIAccessToken(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Refresh replaces the access token and persists via writeback", func(t *testing.T) {
+		t.Parallel()
+
+		var seenRefreshToken, seenWriteAT, seenWriteRT string
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale-access",
+			refreshToken: "stale-refresh",
+			refresh: func(_ context.Context, rt string) (string, string, error) {
+				seenRefreshToken = rt
+				return "new-access", "new-refresh", nil
+			},
+			writeback: func(at, rt string) error {
+				seenWriteAT, seenWriteRT = at, rt
+				return nil
+			},
+		}
+
+		require.NoError(t, tok.Refresh(t.Context()))
+
+		got, err := tok.Get(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, "new-access", got)
+		assert.Equal(t, "stale-refresh", seenRefreshToken)
+		assert.Equal(t, "new-access", seenWriteAT)
+		assert.Equal(t, "new-refresh", seenWriteRT)
+	})
+
+	t.Run("Refresh keeps the existing refresh token when the server returns empty (no rotation)", func(t *testing.T) {
+		t.Parallel()
+
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale-access",
+			refreshToken: "stable-refresh",
+			refresh: func(_ context.Context, _ string) (string, string, error) {
+				return "new-access", "", nil
+			},
+			writeback: func(at, rt string) error { return nil },
+		}
+		require.NoError(t, tok.Refresh(t.Context()))
+
+		var seenSecondRefreshToken string
+		tok.refresh = func(_ context.Context, rt string) (string, string, error) {
+			seenSecondRefreshToken = rt
+			return "newer-access", "", nil
+		}
+		require.NoError(t, tok.Refresh(t.Context()))
+		assert.Equal(t, "stable-refresh", seenSecondRefreshToken,
+			"the wrapper continues to send the original refresh token across calls")
+	})
+
+	t.Run("Refresh failure surfaces the underlying error and leaves state untouched", func(t *testing.T) {
+		t.Parallel()
+
+		var writebackCalled bool
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "original-access",
+			refreshToken: "original-refresh",
+			refresh: func(_ context.Context, _ string) (string, string, error) {
+				return "", "", errors.New("invalid_grant")
+			},
+			writeback: func(at, rt string) error {
+				writebackCalled = true
+				return nil
+			},
+		}
+
+		err := tok.Refresh(t.Context())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid_grant")
+		assert.False(t, writebackCalled, "writeback must not fire when the refresh attempt fails")
+
+		got, gerr := tok.Get(t.Context())
+		require.NoError(t, gerr)
+		assert.Equal(t, "original-access", got, "Get returns the original token when the refresh failed")
+	})
+
+	t.Run("Refresh surfaces writeback failure", func(t *testing.T) {
+		t.Parallel()
+
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "original-access",
+			refreshToken: "original-refresh",
+			refresh: func(_ context.Context, _ string) (string, string, error) {
+				return "new-access", "new-refresh", nil
+			},
+			writeback: func(_, _ string) error { return errors.New("disk full") },
+		}
+
+		err := tok.Refresh(t.Context())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "disk full")
+	})
+}
+
+func TestClient_WithRefresh(t *testing.T) {
+	t.Parallel()
+
+	t.Run("end-to-end: stale token triggers refresh and retry, writeback fires", func(t *testing.T) {
+		t.Parallel()
+
+		var apiCalls, refreshCalls atomic.Int32
+		var seenAuths []string
+		var mu sync.Mutex
+
+		srv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			switch req.URL.Path {
+			case "/api/oauth/token":
+				refreshCalls.Add(1)
+				body, err := io.ReadAll(req.Body)
+				require.NoError(t, err)
+				assert.Contains(t, string(body), "grant_type=refresh_token")
+				assert.Contains(t, string(body), "refresh_token=stale-refresh")
+				_ = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+					AccessToken:  "fresh-access",
+					TokenType:    "Bearer",
+					ExpiresIn:    3600,
+					RefreshToken: "stale-refresh",
+				})
+			case "/api/user":
+				mu.Lock()
+				seenAuths = append(seenAuths, req.Header.Get("Authorization"))
+				mu.Unlock()
+				n := apiCalls.Add(1)
+				if n == 1 {
+					rw.WriteHeader(http.StatusUnauthorized)
+					_ = json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+					return
+				}
+				_ = json.NewEncoder(rw).Encode(serviceUser{GitHubLogin: "alice"})
+			default:
+				rw.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer srv.Close()
+
+		var writeAT, writeRT string
+		pc := NewClient(srv.URL, "stale-access", true, nil)
+		pc.WithRefresh("stale-refresh", func(at, rt string) error {
+			writeAT, writeRT = at, rt
+			return nil
+		})
+
+		name, _, _, err := pc.GetPulumiAccountDetails(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, "alice", name)
+		assert.Equal(t, int32(2), apiCalls.Load(), "/api/user should be tried twice")
+		assert.Equal(t, int32(1), refreshCalls.Load())
+		require.Len(t, seenAuths, 2)
+		assert.Equal(t, "token stale-access", seenAuths[0])
+		assert.Equal(t, "token fresh-access", seenAuths[1])
+		assert.Equal(t, "fresh-access", writeAT, "writeback receives the refreshed access token")
+		assert.Equal(t, "stale-refresh", writeRT,
+			"writeback receives the still-current refresh token (no rotation in Phase 1)")
+	})
+
+	t.Run("empty refresh token leaves the plain access token in place", func(t *testing.T) {
+		t.Parallel()
+
+		pc := NewClient("https://api.example.com", "tok", false, nil)
+		pc.WithRefresh("", func(at, rt string) error { return nil })
+		_, isRefreshable := pc.apiToken.(refreshable)
+		assert.False(t, isRefreshable, "an empty refresh token must not swap in a refreshable wrapper")
 	})
 }

@@ -280,6 +280,11 @@ func New(ctx context.Context, d diag.Sink,
 	apiToken := account.AccessToken
 
 	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
+	apiClient.WithRefresh(account.RefreshToken, func(at, rt string) error {
+		account.AccessToken = at
+		account.RefreshToken = rt
+		return workspace.StoreAccount(cloudURL, account, false)
+	})
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
 	config, err := workspace.GetPulumiConfig()

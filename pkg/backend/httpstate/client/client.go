@@ -219,7 +219,7 @@ type PublishTemplateVersionCompleteResponse struct{}
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL     string
-	apiToken   apiAccessToken
+	apiToken   accessToken
 	apiUser    string
 	apiOrgs    []string
 	tokenInfo  *workspace.TokenInformation // might be nil if running against old services
@@ -274,6 +274,34 @@ func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 		client: &defaultHTTPClient{
 			client: httpClient,
 		},
+	}
+	return pc
+}
+
+// WithRefresh wires an OAuth refresh token + a credentials-writeback callback into this client.
+// Once configured, the client transparently exchanges the refresh token at /api/oauth/token for a
+// fresh access token whenever the service rejects the current one with 401, retrying the original
+// request before falling through to LoginRequiredError. Passing an empty refresh token is a no-op
+// so callers can guard on workspace.Account.RefreshToken without a separate branch.
+func (pc *Client) WithRefresh(
+	refreshToken string,
+	writeback func(accessToken, refreshToken string) error,
+) *Client {
+	if refreshToken == "" {
+		return pc
+	}
+	initial, _ := pc.apiToken.Get(context.Background())
+	pc.apiToken = &refreshableAPIAccessToken{
+		accessToken:  initial,
+		refreshToken: refreshToken,
+		refresh: func(ctx context.Context, rt string) (string, string, error) {
+			resp, err := pc.RefreshAccessToken(ctx, rt)
+			if err != nil {
+				return "", "", err
+			}
+			return resp.AccessToken, resp.RefreshToken, nil
+		},
+		writeback: writeback,
 	}
 	return pc
 }
@@ -2818,7 +2846,11 @@ func (pc *Client) StreamNeoTaskEvents(
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
-	req.Header.Set("Authorization", "token "+string(pc.apiToken))
+	apiToken, err := pc.apiToken.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetching credentials: %w", err)
+	}
+	req.Header.Set("Authorization", "token "+apiToken)
 	if lastEventID != "" {
 		req.Header.Set("Last-Event-ID", lastEventID)
 	}
@@ -2925,7 +2957,10 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, err
 	defer cancel()
 
 	url := pc.apiURL + "/api/ai/chat/preview"
-	apiToken := string(pc.apiToken)
+	apiToken, err := pc.apiToken.Get(ctx)
+	if err != nil {
+		return "", fmt.Errorf("fetching credentials: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
