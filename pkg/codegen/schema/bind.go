@@ -470,6 +470,10 @@ func (s partialPackageSpecSource) GetFunctionSpec(token string) (FunctionSpec, b
 func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, bool, error) {
 	var rawSpec json.RawMessage
 	if token == "pulumi:providers:"+s.spec.Name {
+		// Extension parameterization deliberately omits Provider.
+		if len(s.spec.Provider) == 0 && s.spec.Parameterization != nil {
+			return ResourceSpec{}, false, nil
+		}
 		rawSpec = s.spec.Provider
 	} else {
 		raw, ok := s.spec.Resources[token]
@@ -623,6 +627,13 @@ func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	allowedNameSpecs := map[string][]string{spec.Name: nil}
 	for _, prefix := range spec.AllowedPackageNames {
 		allowedNameSpecs[prefix] = nil
+	}
+	// Parameterized schemas may reference tokens in the base provider's namespace;
+	// extension parameterizations do this by design (the SDK is renamed but tokens
+	// stay under the base name) and replacement schemas don't tend to but it's
+	// harmless to allow.
+	if spec.Parameterization != nil {
+		allowedNameSpecs[spec.Parameterization.BaseProvider.Name] = nil
 	}
 	for t := range spec.Resources {
 		diags = diags.Extend(spec.validateTypeToken(allowedNameSpecs, "resources", t))

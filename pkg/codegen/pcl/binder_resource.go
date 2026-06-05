@@ -85,6 +85,9 @@ func (b *binder) resolveSchemaResourceForBind(
 	// the body, and thus the version yet.
 	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
 		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+	} else if extDescriptor, ok := b.findExtensionDescriptorForBase(pkg); ok {
+		// Extension token: load the extension schema so resources in the base namespace resolve.
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, extDescriptor)
 	} else {
 		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
 	}
