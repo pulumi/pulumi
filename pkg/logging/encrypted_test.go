@@ -122,3 +122,67 @@ func TestUpgradeToEncryptedDoesNotDeadlock(t *testing.T) {
 	require.True(t, strings.Contains(string(plaintext), preUpgrade),
 		"decrypted log should contain data written before the upgrade")
 }
+
+// TestRenameWhileWriting exercises renaming the live log file while concurrent
+// writes are in flight, both before and after the upgrade to encrypted mode.
+// On Windows a file open by the process cannot be renamed, so the rename must
+// close and reopen the file underneath the active sink without losing data.
+func TestRenameWhileWriting(t *testing.T) {
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	l, err := StartLogging(t.Context(), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = l.Close() })
+
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					logging.Infof("concurrent log line")
+				}
+			}
+		}()
+	}
+
+	require.NoError(t, l.rename("gzip-stack", "gzip-update"))
+
+	const preUpgrade = "log line written before the upgrade"
+	logging.Infof("%s", preUpgrade)
+
+	require.NoError(t, l.UpgradeToEncrypted(t.Context(), "enc-stack", "enc-update", loggingSecretsManager{}))
+	require.True(t, l.encrypted, "logger should be in encrypted mode after upgrade")
+
+	const postUpgrade = "log line written after the upgrade and before the rename"
+	logging.Infof("%s", postUpgrade)
+
+	require.NoError(t, l.rename("renamed-stack", "renamed-update"))
+	require.Contains(t, l.FilePath(), "renamed-stack", "file should have been renamed")
+
+	logging.Infof("log line written after the encrypted rename")
+
+	close(stop)
+	wg.Wait()
+
+	logPath := l.FilePath()
+	require.NoError(t, l.Close())
+
+	f, err := os.Open(logPath)
+	require.NoError(t, err)
+	defer f.Close()
+
+	r, err := encryptedlog.NewReader(t.Context(), f, config.Base64Crypter)
+	require.NoError(t, err)
+	plaintext, err := io.ReadAll(r)
+	require.NoError(t, err)
+	require.Contains(t, string(plaintext), preUpgrade,
+		"decrypted log should contain data written before the upgrade")
+	require.Contains(t, string(plaintext), postUpgrade,
+		"decrypted log should contain data written after the upgrade but before the rename")
+}

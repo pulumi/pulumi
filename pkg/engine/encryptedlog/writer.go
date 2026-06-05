@@ -45,29 +45,20 @@ type Writer struct {
 }
 
 // PreparedKey holds a freshly generated session key together with its
-// encrypted form. It is produced by PrepareKey and consumed by
-// NewWriterFromKey. Splitting key preparation from writer construction lets
-// callers perform the (potentially blocking, network-backed) encryption of
-// the session key outside of any locks they hold, before touching the
-// destination writer.
+// encrypted form.
 type PreparedKey struct {
 	sessionKey   [keySize]byte
 	encryptedKey []byte
 }
 
 // PrepareKey generates a random session key and encrypts it with enc. This is
-// the only part of writer setup that calls into the caller's secrets provider,
-// which may perform a network round-trip (e.g. the Pulumi Cloud secrets
-// service). It writes nothing to any destination, so callers can run it
-// without holding locks that guard their output writer — important because the
-// secrets provider may itself emit log records.
+// the only part of writer setup that calls into the caller's secrets provider
 func PrepareKey(ctx context.Context, enc config.Encrypter) (*PreparedKey, error) {
 	var sessionKey [keySize]byte
 	if _, err := rand.Read(sessionKey[:]); err != nil {
 		return nil, fmt.Errorf("encryptedlog: generating session key: %w", err)
 	}
 
-	// Encrypt the raw session key via the caller's secrets provider.
 	encryptedKey, err := enc.EncryptValue(ctx, string(sessionKey[:]))
 	if err != nil {
 		return nil, fmt.Errorf("encryptedlog: encrypting session key: %w", err)
@@ -81,9 +72,6 @@ func PrepareKey(ctx context.Context, enc config.Encrypter) (*PreparedKey, error)
 	return &PreparedKey{sessionKey: sessionKey, encryptedKey: encryptedKeyBytes}, nil
 }
 
-// NewWriterFromKey builds a Writer from a PreparedKey. It writes the PLOG
-// header to w but performs no secrets-provider calls, so it is safe to invoke
-// while holding locks.
 func NewWriterFromKey(w io.Writer, key *PreparedKey) (*Writer, error) {
 	// Write the PLOG header: magic + version + key length + key.
 	header := make([]byte, 0, len(Magic)+1+2+len(key.encryptedKey))
@@ -116,13 +104,6 @@ func NewWriterFromKey(w io.Writer, key *PreparedKey) (*Writer, error) {
 }
 
 // NewWriter creates a Writer that encrypts log data to w.
-// A random session key is generated and encrypted with enc for the file header.
-//
-// NewWriter both encrypts the session key (which may call into a network-backed
-// secrets provider) and writes to w. Callers that hold a lock guarding w and
-// whose secrets provider may emit log records should instead call PrepareKey
-// outside the lock and NewWriterFromKey inside it, to avoid re-entrant
-// deadlocks.
 func NewWriter(
 	ctx context.Context, w io.Writer, enc config.Encrypter,
 ) (*Writer, error) {

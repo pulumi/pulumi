@@ -69,10 +69,7 @@ type Logger struct {
 
 // currentFileWriter is an io.Writer that always writes to the logger's current
 // underlying file. Sinks write through it instead of binding directly to an
-// *os.File so that renameLocked can close and reopen the file — required on
-// Windows, where an open file cannot be renamed — without invalidating the
-// active sink or its internal state. All writes happen under l.mu (via
-// Logger.Write or during an upgrade), so reading l.f here is safe.
+// *os.File so that a rename can close and reopen the file.
 type currentFileWriter struct{ l *Logger }
 
 func (w currentFileWriter) Write(p []byte) (int, error) {
@@ -109,10 +106,11 @@ func StartLogging(
 		f:        f,
 		filePath: filePath,
 	}
+	l.out = currentFileWriter{l: l}
 
-	sink, encErr := newEncryptedSink(ctx, f, sm)
+	sink, encErr := newEncryptedSink(ctx, l.out, sm)
 	if encErr != nil {
-		l.sink = newGzipSink(f)
+		l.sink = newGzipSink(l.out)
 	} else {
 		l.sink = sink
 		l.encrypted = true
@@ -158,8 +156,6 @@ func (l *Logger) UpgradeToEncrypted(ctx context.Context, stackName, updateID str
 		return nil
 	}
 
-	// Flush the gzip sink and read back everything written so far, before we
-	// touch the file on disk.
 	if err := l.sink.Close(); err != nil {
 		return fmt.Errorf("flushing gzip sink: %w", err)
 	}
@@ -195,17 +191,15 @@ func (l *Logger) UpgradeToEncrypted(ctx context.Context, stackName, updateID str
 		}
 	}
 
-	// Reopen the (possibly renamed) file fresh, truncating the old gzip
-	// contents so we can rewrite them in encrypted form.
 	f, err := os.OpenFile(l.filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return fmt.Errorf("reopening log file: %w", err)
 	}
 	l.f = f
 
-	encSink, err := encryptedlog.NewWriterFromKey(l.f, key)
+	encSink, err := encryptedlog.NewWriterFromKey(l.out, key)
 	if err != nil {
-		l.sink = newGzipSink(l.f)
+		l.sink = newGzipSink(l.out)
 		return fmt.Errorf("creating encrypted writer: %w", err)
 	}
 
@@ -254,10 +248,26 @@ func (l *Logger) rename(stackName, updateID string) error {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return l.renameLocked(stackName, updateID)
+
+	// Close before renaming — Windows cannot rename an open file.
+	if err := l.f.Close(); err != nil {
+		return fmt.Errorf("closing log file: %w", err)
+	}
+	if err := l.renameLocked(stackName, updateID); err != nil {
+		return fmt.Errorf("renaming log file: %w", err)
+	}
+
+	f, err := os.OpenFile(l.filePath, os.O_RDWR|os.O_APPEND, 0o600)
+	if err != nil {
+		return fmt.Errorf("reopening log file: %w", err)
+	}
+	l.f = f
+	return nil
 }
 
-// renameLocked renames the log file. Must be called with l.mu held.
+// renameLocked renames the log file on disk and updates l.filePath. The caller
+// must have closed l.f first (Windows cannot rename an open file). Must be
+// called with l.mu held.
 func (l *Logger) renameLocked(stackName, updateID string) error {
 	dir := filepath.Dir(l.filePath)
 	ts := time.Now().Format("20060102T150405")
