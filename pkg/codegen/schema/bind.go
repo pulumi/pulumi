@@ -1087,6 +1087,14 @@ func (t *types) bindTypeSpecRef(
 			contract.Assertf(typ == nil, "unexpected type %T", typ)
 		}
 
+		// For extension schemas, fall through to the base provider before giving up.
+		if baseTyp, baseErr := t.lookupTokenInExtensionBase(ref.Token, false); baseErr == nil && baseTyp != nil {
+			if obj, ok := baseTyp.(*ObjectType); ok && inputShape {
+				return obj.InputShape, diags, nil
+			}
+			return baseTyp, diags, nil
+		}
+
 		// If the type is not a known type, bind it as an opaque token type.
 		tokenType, ok := t.tokens[ref.Token]
 		if !ok {
@@ -1113,6 +1121,10 @@ func (t *types) bindTypeSpecRef(
 		}
 
 		if typ == nil {
+			// For extension schemas, fall through to the base provider before giving up.
+			if baseTyp, baseErr := t.lookupTokenInExtensionBase(ref.Token, true); baseErr == nil && baseTyp != nil {
+				return baseTyp, diags, nil
+			}
 			typ, diags := invalidType(errorf(path, "resource type %v not found in package %v", ref.Token, ref.Package))
 			return typ, diags, nil
 		}
@@ -1952,6 +1964,37 @@ func bindMethods(
 		})
 	}
 	return result, diags, nil
+}
+
+// lookupTokenInExtensionBase resolves a token via the extension's base provider
+// when the token isn't defined locally. An extension schema keeps its tokens in
+// the base provider's namespace (so pkg.Name matches the token's package
+// portion), which would normally make the binder treat every base-namespace
+// reference as local. For tokens the extension didn't redefine, fall through to
+// the base provider's schema instead of producing an opaque TokenType.
+func (t *types) lookupTokenInExtensionBase(token string, isResource bool) (Type, error) {
+	if t.pkg.ExtensionParameterization == nil {
+		return nil, nil
+	}
+	base := t.pkg.ExtensionParameterization.BaseProvider
+	version := base.Version
+	desc := &PackageDescriptor{Name: base.Name, Version: &version}
+	basePkg, err := LoadPackageReferenceV2(context.TODO(), t.loader, desc)
+	if err != nil {
+		return nil, fmt.Errorf("resolving extension base %q for token %v: %w", base.Name, token, err)
+	}
+	if isResource {
+		typ, ok, err := basePkg.Resources().GetType(token)
+		if err != nil || !ok {
+			return nil, err
+		}
+		return typ, nil
+	}
+	typ, ok, err := basePkg.Types().Get(token)
+	if err != nil || !ok {
+		return nil, err
+	}
+	return typ, nil
 }
 
 // validateParameterizationExclusivity returns a diagnostic if a spec declares
