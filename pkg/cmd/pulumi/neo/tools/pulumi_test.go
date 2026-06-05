@@ -372,6 +372,13 @@ func newProjectDir(t *testing.T) string {
 func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 	dir := newProjectDir(t)
 
+	// Ensure PULUMI_ACCESS_TOKEN is unset in the ambient environment (CI sets it) so the
+	// "previously unset is unset on restore" behavior is what we actually exercise below.
+	if orig, ok := os.LookupEnv("PULUMI_ACCESS_TOKEN"); ok {
+		require.NoError(t, os.Unsetenv("PULUMI_ACCESS_TOKEN"))
+		t.Cleanup(func() { _ = os.Setenv("PULUMI_ACCESS_TOKEN", orig) })
+	}
+
 	var capturedToken string
 	var resolved bool
 	prev := cmdBackend.BackendInstance
