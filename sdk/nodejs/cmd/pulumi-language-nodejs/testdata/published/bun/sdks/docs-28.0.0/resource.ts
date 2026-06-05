@@ -6,6 +6,8 @@ import * as inputs from "./types/input";
 import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
+import * as pulumiEnum from "@pulumi/enum";
+
 /**
  * Resource is a basic resource. Use fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using FunResult.out.
  */
@@ -41,6 +43,10 @@ export class Resource extends pulumi.CustomResource {
      */
     declare public /*out*/ readonly data: pulumi.Output<outputs.ResourceData>;
     /**
+     * The StringEnum value passed to ResourceArgs.externalEnum.
+     */
+    declare public readonly externalEnum: pulumi.Output<pulumiEnum.StringEnum>;
+    /**
      * Will be set to the same as ResourceArgs.in.
      */
     declare public readonly in: pulumi.Output<boolean | undefined>;
@@ -60,14 +66,19 @@ export class Resource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
+            if (args?.externalEnum === undefined && !opts.urn) {
+                throw new Error("Missing required property 'externalEnum'");
+            }
             if (args?.in === undefined && !opts.urn) {
                 throw new Error("Missing required property 'in'");
             }
+            resourceInputs["externalEnum"] = args?.externalEnum;
             resourceInputs["in"] = args?.in;
             resourceInputs["data"] = undefined /*out*/;
             resourceInputs["out"] = undefined /*out*/;
         } else {
             resourceInputs["data"] = undefined /*out*/;
+            resourceInputs["externalEnum"] = undefined /*out*/;
             resourceInputs["in"] = undefined /*out*/;
             resourceInputs["out"] = undefined /*out*/;
         }
@@ -80,6 +91,10 @@ export class Resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Resource resource.
  */
 export interface ResourceArgs {
+    /**
+     * External enum value from StringEnum.
+     */
+    externalEnum: pulumi.Input<pulumiEnum.StringEnum>;
     /**
      * Will be used to set ResourceArgs.in and Resource.out.
      */

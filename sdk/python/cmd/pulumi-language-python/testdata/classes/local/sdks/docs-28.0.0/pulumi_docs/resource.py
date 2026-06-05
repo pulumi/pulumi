@@ -9,19 +9,35 @@ import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
+import pulumi_enum
 
 __all__ = ['ResourceArgs', 'Resource']
 
 @pulumi.input_type
 class ResourceArgs:
     def __init__(__self__, *,
+                 external_enum: pulumi.Input['pulumi_enum.StringEnum'],
                  in_: pulumi.Input[_builtins.bool]):
         """
         The set of arguments for constructing a Resource resource.
 
+        :param pulumi.Input['pulumi_enum.StringEnum'] external_enum: External enum value from StringEnum.
         :param pulumi.Input[_builtins.bool] in_: Will be used to set ResourceArgs.in_ and Resource.out.
         """
+        pulumi.set(__self__, "external_enum", external_enum)
         pulumi.set(__self__, "in_", in_)
+
+    @_builtins.property
+    @pulumi.getter(name="externalEnum")
+    def external_enum(self) -> pulumi.Input['pulumi_enum.StringEnum']:
+        """
+        External enum value from StringEnum.
+        """
+        return pulumi.get(self, "external_enum")
+
+    @external_enum.setter
+    def external_enum(self, value: pulumi.Input['pulumi_enum.StringEnum']):
+        pulumi.set(self, "external_enum", value)
 
     @_builtins.property
     @pulumi.getter(name="in")
@@ -42,6 +58,7 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 external_enum: pulumi.Input[Optional['pulumi_enum.StringEnum']] = None,
                  in_: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         """
@@ -50,6 +67,7 @@ class Resource(pulumi.CustomResource):
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
+        :param pulumi.Input['pulumi_enum.StringEnum'] external_enum: External enum value from StringEnum.
         :param pulumi.Input[_builtins.bool] in_: Will be used to set in_ and out.
         """
         ...
@@ -77,6 +95,7 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 external_enum: pulumi.Input[Optional['pulumi_enum.StringEnum']] = None,
                  in_: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -87,6 +106,9 @@ class Resource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
+            if external_enum is None and not opts.urn:
+                raise TypeError("Missing required property 'external_enum'")
+            __props__.__dict__["external_enum"] = external_enum
             if in_ is None and not opts.urn:
                 raise TypeError("Missing required property 'in_'")
             __props__.__dict__["in_"] = in_
@@ -115,6 +137,7 @@ class Resource(pulumi.CustomResource):
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
         __props__.__dict__["data"] = None
+        __props__.__dict__["external_enum"] = None
         __props__.__dict__["in_"] = None
         __props__.__dict__["out"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
@@ -126,6 +149,14 @@ class Resource(pulumi.CustomResource):
         ResourceDataArgs.state will have internal data about this resource.
         """
         return pulumi.get(self, "data")
+
+    @_builtins.property
+    @pulumi.getter(name="externalEnum")
+    def external_enum(self) -> pulumi.Output['pulumi_enum.StringEnum']:
+        """
+        The StringEnum value passed to ResourceArgs.external_enum.
+        """
+        return pulumi.get(self, "external_enum")
 
     @_builtins.property
     @pulumi.getter(name="in")

@@ -53,9 +53,16 @@ func (p *DocsProvider) Pkg() tokens.Package {
 func (p *DocsProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
+	enumProvider := &EnumProvider{}
+	enumVersion := enumProvider.version()
+	enumVersionString := enumVersion.String()
+
 	pkg := schema.PackageSpec{
 		Name:    "docs",
 		Version: "28.0.0",
+		Dependencies: []schema.PackageDescriptor{
+			{Name: "enum", Version: &enumVersion},
+		},
 		Resources: map[string]schema.ResourceSpec{
 			"docs:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -85,8 +92,15 @@ func (p *DocsProvider) GetSchema(
 							Description: "{{% ref #/types/docs:index:ResourceData/properties/state %}} will have internal " +
 								"data about this resource.",
 						},
+						"externalEnum": {
+							TypeSpec: schema.TypeSpec{
+								Ref: fmt.Sprintf("/enum/v%s/schema.json#/types/enum:index:StringEnum", enumVersionString),
+							},
+							Description: "The {{% ref /enum/v" + enumVersionString + "/schema.json#/types/enum:index:StringEnum %}} " +
+								"value passed to {{% ref #/resources/docs:index:Resource/inputProperties/externalEnum %}}.",
+						},
 					},
-					Required: []string{"out", "data"},
+					Required: []string{"out", "data", "externalEnum"},
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"in": {
@@ -96,8 +110,15 @@ func (p *DocsProvider) GetSchema(
 						Description: "Will be used to set {{% ref #/resources/docs:index:Resource/inputProperties/in %}} and " +
 							"{{% ref #/resources/docs:index:Resource/properties/out %}}.",
 					},
+					"externalEnum": {
+						TypeSpec: schema.TypeSpec{
+							Ref: fmt.Sprintf("/enum/v%s/schema.json#/types/enum:index:StringEnum", enumVersionString),
+						},
+						Description: "External enum value from {{% ref /enum/v" + enumVersionString +
+							"/schema.json#/types/enum:index:StringEnum %}}.",
+					},
 				},
-				RequiredInputs: []string{"in"},
+				RequiredInputs: []string{"in", "externalEnum"},
 			},
 		},
 		Functions: map[string]schema.FunctionSpec{
@@ -220,7 +241,13 @@ func (p *DocsProvider) Check(
 		return *check, nil
 	}
 
-	if len(req.News) != 1 {
+	if v, ok := req.News["externalEnum"]; ok && !v.IsString() {
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("externalEnum", "value is not a string"),
+		}, nil
+	}
+
+	if len(req.News) != 1 && len(req.News) != 2 {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -251,6 +278,9 @@ func (p *DocsProvider) Create(
 			"state": "internal data",
 		},
 	})
+	if externalEnum, ok := req.Properties["externalEnum"]; ok {
+		properties["externalEnum"] = externalEnum
+	}
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),

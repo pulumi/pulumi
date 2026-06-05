@@ -9,6 +9,7 @@ import (
 
 	"errors"
 	"example.com/pulumi-docs/sdk/go/v28/docs/internal"
+	"example.com/pulumi-enum/sdk/go/v30/enum"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -18,6 +19,8 @@ type Resource struct {
 
 	// ResourceData.State will have internal data about this resource.
 	Data ResourceDataOutput `pulumi:"data"`
+	// The StringEnum value passed to ExternalEnum.
+	ExternalEnum enum.StringEnumOutput `pulumi:"externalEnum"`
 	// Will be set to the same as In.
 	In pulumi.BoolPtrOutput `pulumi:"in"`
 	// Will be set to the opposite of In.
@@ -31,6 +34,9 @@ func NewResource(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
+	if args.ExternalEnum == nil {
+		return nil, errors.New("invalid value for required argument 'ExternalEnum'")
+	}
 	if args.In == nil {
 		return nil, errors.New("invalid value for required argument 'In'")
 	}
@@ -67,12 +73,16 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
+	// External enum value from StringEnum.
+	ExternalEnum enum.StringEnum `pulumi:"externalEnum"`
 	// Will be used to set In and Out.
 	In bool `pulumi:"in"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
+	// External enum value from StringEnum.
+	ExternalEnum enum.StringEnumInput
 	// Will be used to set In and Out.
 	In pulumi.BoolInput
 }
@@ -167,6 +177,11 @@ func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) Resourc
 // ResourceData.State will have internal data about this resource.
 func (o ResourceOutput) Data() ResourceDataOutput {
 	return o.ApplyT(func(v *Resource) ResourceDataOutput { return v.Data }).(ResourceDataOutput)
+}
+
+// The StringEnum value passed to ExternalEnum.
+func (o ResourceOutput) ExternalEnum() enum.StringEnumOutput {
+	return o.ApplyT(func(v *Resource) enum.StringEnumOutput { return v.ExternalEnum }).(enum.StringEnumOutput)
 }
 
 // Will be set to the same as In.

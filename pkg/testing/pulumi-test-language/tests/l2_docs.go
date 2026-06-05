@@ -30,6 +30,7 @@ func init() {
 	LanguageTests["l2-docs"] = LanguageTest{
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.DocsProvider{} },
+			func() plugin.Provider { return &providers.EnumProvider{} },
 		},
 		Runs: []TestRun{
 			{
@@ -68,19 +69,27 @@ func init() {
 					})
 					require.NoError(l, err)
 
-					// Check we have the one simple resource in the snapshot, its provider and the stack.
-					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+					// Check we have the docs resource, enum resource, their providers and the stack.
+					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:docs")
+					RequireSingleResource(l, snap.Resources, "pulumi:providers:enum")
+					enumRes := RequireSingleNamedResource(l, snap.Resources, "enumRes")
+					assert.Equal(l, resource.NewPropertyMapFromMap(map[string]any{
+						"intEnum":    1.0,
+						"stringEnum": "one",
+					}), enumRes.Outputs)
 					res := RequireSingleResource(l, snap.Resources, "docs:index:Resource")
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
-						"in": true,
+						"in":           true,
+						"externalEnum": "one",
 					})
 					assert.Equal(l, want, res.Inputs, "expected inputs to be %v", want)
 					want = resource.NewPropertyMapFromMap(map[string]any{
-						"in":  true,
-						"out": false,
+						"in":           true,
+						"out":          false,
+						"externalEnum": "one",
 						"data": map[string]any{
 							"state": "internal data",
 						},
