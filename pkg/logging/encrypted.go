@@ -130,6 +130,14 @@ func (l *Logger) UpgradeToEncrypted(ctx context.Context, stackName, updateID str
 		return nil
 	}
 
+	// Prepare the encrypted session key *before* taking l.mu. This step calls
+	// into the secrets manager, which itself emits logs, and thus might need to
+	// take the mutex itself.
+	key, err := encryptedlog.PrepareKey(ctx, sm.Encrypter())
+	if err != nil {
+		return fmt.Errorf("preparing encrypted log key: %w", err)
+	}
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -172,7 +180,7 @@ func (l *Logger) UpgradeToEncrypted(ctx context.Context, stackName, updateID str
 		return fmt.Errorf("seeking after truncate: %w", err)
 	}
 
-	encSink, err := encryptedlog.NewWriter(ctx, l.f, sm.Encrypter())
+	encSink, err := encryptedlog.NewWriterFromKey(l.f, key)
 	if err != nil {
 		l.sink = newGzipSink(l.f)
 		return fmt.Errorf("creating encrypted writer: %w", err)
