@@ -404,6 +404,7 @@ jobs:
           AWS_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_SECRET }}
           DOTNET_VERSION: ${{ fromJson(inputs.version-set).dotnet }}
+          PULUMI_ENABLE_AUTOMATIC_LOGGING: true
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |
