@@ -37,7 +37,7 @@ type ConfigEnumProvider struct {
 var _ plugin.Provider = (*ConfigEnumProvider)(nil)
 
 func (*ConfigEnumProvider) version() semver.Version {
-	return semver.Version{Major: 40}
+	return semver.Version{Major: 41}
 }
 
 func (p *ConfigEnumProvider) GetSchema(

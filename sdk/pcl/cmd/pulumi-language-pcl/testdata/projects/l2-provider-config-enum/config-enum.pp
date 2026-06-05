@@ -1,4 +1,4 @@
 package "config-enum" {
   baseProviderName    = "config-enum"
-  baseProviderVersion = "40.0.0"
+  baseProviderVersion = "41.0.0"
 }

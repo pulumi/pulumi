@@ -1,7 +1,7 @@
 package main
 
 import (
-	"example.com/pulumi-config-enum/sdk/go/v40/configenum"
+	"example.com/pulumi-config-enum/sdk/go/v41/configenum"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
