@@ -145,7 +145,7 @@ class Provider(pulumi.ProviderResource):
 
             if hash is None and not opts.urn:
                 raise TypeError("Missing required property 'hash'")
-            __props__.__dict__["hash"] = pulumi.Output.from_input(hash).apply(pulumi.runtime.to_json) if hash is not None else None
+            __props__.__dict__["hash"] = hash
             if password is None:
                 password = (_utilities.get_env('FOO') or '')
             __props__.__dict__["password"] = None if password is None else pulumi.Output.secret(password)
