@@ -1310,6 +1310,7 @@ class ReadRequest(google.protobuf.message.Message):
     RESOURCE_STATUS_ADDRESS_FIELD_NUMBER: builtins.int
     RESOURCE_STATUS_TOKEN_FIELD_NUMBER: builtins.int
     OLD_VIEWS_FIELD_NUMBER: builtins.int
+    TIMEOUT_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the resource to read."""
     urn: builtins.str
@@ -1326,6 +1327,8 @@ class ReadRequest(google.protobuf.message.Message):
     """The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources."""
     resource_status_token: builtins.str
     """The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service."""
+    timeout: builtins.float
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """Any current state for the resource being read. This state should be sufficient to uniquely identify the resource."""
@@ -1354,9 +1357,10 @@ class ReadRequest(google.protobuf.message.Message):
         resource_status_address: builtins.str = ...,
         resource_status_token: builtins.str = ...,
         old_views: collections.abc.Iterable[global___View] | None = ...,
+        timeout: builtins.float = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["inputs", b"inputs", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "name", b"name", "old_views", b"old_views", "properties", b"properties", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "name", b"name", "old_views", b"old_views", "properties", b"properties", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___ReadRequest = ReadRequest
 
@@ -1753,6 +1757,7 @@ class ConstructRequest(google.protobuf.message.Message):
         CREATE_FIELD_NUMBER: builtins.int
         UPDATE_FIELD_NUMBER: builtins.int
         DELETE_FIELD_NUMBER: builtins.int
+        READ_FIELD_NUMBER: builtins.int
         create: builtins.str
         """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Create) operation
         to complete.
@@ -1765,14 +1770,19 @@ class ConstructRequest(google.protobuf.message.Message):
         """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Delete) operation
         to complete.
         """
+        read: builtins.str
+        """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Read) operation
+        to complete.
+        """
         def __init__(
             self,
             *,
             create: builtins.str = ...,
             update: builtins.str = ...,
             delete: builtins.str = ...,
+            read: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "update", b"update"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "read", b"read", "update", b"update"]) -> None: ...
 
     @typing.final
     class ConfigEntry(google.protobuf.message.Message):

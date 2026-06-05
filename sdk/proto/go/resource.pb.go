@@ -2776,6 +2776,7 @@ type RegisterResourceRequest_CustomTimeouts struct {
 	Create        string                 `protobuf:"bytes,1,opt,name=create,proto3" json:"create,omitempty"` // The create resource timeout represented as a string e.g. 5m.
 	Update        string                 `protobuf:"bytes,2,opt,name=update,proto3" json:"update,omitempty"` // The update resource timeout represented as a string e.g. 5m.
 	Delete        string                 `protobuf:"bytes,3,opt,name=delete,proto3" json:"delete,omitempty"` // The delete resource timeout represented as a string e.g. 5m.
+	Read          string                 `protobuf:"bytes,4,opt,name=read,proto3" json:"read,omitempty"`     // The read resource timeout represented as a string e.g. 5m.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2827,6 +2828,13 @@ func (x *RegisterResourceRequest_CustomTimeouts) GetUpdate() string {
 func (x *RegisterResourceRequest_CustomTimeouts) GetDelete() string {
 	if x != nil {
 		return x.Delete
+	}
+	return ""
+}
+
+func (x *RegisterResourceRequest_CustomTimeouts) GetRead() string {
+	if x != nil {
+		return x.Read
 	}
 	return ""
 }
@@ -3068,7 +3076,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\xbd\x15\n" +
+	"properties\"\xd1\x15\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -3120,11 +3128,12 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\thideDiffs\x18% \x03(\tR\thideDiffs\x12^\n" +
 	"\x0eenvVarMappings\x18) \x03(\v26.pulumirpc.RegisterResourceRequest.EnvVarMappingsEntryR\x0eenvVarMappings\x1a*\n" +
 	"\x14PropertyDependencies\x12\x12\n" +
-	"\x04urns\x18\x01 \x03(\tR\x04urns\x1aX\n" +
+	"\x04urns\x18\x01 \x03(\tR\x04urns\x1al\n" +
 	"\x0eCustomTimeouts\x12\x16\n" +
 	"\x06create\x18\x01 \x01(\tR\x06create\x12\x16\n" +
 	"\x06update\x18\x02 \x01(\tR\x06update\x12\x16\n" +
-	"\x06delete\x18\x03 \x01(\tR\x06delete\x1a\x80\x01\n" +
+	"\x06delete\x18\x03 \x01(\tR\x06delete\x12\x12\n" +
+	"\x04read\x18\x04 \x01(\tR\x04read\x1a\x80\x01\n" +
 	"\x19PropertyDependenciesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12M\n" +
 	"\x05value\x18\x02 \x01(\v27.pulumirpc.RegisterResourceRequest.PropertyDependenciesR\x05value:\x028\x01\x1a<\n" +

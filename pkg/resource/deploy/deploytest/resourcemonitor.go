@@ -537,6 +537,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 			Create: prepareTestTimeout(opts.CustomTimeouts.Create),
 			Update: prepareTestTimeout(opts.CustomTimeouts.Update),
 			Delete: prepareTestTimeout(opts.CustomTimeouts.Delete),
+			Read:   prepareTestTimeout(opts.CustomTimeouts.Read),
 		}
 	}
 

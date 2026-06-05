@@ -68,6 +68,9 @@ jobs:
             go get -u "github.com/pulumi/pulumi/sdk/v3@v${PULUMI_VERSION}"
           )
           make tidy_fix
+          # Clear the release-in-progress marker dropped by set-version.py.
+          # Merging this PR re-opens the queue to other PRs.
+          rm -f .release-pending
           git add -A
           git commit -m "chore: post-release go.mod updates"
 

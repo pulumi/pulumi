@@ -1303,6 +1303,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			ID:                    id,
 			Inputs:                s.new.Inputs,
 			State:                 s.new.Inputs,
+			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
 		})
@@ -1539,6 +1540,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		ID:                    resourceID,
 		Inputs:                s.old.Inputs,
 		State:                 s.old.Outputs,
+		Timeout:               s.old.CustomTimeouts.Read,
 		ResourceStatusAddress: resourceStatusAddress,
 		ResourceStatusToken:   resourceStatusToken,
 		OldViews:              s.oldViews,
@@ -1863,6 +1865,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			Name:                  s.new.URN.Name(),
 			Type:                  s.new.URN.Type(),
 			ID:                    s.new.ImportID,
+			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
 		})

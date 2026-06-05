@@ -905,6 +905,11 @@ export interface CustomTimeouts {
      * The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
      */
     delete?: string;
+
+    /**
+     * The optional read timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    read?: string;
 }
 
 /**

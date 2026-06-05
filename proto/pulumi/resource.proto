@@ -182,6 +182,7 @@ message RegisterResourceRequest {
         string create = 1; // The create resource timeout represented as a string e.g. 5m.
         string update = 2; // The update resource timeout represented as a string e.g. 5m.
         string delete = 3; // The delete resource timeout represented as a string e.g. 5m.
+        string read = 4; // The read resource timeout represented as a string e.g. 5m.
     }
 
     string type = 1;                                            // the type of the object allocated.

@@ -871,6 +871,9 @@ message ReadRequest {
     // The old views for the resource being read. These will only be populated when the
     // [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
     repeated View old_views = 9;
+
+    // A timeout in seconds that the caller is prepared to wait for the operation to complete.
+    double timeout = 10;
 }
 
 // `ReadResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Read) call. A `ReadResponse` contains
@@ -1072,6 +1075,10 @@ message ConstructRequest {
         // How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Delete) operation
         // to complete.
         string delete = 3;
+
+        // How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Read) operation
+        // to complete.
+        string read = 4;
     }
 
     // NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)

@@ -187,6 +187,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 				Create: t.GetCreate(),
 				Update: t.GetUpdate(),
 				Delete: t.GetDelete(),
+				Read:   t.GetRead(),
 			}
 		}
 		if len(req.GetReplaceWith()) > 0 {

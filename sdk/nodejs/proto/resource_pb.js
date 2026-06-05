@@ -3056,7 +3056,8 @@ proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject = function(inclu
   var f, obj = {
 create: jspb.Message.getFieldWithDefault(msg, 1, ""),
 update: jspb.Message.getFieldWithDefault(msg, 2, ""),
-pb_delete: jspb.Message.getFieldWithDefault(msg, 3, "")
+pb_delete: jspb.Message.getFieldWithDefault(msg, 3, ""),
+read: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -3105,6 +3106,10 @@ proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.deserializeBinaryFromRead
       var value = /** @type {string} */ (reader.readString());
       msg.setDelete(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setRead(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3152,6 +3157,13 @@ proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.serializeBinaryToWriter =
   if (f.length > 0) {
     writer.writeString(
       3,
+      f
+    );
+  }
+  f = message.getRead();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -3209,6 +3221,24 @@ proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.getDelete = fun
  */
 proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.setDelete = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string read = 4;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.getRead = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest.CustomTimeouts} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.setRead = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

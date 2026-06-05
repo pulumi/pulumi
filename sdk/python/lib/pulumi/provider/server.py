@@ -304,6 +304,7 @@ class ProviderServicer(ResourceProviderServicer):
                 request.customTimeouts.create,
                 request.customTimeouts.update,
                 request.customTimeouts.delete,
+                request.customTimeouts.read,
             )
 
         resource_hooks = _binding_from_proto(request.resource_hooks)

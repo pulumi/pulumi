@@ -1512,6 +1512,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		Type:                  req.URN.Type().String(),
 		Properties:            mstate,
 		Inputs:                minputs,
+		Timeout:               req.Timeout,
 		ResourceStatusAddress: req.ResourceStatusAddress,
 		ResourceStatusToken:   req.ResourceStatusToken,
 		OldViews:              oldViews,
@@ -2078,6 +2079,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 			Create: ct.Create,
 			Update: ct.Update,
 			Delete: ct.Delete,
+			Read:   ct.Read,
 		}
 	}
 

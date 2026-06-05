@@ -283,6 +283,8 @@ type ReadRequest struct {
 	Type          tokens.Type
 	ID            resource.ID
 	Inputs, State resource.PropertyMap
+	// Timeout is the time, in seconds, that the caller is prepared to wait for the operation to complete.
+	Timeout float64
 	// The gRPC address of the ResourceStatus service which can be used to read view resources.
 	ResourceStatusAddress string
 	// The ResourceStatus service token to pass when calling methods on the service.
@@ -937,6 +939,7 @@ type CustomTimeouts struct {
 	Create string
 	Update string
 	Delete string
+	Read   string
 }
 
 // ConstructResult is the result of a call to Construct.

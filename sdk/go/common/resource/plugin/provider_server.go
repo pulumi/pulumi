@@ -621,6 +621,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		ID:                    requestID,
 		Inputs:                inputs,
 		State:                 state,
+		Timeout:               req.GetTimeout(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),
 		OldViews:              oldViews,

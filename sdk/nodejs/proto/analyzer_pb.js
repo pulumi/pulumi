@@ -2325,7 +2325,8 @@ proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.toObject = function(inclu
   var f, obj = {
 create: jspb.Message.getFloatingPointFieldWithDefault(msg, 1, 0.0),
 update: jspb.Message.getFloatingPointFieldWithDefault(msg, 2, 0.0),
-pb_delete: jspb.Message.getFloatingPointFieldWithDefault(msg, 3, 0.0)
+pb_delete: jspb.Message.getFloatingPointFieldWithDefault(msg, 3, 0.0),
+read: jspb.Message.getFloatingPointFieldWithDefault(msg, 4, 0.0)
   };
 
   if (includeInstance) {
@@ -2374,6 +2375,10 @@ proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.deserializeBinaryFromRead
       var value = /** @type {number} */ (reader.readDouble());
       msg.setDelete(value);
       break;
+    case 4:
+      var value = /** @type {number} */ (reader.readDouble());
+      msg.setRead(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2421,6 +2426,13 @@ proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.serializeBinaryToWriter =
   if (f !== 0.0) {
     writer.writeDouble(
       3,
+      f
+    );
+  }
+  f = message.getRead();
+  if (f !== 0.0) {
+    writer.writeDouble(
+      4,
       f
     );
   }
@@ -2478,6 +2490,24 @@ proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.prototype.getDelete = fun
  */
 proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.prototype.setDelete = function(value) {
   return jspb.Message.setProto3FloatField(this, 3, value);
+};
+
+
+/**
+ * optional double read = 4;
+ * @return {number}
+ */
+proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.prototype.getRead = function() {
+  return /** @type {number} */ (jspb.Message.getFloatingPointFieldWithDefault(this, 4, 0.0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts} returns this
+ */
+proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.prototype.setRead = function(value) {
+  return jspb.Message.setProto3FloatField(this, 4, value);
 };
 
 

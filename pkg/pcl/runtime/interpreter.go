@@ -1518,6 +1518,7 @@ func (i *Interpreter) registerResourceWith(
 					Create: timeoutValues["create"],
 					Update: timeoutValues["update"],
 					Delete: timeoutValues["delete"],
+					Read:   timeoutValues["read"],
 				}
 			}
 		}
