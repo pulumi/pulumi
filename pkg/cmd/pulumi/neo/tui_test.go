@@ -142,20 +142,22 @@ func TestTruncate(t *testing.T) {
 func TestRenderAssistantFinal(t *testing.T) {
 	t.Parallel()
 
+	m := &Model{hasDarkBackground: true}
+
 	// Empty (or whitespace-only) input collapses to empty — otherwise we'd emit
 	// a lone marker with no content, which looks broken.
-	assert.Empty(t, renderAssistantFinal(""))
-	assert.Empty(t, renderAssistantFinal("\n  "))
+	assert.Empty(t, m.renderAssistantFinal(""))
+	assert.Empty(t, m.renderAssistantFinal("\n  "))
 
 	// Single-line: the marker sits on the same line as the text. No indented
 	// continuation block.
-	singleLine := renderAssistantFinal("hello")
+	singleLine := m.renderAssistantFinal("hello")
 	assert.Contains(t, singleLine, "hello")
 	assert.NotContains(t, singleLine, "\n    ", "single-line output must not add a 4-space continuation indent")
 
 	// Multi-line: first line gets the marker; remaining lines are indented under
 	// the marker so the paragraph visually belongs to the assistant reply.
-	multi := renderAssistantFinal("first\nsecond\nthird")
+	multi := m.renderAssistantFinal("first\nsecond\nthird")
 	assert.Contains(t, multi, "first")
 	assert.Contains(t, multi, "second")
 	assert.Contains(t, multi, "third")
@@ -1954,47 +1956,47 @@ func TestWarningWrapsToTerminalWidth(t *testing.T) {
 	assert.Contains(t, got, "warning", "wrapped output must still contain the message body")
 }
 
-func TestUserBubbleWrapsToTerminalWidth(t *testing.T) {
+func TestUserMessageWrapsToTerminalWidth(t *testing.T) {
 	t.Parallel()
 
 	m := &Model{width: 40}
 	long := strings.Repeat("word ", 25) // ~125 chars
-	got := m.renderUserBubble(long)
+	got := m.renderUserMessage(long)
 
-	require.Contains(t, got, "\n", "long bubble must contain a newline (wrapped): %q", got)
+	require.Contains(t, got, "\n", "long user message must contain a newline (wrapped): %q", got)
 	for i, w := range visibleLines(got) {
-		assert.LessOrEqual(t, w, 40, "bubble line %d exceeds terminal width: width=%d", i, w)
+		assert.LessOrEqual(t, w, 40, "user message line %d exceeds terminal width: width=%d", i, w)
 	}
 }
 
-func TestUserBubbleDoesNotPadShortMessages(t *testing.T) {
+func TestUserMessageDoesNotPadShortMessages(t *testing.T) {
 	t.Parallel()
 
-	// Short messages hug content so the bubble looks like a chat bubble,
-	// not a full-width card.
+	// Short messages render on a single line that hugs the content — no
+	// trailing whitespace, no full-width card.
 	m := &Model{width: 80}
-	got := m.renderUserBubble("hi")
+	got := m.renderUserMessage("hi")
 
 	widths := visibleLines(got)
-	require.Len(t, widths, 1, "short bubble should render on a single line: %q", got)
-	assert.Less(t, widths[0], 20, "short bubble line should hug content, not fill terminal; got width=%d", widths[0])
+	require.Len(t, widths, 1, "short user message should render on a single line: %q", got)
+	assert.Less(t, widths[0], 20, "short user message line should hug content, not fill terminal; got width=%d", widths[0])
 }
 
-func TestUserBubbleWrapsAtWideTerminal(t *testing.T) {
+func TestUserMessageWrapsAtWideTerminal(t *testing.T) {
 	t.Parallel()
 
-	// At a wide terminal the bubble must wrap against liveWidth (m.width-4),
+	// At a wide terminal the message must wrap against liveWidth (m.width-4),
 	// not raw m.width — otherwise wrapped lines sit on the terminal wrap
 	// column and desync the inline-renderer line accounting.
 	const termWidth = 200
 	m := &Model{width: termWidth}
 	long := strings.Repeat("word ", 60) // ~300 chars, forces wrap
-	got := m.renderUserBubble(long)
+	got := m.renderUserMessage(long)
 
 	widths := visibleLines(got)
-	require.Greater(t, len(widths), 1, "long bubble at wide terminal must wrap; got: %q", got)
+	require.Greater(t, len(widths), 1, "long user message at wide terminal must wrap; got: %q", got)
 	for i, w := range widths {
-		assert.LessOrEqual(t, w, m.liveWidth(), "bubble line %d sits past liveWidth: width=%d", i, w)
+		assert.LessOrEqual(t, w, m.liveWidth(), "user message line %d sits past liveWidth: width=%d", i, w)
 	}
 }
 

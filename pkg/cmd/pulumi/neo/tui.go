@@ -193,6 +193,10 @@ type ModelConfig struct {
 	// that want to exercise the post-task Ctrl+A / Ctrl+R path without driving
 	// a UISessionURL through the event channel.
 	TaskCreated bool
+	// HasDarkBackground selects light- or dark-friendly style variants for the
+	// whole TUI, including the textarea. runNeo detects it synchronously before
+	// the program starts and defaults it to dark for terminals it can't probe.
+	HasDarkBackground bool
 }
 
 // Model is the top-level bubbletea model for the Neo TUI.
@@ -230,6 +234,9 @@ type Model struct {
 	mdRenderer *glamour.TermRenderer
 	width      int
 	height     int
+	// hasDarkBackground selects light- or dark-friendly style variants;
+	// seeded from ModelConfig.HasDarkBackground.
+	hasDarkBackground bool
 	// frame advances on each spinner.TickMsg while busy and drives the
 	// shimmer animation on the busy block's label.
 	frame             int
@@ -334,8 +341,6 @@ var (
 	cancelledStyle = lipgloss.NewStyle().Faint(true)
 	toolOKMarker   = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("⏺")
 	toolErrMarker  = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("⏺")
-	finalMarker    = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Render("⏺")
-	userMsgBubble  = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Background(lipgloss.Color("8"))
 	// planAccentStyle is a distinct cyan+bold used for both the footer banner
 	// and the "Proposed plan" block header so they read as the same visual cue.
 	planAccentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
@@ -476,7 +481,9 @@ func NewModel(cfg ModelConfig) Model {
 		}
 		return "  "
 	})
-	styles := ti.Styles()
+	// textarea.New defaults to dark styles; reselect for the detected background
+	// so the input box (cursor line, text) reads on a light terminal too.
+	styles := textarea.DefaultStyles(cfg.HasDarkBackground)
 	styles.Focused.Prompt = promptStyle
 	styles.Blurred.Prompt = promptStyle
 	ti.SetStyles(styles)
@@ -503,18 +510,19 @@ func NewModel(cfg ModelConfig) Model {
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
-		textInput:      ti,
-		eventCh:        cfg.EventCh,
-		outCh:          cfg.OutCh,
-		busy:           cfg.Busy,
-		spinner:        sp,
-		width:          80,
-		height:         24,
-		messageSent:    cfg.MessageSent,
-		taskCreated:    cfg.TaskCreated,
-		approvalMode:   cfg.InitialApprovalMode,
-		permissionMode: cfg.InitialPermissionMode,
-		overlay:        newOverlayModel(80, 24),
+		textInput:         ti,
+		eventCh:           cfg.EventCh,
+		outCh:             cfg.OutCh,
+		busy:              cfg.Busy,
+		spinner:           sp,
+		width:             80,
+		height:            24,
+		hasDarkBackground: cfg.HasDarkBackground,
+		messageSent:       cfg.MessageSent,
+		taskCreated:       cfg.TaskCreated,
+		approvalMode:      cfg.InitialApprovalMode,
+		permissionMode:    cfg.InitialPermissionMode,
+		overlay:           newOverlayModel(80, 24),
 	}
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
@@ -560,15 +568,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overlay.Refresh(m.toolHistory)
 		}
 
-		// Glamour's wrap width is baked in at construction, so rebuild on resize.
-		// Wrap at liveWidth-4 so glamour-rendered output (assistant finals, plan
-		// markdown) stays inside the safe live-frame width.
-		if r, err := glamour.NewTermRenderer(
-			glamour.WithStylePath("dark"),
-			glamour.WithWordWrap(safeWidth-4),
-		); err == nil {
-			m.mdRenderer = r
-		}
+		m.rebuildMarkdownRenderer()
 		// Re-render every block at the new width. Live blocks (busy / streaming /
 		// open pulumi op) get reflected in View() on the next draw; committed
 		// blocks already in scrollback don't reflow — only the initial-prompt
@@ -1207,6 +1207,24 @@ func (m Model) modeChips() string {
 	return strings.Join(chips, " ")
 }
 
+// rebuildMarkdownRenderer constructs a new glamour renderer at the current
+// live width and a style matching the terminal background. Glamour bakes both
+// in at construction, so callers rebuild on resize. We pick the style
+// explicitly rather than via glamour.WithAutoStyle, which queries the terminal
+// in-band and would race bubbletea's input reader (see runNeo).
+func (m *Model) rebuildMarkdownRenderer() {
+	style := "dark"
+	if !m.hasDarkBackground {
+		style = "light"
+	}
+	if r, err := glamour.NewTermRenderer(
+		glamour.WithStandardStyle(style),
+		glamour.WithWordWrap(m.liveWidth()-4),
+	); err == nil {
+		m.mdRenderer = r
+	}
+}
+
 // liveWidth returns the width to use when rendering live-frame content:
 // the terminal width minus a small cushion that keeps glamour, lipgloss,
 // and the textarea off the wrap column.
@@ -1239,7 +1257,7 @@ func (m *Model) liveView() string {
 			continue
 		}
 		if b.kind == blockBusy {
-			parts = append(parts, "  "+m.spinner.View()+" "+shimmerLabel(b.label, b.shimmer, m.frame))
+			parts = append(parts, "  "+m.spinner.View()+" "+shimmerLabel(b.label, b.shimmer, m.frame, m.hasDarkBackground))
 		} else {
 			parts = append(parts, b.rendered)
 		}
@@ -1512,9 +1530,9 @@ func (m *Model) renderBlock(b *block) {
 	case blockCancelled:
 		b.rendered = renderIndented(cancelledStyle, m.width, b.raw)
 	case blockUserMessage:
-		b.rendered = m.renderUserBubble(b.raw)
+		b.rendered = m.renderUserMessage(b.raw)
 	case blockAssistantFinal:
-		b.rendered = renderAssistantFinal(m.renderMarkdown(b.raw))
+		b.rendered = m.renderAssistantFinal(m.renderMarkdown(b.raw))
 	case blockApprovalPlan:
 		header := planAccentStyle.Render("⏺ Proposed plan")
 		body := m.renderMarkdown(b.raw)
@@ -1598,18 +1616,25 @@ func (m *Model) renderApprovalChoice(b *block) {
 	b.rendered = renderIndented(lipgloss.NewStyle(), m.width, denied+" — "+b.raw)
 }
 
-// renderUserBubble renders a user-chat bubble. Short messages hug their
-// content; only overflow triggers Width, which both wraps and pads so the
-// background colour fills every wrapped line evenly.
-func (m *Model) renderUserBubble(content string) string {
+// renderUserMessage renders an echoed user message: the cyan-bold ❯ prefix
+// marks it as user input, the content renders plain so it reads on any
+// background. Continuation lines indent two spaces so they sit under the
+// message body, not under the prompt glyph.
+func (m *Model) renderUserMessage(content string) string {
 	prefix := promptStyle.Render("❯") + " " // visible width 2
-	padded := " " + content + " "
-	bubbleWidth := max(m.liveWidth()-2, 8)
-	style := userMsgBubble
-	if m.width > 4 && lipgloss.Width(padded) > bubbleWidth {
-		style = style.Width(bubbleWidth)
+	wrap := m.liveWidth() - 2
+	if wrap < 4 {
+		return prefix + content
 	}
-	return prefix + style.Render(padded)
+	lines := strings.Split(wordwrap.String(content, wrap), "\n")
+	var sb strings.Builder
+	sb.WriteString(prefix)
+	sb.WriteString(lines[0])
+	for _, line := range lines[1:] {
+		sb.WriteString("\n  ")
+		sb.WriteString(line)
+	}
+	return sb.String()
 }
 
 // wrapPlain word-wraps non-markdown text to the safe live width (m.liveWidth)
@@ -1653,14 +1678,21 @@ func renderHeaderedBlock(header, body string) string {
 	return lipgloss.JoinVertical(lipgloss.Left, first, indented)
 }
 
-// renderAssistantFinal renders a final assistant message with a white circle marker.
-func renderAssistantFinal(rendered string) string {
+// finalMarker returns the ⏺ glyph for a final assistant message, colored
+// to contrast with the terminal background (white on dark, black on light).
+func (m *Model) finalMarker() string {
+	fg := lipgloss.LightDark(m.hasDarkBackground)(lipgloss.Color("0"), lipgloss.Color("15"))
+	return lipgloss.NewStyle().Foreground(fg).Render("⏺")
+}
+
+// renderAssistantFinal renders a final assistant message with a circle marker.
+func (m *Model) renderAssistantFinal(rendered string) string {
 	trimmed := strings.TrimLeft(rendered, "\n ")
 	if trimmed == "" {
 		return ""
 	}
 	firstLine, rest, _ := strings.Cut(trimmed, "\n")
-	return renderHeaderedBlock(finalMarker+" "+firstLine, rest)
+	return renderHeaderedBlock(m.finalMarker()+" "+firstLine, rest)
 }
 
 // waitForEvent returns a tea.Cmd that reads from the UIEvent channel.
