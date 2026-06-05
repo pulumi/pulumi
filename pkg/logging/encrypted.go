@@ -60,10 +60,23 @@ func RenameCurrentLogger(stackName, updateID string) error {
 type Logger struct {
 	mu        sync.Mutex
 	sink      io.WriteCloser // current sink (gzipSink or EncryptedLogWriter)
+	out       io.Writer      // indirection that always targets the current l.f
 	handler   *slog.JSONHandler
 	f         *os.File
 	filePath  string
 	encrypted bool
+}
+
+// currentFileWriter is an io.Writer that always writes to the logger's current
+// underlying file. Sinks write through it instead of binding directly to an
+// *os.File so that renameLocked can close and reopen the file — required on
+// Windows, where an open file cannot be renamed — without invalidating the
+// active sink or its internal state. All writes happen under l.mu (via
+// Logger.Write or during an upgrade), so reading l.f here is safe.
+type currentFileWriter struct{ l *Logger }
+
+func (w currentFileWriter) Write(p []byte) (int, error) {
+	return w.l.f.Write(p)
 }
 
 // StartLogging creates a log file under ~/.pulumi/logs/ and installs it as
@@ -145,12 +158,8 @@ func (l *Logger) UpgradeToEncrypted(ctx context.Context, stackName, updateID str
 		return nil
 	}
 
-	if stackName != "" {
-		if err := l.renameLocked(stackName, updateID); err != nil {
-			return fmt.Errorf("renaming log file: %w", err)
-		}
-	}
-
+	// Flush the gzip sink and read back everything written so far, before we
+	// touch the file on disk.
 	if err := l.sink.Close(); err != nil {
 		return fmt.Errorf("flushing gzip sink: %w", err)
 	}
@@ -173,12 +182,26 @@ func (l *Logger) UpgradeToEncrypted(ctx context.Context, stackName, updateID str
 		return fmt.Errorf("closing gzip reader: %w", err)
 	}
 
-	if err := l.f.Truncate(0); err != nil {
-		return fmt.Errorf("truncating log file: %w", err)
+	// Close the file before renaming and reopening it. Windows cannot rename a
+	// file that is still open, so we must drop our handle first rather than
+	// relying on Unix's rename-while-open behaviour.
+	if err := l.f.Close(); err != nil {
+		return fmt.Errorf("closing log file: %w", err)
 	}
-	if _, err := l.f.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("seeking after truncate: %w", err)
+
+	if stackName != "" {
+		if err := l.renameLocked(stackName, updateID); err != nil {
+			return fmt.Errorf("renaming log file: %w", err)
+		}
 	}
+
+	// Reopen the (possibly renamed) file fresh, truncating the old gzip
+	// contents so we can rewrite them in encrypted form.
+	f, err := os.OpenFile(l.filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return fmt.Errorf("reopening log file: %w", err)
+	}
+	l.f = f
 
 	encSink, err := encryptedlog.NewWriterFromKey(l.f, key)
 	if err != nil {
