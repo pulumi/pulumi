@@ -382,12 +382,17 @@ func NeedsVersionResourceOption(version model.Expression, schema *schema.Resourc
 
 	optVStr := optV.Value.AsString()
 	// Normalize the v prefix: semver.Version.String() never includes a "v" prefix,
-	// but program literals can (e.g. "v0.10.1"). Strip it for comparison.
+	// but program literals can (e.g. "v0.10.1"). Parse both sides as semver for proper comparison.
 	if len(optVStr) > 0 && optVStr[0] == 'v' {
 		optVStr = optVStr[1:]
 	}
-
-	return v.String() != optVStr
+	// Use semver.Version.Equals for proper version comparison instead of string comparison.
+	optVersion, err := semver.ParseTolerant(optVStr)
+	if err != nil {
+		// If we can't parse the version, fall back to string comparison
+		return v.String() != optVStr
+	}
+	return !v.Equals(optVersion)
 }
 
 func NeedsPluginDownloadURLResourceOption(pluginDownloadURL model.Expression, schema *schema.Resource) bool {
