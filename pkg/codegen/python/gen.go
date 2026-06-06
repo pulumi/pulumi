@@ -361,7 +361,14 @@ func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	return title(components[2])
+	member := components[2]
+	if components[0] == "pulumi" && components[1] == "providers" {
+		return title(member)
+	}
+	if strings.Contains(member, "-") {
+		return title(PyName(member))
+	}
+	return title(member)
 }
 
 // tokenToModule accepts a *Pulumi token* and returns name of the *Python module* that it

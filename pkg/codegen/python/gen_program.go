@@ -807,7 +807,11 @@ func tokenToQualifiedName(pkgAlias, module, member string) string {
 		module = "." + module
 	}
 
-	return fmt.Sprintf("%s%s.%s", pkgAlias, module, title(member))
+	name := title(member)
+	if strings.Contains(member, "-") {
+		name = title(PyName(member))
+	}
+	return fmt.Sprintf("%s%s.%s", pkgAlias, module, name)
 }
 
 // resourceTypeName computes the qualified name of a python resource.

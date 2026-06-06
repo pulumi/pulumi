@@ -102,6 +102,8 @@ var expectedFailures = map[string]string{
 	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
 	"l3-range-ref":                       "Property 'k1' does not exist on type 'Target[]'",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+
+	"l2-dash-names": "NodeJS codegen does not support package, module, or member names with dashes",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
