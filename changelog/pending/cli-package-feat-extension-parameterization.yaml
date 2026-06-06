@@ -1,0 +1,3 @@
+component: cli/package
+kind: feat
+body: Support extension parameterization. Adds `pulumi package extend` for generating extension SDKs that layer additional resource types onto an existing base provider, plus extension-shaped schema support across the engine, codegen, plugin runtime, and PCL binder.
