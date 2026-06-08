@@ -38,15 +38,18 @@ import (
 )
 
 // Attempts to load configuration for the given stack.
+// envOverrides is a list of environment references that override the stack's imported environments
+// for this run only (matched by name, the portion before any "@version" suffix); see Environment.Replace.
 func GetStackConfiguration(
 	ctx context.Context,
 	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
+	envOverrides []string,
 	configFile string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile)
+	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, envOverrides, configFile)
 }
 
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
@@ -61,6 +64,7 @@ func GetStackConfigurationOrLatest(
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
+	envOverrides []string,
 	configFile string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(
@@ -74,7 +78,7 @@ func GetStackConfigurationOrLatest(
 			}
 			return nil, err
 		},
-		configFile)
+		envOverrides, configFile)
 }
 
 func getStackConfigurationWithFallback(
@@ -84,6 +88,7 @@ func getStackConfigurationWithFallback(
 	s backend.Stack,
 	project *workspace.Project,
 	fallbackGetConfig func(err error) (config.Map, error), // optional
+	envOverrides []string,
 	configFile string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	workspaceStack, err := cmdStack.LoadProjectStack(ctx, sink, project, s, configFile)
@@ -107,7 +112,7 @@ func getStackConfigurationWithFallback(
 		return backend.StackConfiguration{}, nil, err
 	}
 
-	config, err := getStackConfigurationFromProjectStack(ctx, s, project, sm, workspaceStack)
+	config, err := getStackConfigurationFromProjectStack(ctx, s, project, sm, envOverrides, workspaceStack)
 	if err != nil {
 		return backend.StackConfiguration{}, nil, err
 	}
@@ -119,8 +124,15 @@ func getStackConfigurationFromProjectStack(
 	stack backend.Stack,
 	project *workspace.Project,
 	sm secrets.Manager,
+	envOverrides []string,
 	workspaceStack *workspace.ProjectStack,
 ) (backend.StackConfiguration, error) {
+	// Apply any environment import overrides for this run. This runs after the secrets manager has been
+	// saved above, so the in-memory mutation is never written back to the stack config file.
+	for _, ref := range envOverrides {
+		workspaceStack.Environment = workspaceStack.Environment.Replace(ref)
+	}
+
 	env, diags, err := openStackEnv(ctx, stack, workspaceStack)
 	if err != nil {
 		return backend.StackConfiguration{}, fmt.Errorf("opening environment: %w", err)

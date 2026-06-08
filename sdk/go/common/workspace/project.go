@@ -1179,6 +1179,104 @@ func (e *Environment) Remove(env string) *Environment {
 	}
 }
 
+// envRefName returns the environment name portion of a reference, dropping any "@version" suffix.
+func envRefName(ref string) string {
+	name, _, _ := strings.Cut(ref, "@")
+	return name
+}
+
+// Replace overrides the import whose name (the portion before any "@version" suffix) matches ref's
+// name with ref. If no such import exists, ref is appended as a new import.
+func (e *Environment) Replace(ref string) *Environment {
+	name := envRefName(ref)
+	switch {
+	case e == nil:
+		// There is no environment block, so there's nothing to replace. Create one importing ref.
+		return NewEnvironment([]string{ref})
+	case e.message != nil:
+		// The environment definition is inline JSON. Find the last occurrence of the named environment in
+		// the import list and replace it.
+		var m map[string]any
+		if err := json.Unmarshal(e.message, &m); err == nil {
+			if imports, ok := m["imports"].([]any); ok {
+				for i := len(imports) - 1; i >= 0; i-- {
+					match := false
+					switch imp := imports[i].(type) {
+					case string:
+						match = envRefName(imp) == name
+						if match {
+							imports[i] = ref
+						}
+					case map[string]any:
+						if len(imp) == 1 {
+							key := slices.Collect(maps.Keys(imp))[0]
+							if envRefName(key) == name {
+								match = true
+								imp[ref] = imp[key]
+								delete(imp, key)
+							}
+						}
+					}
+					if match {
+						if new, err := json.Marshal(m); err == nil {
+							e.message = new
+						}
+						return e
+					}
+				}
+			}
+		}
+		return e.Append(ref)
+	case e.node != nil:
+		// The environment definition is inline YAML. Find the last occurrence of the named environment in
+		// the import list and replace it.
+		root := e.node
+		if root.Kind == yaml.MappingNode {
+			for i := 0; i < len(root.Content); i += 2 {
+				key := root.Content[i]
+				if key.Kind == yaml.ScalarNode && key.Value == "imports" {
+					value := root.Content[i+1]
+					if value.Kind == yaml.SequenceNode {
+						for j := len(value.Content) - 1; j >= 0; j-- {
+							n := value.Content[j]
+
+							match := false
+							switch n.Kind {
+							case yaml.ScalarNode:
+								match = envRefName(n.Value) == name
+								if match {
+									n.Value = ref
+								}
+							case yaml.MappingNode:
+								if len(n.Content) == 2 && envRefName(n.Content[0].Value) == name {
+									match = true
+									n.Content[0].Value = ref
+								}
+							case yaml.SequenceNode, yaml.AliasNode, yaml.DocumentNode:
+								// These nodes never match, so we can ignore them here.
+							}
+							if match {
+								return e
+							}
+						}
+					}
+				}
+			}
+		}
+		return e.Append(ref)
+	default:
+		// The environment definition is just a list of environments. Find the last occurrence of the named
+		// environment in the list and replace it.
+		for i := len(e.envs) - 1; i >= 0; i-- {
+			if envRefName(e.envs[i]) == name {
+				e.envs[i] = ref
+				return e
+			}
+		}
+		return e.Append(ref)
+	}
+}
+
 func (e Environment) MarshalJSON() ([]byte, error) {
 	if e.message == nil {
 		return json.Marshal(e.envs)

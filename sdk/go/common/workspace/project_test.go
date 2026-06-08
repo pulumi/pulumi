@@ -2017,6 +2017,118 @@ runtime: yaml`
 	})
 }
 
+func TestEnvironmentReplace(t *testing.T) {
+	t.Parallel()
+
+	projectYaml := `name: test
+runtime: yaml`
+
+	t.Run("nil creates environment", func(t *testing.T) {
+		t.Parallel()
+
+		var env *Environment
+		env = env.Replace("proj/myenv@draft:abc")
+		assert.Equal(t, []string{"proj/myenv@draft:abc"}, env.Imports())
+	})
+
+	t.Run("YAML list replaces matching import by name", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, "environment:\n  - proj/myenv\n  - proj/other\n")
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Replace("proj/myenv@draft:abc")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - proj/myenv@draft:abc\n  - proj/other\n", string(marshaled))
+	})
+
+	t.Run("YAML list replaces already-versioned import", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, "environment:\n  - proj/myenv@5\n")
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Replace("proj/myenv@draft:abc")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - proj/myenv@draft:abc\n", string(marshaled))
+	})
+
+	t.Run("YAML list appends when no match", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, "environment:\n  - proj/other\n")
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Replace("proj/myenv@draft:abc")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - proj/other\n  - proj/myenv@draft:abc\n", string(marshaled))
+	})
+
+	t.Run("JSON list replaces matching import by name", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, `{"environment": ["proj/myenv@5", "proj/other"]}`)
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Replace("proj/myenv@draft:abc")
+		marshaled, err := encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t,
+			"{\n    \"environment\": [\n        \"proj/myenv@draft:abc\",\n        \"proj/other\"\n    ]\n}\n",
+			string(marshaled))
+	})
+
+	t.Run("YAML literal replaces matching import in inline imports list", func(t *testing.T) {
+		t.Parallel()
+
+		projectStackYaml := `environment:
+  imports:
+    - proj/myenv@5
+  values:
+    pulumiConfig:
+      aws:region: us-west-2`
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Replace("proj/myenv@draft:abc")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+
+		expected := `environment:
+  imports:
+    - proj/myenv@draft:abc
+  values:
+    pulumiConfig:
+      aws:region: us-west-2
+`
+		assert.Equal(t, expected, string(marshaled))
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/18581, check that we handle uint64's in yaml
 func TestStackConfigUInt64(t *testing.T) {
 	t.Parallel()

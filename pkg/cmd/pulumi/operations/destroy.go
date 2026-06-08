@@ -59,6 +59,7 @@ func NewDestroyCmd() *cobra.Command {
 	var execKind string
 	var execAgent string
 	var configArray []string
+	var envOverrides []string
 	var configFile string
 	var path bool
 	var client string
@@ -255,7 +256,7 @@ func NewDestroyCmd() *cobra.Command {
 				// The config may be missing, fallback on the latest configuration in the backend.
 				getConfig = config.GetStackConfigurationOrLatest
 			}
-			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj, envOverrides, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -413,6 +414,9 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the destroy and save to the stack config file")
+	cmd.PersistentFlags().StringArrayVar(
+		&envOverrides, "env", nil,
+		"Override or add a stack environment import for this run only, e.g. proj/myenv@draft:abc")
 	cmd.PersistentFlags().BoolVar(
 		&path, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")

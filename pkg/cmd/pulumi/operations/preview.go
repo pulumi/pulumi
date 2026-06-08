@@ -285,6 +285,7 @@ func NewPreviewCmd() *cobra.Command {
 	var execAgent string
 	var stackName string
 	var configArray []string
+	var envOverrides []string
 	var configFile string
 	var configPath bool
 	var client string
@@ -469,7 +470,7 @@ func NewPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, envOverrides, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -653,6 +654,9 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the preview and save to the stack config file")
+	cmd.PersistentFlags().StringArrayVar(
+		&envOverrides, "env", nil,
+		"Override or add a stack environment import for this run only, e.g. proj/myenv@draft:abc")
 	cmd.PersistentFlags().BoolVar(
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
