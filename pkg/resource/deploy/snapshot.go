@@ -17,6 +17,7 @@ package deploy
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/go-test/deep"
@@ -586,20 +587,11 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 		edited := false
 		for i, s := range newSnap.Snippets {
 			snippets[i] = s
-			if len(s.References) == 0 {
-				continue
-			}
-			var newRefs map[string]string
+			newRefs := maps.Clone(s.References)
 			for k, v := range s.References {
 				fixed := string(fixUrn(resource.URN(v)))
 				if fixed == v {
 					continue
-				}
-				if newRefs == nil {
-					newRefs = make(map[string]string, len(s.References))
-					for kk, vv := range s.References {
-						newRefs[kk] = vv
-					}
 				}
 				newRefs[k] = fixed
 			}
