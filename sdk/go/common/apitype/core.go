@@ -266,7 +266,7 @@ func (snap *DeploymentV3) NormalizeURNReferences() (*DeploymentV3, error) {
 
 	// Rewrite References on every snippet. Each value is a URN that may have been an alias for a resource that
 	// is now stored under its canonical URN; updating in place keeps future updates resolving cleanly through
-	// the broker.
+	// the registration observer.
 	for i := range snap.Snippets {
 		for k, v := range snap.Snippets[i].References {
 			snap.Snippets[i].References[k] = string(fixURN(resource.URN(v)))

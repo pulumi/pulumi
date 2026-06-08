@@ -34,6 +34,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -930,9 +931,28 @@ func newUpdateSource(ctx context.Context,
 
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
 
+	var observer *deploy.RegistrationObserver
+	// Now create sources for _any_ snippets in the snapshot and mux them with the main source.
+	if target.Snapshot != nil && len(target.Snapshot.Snippets) > 0 {
+		// Create a registration observer so concurrent sources (the program + any snippet sources below) can wait for
+		// each other's RegisterResource calls. The resource monitor publishes outputs on the observer; snippet sources
+		// consume them when their Snippet.References needs to read another resource's outputs.
+		observer = deploy.NewRegistrationObserver()
+
+		// We need a loader for snippets
+		loader := schema.NewPluginLoader(plugctx)
+
+		snippetSources := make([]func(string) *promise.Promise[struct{}], len(target.Snapshot.Snippets))
+		for i, snippet := range target.Snapshot.Snippets {
+			snippetSources[i] = deploy.NewSnippetSource(
+				ctx, snippet, loader, runinfo.ProjectRoot, runinfo.Pwd, observer)
+		}
+		program = deploy.NewMuxSource(ctx, observer, program, snippetSources...)
+	}
+
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	return deploy.NewEvalSource(plugctx, runinfo,
-		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, nil, program), nil
+		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, observer, program), nil
 }
 
 func update(

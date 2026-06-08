@@ -21,10 +21,23 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-func TestRegistrationObserver_ResolveBeforeGet(t *testing.T) {
+// observeRegistration returns a promise for urn without affecting source liveness. Tests use this
+// to inspect observer publication independently of source waiting behavior.
+func observeRegistration(o *RegistrationObserver, urn resource.URN) *promise.Promise[URNRegistration] {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	cs := o.entry(urn)
+	if o.closedErr != nil {
+		cs.Reject(o.closedErr)
+	}
+	return cs.Promise()
+}
+
+func TestRegistrationObserver_ResolveBeforeObserve(t *testing.T) {
 	t.Parallel()
 	b := NewRegistrationObserver()
 
@@ -33,19 +46,19 @@ func TestRegistrationObserver_ResolveBeforeGet(t *testing.T) {
 
 	b.Resolve(urn, "", outputs)
 
-	got, err := b.Get(urn).Result(t.Context())
+	got, err := observeRegistration(b, urn).Result(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, outputs, got.Outputs)
 }
 
-func TestRegistrationObserver_GetBeforeResolve(t *testing.T) {
+func TestRegistrationObserver_ObserveBeforeResolve(t *testing.T) {
 	t.Parallel()
 	b := NewRegistrationObserver()
 
 	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
 	outputs := resource.PropertyMap{"k": resource.NewProperty("v")}
 
-	p := b.Get(urn)
+	p := observeRegistration(b, urn)
 
 	// Resolve from another goroutine; Result should unblock.
 	go b.Resolve(urn, "", outputs)
@@ -56,7 +69,7 @@ func TestRegistrationObserver_GetBeforeResolve(t *testing.T) {
 }
 
 // TestRegistrationObserver_ResolvePropagatesID pins the contract that the provider-assigned ID supplied to
-// Resolve round-trips through Get's URNRegistration. The other tests use "" for ID since they're
+// Resolve round-trips through URNRegistration. The other tests use "" for ID since they're
 // about other behavior (sticky rejection, expected URNs, etc.).
 func TestRegistrationObserver_ResolvePropagatesID(t *testing.T) {
 	t.Parallel()
@@ -68,20 +81,20 @@ func TestRegistrationObserver_ResolvePropagatesID(t *testing.T) {
 
 	b.Resolve(urn, id, outputs)
 
-	got, err := b.Get(urn).Result(t.Context())
+	got, err := observeRegistration(b, urn).Result(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, id, got.ID)
 	require.Equal(t, outputs, got.Outputs)
 }
 
-func TestRegistrationObserver_GetReturnsSamePromise(t *testing.T) {
+func TestRegistrationObserver_ObserveReturnsSamePromise(t *testing.T) {
 	t.Parallel()
 	b := NewRegistrationObserver()
 
 	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
-	p1 := b.Get(urn)
-	p2 := b.Get(urn)
-	require.Same(t, p1, p2, "repeated Gets for the same URN should return the same promise")
+	p1 := observeRegistration(b, urn)
+	p2 := observeRegistration(b, urn)
+	require.Same(t, p1, p2, "repeated observations of the same URN should return the same promise")
 }
 
 func TestRegistrationObserver_FirstResolveWins(t *testing.T) {
@@ -95,7 +108,7 @@ func TestRegistrationObserver_FirstResolveWins(t *testing.T) {
 	b.Resolve(urn, "", first)
 	b.Resolve(urn, "", second)
 
-	got, err := b.Get(urn).Result(t.Context())
+	got, err := observeRegistration(b, urn).Result(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, first, got.Outputs, "the first Resolve should win; later ones are no-ops")
 }
@@ -107,16 +120,16 @@ func TestRegistrationObserver_Reject(t *testing.T) {
 	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
 	rejErr := errors.New("nope")
 
-	p := b.Get(urn)
+	p := observeRegistration(b, urn)
 	b.Reject(urn, rejErr)
 
 	_, err := p.Result(t.Context())
 	require.ErrorIs(t, err, rejErr)
 }
 
-// TestRegistrationObserver_ConcurrentGetsAndResolves stresses the broker with many goroutines all racing to
-// Get and Resolve the same set of URNs, asserting every Get observes the resolved value.
-func TestRegistrationObserver_ConcurrentGetsAndResolves(t *testing.T) {
+// TestRegistrationObserver_ConcurrentObserversAndResolves stresses the observer with many goroutines
+// all racing to observe and Resolve the same set of URNs.
+func TestRegistrationObserver_ConcurrentObserversAndResolves(t *testing.T) {
 	t.Parallel()
 	b := NewRegistrationObserver()
 
@@ -139,7 +152,7 @@ func TestRegistrationObserver_ConcurrentGetsAndResolves(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				got, err := b.Get(urn).Result(ctx)
+				got, err := observeRegistration(b, urn).Result(ctx)
 				require.NoError(t, err)
 				require.Equal(t, want[urn], got.Outputs)
 			}()
@@ -154,108 +167,171 @@ func TestRegistrationObserver_ConcurrentGetsAndResolves(t *testing.T) {
 	wg.Wait()
 }
 
-func TestRegistrationObserver_RejectUnresolvedRejectsPendingNonExpected(t *testing.T) {
+func TestRegistrationObserver_RunnableSourceProtectsWaiter(t *testing.T) {
 	t.Parallel()
 	b := NewRegistrationObserver()
 
-	pending := resource.URN("urn:pulumi:s::p::pkg:typ::pending")
-	expected := resource.URN("urn:pulumi:s::p::pkg:typ::expected")
-	resolved := resource.URN("urn:pulumi:s::p::pkg:typ::resolved")
-
-	pendingP := b.Get(pending)
-	expectedP := b.Get(expected)
-	b.MarkExpected(expected)
-
-	resolvedOutputs := resource.PropertyMap{"k": resource.NewProperty("v")}
-	b.Resolve(resolved, "", resolvedOutputs)
-	resolvedP := b.Get(resolved)
-
-	rejErr := errors.New("nobody registered this")
-	b.RejectUnresolved(rejErr)
-
-	// Pending non-Expected: rejected.
-	_, err := pendingP.Result(t.Context())
-	require.ErrorIs(t, err, rejErr)
-
-	// Expected: untouched.
-	if _, _, ok := expectedP.TryResult(); ok {
-		t.Fatal("Expected URN should not have been resolved or rejected by RejectUnresolved")
-	}
-
-	// Already resolved: untouched.
-	got, err := resolvedP.Result(t.Context())
-	require.NoError(t, err)
-	require.Equal(t, resolvedOutputs, got.Outputs)
-}
-
-func TestRegistrationObserver_RejectUnresolvedIsIdempotent(t *testing.T) {
-	t.Parallel()
-	b := NewRegistrationObserver()
+	producer := b.NewSource()
+	consumer := b.NewSource()
+	b.SourcesReady()
 
 	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
-	p := b.Get(urn)
+	p := consumer.Wait(urn)
 
-	first := errors.New("first rejection")
-	second := errors.New("second rejection")
-
-	b.RejectUnresolved(first)
-	b.RejectUnresolved(second)
-
-	_, err := p.Result(t.Context())
-	require.ErrorIs(t, err, first, "first rejection should win; second is a no-op")
-}
-
-func TestRegistrationObserver_MarkExpectedAfterGetStillProtects(t *testing.T) {
-	t.Parallel()
-	b := NewRegistrationObserver()
-
-	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
-	p := b.Get(urn)
-	b.MarkExpected(urn)
-
-	b.RejectUnresolved(errors.New("sweep"))
-
-	// Still pending — MarkExpected after Get still protected the entry.
 	if _, _, ok := p.TryResult(); ok {
-		t.Fatal("Expected URN should not have been rejected")
+		t.Fatal("a runnable producer should keep the reference pending")
 	}
 
-	// And a later Resolve should still work.
 	outputs := resource.PropertyMap{"k": resource.NewProperty("v")}
 	b.Resolve(urn, "", outputs)
 	got, err := p.Result(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, outputs, got.Outputs)
+
+	consumer.Done()
+	producer.Done()
 }
 
-// TestRegistrationObserver_GetAfterRejectUnresolvedIsStickyRejected guards a race where a slow source calls Get
-// after the sweep. Without stickiness it would create a fresh pending entry and hang.
-func TestRegistrationObserver_GetAfterRejectUnresolvedIsStickyRejected(t *testing.T) {
+func TestRegistrationObserver_WaitResolvedURNKeepsSourceRunnable(t *testing.T) {
 	t.Parallel()
 	b := NewRegistrationObserver()
 
-	expected := resource.URN("urn:pulumi:s::p::pkg:typ::expected")
-	other := resource.URN("urn:pulumi:s::p::pkg:typ::other")
-	b.MarkExpected(expected)
+	producer := b.NewSource()
+	consumer := b.NewSource()
+	b.SourcesReady()
 
-	rejErr := errors.New("sweep")
-	b.RejectUnresolved(rejErr)
-
-	// A late Get for a non-Expected URN returns an already-rejected promise.
-	_, err := b.Get(other).Result(t.Context())
-	require.ErrorIs(t, err, rejErr)
-
-	// A late Get for an Expected URN is still allowed to wait; a subsequent Resolve still works.
-	expectedP := b.Get(expected)
-	outputs := resource.PropertyMap{"k": resource.NewProperty("v")}
-	b.Resolve(expected, "", outputs)
-	got, err := expectedP.Result(t.Context())
+	resolvedURN := resource.URN("urn:pulumi:s::p::pkg:typ::resolved")
+	pendingURN := resource.URN("urn:pulumi:s::p::pkg:typ::pending")
+	b.Resolve(resolvedURN, "", resource.PropertyMap{})
+	_, err := consumer.Wait(resolvedURN).Result(t.Context())
 	require.NoError(t, err)
-	require.Equal(t, outputs, got.Outputs)
+
+	producer.Done()
+	pending := observeRegistration(b, pendingURN)
+	if _, _, ok := pending.TryResult(); ok {
+		t.Fatal("waiting on an already-resolved URN must leave the source runnable")
+	}
+
+	b.Resolve(pendingURN, "", resource.PropertyMap{})
+	_, err = pending.Result(t.Context())
+	require.NoError(t, err)
+	consumer.Done()
 }
 
-// TestRegistrationObserver_ResolveDoesNotBlock checks that Resolve does not block even if no one has Got the
-// URN yet; the resolved outputs should be observable by later Gets.
+func TestRegistrationObserver_ProducerCanResolveAnyURN(t *testing.T) {
+	t.Parallel()
+	b := NewRegistrationObserver()
+
+	producer := b.NewSource()
+	consumer := b.NewSource()
+	b.SourcesReady()
+
+	// These are representative of URNs whose names or qualified types cannot be inferred from
+	// Snippet.Name and Snippet.Type alone.
+	parented := resource.URN("urn:pulumi:s::p::pkg:parent$pkg:typ::child")
+	ranged := resource.URN("urn:pulumi:s::p::pkg:typ::child-0")
+	parentedP := consumer.Wait(parented)
+
+	b.Resolve(parented, "", resource.PropertyMap{"kind": resource.NewProperty("parented")})
+	parentedResult, err := parentedP.Result(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "parented", parentedResult.Outputs["kind"].StringValue())
+
+	rangedP := consumer.Wait(ranged)
+	b.Resolve(ranged, "", resource.PropertyMap{"kind": resource.NewProperty("ranged")})
+	rangedResult, err := rangedP.Result(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "ranged", rangedResult.Outputs["kind"].StringValue())
+
+	consumer.Done()
+	producer.Done()
+}
+
+func TestRegistrationObserver_ResolvedWaiterBecomesRunnableProducer(t *testing.T) {
+	t.Parallel()
+	b := NewRegistrationObserver()
+
+	producer := b.NewSource()
+	middle := b.NewSource()
+	consumer := b.NewSource()
+	b.SourcesReady()
+
+	middleDependency := resource.URN("urn:pulumi:s::p::pkg:typ::producer")
+	consumerDependency := resource.URN("urn:pulumi:s::p::pkg:typ::middle")
+	middleP := middle.Wait(middleDependency)
+	consumerP := consumer.Wait(consumerDependency)
+
+	b.Resolve(middleDependency, "", resource.PropertyMap{})
+	// The producer may finish before the middle source's goroutine observes its resolved promise.
+	// Resolve must make middle runnable atomically so this does not falsely reject consumerP.
+	producer.Done()
+	_, err := middleP.Result(t.Context())
+	require.NoError(t, err)
+
+	if _, _, ok := consumerP.TryResult(); ok {
+		t.Fatal("the newly runnable middle source should keep its consumer pending")
+	}
+
+	b.Resolve(consumerDependency, "", resource.PropertyMap{})
+	_, err = consumerP.Result(t.Context())
+	require.NoError(t, err)
+
+	middle.Done()
+	consumer.Done()
+}
+
+func TestRegistrationObserver_LastRunnableSourceDoneRejectsWaiter(t *testing.T) {
+	t.Parallel()
+	b := NewRegistrationObserver()
+
+	producer := b.NewSource()
+	consumer := b.NewSource()
+	b.SourcesReady()
+
+	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
+	p := consumer.Wait(urn)
+	producer.Done()
+
+	_, err := p.Result(t.Context())
+	require.ErrorContains(t, err, "no source registered this URN")
+
+	consumer.Done()
+}
+
+func TestRegistrationObserver_AllWaitingRejectsCycle(t *testing.T) {
+	t.Parallel()
+	b := NewRegistrationObserver()
+
+	a := b.NewSource()
+	c := b.NewSource()
+	b.SourcesReady()
+
+	aP := a.Wait(resource.URN("urn:pulumi:s::p::pkg:typ::a"))
+	cP := c.Wait(resource.URN("urn:pulumi:s::p::pkg:typ::c"))
+
+	_, err := aP.Result(t.Context())
+	require.ErrorContains(t, err, "no source registered this URN")
+	_, err = cP.Result(t.Context())
+	require.ErrorContains(t, err, "no source registered this URN")
+
+	a.Done()
+	c.Done()
+}
+
+func TestRegistrationObserver_ObserveAfterQuiescenceIsStickyRejected(t *testing.T) {
+	t.Parallel()
+	b := NewRegistrationObserver()
+
+	source := b.NewSource()
+	b.SourcesReady()
+	source.Done()
+
+	_, err := observeRegistration(b, resource.URN("urn:pulumi:s::p::pkg:typ::other")).Result(t.Context())
+	require.ErrorContains(t, err, "no source registered this URN")
+}
+
+// TestRegistrationObserver_ResolveDoesNotBlock checks that Resolve does not block even if no one is
+// observing the URN yet; the resolved outputs should be observable later.
 func TestRegistrationObserver_ResolveDoesNotBlock(t *testing.T) {
 	t.Parallel()
 	b := NewRegistrationObserver()
@@ -275,7 +351,7 @@ func TestRegistrationObserver_ResolveDoesNotBlock(t *testing.T) {
 		t.Fatal("Resolve should not block")
 	}
 
-	got, err := b.Get(urn).Result(t.Context())
+	got, err := observeRegistration(b, urn).Result(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, outputs, got.Outputs)
 }
