@@ -133,15 +133,12 @@ type PackageSpec struct {
 	// When marshaling, prefer to unmarshal without the <name>@<version> shorthand.
 	unmarshalledFromFull bool
 
-	// Base provider ref for extension parameterization
-	Base *PackageSpec
-
 	// CLI args passed to the extension's Parameterize call. Tis must be implemented in the provider.
 	Extensions []string
 }
 
 func (p PackageSpec) String() string {
-	if len(p.Parameters) == 0 && len(p.Checksums) == 0 && len(p.PluginDownloadURL) == 0 && p.Base == nil && len(p.Extensions) == 0 {
+	if len(p.Parameters) == 0 && len(p.Checksums) == 0 && len(p.PluginDownloadURL) == 0 && len(p.Extensions) == 0 {
 		if len(p.Version) == 0 {
 			return p.Source
 		}
@@ -172,11 +169,6 @@ func (p PackageSpec) String() string {
 		b.WriteString(p.PluginDownloadURL)
 	}
 
-	if p.Base != nil {
-		b.WriteString(", Base: ")
-		b.WriteString(p.Base.String())
-	}
-
 	if len(p.Extensions) != 0 {
 		b.WriteString(", Extension: ")
 		for i, extension := range p.Extensions {
@@ -197,12 +189,11 @@ type packageSpecMarshalled struct {
 	Parameters        []string          `json:"parameters,omitzero" yaml:"parameters,omitempty"`
 	Checksums         map[string][]byte `json:"checksums,omitzero" yaml:"checksums,omitempty"`
 	PluginDownloadURL string            `json:"pluginDownloadURL,omitzero" yaml:"pluginDownloadURL,omitempty"`
-	Base              *PackageSpec      `json:"base,omitzero" yaml:"base,omitempty"`
 	Extensions        []string          `json:"extensions,omitzero" yaml:"extensions,omitempty"`
 }
 
 func marshalPackageSpec[T any](ps PackageSpec, from func(any) (T, error)) (T, error) {
-	if len(ps.Parameters) == 0 && len(ps.Checksums) == 0 && ps.PluginDownloadURL == "" && ps.Base == nil && len(ps.Extensions) == 0 && !ps.unmarshalledFromFull {
+	if len(ps.Parameters) == 0 && len(ps.Checksums) == 0 && ps.PluginDownloadURL == "" && len(ps.Extensions) == 0 && !ps.unmarshalledFromFull {
 		name := ps.Source
 		if ps.Version != "" {
 			name += "@" + ps.Version
@@ -215,7 +206,6 @@ func marshalPackageSpec[T any](ps PackageSpec, from func(any) (T, error)) (T, er
 		Parameters:        ps.Parameters,
 		Checksums:         ps.Checksums,
 		PluginDownloadURL: ps.PluginDownloadURL,
-		Base:              ps.Base,
 		Extensions:        ps.Extensions,
 	})
 }
@@ -246,7 +236,6 @@ func (ps *PackageSpec) unmarshal(from func(any) error) error {
 		Parameters:           full.Parameters,
 		Checksums:            full.Checksums,
 		PluginDownloadURL:    full.PluginDownloadURL,
-		Base:                 full.Base,
 		Extensions:           full.Extensions,
 		unmarshalledFromFull: true,
 	}

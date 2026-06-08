@@ -63,9 +63,8 @@ message PackageDependency {
 
     // The optional replacement parameterization for this package.
     PackageParameterization parameterization = 6;
-    // The optional extension parameterization for this package. A package
-    // carries at most one of `parameterization` or `extensionParameterization`.
-    PackageParameterization extensionParameterization = 7;
+    // The optional extension parameterization for this package.
+    PackageParameterization extension = 7;
 }
 
 message PackageSpec {

@@ -598,8 +598,6 @@ type BaseProvider struct {
 }
 
 type Parameterization struct {
-	// Name is the name of the parameterized package.
-	Name string
 	// BaseProvider is the plugin the parameterization is applied to.
 	BaseProvider BaseProvider
 	// Parameter is the parameter for the provider.
@@ -1152,7 +1150,6 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	var parameterization *ParameterizationSpec
 	if pkg.Parameterization != nil {
 		parameterization = &ParameterizationSpec{
-			Name: pkg.Parameterization.Name,
 			BaseProvider: BaseProviderSpec{
 				Name:    pkg.Parameterization.BaseProvider.Name,
 				Version: pkg.Parameterization.BaseProvider.Version.String(),
@@ -1163,7 +1160,6 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	var extensionParameterization *ParameterizationSpec
 	if pkg.ExtensionParameterization != nil {
 		extensionParameterization = &ParameterizationSpec{
-			Name: pkg.ExtensionParameterization.Name,
 			BaseProvider: BaseProviderSpec{
 				Name:    pkg.ExtensionParameterization.BaseProvider.Name,
 				Version: pkg.ExtensionParameterization.BaseProvider.Version.String(),
@@ -2294,8 +2290,6 @@ type BaseProviderSpec struct {
 
 // ParameterizationSpec is the serializable description of a provider parameterization.
 type ParameterizationSpec struct {
-	// Name is the name of the parameterized package.
-	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 	// The base provider to parameterize.
 	BaseProvider BaseProviderSpec `json:"baseProvider" yaml:"baseProvider"`
 	// The parameter to apply to the base provider.

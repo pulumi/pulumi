@@ -2174,15 +2174,13 @@ func TestPackageValueSerializationExtension(t *testing.T) {
 			Runtime: NewProjectRuntimeInfo("nodejs", nil),
 			Packages: map[string]PackageSpec{
 				"extension-string-base": {
-					Base:       &PackageSpec{Source: "kubernetes"},
+					Source:     "kubernetes",
 					Extensions: []string{"-c", "crds.yaml"},
 				},
 				"extension-inline-base": {
-					Base: &PackageSpec{
-						Source:     "kubernetes",
-						Version:    "4.29.0",
-						Parameters: []string{"some-param"},
-					},
+					Source:     "kubernetes",
+					Version:    "4.29.0",
+					Parameters: []string{"some-param"},
 					Extensions: []string{"-c", "crds.yaml"},
 				},
 			},

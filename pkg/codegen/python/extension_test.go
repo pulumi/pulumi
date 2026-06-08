@@ -30,7 +30,6 @@ func extensionSchemaSpec() schema.PackageSpec {
 		Name:    "gateway",
 		Version: "1.0.0",
 		ExtensionParameterization: &schema.ParameterizationSpec{
-			Name:         "gateway",
 			BaseProvider: schema.BaseProviderSpec{Name: "kubernetes", Version: "4.0.0"},
 			Parameter:    []byte("extension-parameter"),
 		},

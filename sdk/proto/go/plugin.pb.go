@@ -280,11 +280,10 @@ type PackageDependency struct {
 	Checksums map[string][]byte `protobuf:"bytes,5,rep,name=checksums,proto3" json:"checksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// The optional replacement parameterization for this package.
 	Parameterization *PackageParameterization `protobuf:"bytes,6,opt,name=parameterization,proto3" json:"parameterization,omitempty"`
-	// The optional extension parameterization for this package. A package
-	// carries at most one of `parameterization` or `extensionParameterization`.
-	ExtensionParameterization *PackageParameterization `protobuf:"bytes,7,opt,name=extensionParameterization,proto3" json:"extensionParameterization,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// The optional extension parameterization for this package.
+	Extension     *PackageParameterization `protobuf:"bytes,7,opt,name=extension,proto3" json:"extension,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PackageDependency) Reset() {
@@ -359,9 +358,9 @@ func (x *PackageDependency) GetParameterization() *PackageParameterization {
 	return nil
 }
 
-func (x *PackageDependency) GetExtensionParameterization() *PackageParameterization {
+func (x *PackageDependency) GetExtension() *PackageParameterization {
 	if x != nil {
-		return x.ExtensionParameterization
+		return x.Extension
 	}
 	return nil
 }
@@ -476,15 +475,15 @@ const file_pulumi_plugin_proto_rawDesc = "" +
 	"\x17PackageParameterization\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\fR\x05value\"\xa8\x03\n" +
+	"\x05value\x18\x03 \x01(\fR\x05value\"\x88\x03\n" +
 	"\x11PackageDependency\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\tR\aversion\x12\x16\n" +
 	"\x06server\x18\x04 \x01(\tR\x06server\x12I\n" +
 	"\tchecksums\x18\x05 \x03(\v2+.pulumirpc.PackageDependency.ChecksumsEntryR\tchecksums\x12N\n" +
-	"\x10parameterization\x18\x06 \x01(\v2\".pulumirpc.PackageParameterizationR\x10parameterization\x12`\n" +
-	"\x19extensionParameterization\x18\a \x01(\v2\".pulumirpc.PackageParameterizationR\x19extensionParameterization\x1a<\n" +
+	"\x10parameterization\x18\x06 \x01(\v2\".pulumirpc.PackageParameterizationR\x10parameterization\x12@\n" +
+	"\textension\x18\a \x01(\v2\".pulumirpc.PackageParameterizationR\textension\x1a<\n" +
 	"\x0eChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xfa\x01\n" +
@@ -528,7 +527,7 @@ var file_pulumi_plugin_proto_depIdxs = []int32{
 	6, // 0: pulumirpc.PluginDependency.checksums:type_name -> pulumirpc.PluginDependency.ChecksumsEntry
 	7, // 1: pulumirpc.PackageDependency.checksums:type_name -> pulumirpc.PackageDependency.ChecksumsEntry
 	3, // 2: pulumirpc.PackageDependency.parameterization:type_name -> pulumirpc.PackageParameterization
-	3, // 3: pulumirpc.PackageDependency.extensionParameterization:type_name -> pulumirpc.PackageParameterization
+	3, // 3: pulumirpc.PackageDependency.extension:type_name -> pulumirpc.PackageParameterization
 	8, // 4: pulumirpc.PackageSpec.checksums:type_name -> pulumirpc.PackageSpec.ChecksumsEntry
 	5, // [5:5] is the sub-list for method output_type
 	5, // [5:5] is the sub-list for method input_type

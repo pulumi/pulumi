@@ -126,10 +126,10 @@ export class PackageDependency extends jspb.Message {
     getParameterization(): PackageParameterization | undefined;
     setParameterization(value?: PackageParameterization): PackageDependency;
 
-    hasExtensionparameterization(): boolean;
-    clearExtensionparameterization(): void;
-    getExtensionparameterization(): PackageParameterization | undefined;
-    setExtensionparameterization(value?: PackageParameterization): PackageDependency;
+    hasExtension$(): boolean;
+    clearExtension$(): void;
+    getExtension$(): PackageParameterization | undefined;
+    setExtension$(value?: PackageParameterization): PackageDependency;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PackageDependency.AsObject;
@@ -150,7 +150,7 @@ export namespace PackageDependency {
 
         checksumsMap: Array<[string, Uint8Array | string]>,
         parameterization?: PackageParameterization.AsObject,
-        extensionparameterization?: PackageParameterization.AsObject,
+        extension?: PackageParameterization.AsObject,
     }
 }
 

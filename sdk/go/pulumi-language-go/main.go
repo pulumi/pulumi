@@ -710,12 +710,12 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 	}
 
 	pkg := &pulumirpc.PackageDependency{
-		Name:                      name,
-		Version:                   version,
-		Kind:                      "resource",
-		Server:                    server,
-		Parameterization:          convert(pulumiPlugin.Parameterization),
-		ExtensionParameterization: convert(pulumiPlugin.ExtensionParameterization),
+		Name:             name,
+		Version:          version,
+		Kind:             "resource",
+		Server:           server,
+		Parameterization: convert(pulumiPlugin.Parameterization),
+		Extension:        convert(pulumiPlugin.ExtensionParameterization),
 	}
 
 	return pkg, nil

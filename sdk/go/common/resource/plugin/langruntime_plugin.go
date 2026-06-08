@@ -271,7 +271,7 @@ func (h *langhost) GetRequiredPackages(
 		if !apitype.IsPluginKind(info.Kind) {
 			return nil, nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
-		convert := func(p *pulumirpc.PackageParameterization) (*workspace.Parameterization, error) {
+		unmarshal := func(p *pulumirpc.PackageParameterization) (*workspace.Parameterization, error) {
 			if p == nil {
 				return nil, nil
 			}
@@ -288,11 +288,11 @@ func (h *langhost) GetRequiredPackages(
 			}, nil
 		}
 
-		parameterization, err := convert(info.Parameterization)
+		parameterization, err := unmarshal(info.Parameterization)
 		if err != nil {
 			return nil, nil, err
 		}
-		extensionParameterization, err := convert(info.ExtensionParameterization)
+		extensionParameterization, err := unmarshal(info.Extension)
 		if err != nil {
 			return nil, nil, err
 		}

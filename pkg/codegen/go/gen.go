@@ -3874,12 +3874,6 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	}
 }
 
-// extensionModulePath is the local Go module path for an extension SDK, named
-// for the extension rather than the base provider it extends.
-func extensionModulePath(pkg *schema.Package) string {
-	return pkg.ExtensionParameterization.Name
-}
-
 // ExtractModulePath creates a go module path for a given package.
 func ExtractModulePath(extPkg schema.PackageReference) string {
 	contract.Assertf(extPkg != nil, "ExtractModulePath(nil) is not allowed")
@@ -4231,12 +4225,6 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 // generatePackageContextMap groups resources, types, and functions into Go packages.
 func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo GoPackageInfo, externalPkgs *Cache) (map[string]*pkgContext, error) {
 	packages := map[string]*pkgContext{}
-
-	// An extension SDK is generated into the consuming project, so it uses a
-	// local module path rather than the base provider's.
-	if def, err := pkg.Definition(); err == nil && def.ExtensionParameterization != nil {
-		goInfo.ImportBasePath = extensionModulePath(def) + "/" + goPackage(def.Name)
-	}
 
 	// Share the cache
 	if externalPkgs == nil {
@@ -5225,9 +5213,8 @@ func GeneratePackage(tool string,
 				modulePath = path.Dir(goInfo.ImportBasePath)
 			}
 		}
-
 		if pkg.ExtensionParameterization != nil {
-			modulePath = extensionModulePath(pkg)
+			modulePath = pkg.Name
 		}
 
 		var gomod modfile.File

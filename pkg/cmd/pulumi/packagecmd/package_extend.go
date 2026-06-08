@@ -125,11 +125,9 @@ func newPackageExtendCmd() *cobra.Command {
 			}
 
 			if target.projectFilePath != nil {
-				target.proj.AddPackage(pkg.ExtensionParameterization.Name, workspace.PackageSpec{
-					Base: &workspace.PackageSpec{
-						Source:  pkg.ExtensionParameterization.BaseProvider.Name,
-						Version: pkg.ExtensionParameterization.BaseProvider.Version.String(),
-					},
+				target.proj.AddPackage(pkg.Name, workspace.PackageSpec{
+					Source:     pkg.ExtensionParameterization.BaseProvider.Name,
+					Version:    pkg.ExtensionParameterization.BaseProvider.Version.String(),
 					Extensions: parameters.Args,
 				})
 				fileName := filepath.Base(*target.projectFilePath)

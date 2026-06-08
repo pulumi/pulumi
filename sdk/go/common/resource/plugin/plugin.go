@@ -80,12 +80,10 @@ type PulumiPluginJSON struct {
 	Version string `json:"version,omitempty"`
 	// Optional plugin server. If not set, the default server is used when installing the plugin.
 	Server string `json:"server,omitempty"`
-	// Replacement parameterization for the package. Mutually exclusive with
-	// ExtensionParameterization.
+	// Replacement parameterization for the package.
 	Parameterization *PulumiParameterizationJSON `json:"parameterization,omitempty"`
 	// Extension parameterization for the package. The package extends the base
-	// plugin in place rather than replacing it. Mutually exclusive with
-	// Parameterization.
+	// plugin in place rather than replacing it.
 	ExtensionParameterization *PulumiParameterizationJSON `json:"extensionParameterization,omitempty"`
 }
 

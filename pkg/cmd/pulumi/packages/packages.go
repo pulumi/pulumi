@@ -128,10 +128,6 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 	if pkg.Namespace != "" {
 		outName = pkg.Namespace + "-" + outName
 	}
-	// An extension SDK is named for the extension, not the base provider.
-	if pkg.ExtensionParameterization != nil && pkg.ExtensionParameterization.Name != "" {
-		outName = pkg.ExtensionParameterization.Name
-	}
 	out = filepath.Join(out, outName)
 
 	// If directory already exists, remove it completely before copying new files
@@ -441,27 +437,22 @@ func SchemaFromSchemaSource(
 		return nil, nil, err
 	}
 	if parameterizationName != "" {
-		var effectiveName string
 		switch {
 		case spec.Parameterization != nil && spec.ExtensionParameterization != nil:
 			return nil, nil, fmt.Errorf(
 				"provider returned schema with both parameterization and extensionParameterization blocks; " +
 					"the provider must emit exactly one")
-		case spec.Parameterization != nil:
-			effectiveName = spec.Parameterization.Name
-		case spec.ExtensionParameterization != nil:
-			effectiveName = spec.ExtensionParameterization.Name
-		default:
+		case spec.Parameterization == nil && spec.ExtensionParameterization == nil:
 			return nil, nil, fmt.Errorf(
 				"provider returned schema without a parameterization block but parameterize identified the package as %q; "+
 					"the provider must emit a schema whose parameterization name matches its parameterize response",
 				parameterizationName)
 		}
-		if effectiveName != parameterizationName {
+		if spec.Name != parameterizationName {
 			return nil, nil, fmt.Errorf(
 				"provider returned schema parameterized as %q but parameterize identified the package as %q; "+
 					"the provider must emit a schema whose parameterization name matches its parameterize response",
-				effectiveName, parameterizationName)
+				spec.Name, parameterizationName)
 		}
 	}
 	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
