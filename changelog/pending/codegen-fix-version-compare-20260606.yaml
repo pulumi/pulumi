@@ -1,3 +1,3 @@
 # `pkg/codegen/pcl`
 
-- fix(codegen): use semver.Version.Equals for version comparison in NeedsVersionResourceOption
+- fix(codegen): use strict semver.Parse and semver.Version.Equals for version comparison in NeedsVersionResourceOption and loadPackageSchema
