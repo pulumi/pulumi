@@ -1,0 +1,6 @@
+component: cli/deployment
+kind: improvement
+body: '`pulumi deployment settings edit --secret-env` no longer makes a separate call to the deployment-settings encrypt endpoint per secret. Secret env vars are now sent to the PATCH deployment-settings endpoint, which encrypts them server-side, removing a round-trip per secret.'
+time: 2026-06-08T00:00:00.000000+00:00
+custom:
+    PR: ""

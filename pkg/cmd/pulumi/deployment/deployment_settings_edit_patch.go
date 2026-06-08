@@ -19,12 +19,9 @@ package deployment
 // value, a literal null deletes the key, and absent keys are preserved.
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
-
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 )
 
 var editFlagNames = []string{
@@ -113,28 +110,20 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 	return nil
 }
 
-// encryptSecretEnvVars converts each "KEY=VALUE" --secret-env entry into a {"ciphertext": ...} JSON object by calling
-// the cloud encrypt endpoint per value.
-func encryptSecretEnvVars(
-	ctx context.Context, c deploymentSettingsEditClient, stack client.StackIdentifier,
-	specs []string,
-) (map[string]map[string]any, error) {
+// buildSecretEnvVars converts each "KEY=VALUE" --secret-env entry into the wire form for a
+// plaintext secret value ({"secret": VALUE}). The PATCH /deployments/settings endpoint encrypts
+// these server-side with the stack's deployment-settings key (see UpsertSettings/encryptSettings in
+// pulumi-service), so the CLI no longer needs to pre-encrypt them via the /settings/encrypt endpoint.
+func buildSecretEnvVars(specs []string) map[string]map[string]any {
 	if len(specs) == 0 {
-		return nil, nil
+		return nil
 	}
 	out := map[string]map[string]any{}
 	for _, spec := range specs {
 		key, value, _ := strings.Cut(spec, "=")
-		sv, err := c.EncryptStackDeploymentSettingsSecret(ctx, stack, value)
-		if err != nil {
-			return nil, fmt.Errorf("encrypting %q: %w", key, err)
-		}
-		if sv == nil || sv.Ciphertext == "" {
-			return nil, fmt.Errorf("encrypting %q: server returned empty ciphertext", key)
-		}
-		out[key] = map[string]any{"ciphertext": sv.Ciphertext}
+		out[key] = map[string]any{"secret": value}
 	}
-	return out, nil
+	return out
 }
 
 // buildEditFlagPatch turns the parsed flag values into a JSON-shaped map that mirrors apitype.DeploymentSettings.
