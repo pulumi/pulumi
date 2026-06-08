@@ -779,8 +779,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					answerCmd := m.commitBlock(block{kind: blockAnswerSubmitted, raw: text})
 					return m, tea.Batch(answerCmd, m.showBusy(thinkingLabel, shimmerVerb))
 				}
-				approved := strings.EqualFold(text, "y") || strings.EqualFold(text, "yes")
-				var denialMsg string
+				approved := isAffirmative(text)
+				denialMsg := ""
 				if !approved {
 					denialMsg = text
 				}

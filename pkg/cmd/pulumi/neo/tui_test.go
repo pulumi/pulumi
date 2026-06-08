@@ -835,7 +835,8 @@ func TestModel_Update_UIApprovalRequest_ShowsPromptAndPausesAgent(t *testing.T) 
 func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
 	t.Parallel()
 
-	cases := []string{"y", "Y", "yes", "YES", "Yes"}
+	// Representative sample — exhaustive phrase coverage lives in TestIsAffirmative.
+	cases := []string{"y", "yes", "ok", "go ahead"}
 	for _, in := range cases {
 		t.Run(in, func(t *testing.T) {
 			t.Parallel()
@@ -874,8 +875,9 @@ func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
 func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 	t.Parallel()
 
-	// Anything that isn't "y"/"yes" is treated as a denial; the typed text becomes
-	// the instructions field so the agent can act on the user's reasoning.
+	// Anything that isn't a recognized affirmative is treated as a denial; the
+	// typed text becomes the instructions field so the agent can act on the
+	// user's reasoning.
 	outCh := make(chan outboundEvent, 1)
 	m := newApprovalPendingModel(t, outCh)
 	m.textInput.SetValue("not on prod")
