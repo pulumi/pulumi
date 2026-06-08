@@ -1776,20 +1776,13 @@ func (i *Interpreter) registerResourceWith(
 	outputs["__name"] = resource.NewProperty(request.Name)
 	outputs["__type"] = resource.NewProperty(request.Type)
 
-	// We need to ensure all schema outputs exist in the output object, even if they weren't returned by the engine.
+	// Ensure every schema-declared output property is present, recursing into nested object
+	// types so that programs which traverse into an optional inner field see a typed null
+	// rather than triggering an HCL "unsupported attribute" error.
 	// - preview: unknown/computed
 	// - update: explicit null
 	if schemaResource != nil {
-		for _, prop := range schemaResource.Properties {
-			key := resource.PropertyKey(prop.Name)
-			if _, ok := outputs[key]; !ok {
-				if i.info.DryRun {
-					outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
-				} else {
-					outputs[key] = resource.NewNullProperty()
-				}
-			}
-		}
+		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun)
 	}
 
 	result := resource.NewProperty(resource.Output{

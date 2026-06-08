@@ -122,7 +122,12 @@ func (g *generator) genAnonymousFunctionExpression(
 	} else if strings.HasPrefix(retTypeName, "pulumi") {
 		g.Fgenf(w, "return %s(%v), nil", retTypeName, body)
 	} else if strings.HasPrefix(retTypeName, "*") {
-		if g.exprIsAddressable(body) {
+		// If body lands on an optional field of a schema-backed object type, the Go field is
+		// already a pointer (e.g. `data.Boolean` is `*bool`). Returning `&body` would produce
+		// `**T`. Just return body in that case.
+		if g.bodyEndsInOptionalObjectField(body) {
+			g.Fgenf(w, "return %v, nil", body)
+		} else if g.exprIsAddressable(body) {
 			g.Fgenf(w, "return &%v, nil", body)
 		} else {
 			g.Fgenf(w, "val := %v\nreturn &val, nil", body)
@@ -131,6 +136,57 @@ func (g *generator) genAnonymousFunctionExpression(
 		g.Fgenf(w, "return %v, nil", body)
 	}
 	g.Fgenf(w, "\n}")
+}
+
+// bodyEndsInOptionalObjectField reports whether expr is a traversal whose last step
+// is an attribute access on a schema-backed object type, where that attribute is
+// declared optional. In the generated Go code such a field is already represented
+// as a pointer (the Go SDK declares optional fields as *T), so wrapping with `&`
+// would produce `**T`. Note: this is stricter than checking PCL optionality of the
+// whole expression, because operations like array indexing on an output also lift
+// types to optional in PCL while the generated Go expression remains a value, not
+// a pointer.
+func (g *generator) bodyEndsInOptionalObjectField(expr model.Expression) bool {
+	st, ok := expr.(*model.ScopeTraversalExpression)
+	if !ok {
+		return false
+	}
+	rel := st.Traversal.SimpleSplit().Rel
+	if len(rel) == 0 {
+		return false
+	}
+	lastAttr, ok := rel[len(rel)-1].(hcl.TraverseAttr)
+	if !ok {
+		return false
+	}
+	// st.Parts is aligned with rel: st.Parts[i] is the type/traversable BEFORE rel[i].
+	// The source of the last step is therefore st.Parts[len(rel)-1].
+	if len(st.Parts) < len(rel) {
+		return false
+	}
+	source := st.Parts[len(rel)-1]
+	if g.isMapAccessTraversal(source) {
+		// Map / inline-object access goes through map[string]interface{}; the value
+		// isn't a struct field at all.
+		return false
+	}
+	sourceType := model.GetTraversableType(source)
+	sourceType = model.ResolveOutputs(sourceType)
+	sourceType = pcl.UnwrapOption(sourceType)
+	objType, ok := sourceType.(*model.ObjectType)
+	if !ok {
+		return false
+	}
+	// Only consider schema-backed objects: inline anonymous objects have no
+	// generated struct and no notion of optional fields in Go.
+	if _, hasSchema := pcl.GetSchemaForType(objType); !hasSchema {
+		return false
+	}
+	propType, ok := objType.Properties[lastAttr.Name]
+	if !ok {
+		return false
+	}
+	return model.IsOptionalType(propType)
 }
 
 // exprIsAddressable reports whether the Go code generated for expr will
@@ -1615,10 +1671,13 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	case "[]string":
 		typeAssertion = ".(pulumi.StringArrayOutput)"
 	default:
-		// For map types the string form (e.g. "map[string]bool") cannot be turned into
-		// a valid pulumi output type via simple string manipulation, so use
+		// For map and list types the string form (e.g. "map[string]bool", "[]float64") cannot
+		// be turned into a valid pulumi output type via simple string manipulation, so use
 		// deferredOutputCastTypeParameter which already knows the correct names.
-		if _, isMap := pcl.UnwrapOption(then.Signature.ReturnType).(*model.MapType); isMap {
+		unwrappedRet := pcl.UnwrapOption(then.Signature.ReturnType)
+		_, isMap := unwrappedRet.(*model.MapType)
+		_, isList := unwrappedRet.(*model.ListType)
+		if isMap || isList {
 			typeAssertion = ".(" + deferredOutputCastTypeParameter(then.Signature.ReturnType) + ")"
 		} else {
 			if strings.HasPrefix(retType, "*") {
