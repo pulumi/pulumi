@@ -100,8 +100,14 @@ func (p *OutputProvider) GetSchema(
 								Type: "string",
 							},
 						},
+						"secretOutput": {
+							Secret: true,
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
 					},
-					Required: []string{"value", "output"},
+					Required: []string{"value", "output", "secretOutput"},
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"value": {
@@ -166,8 +172,14 @@ func (p *OutputProvider) GetSchema(
 								Type: "string",
 							},
 						},
+						"secretOutput": {
+							Secret: true,
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
 					},
-					Required: []string{"output"},
+					Required: []string{"output", "secretOutput"},
 				},
 			},
 		},
@@ -374,6 +386,7 @@ func (p *OutputProvider) makeOutputs(
 		switch typ { //nolint:exhaustive
 		case "output:index:Resource":
 			properties["output"] = resource.NewProperty(output)
+			properties["secretOutput"] = resource.NewProperty(output)
 		case "output:index:ComplexResource":
 			properties["outputArray"] = resource.NewProperty([]resource.PropertyValue{
 				resource.NewProperty(output),
@@ -387,13 +400,15 @@ func (p *OutputProvider) makeOutputs(
 				"z": resource.NewProperty(output),
 			})
 			properties["outputObject"] = resource.NewProperty(resource.PropertyMap{
-				"output": resource.NewProperty(output),
+				"output":       resource.NewProperty(output),
+				"secretOutput": resource.NewProperty(output),
 			})
 		}
 	} else if !p.elideUnknowns {
 		switch typ { //nolint:exhaustive
 		case "output:index:Resource":
 			properties["output"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+			properties["secretOutput"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
 		case "output:index:ComplexResource":
 			properties["outputArray"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
 			properties["outputMap"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})

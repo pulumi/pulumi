@@ -31,6 +31,10 @@ func NewComplexResource(ctx *pulumi.Context,
 	if args.Value == nil {
 		return nil, errors.New("invalid value for required argument 'Value'")
 	}
+	secrets := pulumi.AdditionalSecretOutputs([]string{
+		"outputObject",
+	})
+	opts = append(opts, secrets)
 	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ComplexResource
 	err := ctx.RegisterResource("output:index:ComplexResource", name, args, &resource, opts...)
