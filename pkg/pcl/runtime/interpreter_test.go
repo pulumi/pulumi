@@ -409,3 +409,21 @@ func TestApplySchemaInputs(t *testing.T) {
 	// Defaults that fill in for secret properties get wrapped too.
 	assert.Equal(t, resource.MakeSecret(resource.NewProperty("fallback")), converted["secretWithDefault"])
 }
+
+func TestFillSchemaOutputs_MissingSecret(t *testing.T) {
+	t.Parallel()
+
+	properties := []*schema.Property{
+		{Name: "secretOutput", Type: schema.StringType, Secret: true},
+	}
+
+	previewOutputs := resource.PropertyMap{}
+	fillSchemaOutputs(previewOutputs, properties, true)
+	assert.Equal(t, resource.MakeSecret(resource.NewProperty(resource.Computed{
+		Element: resource.NewProperty(""),
+	})), previewOutputs["secretOutput"])
+
+	updateOutputs := resource.PropertyMap{}
+	fillSchemaOutputs(updateOutputs, properties, false)
+	assert.Equal(t, resource.MakeSecret(resource.NewNullProperty()), updateOutputs["secretOutput"])
+}

@@ -14,7 +14,8 @@ import (
 var _ = internal.GetEnvOrDefault
 
 type Data struct {
-	Output string `pulumi:"output"`
+	Output       string `pulumi:"output"`
+	SecretOutput string `pulumi:"secretOutput"`
 }
 
 type DataOutput struct{ *pulumi.OutputState }
@@ -33,6 +34,10 @@ func (o DataOutput) ToDataOutputWithContext(ctx context.Context) DataOutput {
 
 func (o DataOutput) Output() pulumi.StringOutput {
 	return o.ApplyT(func(v Data) string { return v.Output }).(pulumi.StringOutput)
+}
+
+func (o DataOutput) SecretOutput() pulumi.StringOutput {
+	return o.ApplyT(func(v Data) string { return v.SecretOutput }).(pulumi.StringOutput)
 }
 
 func init() {
