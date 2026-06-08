@@ -170,18 +170,20 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		}
 	}
 
-	// If we have a base snapshot, copy over its secrets manager and metadata.
+	// If we have a base snapshot, copy over its secrets manager, metadata, and snippets.
 	var secretsManager secrets.Manager
 	var metadata deploy.SnapshotMetadata
+	var snippets []resource.Snippet
 	if base != nil {
 		secretsManager = base.SecretsManager
 		metadata = base.Metadata
+		snippets = base.Snippets
 	}
 
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
 
-	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata)
+	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets)
 	normSnap, err := snap.NormalizeURNReferences()
 	if err != nil {
 		return snap, err

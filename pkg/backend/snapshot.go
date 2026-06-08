@@ -747,12 +747,14 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	}
 
 	var metadata deploy.SnapshotMetadata
+	var snippets []resource.Snippet
 	if sm.baseSnapshot != nil {
 		metadata = sm.baseSnapshot.Metadata
+		snippets = sm.baseSnapshot.Snippets
 	}
 
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
+	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets)
 }
 
 func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {

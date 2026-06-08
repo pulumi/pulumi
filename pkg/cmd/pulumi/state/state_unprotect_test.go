@@ -54,7 +54,7 @@ func TestUnprotectResourceWithDeleteTrue(t *testing.T) {
 			Delete:  false, // This is the replacement resource
 			Protect: true,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil)
 
 	// Try to unprotect the resource
 	urns := []string{string(resourceURN)}
@@ -102,7 +102,7 @@ func TestUnprotectAllResourcesWithDeleteTrue(t *testing.T) {
 			Delete:  false,
 			Protect: true,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil)
 
 	// Try to unprotect all resources
 	urns := []string{
@@ -144,7 +144,7 @@ func TestUnprotectOnlyDeletedResource(t *testing.T) {
 			Delete:  true, // Resource is marked for deletion
 			Protect: true,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil)
 
 	// Try to unprotect the deleted resource
 	urns := []string{string(deletedURN)}
@@ -195,7 +195,7 @@ func TestUnprotectMultipleResourcesWithSameURNAndDelete(t *testing.T) {
 			Delete:  false, // The current active resource
 			Protect: true,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil)
 
 	// Try to unprotect the resource
 	urns := []string{string(sharedURN)}
