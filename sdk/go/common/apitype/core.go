@@ -191,6 +191,13 @@ func (snap *DeploymentV3) ToUntypedDeployment(version int, features []string) (*
 // later in the deployment.  But until they are, we still want to ensure that any serialization of the snapshot uses URN
 // references which do not need to be indirected through any alias lookups, and which instead refer directly to the URN
 // of a resource in the resources map.
+//
+// TODO: this is a near-duplicate of (*deploy.Snapshot).NormalizeURNReferences in pkg/resource/deploy/snapshot.go.
+// They share the same alias-resolution logic but operate on different types (the on-disk DeploymentV3 vs the runtime
+// Snapshot) and have drifted apart in small ways (e.g. error messages, snippet-reference rewriting was added to both
+// at different times). Any new field that carries URNs needs both implementations updated in lockstep, so they
+// should be consolidated — ideally by sharing a single fixURN walker that each wrapper drives over its own
+// representation.
 func (snap *DeploymentV3) NormalizeURNReferences() (*DeploymentV3, error) {
 	if snap == nil {
 		return nil, nil

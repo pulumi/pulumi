@@ -1,0 +1,9 @@
+<{%reset%}>  urn:pulumi:test::test::pkgA:index:res::target: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:res::snippet-resource: (create)
+<{%fg 2%}>    propA: <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

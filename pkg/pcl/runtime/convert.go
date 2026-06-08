@@ -586,6 +586,17 @@ func applySchemaInputConversion(
 	return value, nil
 }
 
+// PropertyValueToCty converts a [resource.PropertyValue] into the equivalent [cty.Value], using getResource to
+// resolve any embedded resource references into their output object. getResource may be nil if the value is
+// known to contain no resource references.
+func PropertyValueToCty(
+	ctx context.Context,
+	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
+	value resource.PropertyValue,
+) (cty.Value, error) {
+	return propertyValueToCty(ctx, getResource, value)
+}
+
 func propertyValueToCty(
 	ctx context.Context,
 	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),

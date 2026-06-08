@@ -1,0 +1,13 @@
+<{%reset%}>  pkgA:index:Comp: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:Comp::comp]
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    value: <{%reset%}><{%reset%}>"value-of-hello"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 2%}>+ pkgA:index:res: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:index:res::test-resource]
+<{%reset%}><{%fg 2%}>    message: <{%reset%}><{%fg 2%}>"value-of-hello"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -1,0 +1,7 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:res::test-resource: (create)
+<{%fg 2%}>    rootDir   : <{%reset%}><{%fg 2%}>"/"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    workingDir: <{%reset%}><{%fg 2%}>"/"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

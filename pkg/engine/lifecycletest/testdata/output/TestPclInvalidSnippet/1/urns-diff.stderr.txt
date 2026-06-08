@@ -1,0 +1,1 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>bind snippet: <snippet>:0,42-42: missing required attribute 'propB'; missing required attribute 'propB'<{%reset%}>

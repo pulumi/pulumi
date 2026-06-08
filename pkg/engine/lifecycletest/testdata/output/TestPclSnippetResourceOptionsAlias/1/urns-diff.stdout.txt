@@ -1,0 +1,6 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:res::old-name: (create)
+<{%fg 2%}>    propA: <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

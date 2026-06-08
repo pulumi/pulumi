@@ -34,6 +34,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -930,9 +931,36 @@ func newUpdateSource(ctx context.Context,
 
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
 
+	// Create a URN broker so concurrent sources (the program + any snippet sources below) can wait for each
+	// other's RegisterResource calls. The resource monitor publishes outputs on the broker; snippet sources
+	// consume them when their Snippet.References needs to read another resource's outputs.
+	urnBroker := deploy.NewURNBroker()
+
+	// Now create sources for _any_ snippets in the snapshot and mux them with the main source.
+	if target.Snapshot != nil && len(target.Snapshot.Snippets) > 0 {
+		// We need a loader for snippets
+		loader := schema.NewPluginLoader(plugctx.Host)
+
+		// Pre-compute the URN each snippet will register. The broker uses these to know which still-pending
+		// entries belong to in-flight snippets (and so must not be reaped) when the main program finishes.
+		stack := target.Name.Q()
+		snippetURNs := make([]resource.URN, len(target.Snapshot.Snippets))
+		for i, snippet := range target.Snapshot.Snippets {
+			snippetURNs[i] = resource.NewURN(stack, proj.Name, "" /*parentType*/, tokens.Type(snippet.Type), snippet.Name)
+			urnBroker.MarkExpected(snippetURNs[i])
+		}
+
+		snippetSources := make([]func(string) *promise.Promise[struct{}], len(target.Snapshot.Snippets))
+		for i, snippet := range target.Snapshot.Snippets {
+			snippetSources[i] = deploy.NewSnippetSource(
+				snippet, loader, runinfo.ProjectRoot, runinfo.Pwd, snippetURNs[i], urnBroker)
+		}
+		program = deploy.NewMuxSource(ctx, urnBroker, program, snippetSources...)
+	}
+
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	return deploy.NewEvalSource(plugctx, runinfo,
-		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, program), nil
+		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, urnBroker, program), nil
 }
 
 func update(

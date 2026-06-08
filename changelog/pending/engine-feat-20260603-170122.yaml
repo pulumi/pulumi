@@ -1,0 +1,6 @@
+component: engine
+kind: feat
+body: Add support for 'snippets', blocks of PCL kept in state to track ad-hoc resources
+time: 2026-06-03T17:01:22.611717+01:00
+custom:
+    PR: "23286"
