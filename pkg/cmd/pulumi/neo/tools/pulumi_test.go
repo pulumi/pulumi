@@ -376,7 +376,9 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 	// "previously unset is unset on restore" behavior is what we actually exercise below.
 	if orig, ok := os.LookupEnv("PULUMI_ACCESS_TOKEN"); ok {
 		require.NoError(t, os.Unsetenv("PULUMI_ACCESS_TOKEN"))
-		t.Cleanup(func() { _ = os.Setenv("PULUMI_ACCESS_TOKEN", orig) })
+		// t.Setenv can't express "restore the prior value" (there is no t.Unsetenv), so
+		// restore it ourselves.
+		t.Cleanup(func() { _ = os.Setenv("PULUMI_ACCESS_TOKEN", orig) }) //nolint:usetesting
 	}
 
 	var capturedToken string
