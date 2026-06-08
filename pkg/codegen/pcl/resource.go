@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
@@ -381,15 +382,14 @@ func NeedsVersionResourceOption(version model.Expression, schema *schema.Resourc
 	}
 
 	optVStr := optV.Value.AsString()
-	// Normalize the v prefix: semver.Version.String() never includes a "v" prefix,
-	// but program literals can (e.g. "v0.10.1"). Parse both sides as semver for proper comparison.
+	// PCL version literals may include a "v" prefix (e.g. "v0.10.1") but
+	// semver.Version.String() never does. Normalize for comparison.
 	if len(optVStr) > 0 && optVStr[0] == 'v' {
 		optVStr = optVStr[1:]
 	}
-	// Use semver.Version.Equals for proper version comparison instead of string comparison.
-	optVersion, err := semver.ParseTolerant(optVStr)
+	optVersion, err := semver.Parse(optVStr)
 	if err != nil {
-		// If we can't parse the version, fall back to string comparison
+		// If the literal isn't valid semver, fall back to string comparison.
 		return v.String() != optVStr
 	}
 	return !v.Equals(optVersion)
