@@ -237,6 +237,70 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	assert.Empty(t, agentAccount.AccessToken)
 }
 
+//nolint:paralleltest // mutates env vars and credentials on disk
+func TestCurrentRefreshesAccessTokenOn401WhenRefreshTokenStored(t *testing.T) {
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			require.Equal(t, http.MethodPost, req.Method)
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), "grant_type=refresh_token")
+			assert.Contains(t, string(body), "refresh_token=stored-refresh-token")
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:  "fresh-access-token",
+				TokenType:    "Bearer",
+				ExpiresIn:    3600,
+				RefreshToken: "stored-refresh-token",
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			switch req.Header.Get("Authorization") {
+			case "token stale-access-token":
+				rw.WriteHeader(http.StatusUnauthorized)
+				err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+				require.NoError(t, err)
+			case "token fresh-access-token":
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "alice",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+			default:
+				t.Errorf("unexpected Authorization header: %q", req.Header.Get("Authorization"))
+				rw.WriteHeader(http.StatusUnauthorized)
+			}
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  "stale-access-token",
+		RefreshToken: "stored-refresh-token",
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "fresh-access-token", account.AccessToken,
+		"the stored access token should be refreshed before reporting the account as valid")
+	assert.Equal(t, "stored-refresh-token", account.RefreshToken,
+		"the refresh token is preserved (Phase 1: server doesn't rotate)")
+	assert.Equal(t, "alice", account.Username)
+
+	saved, err := workspace.GetAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "fresh-access-token", saved.AccessToken,
+		"credentials.json should reflect the refreshed access token")
+	assert.Equal(t, "stored-refresh-token", saved.RefreshToken)
+}
+
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()

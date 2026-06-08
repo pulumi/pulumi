@@ -547,6 +547,24 @@ func validateStoredAccount(
 		username, organizations, tokenInfo, err = getAccountDetails(
 			ctx, cloudURL, insecure, account.AccessToken,
 		)
+		if errors.Is(err, ErrUnauthorized) && account.RefreshToken != "" {
+			// The access token is no longer accepted but we still hold a refresh token. Exchange it
+			// for a fresh access token and re-validate so the caller persists the refreshed account
+			// rather than falling through to agent-signup or a re-login prompt.
+			refreshClient := client.NewClient(cloudURL, "", insecure, cmdutil.Diag())
+			resp, refreshErr := refreshClient.RefreshAccessToken(ctx, account.RefreshToken)
+			if refreshErr == nil {
+				account.AccessToken = resp.AccessToken
+				if resp.RefreshToken != "" {
+					account.RefreshToken = resp.RefreshToken
+				}
+				username, organizations, tokenInfo, err = getAccountDetails(
+					ctx, cloudURL, insecure, account.AccessToken,
+				)
+			} else {
+				logging.V(7).Infof("Refreshing access token for %q failed: %v", cloudURL, refreshErr)
+			}
+		}
 		if errors.Is(err, ErrUnauthorized) {
 			valid = false
 		} else if err != nil {
