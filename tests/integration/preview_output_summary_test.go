@@ -76,4 +76,14 @@ func TestPreview_OutputJSONSummary(t *testing.T) {
 
 	require.Equal(t, apitype.OperationResultSucceeded, summary.Result)
 	require.NotEmpty(t, summary.Summary, "summary should record the resource changes")
+	require.NotEmpty(t, summary.Resources, "summary should list the affected resources")
+	for i, r := range summary.Resources {
+		require.NotEmptyf(t, r.URN, "resource %d should have a URN", i)
+		require.NotEmptyf(t, r.Type, "resource %d should have a type", i)
+		require.NotEmptyf(t, r.Name, "resource %d should have a name", i)
+		require.NotEmptyf(t, r.Op, "resource %d should have an op", i)
+		// `same` resources are filtered out by default, so every entry should be
+		// an actual planned change. Preview against an empty stack is all creates.
+		require.NotEqualf(t, apitype.OpSame, r.Op, "resource %d should not be a same", i)
+	}
 }
