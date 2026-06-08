@@ -1,3 +1,6 @@
-# `pkg/codegen/pcl`
-
-- fix(codegen): use strict semver.Parse and semver.Version.Equals for version comparison in NeedsVersionResourceOption and loadPackageSchema
+component: codegen/pcl
+kind: fix
+body: use strict semver.Parse and semver.Version.Equals for version comparison in NeedsVersionResourceOption and loadPackageSchema
+time: 2026-06-08T05:40:00.000000+00:00
+custom:
+    PR: "23441"
