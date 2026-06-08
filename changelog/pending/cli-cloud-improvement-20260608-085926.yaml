@@ -1,0 +1,6 @@
+component: cli/cloud
+kind: improvement
+body: Fix left padding in the welcome message and update the auto-naming docs link
+time: 2026-06-08T08:59:26-07:00
+custom:
+    PR: ""
