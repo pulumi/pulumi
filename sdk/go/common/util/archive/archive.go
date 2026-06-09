@@ -114,6 +114,12 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 
 // ExtractTGZ uncompresses a .tar.gz/.tgz file into a specific directory.
 func ExtractTGZ(r io.Reader, dir string) error {
+	// Convert to absolute path so that path traversal checks in extractFile are reliable.
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("resolving destination path: %w", err)
+	}
+
 	gzr, err := gzip.NewReader(r)
 	if err != nil {
 		return fmt.Errorf("uncompressing: %w", err)
@@ -129,7 +135,7 @@ func ExtractTGZ(r io.Reader, dir string) error {
 			return fmt.Errorf("extracting: %w", err)
 		}
 
-		if err = extractFile(tr, header, dir); err != nil {
+		if err = extractFile(tr, header, absDir); err != nil {
 			return err
 		}
 	}

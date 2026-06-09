@@ -291,3 +291,29 @@ func TestExtractTGZRejectsPathTraversal(t *testing.T) {
 		})
 	}
 }
+
+//nolint:paralleltest // t.Chdir() requires sequential test execution
+func TestExtractTGZRelativePathWithEscape(t *testing.T) {
+	// Test that path traversal is caught even when passing a relative destination path.
+	// This ensures the absolute path conversion in ExtractTGZ is working.
+	tarball := buildTGZ(t, map[string][]byte{
+		"../../../../escape.txt": []byte("malicious"),
+	})
+
+	// Create a temp directory and use a relative path.
+	parent := t.TempDir()
+	dest := filepath.Join(parent, "dest")
+	require.NoError(t, os.Mkdir(dest, 0o700))
+
+	t.Chdir(parent)
+
+	// Extract using relative path "dest".
+	err := ExtractTGZ(bytes.NewReader(tarball), "dest")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "escapes destination directory")
+
+	// Verify no file was written outside dest.
+	escaped, err := filepath.Glob("escape.txt")
+	require.NoError(t, err)
+	assert.Empty(t, escaped, "file escaped destination directory using relative path")
+}
