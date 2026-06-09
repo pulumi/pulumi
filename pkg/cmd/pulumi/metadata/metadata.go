@@ -71,6 +71,10 @@ func GetLanguageRuntimeMetadata(
 	proj *workspace.Project,
 ) *promise.Promise[map[string]string] {
 	return promise.Run(func() (map[string]string, error) {
+		if proj.Runtime.Name() == "" {
+			return map[string]string{}, nil
+		}
+
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		pwd, main, pctx, err := engine.ProjectInfoContext(
 			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)

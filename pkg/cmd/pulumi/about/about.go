@@ -154,32 +154,34 @@ func getSummaryAbout(
 				result.Plugins = plugins
 			}
 
-			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
-			if err != nil {
-				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
-			} else {
-				programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
-				aboutResponse, err := lang.About(ctx, programInfo)
+			if proj.Runtime.Name() != "" {
+				lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
 				if err != nil {
-					addError(err, "Failed to get information about the project runtime")
+					addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 				} else {
-					result.Runtime = &projectRuntimeAbout{
-						other:      aboutResponse.Metadata,
-						Language:   proj.Runtime.Name(),
-						Executable: aboutResponse.Executable,
-						Version:    aboutResponse.Version,
+					programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
+					aboutResponse, err := lang.About(ctx, programInfo)
+					if err != nil {
+						addError(err, "Failed to get information about the project runtime")
+					} else {
+						result.Runtime = &projectRuntimeAbout{
+							other:      aboutResponse.Metadata,
+							Language:   proj.Runtime.Name(),
+							Executable: aboutResponse.Executable,
+							Version:    aboutResponse.Version,
+						}
 					}
-				}
 
-				deps, err := lang.GetProgramDependencies(ctx, programInfo, transitiveDependencies)
-				if err != nil {
-					addError(err, "Failed to get information about the Pulumi program's dependencies")
-				} else {
-					result.Dependencies = make([]programDependencyAbout, len(deps))
-					for i, dep := range deps {
-						result.Dependencies[i] = programDependencyAbout{
-							Name:    dep.Name,
-							Version: dep.Version,
+					deps, err := lang.GetProgramDependencies(ctx, programInfo, transitiveDependencies)
+					if err != nil {
+						addError(err, "Failed to get information about the Pulumi program's dependencies")
+					} else {
+						result.Dependencies = make([]programDependencyAbout, len(deps))
+						for i, dep := range deps {
+							result.Dependencies[i] = programDependencyAbout{
+								Name:    dep.Name,
+								Version: dep.Version,
+							}
 						}
 					}
 				}
@@ -618,6 +620,10 @@ func (runtime projectRuntimeAbout) String() string {
 func getProjectPluginsSilently(
 	ctx *plugin.Context, proj *workspace.Project, pwd, main string,
 ) ([]workspace.PluginDescriptor, error) {
+	if proj.Runtime.Name() == "" {
+		return nil, nil
+	}
+
 	_, w, err := os.Pipe()
 	if err != nil {
 		return nil, err
