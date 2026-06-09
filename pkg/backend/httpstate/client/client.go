@@ -290,6 +290,7 @@ func (pc *Client) WithRefresh(
 	if refreshToken == "" {
 		return pc
 	}
+	contract.Requiref(writeback != nil, "writeback", "must not be nil when refreshToken is non-empty")
 	initial, _ := pc.apiToken.Get(context.Background())
 	pc.apiToken = &refreshableAPIAccessToken{
 		accessToken:  initial,

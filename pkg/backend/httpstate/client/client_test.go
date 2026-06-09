@@ -2065,4 +2065,14 @@ func TestClient_WithRefresh(t *testing.T) {
 		_, isRefreshable := pc.apiToken.(refreshable)
 		assert.False(t, isRefreshable, "an empty refresh token must not swap in a refreshable wrapper")
 	})
+
+	t.Run("nil writeback with non-empty refresh token fails the precondition", func(t *testing.T) {
+		t.Parallel()
+
+		// A non-empty refresh token without a writeback is a programmer error — a refresh would
+		// crash at call time. Catch it at the wiring site, where the violated precondition can
+		// be named, rather than waiting for the first 401.
+		pc := NewClient("https://api.example.com", "tok", false, nil)
+		assert.Panics(t, func() { pc.WithRefresh("some-refresh", nil) })
+	})
 }
