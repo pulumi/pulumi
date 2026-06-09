@@ -133,17 +133,18 @@ func selectLogsToRemove(
 		return []logEntry{entry}, nil
 	}
 
-	entries, err := listLogs(logsDir)
-	if err != nil {
-		return nil, err
-	}
-
 	var beforeTime *time.Time
 	if before != "" {
+		var err error
 		beforeTime, err = parseSince(before, time.Now())
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse --before as duration or timestamp: %w", err)
 		}
+	}
+
+	entries, err := listLogs(logsDir)
+	if err != nil {
+		return nil, err
 	}
 
 	return filterLogs(entries, stackName, beforeTime), nil
