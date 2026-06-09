@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	escEncoding "github.com/pulumi/esc/syntax/encoding"
 	"gopkg.in/yaml.v3"
@@ -113,6 +112,8 @@ type escConfigEditor struct {
 	envName    string
 	doc        yaml.Node
 	etag       string
+	// version is the pinned revision/tag read at (empty for latest); non-empty makes Save refuse to write.
+	version string
 }
 
 func newESCConfigEditor(ctx context.Context, stack backend.Stack) (*escConfigEditor, error) {
@@ -131,14 +132,15 @@ func newESCConfigEditor(ctx context.Context, stack backend.Stack) (*escConfigEdi
 	if ref == nil {
 		return nil, errors.New("stack is configured for remote config but has no linked environment")
 	}
-	// The linked env ref has the form "<project>/<name>" and may carry an "@version" suffix.
-	envRef, _, _ := strings.Cut(*ref, "@")
-	envProject, envName, found := strings.Cut(envRef, "/")
-	if !found {
-		return nil, fmt.Errorf("invalid environment reference %q: expected <project>/<name>", *ref)
+	envProject, envName, err := splitEnvRef(*ref)
+	if err != nil {
+		return nil, err
 	}
+	// Read at the pinned revision/tag when the ref carries one, else latest. Save still guards against
+	// writing to a pinned version regardless.
+	version := envRefVersion(*ref)
 
-	def, etag, _, err := envBackend.GetEnvironment(ctx, orgName, envProject, envName, "", false)
+	def, etag, _, err := envBackend.GetEnvironment(ctx, orgName, envProject, envName, version, false)
 	if err != nil {
 		return nil, fmt.Errorf("getting environment definition: %w", err)
 	}
@@ -160,6 +162,7 @@ func newESCConfigEditor(ctx context.Context, stack backend.Stack) (*escConfigEdi
 		envName:    envName,
 		doc:        doc,
 		etag:       etag,
+		version:    version,
 	}, nil
 }
 
@@ -204,6 +207,11 @@ func (e *escConfigEditor) Remove(_ context.Context, key config.Key, path bool) e
 }
 
 func (e *escConfigEditor) Save(ctx context.Context) error {
+	if e.version != "" {
+		return fmt.Errorf("the stack's configuration is pinned to %s/%s@%s; "+
+			"run `pulumi config env pin latest` to unpin before making changes",
+			e.envProject, e.envName, e.version)
+	}
 	newYAML, err := yaml.Marshal(e.doc.Content[0])
 	if err != nil {
 		return fmt.Errorf("marshaling definition: %w", err)

@@ -401,6 +401,10 @@ func newConfigRmCmd(ws pkgWorkspace.Context, stack *string, configFile *string) 
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
+			if err := rejectIfPinned(stack, *configFile); err != nil {
+				return err
+			}
+
 			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, stack, *configFile)
 			if err != nil {
 				return err
@@ -467,6 +471,10 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string, configFile *strin
 				*configFile,
 			)
 			if err != nil {
+				return err
+			}
+
+			if err := rejectIfPinned(stack, *configFile); err != nil {
 				return err
 			}
 
@@ -775,6 +783,10 @@ func (c *configSetCmd) Run(
 		}
 	}
 
+	if err := rejectIfPinned(s, configFile); err != nil {
+		return err
+	}
+
 	ps, err := c.LoadProjectStack(ctx, cmdutil.Diag(), project, s, configFile)
 	if err != nil {
 		return err
@@ -889,6 +901,10 @@ func newConfigSetAllCmd(
 				*configFile,
 			)
 			if err != nil {
+				return err
+			}
+
+			if err := rejectIfPinned(stack, *configFile); err != nil {
 				return err
 			}
 

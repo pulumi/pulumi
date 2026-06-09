@@ -568,6 +568,39 @@ func TestESCConfigEditorStripsEnvVersion(t *testing.T) {
 	require.Equal(t, "myenv", gotName)
 }
 
+// TestESCConfigEditorPinnedVersion verifies the editor reads the pinned revision when the stack's
+// linked ref carries an @version, and that Save refuses to write to a pinned environment.
+func TestESCConfigEditorPinnedVersion(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	var gotVersion string
+	env := "testProject/testStack@5"
+	be := &backend.MockEnvironmentsBackend{
+		GetEnvironmentF: func(_ context.Context, _, _, _, version string, _ bool) ([]byte, string, int, error) {
+			gotVersion = version
+			return []byte("values:\n  pulumiConfig: {}\n"), "etag", 0, nil
+		},
+	}
+	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{NameV: tokens.MustParseStackName("testStack")}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &env}
+		},
+		OrgNameF: func() string { return "org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	editor, err := newConfigEditor(ctx, s, &workspace.ProjectStack{}, config.NopEncrypter, "")
+	require.NoError(t, err)
+	require.Equal(t, "5", gotVersion, "the editor must read the pinned revision, not the latest")
+
+	require.NoError(t, editor.Set(ctx, config.MustMakeKey("testProject", "k"), config.NewValue("v"), false))
+	require.ErrorContains(t, editor.Save(ctx), "pinned", "Save must refuse to write to a pinned environment")
+}
+
 // TestESCConfigEditorSecureObject covers the set-all --json objectValue+secret path: a secure object
 // value set with path=true must upload as fn::secret wrapping the native object (not a stringified
 // blob, not plaintext).
