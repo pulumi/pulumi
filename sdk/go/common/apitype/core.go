@@ -692,8 +692,8 @@ type OperationStatus struct {
 }
 
 // ExtensionRef identifies an extension parameterization within a deployment. Its
-// value is the package reference RegisterPackage returns to the SDK — an opaque
-// UUID, not a content hash or a name/version tuple — and it keys the deployment's
+// value is the package reference RegisterPackage returns to the SDK: an opaque
+// UUID (not a content hash or a name/version tuple). It keys the deployment's
 // Extensions map.
 type ExtensionRef string
 

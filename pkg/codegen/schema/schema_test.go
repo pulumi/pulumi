@@ -3108,23 +3108,34 @@ func TestBindParameterizedExternals(t *testing.T) {
 func TestBindExtensionParameterized(t *testing.T) {
 	t.Parallel()
 
-	testdataPath := filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("parameterized-schemas/extensionref-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
-		AllowDanglingReferences: true,
-	})
+	const schema = `{
+  "name": "extensionref",
+  "version": "1.0.0",
+  "resources": {
+    "extensionref:index:Root": {
+      "type": "object",
+      "properties": { "data": { "type": "string" } }
+    }
+  },
+  "extensionParameterization": {
+    "baseProvider": { "name": "test-base", "version": "1.0.0" },
+    "parameter": "dGVzdA=="
+  }
+}`
+	var pkgSpec PackageSpec
+	require.NoError(t, json.Unmarshal([]byte(schema), &pkgSpec))
+
+	pkg, diags, err := BindSpec(pkgSpec, nil, ValidationOptions{AllowDanglingReferences: true})
 	require.NoError(t, err)
 	require.NotNil(t, pkg.ExtensionParameterization)
 	assert.Empty(t, diags)
+
 	newSpec, err := pkg.MarshalSpec()
 	require.NoError(t, err)
 	require.NotNil(t, newSpec)
 
-	// Try and bind again
-	pkg2, diags, err := BindSpec(*newSpec, loader, ValidationOptions{
-		AllowDanglingReferences: true,
-	})
+	// Bind the round-tripped spec again to confirm the extension parameterization survives.
+	pkg2, diags, err := BindSpec(*newSpec, nil, ValidationOptions{AllowDanglingReferences: true})
 	require.NoError(t, err)
 	require.NotNil(t, pkg2.ExtensionParameterization)
 	assert.Empty(t, diags)
@@ -3678,7 +3689,7 @@ func TestBindSpecRejectsBothParameterizationFlavors(t *testing.T) {
 	var found bool
 	for _, d := range diags {
 		if d.Severity == hcl.DiagError &&
-			strings.Contains(d.Summary, "may not declare both parameterization and extensionParameterization") {
+			strings.Contains(d.Summary, "both parameterization and extensionParameterization") {
 			found = true
 			break
 		}

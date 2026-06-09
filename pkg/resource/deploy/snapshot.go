@@ -81,12 +81,9 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 	}
 }
 
-// MaterializeExtensions builds the Extensions map for a snapshot. For each
-// distinct ExtensionRef referenced by resources, it takes the blob from live
-// (parameterizations registered during this run), falling back to base for refs
-// carried over from the prior snapshot. Refs no resource references are dropped;
-// any ref that resolves to no blob is returned in missing.
-func MaterializeExtensions(
+// MapExtensions builds the Extensions map for a snapshot. Any referenced
+// ExtensionRef that resolves to no blob is returned in missing.
+func MapExtensions(
 	resources []*resource.State,
 	live map[apitype.ExtensionRef]apitype.Extension,
 	base *Snapshot,

@@ -270,9 +270,8 @@
             "title":"PackageSpec",
             "type":"object",
             "additionalProperties":false,
-            "oneOf":[
-                {"required":["source"]},
-                {"required":["base"]}
+            "required":[
+                "source"
             ],
             "properties":{
                 "source":{
@@ -300,13 +299,6 @@
                     "additionalProperties": {
                         "type": "string"
                     }
-                },
-                "base":{
-                    "oneOf":[
-                        {"type":"string"},
-                        {"$ref":"#/$defs/packageSpec"}
-                    ],
-                    "description":"For an extension package, the base provider it extends"
                 },
                 "extensions":{
                     "type":"array",

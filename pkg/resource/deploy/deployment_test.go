@@ -15,7 +15,6 @@
 package deploy
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -24,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -148,30 +148,40 @@ func TestLookupOrRegisterExtension(t *testing.T) {
 	extensionA := apitype.ExtensionRef("extension-a")
 	extensionB := apitype.ExtensionRef("extension-b")
 
-	// First call: nothing registered yet -> we get a CompletionSource to fulfill.
-	existing1, created1 := d.LookupOrRegisterExtension(provA, extensionA)
-	require.Nil(t, existing1, "first call should not return an existing promise")
-	require.NotNil(t, created1, "first call should return a fresh CompletionSource")
+	// makeStep captures the CompletionSource the first caller is handed.
+	var firstCTS *promise.CompletionSource[struct{}]
+	makeStep := func(cts *promise.CompletionSource[struct{}]) Step {
+		firstCTS = cts
+		return &ExtensionParameterizeStep{}
+	}
 
-	// Second call for the same (provider, ref): we get the existing promise to wait on.
-	// The CompletionSource is nil because we are NOT the one doing the work.
-	existing2, created2 := d.LookupOrRegisterExtension(provA, extensionA)
-	require.Nil(t, created2, "duplicate registration must not mint a second CompletionSource")
-	require.NotNil(t, existing2, "duplicate registration must hand back the in-flight promise")
+	// First call: nothing registered yet -> makeStep runs and we get a step to emit.
+	step1, promise1 := d.LookupOrRegisterExtension(provA, extensionA, makeStep)
+	require.NotNil(t, step1, "first call should return a step to emit")
+	require.NotNil(t, promise1)
+	require.NotNil(t, firstCTS, "first call should hand makeStep a CompletionSource")
 
-	// Verify the returned promise is the one tied to our original CompletionSource:
-	// fulfilling created should make existing2 resolve.
-	created1.MustFulfill(struct{}{})
-	_, err := existing2.Result(context.Background())
-	require.NoError(t, err, "existing promise should resolve after the first caller fulfills")
+	// Second call for the same (provider, ref): no step, and makeStep must not run.
+	calledAgain := false
+	step2, promise2 := d.LookupOrRegisterExtension(provA, extensionA,
+		func(*promise.CompletionSource[struct{}]) Step {
+			calledAgain = true
+			return nil
+		})
+	require.Nil(t, step2, "duplicate registration must not emit a second step")
+	require.False(t, calledAgain, "duplicate registration must not invoke makeStep")
+	require.NotNil(t, promise2, "duplicate registration must hand back the in-flight promise")
 
-	// Different ref under the same provider -> separate entry, new CompletionSource.
-	existingY, createdY := d.LookupOrRegisterExtension(provA, extensionB)
-	require.Nil(t, existingY)
-	require.NotNil(t, createdY, "different ref under same provider must be tracked independently")
+	// Fulfilling the first caller's CompletionSource resolves the duplicate's promise.
+	firstCTS.MustFulfill(struct{}{})
+	_, err := promise2.Result(t.Context())
+	require.NoError(t, err, "duplicate's promise should resolve after the first caller fulfills")
 
-	// Same ref under a different provider -> separate entry, new CompletionSource.
-	existingB, createdB := d.LookupOrRegisterExtension(provB, extensionA)
-	require.Nil(t, existingB)
-	require.NotNil(t, createdB, "same ref under a different provider must be tracked independently")
+	// Different ref under the same provider -> separate entry, its own step.
+	stepY, _ := d.LookupOrRegisterExtension(provA, extensionB, makeStep)
+	require.NotNil(t, stepY, "different ref under same provider must be tracked independently")
+
+	// Same ref under a different provider -> separate entry, its own step.
+	stepB, _ := d.LookupOrRegisterExtension(provB, extensionA, makeStep)
+	require.NotNil(t, stepB, "same ref under a different provider must be tracked independently")
 }

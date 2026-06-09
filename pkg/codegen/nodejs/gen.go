@@ -2763,9 +2763,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 		}
 	}
 
-	// Extension-parameterized packages don't get their own Provider class — they
-	// reuse the base provider their extension was applied to.
-	if pkg.ExtensionParameterization == nil && pkg.Provider != nil {
+	// Extension-parameterized packages don't get their own Provider class.
+	if pkg.ExtensionParameterization == nil {
 		scanResource(pkg.Provider)
 	}
 	for _, r := range pkg.Resources {

@@ -1221,7 +1221,9 @@ type previewActions struct {
 }
 
 func isInternalStep(step deploy.Step) bool {
-	if step.Op() == deploy.OpRemovePendingReplace || step.Op() == deploy.OpExtendParameterize || isDefaultProviderStep(step) {
+	if step.Op() == deploy.OpRemovePendingReplace ||
+		step.Op() == deploy.OpExtendParameterize ||
+		isDefaultProviderStep(step) {
 		return true
 	}
 	refreshStep, ok := step.(*deploy.RefreshStep)

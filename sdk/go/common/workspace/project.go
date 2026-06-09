@@ -133,7 +133,7 @@ type PackageSpec struct {
 	// When marshaling, prefer to unmarshal without the <name>@<version> shorthand.
 	unmarshalledFromFull bool
 
-	// CLI args passed to the extension's Parameterize call. Tis must be implemented in the provider.
+	// CLI args passed to the extension's Parameterize call. This must be implemented in the provider.
 	Extensions []string
 }
 

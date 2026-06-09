@@ -744,9 +744,8 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 	rm.packageRefLock.Lock()
 	defer rm.packageRefLock.Unlock()
 
-	// Extension calls dedup by content hash: identical (base, extension) pairs always
-	// produce the same ref, and pairs differing only in the extension produce different
-	// refs. Replacement / plain calls dedup by ProviderRequest as before.
+	// Dedup the ref: extensions key on their (base, extension) content, replacement
+	// and plain calls on ProviderRequest.
 	if req.Extension != nil {
 		extension := apitype.Extension{
 			Name:    req.Extension.Name,
@@ -803,10 +802,10 @@ func (rm *resmon) lookupPackageRef(ref string) (providers.ProviderRequest, bool)
 	return req, has
 }
 
-// ensureExtensionParameterizedForConstruct calls Parameterize on provider for
-// the extension behind packageRef if it has not been called for this
-// (providerRef, packageRef) pair yet. Remote-component Construct bypasses the
-// step generator, so this is the only place that lazy parameterization fires.
+// ensureExtensionParameterizedForConstruct parameterizes the extension behind
+// packageRef on provider, once per (providerRef, packageRef) pair. Regular
+// resources are parameterized via the step generator, but remote-component
+// Construct bypasses it — so for those, this is where it happens.
 func (rm *resmon) ensureExtensionParameterizedForConstruct(
 	ctx context.Context, provider plugin.Provider,
 	providerRef sdkproviders.Reference, packageRef string,

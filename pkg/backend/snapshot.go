@@ -203,9 +203,8 @@ func (sm *SnapshotManager) doExtendParameterize(step deploy.Step) (engine.Snapsh
 	return &noopSnapshotMutation{}, nil
 }
 
-// noopSnapshotMutation reports no resource-state change. ExtensionParameterizeStep uses it because
-// its work (calling Parameterize on a plugin) is a side effect on the plugin process, not
-// a mutation of any resource in the snapshot.
+// noopSnapshotMutation records nothing. ExtensionParameterizeStep returns one
+// because parameterizing a plugin changes the plugin process, not the snapshot.
 type noopSnapshotMutation struct{}
 
 func (*noopSnapshotMutation) End(_ deploy.Step, _ bool) error { return nil }
@@ -777,7 +776,7 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 
 	manifest.Magic = manifest.NewMagic()
 
-	snapExtensions, missing := deploy.MaterializeExtensions(resources, sm.extensions, sm.baseSnapshot)
+	snapExtensions, missing := deploy.MapExtensions(resources, sm.extensions, sm.baseSnapshot)
 	contract.Assertf(len(missing) == 0, "snapshot references unknown extensions: %v", missing)
 
 	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets, snapExtensions)

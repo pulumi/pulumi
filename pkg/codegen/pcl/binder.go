@@ -1013,11 +1013,10 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 	return packageDescriptors, diagnostics
 }
 
-// declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an
-// appropriate diagnostic.
-// findExtensionDescriptorForBase finds the extension descriptor whose base
-// provider matches base. Extension tokens use the base name; descriptors are
-// keyed by the extension's parameterized name.
+// findExtensionDescriptorForBase returns the parameterized descriptor that
+// extends the given base provider, if any. Extension resources are tokenized
+// under the base provider's name (e.g. "extbase:index:Greeting"), so a token in
+// the base namespace is resolved by loading the schema of whatever extends it.
 func (b *binder) findExtensionDescriptorForBase(base string) (*schema.PackageDescriptor, bool) {
 	for _, descriptor := range b.packageDescriptors {
 		if descriptor.Parameterization != nil && descriptor.Name == base {
@@ -1027,6 +1026,8 @@ func (b *binder) findExtensionDescriptorForBase(base string) (*schema.PackageDes
 	return nil, false
 }
 
+// declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an
+// appropriate diagnostic.
 func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 	if !b.root.Define(name, n) {
 		existing, _ := b.root.BindReference(name)

@@ -698,7 +698,7 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 	}
 
 	server := pulumiPlugin.Server
-	convert := func(p *plugin.PulumiParameterizationJSON) *pulumirpc.PackageParameterization {
+	toProtoParameterization := func(p *plugin.PulumiParameterizationJSON) *pulumirpc.PackageParameterization {
 		if p == nil {
 			return nil
 		}
@@ -714,8 +714,8 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 		Version:          version,
 		Kind:             "resource",
 		Server:           server,
-		Parameterization: convert(pulumiPlugin.Parameterization),
-		Extension:        convert(pulumiPlugin.ExtensionParameterization),
+		Parameterization: toProtoParameterization(pulumiPlugin.Parameterization),
+		Extension:        toProtoParameterization(pulumiPlugin.ExtensionParameterization),
 	}
 
 	return pkg, nil

@@ -15,7 +15,6 @@
 package backend
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -39,7 +38,7 @@ func TestJournalExtensionParameterizeRoundTrip(t *testing.T) {
 		Extension:    &ext,
 	}
 
-	serialized, err := SerializeJournalEntry(context.Background(), engineEntry, config.NopEncrypter)
+	serialized, err := SerializeJournalEntry(t.Context(), engineEntry, config.NopEncrypter)
 	require.NoError(t, err)
 	assert.Equal(t, apitype.JournalEntryKindExtensionParameterize, serialized.Kind)
 	require.NotNil(t, serialized.ExtensionRef)

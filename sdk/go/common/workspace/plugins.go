@@ -968,13 +968,12 @@ type PackageDescriptor struct {
 	PluginDescriptor
 
 	// An optional replacement parameterization to apply to the providing plugin
-	// to produce the package. Mutually exclusive with ExtensionParameterization.
+	// to produce the package.
 	Parameterization *Parameterization
 
 	// An optional extension parameterization to apply to the providing plugin to
 	// produce the package. Extension parameterizations share the base plugin's
-	// source and are not separate providers. Mutually exclusive with
-	// Parameterization.
+	// source and are not separate providers.
 	ExtensionParameterization *Parameterization
 }
 
@@ -996,27 +995,24 @@ func NewPackageDescriptor(spec PluginDescriptor, parameterization *Parameterizat
 	}
 }
 
-// effectiveParameterization returns whichever of Parameterization or
-// ExtensionParameterization is set, or nil if neither is.
-func (pd PackageDescriptor) effectiveParameterization() *Parameterization {
-	if pd.Parameterization != nil {
-		return pd.Parameterization
-	}
-	return pd.ExtensionParameterization
-}
-
 // PackageName returns the name of the package.
 func (pd PackageDescriptor) PackageName() string {
-	if p := pd.effectiveParameterization(); p != nil {
-		return p.Name
+	if pd.Parameterization != nil {
+		return pd.Parameterization.Name
+	}
+	if pd.ExtensionParameterization != nil {
+		return pd.ExtensionParameterization.Name
 	}
 	return pd.Name
 }
 
 // PackageVersion returns the version of the package.
 func (pd PackageDescriptor) PackageVersion() *semver.Version {
-	if p := pd.effectiveParameterization(); p != nil {
-		return &p.Version
+	if pd.Parameterization != nil {
+		return &pd.Parameterization.Version
+	}
+	if pd.ExtensionParameterization != nil {
+		return &pd.ExtensionParameterization.Version
 	}
 	return pd.Version
 }
@@ -1024,9 +1020,10 @@ func (pd PackageDescriptor) PackageVersion() *semver.Version {
 func (pd PackageDescriptor) String() string {
 	name := pd.Name
 	version := pd.Version
-	if p := pd.effectiveParameterization(); p != nil {
-		name = p.Name
-		version = &p.Version
+	if pd.Parameterization != nil {
+		name, version = pd.Parameterization.Name, &pd.Parameterization.Version
+	} else if pd.ExtensionParameterization != nil {
+		name, version = pd.ExtensionParameterization.Name, &pd.ExtensionParameterization.Version
 	}
 
 	var v string
@@ -1070,8 +1067,6 @@ func SortPackageDescriptors(x PackageDescriptor, y PackageDescriptor) int {
 }
 
 // A Parameterization may be applied to a supporting plugin to yield a package.
-// Replacement vs. extension is encoded by which field on PackageDescriptor holds
-// the parameterization, not by a discriminator on this struct.
 type Parameterization struct {
 	// The name of the package that will be produced by the parameterization.
 	Name string

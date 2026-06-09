@@ -690,23 +690,18 @@ func installPlugin(
 	return nil
 }
 
-// replacementParamName returns the name of a replacement parameterization on a
-// descriptor, or "" if the descriptor has no replacement parameterization.
-// Extension parameterization is ignored here: an extension extends its base
-// plugin in place rather than forming a separate source.
-func replacementParamName(pd workspace.PackageDescriptor) string {
-	if pd.Parameterization == nil {
-		return ""
-	}
-	return pd.Parameterization.Name
-}
-
-// samePluginSource reports whether two descriptors resolve to the same plugin:
-// same binary Name and the same replacement parameterization, if any. A bridge
+// samePackage reports whether two descriptors resolve to the same package: the
+// same plugin binary and the same replacement parameterization, if any. A bridge
 // parameterized as "scaleway" and a native "scaleway" provider are different
-// sources; an extension and its plain base are the same source.
-func samePluginSource(a, b workspace.PackageDescriptor) bool {
-	return a.Name == b.Name && replacementParamName(a) == replacementParamName(b)
+// packages.
+func samePackage(a, b workspace.PackageDescriptor) bool {
+	replacementName := func(pd workspace.PackageDescriptor) string {
+		if pd.Parameterization == nil {
+			return ""
+		}
+		return pd.Parameterization.Name
+	}
+	return a.Name == b.Name && replacementName(a) == replacementName(b)
 }
 
 // describePluginSource returns a human-readable description of a plugin that
@@ -806,10 +801,19 @@ func computeDefaultProviderPackages(
 			continue
 		}
 
+		if p.ExtensionParameterization != nil {
+			// Extensions reuse their base provider, so they don't get a default provider
+			// of their own: extension resources register against an explicit package ref,
+			// and the base plugin is installed via the plugin set, not from here.
+			logging.V(preparePluginVerboseLog).Infof(
+				"computeDefaultProviderPlugins(): skipping extension package %s", p.PackageName())
+			continue
+		}
+
 		name := tokens.Package(p.PackageName())
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
-			if !samePluginSource(seenPlugin, p) {
+			if !samePackage(seenPlugin, p) {
 				return nil, ambigiousPluginSourceError{name, seenPlugin, p}
 			}
 

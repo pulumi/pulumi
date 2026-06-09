@@ -2277,7 +2277,7 @@ type PackageInfoSpec struct {
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 
 	// ExtensionParameterization is the optional extension parameterization for this package.
-	ExtensionParameterization *ParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"`
+	ExtensionParameterization *ParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"` //nolint:lll
 }
 
 // BaseProviderSpec is the serializable description of a Pulumi base provider.
@@ -2358,7 +2358,7 @@ type PackageSpec struct {
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 
 	// ExtensionParameterization is the optional extension-parameterization for the package, if any.
-	ExtensionParameterization *ParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"`
+	ExtensionParameterization *ParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"` //nolint:lll
 }
 
 func (p *PackageSpec) Info() PackageInfoSpec {

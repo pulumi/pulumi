@@ -194,7 +194,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 
 	// A missing blob can't happen here — extension resources only enter the
 	// journal alongside their ExtensionParameterizeStep — so drop the missing list.
-	snapExtensions, _ := deploy.MaterializeExtensions(filteredResources, liveExtensions, base)
+	snapExtensions, _ := deploy.MapExtensions(filteredResources, liveExtensions, base)
 
 	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets, snapExtensions)
 	normSnap, err := snap.NormalizeURNReferences()

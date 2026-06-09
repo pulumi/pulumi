@@ -443,7 +443,7 @@ func SchemaFromSchemaSource(
 	if parameterizationName != "" {
 		switch {
 		case spec.Parameterization != nil && spec.ExtensionParameterization != nil:
-			return nil, nil, fmt.Errorf(
+			return nil, nil, errors.New(
 				"provider returned schema with both parameterization and extensionParameterization blocks; " +
 					"the provider must emit exactly one")
 		case spec.Parameterization == nil && spec.ExtensionParameterization == nil:

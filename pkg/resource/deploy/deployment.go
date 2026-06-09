@@ -395,30 +395,29 @@ func (d *Deployment) PostStepError() error {
 }
 
 // LookupOrRegisterExtension is the atomic dedup point for extension parameterization.
-// If the (provider, ref) pair is already in flight or done, returns the existing Promise
-// (caller should wait on it) and a nil CompletionSource.
-// If the pair is not yet registered, atomically records a new in-flight entry and returns
-// the CompletionSource. The caller MUST eventually call Fulfill or Reject on it — the
-// caller is now responsible for performing the parameterize work and signaling completion.
-// Exactly one of the returned values is non-nil.
+// It returns a promise for the parameterization of extension ref on provider; callers
+// wait on it and never touch the underlying CompletionSource.
+//
+// The first caller for a (provider, ref) pair has makeStep called with the
+// CompletionSource the resulting step must fulfill, and that step is returned to be
+// emitted. Later callers for the same pair get the same promise and a nil step.
 func (d *Deployment) LookupOrRegisterExtension(
 	provider sdkproviders.Reference, ref apitype.ExtensionRef,
-) (existing *promise.Promise[struct{}], created *promise.CompletionSource[struct{}]) {
+	makeStep func(*promise.CompletionSource[struct{}]) Step,
+) (Step, *promise.Promise[struct{}]) {
 	d.extensionsM.Lock()
 	defer d.extensionsM.Unlock()
-	// if the extension is already registered, return Done
 	for _, e := range d.extensions[provider] {
 		if e.ref == ref {
-			return e.done.Promise(), nil
+			return nil, e.done.Promise()
 		}
 	}
-	// if it is not registered,  record a new in-flight entry and return its CompletionSource.
 	completionSource := &promise.CompletionSource[struct{}]{}
 	d.extensions[provider] = append(d.extensions[provider], inFlightExtension{
 		ref:  ref,
 		done: completionSource,
 	})
-	return nil, completionSource
+	return makeStep(completionSource), completionSource.Promise()
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version

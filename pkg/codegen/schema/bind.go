@@ -632,13 +632,8 @@ func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	for _, prefix := range spec.AllowedPackageNames {
 		allowedNameSpecs[prefix] = nil
 	}
-	// Parameterized schemas may reference tokens in the base provider's namespace;
-	// extension parameterizations do this by design (the SDK is renamed but tokens
-	// stay under the base name) and replacement schemas don't tend to but it's
-	// harmless to allow.
-	if spec.Parameterization != nil {
-		allowedNameSpecs[spec.Parameterization.BaseProvider.Name] = nil
-	}
+	// Extension parameterizations keep their resource tokens under the base
+	// provider's namespace (the SDK is renamed, the tokens are not), so allow it.
 	if spec.ExtensionParameterization != nil {
 		allowedNameSpecs[spec.ExtensionParameterization.BaseProvider.Name] = nil
 	}
@@ -1958,14 +1953,16 @@ func bindMethods(
 }
 
 // validateParameterizationExclusivity returns a diagnostic if a spec declares
-// both parameterization flavors; a package may declare at most one.
+// both parameterization flavors. Combining replacement and extension
+// parameterization is not supported yet, so a package may currently declare at
+// most one; relax this guard once the two can coexist.
 func validateParameterizationExclusivity(
 	parameterization, extensionParameterization *ParameterizationSpec,
 ) hcl.Diagnostics {
 	if parameterization != nil && extensionParameterization != nil {
 		return hcl.Diagnostics{errorf(
 			"#/parameterization",
-			"package may not declare both parameterization and extensionParameterization; choose one")}
+			"declaring both parameterization and extensionParameterization is not supported yet; declare one")}
 	}
 	return nil
 }

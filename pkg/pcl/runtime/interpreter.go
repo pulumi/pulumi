@@ -646,11 +646,11 @@ func PackageNameFromToken(token string) (string, error) {
 }
 
 func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
-	pkgName, err := PackageNameFromToken(token)
+	tokenPackage, err := PackageNameFromToken(token)
 	if err != nil {
 		return "", err
 	}
-	return i.packageRefs[pkgName], nil
+	return i.packageRefs[tokenPackage], nil
 }
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {

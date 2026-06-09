@@ -15,31 +15,29 @@
 package constrictor
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/spf13/cobra"
 )
 
-// AddExtensionFlag registers the shared --extension flag on cmd, binding it to
-// target. Commands that accept a parameterized provider use it to request the
-// extension shape (served by the base provider) rather than a replacement.
+// AddExtensionFlag registers the shared --extension flag, binding it to target.
+// Setting it requests the package's extension shape (served by the base provider)
+// instead of a replacement.
 func AddExtensionFlag(cmd *cobra.Command, target *bool) {
 	cmd.Flags().BoolVar(target, "extension", false,
 		"Add the package as an extension of its base provider, not a replacement")
 }
 
-// ExtensionArgs returns the extension parameters from the command's positional
-// args (args[0] is the source).
+// ExtensionArgs returns the package parameters from the positional args, where
+// args[0] is the source.
 //
-// Without asExtension, every token after the source is returned unchanged.
+// Without asExtension, every token after the source is returned. With asExtension
+// the parameters must come after `--`:
 //
-// With asExtension, extension parameters go after `--`:
+//	<source> --extension -- <parameter>...
 //
-//	<source> --extension -- <extension-parameter>...
-//
-// The positional slot before `--` is for replacement parameters. Combining
-// replacement and extension parameters isn't supported yet, so that slot is
-// rejected for now; the source and the command's flags are unaffected.
+// The slot before `--` is reserved for replacement parameters, which can't be
+// combined with an extension yet, so it's rejected for now.
 func ExtensionArgs(cmd *cobra.Command, args []string, asExtension bool) ([]string, error) {
 	if !asExtension {
 		return args[1:], nil
@@ -47,9 +45,8 @@ func ExtensionArgs(cmd *cobra.Command, args []string, asExtension bool) ([]strin
 	// With --extension every parameter goes after `--`; nothing may sit between the
 	// provider and the `--`. (That slot is reserved for replacement parameters, which
 	// can't be combined with an extension yet.)
-	paramsMustFollowDash := fmt.Errorf(
-		"with --extension, parameters must come after '--', as in: " +
-			"'<provider> --extension -- <parameter>...'",
+	paramsMustFollowDash := errors.New("with --extension, parameters must come after '--', as in: " +
+		"'<provider> --extension -- <parameter>...'",
 	)
 	split := cmd.ArgsLenAtDash()
 	if split < 0 {

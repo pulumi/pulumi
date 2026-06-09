@@ -1003,11 +1003,9 @@ func TestStepGenerator(t *testing.T) {
 	t.Run("generateSteps emits ExtensionParameterizeStep for an extension event", func(t *testing.T) {
 		t.Parallel()
 
-		// Pre-load a fake provider into the registry so GetProvider(ref)
-		// returns it later. The registry's plugin map is unexported, so we
-		// can't insert directly — but Registry.Same() will load a plugin
-		// via host.Provider() and store it. By making the host return our
-		// fake, the registry ends up holding the fake.
+		// Pre-load a fake provider into the registry: Registry.Same() loads it via
+		// host.Provider() and caches it, so a host that returns our fake leaves the
+		// registry holding the fake.
 		fakeProvider := &deploytest.Provider{}
 		host := &plugin.MockHost{
 			ProviderF: func(workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
@@ -1017,7 +1015,7 @@ func TestStepGenerator(t *testing.T) {
 		registry := providers.NewRegistry(host, false, nil)
 
 		providerURN := resource.URN("urn:pulumi:stack::project::pulumi:providers:k8s::default")
-		err := registry.Same(context.Background(), &resource.State{
+		err := registry.Same(t.Context(), &resource.State{
 			URN:    providerURN,
 			Custom: true,
 			Type:   tokens.Type("pulumi:providers:k8s"),
@@ -1098,7 +1096,8 @@ func TestExtensionParameterizeStepApply_Success(t *testing.T) {
 	}
 
 	completionSource := &promise.CompletionSource[struct{}]{}
-	step := NewExtensionParameterizeStep(&Deployment{}, prov, apitype.ExtensionRef("ref-success"), extension, completionSource)
+	step := NewExtensionParameterizeStep(
+		&Deployment{}, prov, apitype.ExtensionRef("ref-success"), extension, completionSource)
 
 	status, _, err := step.Apply()
 	require.NoError(t, err)
@@ -1112,7 +1111,7 @@ func TestExtensionParameterizeStepApply_Success(t *testing.T) {
 	assert.Equal(t, extension.Value, val.Value)
 
 	// Waiters on this CompletionSource should now see a fulfilled promise.
-	_, err = completionSource.Promise().Result(context.Background())
+	_, err = completionSource.Promise().Result(t.Context())
 	require.NoError(t, err, "successful parameterize should fulfill the CompletionSource")
 }
 
@@ -1138,7 +1137,7 @@ func TestExtensionParameterizeStepApply_ProviderError(t *testing.T) {
 	_, _, err := step.Apply()
 	assert.ErrorIs(t, err, want, "Apply must surface the provider error")
 
-	_, err = completionSource.Promise().Result(context.Background())
+	_, err = completionSource.Promise().Result(t.Context())
 	assert.ErrorIs(t, err, want, "failed parameterize must reject the CompletionSource")
 }
 
@@ -1166,6 +1165,6 @@ func TestExtensionParameterizeStepApply_MalformedVersion(t *testing.T) {
 	require.Error(t, err, "malformed version must fail Apply")
 	assert.False(t, called, "Apply must reject the blob without calling the provider")
 
-	_, err = completionSource.Promise().Result(context.Background())
+	_, err = completionSource.Promise().Result(t.Context())
 	assert.Error(t, err, "malformed version must reject the CompletionSource")
 }

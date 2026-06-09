@@ -558,7 +558,8 @@ func DeserializeDeploymentV3(
 			snippets[i] = DeserializeSnippet(s)
 		}
 	}
-	return deploy.NewSnapshot(*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions), nil
+	return deploy.NewSnapshot(
+		*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions), nil
 }
 
 // initializeSecretsManager initializes the secrets manager for a deployment.

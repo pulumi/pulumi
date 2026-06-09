@@ -695,32 +695,28 @@ func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResour
 			if err != nil {
 				return nil, false, fmt.Errorf("could not parse provider reference %s for extension: %w", providerName, err)
 			}
-			existing, created := sg.deployment.LookupOrRegisterExtension(providerRef, event.ExtensionRef())
 			provider, ok := sg.deployment.providers.GetProvider(providerRef)
 			if !ok {
 				return nil, false, fmt.Errorf("provider %s not registered", providerRef)
 			}
-			if created != nil {
-				// We're the first — emit the parameterize step.
-				go PanicRecovery(sg.deployment.panicErrs, func() {
-					_, err := created.Promise().Result(context.Background())
-					sg.events <- &continueExtensionEvent{
-						RegisterResourceEvent: event,
-						urn:                   urn,
-						err:                   err,
-					}
+			step, parameterized := sg.deployment.LookupOrRegisterExtension(providerRef, event.ExtensionRef(),
+				func(cts *promise.CompletionSource[struct{}]) Step {
+					return NewExtensionParameterizeStep(
+						sg.deployment, provider, event.ExtensionRef(), *event.Extension(), cts)
 				})
-				return []Step{NewExtensionParameterizeStep(sg.deployment, provider, event.ExtensionRef(), *event.Extension(), created)}, true, nil
-			}
-			// Already in flight — wait, don't re-emit.
+			// Continue the resource registration once the extension is parameterized.
 			go PanicRecovery(sg.deployment.panicErrs, func() {
-				_, err := existing.Result(context.Background())
+				_, err := parameterized.Result(context.Background())
 				sg.events <- &continueExtensionEvent{
 					RegisterResourceEvent: event,
 					urn:                   urn,
 					err:                   err,
 				}
 			})
+			// step is non-nil only for the first request of this (provider, ref) pair.
+			if step != nil {
+				return []Step{step}, true, nil
+			}
 			return nil, true, nil
 		}
 	}
