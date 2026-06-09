@@ -151,10 +151,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 			utils.NewSchemaProvider("azure-native", "2.41.0")),
 	},
 	{
-		Directory:   "azure-sa",
-		Description: "Azure SA",
-	},
-	{
 		Directory:   "using-object-as-input-for-any",
 		Description: "Tests using object as input for a property of type 'any'",
 	},

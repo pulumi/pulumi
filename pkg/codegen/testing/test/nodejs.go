@@ -131,8 +131,6 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 			set(AwsSchema)
 		case "azure-native":
 			set(AzureNativeSchema)
-		case "azure":
-			set(AzureSchema)
 		case "kubernetes":
 			set(KubernetesSchema)
 		case "random":

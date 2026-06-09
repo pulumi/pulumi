@@ -329,7 +329,6 @@ type SchemaVersion = string
 const (
 	AwsSchema              SchemaVersion = "4.26.0"
 	AzureNativeSchema      SchemaVersion = "1.56.0"
-	AzureSchema            SchemaVersion = "4.18.0"
 	KubernetesSchema       SchemaVersion = "3.7.0"
 	RandomSchema           SchemaVersion = "4.11.2"
 	EksSchema              SchemaVersion = "0.40.0"
