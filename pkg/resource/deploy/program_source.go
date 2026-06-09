@@ -106,6 +106,9 @@ func (src *programSource) forkRun(
 			defer contract.IgnoreClose(loaderServer)
 
 			rt := src.runinfo.Proj.Runtime.Name()
+			if rt == "" {
+				return nil
+			}
 
 			langhost, err := src.plugctx.Host.LanguageRuntime(rt)
 			if err != nil {

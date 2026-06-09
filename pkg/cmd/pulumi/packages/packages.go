@@ -270,6 +270,9 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 	if err != nil {
 		return err
 	}
+	if ctx.Project.RuntimeInfo().Name() == "" {
+		return errors.New("cannot link packages into a project without a runtime")
+	}
 	languagePlugin, err := ctx.PluginContext.Host.LanguageRuntime(ctx.Project.RuntimeInfo().Name())
 	if err != nil {
 		return err

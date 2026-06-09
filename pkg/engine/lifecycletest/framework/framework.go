@@ -804,6 +804,7 @@ type TestPlan struct {
 	Project        string
 	Stack          string
 	Runtime        string
+	NoRuntime      bool
 	RuntimeOptions map[string]any
 	Config         config.Map
 	Decrypter      config.Decrypter
@@ -820,7 +821,7 @@ func (p *TestPlan) getNames() (stack tokens.StackName, project tokens.PackageNam
 		project = "test"
 	}
 	runtime = p.Runtime
-	if runtime == "" {
+	if runtime == "" && !p.NoRuntime {
 		runtime = "test"
 	}
 	stack = tokens.MustParseStackName("test")
@@ -846,10 +847,11 @@ func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resour
 func (p *TestPlan) GetProject() workspace.Project {
 	_, projectName, runtime := p.getNames()
 
-	return workspace.Project{
-		Name:    projectName,
-		Runtime: workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions),
+	project := workspace.Project{Name: projectName}
+	if runtime != "" {
+		project.Runtime = workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions)
 	}
+	return project
 }
 
 func (p *TestPlan) GetTarget(t TB, snapshot *deploy.Snapshot) deploy.Target {

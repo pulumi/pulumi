@@ -134,6 +134,10 @@ from the parameters, as in:
 			}
 			defer contract.IgnoreClose(pctx)
 
+			if target.proj.RuntimeInfo().Name() == "" {
+				return errors.New("cannot add a package to a project without a runtime")
+			}
+
 			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 

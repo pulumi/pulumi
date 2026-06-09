@@ -287,6 +287,9 @@ func GetRequiredPlugins(
 	info plugin.ProgramInfo,
 ) ([]workspace.PluginDescriptor, error) {
 	plugins := make([]workspace.PluginDescriptor, 0, 1)
+	if runtime == "" {
+		return plugins, nil
+	}
 
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
@@ -330,6 +333,9 @@ func GetRequiredPlugins(
 // function. If the language host does not support this operation, the empty set is returned.
 func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plugin.ProgramInfo) (PackageSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPackagesFromProgram(): gathering plugins from language host")
+	if runtime == "" {
+		return NewPackageSet(), nil
+	}
 
 	lang, err := plugctx.Host.LanguageRuntime(runtime)
 	if lang == nil || err != nil {

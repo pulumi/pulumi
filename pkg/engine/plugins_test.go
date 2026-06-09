@@ -23,9 +23,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+func TestGetRequiredPluginsWithoutRuntime(t *testing.T) {
+	t.Parallel()
+
+	plugins, err := GetRequiredPlugins(t.Context(), nil, "", plugin.ProgramInfo{})
+	require.NoError(t, err)
+	assert.Empty(t, plugins)
+}
 
 func mustMakeVersion(v string) *semver.Version {
 	ver := semver.MustParse(v)
