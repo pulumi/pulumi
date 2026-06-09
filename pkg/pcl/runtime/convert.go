@@ -359,6 +359,9 @@ func fillSchemaOutputs(outputs resource.PropertyMap, properties []*schema.Proper
 			} else {
 				outputs[key] = resource.NewNullProperty()
 			}
+			if prop.Secret {
+				outputs[key] = resource.MakeSecret(outputs[key])
+			}
 			continue
 		}
 		fillSchemaOutputValue(v, prop.Type, dryRun)
