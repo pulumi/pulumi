@@ -15,11 +15,6 @@
 package sig
 
 const (
-	// PropertyValueLogMagic is the magic prefix for encoded property
-	// values in structured logs: the ASCII string "pulumiPv" as a
-	// little-endian uint64.
-	PropertyValueLogMagic uint64 = 0x7650696d756c7570
-
 	// SigKey is sometimes used to encode type identity inside of a map.  This is
 	// required when flattening into ordinary maps, like we do when performing
 	// serialization, to ensure recoverability of type identities later on.

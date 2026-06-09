@@ -24,12 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-// SlogLogExporter is a LogExporter that forwards OTLP log records
-// into the slog default logger.  Property value byte attributes are
-// decoded and re-wrapped as logging.PropertyValue so they flow
-// correctly through the handler chain: the sink handler encodes
-// them to wire format, and the primary handler renders them as
-// readable strings.
+// SlogLogExporter forwards OTLP log records into the slog default logger.
 type SlogLogExporter struct{}
 
 func (e *SlogLogExporter) ExportLogs(_ context.Context, logs plog.Logs) error {

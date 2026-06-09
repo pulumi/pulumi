@@ -68,10 +68,7 @@ var otelMu sync.RWMutex
 // otelEndpoint is the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
 var otelEndpoint string
 
-// logReceiverEndpoint is the OTLP gRPC endpoint for log-only
-// collection. Set when the receiver is started without an upstream
-// trace collector. Plugins use this to export log records without
-// switching to full OTel tracing mode.
+// logReceiverEndpoint is the OTLP gRPC endpoint for log collection.
 var logReceiverEndpoint string
 
 var (
@@ -222,9 +219,7 @@ func OTelEndpoint() string {
 	return otelEndpoint
 }
 
-// LogReceiverEndpoint returns the OTLP gRPC endpoint for log-only
-// collection. Non-empty only when the receiver was started without
-// an upstream trace collector.
+// LogReceiverEndpoint returns the OTLP gRPC endpoint for log collection.
 func LogReceiverEndpoint() string {
 	otelMu.RLock()
 	defer otelMu.RUnlock()

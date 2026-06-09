@@ -37,10 +37,8 @@ var (
 )
 
 // RegisterExportHandlerWrapper registers a function that wraps the
-// OTLP export handler when it is created.  This allows packages that
-// cannot be imported here (e.g. pkg/logging) to inject property-type
-// awareness into the export pipeline.  Must be called before
-// InitLogging (typically from an init function).
+// OTLP export handler when it is created.  Must be called before
+// InitLogging.
 func RegisterExportHandlerWrapper(wrap func(slog.Handler) slog.Handler) {
 	exportHandlerWrapper = wrap
 }
@@ -99,18 +97,12 @@ func shutdownExportHandler() {
 	SetExportHandler(nil)
 }
 
-// PropertyValue wraps a *structpb.Value for use as an slog attribute
-// value.  When logged through the local handler it renders as JSON.
-// When logged through the export handler it is encoded as a
-// LogPropertyValue (protobuf bytes with a magic prefix) so the
-// collector can identify and process it.
+// PropertyValue wraps a *structpb.Value for use as an slog attribute value.
 type PropertyValue struct {
 	Key   string
 	Value *structpb.Value
 }
 
-// String implements fmt.Stringer so that PropertyValue renders as JSON
-// when used as a %v arg in Infof.
 func (pv PropertyValue) String() string {
 	b, err := json.Marshal(pv.Value.AsInterface())
 	if err != nil {
@@ -119,24 +111,10 @@ func (pv PropertyValue) String() string {
 	return string(b)
 }
 
-// LogValue implements slog.LogValuer so the local slog handler gets a
-// plain string.
 func (pv PropertyValue) LogValue() slog.Value {
 	return slog.StringValue(pv.String())
 }
 
-// NewPropertyValue creates a PropertyValue for use as an arg in Infof.
-// The key is used as the attribute name when sent to the export handler.
-// In the local log the value is rendered as JSON via fmt.Sprintf %v.
-func NewPropertyValue(key string, s *structpb.Struct) PropertyValue {
-	return PropertyValue{Key: key, Value: &structpb.Value{
-		Kind: &structpb.Value_StructValue{StructValue: s},
-	}}
-}
-
-// propertyValueExportHandler wraps an slog.Handler and converts
-// PropertyValue attrs to BytesValue before forwarding. All other
-// attrs pass through unchanged.
 type propertyValueExportHandler struct {
 	inner slog.Handler
 }

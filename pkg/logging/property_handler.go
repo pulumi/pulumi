@@ -31,11 +31,8 @@ var marshalOpts = plugin.MarshalOptions{
 	KeepOutputValues: true,
 }
 
-// PropertySinkHandler wraps the encrypted log sink handler.  It
-// encodes resource.PropertyMap, resource.PropertyValue, property.Map,
-// and property.Value attributes into the [magic][protobuf] wire
-// format so they can be decoded later by the decrypt command.
-// Already-encoded bytes (from OTLP) are passed through as-is.
+// PropertySinkHandler wraps the encrypted log sink handler, encoding
+// property-typed attributes into wire format for later decryption.
 type PropertySinkHandler struct {
 	inner slog.Handler
 }
@@ -82,10 +79,8 @@ func (h *PropertySinkHandler) encodeAttr(a slog.Attr) slog.Attr {
 	return a
 }
 
-// PropertyExportHandler wraps the OTLP export handler.  It converts
-// resource.PropertyMap, resource.PropertyValue, property.Map, and
-// property.Value attributes into logging.PropertyValue so the
-// downstream export handler can encode them for OTLP transport.
+// PropertyExportHandler wraps the OTLP export handler, converting
+// property-typed attributes into logging.PropertyValue for OTLP transport.
 type PropertyExportHandler struct {
 	inner slog.Handler
 }

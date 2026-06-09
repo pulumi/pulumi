@@ -75,15 +75,8 @@ func init() {
 // handlerMu held for writing. slog.SetDefault is safe for concurrent use
 // with readers, so no additional synchronisation is needed.
 func rebuildLogger() {
-	// The primary handler gets the formatted message (argN attrs
-	// folded back into the msg string).
 	var p slog.Handler = formattingHandler{inner: primary}
-
-	// The sink and export handlers receive the raw format string +
-	// individual argN attributes so they can handle property values
-	// separately.  The filtering handler (secret redaction) wraps
-	// everything so it applies to all outputs.
-	var h slog.Handler = filteringHandler{inner: &multiHandler{
+	var h slog.Handler = filteringHandler{inner: &teeHandler{
 		primary:  p,
 		sink:     sinkHandler,
 		exporter: exportHandler,
@@ -282,59 +275,58 @@ func GetLogfilePath() (string, error) {
 	return "", errors.New("no log files found")
 }
 
-// multiHandler fans out slog records to a primary handler (which
-// gets the formatted message) and optional sink/export handlers
-// (which get the raw format string + individual argN attributes).
-type multiHandler struct {
+// teeHandler fans out slog records to a primary handler and optional
+// sink/export handlers.
+type teeHandler struct {
 	primary  slog.Handler
 	sink     slog.Handler // encrypted log, nil when inactive
 	exporter slog.Handler // OTLP export, nil when inactive
 }
 
-func (m *multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	if m.primary.Enabled(ctx, level) {
+func (t *teeHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	if t.primary.Enabled(ctx, level) {
 		return true
 	}
-	if m.sink != nil && m.sink.Enabled(ctx, level) {
+	if t.sink != nil && t.sink.Enabled(ctx, level) {
 		return true
 	}
-	if m.exporter != nil && m.exporter.Enabled(ctx, level) {
+	if t.exporter != nil && t.exporter.Enabled(ctx, level) {
 		return true
 	}
 	return false
 }
 
-func (m *multiHandler) Handle(ctx context.Context, r slog.Record) error {
-	if m.primary.Enabled(ctx, r.Level) {
-		_ = m.primary.Handle(ctx, r)
+func (t *teeHandler) Handle(ctx context.Context, r slog.Record) error {
+	if t.primary.Enabled(ctx, r.Level) {
+		_ = t.primary.Handle(ctx, r)
 	}
-	if m.sink != nil && m.sink.Enabled(ctx, r.Level) {
-		_ = m.sink.Handle(ctx, r)
+	if t.sink != nil && t.sink.Enabled(ctx, r.Level) {
+		_ = t.sink.Handle(ctx, r)
 	}
-	if m.exporter != nil && m.exporter.Enabled(ctx, r.Level) {
-		_ = m.exporter.Handle(ctx, r)
+	if t.exporter != nil && t.exporter.Enabled(ctx, r.Level) {
+		_ = t.exporter.Handle(ctx, r)
 	}
 	return nil
 }
 
-func (m *multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	result := &multiHandler{primary: m.primary.WithAttrs(attrs)}
-	if m.sink != nil {
-		result.sink = m.sink.WithAttrs(attrs)
+func (t *teeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	result := &teeHandler{primary: t.primary.WithAttrs(attrs)}
+	if t.sink != nil {
+		result.sink = t.sink.WithAttrs(attrs)
 	}
-	if m.exporter != nil {
-		result.exporter = m.exporter.WithAttrs(attrs)
+	if t.exporter != nil {
+		result.exporter = t.exporter.WithAttrs(attrs)
 	}
 	return result
 }
 
-func (m *multiHandler) WithGroup(name string) slog.Handler {
-	result := &multiHandler{primary: m.primary.WithGroup(name)}
-	if m.sink != nil {
-		result.sink = m.sink.WithGroup(name)
+func (t *teeHandler) WithGroup(name string) slog.Handler {
+	result := &teeHandler{primary: t.primary.WithGroup(name)}
+	if t.sink != nil {
+		result.sink = t.sink.WithGroup(name)
 	}
-	if m.exporter != nil {
-		result.exporter = m.exporter.WithGroup(name)
+	if t.exporter != nil {
+		result.exporter = t.exporter.WithGroup(name)
 	}
 	return result
 }
