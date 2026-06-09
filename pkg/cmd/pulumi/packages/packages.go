@@ -72,18 +72,14 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 	language, root, schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry, e env.Env, concurrency int, asExtension bool,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkgSpec, specOverride, err := SchemaFromSchemaSource(ws, pctx, schemaSource, parameters, registry, e, concurrency)
+	pkgSpec, specOverride, err := SchemaFromSchemaSource(ws, pctx, schemaSource, parameters, registry, e, concurrency,
+		asExtension)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
 			return nil, nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
 		}
 		return nil, nil, nil, fmt.Errorf("failed to get schema: %w", err)
-	}
-
-	if asExtension && pkgSpec != nil && pkgSpec.Parameterization != nil && pkgSpec.ExtensionParameterization == nil {
-		pkgSpec.ExtensionParameterization = pkgSpec.Parameterization
-		pkgSpec.Parameterization = nil
 	}
 
 	pkg, err := BindSpec(*pkgSpec)
@@ -369,7 +365,7 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescr
 func SchemaFromSchemaSource(
 	ws pkgWorkspace.Context,
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-	env env.Env, concurrency int,
+	env env.Env, concurrency int, asExtension bool,
 ) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 	var spec schema.PackageSpec
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
@@ -435,6 +431,10 @@ func SchemaFromSchemaSource(
 	err = json.Unmarshal(schema.Schema, &spec)
 	if err != nil {
 		return nil, nil, err
+	}
+	if asExtension && spec.Parameterization != nil && spec.ExtensionParameterization == nil {
+		spec.ExtensionParameterization = spec.Parameterization
+		spec.Parameterization = nil
 	}
 	if parameterizationName != "" {
 		switch {

@@ -43,6 +43,7 @@ type checkArgs struct {
 
 func newSchemaCheckCommand() *cobra.Command {
 	schemaCheckArgs := checkArgs{}
+	var asExtension bool
 
 	cmd := &cobra.Command{
 		Use:   "check",
@@ -58,7 +59,12 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
-			spec, err := schemaFromSourceOrStdin(cmd, source, args[1:])
+			parameterArgs, err := constrictor.ExtensionArgs(cmd, args, asExtension)
+			if err != nil {
+				return err
+			}
+
+			spec, err := schemaFromSourceOrStdin(cmd, source, parameterArgs, asExtension)
 			if err != nil {
 				return err
 			}
@@ -91,6 +97,7 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 
 	cmd.PersistentFlags().BoolVar(&schemaCheckArgs.allowDanglingReferences, "allow-dangling-references", false,
 		"Whether references to nonexistent types should be considered errors")
+	constrictor.AddExtensionFlag(cmd, &asExtension)
 
 	return cmd
 }
@@ -98,7 +105,9 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 // schemaFromSourceOrStdin loads a PackageSpec from the given source. If source is "-",
 // the schema is read as JSON from stdin. Otherwise it delegates to SchemaFromSchemaSource
 // which supports files, plugin names, and plugin paths.
-func schemaFromSourceOrStdin(cmd *cobra.Command, source string, extraArgs []string) (*schema.PackageSpec, error) {
+func schemaFromSourceOrStdin(
+	cmd *cobra.Command, source string, extraArgs []string, asExtension bool,
+) (*schema.PackageSpec, error) {
 	if source == "-" {
 		return schemaFromStdin(cmd)
 	}
@@ -119,7 +128,7 @@ func schemaFromSourceOrStdin(cmd *cobra.Command, source string, extraArgs []stri
 	registry := cmdCmd.NewDefaultRegistry(
 		cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 	spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
-		registry, env.Global(), 0 /* unbounded concurrency */)
+		registry, env.Global(), 0 /* unbounded concurrency */, asExtension)
 	if err != nil {
 		return nil, err
 	}

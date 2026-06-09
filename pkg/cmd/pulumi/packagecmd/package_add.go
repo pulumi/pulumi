@@ -43,6 +43,7 @@ import (
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
 	var language string
+	var asExtension bool
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Add a package to your Pulumi project, plugin, or current directory.",
@@ -90,6 +91,12 @@ that begin with dashes, you may need to use '--' to separate the provider name
 from the parameters, as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value
+
+With '--extension', the package is generated as an extension of the base
+provider: its resources are served by the base provider's plugin and it has no
+Provider class of its own. The extension parameters follow '--':
+
+  pulumi package add <provider> --extension -- <extension-parameter>...
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			agent := agentdetect.Detect(os.Getenv)
@@ -135,7 +142,12 @@ from the parameters, as in:
 			defer contract.IgnoreClose(pctx)
 
 			pluginSource := args[0]
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+
+			parameterArgs, err := constrictor.ExtensionArgs(cmd, args, asExtension)
+			if err != nil {
+				return err
+			}
+			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
 
 			pkg, packageSpec, diags, err := packages.InstallPackage(
 				cmd.OutOrStdout(),
@@ -148,8 +160,8 @@ from the parameters, as in:
 				parameters,
 				target.reg,
 				env.Global(),
-				0,     /* unbounded concurrency */
-				false, /* not an extension */
+				0,           /* unbounded concurrency */
+				asExtension, /* extension */
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
@@ -157,6 +169,36 @@ from the parameters, as in:
 					return fmt.Errorf("%w\nSearch: pulumi api '/api/registry/packages?search=<term>'", err)
 				}
 				return err
+			}
+
+			if asExtension {
+				if pkg.ExtensionParameterization == nil {
+					return fmt.Errorf(
+						"provider %s did not return an extension-parameterized schema; "+
+							"the provider may not support extension parameterization "+
+							"(omit --extension for replacement parameterization)", pluginSource)
+				}
+
+				// File-based schemas have no underlying provider to record.
+				source := strings.Split(pluginSource, "@")[0]
+				if ext := filepath.Ext(source); ext == ".yaml" || ext == ".yml" || ext == ".json" {
+					return nil
+				}
+
+				if target.projectFilePath != nil {
+					target.proj.AddPackage(pkg.Name, workspace.PackageSpec{
+						Source:     pkg.ExtensionParameterization.BaseProvider.Name,
+						Version:    pkg.ExtensionParameterization.BaseProvider.Version.String(),
+						Extensions: parameterArgs,
+					})
+					fileName := filepath.Base(*target.projectFilePath)
+					if err := target.proj.Save(*target.projectFilePath); err != nil {
+						return fmt.Errorf("failed to update %s: %w", fileName, err)
+					}
+				}
+
+				fmt.Fprintf(cmd.ErrOrStderr(), "Extended package %s\n", schemaDisplayName(pkg))
+				return nil
 			}
 
 			// Build and add the package spec to the project
@@ -226,6 +268,7 @@ from the parameters, as in:
 
 	cmd.Flags().StringVar(&language, "language", "",
 		"Run outside a Pulumi project or plugin: [nodejs|python|go|dotnet|java]")
+	constrictor.AddExtensionFlag(cmd, &asExtension)
 
 	return cmd
 }
