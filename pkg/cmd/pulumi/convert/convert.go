@@ -35,7 +35,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -44,7 +47,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -331,24 +333,34 @@ func runConvert(
 		pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 	}
 
+	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
+	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx.Host, stderr, stderr,
+		nil, packageworkspace.Options{})
+
 	installPlugin := func(pluginName string) *semver.Version {
 		// If auto plugin installs are disabled just return nil, the mapper will still carry on
 		if env.DisableAutomaticPluginAcquisition.Value() {
 			return nil
 		}
 
-		pluginSpec, err := workspace.NewPluginDescriptor(ctx, pluginName, apitype.ResourcePlugin, nil, "", nil)
-		if err != nil {
-			pCtx.Diag.Errorf(diag.Message("", "failed to create plugin spec for %q: %v"), pluginName, err)
-			return nil
-		}
-
-		version, err := pkgWorkspace.InstallPlugin(pCtx.Base(), pluginSpec, log, schema.NewLoaderServerFromHost)
+		// Resolve and install the provider plugin without running it; the mapper launches
+		// its own instance via the provider factory once the plugin is on disk.
+		_, spec, _, err := packageinstallation.InstallPlugin(ctx,
+			workspace.PackageSpec{Source: pluginName}, nil, "",
+			packageinstallation.Options{
+				Options: packageresolution.Options{
+					ResolveWithRegistry: !e.GetBool(env.DisableRegistryResolve),
+				},
+			}, reg, installCtx)
 		if err != nil {
 			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 			return nil
 		}
-		return version
+		version, err := semver.ParseTolerant(spec.Version)
+		if err != nil {
+			return nil
+		}
+		return &version
 	}
 
 	loader := schema.NewPluginLoader(pCtx.Host)
