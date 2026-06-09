@@ -1,4 +1,4 @@
-component: cli/cloud
+component: cli
 kind: improvement
 body: Improve the welcome message wording and spacing, and update the auto-naming docs link
 time: 2026-06-08T08:59:26-07:00
