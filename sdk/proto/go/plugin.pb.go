@@ -444,6 +444,99 @@ func (x *PackageSpec) GetServer() string {
 	return ""
 }
 
+// `ResolvePackageRequest` is the type of requests sent as part of a [](pulumirpc.PackageResolver.ResolvePackage) call.
+type ResolvePackageRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The package specification to resolve.
+	Spec          *PackageSpec `protobuf:"bytes,1,opt,name=spec,proto3" json:"spec,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolvePackageRequest) Reset() {
+	*x = ResolvePackageRequest{}
+	mi := &file_pulumi_plugin_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolvePackageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolvePackageRequest) ProtoMessage() {}
+
+func (x *ResolvePackageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_plugin_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolvePackageRequest.ProtoReflect.Descriptor instead.
+func (*ResolvePackageRequest) Descriptor() ([]byte, []int) {
+	return file_pulumi_plugin_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ResolvePackageRequest) GetSpec() *PackageSpec {
+	if x != nil {
+		return x.Spec
+	}
+	return nil
+}
+
+// `ResolvePackageResponse` is the type of responses sent by a [](pulumirpc.PackageResolver.ResolvePackage) call.
+type ResolvePackageResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The fully-resolved package, carrying the concrete plugin version and, where the spec was parameterized, the baked
+	// parameterization value.
+	Package       *PackageDependency `protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolvePackageResponse) Reset() {
+	*x = ResolvePackageResponse{}
+	mi := &file_pulumi_plugin_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolvePackageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolvePackageResponse) ProtoMessage() {}
+
+func (x *ResolvePackageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_plugin_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolvePackageResponse.ProtoReflect.Descriptor instead.
+func (*ResolvePackageResponse) Descriptor() ([]byte, []int) {
+	return file_pulumi_plugin_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ResolvePackageResponse) GetPackage() *PackageDependency {
+	if x != nil {
+		return x.Package
+	}
+	return nil
+}
+
 var File_pulumi_plugin_proto protoreflect.FileDescriptor
 
 const file_pulumi_plugin_proto_rawDesc = "" +
@@ -487,7 +580,13 @@ const file_pulumi_plugin_proto_rawDesc = "" +
 	"\x06server\x18\x05 \x01(\tR\x06server\x1a<\n" +
 	"\x0eChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"C\n" +
+	"\x15ResolvePackageRequest\x12*\n" +
+	"\x04spec\x18\x01 \x01(\v2\x16.pulumirpc.PackageSpecR\x04spec\"P\n" +
+	"\x16ResolvePackageResponse\x126\n" +
+	"\apackage\x18\x01 \x01(\v2\x1c.pulumirpc.PackageDependencyR\apackage2j\n" +
+	"\x0fPackageResolver\x12W\n" +
+	"\x0eResolvePackage\x12 .pulumirpc.ResolvePackageRequest\x1a!.pulumirpc.ResolvePackageResponse\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
 	file_pulumi_plugin_proto_rawDescOnce sync.Once
@@ -501,7 +600,7 @@ func file_pulumi_plugin_proto_rawDescGZIP() []byte {
 	return file_pulumi_plugin_proto_rawDescData
 }
 
-var file_pulumi_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_pulumi_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_pulumi_plugin_proto_goTypes = []any{
 	(*PluginInfo)(nil),              // 0: pulumirpc.PluginInfo
 	(*PluginDependency)(nil),        // 1: pulumirpc.PluginDependency
@@ -509,20 +608,26 @@ var file_pulumi_plugin_proto_goTypes = []any{
 	(*PackageParameterization)(nil), // 3: pulumirpc.PackageParameterization
 	(*PackageDependency)(nil),       // 4: pulumirpc.PackageDependency
 	(*PackageSpec)(nil),             // 5: pulumirpc.PackageSpec
-	nil,                             // 6: pulumirpc.PluginDependency.ChecksumsEntry
-	nil,                             // 7: pulumirpc.PackageDependency.ChecksumsEntry
-	nil,                             // 8: pulumirpc.PackageSpec.ChecksumsEntry
+	(*ResolvePackageRequest)(nil),   // 6: pulumirpc.ResolvePackageRequest
+	(*ResolvePackageResponse)(nil),  // 7: pulumirpc.ResolvePackageResponse
+	nil,                             // 8: pulumirpc.PluginDependency.ChecksumsEntry
+	nil,                             // 9: pulumirpc.PackageDependency.ChecksumsEntry
+	nil,                             // 10: pulumirpc.PackageSpec.ChecksumsEntry
 }
 var file_pulumi_plugin_proto_depIdxs = []int32{
-	6, // 0: pulumirpc.PluginDependency.checksums:type_name -> pulumirpc.PluginDependency.ChecksumsEntry
-	7, // 1: pulumirpc.PackageDependency.checksums:type_name -> pulumirpc.PackageDependency.ChecksumsEntry
-	3, // 2: pulumirpc.PackageDependency.parameterization:type_name -> pulumirpc.PackageParameterization
-	8, // 3: pulumirpc.PackageSpec.checksums:type_name -> pulumirpc.PackageSpec.ChecksumsEntry
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	8,  // 0: pulumirpc.PluginDependency.checksums:type_name -> pulumirpc.PluginDependency.ChecksumsEntry
+	9,  // 1: pulumirpc.PackageDependency.checksums:type_name -> pulumirpc.PackageDependency.ChecksumsEntry
+	3,  // 2: pulumirpc.PackageDependency.parameterization:type_name -> pulumirpc.PackageParameterization
+	10, // 3: pulumirpc.PackageSpec.checksums:type_name -> pulumirpc.PackageSpec.ChecksumsEntry
+	5,  // 4: pulumirpc.ResolvePackageRequest.spec:type_name -> pulumirpc.PackageSpec
+	4,  // 5: pulumirpc.ResolvePackageResponse.package:type_name -> pulumirpc.PackageDependency
+	6,  // 6: pulumirpc.PackageResolver.ResolvePackage:input_type -> pulumirpc.ResolvePackageRequest
+	7,  // 7: pulumirpc.PackageResolver.ResolvePackage:output_type -> pulumirpc.ResolvePackageResponse
+	7,  // [7:8] is the sub-list for method output_type
+	6,  // [6:7] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_plugin_proto_init() }
@@ -536,9 +641,9 @@ func file_pulumi_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_plugin_proto_rawDesc), len(file_pulumi_plugin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_pulumi_plugin_proto_goTypes,
 		DependencyIndexes: file_pulumi_plugin_proto_depIdxs,

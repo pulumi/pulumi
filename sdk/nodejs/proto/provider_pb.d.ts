@@ -31,6 +31,12 @@ export class ProviderHandshakeRequest extends jspb.Message {
     setSupportsRefreshBeforeUpdate(value: boolean): ProviderHandshakeRequest;
     getInvokeWithPreview(): boolean;
     setInvokeWithPreview(value: boolean): ProviderHandshakeRequest;
+    getLoaderTarget(): string;
+    setLoaderTarget(value: string): ProviderHandshakeRequest;
+    getMapperTarget(): string;
+    setMapperTarget(value: string): ProviderHandshakeRequest;
+    getPackageResolverTarget(): string;
+    setPackageResolverTarget(value: string): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -51,6 +57,9 @@ export namespace ProviderHandshakeRequest {
         supportsViews: boolean,
         supportsRefreshBeforeUpdate: boolean,
         invokeWithPreview: boolean,
+        loaderTarget: string,
+        mapperTarget: string,
+        packageResolverTarget: string,
     }
 }
 

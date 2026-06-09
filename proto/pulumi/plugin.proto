@@ -84,3 +84,32 @@ message PackageSpec {
     map<string, bytes> checksums = 4;
     string server = 5; // the URL of a server that can be used to download this plugin, if needed.
 }
+
+// PackageResolver is a service, hosted by the engine, that resolves a loosely-specified [](pulumirpc.PackageSpec) into
+// a fully-resolved [](pulumirpc.PackageDependency). A `PackageSpec` may contain references that cannot be acted upon
+// directly -- a registry reference such as `hashicorp/aws` paired with a version range such as `~>6.0`, or a Terraform
+// module source, for instance. Resolution turns these into a concrete plugin (with a definite version and download
+// location) and, where the spec carries parameters, runs parameterization so that the resulting parameterization
+// *value* is baked into the result.
+//
+// Providers receive the address of a `PackageResolver` during [](pulumirpc.ResourceProvider.Handshake) so that they
+// may resolve package references encountered while servicing later calls. This is what allows a provider serving a
+// parameterized or dynamic package (e.g. Pulumi HCL bridging a Terraform module) to bake the packages it references
+// while handling [](pulumirpc.ResourceProvider.Parameterize) and [](pulumirpc.ResourceProvider.Construct).
+service PackageResolver {
+    // ResolvePackage resolves a single [](pulumirpc.PackageSpec) to a concrete [](pulumirpc.PackageDependency).
+    rpc ResolvePackage(ResolvePackageRequest) returns (ResolvePackageResponse) {}
+}
+
+// `ResolvePackageRequest` is the type of requests sent as part of a [](pulumirpc.PackageResolver.ResolvePackage) call.
+message ResolvePackageRequest {
+    // The package specification to resolve.
+    PackageSpec spec = 1;
+}
+
+// `ResolvePackageResponse` is the type of responses sent by a [](pulumirpc.PackageResolver.ResolvePackage) call.
+message ResolvePackageResponse {
+    // The fully-resolved package, carrying the concrete plugin version and, where the spec was parameterized, the baked
+    // parameterization value.
+    PackageDependency package = 1;
+}

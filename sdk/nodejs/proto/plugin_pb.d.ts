@@ -183,3 +183,49 @@ export namespace PackageSpec {
         server: string,
     }
 }
+
+export class ResolvePackageRequest extends jspb.Message { 
+
+    hasSpec(): boolean;
+    clearSpec(): void;
+    getSpec(): PackageSpec | undefined;
+    setSpec(value?: PackageSpec): ResolvePackageRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResolvePackageRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ResolvePackageRequest): ResolvePackageRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResolvePackageRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResolvePackageRequest;
+    static deserializeBinaryFromReader(message: ResolvePackageRequest, reader: jspb.BinaryReader): ResolvePackageRequest;
+}
+
+export namespace ResolvePackageRequest {
+    export type AsObject = {
+        spec?: PackageSpec.AsObject,
+    }
+}
+
+export class ResolvePackageResponse extends jspb.Message { 
+
+    hasPackage(): boolean;
+    clearPackage(): void;
+    getPackage(): PackageDependency | undefined;
+    setPackage(value?: PackageDependency): ResolvePackageResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResolvePackageResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ResolvePackageResponse): ResolvePackageResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResolvePackageResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResolvePackageResponse;
+    static deserializeBinaryFromReader(message: ResolvePackageResponse, reader: jspb.BinaryReader): ResolvePackageResponse;
+}
+
+export namespace ResolvePackageResponse {
+    export type AsObject = {
+        pb_package?: PackageDependency.AsObject,
+    }
+}

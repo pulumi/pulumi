@@ -266,3 +266,47 @@ class PackageSpec(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["checksums", b"checksums", "parameters", b"parameters", "server", b"server", "source", b"source", "version", b"version"]) -> None: ...
 
 global___PackageSpec = PackageSpec
+
+@typing.final
+class ResolvePackageRequest(google.protobuf.message.Message):
+    """`ResolvePackageRequest` is the type of requests sent as part of a [](pulumirpc.PackageResolver.ResolvePackage) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SPEC_FIELD_NUMBER: builtins.int
+    @property
+    def spec(self) -> global___PackageSpec:
+        """The package specification to resolve."""
+
+    def __init__(
+        self,
+        *,
+        spec: global___PackageSpec | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["spec", b"spec"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["spec", b"spec"]) -> None: ...
+
+global___ResolvePackageRequest = ResolvePackageRequest
+
+@typing.final
+class ResolvePackageResponse(google.protobuf.message.Message):
+    """`ResolvePackageResponse` is the type of responses sent by a [](pulumirpc.PackageResolver.ResolvePackage) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_FIELD_NUMBER: builtins.int
+    @property
+    def package(self) -> global___PackageDependency:
+        """The fully-resolved package, carrying the concrete plugin version and, where the spec was parameterized, the baked
+        parameterization value.
+        """
+
+    def __init__(
+        self,
+        *,
+        package: global___PackageDependency | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["package", b"package"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["package", b"package"]) -> None: ...
+
+global___ResolvePackageResponse = ResolvePackageResponse

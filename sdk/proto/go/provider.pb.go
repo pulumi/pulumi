@@ -234,8 +234,24 @@ type ProviderHandshakeRequest struct {
 	SupportsRefreshBeforeUpdate bool `protobuf:"varint,6,opt,name=supports_refresh_before_update,json=supportsRefreshBeforeUpdate,proto3" json:"supports_refresh_before_update,omitempty"`
 	// If true the engine will send `preview` to `Invoke` methods to let them know if the current operation is a preview or up.
 	InvokeWithPreview bool `protobuf:"varint,7,opt,name=invoke_with_preview,json=invokeWithPreview,proto3" json:"invoke_with_preview,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The target of a [](codegen.Loader) server, hosted by the engine, that the provider can use to load schemas for
+	// other packages. This is the same service that the engine makes available to language runtimes via
+	// [](pulumirpc.RunRequest.loader_target). May be empty if the engine does not host a loader.
+	LoaderTarget string `protobuf:"bytes,8,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	// The target of a [](codegen.Mapper) server, hosted by the engine, that the provider can use to obtain mappings
+	// from names in other ecosystems (e.g. Terraform) to names in Pulumi packages. This is the same service that the
+	// engine makes available to language runtimes via [](pulumirpc.RunRequest.mapper_target). May be empty if the
+	// engine does not host a mapper.
+	MapperTarget string `protobuf:"bytes,9,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
+	// The target of a [](pulumirpc.PackageResolver) server, hosted by the engine, that the provider can use to resolve
+	// [](pulumirpc.PackageSpec)s (such as `hashicorp/aws ~>6.0`, or a Terraform module source) to fully-resolved
+	// [](pulumirpc.PackageDependency)s. This allows providers serving parameterized or dynamic packages to bake
+	// concrete plugin versions and parameterization values while servicing
+	// [](pulumirpc.ResourceProvider.Parameterize) and [](pulumirpc.ResourceProvider.Construct) calls. May be empty if
+	// the engine does not host a package resolver.
+	PackageResolverTarget string `protobuf:"bytes,10,opt,name=package_resolver_target,json=packageResolverTarget,proto3" json:"package_resolver_target,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeRequest) Reset() {
@@ -315,6 +331,27 @@ func (x *ProviderHandshakeRequest) GetInvokeWithPreview() bool {
 		return x.InvokeWithPreview
 	}
 	return false
+}
+
+func (x *ProviderHandshakeRequest) GetLoaderTarget() string {
+	if x != nil {
+		return x.LoaderTarget
+	}
+	return ""
+}
+
+func (x *ProviderHandshakeRequest) GetMapperTarget() string {
+	if x != nil {
+		return x.MapperTarget
+	}
+	return ""
+}
+
+func (x *ProviderHandshakeRequest) GetPackageResolverTarget() string {
+	if x != nil {
+		return x.PackageResolverTarget
+	}
+	return ""
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -4251,7 +4288,7 @@ var File_pulumi_provider_proto protoreflect.FileDescriptor
 
 const file_pulumi_provider_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x12pulumi/alias.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x92\x03\n" +
+	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x12pulumi/alias.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x94\x04\n" +
 	"\x18ProviderHandshakeRequest\x12%\n" +
 	"\x0eengine_address\x18\x01 \x01(\tR\rengineAddress\x12*\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tH\x00R\rrootDirectory\x88\x01\x01\x120\n" +
@@ -4259,7 +4296,11 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x12configure_with_urn\x18\x04 \x01(\bR\x10configureWithUrn\x12%\n" +
 	"\x0esupports_views\x18\x05 \x01(\bR\rsupportsViews\x12C\n" +
 	"\x1esupports_refresh_before_update\x18\x06 \x01(\bR\x1bsupportsRefreshBeforeUpdate\x12.\n" +
-	"\x13invoke_with_preview\x18\a \x01(\bR\x11invokeWithPreviewB\x11\n" +
+	"\x13invoke_with_preview\x18\a \x01(\bR\x11invokeWithPreview\x12#\n" +
+	"\rloader_target\x18\b \x01(\tR\floaderTarget\x12#\n" +
+	"\rmapper_target\x18\t \x01(\tR\fmapperTarget\x126\n" +
+	"\x17package_resolver_target\x18\n" +
+	" \x01(\tR\x15packageResolverTargetB\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
 	"\x12_program_directory\"\xfc\x01\n" +
 	"\x19ProviderHandshakeResponse\x12%\n" +

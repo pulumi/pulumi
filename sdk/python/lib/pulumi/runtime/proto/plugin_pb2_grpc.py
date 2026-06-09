@@ -2,3 +2,99 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
+from . import plugin_pb2 as pulumi_dot_plugin__pb2
+
+
+class PackageResolverStub(object):
+    """PackageResolver is a service, hosted by the engine, that resolves a loosely-specified [](pulumirpc.PackageSpec) into
+    a fully-resolved [](pulumirpc.PackageDependency). A `PackageSpec` may contain references that cannot be acted upon
+    directly -- a registry reference such as `hashicorp/aws` paired with a version range such as `~>6.0`, or a Terraform
+    module source, for instance. Resolution turns these into a concrete plugin (with a definite version and download
+    location) and, where the spec carries parameters, runs parameterization so that the resulting parameterization
+    *value* is baked into the result.
+
+    Providers receive the address of a `PackageResolver` during [](pulumirpc.ResourceProvider.Handshake) so that they
+    may resolve package references encountered while servicing later calls. This is what allows a provider serving a
+    parameterized or dynamic package (e.g. Pulumi HCL bridging a Terraform module) to bake the packages it references
+    while handling [](pulumirpc.ResourceProvider.Parameterize) and [](pulumirpc.ResourceProvider.Construct).
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.ResolvePackage = channel.unary_unary(
+                '/pulumirpc.PackageResolver/ResolvePackage',
+                request_serializer=pulumi_dot_plugin__pb2.ResolvePackageRequest.SerializeToString,
+                response_deserializer=pulumi_dot_plugin__pb2.ResolvePackageResponse.FromString,
+                )
+
+
+class PackageResolverServicer(object):
+    """PackageResolver is a service, hosted by the engine, that resolves a loosely-specified [](pulumirpc.PackageSpec) into
+    a fully-resolved [](pulumirpc.PackageDependency). A `PackageSpec` may contain references that cannot be acted upon
+    directly -- a registry reference such as `hashicorp/aws` paired with a version range such as `~>6.0`, or a Terraform
+    module source, for instance. Resolution turns these into a concrete plugin (with a definite version and download
+    location) and, where the spec carries parameters, runs parameterization so that the resulting parameterization
+    *value* is baked into the result.
+
+    Providers receive the address of a `PackageResolver` during [](pulumirpc.ResourceProvider.Handshake) so that they
+    may resolve package references encountered while servicing later calls. This is what allows a provider serving a
+    parameterized or dynamic package (e.g. Pulumi HCL bridging a Terraform module) to bake the packages it references
+    while handling [](pulumirpc.ResourceProvider.Parameterize) and [](pulumirpc.ResourceProvider.Construct).
+    """
+
+    def ResolvePackage(self, request, context):
+        """ResolvePackage resolves a single [](pulumirpc.PackageSpec) to a concrete [](pulumirpc.PackageDependency).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_PackageResolverServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'ResolvePackage': grpc.unary_unary_rpc_method_handler(
+                    servicer.ResolvePackage,
+                    request_deserializer=pulumi_dot_plugin__pb2.ResolvePackageRequest.FromString,
+                    response_serializer=pulumi_dot_plugin__pb2.ResolvePackageResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'pulumirpc.PackageResolver', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class PackageResolver(object):
+    """PackageResolver is a service, hosted by the engine, that resolves a loosely-specified [](pulumirpc.PackageSpec) into
+    a fully-resolved [](pulumirpc.PackageDependency). A `PackageSpec` may contain references that cannot be acted upon
+    directly -- a registry reference such as `hashicorp/aws` paired with a version range such as `~>6.0`, or a Terraform
+    module source, for instance. Resolution turns these into a concrete plugin (with a definite version and download
+    location) and, where the spec carries parameters, runs parameterization so that the resulting parameterization
+    *value* is baked into the result.
+
+    Providers receive the address of a `PackageResolver` during [](pulumirpc.ResourceProvider.Handshake) so that they
+    may resolve package references encountered while servicing later calls. This is what allows a provider serving a
+    parameterized or dynamic package (e.g. Pulumi HCL bridging a Terraform module) to bake the packages it references
+    while handling [](pulumirpc.ResourceProvider.Parameterize) and [](pulumirpc.ResourceProvider.Construct).
+    """
+
+    @staticmethod
+    def ResolvePackage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.PackageResolver/ResolvePackage',
+            pulumi_dot_plugin__pb2.ResolvePackageRequest.SerializeToString,
+            pulumi_dot_plugin__pb2.ResolvePackageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

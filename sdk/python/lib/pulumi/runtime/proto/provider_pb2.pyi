@@ -47,6 +47,9 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     SUPPORTS_VIEWS_FIELD_NUMBER: builtins.int
     SUPPORTS_REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
     INVOKE_WITH_PREVIEW_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
+    MAPPER_TARGET_FIELD_NUMBER: builtins.int
+    PACKAGE_RESOLVER_TARGET_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -72,6 +75,25 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     """If true the engine supports letting the provider mark resource states as requiring refresh before update."""
     invoke_with_preview: builtins.bool
     """If true the engine will send `preview` to `Invoke` methods to let them know if the current operation is a preview or up."""
+    loader_target: builtins.str
+    """The target of a [](codegen.Loader) server, hosted by the engine, that the provider can use to load schemas for
+    other packages. This is the same service that the engine makes available to language runtimes via
+    [](pulumirpc.RunRequest.loader_target). May be empty if the engine does not host a loader.
+    """
+    mapper_target: builtins.str
+    """The target of a [](codegen.Mapper) server, hosted by the engine, that the provider can use to obtain mappings
+    from names in other ecosystems (e.g. Terraform) to names in Pulumi packages. This is the same service that the
+    engine makes available to language runtimes via [](pulumirpc.RunRequest.mapper_target). May be empty if the
+    engine does not host a mapper.
+    """
+    package_resolver_target: builtins.str
+    """The target of a [](pulumirpc.PackageResolver) server, hosted by the engine, that the provider can use to resolve
+    [](pulumirpc.PackageSpec)s (such as `hashicorp/aws ~>6.0`, or a Terraform module source) to fully-resolved
+    [](pulumirpc.PackageDependency)s. This allows providers serving parameterized or dynamic packages to bake
+    concrete plugin versions and parameterization values while servicing
+    [](pulumirpc.ResourceProvider.Parameterize) and [](pulumirpc.ResourceProvider.Construct) calls. May be empty if
+    the engine does not host a package resolver.
+    """
     def __init__(
         self,
         *,
@@ -82,9 +104,12 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
         supports_views: builtins.bool = ...,
         supports_refresh_before_update: builtins.bool = ...,
         invoke_with_preview: builtins.bool = ...,
+        loader_target: builtins.str = ...,
+        mapper_target: builtins.str = ...,
+        package_resolver_target: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "program_directory", b"program_directory", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "package_resolver_target", b"package_resolver_target", "program_directory", b"program_directory", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_program_directory", b"_program_directory"]) -> typing.Literal["program_directory"] | None: ...
     @typing.overload
