@@ -1251,12 +1251,6 @@ type ProjectStackDeployment struct {
 	DeploymentSettings apitype.DeploymentSettings `json:"settings" yaml:"settings"`
 }
 
-func (psd *ProjectStackDeployment) Save(path string) error {
-	contract.Requiref(path != "", "path", "must not be empty")
-	contract.Requiref(psd != nil, "ps", "must not be nil")
-	return save(path, psd, true /*mkDirAll*/)
-}
-
 func NewProjectRuntimeInfo(name string, options map[string]any) ProjectRuntimeInfo {
 	contract.Requiref(name != "", "name", "must not be empty")
 	return ProjectRuntimeInfo{

@@ -15,145 +15,16 @@
 package deployment
 
 import (
-	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestRepoLookup(t *testing.T) {
-	t.Parallel()
-	t.Run("should handle directories that are not a git repo", func(t *testing.T) {
-		t.Parallel()
-		wd := "/"
-
-		rl, err := newRepoLookup(wd)
-		require.NoError(t, err)
-		assert.IsType(t, &noRepoLookupImpl{}, rl)
-
-		dir, err := rl.GetRootDirectory(wd)
-		require.NoError(t, err)
-		assert.Equal(t, ".", dir)
-
-		branch := rl.GetBranchName()
-		assert.Equal(t, "", branch)
-
-		remote, err := rl.RemoteURL()
-		require.NoError(t, err)
-		assert.Equal(t, "", remote)
-
-		root := rl.GetRepoRoot()
-		assert.Equal(t, "", root)
-	})
-
-	t.Run("should handle directories that are a git repo", func(t *testing.T) {
-		t.Parallel()
-
-		repoDir := setUpGitWorkspace(t.Context(), t)
-		workDir := filepath.Join(repoDir, "goproj")
-
-		rl, err := newRepoLookup(workDir)
-		require.NoError(t, err)
-		assert.IsType(t, &repoLookupImpl{}, rl)
-
-		dir, err := rl.GetRootDirectory(filepath.Join(workDir, "something"))
-		require.NoError(t, err)
-		// should assure the directory is using linux path separator as deployments are
-		// currently run only on linux images.
-		assert.Equal(t, filepath.Join("goproj", "something"), dir)
-
-		branch := rl.GetBranchName()
-		assert.Equal(t, "refs/heads/master", branch)
-
-		remote, err := rl.RemoteURL()
-		require.NoError(t, err)
-		assert.Equal(t, "https://github.com/pulumi/test-repo.git", remote)
-
-		// Resolve symlinks so the comparison works on macOS where /var -> /private/var.
-		expectedRoot, err := filepath.EvalSymlinks(filepath.Dir(workDir))
-		require.NoError(t, err)
-		assert.Equal(t, expectedRoot, rl.GetRepoRoot())
-	})
-}
-
-type relativeDirectoryValidationCase struct {
-	Valid bool
-	Path  string
-}
-
-func TestValidateRelativeDirectory(t *testing.T) {
-	t.Parallel()
-
-	repoDir := setUpGitWorkspace(t.Context(), t)
-	workDir := filepath.Join(repoDir, "goproj")
-
-	// relative directory values are always linux type paths
-	pathsToTest := []relativeDirectoryValidationCase{
-		{true, filepath.Join(".", "goproj")},
-		{false, filepath.Join(".", "goproj", "child")},
-		{false, filepath.Join(".", "goproj", "Pulumi.yaml")},
-	}
-
-	for _, c := range pathsToTest {
-		err := ValidateRelativeDirectory(filepath.Dir(workDir))(c.Path)
-		if c.Valid {
-			require.NoError(t, err)
-		} else {
-			require.Error(t, err, "invalid relative path %s", c.Path)
-		}
-	}
-}
-
-func TestValidateGitURL(t *testing.T) {
-	t.Parallel()
-
-	err := ValidateGitURL("https://github.com/pulumi/test-repo.git")
-	require.NoError(t, err)
-
-	err = ValidateGitURL("https://something.com")
-	require.Error(t, err, "invalid Git URL")
-}
-
-func TestValidateShortInput(t *testing.T) {
-	t.Parallel()
-
-	err := ValidateShortInput("")
-	require.NoError(t, err)
-
-	err = ValidateShortInput("a")
-	require.NoError(t, err)
-
-	err = ValidateShortInput(strings.Repeat("a", 256))
-	require.NoError(t, err)
-
-	err = ValidateShortInput(strings.Repeat("a", 257))
-	require.Error(t, err, "must be 256 characters or less")
-}
-
-func TestValidateShortInputNonEmpty(t *testing.T) {
-	t.Parallel()
-
-	err := ValidateShortInputNonEmpty("")
-	require.Error(t, err, "should not be empty")
-
-	err = ValidateShortInputNonEmpty("a")
-	require.NoError(t, err)
-
-	err = ValidateShortInputNonEmpty(strings.Repeat("a", 256))
-	require.NoError(t, err)
-
-	err = ValidateShortInputNonEmpty(strings.Repeat("a", 257))
-	require.Error(t, err, "must be 256 characters or less")
-}
 
 func TestDSFileParsing(t *testing.T) {
 	t.Parallel()
@@ -218,21 +89,4 @@ func TestDSFileParsing(t *testing.T) {
 	assert.Equal(t, apitype.DeploymentDuration(duration), deploymentFile.DeploymentSettings.Operation.OIDC.AWS.Duration)
 	assert.Equal(t, []string{"policy:arn"}, deploymentFile.DeploymentSettings.Operation.OIDC.AWS.PolicyARNs)
 	assert.Equal(t, "51035bee-a4d6-4b63-9ff6-418775c5da8d", *deploymentFile.DeploymentSettings.AgentPoolID)
-}
-
-func setUpGitWorkspace(ctx context.Context, t *testing.T) string {
-	workDir := t.TempDir()
-
-	cloneOptions := &git.CloneOptions{
-		RemoteName:    "origin",
-		URL:           "https://github.com/pulumi/test-repo.git",
-		Depth:         1,
-		SingleBranch:  true,
-		ReferenceName: plumbing.ReferenceName("master"),
-	}
-
-	_, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
-	require.NoError(t, err)
-
-	return workDir
 }
