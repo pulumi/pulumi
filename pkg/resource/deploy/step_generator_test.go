@@ -435,7 +435,8 @@ func TestEngineDiff(t *testing.T) {
 
 			d := &diag.MockSink{}
 			diff, err := diffResource(
-				d, urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges)
+				d, urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges,
+			)
 			t.Logf("diff.ChangedKeys = %v", diff.ChangedKeys)
 			t.Logf("diff.StableKeys = %v", diff.StableKeys)
 			t.Logf("diff.ReplaceKeys = %v", diff.ReplaceKeys)
@@ -943,7 +944,8 @@ func TestStepGenerator(t *testing.T) {
 					olds: map[resource.URN]*resource.State{},
 				},
 			}
-			_, err := sg.providerChanged("",
+			_, err := sg.providerChanged(
+				"",
 				&resource.State{
 					Provider: "invalid-old-provider",
 				},
@@ -963,7 +965,8 @@ func TestStepGenerator(t *testing.T) {
 					olds: map[resource.URN]*resource.State{},
 				},
 			}
-			_, err := sg.providerChanged("",
+			_, err := sg.providerChanged(
+				"",
 				&resource.State{
 					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::name::uuid",
 				},
@@ -984,7 +987,8 @@ func TestStepGenerator(t *testing.T) {
 					providers: &providers.Registry{},
 				},
 			}
-			_, err := sg.providerChanged("",
+			_, err := sg.providerChanged(
+				"",
 				&resource.State{
 					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::default_name::uuid",
 				},
@@ -1069,7 +1073,7 @@ func TestStepGenerator(t *testing.T) {
 				"k8s:apiextensions.k8s.io/v1:CustomResource", "my-cr",
 			)
 			assert.Equal(t, expectedURN, cev.URN())
-			assert.NoError(t, cev.Error())
+			require.NoError(t, cev.Error())
 		case <-time.After(2 * time.Second):
 			t.Fatal("timed out waiting for continueExtensionEvent")
 		}
@@ -1109,7 +1113,7 @@ func TestExtensionParameterizeStepApply_Success(t *testing.T) {
 
 	// Waiters on this CompletionSource should now see a fulfilled promise.
 	_, err = completionSource.Promise().Result(context.Background())
-	assert.NoError(t, err, "successful parameterize should fulfill the CompletionSource")
+	require.NoError(t, err, "successful parameterize should fulfill the CompletionSource")
 }
 
 func TestExtensionParameterizeStepApply_ProviderError(t *testing.T) {

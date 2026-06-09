@@ -18,10 +18,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"strings"
 	"time"
+
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -326,7 +327,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
 		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false /* persisted */)
+			s.URN(), false /*refresh*/, false, /* persisted */
+		)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -644,7 +646,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
 		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false /* persisted */)
+			s.URN(), false /*refresh*/, false, /* persisted */
+		)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -798,7 +801,8 @@ func (s *DeleteStep) publishSynthesizedViewSteps() error {
 
 	// Reserve a token.
 	_, tokenInfo, err := s.deployment.resourceStatus.reserveToken(
-		s.URN(), false /*refresh*/, false /*persisted*/)
+		s.URN(), false /*refresh*/, false, /*persisted*/
+	)
 	if err != nil {
 		return err
 	}
@@ -960,7 +964,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
 		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false /* persisted */)
+			s.URN(), false /*refresh*/, false, /* persisted */
+		)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -1290,7 +1295,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
 		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false /* persisted */)
+			s.URN(), false /*refresh*/, false, /* persisted */
+		)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -1526,7 +1532,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	resourceStatusAddress := s.deployment.resourceStatus.Address()
 	resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-		s.URN(), true /*refresh*/, s.Persisted() /* persisted */)
+		s.URN(), true /*refresh*/, s.Persisted(), /* persisted */
+	)
 	if err != nil {
 		if s.cts != nil {
 			s.cts.MustReject(err)
@@ -1942,7 +1949,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
 		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false /* persisted */)
+			s.URN(), false /*refresh*/, false, /* persisted */
+		)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -2400,7 +2408,8 @@ func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	diff, err := diffResource(
 		s.deployment.Diag(),
-		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges)
+		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges,
+	)
 	if err != nil {
 		s.pcs.Reject(err)
 		return resource.StatusOK, nil, nil

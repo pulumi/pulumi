@@ -732,7 +732,8 @@ func TestImportResourceRef(t *testing.T) {
 
 			// Read in, decode, and import the schema.
 			schemaBytes, err := os.ReadFile(
-				filepath.Join(testdataPath, tt.schemaFile))
+				filepath.Join(testdataPath, tt.schemaFile),
+			)
 			require.NoError(t, err)
 
 			var pkgSpec PackageSpec
@@ -1855,7 +1856,8 @@ func TestReplaceOnChanges(t *testing.T) {
 			sort.Strings(tt.result)
 			sort.Strings(tt.errors)
 			pkgSpec := readSchemaFile(
-				filepath.Join("schema", tt.filePath))
+				filepath.Join("schema", tt.filePath),
+			)
 			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
 				AllowDanglingReferences: true,
 			})
@@ -3127,6 +3129,7 @@ func TestBindExtensionParameterized(t *testing.T) {
 	require.NotNil(t, pkg2.ExtensionParameterization)
 	assert.Empty(t, diags)
 }
+
 func TestTokenToModuleIndexPrefix(t *testing.T) {
 	t.Parallel()
 

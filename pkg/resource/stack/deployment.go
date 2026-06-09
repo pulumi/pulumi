@@ -162,12 +162,9 @@ func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	if len(res.ReplaceWith) > 0 {
 		features[replaceWithFeature] = true
 	}
-	// Disabled while Pulumi Cloud doesn't recognize this feature key — emitting it
-	// makes stacks unreadable (and undeletable) via the service. Re-enable when
-	// the service has rolled out support.
-	// if res.ExtensionRef != "" {
-	// 	features[extensionParameterizationFeature] = true
-	// }
+	if res.ExtensionRef != "" {
+		features[extensionParameterizationFeature] = true
+	}
 }
 
 // ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.
@@ -489,7 +486,8 @@ func DeserializeStackOutputs(
 		secretsManager,
 		func(ctx context.Context, dec config.Decrypter) (resource.PropertyMap, error) {
 			return DeserializeProperties(stackResource.Outputs, dec)
-		})
+		},
+	)
 }
 
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
@@ -538,7 +536,8 @@ func DeserializeDeploymentV3(
 			}
 
 			return deserializedData{resources: resources, ops: ops}, nil
-		})
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -926,7 +925,8 @@ func deserializeSecret(
 	if (secret.Plaintext == "" && secret.Ciphertext == "") ||
 		(secret.Plaintext != "" && secret.Ciphertext != "") {
 		return resource.PropertyValue{}, errors.New(
-			"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
+			"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied",
+		)
 	}
 
 	if secret.Plaintext != "" {
@@ -1012,7 +1012,8 @@ func DeserializePropertyValue(v any, dec config.Decrypter,
 					plaintext, plainOk := objmap["plaintext"].(string)
 					if (!cipherOk && !plainOk) || (plainOk && cipherOk) {
 						return resource.PropertyValue{}, errors.New(
-							"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
+							"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied",
+						)
 					}
 					secret := &apitype.SecretV1{
 						Sig:        resource.SecretSig,
@@ -1121,7 +1122,8 @@ func FormatDeploymentDeserializationError(err error, stackName string) error {
 		return fmt.Errorf(
 			"the stack '%s' uses features that are not supported by this version of the Pulumi CLI: %s. "+
 				"Please update your version of the Pulumi CLI",
-			stackName, strings.Join(unsupportedErr.Features, ", "))
+			stackName, strings.Join(unsupportedErr.Features, ", "),
+		)
 	case errors.Is(err, ErrDeploymentSchemaVersionTooOld):
 		return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
 			stackName)

@@ -378,7 +378,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 
 		var pkg *packageSchema
 		var err error
-		var resolvedName = name
+		resolvedName := name
 		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
 			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
 		} else if extDescriptor, ok := b.findExtensionDescriptorForBase(name); ok {

@@ -1280,7 +1280,8 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 	}
 
 	sourceSnapshot, destSnapshot, stdout := runMoveWithDestResources(
-		t, sourceResources, destResources, []string{string(sourceResources[1].URN)})
+		t, sourceResources, destResources, []string{string(sourceResources[1].URN)},
+	)
 
 	//nolint:lll
 	expectedStdout := `Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:
@@ -1430,7 +1431,8 @@ func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
 
 	sourceSnapshot, destSnapshot, stdout := runMoveWithOptions(
 		t, sourceResources, []string{string(sourceResources[2].URN)},
-		&MoveOptions{IncludeParents: true})
+		&MoveOptions{IncludeParents: true},
+	)
 
 	assert.Contains(t, stdout.String(),
 		"Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:\n\n"+
@@ -1588,12 +1590,12 @@ func TestMoveExtensionResourceDropsUnreferencedBlob(t *testing.T) {
 	sourceResources := []*resource.State{
 		{URN: providerURN, Type: "pulumi:providers:extbase::default_1_0_0", ID: "provider_id", Custom: true},
 		{
-			URN: resource.NewURN("sourceStack", "test", "", "extbase:index:Greeting", "stayBehind"),
+			URN:  resource.NewURN("sourceStack", "test", "", "extbase:index:Greeting", "stayBehind"),
 			Type: "extbase:index:Greeting", Provider: string(providerURN) + "::provider_id",
 			ExtensionRef: refKept,
 		},
 		{
-			URN: resource.NewURN("sourceStack", "test", "", "extbase:index:Greeting", "moveMe"),
+			URN:  resource.NewURN("sourceStack", "test", "", "extbase:index:Greeting", "moveMe"),
 			Type: "extbase:index:Greeting", Provider: string(providerURN) + "::provider_id",
 			ExtensionRef: refMoved,
 		},
