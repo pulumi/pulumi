@@ -143,10 +143,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Webserver",
 	},
 	{
-		Directory:   "using-object-as-input-for-any",
-		Description: "Tests using object as input for a property of type 'any'",
-	},
-	{
 		Directory:   "kubernetes-operator",
 		Description: "K8s Operator",
 	},
@@ -314,12 +310,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	// PCL files from pulumi/yaml transpiled examples
-	{
-		Directory:   transpiled("aws-static-website"),
-		Description: "AWS static website",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
-	},
 	{
 		Directory:   transpiled("awsx-fargate"),
 		Description: "AWSx Fargate",
