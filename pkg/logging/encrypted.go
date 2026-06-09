@@ -290,7 +290,11 @@ func newEncryptedSink(ctx context.Context, w io.Writer, sm secrets.Manager) (io.
 	if sm == nil {
 		return nil, errors.New("no secrets manager available")
 	}
-	return encryptedlog.NewWriter(ctx, w, sm.Encrypter())
+	key, err := encryptedlog.PrepareKey(ctx, sm.Encrypter())
+	if err != nil {
+		return nil, fmt.Errorf("preparing encrypted log key: %w", err)
+	}
+	return encryptedlog.NewWriterFromKey(w, key)
 }
 
 type gzipSink struct {

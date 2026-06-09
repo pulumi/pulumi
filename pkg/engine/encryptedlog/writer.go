@@ -103,17 +103,6 @@ func NewWriterFromKey(w io.Writer, key *PreparedKey) (*Writer, error) {
 	return elw, nil
 }
 
-// NewWriter creates a Writer that encrypts log data to w.
-func NewWriter(
-	ctx context.Context, w io.Writer, enc config.Encrypter,
-) (*Writer, error) {
-	key, err := PrepareKey(ctx, enc)
-	if err != nil {
-		return nil, err
-	}
-	return NewWriterFromKey(w, key)
-}
-
 // Write buffers plaintext log data, flushing compressed and encrypted chunks
 // to the underlying writer as the buffer fills.
 func (elw *Writer) Write(p []byte) (int, error) {
