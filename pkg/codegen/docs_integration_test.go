@@ -755,7 +755,9 @@ func testDocsGenHelper(
 }
 
 func BenchmarkGetPropertyNames(b *testing.B) {
-	schemaBytes, err := os.ReadFile("../../tests/testdata/codegen/azure-native-2.41.0.json")
+	// Benchmark against a large real-provider schema so the timings are meaningful. This is one of
+	// the heavy schemas slated for removal; repoint it when aws-5.4.0.json is removed.
+	schemaBytes, err := os.ReadFile("../../tests/testdata/codegen/aws-5.4.0.json")
 	require.NoError(b, err)
 	b.Run("full-bind", func(b *testing.B) {
 		for range b.N {
@@ -763,10 +765,10 @@ func BenchmarkGetPropertyNames(b *testing.B) {
 			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
 			partial, err := schema.ImportSpec(spec, map[string]schema.Language{
 				"nodejs": nodejs_codegen.Importer,
-			}, schema.ValidationOptions{})
+			}, schema.ValidationOptions{AllowDanglingReferences: true})
 			require.NoError(b, err)
 
-			res, ok := partial.GetResource("azure-native:eventgrid/v20220615:DomainTopicEventSubscription")
+			res, ok := partial.GetResource("aws:ec2/instance:Instance")
 			require.True(b, ok)
 
 			var helper nodejs_codegen.DocLanguageHelper
@@ -785,7 +787,7 @@ func BenchmarkGetPropertyNames(b *testing.B) {
 			}, nil)
 			require.NoError(b, err)
 
-			res, ok, err := partial.Resources().Get("azure-native:eventgrid/v20220615:DomainTopicEventSubscription")
+			res, ok, err := partial.Resources().Get("aws:ec2/instance:Instance")
 			require.NoError(b, err)
 			require.True(b, ok)
 

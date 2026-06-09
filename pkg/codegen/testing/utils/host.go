@@ -125,8 +125,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"dangling-reference-bad", "0.1.0"},
 		SchemaProvider{"dangling-reference-good", "0.1.0"},
 
-		SchemaProvider{"azure-native", "2.41.0"},
-
 		// parameterized schemas
 		SchemaProvider{"tfe", "0.68.2"},
 	)
