@@ -122,7 +122,7 @@ func compileProgram(
 	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
 	// We add the `-buildvcs=false` flag here because it sometimes fails on Windows.
 	// See also https://github.com/pulumi/pulumi/pull/22788
-	args := []string{"build", "-buildvcs=false", "-o", outfile}
+	args := []string{"build", "-trimpath", "-buildvcs=false", "-o", outfile}
 	if withDebugFlags {
 		args = append(args, "-gcflags", "all=-N -l")
 	}
