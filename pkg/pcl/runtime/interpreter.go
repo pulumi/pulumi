@@ -685,18 +685,18 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 			Version: descriptor.Parameterization.Version.String(),
 			Value:   descriptor.Parameterization.Value,
 		}
-		// The schema-level discriminator between replacement and extension
-		// parameterization is whether Provider is set; route the wire field
-		// accordingly so the engine parameterizes the right way.
+		// The schema declares which parameterization flavor this is via the
+		// ExtensionParameterization slot; route the wire field accordingly so the
+		// engine parameterizes the right way.
 		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
 		if err != nil {
 			return fmt.Errorf("load package %q for register: %w", key, err)
 		}
-		provider, err := pkgref.Provider()
+		def, err := pkgref.Definition()
 		if err != nil {
-			return fmt.Errorf("inspect provider for package %q: %w", key, err)
+			return fmt.Errorf("load definition for package %q: %w", key, err)
 		}
-		if provider == nil {
+		if def.ExtensionParameterization != nil {
 			request.Extension = param
 		} else {
 			request.Parameterization = param

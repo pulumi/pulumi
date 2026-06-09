@@ -42,7 +42,7 @@ func createStackWithResources(
 ) backend.Stack {
 	sm := b64.NewBase64SecretsManager()
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 	ctx := t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
@@ -1541,7 +1541,7 @@ func TestMoveExtensionResource(t *testing.T) {
 	sm := b64.NewBase64SecretsManager()
 
 	importStack := func(name string, resources []*resource.State, exts map[apitype.ExtensionRef]apitype.Extension) backend.Stack {
-		snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, exts)
+		snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, exts)
 		udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil)
 		require.NoError(t, err)
 		ref, err := b.ParseStackReference(name)
@@ -1610,7 +1610,7 @@ func TestMoveExtensionResourceDropsUnreferencedBlob(t *testing.T) {
 	sm := b64.NewBase64SecretsManager()
 
 	importStack := func(name string, resources []*resource.State, exts map[apitype.ExtensionRef]apitype.Extension) backend.Stack {
-		snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, exts)
+		snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, exts)
 		udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil)
 		require.NoError(t, err)
 		ref, err := b.ParseStackReference(name)

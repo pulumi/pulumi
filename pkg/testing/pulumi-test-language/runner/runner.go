@@ -1428,8 +1428,15 @@ func runLanguageTests(
 					return makeTestResponse(fmt.Sprintf("get package definition: %v", err)), nil
 				}
 
+				// Replacement and extension parameterization carry their data in
+				// different slots; either one resolves to the same base-provider +
+				// parameterization descriptor a program depends on.
+				param := pkgDef.Parameterization
+				if param == nil {
+					param = pkgDef.ExtensionParameterization
+				}
 				var desc workspace.PackageDescriptor
-				if pkgDef.Parameterization == nil {
+				if param == nil {
 					desc = workspace.PackageDescriptor{
 						PluginDescriptor: workspace.PluginDescriptor{
 							Name:    pkgDef.Name,
@@ -1439,13 +1446,13 @@ func runLanguageTests(
 				} else {
 					desc = workspace.PackageDescriptor{
 						PluginDescriptor: workspace.PluginDescriptor{
-							Name:    pkgDef.Parameterization.BaseProvider.Name,
-							Version: &pkgDef.Parameterization.BaseProvider.Version,
+							Name:    param.BaseProvider.Name,
+							Version: &param.BaseProvider.Version,
 						},
 						Parameterization: &workspace.Parameterization{
 							Name:    pkgDef.Name,
 							Version: *pkgDef.Version,
-							Value:   pkgDef.Parameterization.Parameter,
+							Value:   param.Parameter,
 						},
 					}
 				}

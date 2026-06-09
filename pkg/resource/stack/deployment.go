@@ -162,9 +162,12 @@ func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	if len(res.ReplaceWith) > 0 {
 		features[replaceWithFeature] = true
 	}
-	if res.ExtensionRef != "" {
-		features[extensionParameterizationFeature] = true
-	}
+	// Disabled while Pulumi Cloud doesn't recognize this feature key — emitting it
+	// makes stacks unreadable (and undeletable) via the service. Re-enable when
+	// the service has rolled out support.
+	// if res.ExtensionRef != "" {
+	// 	features[extensionParameterizationFeature] = true
+	// }
 }
 
 // ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.

@@ -193,7 +193,8 @@ type packageSpecMarshalled struct {
 }
 
 func marshalPackageSpec[T any](ps PackageSpec, from func(any) (T, error)) (T, error) {
-	if len(ps.Parameters) == 0 && len(ps.Checksums) == 0 && ps.PluginDownloadURL == "" && len(ps.Extensions) == 0 && !ps.unmarshalledFromFull {
+	if len(ps.Parameters) == 0 && len(ps.Checksums) == 0 && ps.PluginDownloadURL == "" &&
+		len(ps.Extensions) == 0 && !ps.unmarshalledFromFull {
 		name := ps.Source
 		if ps.Version != "" {
 			name += "@" + ps.Version

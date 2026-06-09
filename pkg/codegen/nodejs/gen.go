@@ -2969,6 +2969,14 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 		}
 		base64Parameter := base64.StdEncoding.EncodeToString(param.Parameter)
 
+		// Only extension parameterization sets the extension flag; replacement
+		// parameterization omits it so generated SDKs stay byte-compatible with
+		// runtimes that predate the field.
+		extensionField := ""
+		if isExtension {
+			extensionField = "\n\t\textension: true,"
+		}
+
 		_, err = fmt.Fprintf(w, `
 export async function getPackage(): Promise<string | undefined> {
 	return runtime.registerPackage({
@@ -2977,8 +2985,7 @@ export async function getPackage(): Promise<string | undefined> {
 		baseProviderDownloadUrl: "%s",
 		packageName: "%s",
 		packageVersion: "%s",
-		base64Parameter: "%s",
-		extension: %t,
+		base64Parameter: "%s",%s
 	});
 }
 `,
@@ -2988,7 +2995,7 @@ export async function getPackage(): Promise<string | undefined> {
 			def.Name,
 			def.Version,
 			base64Parameter,
-			isExtension)
+			extensionField)
 	}
 
 	return err

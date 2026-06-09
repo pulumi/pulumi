@@ -52,7 +52,7 @@ func (p *ExtensionParameterizedProvider) snapshot() (string, string, []byte) {
 
 const (
 	extensionBaseName    = "extbase"
-	extensionBaseVersion = "40.0.0"
+	extensionBaseVersion = "42.0.0"
 )
 
 var _ plugin.Provider = (*ExtensionParameterizedProvider)(nil)
@@ -116,12 +116,14 @@ func (p *ExtensionParameterizedProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    name,
 		Version: version,
-		// Provider intentionally left nil — extension flavor.
+		// Provider intentionally left nil and the parameterization is declared in
+		// the ExtensionParameterization slot — this is what marks the package as
+		// extension- rather than replacement-parameterized.
 		Resources: map[string]schema.ResourceSpec{
 			token:          {ObjectTypeSpec: greetingSpec},
 			componentToken: {IsComponent: true, ObjectTypeSpec: greetingSpec},
 		},
-		Parameterization: &schema.ParameterizationSpec{
+		ExtensionParameterization: &schema.ParameterizationSpec{
 			BaseProvider: schema.BaseProviderSpec{
 				Name:    extensionBaseName,
 				Version: extensionBaseVersion,

@@ -103,7 +103,7 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) GetRequiredPackages(
 			{
 				Name:    "extbase",
 				Kind:    string(apitype.ResourcePlugin),
-				Version: "40.0.0",
+				Version: "42.0.0",
 				Parameterization: &pulumirpc.PackageParameterization{
 					Name:    "myext",
 					Version: "2.0.0",
@@ -159,7 +159,7 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) Run(
 	myextRef := promise.Run(func() (string, error) {
 		resp, err := monitor.RegisterPackage(ctx, &pulumirpc.RegisterPackageRequest{
 			Name:    "extbase",
-			Version: "40.0.0",
+			Version: "42.0.0",
 			Extension: &pulumirpc.Parameterization{
 				Name:    "myext",
 				Version: "2.0.0",
