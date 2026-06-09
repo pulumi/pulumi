@@ -920,7 +920,7 @@ https://www.pulumi.com/docs/get-started/
 
 %s Resources you create with Pulumi are given unique names with a randomly
 generated suffix by default. To learn more about auto-naming or customizing
-resource names, see https://www.pulumi.com/docs/iac/concepts/resources/names/#autonaming.
+resource names see https://www.pulumi.com/docs/iac/concepts/resources/names/#autonaming.
 
 
 `,
