@@ -124,15 +124,7 @@ var (
 // browser, and runs the local tool-execution loop in the foreground until the task ends.
 // There is no interactive UI yet — the chat happens in the web console.
 func NewNeoCmd() *cobra.Command {
-	var (
-		stackName           string
-		orgFlag             string
-		cwdFlag             string
-		approvalModeFlag    string
-		permissionModeFlag  string
-		printMode           bool
-		disableIntegrations bool
-	)
+	flags := &neoFlags{}
 
 	cmd := &cobra.Command{
 		Use:   "neo [prompt]",
@@ -148,52 +140,80 @@ func NewNeoCmd() *cobra.Command {
 			if len(args) > 0 {
 				prompt = args[0]
 			}
-			approvalMode, err := parseApprovalMode(approvalModeFlag)
+			approvalMode, permissionMode, err := flags.resolveModes(cmd)
 			if err != nil {
 				return err
-			}
-			permissionMode, err := parsePermissionMode(permissionModeFlag)
-			if err != nil {
-				return err
-			}
-			// --print has no UI; manual approval would deadlock. Reject if explicit,
-			// otherwise upgrade the default.
-			if printMode {
-				switch {
-				case cmd.Flags().Changed("approval-mode") && approvalMode == client.NeoApprovalModeManual:
-					return errors.New(
-						"--approval-mode=manual is incompatible with --print: there is no UI to approve from")
-				case !cmd.Flags().Changed("approval-mode"):
-					approvalMode = client.NeoApprovalModeAuto
-				}
 			}
 			return runNeo(
 				ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(),
-				prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode, printMode,
-				disableIntegrations)
+				prompt, flags.stackName, flags.orgFlag, flags.cwdFlag,
+				approvalMode, permissionMode, flags.printMode,
+				flags.disableIntegrations)
 		},
 	}
 
-	cmd.Flags().StringVarP(&stackName, "stack", "s", "",
-		"The name of the stack to attach to the Neo task")
-	cmd.Flags().StringVar(&orgFlag, "org", "",
-		"The organization that owns the Neo task (defaults to the user's default org)")
-	cmd.Flags().StringVar(&cwdFlag, "cwd", "",
-		"Working directory for local tool execution (defaults to the current directory)")
-	cmd.Flags().StringVar(&approvalModeFlag, "approval-mode", string(client.NeoApprovalModeManual),
-		"Approval mode for tool calls: 'manual' prompts on every call, 'balanced' "+
-			"auto-approves low-risk calls, 'auto' executes everything without prompting")
-	cmd.Flags().StringVar(&permissionModeFlag, "permission-mode", string(client.NeoPermissionModeDefault),
-		"Permission mode for the agent: 'default' grants full role-based capabilities, "+
-			"'read-only' blocks state-mutating operations")
-	cmd.Flags().BoolVarP(&printMode, "print", "p", false,
-		"Run a single prompt non-interactively, print the agent's final response to "+
-			"stdout, and exit. Intended for use with other AI agents and scripts.")
-	cmd.Flags().BoolVar(&disableIntegrations, "disable-integrations", false,
-		"Run the Neo task with no integration credentials, ignoring any org-enabled "+
-			"integrations.")
+	flags.register(cmd)
+	cmd.AddCommand(newNeoDebugCmd())
 
 	return cmd
+}
+
+// neoFlags holds the options shared by `pulumi neo` and its `debug` subcommand. Both start the
+// same Neo experience and differ only in how the initial prompt is produced, so they register
+// and resolve the same flags.
+type neoFlags struct {
+	stackName           string
+	orgFlag             string
+	cwdFlag             string
+	approvalModeFlag    string
+	permissionModeFlag  string
+	printMode           bool
+	disableIntegrations bool
+}
+
+func (f *neoFlags) register(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&f.stackName, "stack", "s", "",
+		"The name of the stack to attach to the Neo task")
+	cmd.Flags().StringVar(&f.orgFlag, "org", "",
+		"The organization that owns the Neo task (defaults to the user's default org)")
+	cmd.Flags().StringVar(&f.cwdFlag, "cwd", "",
+		"Working directory for local tool execution (defaults to the current directory)")
+	cmd.Flags().StringVar(&f.approvalModeFlag, "approval-mode", string(client.NeoApprovalModeManual),
+		"Approval mode for tool calls: 'manual' prompts on every call, 'balanced' "+
+			"auto-approves low-risk calls, 'auto' executes everything without prompting")
+	cmd.Flags().StringVar(&f.permissionModeFlag, "permission-mode", string(client.NeoPermissionModeDefault),
+		"Permission mode for the agent: 'default' grants full role-based capabilities, "+
+			"'read-only' blocks state-mutating operations")
+	cmd.Flags().BoolVarP(&f.printMode, "print", "p", false,
+		"Run a single prompt non-interactively, print the agent's final response to "+
+			"stdout, and exit. Intended for use with other AI agents and scripts.")
+	cmd.Flags().BoolVar(&f.disableIntegrations, "disable-integrations", false,
+		"Run the Neo task with no integration credentials, ignoring any org-enabled "+
+			"integrations.")
+}
+
+// resolveModes validates the approval/permission flags and applies the --print adjustments:
+// manual approval can't work without a UI, so reject it when explicit and upgrade the default
+// to auto otherwise.
+func (f *neoFlags) resolveModes(cmd *cobra.Command) (client.NeoApprovalMode, client.NeoPermissionMode, error) {
+	approvalMode, err := parseApprovalMode(f.approvalModeFlag)
+	if err != nil {
+		return "", "", err
+	}
+	permissionMode, err := parsePermissionMode(f.permissionModeFlag)
+	if err != nil {
+		return "", "", err
+	}
+	if f.printMode {
+		switch {
+		case cmd.Flags().Changed("approval-mode") && approvalMode == client.NeoApprovalModeManual:
+			return "", "", errors.New(
+				"--approval-mode=manual is incompatible with --print: there is no UI to approve from")
+		case !cmd.Flags().Changed("approval-mode"):
+			approvalMode = client.NeoApprovalModeAuto
+		}
+	}
+	return approvalMode, permissionMode, nil
 }
 
 // parseApprovalMode validates the --approval-mode flag value against the

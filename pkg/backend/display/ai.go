@@ -84,7 +84,7 @@ func PrintNeoLink(out io.Writer, opts Options, permalink string) {
 	fmt.Fprintln(out, "  "+"Would you like additional help with this update?")
 	fmt.Fprintln(out, "  "+
 		opts.Color.Colorize(colors.Underline+colors.BrightBlue+ExplainFailureLink(permalink)+colors.Reset))
-	fmt.Fprintln(out, "  "+"Or run `pulumi neo` for an interactive agent in your terminal.")
+	fmt.Fprintln(out, "  "+"Or run `pulumi neo debug` in your terminal.")
 	fmt.Fprintln(out)
 }
 
