@@ -1,0 +1,6 @@
+component: sdk
+kind: fix
+body: Reject tar entries with path traversal components when extracting archives
+time: 2026-06-09T09:41:01.473364+01:00
+custom:
+    PR: 23485
