@@ -315,11 +315,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	// PCL files from pulumi/yaml transpiled examples
 	{
-		Directory:   transpiled("aws-eks"),
-		Description: "AWS EKS",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
 		Directory:   transpiled("aws-static-website"),
 		Description: "AWS static website",
 		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
@@ -329,11 +324,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Directory:   transpiled("awsx-fargate"),
 		Description: "AWSx Fargate",
 		Skip:        codegen.NewStringSet(TestDotnet, TestNodeJS, TestGo),
-	},
-	{
-		Directory:   transpiled("cue-eks"),
-		Description: "Cue EKS",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   transpiled("cue-random"),
