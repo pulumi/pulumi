@@ -1962,7 +1962,7 @@ func TestGetAccountDetails(t *testing.T) {
 			}
 
 			username, orgs, tokenInfo, err := getAccountDetails(
-				t.Context(), cloudURL, false, tt.accessToken,
+				t.Context(), cloudURL, false, tt.accessToken, "", nil,
 			)
 
 			if tt.wantErr {

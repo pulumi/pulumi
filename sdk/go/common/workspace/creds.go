@@ -46,20 +46,30 @@ const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 // Note that the account may not be fully populated: it may only have a valid AccessToken. In that case, it is up to
 // the caller to fill in the username and last validation time.
 func GetAccount(key string) (Account, error) {
-	creds, err := GetStoredCredentials()
+	path, err := getCredsFilePath()
+	if err != nil {
+		return Account{}, err
+	}
+	return getAccountAt(path, key)
+}
+
+// getAccountAt loads an account from the given credentials file, stamping the source path so
+// subsequent account.Save calls write back to the same file.
+func getAccountAt(path, key string) (Account, error) {
+	creds, err := readCredentialsFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return Account{}, err
 	}
 
-	// Try the account
 	if account, ok := creds.Accounts[key]; ok {
+		account.source = path
 		return account, nil
 	}
 	token, ok := creds.AccessTokens[key]
 	if !ok {
 		return Account{}, nil
 	}
-	return Account{AccessToken: token}, nil
+	return Account{AccessToken: token, source: path}, nil
 }
 
 // GetAccountWithAgentFallback returns an account from default credentials, or
@@ -68,7 +78,7 @@ func GetAccount(key string) (Account, error) {
 // true only when the returned account came from shared agent credentials.
 func GetAccountWithAgentFallback(key string) (Account, bool, error) {
 	account, err := GetAccount(key)
-	if err == nil && account.AccessToken != "" {
+	if err == nil && account.HasCredential() {
 		return account, false, nil
 	}
 
@@ -93,7 +103,7 @@ func GetAccountWithAgentFallback(key string) (Account, bool, error) {
 	if agentErr != nil {
 		return Account{}, false, errors.Join(err, agentErr)
 	}
-	if agentAccount.AccessToken == "" {
+	if !agentAccount.HasCredential() {
 		return Account{}, false, nil
 	}
 	return agentAccount, true, nil
@@ -142,9 +152,18 @@ func DeleteAllAccounts() error {
 	return result
 }
 
-// StoreAccount saves the given account underneath the given key.
+// StoreAccount saves the given account underneath the given key in the default credentials file.
 func StoreAccount(key string, account Account, current bool) error {
-	creds, err := GetStoredCredentials()
+	path, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+	return storeAccountAt(path, key, account, current)
+}
+
+// storeAccountAt persists an account into the given credentials file (load-modify-write).
+func storeAccountAt(path, key string, account Account, current bool) error {
+	creds, err := readCredentialsFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -158,7 +177,7 @@ func StoreAccount(key string, account Account, current bool) error {
 	if current {
 		creds.Current = key
 	}
-	return StoreCredentials(creds)
+	return writeCredentialsFile(path, creds)
 }
 
 // Account holds the information associated with a Pulumi account.
@@ -179,6 +198,29 @@ type Account struct {
 	Insecure bool `json:"insecure,omitempty"`
 	// Information about the token used to authenticate.
 	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
+
+	// source is the credentials file this account was loaded from. Set by the loaders
+	// (GetAccount, GetAgentAccount, GetAccountWithAgentFallback); empty for accounts constructed
+	// in memory (env-var tokens before persistence, test literals, fresh-login pre-persist).
+	// Used by Save to persist credential refreshes back to the file the account came from.
+	source string
+}
+
+// HasCredential reports whether this account carries anything the CLI can use to authenticate —
+// either a current access token or a refresh token to mint one with. Used at credential-selection
+// time so that an account with only a refresh token is treated as usable rather than skipped.
+func (a Account) HasCredential() bool {
+	return a.AccessToken != "" || a.RefreshToken != ""
+}
+
+// Save persists this account back to the credentials file it was loaded from. Returns an error if
+// the account has no known source (constructed in memory rather than loaded) — callers in that
+// case should use StoreAccount / StoreAgentAccount with an explicit destination.
+func (a Account) Save(key string, current bool) error {
+	if a.source == "" {
+		return errors.New("cannot Save an account that was not loaded from a credentials file")
+	}
+	return storeAccountAt(a.source, key, a, current)
 }
 
 // Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
@@ -617,19 +659,12 @@ func getAgentConfigFilePathNoEnsure() string {
 // GetAgentAccount returns the account for the given cloud URL from the shared
 // agent credentials file.
 func GetAgentAccount(key string) (Account, error) {
-	creds, err := GetAgentStoredCredentials()
+	path, err := getAgentCredsFilePath()
 	if err != nil {
 		return Account{}, err
 	}
-
-	if account, ok := creds.Accounts[key]; ok {
-		return account, nil
-	}
-	token, ok := creds.AccessTokens[key]
-	if !ok {
-		return Account{}, nil
-	}
-	return Account{AccessToken: token}, nil
+	logging.V(7).Infof("Reading shared agent credentials from %q", path)
+	return getAccountAt(path, key)
 }
 
 // GetAgentStoredCredentials returns credentials stored in the shared temporary
@@ -646,21 +681,11 @@ func GetAgentStoredCredentials() (Credentials, error) {
 // StoreAgentAccount saves the account for the given cloud URL in the shared
 // temporary agent credentials file.
 func StoreAgentAccount(key string, account Account, current bool) error {
-	creds, err := GetAgentStoredCredentials()
+	path, err := getAgentCredsFilePath()
 	if err != nil {
 		return err
 	}
-	if creds.AccessTokens == nil {
-		creds.AccessTokens = make(map[string]string)
-	}
-	if creds.Accounts == nil {
-		creds.Accounts = make(map[string]Account)
-	}
-	creds.AccessTokens[key], creds.Accounts[key] = account.AccessToken, account
-	if current {
-		creds.Current = key
-	}
-	return StoreAgentCredentials(creds)
+	return storeAccountAt(path, key, account, current)
 }
 
 // DeleteAgentAccount deletes an account from the shared temporary agent
