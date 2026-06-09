@@ -204,3 +204,90 @@ type fileContents struct {
 	contents     []byte
 	shouldRetain bool
 }
+
+// buildTGZ produces an in-memory .tar.gz containing the given regular-file entries.
+func buildTGZ(t *testing.T, entries map[string][]byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+	for name, content := range entries {
+		typ := tar.TypeReg
+		if len(content) == 0 {
+			typ = tar.TypeDir
+		}
+
+		require.NoError(t, tw.WriteHeader(&tar.Header{
+			Name:     name,
+			Mode:     0o600,
+			Size:     int64(len(content)),
+			Typeflag: byte(typ),
+		}))
+		_, err := tw.Write(content)
+		require.NoError(t, err)
+	}
+	require.NoError(t, tw.Close())
+	require.NoError(t, gw.Close())
+	return buf.Bytes()
+}
+
+func TestExtractTGZ(t *testing.T) {
+	t.Parallel()
+
+	tarball := buildTGZ(t, map[string][]byte{
+		"file.txt":        []byte("hello"),
+		"sub":             {},
+		"sub/nested.txt":  []byte("world"),
+		"sub/dir/leaf.go": []byte("package main"),
+	})
+
+	dest := t.TempDir()
+	require.NoError(t, ExtractTGZ(bytes.NewReader(tarball), dest))
+
+	for name, want := range map[string]string{
+		"file.txt":        "hello",
+		"sub/nested.txt":  "world",
+		"sub/dir/leaf.go": "package main",
+	} {
+		got, err := os.ReadFile(filepath.Join(dest, filepath.FromSlash(name)))
+		require.NoError(t, err)
+		assert.Equal(t, want, string(got))
+	}
+}
+
+func TestExtractTGZRejectsPathTraversal(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name  string
+		entry string
+	}{
+		{"parent", "../escape.txt"},
+		{"nested-parent", "a/../../escape.txt"},
+		{"deep-parent", "../../../../etc/passwd"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tarball := buildTGZ(t, map[string][]byte{tc.entry: []byte("malicious")})
+
+			// Extract into a nested directory so the parent of dest is itself a temp dir
+			// — that way if the guard fails, the escape lands somewhere observable but
+			// still inside the test's tempdir tree.
+			parent := t.TempDir()
+			dest := filepath.Join(parent, "dest")
+			require.NoError(t, os.Mkdir(dest, 0o700))
+
+			err := ExtractTGZ(bytes.NewReader(tarball), dest)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "escapes destination directory")
+
+			// Make sure nothing was written outside dest.
+			escaped, err := filepath.Glob(filepath.Join(parent, "escape.txt"))
+			require.NoError(t, err)
+			assert.Empty(t, escaped, "file escaped destination directory")
+		})
+	}
+}
