@@ -1,0 +1,6 @@
+component: pcl
+kind: fix
+body: Resolve config variables whose default value is derived from an invoke to the invoke's result instead of an unknown value
+time: 2026-06-09T14:09:11.000000+00:00
+custom:
+  PR: "23494"
