@@ -25,28 +25,45 @@ import (
 // extension shape (served by the base provider) rather than a replacement.
 func AddExtensionFlag(cmd *cobra.Command, target *bool) {
 	cmd.Flags().BoolVar(target, "extension", false,
-		"Treat the package as an extension of the base provider rather than a replacement")
+		"Add the package as an extension of its base provider, not a replacement")
 }
 
-// ExtensionArgs returns the provider parameters to apply, given the command's
-// positional args (args[0] is the package source).
+// ExtensionArgs returns the extension parameters from the command's positional
+// args (args[0] is the source).
 //
-// With asExtension, the parameters are split at `--`: tokens before it
-// parameterize the base provider (replacement), tokens after it are the
-// extension's. Combining the two in one invocation is not yet supported, so a
-// non-empty base errors. Without asExtension, every token after the source is
-// returned unchanged.
+// Without asExtension, every token after the source is returned unchanged.
+//
+// With asExtension, extension parameters go after `--`:
+//
+//	<source> --extension -- <extension-parameter>...
+//
+// The positional slot before `--` is for replacement parameters. Combining
+// replacement and extension parameters isn't supported yet, so that slot is
+// rejected for now; the source and the command's flags are unaffected.
 func ExtensionArgs(cmd *cobra.Command, args []string, asExtension bool) ([]string, error) {
 	if !asExtension {
 		return args[1:], nil
 	}
+	// With --extension every parameter goes after `--`; nothing may sit between the
+	// provider and the `--`. (That slot is reserved for replacement parameters, which
+	// can't be combined with an extension yet.)
+	paramsMustFollowDash := fmt.Errorf(
+		"with --extension, parameters must come after '--', as in: " +
+			"'<provider> --extension -- <parameter>...'",
+	)
 	split := cmd.ArgsLenAtDash()
+	if split < 0 {
+		// ArgsLenAtDash reports -1 when there is no `--`.
+		if len(args) > 1 {
+			return nil, paramsMustFollowDash
+		}
+		return args[1:], nil
+	}
 	if split < 1 {
 		split = 1
 	}
 	if base := args[1:split]; len(base) > 0 {
-		return nil, fmt.Errorf("passing base (replacement) parameters together with " +
-			"an extension is not yet supported")
+		return nil, paramsMustFollowDash
 	}
 	return args[split:], nil
 }

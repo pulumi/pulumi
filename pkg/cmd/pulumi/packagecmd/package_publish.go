@@ -170,6 +170,8 @@ func (cmd *packagePublishCmd) Run(
 	}
 	defer contract.IgnoreClose(pctx)
 
+	// Publishing extension-parameterized packages is not supported yet, so always
+	// extract the replacement schema here.
 	pkg, _, err := cmd.extractSchema(pkgWorkspace.Instance, pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(),
 		env.Global(), 0 /* unbounded concurrency */, false /* asExtension */)
 	if err != nil {

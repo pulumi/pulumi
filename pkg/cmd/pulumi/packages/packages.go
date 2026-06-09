@@ -66,8 +66,6 @@ func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
 
 // InstallPackage installs a package to the project by generating an SDK and linking it.
 // It returns the path to the installed package.
-// When asExtension is true, the schema's Parameterization is promoted to
-// ExtensionParameterization before binding so codegen produces extension shape.
 func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
 	language, root, schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry, e env.Env, concurrency int, asExtension bool,
@@ -435,9 +433,12 @@ func SchemaFromSchemaSource(
 	if err != nil {
 		return nil, nil, err
 	}
-	if asExtension && spec.Parameterization != nil && spec.ExtensionParameterization == nil {
-		spec.ExtensionParameterization = spec.Parameterization
-		spec.Parameterization = nil
+	// --extension asserts the package is an extension; it does not reshape a replacement into one.
+	if asExtension && spec.ExtensionParameterization == nil {
+		return nil, nil, fmt.Errorf(
+			"%s did not return an extension-parameterized schema; the source may not support "+
+				"extension parameterization",
+			packageSource)
 	}
 	if parameterizationName != "" {
 		switch {

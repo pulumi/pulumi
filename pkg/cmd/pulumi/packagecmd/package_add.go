@@ -92,9 +92,8 @@ from the parameters, as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value
 
-With '--extension', the package is generated as an extension of the base
-provider: its resources are served by the base provider's plugin and it has no
-Provider class of its own. The extension parameters follow '--':
+Use '--extension' to add the package as an extension of its base provider
+instead of a replacement. Put the extension's parameters after '--':
 
   pulumi package add <provider> --extension -- <extension-parameter>...
 `,
@@ -128,7 +127,8 @@ Provider class of its own. The extension parameters follow '--':
 						Runtime: workspace.NewProjectRuntimeInfo(cmdCmd.NormalizeRuntimeName(language), nil),
 					},
 					reg: cmdCmd.NewDefaultRegistry(
-						cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+						cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global(),
+					),
 				}
 			}
 
@@ -165,7 +165,7 @@ Provider class of its own. The extension parameters follow '--':
 				target.reg,
 				env.Global(),
 				0,           /* unbounded concurrency */
-				asExtension, /* extension */
+				asExtension, /* asExtension */
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
@@ -176,13 +176,7 @@ Provider class of its own. The extension parameters follow '--':
 			}
 
 			if asExtension {
-				if pkg.ExtensionParameterization == nil {
-					return fmt.Errorf(
-						"provider %s did not return an extension-parameterized schema; "+
-							"the provider may not support extension parameterization "+
-							"(omit --extension for replacement parameterization)", pluginSource)
-				}
-
+				// Schema extraction already verified the source is extension-parameterized.
 				// File-based schemas have no underlying provider to record.
 				source := strings.Split(pluginSource, "@")[0]
 				if ext := filepath.Ext(source); ext == ".yaml" || ext == ".yml" || ext == ".json" {
@@ -332,7 +326,8 @@ func loadEnclosingTarget(ctx context.Context, wd string) (addTarget, error) {
 			installRoot:     filepath.Dir(filePath),
 			projectFilePath: &filePath,
 			reg: cmdCmd.NewDefaultRegistry(
-				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global()),
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global(),
+			),
 			proj: baseProject,
 		}, nil
 	case *workspace.PluginProject:
