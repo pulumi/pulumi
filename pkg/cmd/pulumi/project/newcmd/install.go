@@ -39,6 +39,10 @@ import (
 
 // InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, main string) error {
+	if runtime.Name() == "" {
+		return nil
+	}
+
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 	lang, err := ctx.Host.LanguageRuntime(runtime.Name())

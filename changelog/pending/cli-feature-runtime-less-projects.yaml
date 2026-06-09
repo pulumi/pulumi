@@ -1,0 +1,6 @@
+component: cli
+kind: feat
+body: Support Pulumi projects without a runtime across CLI operations and Automation API project settings
+time: 2026-06-09T12:16:27+01:00
+custom:
+    PR: 23489

@@ -1024,7 +1024,7 @@ func NewImportCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			}, imports)
 
-			if generateCode {
+			if generateCode && proj.Runtime.Name() != "" {
 				deployment, err := getCurrentDeploymentForStack(ctx, s)
 				if err != nil {
 					return err

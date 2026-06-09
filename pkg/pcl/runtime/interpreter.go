@@ -1770,12 +1770,20 @@ func (i *Interpreter) registerResourceWith(
 		}
 	}
 
-	// Add schema-based replaceOnChanges paths.
+	// Add schema-based replaceOnChanges paths and additionalSecretOutput keys.
 	if schemaResource != nil {
 		schemaReplaceOnChanges, _ := schemaResource.ReplaceOnChanges()
 		request.ReplaceOnChanges = append(
 			request.ReplaceOnChanges,
 			schema.PropertyListJoinToString(schemaReplaceOnChanges, func(s string) string { return s })...)
+
+		var additionalSecretOutputs []string
+		for _, prop := range schemaResource.Properties {
+			if prop.Secret {
+				additionalSecretOutputs = append(additionalSecretOutputs, prop.Name)
+			}
+		}
+		request.AdditionalSecretOutputs = append(request.AdditionalSecretOutputs, additionalSecretOutputs...)
 	}
 
 	// Default parent to the stack if not specified

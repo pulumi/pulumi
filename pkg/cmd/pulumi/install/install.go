@@ -152,6 +152,10 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
 			}
 
+			if proj.Runtime.Name() == "" {
+				return nil
+			}
+
 			// First make sure the language plugin is present.  We need this to load the required resource plugins.
 			// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 			runtime := proj.Runtime

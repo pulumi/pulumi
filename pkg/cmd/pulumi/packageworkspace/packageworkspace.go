@@ -219,6 +219,11 @@ func (w Workspace) GenerateLocalSDK(
 	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string,
 	provider plugin.Provider,
 ) (workspace.LinkablePackageDescriptor, error) {
+	if runtimeInfo.Name() == "" {
+		return workspace.LinkablePackageDescriptor{}, errors.New(
+			"cannot generate an SDK for a project without a runtime")
+	}
+
 	tracer := otel.Tracer("pulumi-cli")
 
 	ctx, schemaSpan := diagutils.StartSpan(ctx, tracer, "get-schema")
@@ -304,6 +309,10 @@ func (w Workspace) LinkIntoProject(
 	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string,
 	packageDescriptors []workspace.LinkablePackageDescriptor,
 ) error {
+	if runtimeInfo.Name() == "" {
+		return errors.New("cannot link packages into a project without a runtime")
+	}
+
 	w.unlinkedProjectsM.Lock()
 	refs := w.unlinkedProjects[projectDir]
 	delete(w.unlinkedProjects, projectDir)

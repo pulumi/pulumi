@@ -102,6 +102,7 @@ var expectedFailures = map[string]string{
 	"l3-deferred-outputs":                 "Cannot find name '_arg0_'.",
 	"l3-range-ref":                        "Property 'k1' does not exist on type 'Target[]'",
 	"l3-component-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",                                 //nolint:lll
+	"l2-resource-schema-secret":           "does not preserve schema-secret unknown outputs",
 	"l2-extension-parameterized-resource": "PCL-to-TypeScript program conversion does not yet resolve extension-parameterized tokens to the extension's SDK package", //nolint:lll
 }
 

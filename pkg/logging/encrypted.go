@@ -60,10 +60,20 @@ func RenameCurrentLogger(stackName, updateID string) error {
 type Logger struct {
 	mu        sync.Mutex
 	sink      io.WriteCloser // current sink (gzipSink or EncryptedLogWriter)
+	out       io.Writer      // indirection that always targets the current l.f
 	handler   *slog.JSONHandler
 	f         *os.File
 	filePath  string
 	encrypted bool
+}
+
+// currentFileWriter is an io.Writer that always writes to the logger's current
+// underlying file. Sinks write through it instead of binding directly to an
+// *os.File so that a rename can close and reopen the file.
+type currentFileWriter struct{ l *Logger }
+
+func (w currentFileWriter) Write(p []byte) (int, error) {
+	return w.l.f.Write(p)
 }
 
 // StartLogging creates a log file under ~/.pulumi/logs/ and installs it as
@@ -96,10 +106,11 @@ func StartLogging(
 		f:        f,
 		filePath: filePath,
 	}
+	l.out = currentFileWriter{l: l}
 
-	sink, encErr := newEncryptedSink(ctx, f, sm)
+	sink, encErr := newEncryptedSink(ctx, l.out, sm)
 	if encErr != nil {
-		l.sink = newGzipSink(f)
+		l.sink = newGzipSink(l.out)
 	} else {
 		l.sink = sink
 		l.encrypted = true
@@ -130,17 +141,19 @@ func (l *Logger) UpgradeToEncrypted(ctx context.Context, stackName, updateID str
 		return nil
 	}
 
+	// Prepare the encrypted session key *before* taking l.mu. This step calls
+	// into the secrets manager, which itself emits logs, and thus might need to
+	// take the mutex itself.
+	key, err := encryptedlog.PrepareKey(ctx, sm.Encrypter())
+	if err != nil {
+		return fmt.Errorf("preparing encrypted log key: %w", err)
+	}
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	if l.encrypted {
 		return nil
-	}
-
-	if stackName != "" {
-		if err := l.renameLocked(stackName, updateID); err != nil {
-			return fmt.Errorf("renaming log file: %w", err)
-		}
 	}
 
 	if err := l.sink.Close(); err != nil {
@@ -165,16 +178,28 @@ func (l *Logger) UpgradeToEncrypted(ctx context.Context, stackName, updateID str
 		return fmt.Errorf("closing gzip reader: %w", err)
 	}
 
-	if err := l.f.Truncate(0); err != nil {
-		return fmt.Errorf("truncating log file: %w", err)
-	}
-	if _, err := l.f.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("seeking after truncate: %w", err)
+	// Close the file before renaming and reopening it. Windows cannot rename a
+	// file that is still open, so we must drop our handle first rather than
+	// relying on Unix's rename-while-open behaviour.
+	if err := l.f.Close(); err != nil {
+		return fmt.Errorf("closing log file: %w", err)
 	}
 
-	encSink, err := encryptedlog.NewWriter(ctx, l.f, sm.Encrypter())
+	if stackName != "" {
+		if err := l.renameLocked(stackName, updateID); err != nil {
+			return fmt.Errorf("renaming log file: %w", err)
+		}
+	}
+
+	f, err := os.OpenFile(l.filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
-		l.sink = newGzipSink(l.f)
+		return fmt.Errorf("reopening log file: %w", err)
+	}
+	l.f = f
+
+	encSink, err := encryptedlog.NewWriterFromKey(l.out, key)
+	if err != nil {
+		l.sink = newGzipSink(l.out)
 		return fmt.Errorf("creating encrypted writer: %w", err)
 	}
 
@@ -223,10 +248,26 @@ func (l *Logger) rename(stackName, updateID string) error {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return l.renameLocked(stackName, updateID)
+
+	// Close before renaming — Windows cannot rename an open file.
+	if err := l.f.Close(); err != nil {
+		return fmt.Errorf("closing log file: %w", err)
+	}
+	if err := l.renameLocked(stackName, updateID); err != nil {
+		return fmt.Errorf("renaming log file: %w", err)
+	}
+
+	f, err := os.OpenFile(l.filePath, os.O_RDWR|os.O_APPEND, 0o600)
+	if err != nil {
+		return fmt.Errorf("reopening log file: %w", err)
+	}
+	l.f = f
+	return nil
 }
 
-// renameLocked renames the log file. Must be called with l.mu held.
+// renameLocked renames the log file on disk and updates l.filePath. The caller
+// must have closed l.f first (Windows cannot rename an open file). Must be
+// called with l.mu held.
 func (l *Logger) renameLocked(stackName, updateID string) error {
 	dir := filepath.Dir(l.filePath)
 	ts := time.Now().Format("20060102T150405")
@@ -249,7 +290,11 @@ func newEncryptedSink(ctx context.Context, w io.Writer, sm secrets.Manager) (io.
 	if sm == nil {
 		return nil, errors.New("no secrets manager available")
 	}
-	return encryptedlog.NewWriter(ctx, w, sm.Encrypter())
+	key, err := encryptedlog.PrepareKey(ctx, sm.Encrypter())
+	if err != nil {
+		return nil, fmt.Errorf("preparing encrypted log key: %w", err)
+	}
+	return encryptedlog.NewWriterFromKey(w, key)
 }
 
 type gzipSink struct {

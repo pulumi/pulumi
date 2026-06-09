@@ -1,0 +1,6 @@
+component: cli/convert
+kind: improvement
+body: Resolve provider plugins through the Pulumi Registry when converting from a third-party source
+time: 2026-06-09T00:00:00.000000+00:00
+custom:
+    PR: "23490"

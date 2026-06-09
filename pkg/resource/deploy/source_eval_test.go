@@ -308,8 +308,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "test"},
-		Target:      &Target{Name: tokens.MustParseStackName("test")},
+		Proj: &workspace.Project{
+			Name:    "test",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -580,8 +583,11 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "test"},
-		Target:      &Target{Name: tokens.MustParseStackName("test")},
+		Proj: &workspace.Project{
+			Name:    "test",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -847,8 +853,11 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "test"},
-		Target:      &Target{Name: tokens.MustParseStackName("test")},
+		Proj: &workspace.Project{
+			Name:    "test",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -977,8 +986,11 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "test"},
-		Target:      &Target{Name: tokens.MustParseStackName("test")},
+		Proj: &workspace.Project{
+			Name:    "test",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -1193,8 +1205,11 @@ func TestDisableDefaultProviders(t *testing.T) {
 				ProjectRoot: "/",
 				Pwd:         "/",
 				Program:     ".",
-				Proj:        &workspace.Project{Name: "test"},
-				Target:      &Target{Name: tokens.MustParseStackName("test")},
+				Proj: &workspace.Project{
+					Name:    "test",
+					Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+				},
+				Target: &Target{Name: tokens.MustParseStackName("test")},
 			}
 			if tt.disableDefault {
 				disableDefaultProviders(runInfo, "pkgA")
@@ -1407,8 +1422,11 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "test"},
-		Target:      &Target{Name: tokens.MustParseStackName("test")},
+		Proj: &workspace.Project{
+			Name:    "test",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -2071,7 +2089,10 @@ func TestEvalSource(t *testing.T) {
 					ProjectRoot: "/",
 					Pwd:         "/",
 					Program:     ".",
-					Proj:        &workspace.Project{Name: "proj"},
+					Proj: &workspace.Project{
+						Name:    "proj",
+						Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+					},
 					Target: &Target{
 						Name: tokens.MustParseStackName("target-name"),
 						Config: config.Map{
@@ -2146,7 +2167,10 @@ func TestGetDeploymentInfo(t *testing.T) {
 			ProjectRoot: "/",
 			Pwd:         "/",
 			Program:     ".",
-			Proj:        &workspace.Project{Name: "proj"},
+			Proj: &workspace.Project{
+				Name:    "proj",
+				Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+			},
 			Target: &Target{
 				Name:         tokens.MustParseStackName("dev"),
 				Organization: tokens.Name("acme"),
@@ -2363,7 +2387,10 @@ func TestInvoke(t *testing.T) {
 				ProjectRoot: "/",
 				Pwd:         "/",
 				Program:     ".",
-				Proj:        &workspace.Project{Name: "proj"},
+				Proj: &workspace.Project{
+					Name:    "proj",
+					Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+				},
 				Target: &Target{
 					Name: tokens.MustParseStackName("stack"),
 				},
@@ -2419,7 +2446,10 @@ func TestInvoke(t *testing.T) {
 				ProjectRoot: "/",
 				Pwd:         "/",
 				Program:     ".",
-				Proj:        &workspace.Project{Name: "proj"},
+				Proj: &workspace.Project{
+					Name:    "proj",
+					Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+				},
 				Target: &Target{
 					Name: tokens.MustParseStackName("stack"),
 				},
@@ -2498,7 +2528,10 @@ func TestCall(t *testing.T) {
 				ProjectRoot: "/",
 				Pwd:         "/",
 				Program:     ".",
-				Proj:        &workspace.Project{Name: "proj"},
+				Proj: &workspace.Project{
+					Name:    "proj",
+					Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+				},
 				Target: &Target{
 					Name: tokens.MustParseStackName("stack"),
 				},
@@ -2583,7 +2616,10 @@ func TestCall(t *testing.T) {
 				ProjectRoot: "/",
 				Pwd:         "/",
 				Program:     ".",
-				Proj:        &workspace.Project{Name: "proj"},
+				Proj: &workspace.Project{
+					Name:    "proj",
+					Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+				},
 				Target: &Target{
 					Name: tokens.MustParseStackName("stack"),
 				},
@@ -2683,7 +2719,10 @@ func TestCall(t *testing.T) {
 				ProjectRoot: "/",
 				Pwd:         "/",
 				Program:     ".",
-				Proj:        &workspace.Project{Name: "proj"},
+				Proj: &workspace.Project{
+					Name:    "proj",
+					Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+				},
 				Target: &Target{
 					Name: tokens.MustParseStackName("stack"),
 				},
@@ -2748,7 +2787,10 @@ func TestCall(t *testing.T) {
 				ProjectRoot: "/",
 				Pwd:         "/",
 				Program:     ".",
-				Proj:        &workspace.Project{Name: "proj"},
+				Proj: &workspace.Project{
+					Name:    "proj",
+					Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+				},
 				Target: &Target{
 					Name: tokens.MustParseStackName("stack"),
 				},

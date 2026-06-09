@@ -141,6 +141,10 @@ Provider class of its own. The extension parameters follow '--':
 			}
 			defer contract.IgnoreClose(pctx)
 
+			if target.proj.RuntimeInfo().Name() == "" {
+				return errors.New("cannot add a package to a project without a runtime")
+			}
+
 			pluginSource := args[0]
 
 			parameterArgs, err := constrictor.ExtensionArgs(cmd, args, asExtension)
