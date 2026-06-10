@@ -150,12 +150,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
-		Directory:   "regress-11176",
-		Description: "Regression test for https://github.com/pulumi/pulumi/issues/11176",
-		Skip:        allProgLanguages.Except(TestGo),
-		SkipCompile: codegen.NewStringSet(TestGo),
-	},
-	{
 		Directory:   "throw-not-implemented",
 		Description: "Function notImplemented is compiled to a runtime error at call-site",
 	},
