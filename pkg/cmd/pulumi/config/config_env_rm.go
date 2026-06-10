@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -60,9 +59,5 @@ type configEnvRmCmd struct {
 }
 
 func (cmd *configEnvRmCmd) run(ctx context.Context, args []string) error {
-	return cmd.parent.editStackEnvironment(
-		ctx, cmd.showSecrets, cmd.yes, func(stack *workspace.ProjectStack) error {
-			stack.Environment = stack.Environment.Remove(args[0])
-			return nil
-		})
+	return cmd.parent.editStackEnvironment(ctx, cmd.showSecrets, cmd.yes, importOp{removeEnv: args[0]})
 }
