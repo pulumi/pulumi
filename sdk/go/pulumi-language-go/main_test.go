@@ -508,7 +508,7 @@ func TestCompileProgram(t *testing.T) {
 		tmp := t.TempDir()
 		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 		_, err := compileProgram(
-			t.Context(), &mockEngine{}, tmp, "", false /* withDebugFlags */, stdout, stderr)
+			t.Context(), &mockEngine{}, nil /* cache */, tmp, "", false /* withDebugFlags */, stdout, stderr)
 		require.ErrorContains(t, err, "Failed to find go files")
 	})
 
@@ -525,12 +525,51 @@ func main() {}
 		require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.go"), []byte(program), 0o600))
 		expectedOut := filepath.Join(tmp, "out")
 		out, err := compileProgram(
-			t.Context(), engineClient, tmp, expectedOut, false /* withDebugFlags */, stdout, stderr)
+			t.Context(), engineClient, nil /* cache */, tmp, expectedOut, false /* withDebugFlags */, stdout, stderr)
 		require.NoError(t, err)
 		require.Equal(t, expectedOut, out)
 		require.Len(t, engineClient.logs, 2)
 		require.Equal(t, "Compiling the program ...", engineClient.logs[0].Message)
 		require.Equal(t, "Finished compiling", engineClient.logs[1].Message)
+	})
+
+	t.Run("build cache", func(t *testing.T) {
+		t.Parallel()
+		tmp := t.TempDir()
+		goMod := `module example`
+		program := `package main
+func main() {}
+`
+		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+		engineClient := &mockEngine{}
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(goMod), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.go"), []byte(program), 0o600))
+
+		cache, err := newCompileCache()
+		require.NoError(t, err)
+		t.Cleanup(func() { require.NoError(t, cache.close()) })
+
+		// Note the build target inside the program directory: it must be
+		// excluded from the source hash, or the binary produced by the first
+		// build would turn every subsequent lookup into a miss.
+		outfile := filepath.Join(tmp, "out")
+		_, err = compileProgram(
+			t.Context(), engineClient, cache, tmp, outfile, false /* withDebugFlags */, stdout, stderr)
+		require.NoError(t, err)
+		require.Len(t, engineClient.logs, 2) // compiled
+
+		_, err = compileProgram(
+			t.Context(), engineClient, cache, tmp, outfile, false /* withDebugFlags */, stdout, stderr)
+		require.NoError(t, err)
+		require.Len(t, engineClient.logs, 2) // cache hit: no new compile logs
+
+		// If the cached binary can't be materialized, fall back to a rebuild
+		// instead of failing.
+		require.NoError(t, os.Remove(cache.path(hashSourceTree(tmp, outfile, false))))
+		_, err = compileProgram(
+			t.Context(), engineClient, cache, tmp, outfile, false /* withDebugFlags */, stdout, stderr)
+		require.NoError(t, err)
+		require.Len(t, engineClient.logs, 4) // rebuilt
 	})
 
 	t.Run("compile error", func(t *testing.T) {
@@ -544,7 +583,7 @@ func main() {
 		require.NoError(t, os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(goMod), 0o600))
 		require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.go"), []byte(badProgram), 0o600))
 		_, err := compileProgram(
-			t.Context(), &mockEngine{}, tmp, "", false /* withDebugFlags */, stdout, stderr)
+			t.Context(), &mockEngine{}, nil /* cache */, tmp, "", false /* withDebugFlags */, stdout, stderr)
 		require.ErrorContains(t, err, "unable to run `go build`: exit status 1")
 		require.Contains(t, stderr.String(), "main.go:3:1: syntax error")
 	})
