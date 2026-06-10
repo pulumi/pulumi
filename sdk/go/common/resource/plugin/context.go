@@ -246,10 +246,10 @@ func (ctx *Context) Request() context.Context {
 	return opentracing.ContextWithSpan(ctx.baseContext, ctx.tracingSpan)
 }
 
-// Close reclaims all resources associated with this context. The host is only closed if this
-// context constructed it (a default host built because no host was passed in); a host supplied
-// by the caller is caller-owned and must be closed separately, since a single host may be
-// shared by several contexts.
+// Close reclaims all resources associated with this context. The host itself is only closed if
+// this context constructed it (a default host built because no host was passed in); a host
+// supplied by the caller is caller-owned and must be closed separately, since a single host may
+// be shared by several contexts.
 func (ctx *Context) Close() error {
 	defer ctx.cancel()
 	if ctx.tracingSpan != nil {

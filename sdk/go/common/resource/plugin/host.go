@@ -238,26 +238,31 @@ func projectPluginsFromProject(
 	return append(projectPlugins, pluginsFromPackages...), nil
 }
 
-// NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
+// newHost constructs the default host implementation. This is the shape we plan to move to
+// pkg/host as NewHost: the host is independent of any workspace, and ctx is its lifetime
+// context — cancelling it is the hard stop that aborts graceful shutdown, so callers wanting a
+// graceful teardown must call Close before cancelling ctx.
 //
-// ctx is only used to wire up the host's RPC server and logging; the host does not retain it.
-// Per-workspace state (project plugins, stack configuration, and so on) is carried by the
-// Context passed to each host method, so the host may be shared across workspaces. The host is
-// owned by ctx if ctx was constructed with a nil host, and by the caller otherwise.
-func NewDefaultHost(
-	ctx *Context, debugging DebugContext, newLoader NewLoaderFunc, newMapper NewMapperFunc,
-	installLang LanguageInstaller,
+// bootCtx is only needed to wire up the host's RPC server: its tracing span parents the
+// server's interceptors, and the loader and mapper services resolve plugins against its
+// workspace view. It must go away before NewHost can move to pkg/host.
+func newHost(
+	ctx context.Context, d, statusD diag.Sink, debugging DebugContext,
+	newLoader NewLoaderFunc, newMapper NewMapperFunc, installLang LanguageInstaller, bootCtx *Context,
 ) (Host, error) {
+	hostCtx, hostCancel := context.WithCancel(ctx)
 	host := &defaultHost{
-		diag:                    ctx.Diag,
-		statusDiag:              ctx.StatusDiag,
-		shutdownCtx:             context.WithoutCancel(ctx.Request()),
+		diag:                    d,
+		statusDiag:              statusD,
+		hostCtx:                 hostCtx,
+		hostCancel:              hostCancel,
 		analyzerPlugins:         map[string]*analyzerPlugin{},
 		languagePlugins:         map[languagePluginKey]*languagePlugin{},
 		resourcePlugins:         map[Provider]*resourcePlugin{},
 		reportedResourcePlugins: map[string]struct{}{},
 		languageLoadRequests:    make(chan pluginLoadRequest),
 		loadRequests:            make(chan pluginLoadRequest),
+		watchedContexts:         map[*Context]struct{}{},
 		closer:                  new(sync.Once),
 		debugContext:            debugging,
 		hasLoaderServer:         newLoader != nil,
@@ -268,8 +273,9 @@ func NewDefaultHost(
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
 	// to "phone home" in case there are things the host must do on behalf of the plugins (like log, etc).
-	svr, err := newHostServer(host, ctx, newLoader, newMapper)
+	svr, err := newHostServer(host, bootCtx, newLoader, newMapper)
 	if err != nil {
+		hostCancel()
 		return nil, err
 	}
 	host.server = svr
@@ -290,6 +296,26 @@ func NewDefaultHost(
 	}()
 
 	return host, nil
+}
+
+// NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
+//
+// ctx is only used to wire up the host's RPC server and logging; the host does not retain it.
+// Per-workspace state (project plugins, stack configuration, and so on) is carried by the
+// Context passed to each host method, so the host may be shared across workspaces. The host is
+// owned by ctx if ctx was constructed with a nil host, and by the caller otherwise.
+func NewDefaultHost(
+	ctx *Context, debugging DebugContext, newLoader NewLoaderFunc, newMapper NewMapperFunc,
+	installLang LanguageInstaller,
+) (Host, error) {
+	// The host's lifetime context deliberately strips the bootstrap context's cancellation: the
+	// host is responsible for calling Close, and a caller's cancelled context must not turn
+	// into an accidental hard kill of plugin shutdown. Once host construction moves to pkg and
+	// takes a caller context directly, that context will become the exposed hard cut-off.
+	return newHost(
+		context.WithoutCancel(ctx.Request()), ctx.Diag, ctx.StatusDiag, debugging, newLoader, newMapper,
+		installLang, ctx,
+	)
 }
 
 func resolvePluginPath(root string, path string) (string, error) {
@@ -368,10 +394,14 @@ type defaultHost struct {
 	diag       diag.Sink // the sink to use for diagnostics, e.g. plugins logging through the host.
 	statusDiag diag.Sink // the sink to use for status messages.
 
-	// the parent context for plugin shutdown RPCs. It preserves the active tracing span of the
-	// context the host was built with but strips cancellation, so shutdown still gets its
-	// timeout budget even if that context has already been cancelled.
-	shutdownCtx context.Context
+	// hostCtx is the host's lifetime context: the context watchers and the graceful shutdown
+	// RPCs (Cancel, SignalCancellation) run under it. It is independent of any workspace
+	// context, so a cancelled workspace still leaves plugin shutdown its timeout budget;
+	// cancelling hostCtx is the hard stop that aborts graceful shutdown. Close cancels it as
+	// its final act. It preserves the active tracing span of the context the host was built
+	// with so shutdown RPCs parent onto the current operation.
+	hostCtx    context.Context
+	hostCancel context.CancelFunc
 
 	analyzerPlugins         map[string]*analyzerPlugin            // a cache of analyzer plugins and their processes.
 	languagePlugins         map[languagePluginKey]*languagePlugin // a cache of language plugins and their processes.
@@ -384,6 +414,11 @@ type defaultHost struct {
 
 	// Used to synchronize shutdown with in-progress plugin loads.
 	pluginLock sync.RWMutex
+
+	// The contexts whose cancellation the host is watching, so that each context's plugins are
+	// released when it is cancelled (Context.Close cancels the context's base context).
+	watchedContexts map[*Context]struct{}
+	watchedMu       sync.Mutex
 
 	closer *sync.Once
 
@@ -399,6 +434,7 @@ type analyzerPlugin struct {
 	Plugin Analyzer
 	Info   PluginInfo
 	Name   string
+	refs   map[*Context]struct{} // the contexts this plugin was loaded for; it dies with the last one.
 }
 
 // languagePluginKey identifies a booted language plugin. The working directory is part of the
@@ -413,12 +449,14 @@ type languagePlugin struct {
 	Plugin LanguageRuntime
 	Info   PluginInfo
 	Name   string
+	refs   map[*Context]struct{} // the contexts this plugin was loaded for; it dies with the last one.
 }
 
 type resourcePlugin struct {
 	Plugin Provider
 	Info   PluginInfo
 	Name   string
+	ctx    *Context // the context the provider was booted for; providers are never shared across contexts.
 }
 
 func (host *defaultHost) ServerAddr() string {
@@ -484,6 +522,7 @@ func (host *defaultHost) loadPlugin(
 }
 
 func (host *defaultHost) Analyzer(ctx *Context, name tokens.QName) (Analyzer, error) {
+	host.watchContext(ctx)
 	// Analyzers are spawned in the workspace's working directory and resolved against its
 	// project plugins, so the cache key must identify the workspace as well as the analyzer.
 	key := fmt.Sprintf("analyzer\x00%s\x00%s", name, ctx.Pwd)
@@ -491,6 +530,7 @@ func (host *defaultHost) Analyzer(ctx *Context, name tokens.QName) (Analyzer, er
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[key]; has {
 			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
+			plug.refs[ctx] = struct{}{}
 			return plug.Plugin, nil
 		}
 
@@ -503,7 +543,9 @@ func (host *defaultHost) Analyzer(ctx *Context, name tokens.QName) (Analyzer, er
 			}
 
 			// Memoize the result.
-			host.analyzerPlugins[key] = &analyzerPlugin{Plugin: plug, Info: info, Name: string(name)}
+			host.analyzerPlugins[key] = &analyzerPlugin{
+				Plugin: plug, Info: info, Name: string(name), refs: map[*Context]struct{}{ctx: {}},
+			}
 		}
 
 		return plug, err
@@ -517,6 +559,7 @@ func (host *defaultHost) Analyzer(ctx *Context, name tokens.QName) (Analyzer, er
 func (host *defaultHost) PolicyAnalyzer(
 	ctx *Context, name tokens.QName, path string, opts *PolicyAnalyzerOptions,
 ) (Analyzer, error) {
+	host.watchContext(ctx)
 	// The options are part of the cache key: they configure the analyzer process (stack,
 	// configuration, environment), so a cached analyzer may only be reused for a call that
 	// would boot an identical one. fmt prints maps with sorted keys, making the
@@ -530,6 +573,7 @@ func (host *defaultHost) PolicyAnalyzer(
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[key]; has {
 			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
+			plug.refs[ctx] = struct{}{}
 			return plug.Plugin, nil
 		}
 
@@ -542,7 +586,9 @@ func (host *defaultHost) PolicyAnalyzer(
 			}
 
 			// Memoize the result.
-			host.analyzerPlugins[key] = &analyzerPlugin{Plugin: plug, Info: info, Name: string(name)}
+			host.analyzerPlugins[key] = &analyzerPlugin{
+				Plugin: plug, Info: info, Name: string(name), refs: map[*Context]struct{}{ctx: {}},
+			}
 		}
 
 		return plug, err
@@ -554,6 +600,7 @@ func (host *defaultHost) PolicyAnalyzer(
 }
 
 func (host *defaultHost) Provider(ctx *Context, descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {
+	host.watchContext(ctx)
 	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		pkg := descriptor.Name
 		version := descriptor.Version
@@ -605,7 +652,7 @@ func (host *defaultHost) Provider(ctx *Context, descriptor workspace.PluginDescr
 			if !alreadyReported {
 				host.reportedResourcePlugins[key] = struct{}{}
 			}
-			host.resourcePlugins[plug] = &resourcePlugin{Plugin: plug, Info: info, Name: pkg}
+			host.resourcePlugins[plug] = &resourcePlugin{Plugin: plug, Info: info, Name: pkg, ctx: ctx}
 		}
 
 		return plug, err
@@ -632,7 +679,7 @@ func (pc hostManagedProvider) Close() error {
 	// Plugin.Close does not treat the subsequent exit as a premature crash. defaultHost.Close does the same for
 	// providers still in resourcePlugins at shutdown, but callers that Close individual providers (e.g. the
 	// convert mapper) bypass that path.
-	cancelCtx, cancelCancel := context.WithTimeout(pc.host.shutdownCtx, 5*time.Second)
+	cancelCtx, cancelCancel := context.WithTimeout(pc.host.hostCtx, 5*time.Second)
 	defer cancelCancel()
 	contract.IgnoreError(pc.SignalCancellation(cancelCtx))
 
@@ -649,12 +696,14 @@ func (pc hostManagedProvider) Close() error {
 
 func (host *defaultHost) LanguageRuntime(ctx *Context, runtime string,
 ) (LanguageRuntime, error) {
+	host.watchContext(ctx)
 	key := languagePluginKey{runtime: runtime, workingDirectory: ctx.Pwd}
 	// Language runtimes use their own loading channel not the main one
 	plugin, err := host.loadPlugin(host.languageLoadRequests, func() (any, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.languagePlugins[key]; has {
 			contract.Assertf(plug != nil, "language plugin %v was loaded but is nil", runtime)
+			plug.refs[ctx] = struct{}{}
 			return plug.Plugin, nil
 		}
 
@@ -674,7 +723,9 @@ func (host *defaultHost) LanguageRuntime(ctx *Context, runtime string,
 			}
 
 			// Memoize the result.
-			host.languagePlugins[key] = &languagePlugin{Plugin: plug, Info: info, Name: runtime}
+			host.languagePlugins[key] = &languagePlugin{
+				Plugin: plug, Info: info, Name: runtime, refs: map[*Context]struct{}{ctx: {}},
+			}
 		}
 
 		return plug, err
@@ -689,10 +740,110 @@ func (host *defaultHost) ResolvePlugin(ctx *Context, spec workspace.PluginDescri
 	return workspace.GetPluginInfo(ctx.baseContext, ctx.Diag, spec, ctx.ProjectPlugins())
 }
 
+// watchContext arranges for the plugins booted on behalf of ctx to be released once ctx's base
+// context is cancelled, which Context.Close guarantees. Watching is idempotent per context.
+// Release is asynchronous: it happens shortly after cancellation, and host.Close remains the
+// synchronous backstop that tears down anything still running.
+func (host *defaultHost) watchContext(ctx *Context) {
+	base := ctx.Base()
+	if base == nil {
+		// A context without a base can never signal cancellation; its plugins live until the
+		// host closes.
+		return
+	}
+
+	host.watchedMu.Lock()
+	if _, has := host.watchedContexts[ctx]; has {
+		host.watchedMu.Unlock()
+		return
+	}
+	host.watchedContexts[ctx] = struct{}{}
+	host.watchedMu.Unlock()
+
+	go func() {
+		select {
+		case <-base.Done():
+			host.releaseContextPlugins(ctx)
+		case <-host.hostCtx.Done():
+			// The host closed every plugin already; nothing left to release.
+		}
+	}()
+}
+
+// releaseContextPlugins closes the plugins booted on behalf of ctx: every provider the context
+// booted, and every cached language runtime or analyzer that no other context still references.
+// The load-request channels serialize access to the plugin maps, so this synchronizes with
+// in-flight loads the same way Close and SignalCancellation do.
+//
+// A plugin load that is in flight while its context is released is not torn down here; it stays
+// cached until the host closes.
+func (host *defaultHost) releaseContextPlugins(ctx *Context) {
+	closePlugins := func(channel chan pluginLoadRequest, close func(cancelCtx context.Context)) error {
+		_, err := host.loadPlugin(channel, func() (any, error) {
+			cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
+			defer cancelCancel()
+			close(cancelCtx)
+			return nil, nil
+		})
+		return err
+	}
+
+	err := closePlugins(host.loadRequests, func(cancelCtx context.Context) {
+		for key, plug := range host.resourcePlugins {
+			if plug.ctx != ctx {
+				continue
+			}
+			contract.IgnoreError(plug.Plugin.SignalCancellation(cancelCtx))
+			if err := plug.Plugin.Close(); err != nil {
+				logging.V(5).Infof("Error closing '%s' resource plugin during context close; ignoring: %v", plug.Name, err)
+			}
+			delete(host.resourcePlugins, key)
+		}
+		for key, plug := range host.analyzerPlugins {
+			if _, has := plug.refs[ctx]; !has {
+				continue
+			}
+			delete(plug.refs, ctx)
+			if len(plug.refs) > 0 {
+				continue
+			}
+			contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
+			if err := plug.Plugin.Close(); err != nil {
+				logging.V(5).Infof("Error closing '%s' analyzer plugin during context close; ignoring: %v", plug.Name, err)
+			}
+			delete(host.analyzerPlugins, key)
+		}
+	})
+	if err != nil {
+		// The only error loadPlugin returns here is that the host is shutting down, in which
+		// case Close is already tearing every plugin down; there is nothing left to release.
+		return
+	}
+
+	// Language plugins are guarded by their own load channel.
+	err = closePlugins(host.languageLoadRequests, func(cancelCtx context.Context) {
+		for key, plug := range host.languagePlugins {
+			if _, has := plug.refs[ctx]; !has {
+				continue
+			}
+			delete(plug.refs, ctx)
+			if len(plug.refs) > 0 {
+				continue
+			}
+			contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
+			if err := plug.Plugin.Close(); err != nil {
+				logging.V(5).Infof("Error closing '%s' language plugin during context close; ignoring: %v", plug.Name, err)
+			}
+			delete(host.languagePlugins, key)
+		}
+	})
+	contract.IgnoreError(err)
+}
+
 func (host *defaultHost) SignalCancellation() error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
 	_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		cancelCtx, cancelCancel := context.WithTimeout(host.shutdownCtx, 30*time.Second)
+		cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 30*time.Second)
 		defer cancelCancel()
 
 		// Cancel in two phases: first resource providers and analyzers, then language hosts. RunPlugin-based providers
@@ -751,7 +902,7 @@ func (host *defaultHost) Close() (err error) {
 		host.pluginLock.Lock()
 		// N.B We purposefully do not unlock this.
 
-		cancelCtx, cancelCancel := context.WithTimeout(host.shutdownCtx, 5*time.Second)
+		cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
 		defer cancelCancel()
 
 		// Close plugins in two phases: first resource providers and analyzers, then language hosts. RunPlugin-based
@@ -796,8 +947,13 @@ func (host *defaultHost) Close() (err error) {
 		close(host.languageLoadRequests)
 		close(host.loadRequests)
 
-		// Finally, shut down the host's gRPC server.
+		// Shut down the host's gRPC server.
 		err = host.server.Cancel()
+
+		// Finally, cancel the host's lifetime context. This stops the context watchers, and is
+		// the hard stop for anything still running; it must come last so the graceful close-out
+		// above keeps its timeout budget.
+		host.hostCancel()
 	})
 	return err
 }
