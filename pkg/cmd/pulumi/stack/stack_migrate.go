@@ -146,11 +146,8 @@ func (p *reusingSecretsProvider) OfType(
 	return p.fallback.OfType(ctx, ty, state)
 }
 
-// stackConfigPath returns Pulumi.<stack>.yaml's path, honoring the ConfigFile override.
+// stackConfigPath returns Pulumi.<stack>.yaml's path.
 func stackConfigPath(name tokens.QName) (string, error) {
-	if ConfigFile != "" {
-		return ConfigFile, nil
-	}
 	_, configPath, err := workspace.DetectProjectStackPath(name)
 	if err != nil {
 		return "", fmt.Errorf("detecting project stack path for %q: %w", name, err)
@@ -280,7 +277,7 @@ func (cmd *stackMigrateCmd) Run(
 		// from the source backend; in non-interactive mode ChooseStack errors out.
 		// Passing SetCurrent here is XORed off inside ChooseStack so we don't change the
 		// workspace's currently-selected stack.
-		s, err := ChooseStack(ctx, sink, ws, sourceBE, SetCurrent, dopts)
+		s, err := ChooseStack(ctx, sink, ws, sourceBE, SetCurrent, dopts, "")
 		if err != nil {
 			return err
 		}
@@ -322,7 +319,7 @@ func (cmd *stackMigrateCmd) Run(
 	}
 
 	// Keep srcPS in memory: deepcopy.Copy zero-values config.Key/Value (unexported-only structs).
-	srcPS, err := LoadProjectStack(ctx, sink, project, sourceStack)
+	srcPS, err := LoadProjectStack(ctx, sink, project, sourceStack, "")
 	if err != nil {
 		return fmt.Errorf("loading source stack config: %w", err)
 	}
@@ -461,6 +458,7 @@ func (cmd *stackMigrateCmd) Run(
 		false,
 		cmd.secretsProvider,
 		false,
+		"",
 	)
 	if err != nil {
 		// Only adopt-and-rollback when ErrSaveStackConfig signals b.CreateStack succeeded.
@@ -498,7 +496,7 @@ func (cmd *stackMigrateCmd) Run(
 		}
 	}
 
-	targetPS, err := LoadProjectStack(ctx, sink, project, targetStack)
+	targetPS, err := LoadProjectStack(ctx, sink, project, targetStack, "")
 	if err != nil {
 		return fmt.Errorf("loading target stack config: %w", err)
 	}
@@ -517,7 +515,7 @@ func (cmd *stackMigrateCmd) Run(
 	// SecretsProvider/EncryptionSalt/EncryptedKey live on separate fields and survive.
 	targetPS.Config = newConfig
 	targetPS.Environment = srcPS.Environment
-	if err := SaveProjectStack(ctx, targetStack, targetPS); err != nil {
+	if err := SaveProjectStack(ctx, targetStack, targetPS, ""); err != nil {
 		return fmt.Errorf("saving target stack config: %w", err)
 	}
 

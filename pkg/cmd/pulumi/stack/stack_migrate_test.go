@@ -2406,10 +2406,8 @@ func TestStackMigrate_RefusesLegacyRenameWithoutProject(t *testing.T) { //nolint
 	wd := t.TempDir()
 	t.Chdir(wd)
 
-	oldConfigFile := ConfigFile
-	ConfigFile = "Pulumi.dev.yaml"
-	t.Cleanup(func() { ConfigFile = oldConfigFile })
-	require.NoError(t, os.WriteFile(ConfigFile, []byte("config: {}\n"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock\n"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config: {}\n"), 0o600))
 
 	tgtSM := &secrets.MockSecretsManager{
 		TypeF:      func() string { return "service" },
