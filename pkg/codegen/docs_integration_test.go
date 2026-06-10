@@ -22,8 +22,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -758,30 +756,16 @@ func testDocsGenHelper(
 }
 
 // benchmarkSchemaBytes fetches a large real-provider schema so the bind timings below stay
-// meaningful. The schema is too large to store in-repo, so it is downloaded on demand and cached
-// in the system temp directory.
+// meaningful. The schema is too large to store in-repo, so it is downloaded during setup.
 func benchmarkSchemaBytes(b *testing.B) []byte {
 	const url = "https://raw.githubusercontent.com/pulumi/pulumi-aws/v5.4.0/" +
 		"provider/cmd/pulumi-resource-aws/schema.json"
-	path := filepath.Join(os.TempDir(), "pulumi-benchmark-schema-aws-5.4.0.json")
-	if bytes, err := os.ReadFile(path); err == nil {
-		return bytes
-	}
-
 	resp, err := http.Get(url)
 	require.NoError(b, err)
 	defer resp.Body.Close()
 	require.Equal(b, http.StatusOK, resp.StatusCode)
 	bytes, err := io.ReadAll(resp.Body)
 	require.NoError(b, err)
-
-	// Write via a temporary file so a partial download never lands at the cache path.
-	tmp, err := os.CreateTemp(os.TempDir(), "pulumi-benchmark-schema-*.json")
-	require.NoError(b, err)
-	_, err = tmp.Write(bytes)
-	require.NoError(b, err)
-	require.NoError(b, tmp.Close())
-	require.NoError(b, os.Rename(tmp.Name(), path))
 	return bytes
 }
 
