@@ -46,6 +46,7 @@ from .settings import (
 
 from .stack import (
     run_in_stack,
+    get_current_export_map,
     register_stack_transformation,
     register_stack_transform,
     register_resource_transform,
@@ -98,6 +99,7 @@ __all__ = [
     "require_pulumi_version",
     # stack
     "run_in_stack",
+    "get_current_export_map",
     "register_stack_transformation",
     "register_stack_transform",
     "register_resource_transform",

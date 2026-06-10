@@ -109,6 +109,8 @@ from .resource_hooks import (
     error_hook,
 )
 
+from .runtime.stack import get_current_export_map
+
 from .log import (
     debug,
     info,
@@ -182,6 +184,7 @@ __all__ = [
     "ResourceOptions",
     "create_urn",
     "export",
+    "get_current_export_map",
     "ROOT_STACK_RESOURCE",
     "ResourceTransformation",
     "ResourceTransformationArgs",

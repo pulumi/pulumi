@@ -1,0 +1,6 @@
+component: sdk/python
+kind: feat
+body: The current exports map is now available for unit testing through `get_current_export_map`
+time: 2026-06-10T11:44:00.000000+00:00
+custom:
+    PR: "22586"

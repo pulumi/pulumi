@@ -227,6 +227,14 @@ class Stack(ComponentResource):
         self.outputs[name] = value
 
 
+def get_current_export_map() -> dict[str, Any]:
+    """Get a copy of the current export map. Primarily useful for testing."""
+    root = get_root_resource()
+    if root is not None and isinstance(root, Stack):
+        return dict(root.outputs)
+    return {}
+
+
 # Note: we use a List here instead of a set as many objects are unhashable.  This is inefficient,
 # but python seems to offer no alternative.
 def massage(attr: Any, seen: list[Any]):
