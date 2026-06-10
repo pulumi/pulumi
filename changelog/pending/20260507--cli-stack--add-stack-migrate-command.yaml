@@ -1,4 +1,4 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add `pulumi stack migrate` to migrate a stack from another backend to the currently logged-in backend, including re-encrypting config secrets and stack state under the target secrets provider
+component: cli
+kind: feat
+body: Add `pulumi stack migrate` to migrate a stack from another backend to the currently logged-in backend, including re-encrypting config secrets and stack state under the target secrets provider
+time: 2026-05-07T00:00:00+00:00
