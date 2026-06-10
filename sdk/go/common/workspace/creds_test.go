@@ -419,6 +419,40 @@ func TestGetAccountWithAgentFallbackUsesAgentCredentials(t *testing.T) {
 }
 
 //nolint:paralleltest // mutates environment and package global
+func TestGetAccountWithAgentFallbackDoesNotMergeFieldsAcrossFiles(t *testing.T) {
+	// File-as-a-unit invariant on the read side: a default account with an access token but no
+	// refresh token must not silently acquire a refresh token from the agent file. The loaded
+	// account is wholly from the source file, never a merge across the two.
+	oldCreds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		require.NoError(t, StoreCredentials(oldCreds))
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	setAgentEnv(t)
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv("PULUMI_HOME", "")
+
+	cloudURL := "https://api.no-cross-file-merge.example.com"
+	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "default-access"}, true))
+	require.NoError(t, StoreAgentAccount(cloudURL, Account{
+		AccessToken:  "agent-access",
+		RefreshToken: "agent-refresh",
+	}, true))
+
+	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
+	require.NoError(t, err)
+	assert.False(t, fromAgent, "default has a credential — must not fall through to agent")
+	assert.Equal(t, "default-access", account.AccessToken)
+	assert.Empty(t, account.RefreshToken,
+		"fields from the agent file must not leak into a default-sourced account")
+}
+
+//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackDisabledOutsideAgentMode(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
