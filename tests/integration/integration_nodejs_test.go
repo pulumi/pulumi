@@ -3463,7 +3463,9 @@ func TestNodejsExitError(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestTsExecute(t *testing.T) {
-	testProviderPath, err := filepath.Abs(testutil.TestProvider(t))
+	// This test runs `pulumi package add` on the path, which requires a plugin
+	// project directory, so it can't use the prebuilt testutil.TestProvider.
+	testProviderPath, err := filepath.Abs(filepath.Join("..", "testprovider"))
 	contract.AssertNoErrorf(err, "Test provider path must be resolvable to absolute path")
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
