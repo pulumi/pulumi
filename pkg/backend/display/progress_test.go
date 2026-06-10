@@ -387,10 +387,12 @@ func TestStatusDisplayFlags(t *testing.T) {
 			doneStatus := d.getStepStatus(step,
 				true,  // done
 				false, // failed
+				false, // interrupted
 			)
 			inProgressStatus := d.getStepStatus(step,
 				false, // done
 				false, // failed
+				false, // interrupted
 			)
 			if tt.shouldRetain {
 				assert.Contains(t, doneStatus, "[retain]", "%s should contain [retain] (done)", step.Op)

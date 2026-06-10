@@ -298,6 +298,33 @@ func (data *resourceRowData) ContainsOutputsStep(op display.StepOp) bool {
 	return false
 }
 
+// isInterrupted reports whether the update was forced to its terminal "done"
+// state while this resource's operation was still in flight (e.g. the user
+// cancelled). We can only detect this for custom resources, which always emit an
+// outputs step on completion; components may legitimately complete without one.
+func (data *resourceRowData) isInterrupted() bool {
+	if !data.display.done.Load() {
+		return false
+	}
+	if !data.stepIsCustom() {
+		return false
+	}
+	switch data.display.getStepOp(data.step) {
+	case deploy.OpSame, deploy.OpRemovePendingReplace:
+		return false
+	}
+	return !data.ContainsOutputsStep(data.step.Op)
+}
+
+func (data *resourceRowData) stepIsCustom() bool {
+	for _, s := range []*engine.StepEventStateMetadata{data.step.New, data.step.Res, data.step.Old} {
+		if s != nil && s.Custom {
+			return true
+		}
+	}
+	return false
+}
+
 func (data *resourceRowData) ColorizedSuffix() string {
 	if !data.IsDone() && data.display.isTerminal {
 		op := data.display.getStepOp(data.step)
@@ -324,6 +351,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 	diagInfo := data.diagInfo
 	failed := data.failed || diagInfo.ErrorCount > 0
+	interrupted := !failed && data.isInterrupted()
 
 	if data.display.opts.ShowURNs {
 		// When showing URNs, collapse Type and Name into a single URN column.
@@ -331,7 +359,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		columns := make([]string, 4)
 		columns[opColumn] = data.display.getStepOpLabel(step, done)
 		columns[urnColumn] = escapeURN(string(urn))
-		columns[urnStatusColumn] = data.display.getStepStatus(step, done, failed)
+		columns[urnStatusColumn] = data.display.getStepStatus(step, done, failed, interrupted)
 		columns[urnInfoColumn] = data.getInfoColumn()
 		return columns
 	}
@@ -340,7 +368,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	columns[opColumn] = data.display.getStepOpLabel(step, done)
 	columns[typeColumn] = urn.Type().DisplayName()
 	columns[nameColumn] = escapeURN(urn.Name())
-	columns[statusColumn] = data.display.getStepStatus(step, done, failed)
+	columns[statusColumn] = data.display.getStepStatus(step, done, failed, interrupted)
 	columns[infoColumn] = data.getInfoColumn()
 	return columns
 }
