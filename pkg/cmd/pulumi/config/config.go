@@ -159,13 +159,15 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &ssml, &configFile))
 	cmd.AddCommand(newConfigRefreshCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
-	cmd.AddCommand(newConfigCopyCmd(ws, &stack, &configFile))
+	cmd.AddCommand(newConfigCopyCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack, &configFile))
 
 	return cmd
 }
 
-func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
+func newConfigCopyCmd(
+	ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, configFile *string,
+) *cobra.Command {
 	var path bool
 	var destinationStackName string
 
@@ -190,7 +192,7 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				*stack,
 				cmdStack.SetCurrent,
 				opts,
@@ -202,6 +204,17 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 			if currentStack.Ref().Name().String() == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
 			}
+
+			if configStoreIsRemote(currentStack, *configFile) {
+				configLocation := currentStack.ConfigLocation()
+				err := errors.New("config copy source not supported for remote stack config")
+				if configLocation.EscEnv != nil {
+					return fmt.Errorf("%w: its config is managed in environment `%s`",
+						err, *configLocation.EscEnv)
+				}
+				return err
+			}
+
 			currentProjectStack, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, currentStack, *configFile)
 			if err != nil {
 				return err
@@ -212,7 +225,7 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				destinationStackName,
 				cmdStack.LoadOnly,
 				opts,
@@ -227,7 +240,8 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				return err
 			}
 
-			if configLocation := destinationStack.ConfigLocation(); configLocation.IsRemote {
+			if configStoreIsRemote(destinationStack, *configFile) {
+				configLocation := destinationStack.ConfigLocation()
 				err := errors.New("config copy destination not supported for remote stack config")
 				if configLocation.EscEnv != nil {
 					return fmt.Errorf("%w: use `pulumi env set %s pulumiConfig.<key>`",

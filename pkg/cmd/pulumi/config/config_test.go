@@ -1178,6 +1178,88 @@ config:
 	})
 }
 
+func TestConfigCopyRemoteSource(t *testing.T) {
+	t.Parallel()
+
+	env := "org/my-env"
+	// The backend reports every stack as remote-config so the effective-store predicate, not the
+	// stack identity, decides whether the source guard fires.
+	setup := func() (cmdBackend.LoginManager, pkgWorkspace.Context) {
+		mockBackend := &backend.MockBackend{
+			GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+				return &backend.MockStack{
+					RefF: func() backend.StackReference { return ref },
+					ConfigLocationF: func() backend.StackConfigLocation {
+						return backend.StackConfigLocation{IsRemote: true, EscEnv: &env}
+					},
+					DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+						return &secrets.MockSecretsManager{
+							TypeF:      func() string { return "mock" },
+							EncrypterF: func() config.Encrypter { return config.NewPanicCrypter() },
+							DecrypterF: func() config.Decrypter { return config.NewPanicCrypter() },
+						}, nil
+					},
+				}, nil
+			},
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				return &backend.MockStackReference{
+					NameV:               tokens.MustParseStackName(s),
+					FullyQualifiedNameV: tokens.QName("org/testProject/" + s),
+				}, nil
+			},
+		}
+		lm := &cmdBackend.MockLoginManager{
+			LoginF: func(
+				_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
+				_ string, _ *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			) (backend.Backend, error) {
+				return mockBackend, nil
+			},
+		}
+		ws := &pkgWorkspace.MockContext{
+			ReadProjectF: func() (*workspace.Project, string, error) {
+				return &workspace.Project{Name: "testProject"}, "", nil
+			},
+			GetStoredCredentialsF: func() (workspace.Credentials, error) {
+				return workspace.Credentials{Current: "https://api.pulumi.com"}, nil
+			},
+		}
+		return lm, ws
+	}
+
+	t.Run("rejected when config is stored remotely", func(t *testing.T) {
+		t.Parallel()
+		lm, ws := setup()
+
+		stackName := "sourceStack"
+		configFile := ""
+		cmd := newConfigCopyCmd(ws, &stackName, lm, &configFile)
+		cmd.SetContext(t.Context())
+		require.NoError(t, cmd.PersistentFlags().Set("dest", "destStack"))
+
+		err := cmd.RunE(cmd, []string{})
+		require.ErrorContains(t, err, "config copy source not supported for remote stack config")
+		require.ErrorContains(t, err, env)
+	})
+
+	t.Run("--config-file overrides the remote link and is copied", func(t *testing.T) {
+		t.Parallel()
+		lm, ws := setup()
+
+		// Both stacks resolve to the same local file, so the copy reads and writes that file
+		// rather than the remote config; an empty source map makes it a clean no-op.
+		configFile := filepath.Join(t.TempDir(), "Pulumi.local.yaml")
+		require.NoError(t, os.WriteFile(configFile, []byte("config: {}\n"), 0o600))
+
+		stackName := "sourceStack"
+		cmd := newConfigCopyCmd(ws, &stackName, lm, &configFile)
+		cmd.SetContext(t.Context())
+		require.NoError(t, cmd.PersistentFlags().Set("dest", "destStack"))
+
+		require.NoError(t, cmd.RunE(cmd, []string{}))
+	})
+}
+
 func TestConfigPathOperations(t *testing.T) {
 	t.Parallel()
 	type testArgs struct {
