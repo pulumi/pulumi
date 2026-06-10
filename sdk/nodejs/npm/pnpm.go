@@ -103,8 +103,27 @@ func (pnpm *pnpmManager) Link(ctx context.Context, dir, packageName, path string
 
 	// Local SDKs have a postInstall script that needs to run. By default pnpm does not run these scripts. We have to
 	// add the package to the `onlyBuiltDependencies` setting to allow this.
-	// https://pnpm.io/next/settings#onlybuiltdependencies
-	cmd = exec.CommandContext(ctx, "pnpm", "config", "get", "onlyBuiltDependencies", "--json")
+	// https://pnpm.io/settings#onlybuiltdependencies
+	//
+	// The key pnpm expects depends on its version: the 10.34.2 security release requires local directory
+	// dependencies to be allowlisted by their lockfile depPath ("name@file:path"); bare package names are silently
+	// ignored. Conversely, versions before 10.34.2 reject the depPath form with ERR_PNPM_INVALID_VERSION_UNION, so
+	// we can't write both keys unconditionally.
+	version, err := pnpm.Version()
+	if err != nil {
+		return err
+	}
+	key := packageName
+	if version.GTE(semver.MustParse("10.34.2")) {
+		key = packageName + "@file:" + filepath.ToSlash(path)
+	}
+	return pnpm.addOnlyBuiltDependency(ctx, dir, key)
+}
+
+// addOnlyBuiltDependency adds key to the `onlyBuiltDependencies` setting, which decides which dependencies may run
+// lifecycle scripts.
+func (pnpm *pnpmManager) addOnlyBuiltDependency(ctx context.Context, dir, key string) error {
+	cmd := exec.CommandContext(ctx, "pnpm", "config", "get", "onlyBuiltDependencies", "--json")
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -112,13 +131,13 @@ func (pnpm *pnpmManager) Link(ctx context.Context, dir, packageName, path string
 	}
 	out = bytes.TrimSpace(out)
 	var dependencies []string
-	if len(out) > 0 && string(out) != "undefined\n" {
+	if len(out) > 0 && string(out) != "undefined" {
 		if err := json.Unmarshal(out, &dependencies); err != nil {
 			dependencies = []string{}
 		}
 	}
-	if !slices.Contains(dependencies, packageName) {
-		dependencies = append(dependencies, packageName)
+	if !slices.Contains(dependencies, key) {
+		dependencies = append(dependencies, key)
 	}
 	jsonData, err := json.Marshal(dependencies)
 	if err != nil {
