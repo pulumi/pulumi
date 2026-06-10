@@ -219,8 +219,8 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
 
-	extensionParameterization, extensionParameterizationDiags := bindExtensionParameterization(spec.ExtensionParameterization)
-	diags = diags.Extend(extensionParameterizationDiags)
+	extensionParameterization, extDiags := bindExtensionParameterization(spec.ExtensionParameterization)
+	diags = diags.Extend(extDiags)
 
 	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions, types.pkg.TokenToModule))
 
@@ -299,8 +299,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	parameterization, parameterizationDiagnostics := bindParameterization(info.Parameterization)
 	diags = diags.Extend(parameterizationDiagnostics)
 
-	extensionParameterization, extensionParameterizationDiagnostics := bindExtensionParameterization(info.ExtensionParameterization)
-	diags = diags.Extend(extensionParameterizationDiagnostics)
+	extensionParameterization, extDiags := bindExtensionParameterization(info.ExtensionParameterization)
+	diags = diags.Extend(extDiags)
 
 	pkg := &Package{
 		SupportPack:               supportPack,
