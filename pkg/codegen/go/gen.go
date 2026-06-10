@@ -5411,22 +5411,25 @@ func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
 }
 `
 
-		var param *schema.Parameterization
+		var baseProvider schema.BaseProvider
+		var parameter []byte
 		var protoField string
 		switch {
 		case p.Parameterization != nil:
-			param = p.Parameterization
+			baseProvider = p.Parameterization.BaseProvider
+			parameter = p.Parameterization.Parameter
 			protoField = "Parameterization"
 		case p.ExtensionParameterization != nil:
-			param = p.ExtensionParameterization
+			baseProvider = p.ExtensionParameterization.BaseProvider
+			parameter = p.ExtensionParameterization.Parameter
 			protoField = "Extension"
 		}
-		value := base64.StdEncoding.EncodeToString(param.Parameter)
+		value := base64.StdEncoding.EncodeToString(parameter)
 		key := fmt.Sprintf("%s:%s", p.Name, p.Version.String())
 		_, err = fmt.Fprintf(w, packageRefTemplate,
 			key,
 			value,
-			param.BaseProvider.Name, param.BaseProvider.Version.String(), p.PluginDownloadURL,
+			baseProvider.Name, baseProvider.Version.String(), p.PluginDownloadURL,
 			protoField,
 			p.Name, p.Version.String(),
 		)

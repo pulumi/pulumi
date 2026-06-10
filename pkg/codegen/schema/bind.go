@@ -219,7 +219,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
 
-	extensionParameterization, extensionParameterizationDiags := bindParameterization(spec.ExtensionParameterization)
+	extensionParameterization, extensionParameterizationDiags := bindExtensionParameterization(spec.ExtensionParameterization)
 	diags = diags.Extend(extensionParameterizationDiags)
 
 	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions, types.pkg.TokenToModule))
@@ -299,7 +299,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	parameterization, parameterizationDiagnostics := bindParameterization(info.Parameterization)
 	diags = diags.Extend(parameterizationDiagnostics)
 
-	extensionParameterization, extensionParameterizationDiagnostics := bindParameterization(info.ExtensionParameterization)
+	extensionParameterization, extensionParameterizationDiagnostics := bindExtensionParameterization(info.ExtensionParameterization)
 	diags = diags.Extend(extensionParameterizationDiagnostics)
 
 	pkg := &Package{
@@ -1992,6 +1992,19 @@ func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Di
 		},
 		Parameter: spec.Parameter,
 	}, nil
+}
+
+// bindExtensionParameterization binds an extension parameterization spec to the
+// ExtensionParameterization type.
+func bindExtensionParameterization(spec *ParameterizationSpec) (*ExtensionParameterization, hcl.Diagnostics) {
+	p, diags := bindParameterization(spec)
+	if p == nil {
+		return nil, diags
+	}
+	return &ExtensionParameterization{
+		BaseProvider: p.BaseProvider,
+		Parameter:    p.Parameter,
+	}, diags
 }
 
 func bindConfig(spec ConfigSpec, types *types, options ValidationOptions) ([]*Property, hcl.Diagnostics, error) {

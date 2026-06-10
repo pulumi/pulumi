@@ -1431,12 +1431,18 @@ func runLanguageTests(
 				// Replacement and extension parameterization carry their data in
 				// different slots; either one resolves to the same base-provider +
 				// parameterization descriptor a program depends on.
-				param := pkgDef.Parameterization
-				if param == nil {
-					param = pkgDef.ExtensionParameterization
+				var baseProvider *schema.BaseProvider
+				var parameter []byte
+				switch {
+				case pkgDef.Parameterization != nil:
+					baseProvider = &pkgDef.Parameterization.BaseProvider
+					parameter = pkgDef.Parameterization.Parameter
+				case pkgDef.ExtensionParameterization != nil:
+					baseProvider = &pkgDef.ExtensionParameterization.BaseProvider
+					parameter = pkgDef.ExtensionParameterization.Parameter
 				}
 				var desc workspace.PackageDescriptor
-				if param == nil {
+				if baseProvider == nil {
 					desc = workspace.PackageDescriptor{
 						PluginDescriptor: workspace.PluginDescriptor{
 							Name:    pkgDef.Name,
@@ -1446,13 +1452,13 @@ func runLanguageTests(
 				} else {
 					desc = workspace.PackageDescriptor{
 						PluginDescriptor: workspace.PluginDescriptor{
-							Name:    param.BaseProvider.Name,
-							Version: &param.BaseProvider.Version,
+							Name:    baseProvider.Name,
+							Version: &baseProvider.Version,
 						},
 						Parameterization: &workspace.Parameterization{
 							Name:    pkgDef.Name,
 							Version: *pkgDef.Version,
-							Value:   param.Parameter,
+							Value:   parameter,
 						},
 					}
 				}

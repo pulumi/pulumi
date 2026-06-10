@@ -604,6 +604,19 @@ type Parameterization struct {
 	Parameter []byte
 }
 
+// ExtensionParameterization describes an extension applied to a base provider.
+// Unlike a replacement Parameterization, it can also carry a Replacement that is
+// applied to the base provider before the extension.
+type ExtensionParameterization struct {
+	// BaseProvider is the plugin the extension is applied to.
+	BaseProvider BaseProvider
+	// Replacement is an optional replacement parameterization applied to the base
+	// provider before the extension. Combining the two is not supported yet.
+	Replacement *Parameterization
+	// Parameter is the extension parameter passed to the base provider.
+	Parameter []byte
+}
+
 // Package describes a Pulumi package.
 type Package struct {
 	// True if this package should be written in the new style to support pack and conformance testing.
@@ -665,7 +678,7 @@ type Package struct {
 	Parameterization *Parameterization
 
 	// ExtensionParameterization is the optional extension-parameterization for the package, if any.
-	ExtensionParameterization *Parameterization
+	ExtensionParameterization *ExtensionParameterization
 
 	resourceTable     map[string]*Resource
 	resourceTypeTable map[string]*ResourceType

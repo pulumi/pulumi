@@ -712,25 +712,31 @@ func (host *pclLanguageHost) GeneratePackage(
 	// Replacement and extension parameterization are rehydrated through the same
 	// descriptor (base provider + name/version/value); the flavor is recovered
 	// from the loaded schema, so the .pp need not distinguish them.
-	param := pkg.Parameterization
-	if param == nil {
-		param = pkg.ExtensionParameterization
+	var baseProvider *schema.BaseProvider
+	var parameter []byte
+	switch {
+	case pkg.Parameterization != nil:
+		baseProvider = &pkg.Parameterization.BaseProvider
+		parameter = pkg.Parameterization.Parameter
+	case pkg.ExtensionParameterization != nil:
+		baseProvider = &pkg.ExtensionParameterization.BaseProvider
+		parameter = pkg.ExtensionParameterization.Parameter
 	}
-	if param == nil {
+	if baseProvider == nil {
 		baseProviderName = pkg.Name
 		if pkg.Version != nil {
 			baseProviderVersion = pkg.Version.String()
 		}
 	} else {
-		baseProviderName = param.BaseProvider.Name
-		baseProviderVersion = param.BaseProvider.Version.String()
+		baseProviderName = baseProvider.Name
+		baseProviderVersion = baseProvider.Version.String()
 		if pkg.Version == nil {
 			return nil, errors.New("parameterized package must have a version")
 		}
 		parameterization = &schema.ParameterizationDescriptor{
 			Name:    pkg.Name,
 			Version: *pkg.Version,
-			Value:   param.Parameter,
+			Value:   parameter,
 		}
 	}
 

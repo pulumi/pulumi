@@ -2961,12 +2961,17 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 	}
 
 	if def.Parameterization != nil || def.ExtensionParameterization != nil {
-		param := def.Parameterization
-		isExtension := param == nil
+		isExtension := def.Parameterization == nil
+		var baseProvider schema.BaseProvider
+		var parameter []byte
 		if isExtension {
-			param = def.ExtensionParameterization
+			baseProvider = def.ExtensionParameterization.BaseProvider
+			parameter = def.ExtensionParameterization.Parameter
+		} else {
+			baseProvider = def.Parameterization.BaseProvider
+			parameter = def.Parameterization.Parameter
 		}
-		base64Parameter := base64.StdEncoding.EncodeToString(param.Parameter)
+		base64Parameter := base64.StdEncoding.EncodeToString(parameter)
 
 		// Only extension parameterization sets the extension flag; replacement
 		// parameterization omits it so generated SDKs stay byte-compatible with
@@ -2988,8 +2993,8 @@ export async function getPackage(): Promise<string | undefined> {
 	});
 }
 `,
-			param.BaseProvider.Name,
-			param.BaseProvider.Version.String(),
+			baseProvider.Name,
+			baseProvider.Version.String(),
 			def.PluginDownloadURL,
 			def.Name,
 			def.Version,

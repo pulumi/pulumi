@@ -555,13 +555,18 @@ def get_version():
 		// If a parameterized package is being generated then we _need_ to use package references.
 		// Extension and replacement parameterization differ only in which RegisterPackageRequest
 		// kwarg the blob is attached to: `parameterization=` vs `extension=`.
-		p := pkg.Parameterization
+		var baseProvider schema.BaseProvider
+		var parameter []byte
 		requestKwarg := "parameterization"
-		if p == nil {
-			p = pkg.ExtensionParameterization
+		if pkg.Parameterization != nil {
+			baseProvider = pkg.Parameterization.BaseProvider
+			parameter = pkg.Parameterization.Parameter
+		} else {
+			baseProvider = pkg.ExtensionParameterization.BaseProvider
+			parameter = pkg.ExtensionParameterization.Parameter
 			requestKwarg = "extension"
 		}
-		param := base64.StdEncoding.EncodeToString(p.Parameter)
+		param := base64.StdEncoding.EncodeToString(parameter)
 
 		_, err = fmt.Fprintf(buffer, `
 _package_lock = asyncio.Lock()
@@ -592,7 +597,7 @@ async def get_package():
 		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
 	return _package_ref
 	`,
-			pkg.Name, param, p.BaseProvider.Name, p.BaseProvider.Version, requestKwarg)
+			pkg.Name, param, baseProvider.Name, baseProvider.Version, requestKwarg)
 		if err != nil {
 			return nil, err
 		}
