@@ -28,6 +28,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Copying config into a remote-config stack is out of scope for v1; it must be rejected up front,
+// before any stack is created, rather than hard-erroring at save time after CreateStack.
+func TestStackNewRejectsCopyConfigFromWithRemoteConfig(t *testing.T) {
+	t.Parallel()
+	cmd := &stackNewCmd{remoteConfig: true, stackToCopy: "dev"}
+	err := cmd.Run(t.Context(), nil)
+	assert.ErrorContains(t, err, "not supported when creating a remote-config stack")
+}
+
 // When a backend doesn't support the --teams flag,
 // stack creation should fail.
 func TestStackNew_teamsUnsupportedByBackend(t *testing.T) {

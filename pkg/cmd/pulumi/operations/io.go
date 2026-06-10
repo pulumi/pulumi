@@ -54,7 +54,8 @@ func parseAndSaveConfigArray(
 		return err
 	}
 
-	if err = newcmd.SaveConfig(ctx, sink, ws, s, commandLineConfig, configFile); err != nil {
+	// An operation command's -c must not persist to a remote-config stack's shared ESC environment.
+	if err = newcmd.SaveConfig(ctx, sink, ws, s, commandLineConfig, configFile, false); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil

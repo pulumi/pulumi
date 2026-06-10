@@ -127,6 +127,14 @@ type stackNewCmd struct {
 }
 
 func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
+	// Copying config into a remote-config stack is unsupported: the values would route to the linked
+	// ESC environment, which SaveRemoteConfig rejects. Reject before creating the stack.
+	if cmd.remoteConfig && cmd.stackToCopy != "" {
+		return errors.New("copying configuration with --copy-config-from is not supported when " +
+			"creating a remote-config stack; create the stack, then migrate config with " +
+			"`pulumi config env init --remote-config`")
+	}
+
 	if cmd.yes {
 		defer func(prev bool) { cmdutil.DisableInteractive = prev }(cmdutil.DisableInteractive)
 		cmdutil.DisableInteractive = true

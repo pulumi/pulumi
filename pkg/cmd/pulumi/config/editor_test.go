@@ -244,6 +244,30 @@ func editForRemote(
 	return uploaded
 }
 
+func TestSaveRemoteConfigValuesOverwrites(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	// The env already has testProject:a; it is overwritten and the new key testProject:b is added.
+	existingYAML := "values:\n  pulumiConfig:\n    testProject:a: original\n"
+	var uploaded []byte
+	s := remoteStackForEditor(t, []byte(existingYAML), "etag",
+		func(yaml []byte, _ string) (apitype.EnvironmentDiagnostics, error) {
+			uploaded = yaml
+			return nil, nil
+		})
+
+	c := config.Map{
+		config.MustMakeKey("testProject", "a"): config.NewValue("updated"),
+		config.MustMakeKey("testProject", "b"): config.NewValue("new"),
+	}
+	require.NoError(t, SaveRemoteConfigValues(ctx, s, c))
+
+	got := string(uploaded)
+	require.Contains(t, got, "testProject:a: updated", "an existing key is overwritten")
+	require.Contains(t, got, "testProject:b: new", "a new key is written")
+}
+
 func TestESCConfigEditorSet(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
