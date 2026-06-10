@@ -353,6 +353,124 @@ func TestCurrentRefreshesFromRefreshOnlyStoredAccount(t *testing.T) {
 	assert.Equal(t, "bob", account.Username)
 }
 
+//nolint:paralleltest // mutates environment
+func TestCurrentPersistsRotatedRefreshToken(t *testing.T) {
+	// True rotation: the refresh-token grant returns a refresh token DIFFERENT from the one we
+	// sent. The wrapper updates the in-memory account and the writeback persists the rotated
+	// value to credentials.json. Server-side rotation is a Phase 2 behavior — this test pins the
+	// CLI side so we don't need a change when it lands.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), "refresh_token=stored-refresh-token")
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:  "fresh-access-token",
+				TokenType:    "Bearer",
+				ExpiresIn:    3600,
+				RefreshToken: "rotated-refresh-token",
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			if req.Header.Get("Authorization") == "token fresh-access-token" {
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "alice",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+				return
+			}
+			rw.WriteHeader(http.StatusUnauthorized)
+			err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  "stale-access-token",
+		RefreshToken: "stored-refresh-token",
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "fresh-access-token", account.AccessToken)
+	assert.Equal(t, "rotated-refresh-token", account.RefreshToken)
+
+	saved, err := workspace.GetAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "fresh-access-token", saved.AccessToken)
+	assert.Equal(t, "rotated-refresh-token", saved.RefreshToken,
+		"credentials.json must reflect the rotated refresh token")
+}
+
+//nolint:paralleltest // mutates environment
+func TestCurrentPreservesRefreshTokenWhenGrantResponseOmitsIt(t *testing.T) {
+	// RFC 6749 §6: omitted (or empty) refresh_token in the grant response means "keep using
+	// yours" — the server is not signalling termination. credentials.json must hold onto the
+	// existing refresh token so the next 401 can refresh again.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), "refresh_token=stored-refresh-token")
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken: "fresh-access-token",
+				TokenType:   "Bearer",
+				ExpiresIn:   3600,
+				// RefreshToken omitted — JSON encoder drops it.
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			if req.Header.Get("Authorization") == "token fresh-access-token" {
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "alice",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+				return
+			}
+			rw.WriteHeader(http.StatusUnauthorized)
+			err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  "stale-access-token",
+		RefreshToken: "stored-refresh-token",
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "fresh-access-token", account.AccessToken)
+	assert.Equal(t, "stored-refresh-token", account.RefreshToken,
+		"omitted refresh_token in the response must not destroy the existing one")
+
+	saved, err := workspace.GetAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "fresh-access-token", saved.AccessToken)
+	assert.Equal(t, "stored-refresh-token", saved.RefreshToken,
+		"credentials.json must hold onto the existing refresh token")
+}
+
 func TestValidateStoredAccountSkipsNetworkWhenNoCredential(t *testing.T) {
 	t.Parallel()
 	// An account with neither an access nor a refresh token can't authenticate and must short-
@@ -714,6 +832,139 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "agent-refresh-token", stored.RefreshToken,
 		"signup-returned refresh token must be persisted to the agent credentials file")
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testing.T) {
+	// Back-compat with a server that doesn't (yet) issue refresh tokens at signup: the response
+	// omits refreshToken and the CLI must not error or invent a value.
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+
+	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	claimTokenValidUntil := accessTokenValidUntil.Add(24 * time.Hour)
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/agents/signup":
+			switch req.Method {
+			case http.MethodGet:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+					ChallengeID:   "challenge-1",
+					ChallengeData: "v1:abcdef:8",
+				})
+				require.NoError(t, err)
+			case http.MethodPost:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupResponse{
+					AccessToken:           "agent-access-token",
+					AccessTokenValidUntil: accessTokenValidUntil,
+					ClaimToken:            "claim-token",
+					ClaimTokenValidUntil:  claimTokenValidUntil,
+				})
+				require.NoError(t, err)
+			default:
+				rw.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "agent-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "agent-access-token", account.AccessToken)
+	assert.Empty(t, account.RefreshToken, "no refreshToken in response → none on the Account")
+
+	stored, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Empty(t, stored.RefreshToken, "no refreshToken in response → none persisted")
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *testing.T) {
+	// When existing agent creds are no longer valid and the CLI re-signs up, the refresh token
+	// returned by the new signup replaces the stale one — the prior value must not survive into
+	// the rebuilt Account.
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+
+	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	claimTokenValidUntil := accessTokenValidUntil.Add(24 * time.Hour)
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/agents/signup":
+			switch req.Method {
+			case http.MethodGet:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+					ChallengeID:   "challenge-1",
+					ChallengeData: "v1:abcdef:8",
+				})
+				require.NoError(t, err)
+			case http.MethodPost:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupResponse{
+					AccessToken:           "new-access-token",
+					AccessTokenValidUntil: accessTokenValidUntil,
+					RefreshToken:          "new-refresh-token",
+					ClaimToken:            "new-claim-token",
+					ClaimTokenValidUntil:  claimTokenValidUntil,
+				})
+				require.NoError(t, err)
+			default:
+				rw.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "agent-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	// Stale agent creds: locally-expired access token (forces validateStoredAccount to mark them
+	// invalid before any network attempt) and an old refresh token. No claim is stored, so
+	// currentOrSignupAgentAccount falls through to re-signup.
+	expiredAt := time.Now().Add(-time.Hour)
+	require.NoError(t, workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken:  "old-access-token",
+		RefreshToken: "old-refresh-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiredAt,
+		},
+	}, true))
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "new-access-token", account.AccessToken)
+	assert.Equal(t, "new-refresh-token", account.RefreshToken)
+
+	stored, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "new-refresh-token", stored.RefreshToken,
+		"re-signup must replace the stale refresh token, not preserve it")
 }
 
 //nolint:paralleltest // mutates shared temporary agent credentials
