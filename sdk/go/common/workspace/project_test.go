@@ -2129,6 +2129,64 @@ runtime: yaml`
 	})
 }
 
+func TestEnvironmentReplaceMatch(t *testing.T) {
+	t.Parallel()
+
+	projectYaml := `name: test
+runtime: yaml`
+
+	t.Run("renames to a differently-named import", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, "environment:\n  - proj/myenv\n  - proj/other\n")
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.ReplaceMatch("proj/myenv", "proj/replacement@draft:abc")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - proj/replacement@draft:abc\n  - proj/other\n", string(marshaled))
+	})
+
+	t.Run("versioned match targets only the exact import", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, "environment:\n  - proj/myenv@5\n  - proj/other\n")
+		require.NoError(t, err)
+
+		// @7 does not exist, so the exact match misses and the replacement is appended rather than
+		// clobbering the @5 import.
+		stack.Environment = stack.Environment.ReplaceMatch("proj/myenv@7", "proj/myenv@draft:abc")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t,
+			"environment:\n  - proj/myenv@5\n  - proj/other\n  - proj/myenv@draft:abc\n", string(marshaled))
+	})
+
+	t.Run("versioned match replaces the matching version", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, "environment:\n  - proj/myenv@5\n")
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.ReplaceMatch("proj/myenv@5", "proj/myenv@draft:abc")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - proj/myenv@draft:abc\n", string(marshaled))
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/18581, check that we handle uint64's in yaml
 func TestStackConfigUInt64(t *testing.T) {
 	t.Parallel()

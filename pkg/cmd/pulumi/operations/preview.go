@@ -656,7 +656,7 @@ func NewPreviewCmd() *cobra.Command {
 		"Config to use during the preview and save to the stack config file")
 	cmd.PersistentFlags().StringArrayVar(
 		&envOverrides, "env", nil,
-		"Override or add a stack environment import for this run only, e.g. proj/myenv@draft:abc")
+		"Override or add a stack environment import for this run only; e.g. proj/myenv@draft:abc or match=replacement")
 	cmd.PersistentFlags().BoolVar(
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")

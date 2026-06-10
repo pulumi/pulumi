@@ -516,6 +516,63 @@ func TestStackEnvOverride(t *testing.T) {
 	assert.Equal(t, []string{"proj/myenv@draft:abc", "proj/other"}, cfg.EnvironmentImports)
 }
 
+func TestStackEnvOverrideMatch(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+	}
+
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yamlBody []byte,
+			duration time.Duration,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			// "match=replacement" replaces proj/myenv with a differently-named env before opening.
+			assert.Contains(t, string(yamlBody), "proj/replacement@draft:abc")
+			assert.NotContains(t, string(yamlBody), "proj/myenv")
+			assert.Contains(t, string(yamlBody), "proj/other")
+			return &esc.Environment{Properties: env}, nil, nil
+		},
+	}
+	stack := &backend.MockStack{
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "org/project/mystack",
+				NameV:               tokens.MustParseStackName("mystack"),
+				ProjectV:            "project",
+				FullyQualifiedNameV: tokens.QName("org/project/mystack"),
+			}
+		},
+	}
+
+	var projectStack workspace.ProjectStack
+	err := yaml.Unmarshal([]byte("environment:\n  - proj/myenv\n  - proj/other"), &projectStack)
+	require.NoError(t, err)
+
+	project := workspace.Project{Name: tokens.PackageName("project")}
+
+	cfg, err := getStackConfigurationFromProjectStack(
+		t.Context(),
+		stack,
+		&project,
+		nil, /*secrets manager; unused because the env has no secrets*/
+		[]string{"proj/myenv=proj/replacement@draft:abc"},
+		&projectStack,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"proj/replacement@draft:abc", "proj/other"}, cfg.EnvironmentImports)
+}
+
 func TestCopyConfig(t *testing.T) {
 	t.Parallel()
 

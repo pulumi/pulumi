@@ -129,8 +129,13 @@ func getStackConfigurationFromProjectStack(
 ) (backend.StackConfiguration, error) {
 	// Apply any environment import overrides for this run. This runs after the secrets manager has been
 	// saved above, so the in-memory mutation is never written back to the stack config file.
-	for _, ref := range envOverrides {
-		workspaceStack.Environment = workspaceStack.Environment.Replace(ref)
+	for _, ovr := range envOverrides {
+		// "match=replacement" selects the import to replace explicitly; a bare ref selects by its own name.
+		if match, replacement, found := strings.Cut(ovr, "="); found {
+			workspaceStack.Environment = workspaceStack.Environment.ReplaceMatch(match, replacement)
+		} else {
+			workspaceStack.Environment = workspaceStack.Environment.Replace(ovr)
+		}
 	}
 
 	env, diags, err := openStackEnv(ctx, stack, workspaceStack)

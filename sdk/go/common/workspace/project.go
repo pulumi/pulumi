@@ -1185,39 +1185,54 @@ func envRefName(ref string) string {
 	return name
 }
 
+// envRefMatches reports whether the import imp is selected by the match spec. If match carries an
+// "@version" suffix it must equal imp exactly; otherwise only the names (ignoring version) must match.
+func envRefMatches(match, imp string) bool {
+	if strings.Contains(match, "@") {
+		return imp == match
+	}
+	return envRefName(imp) == match
+}
+
 // Replace overrides the import whose name (the portion before any "@version" suffix) matches ref's
 // name with ref. If no such import exists, ref is appended as a new import.
 func (e *Environment) Replace(ref string) *Environment {
-	name := envRefName(ref)
+	return e.ReplaceMatch(envRefName(ref), ref)
+}
+
+// ReplaceMatch overrides the import selected by match with replacement. If match carries an
+// "@version" suffix it selects an import that equals it exactly; otherwise it selects by name,
+// ignoring version. If no import matches, replacement is appended as a new import.
+func (e *Environment) ReplaceMatch(match, replacement string) *Environment {
 	switch {
 	case e == nil:
-		// There is no environment block, so there's nothing to replace. Create one importing ref.
-		return NewEnvironment([]string{ref})
+		// There is no environment block, so there's nothing to replace. Create one importing replacement.
+		return NewEnvironment([]string{replacement})
 	case e.message != nil:
-		// The environment definition is inline JSON. Find the last occurrence of the named environment in
+		// The environment definition is inline JSON. Find the last occurrence of the matched environment in
 		// the import list and replace it.
 		var m map[string]any
 		if err := json.Unmarshal(e.message, &m); err == nil {
 			if imports, ok := m["imports"].([]any); ok {
 				for i := len(imports) - 1; i >= 0; i-- {
-					match := false
+					matched := false
 					switch imp := imports[i].(type) {
 					case string:
-						match = envRefName(imp) == name
-						if match {
-							imports[i] = ref
+						matched = envRefMatches(match, imp)
+						if matched {
+							imports[i] = replacement
 						}
 					case map[string]any:
 						if len(imp) == 1 {
 							key := slices.Collect(maps.Keys(imp))[0]
-							if envRefName(key) == name {
-								match = true
-								imp[ref] = imp[key]
+							if envRefMatches(match, key) {
+								matched = true
+								imp[replacement] = imp[key]
 								delete(imp, key)
 							}
 						}
 					}
-					if match {
+					if matched {
 						if new, err := json.Marshal(m); err == nil {
 							e.message = new
 						}
@@ -1226,9 +1241,9 @@ func (e *Environment) Replace(ref string) *Environment {
 				}
 			}
 		}
-		return e.Append(ref)
+		return e.Append(replacement)
 	case e.node != nil:
-		// The environment definition is inline YAML. Find the last occurrence of the named environment in
+		// The environment definition is inline YAML. Find the last occurrence of the matched environment in
 		// the import list and replace it.
 		root := e.node
 		if root.Kind == yaml.MappingNode {
@@ -1240,22 +1255,22 @@ func (e *Environment) Replace(ref string) *Environment {
 						for j := len(value.Content) - 1; j >= 0; j-- {
 							n := value.Content[j]
 
-							match := false
+							matched := false
 							switch n.Kind {
 							case yaml.ScalarNode:
-								match = envRefName(n.Value) == name
-								if match {
-									n.Value = ref
+								matched = envRefMatches(match, n.Value)
+								if matched {
+									n.Value = replacement
 								}
 							case yaml.MappingNode:
-								if len(n.Content) == 2 && envRefName(n.Content[0].Value) == name {
-									match = true
-									n.Content[0].Value = ref
+								if len(n.Content) == 2 && envRefMatches(match, n.Content[0].Value) {
+									matched = true
+									n.Content[0].Value = replacement
 								}
 							case yaml.SequenceNode, yaml.AliasNode, yaml.DocumentNode:
 								// These nodes never match, so we can ignore them here.
 							}
-							if match {
+							if matched {
 								return e
 							}
 						}
@@ -1263,17 +1278,17 @@ func (e *Environment) Replace(ref string) *Environment {
 				}
 			}
 		}
-		return e.Append(ref)
+		return e.Append(replacement)
 	default:
-		// The environment definition is just a list of environments. Find the last occurrence of the named
+		// The environment definition is just a list of environments. Find the last occurrence of the matched
 		// environment in the list and replace it.
 		for i := len(e.envs) - 1; i >= 0; i-- {
-			if envRefName(e.envs[i]) == name {
-				e.envs[i] = ref
+			if envRefMatches(match, e.envs[i]) {
+				e.envs[i] = replacement
 				return e
 			}
 		}
-		return e.Append(ref)
+		return e.Append(replacement)
 	}
 }
 
