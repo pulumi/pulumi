@@ -75,6 +75,14 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&impl.yes, "yes", "y", false,
 		"True to save the created environment without prompting")
+	cmd.Flags().BoolVar(
+		&impl.remoteConfig, "remote-config", false,
+		"Migrate the stack to remote configuration backed by an environment instead of importing one")
+	_ = cmd.Flags().MarkHidden("remote-config")
+	cmd.Flags().BoolVar(
+		&impl.cleanupLocal, "cleanup-local", false,
+		"Delete the local stack configuration file after migrating to remote configuration")
+	_ = cmd.Flags().MarkHidden("cleanup-local")
 
 	return cmd
 }
@@ -93,13 +101,19 @@ type configEnvInitCmd struct {
 
 	newCrypter func() (evalCrypter, error)
 
-	envName     string
-	showSecrets bool
-	keepConfig  bool
-	yes         bool
+	envName      string
+	showSecrets  bool
+	keepConfig   bool
+	yes          bool
+	remoteConfig bool
+	cleanupLocal bool
 }
 
 func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
+	if cmd.remoteConfig {
+		return cmd.runMigrate(ctx)
+	}
+
 	if !cmd.yes && !cmd.parent.interactive {
 		return backenderr.ErrNonInteractiveRequiresYes
 	}
