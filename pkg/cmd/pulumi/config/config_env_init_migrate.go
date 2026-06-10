@@ -110,11 +110,15 @@ func (cmd *configEnvInitCmd) runMigrate(ctx context.Context) error {
 		return err
 	}
 
+	// Probe the target before prompting so the confirmation can distinguish creating a new environment
+	// from merging into one that already exists, letting the user decline before any remote write.
+	existingDef, etag, envExists, err := cmd.getMigrationTarget(ctx, envBackend, orgName, envProject, envName)
+	if err != nil {
+		return err
+	}
+
 	if !cmd.yes && cmd.parent.interactive {
-		if !ui.ConfirmPrompt(
-			fmt.Sprintf("Migrate the configuration of stack %v to environment %s and link the stack to it?",
-				stack.Ref().Name(), fullEnvName),
-			"yes", opts) {
+		if !ui.ConfirmPrompt(migrateConfirmPrompt(envExists, stack.Ref().Name().String(), fullEnvName), "yes", opts) {
 			return errors.New("migration canceled")
 		}
 	}
@@ -122,7 +126,12 @@ func (cmd *configEnvInitCmd) runMigrate(ctx context.Context) error {
 	// Write the environment before linking so a transient link failure reconciles on re-run (the env
 	// exists, so the retry merges into it). A persistent link failure leaves the env orphaned and the
 	// stack local; the env is not rolled back.
-	if err := cmd.writeMigratedEnvironment(ctx, envBackend, orgName, envProject, envName, sourceDef); err != nil {
+	if envExists {
+		err = cmd.mergeMigratedEnvironment(ctx, envBackend, orgName, envProject, envName, etag, existingDef, sourceDef)
+	} else {
+		err = cmd.createMigratedEnvironment(ctx, envBackend, orgName, envProject, envName, sourceDef)
+	}
+	if err != nil {
 		return err
 	}
 
@@ -223,23 +232,34 @@ func removeSelfImport(doc *yaml.Node, self string) error {
 	return nil
 }
 
-// writeMigratedEnvironment creates the target environment, or merges into it if it already exists.
-func (cmd *configEnvInitCmd) writeMigratedEnvironment(
+// migrateConfirmPrompt phrases the confirmation differently for a fresh environment versus a merge
+// into an existing one, since merging can overwrite keys already present in the target.
+func migrateConfirmPrompt(envExists bool, stackName, fullEnvName string) string {
+	if envExists {
+		return fmt.Sprintf(
+			"Environment %s already exists; merge the configuration of stack %s into it and link the stack to it?",
+			fullEnvName, stackName)
+	}
+	return fmt.Sprintf("Migrate the configuration of stack %s to new environment %s and link the stack to it?",
+		stackName, fullEnvName)
+}
+
+// getMigrationTarget fetches the target environment's current definition and etag, reporting whether
+// it exists. A 404 means it does not exist yet (the create path) and is not an error.
+func (cmd *configEnvInitCmd) getMigrationTarget(
 	ctx context.Context,
 	envBackend backend.EnvironmentsBackend,
 	orgName, envProject, envName string,
-	sourceDef *yaml.Node,
-) error {
-	def, etag, _, err := envBackend.GetEnvironment(ctx, orgName, envProject, envName, "", false)
+) (def []byte, etag string, exists bool, err error) {
+	def, etag, _, err = envBackend.GetEnvironment(ctx, orgName, envProject, envName, "", false)
 	if err != nil {
 		var errResp *apitype.ErrorResponse
 		if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
-			return cmd.createMigratedEnvironment(ctx, envBackend, orgName, envProject, envName, sourceDef)
+			return nil, "", false, nil
 		}
-		return fmt.Errorf("getting environment %s/%s: %w", envProject, envName, err)
+		return nil, "", false, fmt.Errorf("getting environment %s/%s: %w", envProject, envName, err)
 	}
-	// The env exists; mergeMigratedEnvironment handles an empty existing definition.
-	return cmd.mergeMigratedEnvironment(ctx, envBackend, orgName, envProject, envName, etag, def, sourceDef)
+	return def, etag, true, nil
 }
 
 func (cmd *configEnvInitCmd) createMigratedEnvironment(
@@ -313,6 +333,8 @@ func (cmd *configEnvInitCmd) mergeValues(target, sourceDef *yaml.Node) error {
 	if !ok || values.Kind != yaml.MappingNode {
 		return nil
 	}
+	// Outer loop walks the `values` sections (pulumiConfig, environmentVariables, files); inner loop
+	// their keys. Merging per key rather than per section is what keeps existing target keys alive.
 	for i := 0; i+1 < len(values.Content); i += 2 {
 		section := values.Content[i].Value
 		node := values.Content[i+1]

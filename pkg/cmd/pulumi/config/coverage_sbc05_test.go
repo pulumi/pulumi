@@ -277,43 +277,34 @@ func TestMergeMigratedEnvironment(t *testing.T) {
 	})
 }
 
-func TestWriteMigratedEnvironment(t *testing.T) {
+func TestGetMigrationTarget(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	src := mustYAMLNode(t, "values:\n  pulumiConfig:\n    proj:k: v\n")
 
-	t.Run("creates when the environment does not exist", func(t *testing.T) {
+	t.Run("reports not exists on 404", func(t *testing.T) {
 		t.Parallel()
-		var created bool
 		be := &backend.MockEnvironmentsBackend{
 			GetEnvironmentF: func(_ context.Context, _, _, _, _ string, _ bool) ([]byte, string, int, error) {
 				return nil, "", 0, &apitype.ErrorResponse{Code: http.StatusNotFound}
 			},
-			CreateEnvironmentF: func(_ context.Context, _, _, _ string, _ []byte) (apitype.EnvironmentDiagnostics, error) {
-				created = true
-				return nil, nil
-			},
 		}
-		require.NoError(t, migrateCmd(&bytes.Buffer{}).writeMigratedEnvironment(ctx, be, "org", "proj", "env", src))
-		require.True(t, created)
+		_, _, exists, err := migrateCmd(&bytes.Buffer{}).getMigrationTarget(ctx, be, "org", "proj", "env")
+		require.NoError(t, err)
+		require.False(t, exists)
 	})
 
-	t.Run("merges when the environment exists", func(t *testing.T) {
+	t.Run("reports exists with def and etag", func(t *testing.T) {
 		t.Parallel()
-		var updated bool
 		be := &backend.MockEnvironmentsBackend{
 			GetEnvironmentF: func(_ context.Context, _, _, _, _ string, _ bool) ([]byte, string, int, error) {
 				return []byte("values: {}\n"), "etag", 0, nil
 			},
-			UpdateEnvironmentWithProjectF: func(
-				_ context.Context, _, _, _ string, _ []byte, _ string,
-			) (apitype.EnvironmentDiagnostics, error) {
-				updated = true
-				return nil, nil
-			},
 		}
-		require.NoError(t, migrateCmd(&bytes.Buffer{}).writeMigratedEnvironment(ctx, be, "org", "proj", "env", src))
-		require.True(t, updated)
+		def, etag, exists, err := migrateCmd(&bytes.Buffer{}).getMigrationTarget(ctx, be, "org", "proj", "env")
+		require.NoError(t, err)
+		require.True(t, exists)
+		require.Equal(t, "etag", etag)
+		require.Equal(t, "values: {}\n", string(def))
 	})
 
 	t.Run("other GetEnvironment failures are wrapped", func(t *testing.T) {
@@ -323,7 +314,7 @@ func TestWriteMigratedEnvironment(t *testing.T) {
 				return nil, "", 0, errors.New("boom")
 			},
 		}
-		err := migrateCmd(&bytes.Buffer{}).writeMigratedEnvironment(ctx, be, "org", "proj", "env", src)
+		_, _, _, err := migrateCmd(&bytes.Buffer{}).getMigrationTarget(ctx, be, "org", "proj", "env")
 		require.ErrorContains(t, err, "getting environment")
 	})
 }

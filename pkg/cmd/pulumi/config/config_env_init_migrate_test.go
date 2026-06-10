@@ -596,6 +596,18 @@ func setupLocalProject(t *testing.T) string {
 	return stackPath
 }
 
+// TestMigrateConfirmPrompt verifies the confirmation distinguishes creating a new environment from
+// merging into an existing one, so a user can decline before merging into a populated env.
+func TestMigrateConfirmPrompt(t *testing.T) {
+	t.Parallel()
+
+	assert.Contains(t, migrateConfirmPrompt(false, "stack", "test/stack"), "new environment")
+	assert.NotContains(t, migrateConfirmPrompt(false, "stack", "test/stack"), "already exists")
+
+	assert.Contains(t, migrateConfirmPrompt(true, "stack", "test/stack"), "already exists")
+	assert.Contains(t, migrateConfirmPrompt(true, "stack", "test/stack"), "merge")
+}
+
 // TestConfigEnvInitMigrateNoPlaintextLeak verifies the plaintext secret never appears in stdout.
 func TestConfigEnvInitMigrateNoPlaintextLeak(t *testing.T) {
 	t.Parallel()
