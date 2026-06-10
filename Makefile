@@ -321,7 +321,6 @@ schema-%: .make/ensure/curl .make/ensure/jq
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
 # separate commit from other changes, as online code review tools may balk at rendering these diffs.
 get_schemas: \
-			schema-aws!5.4.0            \
 			schema-random!4.11.2        \
 			schema-tls!4.10.0
 
