@@ -151,6 +151,30 @@ func TestRestoreConfigFile_SuccessReportsRestored(t *testing.T) {
 	assert.Contains(t, buf.String(), "Restored")
 }
 
+func TestSnapshotConfigFile_EmptyPathIsAbsent(t *testing.T) {
+	t.Parallel()
+
+	data, mode, existed, err := snapshotConfigFile("")
+	require.NoError(t, err)
+	assert.Nil(t, data)
+	assert.Zero(t, mode)
+	assert.False(t, existed)
+}
+
+func TestSnapshotConfigFile_ReturnsReadError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	_, _, _, err := snapshotConfigFile(dir)
+	require.Error(t, err)
+}
+
+func TestRestoreConfigFile_EmptyPathIsSuccess(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, restoreConfigFile(io.Discard, "", []byte("orig"), 0o600, true))
+}
+
 func TestWriteBackupFile_CreatesTempBackupWithoutClobbering(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -169,6 +193,55 @@ func TestWriteBackupFile_CreatesTempBackupWithoutClobbering(t *testing.T) {
 	gotBackup, err := os.ReadFile(bakPath)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("new-backup"), gotBackup)
+}
+
+func TestWriteBackupFile_ReturnsCreateTempError(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "missing", "Pulumi.dev.yaml")
+
+	bakPath, err := writeBackupFile(path, []byte("new-backup"), 0o600)
+	require.Error(t, err)
+	assert.Empty(t, bakPath)
+}
+
+func TestStackConfigPath_ReturnsDetectError(t *testing.T) { //nolint: paralleltest
+	t.Chdir(t.TempDir())
+
+	path, err := stackConfigPath("dev")
+	require.Error(t, err)
+	assert.Empty(t, path)
+	assert.Contains(t, err.Error(), "detecting project stack path")
+}
+
+func TestLoadProjectStack_RemoteConfigWarnsWhenLocalFileExists(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock\n"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config: {}\n"), 0o600))
+
+	project := &workspace.Project{Name: "proj", Runtime: workspace.NewProjectRuntimeInfo("mock", nil)}
+	remotePS := &workspace.ProjectStack{Config: config.Map{}}
+	stack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{IsRemote: true} },
+		LoadRemoteF: func(ctx context.Context, p *workspace.Project) (*workspace.ProjectStack, error) {
+			assert.Equal(t, project.Name, p.Name)
+			return remotePS, nil
+		},
+	}
+	var stdout, stderr strings.Builder
+	sink := diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{Color: colors.Never})
+
+	got, err := LoadProjectStack(t.Context(), sink, project, stack, "")
+	require.NoError(t, err)
+	assert.Same(t, remotePS, got)
+	assert.Contains(t, stderr.String(), "config file")
+	assert.Contains(t, stderr.String(), "will be ignored")
 }
 
 func runMigrate(
@@ -255,6 +328,24 @@ func TestReusingSecretsProvider_FallsBackOnDifferentState(t *testing.T) {
 	require.NoError(t, err)
 	assert.Same(t, fallbackSM, got)
 	assert.Equal(t, 1, fallbackCalls)
+}
+
+func TestReusingSecretsProvider_ReusesCachedManager(t *testing.T) {
+	t.Parallel()
+
+	state := json.RawMessage(`{"url":"https://one"}`)
+	cached := &secrets.MockSecretsManager{
+		TypeF:  func() string { return "service" },
+		StateF: func() json.RawMessage { return state },
+	}
+	fallback := (&secrets.MockProvider{}).Add("service", func(state json.RawMessage) (secrets.Manager, error) {
+		t.Fatal("fallback should not be called")
+		return nil, nil
+	})
+
+	got, err := (&reusingSecretsProvider{cached: cached, fallback: fallback}).OfType(t.Context(), "service", state)
+	require.NoError(t, err)
+	assert.Same(t, cached, got)
 }
 
 func TestStackMigrate_RequiresURLArg(t *testing.T) {
