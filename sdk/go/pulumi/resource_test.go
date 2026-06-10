@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -551,10 +552,10 @@ func TestTransformationPreservesParent(t *testing.T) {
 		}
 	}
 
-	parents := map[string]string{}
+	var parents gsync.Map[string, string]
 	monitor := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			parents[args.Name] = args.RegisterRPC.GetParent()
+			parents.Store(args.Name, args.RegisterRPC.GetParent())
 			return args.Name, resource.PropertyMap{}, nil
 		},
 	}
@@ -575,18 +576,20 @@ func TestTransformationPreservesParent(t *testing.T) {
 	}, WithMocks("project", "stack", monitor))
 	require.NoError(t, err)
 
-	require.NotEmpty(t, parents["without-transform"], "baseline should have a parent")
-	assert.Equal(t, parents["without-transform"], parents["with-transform"],
+	withoutParent, _ := parents.Load("without-transform")
+	withParent, _ := parents.Load("with-transform")
+	require.NotEmpty(t, withoutParent, "baseline should have a parent")
+	assert.Equal(t, withoutParent, withParent,
 		"transformation must not drop the parent")
 }
 
 func TestTransformationCannotChangeParent(t *testing.T) {
 	t.Parallel()
 
-	parents := map[string]string{}
+	var parents gsync.Map[string, string]
 	monitor := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			parents[args.Name] = args.RegisterRPC.GetParent()
+			parents.Store(args.Name, args.RegisterRPC.GetParent())
 			return args.Name, resource.PropertyMap{}, nil
 		},
 	}
