@@ -83,6 +83,32 @@ func TestRepoLookup(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expectedRoot, rl.GetRepoRoot())
 	})
+
+	t.Run("should handle git repos with the worktreeConfig extension enabled", func(t *testing.T) {
+		t.Parallel()
+
+		repoDir := setUpGitWorkspace(t.Context(), t)
+		workDir := filepath.Join(repoDir, "goproj")
+
+		// Azure DevOps enables extensions.worktreeConfig by default, which go-git
+		// refuses to open. https://github.com/pulumi/pulumi-service/issues/42084
+		f, err := os.OpenFile(filepath.Join(repoDir, ".git", "config"), os.O_APPEND|os.O_WRONLY, 0o600)
+		require.NoError(t, err)
+		_, err = f.WriteString("[extensions]\n\tworktreeConfig = true\n")
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
+
+		rl, err := newRepoLookup(workDir)
+		require.NoError(t, err)
+		assert.IsType(t, &repoLookupImpl{}, rl)
+
+		branch := rl.GetBranchName()
+		assert.Equal(t, "refs/heads/master", branch)
+
+		remote, err := rl.RemoteURL()
+		require.NoError(t, err)
+		assert.Equal(t, "https://github.com/pulumi/test-repo.git", remote)
+	})
 }
 
 type relativeDirectoryValidationCase struct {

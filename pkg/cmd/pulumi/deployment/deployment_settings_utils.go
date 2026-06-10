@@ -111,12 +111,12 @@ type repoLookup interface {
 }
 
 func newRepoLookup(wd string) (repoLookup, error) {
-	repo, err := git.PlainOpenWithOptions(wd, &git.PlainOpenOptions{DetectDotGit: true})
-	switch {
-	case errors.Is(err, git.ErrRepositoryNotExists):
-		return &noRepoLookupImpl{}, nil
-	case err != nil:
+	repo, err := gitutil.GetGitRepository(wd)
+	if err != nil {
 		return nil, err
+	}
+	if repo == nil {
+		return &noRepoLookupImpl{}, nil
 	}
 
 	worktree, err := repo.Worktree()

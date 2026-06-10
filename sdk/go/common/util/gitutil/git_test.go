@@ -292,6 +292,77 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 	testError("content/../foo/", "invalid Git URL")
 }
 
+// Regression test for https://github.com/pulumi/pulumi-service/issues/42084: go-git
+// 5.17+ refuses to open repositories that enable extensions like worktreeConfig
+// (enabled by Azure DevOps pipelines, among others), which broke git metadata
+// detection for Pulumi operations.
+func TestGetGitRepositoryWithGrandfatheredExtensions(t *testing.T) {
+	t.Parallel()
+
+	exts := []struct{ key, value string }{
+		{"extensions.worktreeConfig", "true"},
+		{"extensions.worktreeConfig", "false"},
+		{"extensions.partialClone", "origin"},
+		{"extensions.preciousObjects", "true"},
+	}
+	for _, ext := range exts {
+		t.Run(ext.key+"="+ext.value, func(t *testing.T) {
+			t.Parallel()
+
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+
+			repoPath := filepath.Join(e.RootPath, "repo")
+			require.NoError(t, os.MkdirAll(repoPath, os.ModePerm))
+			e.CWD = repoPath
+			createTestRepo(e)
+			e.RunCommand("git", "remote", "add", "origin", "https://example.com/owner/repo.git")
+			e.RunCommand("git", "config", ext.key, ext.value)
+
+			repo, err := GetGitRepository(repoPath)
+			require.NoError(t, err)
+			require.NotNil(t, repo)
+
+			head, err := repo.Head()
+			require.NoError(t, err)
+			assert.False(t, head.Hash().IsZero())
+
+			url, err := GetGitRemoteURL(repo, "origin")
+			require.NoError(t, err)
+			assert.Equal(t, "https://example.com/owner/repo.git", url)
+		})
+	}
+}
+
+func TestGetGitRepositoryLinkedWorktreeWithWorktreeConfigExtension(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	repoPath := filepath.Join(e.RootPath, "repo")
+	require.NoError(t, os.MkdirAll(repoPath, os.ModePerm))
+	e.CWD = repoPath
+	createTestRepo(e)
+	e.RunCommand("git", "remote", "add", "origin", "https://example.com/owner/repo.git")
+
+	worktreePath := filepath.Join(e.RootPath, "linked-worktree")
+	e.RunCommand("git", "worktree", "add", worktreePath)
+	e.RunCommand("git", "config", "extensions.worktreeConfig", "true")
+
+	repo, err := GetGitRepository(worktreePath)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	head, err := repo.Head()
+	require.NoError(t, err)
+	assert.False(t, head.Hash().IsZero())
+
+	url, err := GetGitRemoteURL(repo, "origin")
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/owner/repo.git", url)
+}
+
 func createTestRepo(e *ptesting.Environment) {
 	e.RunCommand("git", "init", "-b", "master")
 	e.RunCommand("git", "config", "user.name", "test")

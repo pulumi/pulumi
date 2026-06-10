@@ -1,0 +1,7 @@
+component: cli
+kind: fix
+body: Fix git metadata detection for repositories that enable the worktreeConfig
+    extension, such as those checked out by Azure DevOps pipelines
+time: 2026-06-10T10:39:00.000000-07:00
+custom:
+    PR: ""

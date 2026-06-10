@@ -28,12 +28,17 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/go-git/go-billy/v5"
+	"github.com/go-git/go-billy/v5/osfs"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/cache"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/go-git/go-git/v5/storage/filesystem"
+	"github.com/go-git/go-git/v5/storage/filesystem/dotgit"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/kevinburke/ssh_config"
 	"golang.org/x/crypto/ssh"
@@ -100,6 +105,9 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 	repo, err := git.PlainOpenWithOptions(filepath.Dir(gitRoot), &git.PlainOpenOptions{
 		EnableDotGitCommonDir: true,
 	})
+	if errors.Is(err, git.ErrUnsupportedExtensionRepositoryFormatVersion) || errors.Is(err, git.ErrUnknownExtension) {
+		repo, err = openRepoMaskingGrandfatheredExtensions(gitRoot)
+	}
 	if err == git.ErrRepositoryNotExists {
 		return nil, nil
 	}
@@ -107,6 +115,84 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 		return nil, fmt.Errorf("reading git repository: %w", err)
 	}
 	return repo, nil
+}
+
+// Extensions that git reads even when core.repositoryformatversion is 0 because they
+// predate repository format versioning. None of them affect how this package reads
+// repositories, but go-git 5.17+ refuses to open repositories that use them
+// (https://github.com/go-git/go-git/issues/1943). Azure DevOps enables worktreeConfig
+// by default, and partial clones are common in CI, so mask these extensions from
+// go-git rather than failing.
+var grandfatheredExtensions = []string{"worktreeConfig", "partialClone", "preciousObjects"}
+
+// grandfatheredExtensionMaskingStorer hides the grandfathered extensions from go-git,
+// which would otherwise refuse to open the repository.
+type grandfatheredExtensionMaskingStorer struct {
+	*filesystem.Storage
+}
+
+func (s *grandfatheredExtensionMaskingStorer) Config() (*config.Config, error) {
+	cfg, err := s.Storage.Config()
+	if err != nil {
+		return nil, err
+	}
+	if cfg.Raw != nil && cfg.Raw.HasSection("extensions") {
+		section := cfg.Raw.Section("extensions")
+		for _, extension := range grandfatheredExtensions {
+			section.RemoveOption(extension)
+		}
+	}
+	return cfg, nil
+}
+
+// openRepoMaskingGrandfatheredExtensions opens the repository rooted at gitRoot (a
+// path to a ".git" directory or file) the same way git.PlainOpenWithOptions does with
+// EnableDotGitCommonDir set, except that the grandfathered extensions are hidden from
+// go-git's repository format validation.
+func openRepoMaskingGrandfatheredExtensions(gitRoot string) (*git.Repository, error) {
+	gitDir := gitRoot
+	fi, err := os.Stat(gitRoot)
+	if err != nil {
+		return nil, err
+	}
+	if !fi.IsDir() {
+		// gitRoot is a .git file (e.g. in a linked worktree) pointing at the actual
+		// git directory with a "gitdir: <path>" line.
+		b, err := os.ReadFile(gitRoot)
+		if err != nil {
+			return nil, err
+		}
+		line, _, _ := strings.Cut(string(b), "\n")
+		target, ok := strings.CutPrefix(line, "gitdir: ")
+		if !ok {
+			return nil, fmt.Errorf("%v: .git file has no \"gitdir: \" prefix", gitRoot)
+		}
+		gitDir = strings.TrimSpace(target)
+		if !filepath.IsAbs(gitDir) {
+			gitDir = filepath.Join(filepath.Dir(gitRoot), gitDir)
+		}
+	}
+
+	// Linked worktrees store the location of the main repository's git directory in a
+	// "commondir" file.
+	var commonDir billy.Filesystem
+	if b, err := os.ReadFile(filepath.Join(gitDir, "commondir")); err == nil {
+		commonPath := strings.TrimSpace(string(b))
+		if !filepath.IsAbs(commonPath) {
+			commonPath = filepath.Join(gitDir, commonPath)
+		}
+		if _, err := os.Stat(commonPath); err != nil {
+			return nil, err
+		}
+		commonDir = osfs.New(commonPath)
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	storage := filesystem.NewStorage(
+		dotgit.NewRepositoryFilesystem(osfs.New(gitDir), commonDir),
+		cache.NewObjectLRUDefault())
+	return git.Open(&grandfatheredExtensionMaskingStorer{storage}, osfs.New(filepath.Dir(gitRoot)))
 }
 
 // GetGitHubProjectForOrigin returns the GitHub login, and GitHub repo name if the "origin" remote is
