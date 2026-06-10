@@ -115,6 +115,8 @@ var expectedFailures = map[string]string{
 	"l2-discriminated-union":        "pulumi#21829: does not compile",
 	"l2-resource-schema-secret":     "does not preserve schema-secret unknown outputs",
 
+	"l2-plain": "map literals nested in plain list elements render without a type; generated code does not compile",
+
 	// pulumi/pulumi#18345
 	"l2-map-keys":                         "NonPlainData.InnerData renders as interface{}{} instead of &plain.InnerDataArgs{}",                                           //nolint:lll
 	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll

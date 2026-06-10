@@ -21,6 +21,16 @@ resource "res" "plain:index:Resource" {
             "y" = "200"
         }
     }
+    dataList = [{
+        boolean = true
+        float = 3.14
+        integer = 42
+        string = "Plain"
+        boolArray = [true]
+        stringMap = {
+            "one" = "partridge"
+        }
+    }]
 }
 
 resource "emptyListRes" "plain:index:Resource" {

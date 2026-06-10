@@ -217,11 +217,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
 	},
 	{
-		Directory:   "csharp-plain-lists",
-		Description: "Tests that plain lists are supported in C#",
-		Skip:        allProgLanguages.Except(TestDotnet),
-	},
-	{
 		Directory:   "csharp-typed-for-expressions",
 		Description: "Testing for expressions with typed target expressions in csharp",
 		Skip:        allProgLanguages.Except(TestDotnet),

@@ -111,7 +111,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"localref", "1.0.0"},
 		SchemaProvider{"enum", "1.0.0"},
 		SchemaProvider{"plain-properties", "1.0.0"},
-		SchemaProvider{"plain-lists", "1.0.0"},
 		SchemaProvider{"recursive", "1.0.0"},
 		SchemaProvider{"nodecompat", "1.0.0"},
 
