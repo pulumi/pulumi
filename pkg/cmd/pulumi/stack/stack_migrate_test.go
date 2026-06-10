@@ -244,6 +244,56 @@ func TestLoadProjectStack_RemoteConfigWarnsWhenLocalFileExists(t *testing.T) { /
 	assert.Contains(t, stderr.String(), "will be ignored")
 }
 
+func TestLoadAndSaveProjectStack_ExplicitConfigFile(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock\n"), 0o600))
+	configFile := filepath.Join(wd, "custom-stack.yaml")
+	require.NoError(t, os.WriteFile(configFile, []byte("config:\n  proj:key: value\n"), 0o600))
+
+	project := &workspace.Project{Name: "proj", Runtime: workspace.NewProjectRuntimeInfo("mock", nil)}
+	stack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+	}
+	var stdout, stderr strings.Builder
+	sink := diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{Color: colors.Never})
+
+	ps, err := LoadProjectStack(t.Context(), sink, project, stack, configFile)
+	require.NoError(t, err)
+	gotValue, err := ps.Config[config.MustMakeKey("proj", "key")].Value(config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, "value", gotValue)
+
+	ps.Config[config.MustMakeKey("proj", "key")] = config.NewValue("updated")
+	require.NoError(t, SaveProjectStack(t.Context(), stack, ps, configFile))
+	reloaded, err := workspace.LoadProjectStack(sink, project, configFile)
+	require.NoError(t, err)
+	gotValue, err = reloaded.Config[config.MustMakeKey("proj", "key")].Value(config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, "updated", gotValue)
+}
+
+func TestLoadProjectStack_ReturnsDetectError(t *testing.T) { //nolint: paralleltest
+	t.Chdir(t.TempDir())
+	project := &workspace.Project{Name: "proj"}
+	stack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+	}
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	_, err := LoadProjectStack(t.Context(), sink, project, stack, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "could not detect project stack path")
+}
+
 func runMigrate(
 	t *testing.T,
 	ws pkgWorkspace.Context,
@@ -380,6 +430,263 @@ func TestStackMigrate_RejectsInvalidSecretsProvider(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown secrets provider")
+}
+
+func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
+	sourceURL := "file:///tmp/source"
+	project := &workspace.Project{Name: "proj"}
+
+	newSourceBackend := func() *backend.MockBackend {
+		return &backend.MockBackend{
+			URLF:  func() string { return sourceURL },
+			NameF: func() string { return "source" },
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				return &backend.MockStackReference{
+					StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+				}, nil
+			},
+			GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+				return &backend.MockStack{
+					RefF:     func() backend.StackReference { return ref },
+					BackendF: func() backend.Backend { return nil },
+				}, nil
+			},
+		}
+	}
+	newTargetBackend := func() *backend.MockBackend {
+		return &backend.MockBackend{
+			URLF:               func() string { return "https://api.pulumi.com" },
+			NameF:              func() string { return "pulumi.com" },
+			ValidateStackNameF: func(s string) error { return nil },
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				return &backend.MockStackReference{
+					StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+				}, nil
+			},
+			GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+				return nil, nil
+			},
+		}
+	}
+
+	tests := []struct {
+		name       string
+		ws         pkgWorkspace.Context
+		lm         cmdBackend.LoginManager
+		targetBE   *backend.MockBackend
+		wantSubstr string
+	}{
+		{
+			name: "read project error",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+				return nil, "", errors.New("read boom")
+			}},
+			lm:         &cmdBackend.MockLoginManager{},
+			targetBE:   newTargetBackend(),
+			wantSubstr: "read boom",
+		},
+		{
+			name: "source login error",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+				return nil, "", workspace.ErrProjectNotFound
+			}},
+			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			) (backend.Backend, error) {
+				return nil, errors.New("login boom")
+			}},
+			targetBE:   newTargetBackend(),
+			wantSubstr: "opening source backend",
+		},
+		{
+			name: "source parse error",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+				return project, "Pulumi.yaml", nil
+			}},
+			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			) (backend.Backend, error) {
+				sourceBE := newSourceBackend()
+				sourceBE.ParseStackReferenceF = func(s string) (backend.StackReference, error) {
+					return nil, errors.New("parse source boom")
+				}
+				return sourceBE, nil
+			}},
+			targetBE:   newTargetBackend(),
+			wantSubstr: "parsing source stack",
+		},
+		{
+			name: "source lookup error",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+				return project, "Pulumi.yaml", nil
+			}},
+			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			) (backend.Backend, error) {
+				sourceBE := newSourceBackend()
+				sourceBE.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return nil, errors.New("lookup boom")
+				}
+				return sourceBE, nil
+			}},
+			targetBE:   newTargetBackend(),
+			wantSubstr: "looking up source stack",
+		},
+		{
+			name: "source missing",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+				return project, "Pulumi.yaml", nil
+			}},
+			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			) (backend.Backend, error) {
+				sourceBE := newSourceBackend()
+				sourceBE.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return nil, nil
+				}
+				return sourceBE, nil
+			}},
+			targetBE:   newTargetBackend(),
+			wantSubstr: "not found in backend",
+		},
+		{
+			name: "target validate error",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+				return project, "Pulumi.yaml", nil
+			}},
+			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			) (backend.Backend, error) {
+				return newSourceBackend(), nil
+			}},
+			targetBE: func() *backend.MockBackend {
+				be := newTargetBackend()
+				be.ValidateStackNameF = func(s string) error { return errors.New("bad target") }
+				return be
+			}(),
+			wantSubstr: "invalid target stack name",
+		},
+		{
+			name: "target parse error",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+				return project, "Pulumi.yaml", nil
+			}},
+			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			) (backend.Backend, error) {
+				return newSourceBackend(), nil
+			}},
+			targetBE: func() *backend.MockBackend {
+				be := newTargetBackend()
+				be.ParseStackReferenceF = func(s string) (backend.StackReference, error) {
+					return nil, errors.New("parse target boom")
+				}
+				return be
+			}(),
+			wantSubstr: "parsing target stack",
+		},
+		{
+			name: "target lookup error",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+				return project, "Pulumi.yaml", nil
+			}},
+			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			) (backend.Backend, error) {
+				return newSourceBackend(), nil
+			}},
+			targetBE: func() *backend.MockBackend {
+				be := newTargetBackend()
+				be.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return nil, errors.New("target lookup boom")
+				}
+				return be
+			}(),
+			wantSubstr: "checking target backend for existing stack",
+		},
+	}
+
+	oldBE := cmdBackend.BackendInstance
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+	for _, tt := range tests { //nolint:paralleltest // subtests mutate cmdBackend.BackendInstance.
+		t.Run(tt.name, func(t *testing.T) {
+			cmdBackend.BackendInstance = tt.targetBE
+			err := runMigrate(t, tt.ws, tt.lm, []string{sourceURL, "dev"})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantSubstr)
+		})
+	}
+}
+
+func TestStackMigrate_PromptsAndCancelsSameNameMigration(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock\n"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config: {}\n"), 0o600))
+
+	var sourceBE *backend.MockBackend
+	sourceStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return b64.NewBase64SecretsManager(), nil
+		},
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return sourceStack, nil
+		},
+	}
+	targetBE := &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) { return nil, nil },
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj", Runtime: workspace.NewProjectRuntimeInfo("mock", nil)}, wd, nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	cmd := newStackMigrateCmd(ws, lm)
+	cmd.SetArgs([]string{"file:///tmp/source", "dev"})
+	cmd.SetIn(strings.NewReader("no\n"))
+	var stdout strings.Builder
+	cmd.SetOut(&stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	require.NoError(t, cmd.ExecuteContext(t.Context()))
+	assert.Contains(t, stdout.String(), "will be rewritten with the target's secrets configuration")
+	assert.Contains(t, stdout.String(), "Migration cancelled")
 }
 
 // Mutates cmdBackend.BackendInstance, so cannot be parallel.
