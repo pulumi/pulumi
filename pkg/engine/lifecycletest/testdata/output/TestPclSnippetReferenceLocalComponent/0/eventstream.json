@@ -1,0 +1,5 @@
+{"sequence":0,"timestamp":0,"preludeEvent":{"config":{}}}
+{"sequence":0,"timestamp":0,"resourcePreEvent":{"metadata":{"op":"create","urn":"urn:pulumi:test::test::pkgA:index:Comp::comp","type":"pkgA:index:Comp","old":null,"new":{"type":"pkgA:index:Comp","urn":"urn:pulumi:test::test::pkgA:index:Comp::comp","id":"1","parent":"","inputs":{"seed":"hello"},"outputs":{},"provider":""},"detailedDiff":null,"logical":true,"provider":""}}}
+{"sequence":0,"timestamp":0,"resOutputsEvent":{"metadata":{"op":"create","urn":"urn:pulumi:test::test::pkgA:index:Comp::comp","type":"pkgA:index:Comp","old":null,"new":{"type":"pkgA:index:Comp","urn":"urn:pulumi:test::test::pkgA:index:Comp::comp","id":"1","parent":"","inputs":{"seed":"hello"},"outputs":{"value":"value-of-hello"},"provider":""},"detailedDiff":null,"logical":true,"provider":""}}}
+{"sequence":0,"timestamp":0,"summaryEvent":{"maybeCorrupt":false,"durationSeconds":1,"resourceChanges":{"create":1},"PolicyPacks":{},"isPreview":false,"result":"succeeded"}}
+{"sequence":0,"timestamp":0,"cancelEvent":{}}

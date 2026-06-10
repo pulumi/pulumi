@@ -24,6 +24,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
@@ -497,6 +498,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		nil,
 		EvalSourceOptions{},
 		nil,
+		nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
 	).Iterate(t.Context(), &testProviderSource{})
 	require.NoError(t, err)
@@ -756,6 +758,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		nil,
 		EvalSourceOptions{},
 		nil,
+		nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
 	).Iterate(t.Context(), &testProviderSource{})
 	require.NoError(t, err)
@@ -840,6 +843,188 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	assert.Equal(t, len(steps)+len(defaults), processed)
 }
 
+// TestURNBrokerResolveOnRegisterResource verifies that the resource monitor publishes a registered
+// custom resource's outputs to the URN broker so concurrent sources waiting on that URN can wake up.
+func TestURNBrokerResolveOnRegisterResource(t *testing.T) {
+	t.Parallel()
+
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "proj"},
+		Target:      &Target{Name: tokens.MustParseStackName("stack")},
+	}
+
+	expectedURN := resource.NewURN(
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "res1")
+	expectedOutputs := resource.PropertyMap{"k": resource.NewProperty("v")}
+
+	steps := []RegisterResourceEvent{
+		// A single custom resource whose outputs we control via the iter-side reg.Done call below.
+		&testRegEvent{
+			goal: resource.NewGoal{ //nolint:requiredfield
+				Type:               "pkgA:index:res",
+				Name:               "res1",
+				Custom:             true,
+				Properties:         resource.PropertyMap{},
+				InitErrors:         []string{},
+				ReplacementTrigger: resource.NewNullProperty(),
+			}.Make(),
+		},
+	}
+
+	ctx, err := newTestPluginContext(t, fixedProgram(steps))
+	require.NoError(t, err)
+
+	broker := NewURNBroker()
+
+	// Spin up a getter for the URN before iteration begins. It must block until the monitor publishes.
+	type result struct {
+		reg URNRegistration
+		err error
+	}
+	getterDone := make(chan result, 1)
+	go func() {
+		reg, err := broker.Get(expectedURN).Result(t.Context())
+		getterDone <- result{reg, err}
+	}()
+
+	iter, err := NewEvalSource(
+		ctx,
+		runInfo,
+		nil,
+		nil,
+		EvalSourceOptions{},
+		nil,
+		broker,
+		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+	).Iterate(t.Context(), &testProviderSource{})
+	require.NoError(t, err)
+
+	for {
+		ev, err := iter.Next()
+		require.NoError(t, err)
+		if ev == nil {
+			break
+		}
+		reg, ok := ev.(RegisterResourceEvent)
+		require.True(t, ok, "expected a RegisterResourceEvent, got %T", ev)
+		goal := reg.Goal()
+		urn := resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
+		reg.Done(&RegisterResult{
+			State: resource.NewState{ //nolint:requiredfield
+				Type:               goal.Type,
+				URN:                urn,
+				Custom:             goal.Custom,
+				ID:                 "id1",
+				Inputs:             goal.Properties,
+				Outputs:            expectedOutputs,
+				ReplacementTrigger: resource.NewNullProperty(),
+			}.Make(),
+		})
+	}
+
+	got := <-getterDone
+	require.NoError(t, got.err)
+	require.Equal(t, expectedOutputs, got.reg.Outputs, "broker should have received the registered outputs")
+	require.Equal(t, resource.ID("id1"), got.reg.ID, "broker should have received the registered ID")
+}
+
+// TestURNBrokerNotResolvedForLocalComponentOnRegister verifies that the broker is NOT resolved at
+// RegisterResource time for a local (non-remote) component, since its outputs aren't final yet — a
+// later RegisterResourceOutputs call is what publishes them.
+func TestURNBrokerNotResolvedForLocalComponentOnRegister(t *testing.T) {
+	t.Parallel()
+
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "proj"},
+		Target:      &Target{Name: tokens.MustParseStackName("stack")},
+	}
+
+	expectedURN := resource.NewURN(
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp")
+
+	steps := []RegisterResourceEvent{
+		// A local component resource — Custom=false, Remote=false.
+		&testRegEvent{
+			goal: resource.NewGoal{ //nolint:requiredfield
+				Type:               "pkgA:index:Comp",
+				Name:               "comp",
+				Custom:             false,
+				Properties:         resource.PropertyMap{},
+				InitErrors:         []string{},
+				ReplacementTrigger: resource.NewNullProperty(),
+			}.Make(),
+		},
+	}
+
+	ctx, err := newTestPluginContext(t, fixedProgram(steps))
+	require.NoError(t, err)
+
+	broker := NewURNBroker()
+
+	iter, err := NewEvalSource(
+		ctx,
+		runInfo,
+		nil,
+		nil,
+		EvalSourceOptions{},
+		nil,
+		broker,
+		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+	).Iterate(t.Context(), &testProviderSource{})
+	require.NoError(t, err)
+
+	for {
+		ev, err := iter.Next()
+		require.NoError(t, err)
+		if ev == nil {
+			break
+		}
+		reg, ok := ev.(RegisterResourceEvent)
+		require.True(t, ok, "expected a RegisterResourceEvent, got %T", ev)
+		goal := reg.Goal()
+		urn := resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
+		reg.Done(&RegisterResult{
+			State: resource.NewState{ //nolint:requiredfield
+				Type:               goal.Type,
+				URN:                urn,
+				Custom:             goal.Custom,
+				Inputs:             goal.Properties,
+				Outputs:            resource.PropertyMap{"k": resource.NewProperty("v")},
+				ReplacementTrigger: resource.NewNullProperty(),
+			}.Make(),
+		})
+	}
+
+	// After RegisterResource alone, a local component's broker entry should still be pending. We
+	// check this by spawning a getter, giving it a brief window to settle, and asserting it has
+	// not completed.
+	type result struct {
+		reg URNRegistration
+		err error
+	}
+	getterDone := make(chan result, 1)
+	getterCtx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	go func() {
+		reg, err := broker.Get(expectedURN).Result(getterCtx)
+		getterDone <- result{reg, err}
+	}()
+
+	select {
+	case got := <-getterDone:
+		t.Fatalf("broker should not have resolved local component on RegisterResource alone; got %+v err=%v",
+			got.reg, got.err)
+	case <-time.After(50 * time.Millisecond):
+		// Expected: still pending.
+	}
+}
+
 func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	t.Parallel()
 
@@ -914,7 +1099,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	require.NoError(t, err)
 
 	iter, err := NewEvalSource(
-		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil,
+		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil)).Iterate(t.Context(), providerSource)
 	require.NoError(t, err)
 
@@ -1030,7 +1215,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	providerSource := &testProviderSource{providers: make(map[sdkproviders.Reference]plugin.Provider)}
 
 	iter, err := NewEvalSource(
-		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil,
+		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil)).Iterate(t.Context(), providerSource)
 	require.NoError(t, err)
 
@@ -1285,7 +1470,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 			require.NoError(t, err)
 
 			iter, err := NewEvalSource(
-				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil,
+				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 				NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil)).Iterate(t.Context(), providerSource)
 			require.NoError(t, err)
 
@@ -1563,7 +1748,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			pluginCtx, err := newTestPluginContext(t, program)
 			require.NoError(t, err, "build plugin context")
 
-			evalSource := NewEvalSource(pluginCtx, runInfo, nil, nil, EvalSourceOptions{}, nil,
+			evalSource := NewEvalSource(pluginCtx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 				NewProgramSource(pluginCtx, runInfo, EvalSourceOptions{}, nil))
 			defer func() {
 				require.NoError(t, evalSource.Close(), "close eval source")

@@ -1,0 +1,10 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:res::fan-0: (create)
+<{%fg 2%}>    propA: <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:res::fan-1: (create)
+<{%fg 2%}>    propA: <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:res::fan-2: (create)
+<{%fg 2%}>    propA: <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 3 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

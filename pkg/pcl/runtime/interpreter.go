@@ -486,6 +486,63 @@ func (i *Interpreter) Run(ctx context.Context) error {
 	return nil
 }
 
+// RunEmbedded runs the interpreter against a pre-existing monitor and loader supplied by the
+// caller, skipping the steps that only make sense for a top-level program run (stack registration,
+// stack-output emission, and the SignalAndWaitForShutdown handshake). It is the entry point for
+// callers that drive the interpreter as a sub-source inside a larger update — for example, the
+// engine evaluating a PCL snippet alongside the main program.
+//
+// scopeVars, if non-nil, are installed on the eval context as root-scope variables after init so
+// the program body can reference resources resolved elsewhere (e.g. snippet References resolved
+// via the engine's URN broker).
+func (i *Interpreter) RunEmbedded(
+	ctx context.Context,
+	monitor pulumirpc.ResourceMonitorClient,
+	loader schema.ReferenceLoader,
+	scopeVars map[string]cty.Value,
+) error {
+	i.monitor = monitor
+	i.loader = loader
+
+	i.evalContext = NewEvalContext(
+		i.info.WorkingDir,
+		i.info.RootDirectory,
+		i.info.Organization,
+		i.info.Project,
+		i.info.Stack,
+		i.lookupResource,
+		i.lookupFunction,
+		i.getResource,
+		i.invoke,
+		i.call,
+	)
+	for name, val := range scopeVars {
+		i.evalContext.SetVariable(name, val)
+	}
+
+	if diags := i.bindConfigVariables(ctx); diags.HasErrors() {
+		return diags
+	}
+
+	if err := i.enforceRequiredVersion(ctx); err != nil {
+		return err
+	}
+
+	if err := i.registerPackages(ctx); err != nil {
+		return err
+	}
+
+	if _, err := i.executeProgramNodes(ctx); err != nil {
+		return err
+	}
+
+	if i.callbacks != nil {
+		close(i.callbacks.stop)
+	}
+
+	return nil
+}
+
 func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.PropertyMap, error) {
 	dag := pdag.New[pcl.Node]()
 	nodes := map[pcl.Node]pdag.Node{}
@@ -883,7 +940,10 @@ func unwrapOutputs(value resource.PropertyValue) (resource.PropertyValue, []reso
 	return value, nil
 }
 
-func unwrapResource(value resource.PropertyValue) (string, resource.PropertyValue, error) {
+// UnwrapResource extracts the urn (string) and id (PropertyValue) from a resource-shaped property value (an object
+// with `urn` and `id` fields), unwrapping any output wrapper. Returns an error if the value is not such a resource
+// or if the URN is not a known string.
+func UnwrapResource(value resource.PropertyValue) (string, resource.PropertyValue, error) {
 	value, _ = unwrapOutputs(value)
 	if !value.IsObject() {
 		return "", resource.PropertyValue{}, fmt.Errorf("expected resource object, got %s", value.TypeString())
@@ -1263,7 +1323,7 @@ func (i *Interpreter) registerResourceWith(
 
 						parent, ok := obj["parent"]
 						if ok && !parent.IsNull() && !parent.IsComputed() {
-							urn, _, err := unwrapResource(parent)
+							urn, _, err := UnwrapResource(parent)
 							if err != nil {
 								return cty.NilVal, fmt.Errorf("parent: %w", err)
 							}
@@ -1301,7 +1361,7 @@ func (i *Interpreter) registerResourceWith(
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
-					urn, _, err := unwrapResource(v)
+					urn, _, err := UnwrapResource(v)
 					if err != nil {
 						return cty.NilVal, fmt.Errorf("dependsOn: %w", err)
 					}
@@ -1410,7 +1470,7 @@ func (i *Interpreter) registerResourceWith(
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
-					urn, _, err := unwrapResource(v)
+					urn, _, err := UnwrapResource(v)
 					if err != nil {
 						return cty.NilVal, fmt.Errorf("replaceWith: %w", err)
 					}
@@ -1548,7 +1608,7 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !deletedWith.IsNull() && !deletedWith.IsComputed() {
-				urn, _, err := unwrapResource(deletedWith)
+				urn, _, err := UnwrapResource(deletedWith)
 				if err != nil {
 					return cty.NilVal, fmt.Errorf("deletedWith: %w", err)
 				}
@@ -1579,7 +1639,7 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !parent.IsNull() && !parent.IsComputed() {
-				urn, _, err := unwrapResource(parent)
+				urn, _, err := UnwrapResource(parent)
 				if err != nil {
 					return cty.NilVal, fmt.Errorf("parent: %w", err)
 				}
@@ -1595,7 +1655,7 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !provider.IsNull() && !provider.IsComputed() {
-				urn, id, err := unwrapResource(provider)
+				urn, id, err := UnwrapResource(provider)
 				if err != nil {
 					return cty.NilVal, fmt.Errorf("provider: %w", err)
 				}
@@ -1622,7 +1682,7 @@ func (i *Interpreter) registerResourceWith(
 				psopt := map[string]string{}
 				if providers.IsObject() {
 					for k, v := range providers.ObjectValue() {
-						urn, id, err := unwrapResource(v)
+						urn, id, err := UnwrapResource(v)
 						if err != nil {
 							return cty.NilVal, fmt.Errorf("providers: %w", err)
 						}
@@ -1636,7 +1696,7 @@ func (i *Interpreter) registerResourceWith(
 					}
 				} else if providers.IsArray() {
 					for _, v := range providers.ArrayValue() {
-						urn, id, err := unwrapResource(v)
+						urn, id, err := UnwrapResource(v)
 						if err != nil {
 							return cty.NilVal, fmt.Errorf("providers: %w", err)
 						}
@@ -1861,7 +1921,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 			return diags
 		}
 		if !parent.IsNull() && !parent.IsComputed() {
-			urn, _, err := unwrapResource(parent)
+			urn, _, err := UnwrapResource(parent)
 			if err != nil {
 				return hcl.Diagnostics{{
 					Severity: hcl.DiagError,

@@ -390,7 +390,7 @@ func evaluateResourceFile(
 	bindOpts ...pcl.BindOption,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindResource(file, res, bindOpts...)
+		attrs, inputType, _, diags := pcl.BindResource(file, res, bindOpts...)
 		return attrs, inputType, res.InputProperties, diags
 	}
 	return evaluateFile(
