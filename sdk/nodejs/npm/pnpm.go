@@ -117,13 +117,8 @@ func (pnpm *pnpmManager) Link(ctx context.Context, dir, packageName, path string
 	if version.GTE(semver.MustParse("10.34.2")) {
 		key = packageName + "@file:" + filepath.ToSlash(path)
 	}
-	return pnpm.addOnlyBuiltDependency(ctx, dir, key)
-}
 
-// addOnlyBuiltDependency adds key to the `onlyBuiltDependencies` setting, which decides which dependencies may run
-// lifecycle scripts.
-func (pnpm *pnpmManager) addOnlyBuiltDependency(ctx context.Context, dir, key string) error {
-	cmd := exec.CommandContext(ctx, "pnpm", "config", "get", "onlyBuiltDependencies", "--json")
+	cmd = exec.CommandContext(ctx, "pnpm", "config", "get", "onlyBuiltDependencies", "--json")
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
