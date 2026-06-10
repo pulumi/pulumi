@@ -311,15 +311,16 @@ func (data *resourceRowData) isInterrupted() bool {
 	}
 	switch data.display.getStepOp(data.step) {
 	case deploy.OpSame, deploy.OpRemovePendingReplace:
+		// These ops just change state, not the actual resource, so they don't have an outputs step.
 		return false
 	}
 	return !data.ContainsOutputsStep(data.step.Op)
 }
 
 func (data *resourceRowData) stepIsCustom() bool {
-	for _, s := range []*engine.StepEventStateMetadata{data.step.New, data.step.Res, data.step.Old} {
-		if s != nil && s.Custom {
-			return true
+	for _, s := range []*engine.StepEventStateMetadata{data.step.Res, data.step.New, data.step.Old} {
+		if s != nil {
+			return s.Custom
 		}
 	}
 	return false
