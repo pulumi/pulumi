@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -413,7 +414,7 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
 			}
 			testProvider := integration.LocalDependency{
-				Package: "testprovider", Path: filepath.Join("..", "testprovider"),
+				Package: "testprovider", Path: testutil.TestProvider(t),
 			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),

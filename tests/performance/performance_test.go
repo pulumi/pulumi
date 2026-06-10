@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -83,7 +84,7 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 		OtelTraces:  otelTracesEndpoint(t),
 		Env:         otelResourceEnv(t),
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 	})
 }
@@ -108,7 +109,7 @@ func TestPerfParentChainUpdate(t *testing.T) {
 		OtelTraces:  otelTracesEndpoint(t),
 		Env:         otelResourceEnv(t),
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 	})
 }

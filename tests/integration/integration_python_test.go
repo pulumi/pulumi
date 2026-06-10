@@ -52,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 // This checks that error logs are not being emitted twice
@@ -2007,7 +2008,7 @@ func TestStuckEventLoop(t *testing.T) {
 				filepath.Join("..", "..", "sdk", "python"),
 			},
 			LocalProviders: []integration.LocalDependency{
-				{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+				{Package: "testprovider", Path: testutil.TestProvider(t)},
 			},
 			Stderr:        stderr,
 			Quick:         true,

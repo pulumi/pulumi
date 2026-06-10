@@ -28,7 +28,7 @@ func TestNodejsErrorHooks(t *testing.T) {
 		Dir:          filepath.Join("nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

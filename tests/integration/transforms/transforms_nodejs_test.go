@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +30,7 @@ func TestNodejsSimpleTransforms(t *testing.T) {
 		Dir:          d,
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick:                  true,
 		ExtraRuntimeValidation: Validator,
@@ -43,7 +44,7 @@ func TestNodejsSingleTransforms(t *testing.T) {
 		Dir:          d,
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick: true,
 	})
@@ -58,7 +59,7 @@ func TestNodejsTransformsAsyncResource(t *testing.T) {
 		Dir:          d,
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

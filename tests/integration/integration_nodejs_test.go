@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
+	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/websocket"
@@ -290,7 +291,7 @@ func TestStackOutputsResourceErrorNodeJS(t *testing.T) {
 		Dir:          filepath.Join(d, "step1"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: validateOutputs(map[string]any{
@@ -2063,7 +2064,7 @@ func TestDeletedWithNode(t *testing.T) {
 		Dir:          filepath.Join("deleted_with", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick: true,
 	})
@@ -2422,7 +2423,7 @@ func TestParameterizedNode(t *testing.T) {
 		Dir:           filepath.Join("nodejs", "parameterized"),
 		Dependencies:  []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		NoParallel: true,
 		PrePrepareProject: func(project *engine.Projinfo) error {
@@ -2715,7 +2716,7 @@ func TestAutonaming(t *testing.T) {
 				Env:           env,
 				OrderedConfig: orderedConfig,
 				LocalProviders: []integration.LocalDependency{
-					{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+					{Package: "testprovider", Path: testutil.TestProvider(t)},
 				},
 				Quick: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -3385,7 +3386,7 @@ func TestNodejsOnBeforeExit(t *testing.T) {
 		Dir:          filepath.Join("nodejs", "before-exit"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -3407,7 +3408,7 @@ func TestNodejsPromiseMessage(t *testing.T) {
 		Dir:          filepath.Join("nodejs", "promise-message"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick:         true,
 		ExpectFailure: true,
@@ -3436,7 +3437,7 @@ func TestNodejsExitError(t *testing.T) {
 		Dir:          filepath.Join("nodejs", "exit-error"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick:         true,
 		ExpectFailure: true,
@@ -3462,7 +3463,7 @@ func TestNodejsExitError(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestTsExecute(t *testing.T) {
-	testProviderPath, err := filepath.Abs(filepath.Join("..", "testprovider"))
+	testProviderPath, err := filepath.Abs(testutil.TestProvider(t))
 	contract.AssertNoErrorf(err, "Test provider path must be resolvable to absolute path")
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

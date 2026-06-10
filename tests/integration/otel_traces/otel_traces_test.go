@@ -30,6 +30,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 type traceSpan struct {
@@ -52,7 +53,7 @@ func TestOtelTraces(t *testing.T) {
 		binaryName += ".exe"
 	}
 	buildCmd := exec.Command("go", "build", "-o", filepath.Join(binDir, binaryName), ".") //nolint:gosec
-	buildCmd.Dir = filepath.Join("..", "..", "testprovider")
+	buildCmd.Dir = testutil.TestProvider(t)
 	out, err := buildCmd.CombinedOutput()
 	require.NoError(t, err, "failed to build testprovider: %s", out)
 

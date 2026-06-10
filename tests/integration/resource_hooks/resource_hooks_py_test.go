@@ -34,7 +34,7 @@ func TestPythonResourceHooks(t *testing.T) {
 			filepath.Join("..", "..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -61,7 +61,7 @@ func TestPythonResourceHooksTransform(t *testing.T) {
 			filepath.Join("..", "..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -103,7 +103,7 @@ func TestPythonResourceHooksSecrets(t *testing.T) {
 			filepath.Join("..", "..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -122,7 +122,7 @@ func TestPythonHookDecorator(t *testing.T) {
 			filepath.Join("..", "..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProvider(t)},
 		},
 		PreviewCompletedHook: func(dir string) error {
 			matches, err := filepath.Glob(filepath.Join(dir, "command-output", "pulumi-preview-initial*.log"))
