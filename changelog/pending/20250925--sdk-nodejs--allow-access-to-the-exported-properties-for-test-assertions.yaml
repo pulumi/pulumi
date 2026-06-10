@@ -1,0 +1,6 @@
+component: sdk/nodejs
+kind: feat
+body: Allow access to the exported properties for test assertions
+time: 2026-06-10T11:44:00.000000+00:00
+custom:
+    PR: "20575"
