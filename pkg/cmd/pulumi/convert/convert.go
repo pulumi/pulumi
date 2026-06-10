@@ -248,7 +248,7 @@ func runConvert(
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-			languagePlugin, err := pCtx.Host.LanguageRuntime(language)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(pCtx, language)
 			if err != nil {
 				return nil, err
 			}
@@ -334,7 +334,7 @@ func runConvert(
 	}
 
 	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
-	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx.Host, stderr, stderr,
+	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx, stderr, stderr,
 		nil, packageworkspace.Options{})
 
 	installPlugin := func(pluginName string) *semver.Version {
@@ -363,12 +363,12 @@ func runConvert(
 		return &version
 	}
 
-	loader := schema.NewPluginLoader(pCtx.Host)
+	loader := schema.NewPluginLoader(pCtx)
 
 	baseMapper, err := convert.NewBasePluginMapper(
 		pluginstorage.Instance,
 		from, /*conversionKey*/
-		convert.ProviderFactoryFromHost(ctx, pCtx.Host),
+		convert.ProviderFactoryFromHost(ctx, pCtx),
 		installPlugin,
 		mappings,
 	)

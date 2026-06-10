@@ -65,12 +65,12 @@ func (src *programSource) run(resourceMonitorTarget string) *promise.Promise[str
 
 	// Also start up a schema loader for the language runtime to use to fetch schema information.
 	loaderRegistration := schema.LoaderRegistration(
-		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx.Host)))
+		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx)))
 
 	baseMapper, err := convert.NewBasePluginMapper(
 		pluginstorage.Instance,
 		"terraform",
-		convert.ProviderFactoryFromHost(context.Background(), src.plugctx.Host),
+		convert.ProviderFactoryFromHost(context.Background(), src.plugctx),
 		func(string) *semver.Version { return nil },
 		nil,
 	)
@@ -110,7 +110,7 @@ func (src *programSource) forkRun(
 				return nil
 			}
 
-			langhost, err := src.plugctx.Host.LanguageRuntime(rt)
+			langhost, err := src.plugctx.Host.LanguageRuntime(src.plugctx, rt)
 			if err != nil {
 				return fmt.Errorf("failed to launch language host %s: %w", rt, err)
 			}

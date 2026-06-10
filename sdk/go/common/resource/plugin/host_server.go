@@ -59,10 +59,10 @@ func newHostServer(host Host, ctx *Context, newLoader NewLoaderFunc, newMapper N
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterEngineServer(srv, engine)
 			if newLoader != nil {
-				codegenrpc.RegisterLoaderServer(srv, newLoader(host))
+				codegenrpc.RegisterLoaderServer(srv, newLoader(host, ctx))
 			}
 			if newMapper != nil {
-				codegenrpc.RegisterMapperServer(srv, newMapper(ctx.Base(), host))
+				codegenrpc.RegisterMapperServer(srv, newMapper(host, ctx))
 			}
 			return nil
 		},

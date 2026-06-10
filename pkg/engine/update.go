@@ -530,7 +530,7 @@ func installPlugins(
 	// When SkipPluginPreInstall is set we skip this up-front install attempt — the provider registry will install
 	// plugins lazily when they are actually requested.
 	if opts == nil || !opts.SkipPluginPreInstall {
-		if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.Host.GetProjectPlugins(),
+		if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.ProjectPlugins(),
 			false /*reinstall*/, false /*explicitInstall*/, manager); err != nil {
 			if returnInstallErrors {
 				return nil, nil, err
@@ -563,7 +563,7 @@ func loadPolicyAnalyzer(
 	ctx context.Context, plugctx *plugin.Context,
 	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
-	analyzer, err := plugctx.Host.PolicyAnalyzer(name, path, opts)
+	analyzer, err := plugctx.Host.PolicyAnalyzer(plugctx, name, path, opts)
 	if err == nil {
 		return analyzer, nil
 	}
@@ -587,7 +587,7 @@ func loadPolicyAnalyzer(
 			string(name), installErr, me)
 	}
 
-	analyzer, err = plugctx.Host.PolicyAnalyzer(name, path, opts)
+	analyzer, err = plugctx.Host.PolicyAnalyzer(plugctx, name, path, opts)
 	if err != nil {
 		var retryMe *workspace.MissingError
 		if errors.As(err, &retryMe) {

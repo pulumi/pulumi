@@ -80,7 +80,7 @@ func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	plugins, err := engine.GetRequiredPlugins(
 		pctx.Request(),
-		pctx.Host,
+		pctx,
 		proj.Runtime.Name(),
 		programInfo)
 	if err != nil {
@@ -109,7 +109,7 @@ func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) (
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	var results []workspace.PluginInfo
 	for _, plugin := range plugins {
-		info, err := workspace.GetPluginInfo(pctx.Base(), d, plugin, pctx.Host.GetProjectPlugins())
+		info, err := workspace.GetPluginInfo(pctx.Base(), d, plugin, pctx.ProjectPlugins())
 		if err != nil {
 			contract.IgnoreError(err)
 		}

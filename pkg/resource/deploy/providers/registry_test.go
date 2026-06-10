@@ -76,32 +76,30 @@ func (host *testPluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg s
 	host.t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
 }
 
-func (host *testPluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
+func (host *testPluginHost) Analyzer(ctx *plugin.Context, nm tokens.QName) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
 
-func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string,
+func (host *testPluginHost) PolicyAnalyzer(ctx *plugin.Context, name tokens.QName, path string,
 	opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
 
-func (host *testPluginHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+func (host *testPluginHost) Provider(
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
 	return host.provider(descriptor)
 }
 
-func (host *testPluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime, error) {
+func (host *testPluginHost) LanguageRuntime(ctx *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
 
 func (host *testPluginHost) ResolvePlugin(
-	spec workspace.PluginDescriptor,
+	ctx *plugin.Context, spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	return nil, nil
-}
-
-func (host *testPluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	return nil
 }
 
 func (host *testPluginHost) GetRequiredPlugins(project string, info plugin.ProgramInfo,
@@ -181,6 +179,11 @@ type providerLoader struct {
 	pkg     tokens.Package
 	version semver.Version
 	load    func() (plugin.Provider, error)
+}
+
+// newTestContext wraps a test host in a plugin context for constructing a Registry.
+func newTestContext(host plugin.Host) *plugin.Context {
+	return &plugin.Context{Host: host}
 }
 
 func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
@@ -273,10 +276,10 @@ func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMa
 func TestNewRegistryNoOldState(t *testing.T) {
 	t.Parallel()
 
-	r := NewRegistry(&testPluginHost{}, false, nil)
+	r := NewRegistry(newTestContext(&testPluginHost{}), false, nil)
 	require.NotNil(t, r)
 
-	r = NewRegistry(&testPluginHost{}, true, nil)
+	r = NewRegistry(newTestContext(&testPluginHost{}), true, nil)
 	require.NotNil(t, r)
 }
 
@@ -306,7 +309,7 @@ func TestNewRegistryOldState(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	for _, old := range olds {
@@ -355,7 +358,7 @@ func TestCRUD(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	for _, old := range olds {
@@ -541,7 +544,7 @@ func TestCRUDPreview(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, true, nil)
+	r := NewRegistry(newTestContext(host), true, nil)
 	require.NotNil(t, r)
 
 	for _, old := range olds {
@@ -676,7 +679,7 @@ func TestCRUDNoProviders(t *testing.T) {
 
 	host := newPluginHost(t, []*providerLoader{})
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType("pkgA")
@@ -702,7 +705,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType("pkgA")
@@ -728,7 +731,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType("pkgA")
@@ -754,7 +757,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType("pkgA")
@@ -781,7 +784,7 @@ func TestCRUDBadVersion(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType("pkgA")
@@ -827,7 +830,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		_, err := loadProvider(
 			t.Context(),
 			"myplugin", &version, srv.URL,
-			nil, host, nil /* builtins */, nil)
+			nil, newTestContext(host), nil /* builtins */, nil)
 		assert.ErrorContains(t, err,
 			"no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v1.2.3")
 		assert.Equal(t, 0, count)
@@ -839,7 +842,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		_, err := loadProvider(
 			t.Context(),
 			"myplugin", &version, srv.URL,
-			nil, host, nil /* builtins */, nil)
+			nil, newTestContext(host), nil /* builtins */, nil)
 		assert.ErrorContains(t, err,
 			"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
 		assert.ErrorContains(t, err,
@@ -859,7 +862,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	// We're going to create a few thousand providers in parallel, registering a load of aliases for each of
@@ -1084,7 +1087,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		}
 		host := newPluginHost(t, loaders)
 
-		r := NewRegistry(host, false, nil)
+		r := NewRegistry(newTestContext(host), false, nil)
 		require.NotNil(t, r)
 
 		// Same the provider
@@ -1113,7 +1116,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		}
 		host := newPluginHost(t, loaders)
 
-		r := NewRegistry(host, false, nil)
+		r := NewRegistry(newTestContext(host), false, nil)
 		require.NotNil(t, r)
 
 		typ := providers.MakeProviderType(tokens.Package("testPackage"))
@@ -1147,7 +1150,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		}
 		host := newPluginHost(t, loaders)
 
-		r := NewRegistry(host, false, nil)
+		r := NewRegistry(newTestContext(host), false, nil)
 		require.NotNil(t, r)
 
 		typ := providers.MakeProviderType(tokens.Package("testPackage"))
@@ -1191,7 +1194,9 @@ type testPluginHostWithEnvCapture struct {
 }
 
 //nolint:lll
-func (host *testPluginHostWithEnvCapture) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+func (host *testPluginHostWithEnvCapture) Provider(
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
 	host.capturedEnv = e
 	return host.provider(descriptor)
 }
@@ -1224,7 +1229,7 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 		},
 	}
 
-	r := NewRegistry(customHost, false, nil)
+	r := NewRegistry(newTestContext(customHost), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType(tokens.Package("testPackage"))
@@ -1311,7 +1316,7 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 	}
 	host := newPluginHost(t, []*providerLoader{loader})
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 
 	urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
 	id := resource.ID("id1")
@@ -1399,7 +1404,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 	}
 	host := newPluginHost(t, []*providerLoader{loader})
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 
 	urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
 	id := resource.ID("id1")
@@ -1498,7 +1503,7 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 			}
 			host := newPluginHost(t, []*providerLoader{loader})
 
-			r := NewRegistry(host, false, nil)
+			r := NewRegistry(newTestContext(host), false, nil)
 
 			urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
 			id := resource.ID("id1")

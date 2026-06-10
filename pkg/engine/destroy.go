@@ -151,7 +151,7 @@ func newDestroySource(
 	allPlugins := snapshotPackages.ToPluginSet().Deduplicate()
 
 	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins,
-		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
+		plugctx.ProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}
 

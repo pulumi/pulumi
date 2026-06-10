@@ -69,7 +69,7 @@ func createPluginRPCServer(
 	baseMapper, err := pconvert.NewBasePluginMapper(
 		pluginstorage.Instance,
 		"terraform",
-		pconvert.ProviderFactoryFromHost(ctx, pctx.Host),
+		pconvert.ProviderFactoryFromHost(ctx, pctx),
 		installPlugin,
 		nil,
 	)
@@ -80,7 +80,7 @@ func createPluginRPCServer(
 	// Wrap in a caching mapper for better performance
 	mapper := pconvert.NewCachingMapper(baseMapper)
 
-	loader := schema.NewPluginLoader(pctx.Host)
+	loader := schema.NewPluginLoader(pctx)
 
 	mapperServer := pconvert.NewMapperServer(mapper)
 	loaderServer := schema.NewLoaderServer(loader)

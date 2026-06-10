@@ -126,8 +126,8 @@ func SkipInvokeTypechecking(options *bindOptions) {
 	options.skipInvokeTypecheck = true
 }
 
-func PluginHost(host plugin.Host) BindOption {
-	return Loader(schema.NewPluginLoader(host))
+func PluginHost(pctx *plugin.Context) BindOption {
+	return Loader(schema.NewPluginLoader(pctx))
 }
 
 func Loader(loader schema.Loader) BindOption {
@@ -394,7 +394,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		if err != nil {
 			return nil, nil, err
 		}
-		options.loader = schema.NewPluginLoader(ctx.Host)
+		options.loader = schema.NewPluginLoader(ctx)
 
 		defer contract.IgnoreClose(ctx)
 	}

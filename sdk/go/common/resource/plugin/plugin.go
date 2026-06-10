@@ -534,7 +534,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
 		}
 
-		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name())
+		runtime, err := ctx.Host.LanguageRuntime(ctx, runtimeInfo.Name())
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}

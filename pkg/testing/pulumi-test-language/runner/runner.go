@@ -338,6 +338,7 @@ func (eng *languageTestServer) RequirePulumiVersion(ctx context.Context, req *pu
 type providerLoader struct {
 	language, languageInfo string
 
+	pctx *plugin.Context
 	host plugin.Host
 }
 
@@ -363,7 +364,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		PluginDownloadURL: descriptor.DownloadURL,
 	}
 
-	provider, err := l.host.Provider(workspaceDescriptor, env.Global())
+	provider, err := l.host.Provider(l.pctx, workspaceDescriptor, env.Global())
 	if err != nil {
 		return nil, fmt.Errorf("could not load schema for %s: %w", descriptor.Name, err)
 	}
@@ -770,6 +771,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	loader := &providerLoader{
 		language:     token.LanguagePluginName,
 		languageInfo: token.LanguageInfo,
+		pctx:         pctx,
 		host:         host,
 	}
 	loaderServer := schema.NewLoaderServer(loader)

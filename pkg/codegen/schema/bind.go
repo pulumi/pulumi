@@ -372,7 +372,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 			return nil, nil, err
 		}
 
-		loader, loadCtx = NewPluginLoader(ctx.Host), ctx
+		loader, loadCtx = NewPluginLoader(ctx), ctx
 	}
 
 	// Create a type binder.

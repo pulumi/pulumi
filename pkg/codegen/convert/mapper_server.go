@@ -32,13 +32,12 @@ import (
 // plugin storage, booting them via the given host. It has the signature required by [plugin.NewMapperFunc]. The
 // underlying mapper is constructed lazily on first request because enumerating installed plugins can fail, and host
 // construction has no way to surface that error.
-func NewMapperServerFromHost(ctx context.Context, host plugin.Host) codegenrpc.MapperServer {
-	return NewMapperServer(&hostMapper{baseCtx: ctx, host: host})
+func NewMapperServerFromHost(host plugin.Host, pctx *plugin.Context) codegenrpc.MapperServer {
+	return NewMapperServer(&hostMapper{pctx: pctx})
 }
 
 type hostMapper struct {
-	baseCtx context.Context
-	host    plugin.Host
+	pctx *plugin.Context
 
 	once   sync.Once
 	mapper Mapper
@@ -50,7 +49,7 @@ func (m *hostMapper) GetMapping(ctx context.Context, provider string, hint *Mapp
 		base, err := NewBasePluginMapper(
 			pluginstorage.Instance,
 			"terraform",
-			ProviderFactoryFromHost(m.baseCtx, m.host),
+			ProviderFactoryFromHost(m.pctx.Base(), m.pctx),
 			func(string) *semver.Version { return nil },
 			nil,
 		)

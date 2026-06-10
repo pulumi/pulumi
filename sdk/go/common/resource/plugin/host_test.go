@@ -197,7 +197,7 @@ func TestIsLocalPluginPath(t *testing.T) {
 	}
 }
 
-func TestNewDefaultHost_PackagesResolution(t *testing.T) {
+func TestProjectPluginsFromProject_PackagesResolution(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for our test
@@ -231,13 +231,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 		"git-plugin":      {Source: "git://github.com/pulumi/pulumi-aws"}, // This should be skipped
 	}
 
-	// Create the host with our packages
-	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil, nil, nil)
+	projectPlugins, err := projectPluginsFromProject(ctx, nil, packages)
 	require.NoError(t, err)
-	defer host.Close()
-
-	// Get the project plugins
-	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (local-plugin and relative-plugin)
 	require.Len(t, projectPlugins, 2)
@@ -260,8 +255,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	assert.NotContains(t, pluginMap, "git-plugin")
 }
 
-// TestNewDefaultHost_BothPluginsAndPackages tests the combined resolution of plugins and packages
-func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
+// TestProjectPluginsFromProject_BothPluginsAndPackages tests the combined resolution of plugins and packages
+func TestProjectPluginsFromProject_BothPluginsAndPackages(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for our test
@@ -298,11 +293,8 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 		"azure":        {Source: "azure"}, // This should be skipped as it's not a local path
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil, nil, nil)
+	projectPlugins, err := projectPluginsFromProject(ctx, plugins, packages)
 	require.NoError(t, err)
-	defer host.Close()
-
-	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (1 from plugins, 1 from packages)
 	require.Len(t, projectPlugins, 2)
@@ -330,12 +322,12 @@ func TestNewDefaultHost_LoaderAddress(t *testing.T) {
 	}
 
 	var captureHost Host
-	mockLoader := func(h Host) codegenrpc.LoaderServer {
+	mockLoader := func(h Host, _ *Context) codegenrpc.LoaderServer {
 		captureHost = h
 		return codegenrpc.UnimplementedLoaderServer{}
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader, nil, nil)
+	host, err := NewDefaultHost(ctx, nil, mockLoader, nil, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -360,12 +352,12 @@ func TestNewDefaultHost_MapperAddress(t *testing.T) {
 	}
 
 	var captureHost Host
-	mockMapper := func(_ context.Context, h Host) codegenrpc.MapperServer {
+	mockMapper := func(h Host, _ *Context) codegenrpc.MapperServer {
 		captureHost = h
 		return codegenrpc.UnimplementedMapperServer{}
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", nil, mockMapper, nil)
+	host, err := NewDefaultHost(ctx, nil, nil, mockMapper, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -382,7 +374,7 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 	sink := diagtest.LogSink(t)
 
 	var loaderCalls int
-	mockLoader := func(Host) codegenrpc.LoaderServer {
+	mockLoader := func(Host, *Context) codegenrpc.LoaderServer {
 		loaderCalls++
 		return codegenrpc.UnimplementedLoaderServer{}
 	}
@@ -399,7 +391,7 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 		gotLoaderIsNil = newLoader == nil
 		// Invoke the loader we were handed to prove it is the host's loader, not nil.
 		if newLoader != nil {
-			newLoader(nil)
+			newLoader(nil, nil)
 		}
 		return errInstall
 	}
@@ -411,7 +403,7 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, host.Close()) })
 
 	loaderCallsBeforeLoad := loaderCalls
-	lang, err := host.LanguageRuntime("test-lang")
+	lang, err := host.LanguageRuntime(ctx, "test-lang")
 
 	// The installer ran exactly once, for the requested runtime, and its error gated the load so we never
 	// got a runtime back.

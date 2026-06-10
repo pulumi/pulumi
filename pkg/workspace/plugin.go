@@ -215,7 +215,7 @@ func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, st
 	if err := proj.Validate(); err != nil {
 		return err
 	}
-	runtime, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
+	runtime, err := pctx.Host.LanguageRuntime(pctx, proj.Runtime.Name())
 	if err != nil {
 		return err
 	}

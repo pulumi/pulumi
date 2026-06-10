@@ -53,12 +53,53 @@ type Context struct {
 
 	cancel      context.CancelFunc
 	baseContext context.Context
+
+	// Per-workspace state used when booting plugins. A Host is stateless with respect to
+	// workspaces; each Host method takes a Context and reads this state from it, so a single
+	// host can serve plugins for many workspaces.
+	runtimeOptions         map[string]any
+	disableProviderPreview bool
+	config                 map[config.Key]string
+	projectName            tokens.PackageName
+	projectPlugins         []workspace.ProjectPlugin
+
+	// ownsHost is true when this context constructed its own (default) host. Context.Close
+	// only closes the host it owns; hosts passed in by the caller are caller-owned and must
+	// be closed by the caller.
+	ownsHost bool
 }
 
-// NewContext allocates a new context with a given sink and host. Note
-// that the host is "owned" by this context from here forwards, such
-// that when the context's resources are reclaimed, so too are the
-// host's.
+// RuntimeOptions returns the runtime options of the project this context was built for, passed
+// to resource providers to support dynamic providers.
+func (ctx *Context) RuntimeOptions() map[string]any {
+	return ctx.runtimeOptions
+}
+
+// DisableProviderPreview returns true if provider plugins booted via this context should have
+// previews disabled.
+func (ctx *Context) DisableProviderPreview() bool {
+	return ctx.disableProviderPreview
+}
+
+// Config returns the stack configuration this context was built with, if any.
+func (ctx *Context) Config() map[config.Key]string {
+	return ctx.config
+}
+
+// ProjectName returns the name of the project this context was built for, if any.
+func (ctx *Context) ProjectName() tokens.PackageName {
+	return ctx.projectName
+}
+
+// ProjectPlugins returns the plugins defined by the project this context was built for. These
+// take precedence over installed plugins when resolving plugin binaries.
+func (ctx *Context) ProjectPlugins() []workspace.ProjectPlugin {
+	return ctx.projectPlugins
+}
+
+// NewContext allocates a new context with a given sink and host. If host is nil a default host
+// is constructed and owned by the returned context: closing the context closes the host. A
+// non-nil host is owned by the caller and is not closed with the context.
 func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span, newLoader NewLoaderFunc, newMapper NewMapperFunc,
@@ -108,25 +149,36 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	ctx, cancel := context.WithCancel(ctx)
 
 	pctx := &Context{
-		Diag:            d,
-		StatusDiag:      statusD,
-		Host:            host,
-		Pwd:             pwd,
-		Root:            root,
-		tracingSpan:     parentSpan,
-		DebugTraceMutex: &sync.Mutex{},
-		baseContext:     ctx,
-		cancel:          cancel,
+		Diag:                   d,
+		StatusDiag:             statusD,
+		Host:                   host,
+		Pwd:                    pwd,
+		Root:                   root,
+		tracingSpan:            parentSpan,
+		DebugTraceMutex:        &sync.Mutex{},
+		baseContext:            ctx,
+		cancel:                 cancel,
+		runtimeOptions:         runtimeOptions,
+		disableProviderPreview: disableProviderPreview,
+		config:                 config,
+		projectName:            projectName,
 	}
+
+	projectPlugins, err := projectPluginsFromProject(pctx, plugins, packages)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	pctx.projectPlugins = projectPlugins
+
 	if host == nil {
-		h, err := NewDefaultHost(
-			pctx, runtimeOptions, disableProviderPreview, plugins, packages, config, debugging, projectName,
-			newLoader, newMapper, installLang,
-		)
+		h, err := NewDefaultHost(pctx, debugging, newLoader, newMapper, installLang)
 		if err != nil {
+			cancel()
 			return nil, err
 		}
 		pctx.Host = h
+		pctx.ownsHost = true
 	}
 
 	if logFile := env.DebugGRPC.Value(); logFile != "" {
@@ -149,8 +201,8 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 
 // NewContextWithHost creates a new [Context] without interacting with global state.
 //
-// Unilke [NewDefaultContext] or [NewContextWithRoot], NewContextWithHost does not accept
-// a nil host.
+// Unlike [NewContext] or [NewContextWithRoot], NewContextWithHost does not accept a nil host.
+// The host is owned by the caller: closing the returned context does not close the host.
 //
 // d, statusD and parentSpan may all be nil.
 func NewContextWithHost(
@@ -194,11 +246,17 @@ func (ctx *Context) Request() context.Context {
 	return opentracing.ContextWithSpan(ctx.baseContext, ctx.tracingSpan)
 }
 
-// Close reclaims all resources associated with this context.
+// Close reclaims all resources associated with this context. The host is only closed if this
+// context constructed it (a default host built because no host was passed in); a host supplied
+// by the caller is caller-owned and must be closed separately, since a single host may be
+// shared by several contexts.
 func (ctx *Context) Close() error {
 	defer ctx.cancel()
 	if ctx.tracingSpan != nil {
 		ctx.tracingSpan.Finish()
+	}
+	if !ctx.ownsHost {
+		return nil
 	}
 	err := ctx.Host.Close()
 	if err != nil && !rpcutil.IsBenignCloseErr(err) {

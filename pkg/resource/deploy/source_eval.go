@@ -176,7 +176,7 @@ func newRunMapper(ctx context.Context, pctx *plugin.Context) (pconvert.Mapper, e
 	baseMapper, err := pconvert.NewBasePluginMapper(
 		pluginstorage.Instance,
 		"terraform",
-		pconvert.ProviderFactoryFromHost(ctx, pctx.Host),
+		pconvert.ProviderFactoryFromHost(ctx, pctx),
 		installPlugin,
 		nil, /*mappings*/
 	)
@@ -235,7 +235,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	// Also start up a schema loader and a provider mapper for the language runtime to use to fetch
 	// schema and mapping information.
 	loaderRegistration := schema.LoaderRegistration(
-		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx.Host)))
+		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx)))
 
 	mapper, err := newRunMapper(ctx, src.plugctx)
 	if err != nil {

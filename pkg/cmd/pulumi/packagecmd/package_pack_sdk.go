@@ -47,7 +47,7 @@ func newPackagePackSdkCmd() *cobra.Command {
 			language := args[0]
 			path := args[1]
 
-			languagePlugin, err := pCtx.Host.LanguageRuntime(language)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(pCtx, language)
 			if err != nil {
 				return err
 			}

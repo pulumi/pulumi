@@ -40,7 +40,7 @@ func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOpt
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+	options = append(options, pcl.PluginHost(utils.NewContext(testdataPath)))
 
 	program, diags, err := pcl.BindProgram(parser.Files, options...)
 	if err != nil {

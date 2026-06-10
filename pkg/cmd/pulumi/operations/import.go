@@ -576,7 +576,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		return false, nil
 	}
 
-	loader := schema.NewPluginLoader(ctx.Host)
+	loader := schema.NewPluginLoader(ctx)
 	err := importer.GenerateLanguageDefinitions(
 		out,
 		loader,
@@ -787,7 +787,7 @@ func NewImportCmd() *cobra.Command {
 				baseMapper, err := convert.NewBasePluginMapper(
 					pluginstorage.Instance,
 					from, /*conversionKey*/
-					convert.ProviderFactoryFromHost(ctx, pCtx.Host),
+					convert.ProviderFactoryFromHost(ctx, pCtx),
 					installPlugin,
 					nil, /*mappings*/
 				)
@@ -960,7 +960,7 @@ func NewImportCmd() *cobra.Command {
 					return nil, nil, err
 				}
 				defer contract.IgnoreClose(pCtx.Host)
-				languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
+				languagePlugin, err := ctx.Host.LanguageRuntime(ctx, proj.Runtime.Name())
 				if err != nil {
 					return nil, nil, err
 				}

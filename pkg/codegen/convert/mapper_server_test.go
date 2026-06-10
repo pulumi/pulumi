@@ -65,7 +65,7 @@ func TestMapperServerFromHost_RealProvider(t *testing.T) {
 	require.NoError(t, err)
 	defer pctx.Close()
 
-	p, err := pctx.Host.Provider(workspace.PluginDescriptor{
+	p, err := pctx.Host.Provider(pctx, workspace.PluginDescriptor{
 		Name: "mapptest",
 		Kind: apitype.ResourcePlugin,
 	}, env.Global())
