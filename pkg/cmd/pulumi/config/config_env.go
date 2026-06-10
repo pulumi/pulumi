@@ -73,6 +73,8 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string, configFile *stri
 	cmd.AddCommand(newConfigEnvRmCmd(&impl))
 	cmd.AddCommand(newConfigEnvLsCmd(&impl))
 	cmd.AddCommand(newConfigEnvEjectCmd(&impl))
+	cmd.AddCommand(newConfigEnvPinCmd(&impl))
+	cmd.AddCommand(newConfigEnvRollbackCmd(&impl))
 	cmd.AddCommand(newConfigEnvConsoleCmd(ws, stackRef, configFile))
 
 	return cmd
