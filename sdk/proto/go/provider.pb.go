@@ -234,8 +234,11 @@ type ProviderHandshakeRequest struct {
 	SupportsRefreshBeforeUpdate bool `protobuf:"varint,6,opt,name=supports_refresh_before_update,json=supportsRefreshBeforeUpdate,proto3" json:"supports_refresh_before_update,omitempty"`
 	// If true the engine will send `preview` to `Invoke` methods to let them know if the current operation is a preview or up.
 	InvokeWithPreview bool `protobuf:"varint,7,opt,name=invoke_with_preview,json=invokeWithPreview,proto3" json:"invoke_with_preview,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The target of a [](codegen.Mapper) service the provider can use to retrieve mappings from other ecosystems to
+	// Pulumi. May be empty on older engines.
+	MapperTarget  *string `protobuf:"bytes,8,opt,name=mapper_target,json=mapperTarget,proto3,oneof" json:"mapper_target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeRequest) Reset() {
@@ -315,6 +318,13 @@ func (x *ProviderHandshakeRequest) GetInvokeWithPreview() bool {
 		return x.InvokeWithPreview
 	}
 	return false
+}
+
+func (x *ProviderHandshakeRequest) GetMapperTarget() string {
+	if x != nil && x.MapperTarget != nil {
+		return *x.MapperTarget
+	}
+	return ""
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -4251,7 +4261,7 @@ var File_pulumi_provider_proto protoreflect.FileDescriptor
 
 const file_pulumi_provider_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x12pulumi/alias.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x92\x03\n" +
+	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x12pulumi/alias.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xce\x03\n" +
 	"\x18ProviderHandshakeRequest\x12%\n" +
 	"\x0eengine_address\x18\x01 \x01(\tR\rengineAddress\x12*\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tH\x00R\rrootDirectory\x88\x01\x01\x120\n" +
@@ -4259,9 +4269,11 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x12configure_with_urn\x18\x04 \x01(\bR\x10configureWithUrn\x12%\n" +
 	"\x0esupports_views\x18\x05 \x01(\bR\rsupportsViews\x12C\n" +
 	"\x1esupports_refresh_before_update\x18\x06 \x01(\bR\x1bsupportsRefreshBeforeUpdate\x12.\n" +
-	"\x13invoke_with_preview\x18\a \x01(\bR\x11invokeWithPreviewB\x11\n" +
+	"\x13invoke_with_preview\x18\a \x01(\bR\x11invokeWithPreview\x12(\n" +
+	"\rmapper_target\x18\b \x01(\tH\x02R\fmapperTarget\x88\x01\x01B\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
-	"\x12_program_directory\"\xfc\x01\n" +
+	"\x12_program_directoryB\x10\n" +
+	"\x0e_mapper_target\"\xfc\x01\n" +
 	"\x19ProviderHandshakeResponse\x12%\n" +
 	"\x0eaccept_secrets\x18\x01 \x01(\bR\racceptSecrets\x12)\n" +
 	"\x10accept_resources\x18\x02 \x01(\bR\x0facceptResources\x12%\n" +

@@ -274,6 +274,10 @@ message ProviderHandshakeRequest {
 
     // If true the engine will send `preview` to `Invoke` methods to let them know if the current operation is a preview or up.
     bool invoke_with_preview = 7;
+
+    // The target of a [](codegen.Mapper) service the provider can use to retrieve mappings from other ecosystems to
+    // Pulumi. May be empty on older engines.
+    optional string mapper_target = 8;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.

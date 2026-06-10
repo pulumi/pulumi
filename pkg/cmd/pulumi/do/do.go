@@ -35,6 +35,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -157,7 +158,7 @@ func NewDoCmd(
 
 		pctx, err := plugin.NewContext(
 			ctx, sink, sink, host, nil, wd, nil, false,
-			nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			nil, schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}

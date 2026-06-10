@@ -1144,7 +1144,8 @@ programDirectory: (f = jspb.Message.getField(msg, 3)) == null ? undefined : f,
 configureWithUrn: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
 supportsViews: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
 supportsRefreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
-invokeWithPreview: jspb.Message.getBooleanFieldWithDefault(msg, 7, false)
+invokeWithPreview: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
+mapperTarget: (f = jspb.Message.getField(msg, 8)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -1208,6 +1209,10 @@ proto.pulumirpc.ProviderHandshakeRequest.deserializeBinaryFromReader = function(
     case 7:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setInvokeWithPreview(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setMapperTarget(value);
       break;
     default:
       reader.skipField();
@@ -1284,6 +1289,13 @@ proto.pulumirpc.ProviderHandshakeRequest.serializeBinaryToWriter = function(mess
   if (f) {
     writer.writeBool(
       7,
+      f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 8));
+  if (f != null) {
+    writer.writeString(
+      8,
       f
     );
   }
@@ -1449,6 +1461,42 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.getInvokeWithPreview = functi
  */
 proto.pulumirpc.ProviderHandshakeRequest.prototype.setInvokeWithPreview = function(value) {
   return jspb.Message.setProto3BooleanField(this, 7, value);
+};
+
+
+/**
+ * optional string mapper_target = 8;
+ * @return {string}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.getMapperTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.setMapperTarget = function(value) {
+  return jspb.Message.setField(this, 8, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.clearMapperTarget = function() {
+  return jspb.Message.setField(this, 8, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.hasMapperTarget = function() {
+  return jspb.Message.getField(this, 8) != null;
 };
 
 
