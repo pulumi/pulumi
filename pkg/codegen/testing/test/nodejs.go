@@ -129,8 +129,6 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 		switch d {
 		case "aws":
 			set(AwsSchema)
-		case "kubernetes":
-			set(KubernetesSchema)
 		case "random":
 			set(RandomSchema)
 		default:

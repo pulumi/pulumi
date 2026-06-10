@@ -273,7 +273,7 @@ func TestImportSpec(t *testing.T) {
 	t.Parallel()
 
 	// Read in, decode, and import the schema.
-	pkgSpec := readSchemaFile("kubernetes-3.7.0.json")
+	pkgSpec := readSchemaFile("random-4.11.2.json")
 
 	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
 		AllowDanglingReferences: true,

@@ -26,6 +26,11 @@ func init() {
 	const escapeKey = "Some ${common} \"characters\" 'that' need escaping: " +
 		"\\ (backslash), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"
 
+	// Keys that have historically generated invalid code in languages whose code generators use
+	// format or glob strings, e.g. https://github.com/pulumi/pulumi/issues/8940.
+	const formatKey = "Format and glob specifiers: %percent ...ellipsis {open }close *asterisk " +
+		"?question ,comma &&and ||or !not =>arrow ==equal :colon /slash"
+
 	LanguageTests["l2-map-keys-adversarial"] = LanguageTest{
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.PrimitiveProvider{} },
@@ -52,6 +57,7 @@ func init() {
 						"__version":                     resource.NewProperty(false),
 						"":                              resource.NewProperty(true),
 						resource.PropertyKey(escapeKey): resource.NewProperty(false),
+						resource.PropertyKey(formatKey): resource.NewProperty(true),
 					}
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
