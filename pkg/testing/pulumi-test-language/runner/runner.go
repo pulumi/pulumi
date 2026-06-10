@@ -226,6 +226,10 @@ type languageTestServer struct {
 	providersLock  gsync.Map[string, *sync.Mutex]
 	providersCache map[string]bool
 
+	// Serializes installs per dependency set so later tests can reuse the
+	// installed dependencies of an identical earlier project. See installcache.go.
+	installCacheLocks gsync.Map[string, *sync.Mutex]
+
 	// A map storing the paths to the generated package artifacts
 	artifactMap gsync.Map[string, string]
 
@@ -1062,7 +1066,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
 		sdks, localDependencies, languageClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects", eng.testdata)
+		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects", eng.testdata,
+		&eng.installCacheLocks)
 	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
 		return languageTestResult, err
 	}
@@ -1109,7 +1114,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
 		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx,
-		"round-tripped-project", eng.testdata)
+		"round-tripped-project", eng.testdata, &eng.installCacheLocks)
 }
 
 func createStackReferences(
@@ -1167,6 +1172,7 @@ func runLanguageTests(
 	pctx *plugin.Context,
 	projectDir string,
 	testdata fs.FS,
+	installCacheLocks *gsync.Map[string, *sync.Mutex],
 ) (*testingrpc.RunLanguageTestResponse, error) {
 	sm := b64secrets.NewBase64SecretsManager()
 	dec := sm.Decrypter()
@@ -1321,7 +1327,45 @@ func runLanguageTests(
 			main,
 			project.Runtime.Options())
 
-		resp := installDependencies(ctx, languageClient, programInfo, false /* isPlugin */)
+		resp := func() *testingrpc.RunLanguageTestResponse {
+			cacheKey := installCacheKey(token.LanguagePluginName, projectDir)
+			if cacheKey == "" {
+				return installDependencies(ctx, languageClient, programInfo, false /* isPlugin */)
+			}
+			cacheDir := filepath.Join(token.TemporaryDirectory, "install-cache", cacheKey)
+
+			// Decide under the per-key lock whether this test populates the
+			// cache or consumes it. Consumers proceed concurrently; only the
+			// populating install holds the lock so concurrent tests with the
+			// same dependencies wait for the cache instead of re-installing.
+			lock, _ := installCacheLocks.LoadOrStore(cacheKey, &sync.Mutex{})
+			lock.Lock()
+			if _, err := os.Lstat(filepath.Join(projectDir, "node_modules")); err == nil {
+				// Already installed by an earlier run of this test.
+				lock.Unlock()
+				return nil
+			}
+			if _, err := os.Stat(cacheDir); err == nil {
+				restoreErr := restoreInstallCache(cacheDir, projectDir)
+				lock.Unlock()
+				if restoreErr != nil {
+					return makeTestResponse(fmt.Sprintf("restore install cache: %v", restoreErr))
+				}
+				// The restored tree is identical to the one the install
+				// produced; the install path itself is still exercised by
+				// every cache-miss test.
+				return nil
+			}
+			defer lock.Unlock()
+
+			if resp := installDependencies(ctx, languageClient, programInfo, false /* isPlugin */); resp != nil {
+				return resp
+			}
+			if err := populateInstallCache(projectDir, cacheDir); err != nil {
+				return makeTestResponse(fmt.Sprintf("populate install cache: %v", err))
+			}
+			return nil
+		}()
 		if resp != nil {
 			return resp, nil
 		}
