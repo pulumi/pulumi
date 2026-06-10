@@ -15,7 +15,7 @@ else:
 from . import _utilities
 from . import outputs
 from ._inputs import *
-import pulumi_kubernetes
+import pulumi_other
 
 __all__ = [
     'MyFunctionResult',

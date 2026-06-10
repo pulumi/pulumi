@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as pulumiKubernetes from "@pulumi/kubernetes";
+import * as pulumiOther from "@pulumi/other";
 
 export class Workload extends pulumi.CustomResource {
     /**
@@ -33,7 +33,7 @@ export class Workload extends pulumi.CustomResource {
         return obj['__pulumiType'] === Workload.__pulumiType;
     }
 
-    declare public /*out*/ readonly pod: pulumi.Output<pulumiKubernetes.types.output.core.v1.Pod | undefined>;
+    declare public /*out*/ readonly pod: pulumi.Output<pulumiOther.types.output.module.Config | undefined>;
 
     /**
      * Create a Workload resource with the given unique name, arguments, and options.

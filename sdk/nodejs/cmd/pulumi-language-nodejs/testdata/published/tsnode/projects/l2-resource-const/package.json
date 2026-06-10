@@ -1,0 +1,11 @@
+{
+	"name": "l2-resource-const",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/constant": "ROOT/artifacts/pulumi-constant-43.0.0.tgz"
+	}
+}
