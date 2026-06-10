@@ -133,8 +133,6 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 			set(KubernetesSchema)
 		case "random":
 			set(RandomSchema)
-		case "eks":
-			set(EksSchema)
 		case "aws-static-website":
 			set(AwsStaticWebsiteSchema)
 		case "aws-native":
