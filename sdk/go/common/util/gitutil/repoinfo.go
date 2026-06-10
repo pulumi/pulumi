@@ -56,11 +56,10 @@ type RepoInfo struct {
 }
 
 // ReadRepoInfo describes the git repository found by walking up from dir, returning
-// (nil, nil) when dir isn't inside one. It shells out to the git CLI, which can read
-// any repository git itself writes — unlike go-git, which rejects repositories using
-// configuration it doesn't support, such as the extensions.worktreeConfig setting
-// that Azure DevOps enables by default. When no git binary is available, go-git is
-// used as a fallback.
+// (nil, nil) when dir isn't inside one. It prefers the git CLI, which can read any
+// repository git itself writes, while go-git rejects some valid repositories (e.g.
+// ones with extensions.worktreeConfig enabled). go-git is used as a fallback when no
+// git binary is available.
 func ReadRepoInfo(dir string) (*RepoInfo, error) {
 	gitRoot, err := fsutil.WalkUp(dir, func(s string) bool { return filepath.Base(s) == ".git" }, nil)
 	if err != nil {
@@ -77,7 +76,6 @@ func ReadRepoInfo(dir string) (*RepoInfo, error) {
 	return readRepoInfoSystemGit(worktreeDir)
 }
 
-// readRepoInfoSystemGit reads RepoInfo using the git CLI.
 func readRepoInfoSystemGit(dir string) (*RepoInfo, error) {
 	root, err := runGit(dir, "rev-parse", "--show-toplevel")
 	if err != nil {
@@ -184,7 +182,6 @@ func readRepoInfoGoGit(dir string) (*RepoInfo, error) {
 	return info, nil
 }
 
-// runGit runs a git subcommand in dir and returns its standard output.
 func runGit(dir string, args ...string) (string, error) {
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
@@ -199,8 +196,6 @@ func runGit(dir string, args ...string) (string, error) {
 	return stdout.String(), nil
 }
 
-// gitExitCode returns the exit code of a failed runGit call, or -1 if the error
-// doesn't carry one.
 func gitExitCode(err error) int {
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {

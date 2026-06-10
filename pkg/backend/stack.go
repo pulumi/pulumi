@@ -232,9 +232,8 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 		return fmt.Errorf("no git repository found from %v", projPath)
 	}
 
-	// repo.Root has symlinks resolved, so resolve them on the project path too so
-	// filepath.Rel works correctly when the paths go through different symlink
-	// chains (e.g. on macOS where /var is a symlink to /private/var).
+	// repo.Root has symlinks resolved; resolve projPath too so filepath.Rel works
+	// when the paths differ only by symlinks (e.g. /var -> /private/var on macOS).
 	if resolvedProjPath, err := filepath.EvalSymlinks(projPath); err == nil {
 		repoRelPath, err := filepath.Rel(repo.Root, resolvedProjPath)
 		if err == nil && filepath.IsLocal(repoRelPath) {

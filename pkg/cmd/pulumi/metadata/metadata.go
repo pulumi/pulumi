@@ -380,10 +380,9 @@ func addGitRemoteMetadataToMap(repo *gitutil.RepoInfo, projectRoot string, env m
 		allErrors = multierror.Append(allErrors, err)
 	}
 
-	// Add the repository root path. repo.Root already has symlinks resolved, so
-	// resolve them on the project root too so filepath.Rel works correctly when the
-	// paths go through different symlink chains (e.g. on macOS where /var is a
-	// symlink to /private/var).
+	// Add the repository root path. repo.Root has symlinks resolved; resolve the
+	// project root too so filepath.Rel works when the paths differ only by symlinks
+	// (e.g. /var -> /private/var on macOS).
 	resolvedProjectRoot, err := filepath.EvalSymlinks(projectRoot)
 	if err != nil {
 		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
