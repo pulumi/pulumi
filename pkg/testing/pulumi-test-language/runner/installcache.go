@@ -98,6 +98,8 @@ func populateInstallCache(projectDir, cacheDir string) error {
 	if err := os.MkdirAll(staging, 0o755); err != nil {
 		return err
 	}
+	// Both paths are under the test's temporary directory, on one file system.
+	//nolint:forbidigo // os.Rename within the same directory tree; test usage is OK
 	if err := os.Rename(filepath.Join(projectDir, "node_modules"), filepath.Join(staging, "node_modules")); err != nil {
 		contract.IgnoreError(os.RemoveAll(staging))
 		return err
@@ -112,6 +114,7 @@ func populateInstallCache(projectDir, cacheDir string) error {
 			return err
 		}
 	}
+	//nolint:forbidigo // os.Rename within the same directory tree; test usage is OK
 	if err := os.Rename(staging, cacheDir); err != nil {
 		return err
 	}
