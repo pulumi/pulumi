@@ -492,6 +492,36 @@ func TestGitMetadataIsReadFromEnvironmentWhenNoRepo(t *testing.T) {
 	assertEnvValue(t, test, backend.GitAuthorEmail, "author@example.com")
 }
 
+// Regression test for https://github.com/pulumi/pulumi-service/issues/42084: repos
+// that enable the worktreeConfig extension (as Azure DevOps pipelines do) must still
+// produce git metadata.
+func TestReadingGitRepoWithWorktreeConfigExtension(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("git", "init", "-b", "master")
+	e.RunCommand("git", "config", "user.email", "test@test.org")
+	e.RunCommand("git", "config", "user.name", "test")
+	e.RunCommand("git", "remote", "add", "origin", "git@github.com:owner-name/repo-name")
+	e.RunCommand("git", "config", "extensions.worktreeConfig", "true")
+
+	e.WriteTestFile("alpha.txt", "")
+	e.RunCommand("git", "add", ".")
+	e.RunCommand("git", "commit", "-m", "message for commit alpha")
+
+	test := &backend.UpdateMetadata{Environment: make(map[string]string)}
+	require.NoError(t, addVCSMetadata(e.RootPath, test))
+
+	assert.Equal(t, "message for commit alpha", test.Message)
+	assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
+	assertEnvValue(t, test, backend.GitHeadName, "refs/heads/master")
+	assertEnvValue(t, test, backend.GitDirty, "false")
+	assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
+	assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
+}
+
 // Tests that Git metadata is not read from the environment in the event that a real Git repository is present.
 func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	// Disable CI/CD detection code, since we don't care about those variables for this test and we don't want its

@@ -224,25 +224,25 @@ func GetEnvironmentTagsForCurrentStack(root string,
 // addGitMetadataToStackTags fetches the git repository from the directory, and attempts to detect
 // and add any relevant git metadata as stack tags.
 func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath string) error {
-	repo, err := gitutil.GetGitRepository(projPath)
-	if repo == nil {
-		return fmt.Errorf("no git repository found from %v", projPath)
-	}
+	repo, err := gitutil.ReadRepoInfo(projPath)
 	if err != nil {
 		return err
 	}
+	if repo == nil {
+		return fmt.Errorf("no git repository found from %v", projPath)
+	}
 
-	if wt, err := repo.Worktree(); err == nil {
-		repoRelPath, err := filepath.Rel(wt.Filesystem.Root(), projPath)
+	// repo.Root has symlinks resolved, so resolve them on the project path too so
+	// filepath.Rel works correctly when the paths go through different symlink
+	// chains (e.g. on macOS where /var is a symlink to /private/var).
+	if resolvedProjPath, err := filepath.EvalSymlinks(projPath); err == nil {
+		repoRelPath, err := filepath.Rel(repo.Root, resolvedProjPath)
 		if err == nil && filepath.IsLocal(repoRelPath) {
 			tags[apitype.VCSRepositoryRootTag] = filepath.ToSlash(repoRelPath)
 		}
 	}
 
-	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
-	if err != nil {
-		return err
-	}
+	remoteURL := repo.RemoteURL
 	if remoteURL == "" {
 		return nil
 	}

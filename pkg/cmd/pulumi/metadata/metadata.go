@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -28,8 +29,6 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/spf13/pflag"
-
-	git "github.com/go-git/go-git/v5"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -278,7 +277,7 @@ func addVCSMetadata(projectRoot string, m *backend.UpdateMetadata) error {
 	var allErrors *multierror.Error
 
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
-	gitRepo, err := gitutil.GetGitRepository(projectRoot)
+	gitRepo, err := gitutil.ReadRepoInfo(projectRoot)
 	if err != nil {
 		return fmt.Errorf("detecting Git repository: %w", err)
 	}
@@ -369,46 +368,31 @@ func addGitMetadataFromEnvironment(m *backend.UpdateMetadata) {
 }
 
 // addGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag.
-func addGitRemoteMetadataToMap(repo *git.Repository, projectRoot string, env map[string]string) error {
+func addGitRemoteMetadataToMap(repo *gitutil.RepoInfo, projectRoot string, env map[string]string) error {
 	var allErrors *multierror.Error
 
-	// Get the remote URL for this repo.
-	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
-	if err != nil {
-		return fmt.Errorf("detecting Git remote URL: %w", err)
-	}
-	if remoteURL == "" {
+	if repo.RemoteURL == "" {
 		return nil
 	}
 
 	// Check if the remote URL is a GitHub or a GitLab URL.
-	if err := addVCSMetadataToEnvironment(remoteURL, env); err != nil {
+	if err := addVCSMetadataToEnvironment(repo.RemoteURL, env); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
-	// Add the repository root path.
-	tree, err := repo.Worktree()
+	// Add the repository root path. repo.Root already has symlinks resolved, so
+	// resolve them on the project root too so filepath.Rel works correctly when the
+	// paths go through different symlink chains (e.g. on macOS where /var is a
+	// symlink to /private/var).
+	resolvedProjectRoot, err := filepath.EvalSymlinks(projectRoot)
 	if err != nil {
-		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
+		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
 	} else {
-		// Resolve symlinks on both paths so filepath.Rel works correctly when
-		// they go through different symlink chains (e.g. on macOS where /var
-		// is a symlink to /private/var).
-		repoRoot, err := filepath.EvalSymlinks(tree.Filesystem.Root())
+		rel, err := filepath.Rel(repo.Root, resolvedProjectRoot)
 		if err != nil {
-			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
-		} else {
-			resolvedProjectRoot, err := filepath.EvalSymlinks(projectRoot)
-			if err != nil {
-				allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
-			} else {
-				rel, err := filepath.Rel(repoRoot, resolvedProjectRoot)
-				if err != nil {
-					allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
-				} else if !strings.HasPrefix(rel, "..") {
-					env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
-				}
-			}
+			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+		} else if !strings.HasPrefix(rel, "..") {
+			env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
 		}
 	}
 
@@ -429,28 +413,23 @@ func addVCSMetadataToEnvironment(remoteURL string, env map[string]string) error 
 	return nil
 }
 
-func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.UpdateMetadata) error {
+func addGitCommitMetadata(repo *gitutil.RepoInfo, repoRoot string, m *backend.UpdateMetadata) error {
 	// When running in a CI/CD environment, the current git repo may be running from a
 	// detached HEAD and may not have have the latest commit message. We fall back to
 	// CI-system specific environment variables when possible.
 	ciVars := ciutil.DetectVars()
 
 	// Commit at HEAD
-	head, err := repo.Head()
-	if err != nil {
-		return fmt.Errorf("getting repository HEAD: %w", err)
+	commit := repo.Head
+	if commit == nil {
+		return errors.New("getting repository HEAD: the repository has no commits")
 	}
 
-	hash := head.Hash()
-	m.Environment[backend.GitHead] = hash.String()
-	commit, commitErr := repo.CommitObject(hash)
-	if commitErr != nil {
-		return fmt.Errorf("getting HEAD commit info: %w", commitErr)
-	}
+	m.Environment[backend.GitHead] = commit.Hash
 
 	// If in detached head, will be "HEAD", and fallback to use value from CI/CD system if possible.
 	// Otherwise, the value will be like "refs/heads/master".
-	headName := head.Name().String()
+	headName := commit.HeadName
 	if headName == "HEAD" && ciVars.BranchName != "" {
 		headName = ciVars.BranchName
 	}
@@ -459,7 +438,7 @@ func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.Upda
 	}
 
 	// If there is no message set manually, default to the Git commit's title.
-	msg := strings.TrimSpace(commit.Message)
+	msg := commit.Message
 	if msg == "" && ciVars.CommitMessage != "" {
 		msg = ciVars.CommitMessage
 	}
@@ -468,10 +447,10 @@ func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.Upda
 	}
 
 	// Store committer and author information.
-	m.Environment[backend.GitCommitter] = commit.Committer.Name
-	m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
-	m.Environment[backend.GitAuthor] = commit.Author.Name
-	m.Environment[backend.GitAuthorEmail] = commit.Author.Email
+	m.Environment[backend.GitCommitter] = commit.CommitterName
+	m.Environment[backend.GitCommitterEmail] = commit.CommitterEmail
+	m.Environment[backend.GitAuthor] = commit.AuthorName
+	m.Environment[backend.GitAuthorEmail] = commit.AuthorEmail
 
 	// If the worktree is dirty, set a bit, as this could be a mistake.
 	isDirty, err := isGitWorkTreeDirty(repoRoot)

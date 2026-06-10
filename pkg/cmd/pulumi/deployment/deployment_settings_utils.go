@@ -20,8 +20,6 @@ import (
 	"os"
 	"path/filepath"
 
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -111,7 +109,7 @@ type repoLookup interface {
 }
 
 func newRepoLookup(wd string) (repoLookup, error) {
-	repo, err := gitutil.GetGitRepository(wd)
+	repo, err := gitutil.ReadRepoInfo(wd)
 	if err != nil {
 		return nil, err
 	}
@@ -119,44 +117,21 @@ func newRepoLookup(wd string) (repoLookup, error) {
 		return &noRepoLookupImpl{}, nil
 	}
 
-	worktree, err := repo.Worktree()
-	if err != nil {
-		return nil, err
-	}
-
-	// Resolve symlinks so that filepath.Rel works correctly when the caller-provided
-	// paths and the worktree root go through different symlink chains (e.g. on macOS
-	// where /var is a symlink to /private/var).
-	repoRoot, err := filepath.EvalSymlinks(worktree.Filesystem.Root())
-	if err != nil {
-		return nil, err
-	}
-
-	h, err := repo.Head()
-	if err != nil {
-		return nil, err
-	}
-
-	return &repoLookupImpl{
-		RepoRoot: repoRoot,
-		Repo:     repo,
-		Head:     h,
-	}, nil
+	return &repoLookupImpl{Repo: repo}, nil
 }
 
 type repoLookupImpl struct {
-	RepoRoot string
-	Repo     *git.Repository
-	Head     *plumbing.Reference
+	Repo *gitutil.RepoInfo
 }
 
 func (r *repoLookupImpl) GetRootDirectory(wd string) (string, error) {
-	// Resolve symlinks so that filepath.Rel works correctly when wd and RepoRoot
-	// go through different symlink chains (e.g. on macOS where /var -> /private/var).
-	// Use evalSymlinksPrefix to handle paths where trailing components may not exist.
+	// Resolve symlinks so that filepath.Rel works correctly when wd and the repo
+	// root go through different symlink chains (e.g. on macOS where /var ->
+	// /private/var). Use evalSymlinksPrefix to handle paths where trailing
+	// components may not exist.
 	wd = evalSymlinksPrefix(wd)
 
-	dir, err := filepath.Rel(r.RepoRoot, wd)
+	dir, err := filepath.Rel(r.Repo.Root, wd)
 	if err != nil {
 		return "", err
 	}
@@ -182,21 +157,18 @@ func evalSymlinksPrefix(path string) string {
 }
 
 func (r *repoLookupImpl) GetBranchName() string {
-	if r.Head == nil {
+	if r.Repo.Head == nil {
 		return ""
 	}
-	return r.Head.Name().String()
+	return r.Repo.Head.HeadName
 }
 
 func (r *repoLookupImpl) RemoteURL() (string, error) {
-	if r.Repo == nil {
-		return "", nil
-	}
-	return gitutil.GetGitRemoteURL(r.Repo, "origin")
+	return r.Repo.RemoteURL, nil
 }
 
 func (r *repoLookupImpl) GetRepoRoot() string {
-	return r.RepoRoot
+	return r.Repo.Root
 }
 
 type noRepoLookupImpl struct{}

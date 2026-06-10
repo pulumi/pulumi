@@ -292,11 +292,85 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 	testError("content/../foo/", "invalid Git URL")
 }
 
+// createRepoInfoTestRepo creates a repo with a commit and an "origin" remote under
+// the environment root and returns its path.
+func createRepoInfoTestRepo(t *testing.T, e *ptesting.Environment) string {
+	repoPath := filepath.Join(e.RootPath, "repo")
+	require.NoError(t, os.MkdirAll(repoPath, os.ModePerm))
+	e.CWD = repoPath
+	createTestRepo(e)
+	e.RunCommand("git", "remote", "add", "origin", "https://example.com/owner/repo.git")
+	return repoPath
+}
+
+func TestReadRepoInfo(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	repoPath := createRepoInfoTestRepo(t, e)
+
+	info, err := ReadRepoInfo(repoPath)
+	require.NoError(t, err)
+	require.NotNil(t, info)
+
+	resolvedRepoPath, err := filepath.EvalSymlinks(repoPath)
+	require.NoError(t, err)
+	assert.Equal(t, resolvedRepoPath, info.Root)
+	assert.Equal(t, "https://example.com/owner/repo.git", info.RemoteURL)
+
+	require.NotNil(t, info.Head)
+	require.Len(t, info.Head.Hash, 40)
+	assert.Equal(t, "refs/heads/master", info.Head.HeadName)
+	assert.Equal(t, "'content-foo dir'", info.Head.Message)
+	assert.Equal(t, "test", info.Head.AuthorName)
+	assert.Equal(t, "test@test.org", info.Head.AuthorEmail)
+	assert.Equal(t, "test", info.Head.CommitterName)
+	assert.Equal(t, "test@test.org", info.Head.CommitterEmail)
+}
+
+func TestReadRepoInfoNoRepo(t *testing.T) {
+	t.Parallel()
+
+	info, err := ReadRepoInfo(t.TempDir())
+	require.NoError(t, err)
+	assert.Nil(t, info)
+}
+
+func TestReadRepoInfoDetachedHead(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	repoPath := createRepoInfoTestRepo(t, e)
+	e.RunCommand("git", "checkout", "--detach", "HEAD")
+
+	info, err := ReadRepoInfo(repoPath)
+	require.NoError(t, err)
+	require.NotNil(t, info)
+	require.NotNil(t, info.Head)
+	assert.Equal(t, "HEAD", info.Head.HeadName)
+}
+
+func TestReadRepoInfoNoRemoteAndNoCommits(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.RunCommand("git", "init", "-b", "master")
+
+	info, err := ReadRepoInfo(e.RootPath)
+	require.NoError(t, err)
+	require.NotNil(t, info)
+	assert.Equal(t, "", info.RemoteURL)
+	assert.Nil(t, info.Head)
+}
+
 // Regression test for https://github.com/pulumi/pulumi-service/issues/42084: go-git
 // 5.17+ refuses to open repositories that enable extensions like worktreeConfig
 // (enabled by Azure DevOps pipelines, among others), which broke git metadata
-// detection for Pulumi operations.
-func TestGetGitRepositoryWithLegacyExtensions(t *testing.T) {
+// detection for Pulumi operations. The git CLI reads these repositories fine.
+func TestReadRepoInfoWithLegacyExtensions(t *testing.T) {
 	t.Parallel()
 
 	exts := []struct{ key, value string }{
@@ -311,56 +385,83 @@ func TestGetGitRepositoryWithLegacyExtensions(t *testing.T) {
 
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
-
-			repoPath := filepath.Join(e.RootPath, "repo")
-			require.NoError(t, os.MkdirAll(repoPath, os.ModePerm))
-			e.CWD = repoPath
-			createTestRepo(e)
-			e.RunCommand("git", "remote", "add", "origin", "https://example.com/owner/repo.git")
+			repoPath := createRepoInfoTestRepo(t, e)
 			e.RunCommand("git", "config", ext.key, ext.value)
 
-			repo, err := GetGitRepository(repoPath)
+			info, err := ReadRepoInfo(repoPath)
 			require.NoError(t, err)
-			require.NotNil(t, repo)
-
-			head, err := repo.Head()
-			require.NoError(t, err)
-			assert.False(t, head.Hash().IsZero())
-
-			url, err := GetGitRemoteURL(repo, "origin")
-			require.NoError(t, err)
-			assert.Equal(t, "https://example.com/owner/repo.git", url)
+			require.NotNil(t, info)
+			require.NotNil(t, info.Head)
+			require.Len(t, info.Head.Hash, 40)
+			assert.Equal(t, "refs/heads/master", info.Head.HeadName)
+			assert.Equal(t, "https://example.com/owner/repo.git", info.RemoteURL)
 		})
 	}
 }
 
-func TestGetGitRepositoryLinkedWorktreeWithWorktreeConfigExtension(t *testing.T) {
+func TestReadRepoInfoLinkedWorktreeWithWorktreeConfigExtension(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
-
-	repoPath := filepath.Join(e.RootPath, "repo")
-	require.NoError(t, os.MkdirAll(repoPath, os.ModePerm))
-	e.CWD = repoPath
-	createTestRepo(e)
-	e.RunCommand("git", "remote", "add", "origin", "https://example.com/owner/repo.git")
+	createRepoInfoTestRepo(t, e)
 
 	worktreePath := filepath.Join(e.RootPath, "linked-worktree")
 	e.RunCommand("git", "worktree", "add", worktreePath)
 	e.RunCommand("git", "config", "extensions.worktreeConfig", "true")
 
-	repo, err := GetGitRepository(worktreePath)
+	info, err := ReadRepoInfo(worktreePath)
 	require.NoError(t, err)
-	require.NotNil(t, repo)
+	require.NotNil(t, info)
 
-	head, err := repo.Head()
+	resolvedWorktreePath, err := filepath.EvalSymlinks(worktreePath)
 	require.NoError(t, err)
-	assert.False(t, head.Hash().IsZero())
+	assert.Equal(t, resolvedWorktreePath, info.Root)
+	assert.Equal(t, "https://example.com/owner/repo.git", info.RemoteURL)
+	require.NotNil(t, info.Head)
+	assert.Equal(t, "refs/heads/linked-worktree", info.Head.HeadName)
+}
 
-	url, err := GetGitRemoteURL(repo, "origin")
-	require.NoError(t, err)
-	assert.Equal(t, "https://example.com/owner/repo.git", url)
+// TestReadRepoInfoGoGitParity verifies that the go-git implementation used when no
+// git binary is available returns the same results as the git CLI implementation.
+func TestReadRepoInfoGoGitParity(t *testing.T) {
+	t.Parallel()
+
+	run := func(t *testing.T, setup func(e *ptesting.Environment) string) {
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+		repoPath := setup(e)
+
+		fromCLI, err := readRepoInfoSystemGit(repoPath)
+		require.NoError(t, err)
+		fromGoGit, err := readRepoInfoGoGit(repoPath)
+		require.NoError(t, err)
+		assert.Equal(t, fromCLI, fromGoGit)
+	}
+
+	t.Run("repo with commits and remote", func(t *testing.T) {
+		t.Parallel()
+		run(t, func(e *ptesting.Environment) string {
+			return createRepoInfoTestRepo(t, e)
+		})
+	})
+
+	t.Run("detached head", func(t *testing.T) {
+		t.Parallel()
+		run(t, func(e *ptesting.Environment) string {
+			repoPath := createRepoInfoTestRepo(t, e)
+			e.RunCommand("git", "checkout", "--detach", "HEAD")
+			return repoPath
+		})
+	})
+
+	t.Run("no remote and no commits", func(t *testing.T) {
+		t.Parallel()
+		run(t, func(e *ptesting.Environment) string {
+			e.RunCommand("git", "init", "-b", "master")
+			return e.RootPath
+		})
+	})
 }
 
 func createTestRepo(e *ptesting.Environment) {
