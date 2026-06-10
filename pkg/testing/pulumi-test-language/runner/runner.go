@@ -734,10 +734,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		Color: colors.Never,
 	})
 
-	// Start up a plugin context
+	// Start up a plugin context. No loader factory is passed here: the test host's own loader is
+	// started on this context below, once the host exists.
 	pctx, err := plugin.NewContextWithRoot(
 		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil,
-		nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+		nil, nil, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
