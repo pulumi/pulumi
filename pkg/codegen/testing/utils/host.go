@@ -101,6 +101,7 @@ func NewContext(schemaDirectoryPath string) *plugin.Context {
 		SchemaProvider{"std", "1.0.0"},
 
 		SchemaProvider{"component", "13.3.7"},
+		SchemaProvider{"importer", "1.0.0"},
 		SchemaProvider{"infra", "1.0.0"},
 		SchemaProvider{"other", "0.1.0"},
 		SchemaProvider{"synthetic", "1.0.0"},
