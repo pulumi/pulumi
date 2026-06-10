@@ -10,6 +10,9 @@
       "properties": {
         "res": {
           "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod1%2Fv1:Res"
+        },
+        "config": {
+          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod1%2Fv1:Config"
         }
       },
       "required": ["res"],

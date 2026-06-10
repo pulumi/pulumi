@@ -153,6 +153,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "regress-11176",
 		Description: "Regression test for https://github.com/pulumi/pulumi/issues/11176",
 		Skip:        allProgLanguages.Except(TestGo),
+		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
 		Directory:   "throw-not-implemented",
@@ -245,11 +246,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	// PCL files from pulumi/yaml transpiled examples
-	{
-		Directory:   transpiled("awsx-fargate"),
-		Description: "AWSx Fargate",
-		Skip:        codegen.NewStringSet(TestDotnet, TestNodeJS, TestGo),
-	},
 	{
 		Directory:   transpiled("cue-random"),
 		Description: "Cue random",

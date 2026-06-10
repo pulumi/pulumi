@@ -20,7 +20,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pgavlin/goldmark/ast"
@@ -144,7 +143,7 @@ func TestParseAndRenderDocs(t *testing.T) {
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 
 	for _, f := range files {
-		if filepath.Ext(f.Name()) != ".json" || strings.Contains(f.Name(), "awsx") {
+		if filepath.Ext(f.Name()) != ".json" {
 			continue
 		}
 

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
+  "name": "plain-lists",
+  "version": "1.0.0",
+  "//": [
+    "A resource taking a plain list of plain object values, for program-gen tests of plain lists."
+  ],
+  "types": {
+    "plain-lists:index:SubnetSpec": {
+      "properties": {
+        "cidrMask": {
+          "plain": true,
+          "type": "integer"
+        },
+        "type": {
+          "$ref": "#/types/plain-lists:index:SubnetType",
+          "plain": true
+        }
+      },
+      "required": ["type", "cidrMask"],
+      "type": "object"
+    },
+    "plain-lists:index:SubnetType": {
+      "type": "string",
+      "enum": [
+        {
+          "value": "Public"
+        },
+        {
+          "value": "Private"
+        }
+      ]
+    }
+  },
+  "resources": {
+    "plain-lists:index:Network": {
+      "inputProperties": {
+        "subnetSpecs": {
+          "items": {
+            "$ref": "#/types/plain-lists:index:SubnetSpec",
+            "plain": true
+          },
+          "plain": true,
+          "type": "array"
+        }
+      },
+      "type": "object"
+    }
+  }
+}

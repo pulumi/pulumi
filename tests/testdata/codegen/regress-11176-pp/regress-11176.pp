@@ -1,4 +1,4 @@
-resource cluster "aws:ecs/cluster:Cluster" {}
-resource nginx "awsx:ecs:FargateService" {
+resource cluster "conflicta:mod:Cluster" {}
+resource nginx "conflictb:mod:Service" {
     cluster = cluster.arn
 }
