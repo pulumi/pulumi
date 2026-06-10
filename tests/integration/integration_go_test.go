@@ -1193,7 +1193,10 @@ func TestParameterizedGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			// PrePrepareProject below runs `pulumi package gen-sdk` on this
+			// path, which requires a plugin project directory, so it can't use
+			// the prebuilt testutil.TestProvider.
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 		PrePrepareProject: func(info *engine.Projinfo) error {
 			e := ptesting.NewEnvironment(t)
