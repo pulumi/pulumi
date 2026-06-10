@@ -83,20 +83,12 @@ const preferredDebugPort = 57134
 func compileProgram(
 	ctx context.Context,
 	engineClient pulumirpc.EngineClient,
+	cache *compileCache,
 	programDirectory string,
 	outfile string,
 	withDebugFlags bool,
 	stdout, stderr io.Writer,
 ) (string, error) {
-	if _, err := engineClient.Log(ctx, &pulumirpc.LogRequest{
-		Severity:  pulumirpc.LogSeverity_INFO,
-		Urn:       "",
-		Message:   "Compiling the program ...",
-		Ephemeral: true,
-	}); err != nil {
-		logging.V(6).Infof("Failed to log message: %v", err)
-	}
-
 	goFileSearchPattern := filepath.Join(programDirectory, "*.go")
 	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
 		return "", fmt.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
@@ -113,6 +105,32 @@ func compileProgram(
 			return "", fmt.Errorf("unable to close go program temp file: %w", err)
 		}
 		outfile = f.Name()
+	}
+
+	// Process-local build cache: skip the compile entirely when an identical
+	// source tree has already been built in this host's lifetime. Saves the
+	// ~1s linker cost per call across the many repeated Run / RunPlugin
+	// invocations a conformance-test host services.
+	// The cache is best-effort: if materializing a cached binary fails for any
+	// reason, fall through and build normally.
+	srcHash := hashSourceTree(programDirectory, outfile, withDebugFlags)
+	if cached := cache.lookup(srcHash); cached != "" {
+		if err := os.Remove(outfile); err == nil || os.IsNotExist(err) {
+			if err := linkOrCopy(cached, outfile); err == nil {
+				logging.V(5).Infof("compileProgram: build cache hit for %s", programDirectory)
+				return outfile, nil
+			}
+		}
+		logging.V(5).Infof("compileProgram: failed to reuse cached binary for %s, rebuilding", programDirectory)
+	}
+
+	if _, err := engineClient.Log(ctx, &pulumirpc.LogRequest{
+		Severity:  pulumirpc.LogSeverity_INFO,
+		Urn:       "",
+		Message:   "Compiling the program ...",
+		Ephemeral: true,
+	}); err != nil {
+		logging.V(6).Infof("Failed to log message: %v", err)
 	}
 
 	gobin, err := executable.FindExecutable("go")
@@ -151,6 +169,8 @@ func compileProgram(
 	}); err != nil {
 		logging.V(6).Infof("Failed to log message: %v", err)
 	}
+
+	cache.put(srcHash, outfile)
 
 	return outfile, nil
 }
@@ -289,6 +309,11 @@ type goLanguageHost struct {
 	otelEndpoint  string
 	cancelCtx     context.Context    // Cancelled when we receive the `Cancel` RPC
 	cancelFunc    context.CancelFunc // Cancel the cancelCtx
+	// Process-local cache of compiled binaries keyed by a hash of the source
+	// tree. Lets us skip the ~1s linker cost when the same program/plugin is
+	// built multiple times within one host lifetime (notably the conformance
+	// test host services many such calls). May be nil if init failed.
+	buildCache *compileCache
 }
 
 type goOptions struct {
@@ -325,6 +350,11 @@ func parseOptions(root string, options map[string]any) (goOptions, error) {
 
 func newLanguageHost(engineAddress, cwd, tracing, otelEndpoint string) pulumirpc.LanguageRuntimeServer {
 	ctx, cancel := context.WithCancel(context.Background())
+	cache, err := newCompileCache()
+	if err != nil {
+		logging.V(3).Infof("failed to initialize Go build cache: %v", err)
+		cache = nil
+	}
 	return &goLanguageHost{
 		engineAddress: engineAddress,
 		cwd:           cwd,
@@ -332,6 +362,7 @@ func newLanguageHost(engineAddress, cwd, tracing, otelEndpoint string) pulumirpc
 		otelEndpoint:  otelEndpoint,
 		cancelCtx:     ctx,
 		cancelFunc:    cancel,
+		buildCache:    cache,
 	}
 }
 
@@ -1116,7 +1147,8 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
 	program, err := compileProgram(
-		ctx, engineClient, req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger(), os.Stdout, os.Stderr)
+		ctx, engineClient, host.buildCache,
+		req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger(), os.Stdout, os.Stderr)
 	if err != nil {
 		return nil, errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
@@ -1337,7 +1369,8 @@ func (host *goLanguageHost) RunPlugin(
 	defer contract.IgnoreClose(closer)
 
 	program, err := compileProgram(
-		server.Context(), engineClient, req.Info.ProgramDirectory, "", req.GetAttachDebugger(), os.Stdout, os.Stderr)
+		server.Context(), engineClient, host.buildCache,
+		req.Info.ProgramDirectory, "", req.GetAttachDebugger(), os.Stdout, os.Stderr)
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
