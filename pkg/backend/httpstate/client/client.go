@@ -150,6 +150,7 @@ type AgentSignupChallenge struct {
 type AgentSignupResponse struct {
 	AccessToken           string    `json:"accessToken"`
 	AccessTokenValidUntil time.Time `json:"accessTokenValidUntil"`
+	RefreshToken          string    `json:"refreshToken,omitempty"`
 	ClaimToken            string    `json:"claimToken"`
 	ClaimTokenValidUntil  time.Time `json:"claimTokenValidUntil"`
 }

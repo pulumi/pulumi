@@ -751,6 +751,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 
 	account := workspace.Account{
 		AccessToken:      signup.AccessToken,
+		RefreshToken:     signup.RefreshToken,
 		Username:         username,
 		Organizations:    organizations,
 		TokenInformation: tokenInfo,
