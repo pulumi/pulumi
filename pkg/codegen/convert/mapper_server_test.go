@@ -61,7 +61,7 @@ func TestMapperServerFromHost_RealProvider(t *testing.T) {
 
 	sink := diagtest.LogSink(t)
 	pctx, err := plugin.NewContext(t.Context(), sink, sink, nil, nil, t.TempDir(), nil, false, nil,
-		nil, NewMapperServerFromHost, nil)
+		nil, NewMapperServerFromContext, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 

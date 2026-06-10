@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -48,13 +49,6 @@ import (
 type Host interface {
 	// ServerAddr returns the address at which the host's RPC interface may be found.
 	ServerAddr() string
-
-	// LoaderAddr returns the address at which a plugin loader service may be found.
-	LoaderAddr() string
-
-	// MapperAddr returns the address at which a mapper service may be found, or an empty string if the host was not
-	// built with a mapper.
-	MapperAddr() string
 
 	// Log logs a message, including errors and warnings.  Messages can have a resource URN
 	// associated with them.  If no urn is provided, the message is global.
@@ -183,23 +177,25 @@ func collectPluginsFromPackages(
 	return result, nil
 }
 
-// NewLoaderFunc constructs the loader service registered on a host's RPC server. The Context
-// supplies the workspace view the loader resolves and boots plugins against.
-type NewLoaderFunc = func(h Host, ctx *Context) codegenrpc.LoaderServer
+// NewLoaderFunc constructs the schema loader service bound to a context. The Context supplies
+// the workspace view the loader resolves and boots plugins against.
+type NewLoaderFunc = func(ctx *Context) codegenrpc.LoaderServer
 
-// NewMapperFunc constructs the mapper service registered on a host's RPC server. The Context
+// NewMapperFunc constructs the conversion mapper service bound to a context. The Context
 // supplies the workspace view the mapper boots conversion plugins against.
-type NewMapperFunc = func(h Host, ctx *Context) codegenrpc.MapperServer
+type NewMapperFunc = func(ctx *Context) codegenrpc.MapperServer
 
 // LanguageInstaller downloads and installs an unbundled language runtime on demand, so that
 // loading it via Host.LanguageRuntime works even when the runtime is not bundled with the CLI
 // or already cached. It is the language-runtime analogue of the engine's plugin install path.
 //
 // The install machinery lives in the pkg module, which the SDK cannot import, so a host is
-// given its installer at construction. newLoader is the same loader the host was built with;
-// installing a plugin may need it to install the plugin's dependencies. A nil LanguageInstaller
-// disables on-demand install (the host then relies on the runtime already being present).
-type LanguageInstaller = func(ctx context.Context, runtime string, newLoader NewLoaderFunc) error
+// given its installer at construction. Language hosts are self-contained executables — they
+// are shared across workspaces and are never run with the support of another language runtime
+// — so installation is a plain download-and-unpack and needs no workspace state. A nil
+// LanguageInstaller disables on-demand install (the host then relies on the runtime already
+// being present).
+type LanguageInstaller = func(ctx context.Context, runtime string) error
 
 // projectPluginsFromProject parses the plugins and packages declared by a project into the list
 // of project plugins that take precedence over installed plugins when resolving plugin binaries.
@@ -241,14 +237,10 @@ func projectPluginsFromProject(
 // newHost constructs the default host implementation. This is the shape we plan to move to
 // pkg/host as NewHost: the host is independent of any workspace, and ctx is its lifetime
 // context — cancelling it is the hard stop that aborts graceful shutdown, so callers wanting a
-// graceful teardown must call Close before cancelling ctx.
-//
-// bootCtx is only needed to wire up the host's RPC server: its tracing span parents the
-// server's interceptors, and the loader and mapper services resolve plugins against its
-// workspace view. It must go away before NewHost can move to pkg/host.
+// graceful teardown must call Close before cancelling ctx. The host's RPC server parents its
+// tracing interceptors on the span carried by ctx, if any.
 func newHost(
-	ctx context.Context, d, statusD diag.Sink, debugging DebugContext,
-	newLoader NewLoaderFunc, newMapper NewMapperFunc, installLang LanguageInstaller, bootCtx *Context,
+	ctx context.Context, d, statusD diag.Sink, debugging DebugContext, installLang LanguageInstaller,
 ) (Host, error) {
 	hostCtx, hostCancel := context.WithCancel(ctx)
 	host := &defaultHost{
@@ -265,15 +257,12 @@ func newHost(
 		watchedContexts:         map[*Context]struct{}{},
 		closer:                  new(sync.Once),
 		debugContext:            debugging,
-		hasLoaderServer:         newLoader != nil,
-		newLoader:               newLoader,
-		hasMapperServer:         newMapper != nil,
 		installLang:             installLang,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
 	// to "phone home" in case there are things the host must do on behalf of the plugins (like log, etc).
-	svr, err := newHostServer(host, bootCtx, newLoader, newMapper)
+	svr, err := newHostServer(host, opentracing.SpanFromContext(hostCtx))
 	if err != nil {
 		hostCancel()
 		return nil, err
@@ -304,18 +293,12 @@ func newHost(
 // Per-workspace state (project plugins, stack configuration, and so on) is carried by the
 // Context passed to each host method, so the host may be shared across workspaces. The host is
 // owned by ctx if ctx was constructed with a nil host, and by the caller otherwise.
-func NewDefaultHost(
-	ctx *Context, debugging DebugContext, newLoader NewLoaderFunc, newMapper NewMapperFunc,
-	installLang LanguageInstaller,
-) (Host, error) {
+func NewDefaultHost(ctx *Context, debugging DebugContext, installLang LanguageInstaller) (Host, error) {
 	// The host's lifetime context deliberately strips the bootstrap context's cancellation: the
 	// host is responsible for calling Close, and a caller's cancelled context must not turn
 	// into an accidental hard kill of plugin shutdown. Once host construction moves to pkg and
 	// takes a caller context directly, that context will become the exposed hard cut-off.
-	return newHost(
-		context.WithoutCancel(ctx.Request()), ctx.Diag, ctx.StatusDiag, debugging, newLoader, newMapper,
-		installLang, ctx,
-	)
+	return newHost(context.WithoutCancel(ctx.Request()), ctx.Diag, ctx.StatusDiag, debugging, installLang)
 }
 
 func resolvePluginPath(root string, path string) (string, error) {
@@ -422,10 +405,7 @@ type defaultHost struct {
 
 	closer *sync.Once
 
-	hasLoaderServer bool
-	newLoader       NewLoaderFunc // the loader the host was built with, passed to installLang.
-	hasMapperServer bool
-	installLang     LanguageInstaller // installs unbundled language runtimes on demand; may be nil.
+	installLang LanguageInstaller // installs unbundled language runtimes on demand; may be nil.
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -461,20 +441,6 @@ type resourcePlugin struct {
 
 func (host *defaultHost) ServerAddr() string {
 	return host.server.Address()
-}
-
-func (host *defaultHost) LoaderAddr() string {
-	if host.hasLoaderServer {
-		return host.ServerAddr()
-	}
-	return ""
-}
-
-func (host *defaultHost) MapperAddr() string {
-	if host.hasMapperServer {
-		return host.ServerAddr()
-	}
-	return ""
 }
 
 func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
@@ -709,7 +675,7 @@ func (host *defaultHost) LanguageRuntime(ctx *Context, runtime string,
 
 		// Download and install the language runtime on demand if it is unbundled and missing.
 		if host.installLang != nil {
-			if err := host.installLang(ctx.Request(), runtime, host.newLoader); err != nil {
+			if err := host.installLang(ctx.Request(), runtime); err != nil {
 				return nil, fmt.Errorf("failed to install language plugin %s: %w", runtime, err)
 			}
 		}

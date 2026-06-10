@@ -338,7 +338,7 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 		Color: cmdutil.GetGlobalColorization(),
 	})
 	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil,
-		schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return nil, err
 	}

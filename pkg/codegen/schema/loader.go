@@ -510,7 +510,7 @@ func (l *pluginLoader) loadSchemaBytes(
 			l.pctx.Host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log, NewLoaderServerFromHost)
+		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log, NewLoaderServerFromContext)
 		if err != nil {
 			return nil, nil, err
 		}

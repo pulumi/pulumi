@@ -367,7 +367,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 			return nil, nil, err
 		}
 		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil,
-			NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 		if err != nil {
 			return nil, nil, err
 		}

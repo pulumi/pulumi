@@ -29,8 +29,6 @@ import (
 
 type MockHost struct {
 	ServerAddrF         func() string
-	LoaderAddrF         func() string
-	MapperAddrF         func() string
 	LogF                func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
 	LogStatusF          func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
 	AnalyzerF           func(ctx *Context, nm tokens.QName) (Analyzer, error)
@@ -49,20 +47,6 @@ var _ Host = (*MockHost)(nil)
 func (m *MockHost) ServerAddr() string {
 	if m.ServerAddrF != nil {
 		return m.ServerAddrF()
-	}
-	return ""
-}
-
-func (m *MockHost) LoaderAddr() string {
-	if m.LoaderAddrF != nil {
-		return m.LoaderAddrF()
-	}
-	return ""
-}
-
-func (m *MockHost) MapperAddr() string {
-	if m.MapperAddrF != nil {
-		return m.MapperAddrF()
 	}
 	return ""
 }

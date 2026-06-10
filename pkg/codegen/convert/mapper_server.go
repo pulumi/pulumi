@@ -28,15 +28,15 @@ import (
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
-// NewMapperServerFromHost creates a MapperServer that sources mappings from the plugins installed in the global
-// plugin storage, booting them via the given host. It has the signature required by [plugin.NewMapperFunc]. The
-// underlying mapper is constructed lazily on first request because enumerating installed plugins can fail, and host
-// construction has no way to surface that error.
-func NewMapperServerFromHost(host plugin.Host, pctx *plugin.Context) codegenrpc.MapperServer {
-	return NewMapperServer(&hostMapper{pctx: pctx})
+// NewMapperServerFromContext creates a MapperServer that sources mappings from the plugins installed in the global
+// plugin storage, booting them via the given context's host. It has the signature required by
+// [plugin.NewMapperFunc]. The underlying mapper is constructed lazily on first request because enumerating installed
+// plugins can fail, and context construction has no way to surface that error.
+func NewMapperServerFromContext(pctx *plugin.Context) codegenrpc.MapperServer {
+	return NewMapperServer(&contextMapper{pctx: pctx})
 }
 
-type hostMapper struct {
+type contextMapper struct {
 	pctx *plugin.Context
 
 	once   sync.Once
@@ -44,7 +44,7 @@ type hostMapper struct {
 	err    error
 }
 
-func (m *hostMapper) GetMapping(ctx context.Context, provider string, hint *MapperPackageHint) ([]byte, error) {
+func (m *contextMapper) GetMapping(ctx context.Context, provider string, hint *MapperPackageHint) ([]byte, error) {
 	m.once.Do(func() {
 		base, err := NewBasePluginMapper(
 			pluginstorage.Instance,

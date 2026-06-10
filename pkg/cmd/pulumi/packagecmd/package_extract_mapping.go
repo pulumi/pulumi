@@ -60,7 +60,7 @@ empty string.`,
 			sink := cmdutil.Diag()
 			pctx, err := plugin.NewContext(
 				cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return err
 			}

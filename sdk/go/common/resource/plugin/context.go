@@ -28,9 +28,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // Context is used to group related operations together so that
@@ -67,6 +69,64 @@ type Context struct {
 	// only closes the host it owns; hosts passed in by the caller are caller-owned and must
 	// be closed by the caller.
 	ownsHost bool
+
+	// loaderServer serves the schema loader bound to this context's workspace view, if any.
+	// The loader is a workspace service, not a host service: it boots plugins to load
+	// schemas, and which plugins resolve depends on the workspace. It dies with the context.
+	loaderServer *GrpcServer
+
+	// mapperServer serves the conversion mapper bound to this context's workspace view, if
+	// any. Like the loader, the mapper is a workspace service: it boots plugins to source
+	// mappings, and which plugins resolve depends on the workspace. It dies with the context.
+	mapperServer *GrpcServer
+}
+
+// LoaderAddr returns the address of the schema loader service bound to this context, or the
+// empty string if the context has none.
+func (ctx *Context) LoaderAddr() string {
+	if ctx.loaderServer == nil {
+		return ""
+	}
+	return ctx.loaderServer.Addr()
+}
+
+// StartLoader starts a schema loader service bound to this context's workspace view. The
+// service is shut down when the context is closed. A context may have at most one loader;
+// contexts constructed with a non-nil NewLoaderFunc already have one.
+func (ctx *Context) StartLoader(newLoader NewLoaderFunc) error {
+	contract.Assertf(ctx.loaderServer == nil, "context already has a loader")
+	server, err := NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterLoaderServer(srv, newLoader(ctx))
+	})
+	if err != nil {
+		return err
+	}
+	ctx.loaderServer = server
+	return nil
+}
+
+// MapperAddr returns the address of the conversion mapper service bound to this context, or
+// the empty string if the context has none.
+func (ctx *Context) MapperAddr() string {
+	if ctx.mapperServer == nil {
+		return ""
+	}
+	return ctx.mapperServer.Addr()
+}
+
+// StartMapper starts a conversion mapper service bound to this context's workspace view. The
+// service is shut down when the context is closed. A context may have at most one mapper;
+// contexts constructed with a non-nil NewMapperFunc already have one.
+func (ctx *Context) StartMapper(newMapper NewMapperFunc) error {
+	contract.Assertf(ctx.mapperServer == nil, "context already has a mapper")
+	server, err := NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterMapperServer(srv, newMapper(ctx))
+	})
+	if err != nil {
+		return err
+	}
+	ctx.mapperServer = server
+	return nil
 }
 
 // RuntimeOptions returns the runtime options of the project this context was built for, passed
@@ -172,13 +232,27 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	pctx.projectPlugins = projectPlugins
 
 	if host == nil {
-		h, err := NewDefaultHost(pctx, debugging, newLoader, newMapper, installLang)
+		h, err := NewDefaultHost(pctx, debugging, installLang)
 		if err != nil {
 			cancel()
 			return nil, err
 		}
 		pctx.Host = h
 		pctx.ownsHost = true
+	}
+
+	if newLoader != nil {
+		if err := pctx.StartLoader(newLoader); err != nil {
+			contract.IgnoreClose(pctx)
+			return nil, err
+		}
+	}
+
+	if newMapper != nil {
+		if err := pctx.StartMapper(newMapper); err != nil {
+			contract.IgnoreClose(pctx)
+			return nil, err
+		}
 	}
 
 	if logFile := env.DebugGRPC.Value(); logFile != "" {
@@ -254,6 +328,16 @@ func (ctx *Context) Close() error {
 	defer ctx.cancel()
 	if ctx.tracingSpan != nil {
 		ctx.tracingSpan.Finish()
+	}
+	if ctx.loaderServer != nil {
+		if err := ctx.loaderServer.Close(); err != nil && !rpcutil.IsBenignCloseErr(err) {
+			logging.V(5).Infof("Error closing the context's loader service; ignoring: %v", err)
+		}
+	}
+	if ctx.mapperServer != nil {
+		if err := ctx.mapperServer.Close(); err != nil && !rpcutil.IsBenignCloseErr(err) {
+			logging.V(5).Infof("Error closing the context's mapper service; ignoring: %v", err)
+		}
 	}
 	if !ctx.ownsHost {
 		return nil

@@ -581,7 +581,7 @@ func loadPolicyAnalyzer(
 		plugctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromHost)
+	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromContext)
 	if installErr != nil {
 		return nil, fmt.Errorf("failed to automatically install analyzer plugin %q: %w: %w",
 			string(name), installErr, me)

@@ -2658,7 +2658,8 @@ func debugProvidersHelperContext(t *testing.T) *plugin.Context {
 		Color: cmdutil.GetGlobalColorization(),
 	})
 	//nolint:usetesting // plugin.NewContext manages the lifecycle of gRPC providers; t.Context cancels before they shut down
-	pluginCtx, err := plugin.NewContext(t.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost, nil, nil)
+	pluginCtx, err := plugin.NewContext(
+		t.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	return pluginCtx
 }

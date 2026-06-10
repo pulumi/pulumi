@@ -408,7 +408,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		pctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromHost)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromContext)
 	if err != nil {
 		return nil, err
 	}

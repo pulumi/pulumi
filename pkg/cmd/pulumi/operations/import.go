@@ -731,7 +731,7 @@ func NewImportCmd() *cobra.Command {
 			}
 			sink := cmdutil.Diag()
 			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
-				schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -776,7 +776,7 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
 					}
-					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromHost)
+					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 						return nil
@@ -955,7 +955,7 @@ func NewImportCmd() *cobra.Command {
 				sink := cmdutil.Diag()
 
 				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
-					schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+					schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 				if err != nil {
 					return nil, nil, err
 				}

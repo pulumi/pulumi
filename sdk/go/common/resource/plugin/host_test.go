@@ -530,62 +530,48 @@ func TestProjectPluginsFromProject_BothPluginsAndPackages(t *testing.T) {
 	assert.False(t, pluginNames["azure"])
 }
 
-func TestNewDefaultHost_LoaderAddress(t *testing.T) {
+// TestContextLoaderAddr locks in that a context constructed with a NewLoaderFunc serves the
+// loader for the lifetime of the context, bound to that context's workspace view.
+func TestContextLoaderAddr(t *testing.T) {
 	t.Parallel()
 
-	ctx := &Context{
-		baseContext: t.Context(),
-		Root:        t.TempDir(),
-		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-			Color: colors.Never,
-		}),
-	}
+	sink := diagtest.LogSink(t)
 
-	var captureHost Host
-	mockLoader := func(h Host, _ *Context) codegenrpc.LoaderServer {
-		captureHost = h
+	var captureCtx *Context
+	mockLoader := func(ctx *Context) codegenrpc.LoaderServer {
+		captureCtx = ctx
 		return codegenrpc.UnimplementedLoaderServer{}
 	}
 
-	host, err := NewDefaultHost(ctx, nil, mockLoader, nil, nil)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, mockLoader, nil, nil)
 	require.NoError(t, err)
-	defer host.Close()
 
-	assert.Equal(t, host, captureHost, "loader function should be called during host creation")
+	assert.Equal(t, ctx, captureCtx, "the loader is bound to the context it was constructed with")
+	assert.NotEmpty(t, ctx.LoaderAddr())
+	assert.Equal(t, "", ctx.MapperAddr(), "a context built without a mapper should have no mapper address")
 
-	loaderAddr := host.LoaderAddr()
-	assert.NotEmpty(t, loaderAddr)
-	assert.Equal(t, host.ServerAddr(), loaderAddr)
-
-	assert.Equal(t, "", host.MapperAddr(), "a host built without a mapper should have no mapper address")
+	require.NoError(t, ctx.Close())
 }
 
-func TestNewDefaultHost_MapperAddress(t *testing.T) {
+func TestContextMapperAddr(t *testing.T) {
 	t.Parallel()
 
-	ctx := &Context{
-		baseContext: t.Context(),
-		Root:        t.TempDir(),
-		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-			Color: colors.Never,
-		}),
-	}
+	sink := diagtest.LogSink(t)
 
-	var captureHost Host
-	mockMapper := func(h Host, _ *Context) codegenrpc.MapperServer {
-		captureHost = h
+	var captureCtx *Context
+	mockMapper := func(ctx *Context) codegenrpc.MapperServer {
+		captureCtx = ctx
 		return codegenrpc.UnimplementedMapperServer{}
 	}
 
-	host, err := NewDefaultHost(ctx, nil, nil, mockMapper, nil)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, mockMapper, nil)
 	require.NoError(t, err)
-	defer host.Close()
 
-	assert.Equal(t, host, captureHost, "mapper function should be called during host creation")
+	assert.Equal(t, ctx, captureCtx, "the mapper is bound to the context it was constructed with")
+	assert.NotEmpty(t, ctx.MapperAddr())
+	assert.Equal(t, "", ctx.LoaderAddr(), "a context built without a loader should have no loader address")
 
-	mapperAddr := host.MapperAddr()
-	assert.NotEmpty(t, mapperAddr)
-	assert.Equal(t, host.ServerAddr(), mapperAddr)
+	require.NoError(t, ctx.Close())
 }
 
 func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
@@ -593,36 +579,23 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 
 	sink := diagtest.LogSink(t)
 
-	var loaderCalls int
-	mockLoader := func(Host, *Context) codegenrpc.LoaderServer {
-		loaderCalls++
-		return codegenrpc.UnimplementedLoaderServer{}
-	}
-
 	errInstall := errors.New("install boom")
 	var (
-		installCalls   int
-		gotRuntime     string
-		gotLoaderIsNil bool
+		installCalls int
+		gotRuntime   string
 	)
-	installLang := func(_ context.Context, runtime string, newLoader NewLoaderFunc) error {
+	installLang := func(_ context.Context, runtime string) error {
 		installCalls++
 		gotRuntime = runtime
-		gotLoaderIsNil = newLoader == nil
-		// Invoke the loader we were handed to prove it is the host's loader, not nil.
-		if newLoader != nil {
-			newLoader(nil, nil)
-		}
 		return errInstall
 	}
 
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, mockLoader, nil, installLang)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, installLang)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
 	t.Cleanup(func() { require.NoError(t, host.Close()) })
 
-	loaderCallsBeforeLoad := loaderCalls
 	lang, err := host.LanguageRuntime(ctx, "test-lang")
 
 	// The installer ran exactly once, for the requested runtime, and its error gated the load so we never
@@ -631,8 +604,4 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 	assert.Nil(t, lang)
 	assert.Equal(t, 1, installCalls)
 	assert.Equal(t, "test-lang", gotRuntime)
-
-	// The installer received the host's loader, not nil, and was able to invoke it.
-	assert.False(t, gotLoaderIsNil, "host should thread its loader to the installer")
-	assert.Greater(t, loaderCalls, loaderCallsBeforeLoad, "installer should have invoked the host's loader")
 }

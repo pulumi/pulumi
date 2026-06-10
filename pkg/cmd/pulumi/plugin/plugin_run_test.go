@@ -38,7 +38,7 @@ func testSetup(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServ
 
 	ctx := t.Context()
 	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil,
-		schema.NewLoaderServerFromHost, nil, nil)
+		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { pctx.Close() })
 
@@ -245,7 +245,7 @@ func TestNewInstallPluginFunc_DisabledAcquisition(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
 	pctx, err := plugin.NewContext(t.Context(), nil, nil, nil, nil, ".", nil, false, nil,
-		schema.NewLoaderServerFromHost, nil, nil)
+		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 
@@ -262,7 +262,7 @@ func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	pctx, err := plugin.NewContext(t.Context(), nil, nil, nil, nil, ".", nil, false, nil,
-		schema.NewLoaderServerFromHost, nil, nil)
+		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 

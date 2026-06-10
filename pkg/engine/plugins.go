@@ -123,7 +123,7 @@ func (defaultPluginManager) InstallPlugin(
 	content pluginstorage.Content,
 	reinstall bool,
 ) error {
-	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromHost)
+	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromContext)
 }
 
 // PluginSet represents a set of plugins.

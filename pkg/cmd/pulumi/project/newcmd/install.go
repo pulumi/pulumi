@@ -77,7 +77,7 @@ func InstallPackagesFromProject(
 		Color: utilCmdutil.GetGlobalColorization(),
 	})
 	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil,
-		schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return packageinstallation.State{}, err
 	}

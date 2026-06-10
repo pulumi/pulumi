@@ -67,7 +67,7 @@ func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Hos
 	pctx, err := plugin.NewContextWithRoot(pluginCtx, diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
 		projinfo.Proj.GetPackageSpecs(), config, debugging,
-		schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return "", "", nil, err
 	}

@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -335,7 +336,7 @@ func (w Workspace) LinkIntoProject(
 		ctx,
 		plugin.NewProgramInfo(projectDir, projectDir, ".", runtimeInfo.Options()),
 		packageDescriptors,
-		servers.grpc.Addr(),
+		servers.pctx.LoaderAddr(),
 	)
 	if err != nil {
 		return errors.Join(fmt.Errorf("linking package: %w", err), servers.Close())
@@ -347,13 +348,13 @@ func (w Workspace) LinkIntoProject(
 type servers struct {
 	pctx *plugin.Context
 	lang plugin.LanguageRuntime
-	grpc *plugin.GrpcServer
 }
 
 func (s servers) Close() error {
 	// We do not call s.lang.Close() since that closes the original host,
-	// and thus effectively closes the Workspace.
-	return errors.Join(s.grpc.Close(), s.pctx.Close())
+	// and thus effectively closes the Workspace. The context's loader service dies with the
+	// context.
+	return s.pctx.Close()
 }
 
 func (w Workspace) servers(
@@ -379,16 +380,15 @@ func (w Workspace) servers(
 	}
 
 	pctx := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, dir, dir, w.parentSpan)
-	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx), refs)
-	loaderServer := schema.NewLoaderServer(loader)
-	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
+	err = pctx.StartLoader(func(pctx *plugin.Context) codegenrpc.LoaderServer {
+		return schema.NewLoaderServer(schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx), refs))
+	})
 	if err != nil {
 		return servers{}, err
 	}
 	return servers{
 		pctx: pctx,
 		lang: languageRuntime,
-		grpc: grpcServer,
 	}, nil
 }
 
@@ -414,7 +414,7 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 		return "", errors.Join(err, os.RemoveAll(tmpDir))
 	}
 
-	diags, err := s.lang.GeneratePackage(ctx, tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
+	diags, err := s.lang.GeneratePackage(ctx, tmpDir, string(jsonBytes), nil, s.pctx.LoaderAddr(), nil, true /* local */)
 	if err != nil {
 		return "", errors.Join(err, s.Close(), os.RemoveAll(tmpDir))
 	}
@@ -444,6 +444,9 @@ func (w Workspace) RunPackage(
 	})
 
 	pctx := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
+	if err := pctx.StartLoader(schema.NewLoaderServerFromContext); err != nil {
+		return nil, fmt.Errorf("could not start loader for plugin at %q: %w", pluginPath, err)
+	}
 	p, err := plugin.NewProviderFromPath(w.pctx.Host, pctx, pluginPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)

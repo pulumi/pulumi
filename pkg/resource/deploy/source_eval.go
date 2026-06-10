@@ -165,7 +165,7 @@ func newRunMapper(ctx context.Context, pctx *plugin.Context) (pconvert.Mapper, e
 			Name: pluginName,
 			Kind: apitype.ResourcePlugin,
 		}
-		version, err := pkgWorkspace.InstallPlugin(pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromHost)
+		version, err := pkgWorkspace.InstallPlugin(pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromContext)
 		if err != nil {
 			log(diag.Warning, fmt.Sprintf("failed to install provider %q: %v", pluginName, err))
 			return nil

@@ -53,22 +53,12 @@ type testHost struct {
 	policies []plugin.Analyzer
 
 	closeMutex sync.Mutex
-
-	loaderAddress string
 }
 
 var _ plugin.Host = (*testHost)(nil)
 
 func (h *testHost) ServerAddr() string {
 	return h.engine.addr
-}
-
-func (h *testHost) LoaderAddr() string {
-	return h.loaderAddress
-}
-
-func (h *testHost) MapperAddr() string {
-	return ""
 }
 
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
