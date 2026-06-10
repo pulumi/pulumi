@@ -38,6 +38,8 @@ func TestContextRequest_race(t *testing.T) {
 		mocktracer.New().StartSpan("root"),
 		nil,
 		nil,
+		nil,
+		nil,
 	)
 	require.NoError(t, err)
 

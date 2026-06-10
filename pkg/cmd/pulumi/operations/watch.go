@@ -25,9 +25,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -150,6 +152,7 @@ func NewWatchCmd() *cobra.Command {
 				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
+			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, cmdutil.Diag(), env.Global())
 			opts.Engine = engine.UpdateOptions{
 				ParallelDiff:              env.ParallelDiff.Value(),
 				LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
@@ -163,6 +166,8 @@ func NewWatchCmd() *cobra.Command {
 				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Experimental:              env.Experimental.Value(),
 				SkipPluginPreInstall:      skipPluginPreInstall,
+				NewMapper:                 packageworkspace.NewMapperServerFromHost,
+				NewPackageResolver:        packageworkspace.NewPackageResolver(reg),
 			}
 
 			err = backend.WatchStack(ctx, s, backend.UpdateOperation{

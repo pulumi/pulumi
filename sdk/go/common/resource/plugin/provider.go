@@ -66,6 +66,20 @@ type ProviderHandshakeRequest struct {
 	// If true the engine will send `Preview` to `Invoke` methods to let them know if the current operation is a preview
 	// or up.
 	InvokeWithPreview bool
+
+	// The target of a codegen.Loader server, hosted by the engine, that the provider can use to load schemas for other
+	// packages. Empty if the engine does not host a loader.
+	LoaderTarget string
+
+	// The target of a codegen.Mapper server, hosted by the engine, that the provider can use to obtain mappings from
+	// names in other ecosystems (e.g. Terraform) to names in Pulumi packages. Empty if the engine does not host a
+	// mapper.
+	MapperTarget string
+
+	// The target of a PackageResolver server, hosted by the engine, that the provider can use to resolve PackageSpecs
+	// (such as `hashicorp/aws ~>6.0`, or a Terraform module source) to fully-resolved PackageDependencies. Empty if the
+	// engine does not host a package resolver.
+	PackageResolverTarget string
 }
 
 // The type of responses sent as part of a Handshake call.

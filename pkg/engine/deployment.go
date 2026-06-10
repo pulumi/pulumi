@@ -48,6 +48,7 @@ const clientRuntimeName = "client"
 func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Host,
 	diag, statusDiag diag.Sink, debugging plugin.DebugContext, disableProviderPreview bool,
 	tracingSpan opentracing.Span, config map[config.Key]string,
+	newMapper plugin.NewMapperFunc, newPackageResolver plugin.NewPackageResolverFunc,
 ) (string, string, *plugin.Context, error) {
 	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
 
@@ -66,7 +67,8 @@ func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Hos
 	pctx, err := plugin.NewContextWithRoot(pluginCtx, diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
 		projinfo.Proj.GetPackageSpecs(), config, debugging,
-		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+		newMapper, newPackageResolver)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -210,8 +212,12 @@ func newDeployment(
 	// Create a context for plugins.
 	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
 	baseCtx := trace.ContextWithSpan(ctx.Cancel.Base(), info.otelSpan)
+	// The mapper/resolver funcs are only consulted when ProjectInfoContext creates the host (opts.Host == nil). They
+	// originate at the CLI layer (which can reach the registry) and flow in via UpdateOptions, so that providers
+	// launched for this deployment are handed a mapper and package resolver during Handshake.
 	pwd, main, plugctx, err := ProjectInfoContext(baseCtx, projinfo, opts.Host,
-		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
+		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config,
+		opts.NewMapper, opts.NewPackageResolver)
 	if err != nil {
 		return nil, err
 	}

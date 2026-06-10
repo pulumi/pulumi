@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -60,16 +61,18 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return err
 			}
 			sink := cmdutil.Diag()
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+				packageworkspace.NewMapperServerFromHost,
+				packageworkspace.NewPackageResolver(registry))
 			if err != nil {
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
 				registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {

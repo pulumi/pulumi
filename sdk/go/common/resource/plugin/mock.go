@@ -60,6 +60,14 @@ func (m *MockHost) LoaderAddr() string {
 	return ""
 }
 
+func (m *MockHost) MapperAddr() string {
+	return ""
+}
+
+func (m *MockHost) PackageResolverAddr() string {
+	return ""
+}
+
 func (m *MockHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	if m.LogF != nil {
 		m.LogF(sev, urn, msg, streamID)

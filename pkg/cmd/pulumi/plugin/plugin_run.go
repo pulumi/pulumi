@@ -25,8 +25,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -134,8 +136,11 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			pluginArgs := args[1:]
 
+			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, nil, cmdutil.Diag(), env.Global())
 			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil,
-				schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+				packageworkspace.NewMapperServerFromHost,
+				packageworkspace.NewPackageResolver(reg))
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}
@@ -222,7 +227,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	return cmd
 }
 
-var _ cmd.CustomExitCodeError = pluginErrorCode{}
+var _ cmdCmd.CustomExitCodeError = pluginErrorCode{}
 
 type pluginErrorCode struct {
 	plugin string

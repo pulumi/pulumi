@@ -67,6 +67,14 @@ func (h *testHost) LoaderAddr() string {
 	return h.loaderAddress
 }
 
+func (h *testHost) MapperAddr() string {
+	return ""
+}
+
+func (h *testHost) PackageResolverAddr() string {
+	return ""
+}
+
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	var rpcsev pulumirpc.LogSeverity
 	switch sev {

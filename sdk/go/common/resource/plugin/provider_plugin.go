@@ -202,6 +202,9 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
+				LoaderTarget:                host.LoaderAddr(),
+				MapperTarget:                host.MapperAddr(),
+				PackageResolverTarget:       host.PackageResolverAddr(),
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -265,6 +268,9 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
+				LoaderTarget:                host.LoaderAddr(),
+				MapperTarget:                host.MapperAddr(),
+				PackageResolverTarget:       host.PackageResolverAddr(),
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -334,6 +340,9 @@ func handshake(
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
+		LoaderTarget:                req.LoaderTarget,
+		MapperTarget:                req.MapperTarget,
+		PackageResolverTarget:       req.PackageResolverTarget,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -392,6 +401,9 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			InvokeWithPreview:           true,
+			LoaderTarget:                host.LoaderAddr(),
+			MapperTarget:                host.MapperAddr(),
+			PackageResolverTarget:       host.PackageResolverAddr(),
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -518,6 +530,9 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
+		LoaderTarget:                req.LoaderTarget,
+		MapperTarget:                req.MapperTarget,
+		PackageResolverTarget:       req.PackageResolverTarget,
 	})
 	if err != nil {
 		return nil, err

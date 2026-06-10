@@ -322,7 +322,9 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 			return nil, nil, err
 		}
 		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil,
-			NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+			// No mapper/resolver: schema-loading context.
+			nil, nil)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -30,7 +30,42 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
+
+// TestProjectInfoContextServesMapperAndResolver locks in that the NewMapper/NewPackageResolver funcs threaded from the
+// CLI layer (via UpdateOptions, consumed by newDeployment) are actually wired into the plugin host that the engine
+// creates for a deployment, so that providers launched during the deployment are offered a mapper and package resolver
+// during Handshake. Without this, the addresses would silently be empty for every `pulumi up`/`preview`/etc.
+func TestProjectInfoContextServesMapperAndResolver(t *testing.T) {
+	t.Parallel()
+
+	projinfo := &Projinfo{
+		Proj: &workspace.Project{
+			Name:    "test",
+			Runtime: workspace.NewProjectRuntimeInfo("test", nil),
+		},
+		Root: t.TempDir(),
+	}
+
+	newMapper := func(plugin.Host) codegenrpc.MapperServer { return codegenrpc.UnimplementedMapperServer{} }
+	newResolver := func(plugin.Host) pulumirpc.PackageResolverServer {
+		return pulumirpc.UnimplementedPackageResolverServer{}
+	}
+
+	// host is nil, so ProjectInfoContext must create the host and wire it with the two services.
+	_, _, pctx, err := ProjectInfoContext(t.Context(), projinfo, nil, nil, nil, nil, false, nil, nil,
+		newMapper, newResolver)
+	require.NoError(t, err)
+	t.Cleanup(func() { contract.IgnoreClose(pctx) })
+
+	require.NotEmpty(t, pctx.Host.ServerAddr())
+	assert.Equal(t, pctx.Host.ServerAddr(), pctx.Host.MapperAddr(),
+		"the deployment host must serve the mapper supplied via UpdateOptions")
+	assert.Equal(t, pctx.Host.ServerAddr(), pctx.Host.PackageResolverAddr(),
+		"the deployment host must serve the package resolver supplied via UpdateOptions")
+}
 
 func makeUpdateInfo() UpdateInfo {
 	return UpdateInfo{

@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -46,6 +47,14 @@ type Host interface {
 
 	// LoaderAddr returns the address at which a plugin loader service may be found.
 	LoaderAddr() string
+
+	// MapperAddr returns the address at which a provider mapper service may be found, or the empty string if the host
+	// does not serve one.
+	MapperAddr() string
+
+	// PackageResolverAddr returns the address at which a package resolver service may be found, or the empty string if
+	// the host does not serve one.
+	PackageResolverAddr() string
 
 	// Log logs a message, including errors and warnings.  Messages can have a resource URN
 	// associated with them.  If no urn is provided, the message is global.
@@ -176,6 +185,15 @@ func collectPluginsFromPackages(
 
 type NewLoaderFunc = func(h Host) codegenrpc.LoaderServer
 
+// NewMapperFunc constructs the provider mapper service a host serves. Like NewLoaderFunc, the host serving the mapper
+// is passed in. A nil NewMapperFunc means the host does not serve a mapper.
+type NewMapperFunc = func(h Host) codegenrpc.MapperServer
+
+// NewPackageResolverFunc constructs the package resolver service a host serves. The resolution logic lives in the pkg
+// module, which the SDK cannot import, so a host is given its resolver constructor at construction. A nil
+// NewPackageResolverFunc means the host does not serve a package resolver.
+type NewPackageResolverFunc = func(h Host) pulumirpc.PackageResolverServer
+
 // LanguageInstaller downloads and installs an unbundled language runtime on demand, so that
 // loading it via Host.LanguageRuntime works even when the runtime is not bundled with the CLI
 // or already cached. It is the language-runtime analogue of the engine's plugin install path.
@@ -191,6 +209,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
 	config map[config.Key]string, debugging DebugContext, projectName tokens.PackageName,
 	newLoader NewLoaderFunc, installLang LanguageInstaller,
+	newMapper NewMapperFunc, newPackageResolver NewPackageResolverFunc,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -225,28 +244,30 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 	projectPlugins = append(projectPlugins, pluginsFromPackages...)
 
 	host := &defaultHost{
-		ctx:                     ctx,
-		runtimeOptions:          runtimeOptions,
-		analyzerPlugins:         make(map[tokens.QName]*analyzerPlugin),
-		languagePlugins:         make(map[string]*languagePlugin),
-		resourcePlugins:         make(map[Provider]*resourcePlugin),
-		reportedResourcePlugins: make(map[string]struct{}),
-		languageLoadRequests:    make(chan pluginLoadRequest),
-		loadRequests:            make(chan pluginLoadRequest),
-		disableProviderPreview:  disableProviderPreview,
-		config:                  config,
-		closer:                  new(sync.Once),
-		projectPlugins:          projectPlugins,
-		debugContext:            debugging,
-		projectName:             projectName,
-		hasLoaderServer:         newLoader != nil,
-		newLoader:               newLoader,
-		installLang:             installLang,
+		ctx:                      ctx,
+		runtimeOptions:           runtimeOptions,
+		analyzerPlugins:          make(map[tokens.QName]*analyzerPlugin),
+		languagePlugins:          make(map[string]*languagePlugin),
+		resourcePlugins:          make(map[Provider]*resourcePlugin),
+		reportedResourcePlugins:  make(map[string]struct{}),
+		languageLoadRequests:     make(chan pluginLoadRequest),
+		loadRequests:             make(chan pluginLoadRequest),
+		disableProviderPreview:   disableProviderPreview,
+		config:                   config,
+		closer:                   new(sync.Once),
+		projectPlugins:           projectPlugins,
+		debugContext:             debugging,
+		projectName:              projectName,
+		hasLoaderServer:          newLoader != nil,
+		newLoader:                newLoader,
+		installLang:              installLang,
+		hasMapperServer:          newMapper != nil,
+		hasPackageResolverServer: newPackageResolver != nil,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
 	// to "phone home" in case there are things the host must do on behalf of the plugins (like log, etc).
-	svr, err := newHostServer(host, ctx, newLoader)
+	svr, err := newHostServer(host, ctx, newLoader, newMapper, newPackageResolver)
 	if err != nil {
 		return nil, err
 	}
@@ -368,6 +389,9 @@ type defaultHost struct {
 	hasLoaderServer bool
 	newLoader       NewLoaderFunc     // the loader the host was built with, passed to installLang.
 	installLang     LanguageInstaller // installs unbundled language runtimes on demand; may be nil.
+
+	hasMapperServer          bool // true if the host serves a provider mapper on its own server.
+	hasPackageResolverServer bool // true if the host serves a package resolver on its own server.
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -396,6 +420,20 @@ func (host *defaultHost) ServerAddr() string {
 
 func (host *defaultHost) LoaderAddr() string {
 	if host.hasLoaderServer {
+		return host.ServerAddr()
+	}
+	return ""
+}
+
+func (host *defaultHost) MapperAddr() string {
+	if host.hasMapperServer {
+		return host.ServerAddr()
+	}
+	return ""
+}
+
+func (host *defaultHost) PackageResolverAddr() string {
+	if host.hasPackageResolverServer {
 		return host.ServerAddr()
 	}
 	return ""

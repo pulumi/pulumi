@@ -34,13 +34,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	cmdEnv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -140,8 +143,11 @@ func getSummaryAbout(
 		addError(err, "Failed to read project")
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
+		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), cmdEnv.Global())
 		pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil,
+			packageworkspace.NewMapperServerFromHost,
+			packageworkspace.NewPackageResolver(reg))
 		if err != nil {
 			addError(err, "Failed to create plugin context")
 		} else {

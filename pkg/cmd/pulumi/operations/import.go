@@ -37,11 +37,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -730,8 +732,11 @@ func NewImportCmd() *cobra.Command {
 				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
+			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, sink, env.Global())
 			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
-				schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+				packageworkspace.NewMapperServerFromHost,
+				packageworkspace.NewPackageResolver(reg))
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -954,8 +959,11 @@ func NewImportCmd() *cobra.Command {
 				}
 				sink := cmdutil.Diag()
 
+				reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, sink, env.Global())
 				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
-					schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+					schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+					packageworkspace.NewMapperServerFromHost,
+					packageworkspace.NewPackageResolver(reg))
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1011,6 +1019,8 @@ func NewImportCmd() *cobra.Command {
 				UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 				Experimental:         env.Experimental.Value(),
 				SkipPluginPreInstall: skipPluginPreInstall,
+				NewMapper:            packageworkspace.NewMapperServerFromHost,
+				NewPackageResolver:   packageworkspace.NewPackageResolver(reg),
 			}
 
 			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{

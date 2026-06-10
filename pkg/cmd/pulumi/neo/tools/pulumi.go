@@ -31,8 +31,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -41,6 +44,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -282,11 +286,14 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("gathering metadata: %w", err))
 	}
 
+	reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, p.Workspace, proj, cmdutil.Diag(), env.Global())
 	opts := backend.UpdateOptions{
 		AutoApprove: true, // Upstream approval already gates pulumi_up before dispatch.
 		Engine: engine.UpdateOptions{
-			Experimental: true,
-			Autonamer:    autonamer,
+			Experimental:       true,
+			Autonamer:          autonamer,
+			NewMapper:          packageworkspace.NewMapperServerFromHost,
+			NewPackageResolver: packageworkspace.NewPackageResolver(reg),
 		},
 		Display: backendDisplay.Options{
 			// Mute the backend's own progress renderer so it doesn't fight the Neo TUI.

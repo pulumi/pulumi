@@ -24,12 +24,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -124,8 +127,12 @@ func (cmd *policyInstallCmd) Run(
 		return fmt.Errorf("getting current working directory: %w", err)
 	}
 
+	reg := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmd.diag, env.Global())
 	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, nil, nil, cwd, nil, true, nil,
-		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+		packageworkspace.NewMapperServerFromHost,
+		packageworkspace.NewPackageResolver(reg))
 	if err != nil {
 		return fmt.Errorf("creating plugin context: %w", err)
 	}

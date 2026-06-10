@@ -32,9 +32,14 @@ import (
 	git "github.com/go-git/go-git/v5"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
@@ -72,8 +77,12 @@ func GetLanguageRuntimeMetadata(
 ) *promise.Promise[map[string]string] {
 	return promise.Run(func() (map[string]string, error) {
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		reg := cmdCmd.NewDefaultRegistry(
+			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 		pwd, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil,
+			packageworkspace.NewMapperServerFromHost,
+			packageworkspace.NewPackageResolver(reg))
 		if err != nil {
 			return nil, err
 		}

@@ -29,6 +29,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -108,16 +109,18 @@ func schemaFromSourceOrStdin(cmd *cobra.Command, source string, extraArgs []stri
 		return nil, err
 	}
 	sink := cmdutil.Diag()
+	registry := cmdCmd.NewDefaultRegistry(
+		cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 	pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-		nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+		packageworkspace.NewMapperServerFromHost,
+		packageworkspace.NewPackageResolver(registry))
 	if err != nil {
 		return nil, err
 	}
 	defer contract.IgnoreClose(pctx)
 
 	parameters := &plugin.ParameterizeArgs{Args: extraArgs}
-	registry := cmdCmd.NewDefaultRegistry(
-		cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 	spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
 		registry, env.Global(), 0 /* unbounded concurrency */)
 	if err != nil {

@@ -37,6 +37,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -399,6 +400,8 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	registry := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
 		ctx,
 		projinfo,
@@ -409,6 +412,8 @@ func runNew(ctx context.Context, args newArgs) error {
 		false, /* disableProviderPreview */
 		nil,   /* tracingSpan */
 		nil,   /* config */
+		packageworkspace.NewMapperServerFromHost,
+		packageworkspace.NewPackageResolver(registry),
 	)
 	if err != nil {
 		return err
@@ -481,8 +486,6 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Install dependencies, but only if we have a runtime to install with.
 	if !args.generateOnly && proj.Runtime.Name() != "" {
-		registry := cmdCmd.NewDefaultRegistry(
-			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 		if _, err := InstallPackagesFromProject(ctx, proj, root,
 			registry, -1, false, args.stderr, args.stderr, env.Global()); err != nil {
 			return err

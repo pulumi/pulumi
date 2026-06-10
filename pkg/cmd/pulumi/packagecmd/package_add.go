@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -128,7 +129,9 @@ from the parameters, as in:
 			sink := cmdutil.Diag()
 			pctx, err := plugin.NewContext(cmd.Context(),
 				sink, sink, nil, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromHost,
-				pkgWorkspace.EnsureLanguageInstalled)
+				pkgWorkspace.EnsureLanguageInstalled,
+				packageworkspace.NewMapperServerFromHost,
+				packageworkspace.NewPackageResolver(target.reg))
 			if err != nil {
 				return err
 			}

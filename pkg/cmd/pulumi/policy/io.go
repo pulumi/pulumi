@@ -21,8 +21,13 @@ import (
 	"path/filepath"
 
 	"github.com/opentracing/opentracing-go"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -59,6 +64,8 @@ func InstallPluginDependencies(
 		Main:    ".",
 		Runtime: projRuntime,
 	}, Root: root}
+	reg := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 	_, main, pluginCtx, err := engine.ProjectInfoContext(
 		ctx,
 		projinfo,
@@ -69,6 +76,8 @@ func InstallPluginDependencies(
 		false,
 		span,
 		nil,
+		packageworkspace.NewMapperServerFromHost,
+		packageworkspace.NewPackageResolver(reg),
 	)
 	if err != nil {
 		return err

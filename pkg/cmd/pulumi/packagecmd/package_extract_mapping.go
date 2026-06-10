@@ -22,6 +22,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -57,16 +58,18 @@ empty string.`,
 				return err
 			}
 			sink := cmdutil.Diag()
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			pctx, err := plugin.NewContext(
 				cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+				packageworkspace.NewMapperServerFromHost,
+				packageworkspace.NewPackageResolver(registry))
 			if err != nil {
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
 
-			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			p, _, err := packages.ProviderFromSource(
 				pkgWorkspace.Instance, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {

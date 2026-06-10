@@ -29,10 +29,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -311,6 +313,7 @@ func NewRefreshCmd() *cobra.Command {
 			excludeUrns := slice.Prealloc[string](len(*excludes))
 			excludeUrns = append(excludeUrns, *excludes...)
 
+			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, cmdutil.Diag(), env.Global())
 			opts.Engine = engine.UpdateOptions{
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
@@ -328,6 +331,8 @@ func NewRefreshCmd() *cobra.Command {
 				ExecKind:                  execKind,
 				RefreshProgram:            runProgram,
 				SkipPluginPreInstall:      skipPluginPreInstall,
+				NewMapper:                 packageworkspace.NewMapperServerFromHost,
+				NewPackageResolver:        packageworkspace.NewPackageResolver(reg),
 			}
 
 			changes, err := backend.RefreshStack(ctx, s, backend.UpdateOperation{

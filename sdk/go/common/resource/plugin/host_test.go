@@ -40,7 +40,7 @@ func TestHostManagedProviderCloseSignalsCancellation(t *testing.T) {
 	t.Parallel()
 
 	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
@@ -71,7 +71,7 @@ func TestClosePanic(t *testing.T) {
 	t.Parallel()
 
 	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
@@ -232,7 +232,7 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	}
 
 	// Create the host with our packages
-	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil, nil)
+	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -298,7 +298,7 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 		"azure":        {Source: "azure"}, // This should be skipped as it's not a local path
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil, nil)
+	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -335,7 +335,7 @@ func TestNewDefaultHost_LoaderAddress(t *testing.T) {
 		return codegenrpc.UnimplementedLoaderServer{}
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader, nil)
+	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader, nil, nil, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -374,7 +374,7 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 		return errInstall
 	}
 
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, mockLoader, installLang)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, mockLoader, installLang, nil, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)

@@ -34,10 +34,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -221,6 +223,7 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("getting autonaming config: %w", err)
 		}
 
+		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), env.Global())
 		opts.Engine = engine.UpdateOptions{
 			ParallelDiff:              env.ParallelDiff.Value(),
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
@@ -248,6 +251,8 @@ func NewUpCmd() *cobra.Command {
 			AttachDebugger:       attachDebugger,
 			Autonamer:            autonamer,
 			SkipPluginPreInstall: skipPluginPreInstall,
+			NewMapper:            packageworkspace.NewMapperServerFromHost,
+			NewPackageResolver:   packageworkspace.NewPackageResolver(reg),
 		}
 
 		if planFilePath != "" {
@@ -437,8 +442,11 @@ func NewUpCmd() *cobra.Command {
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), env.Global())
 		_, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil,
+			packageworkspace.NewMapperServerFromHost,
+			packageworkspace.NewPackageResolver(reg))
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
 		}
@@ -500,6 +508,8 @@ func NewUpCmd() *cobra.Command {
 
 			AttachDebugger:       attachDebugger,
 			SkipPluginPreInstall: skipPluginPreInstall,
+			NewMapper:            packageworkspace.NewMapperServerFromHost,
+			NewPackageResolver:   packageworkspace.NewPackageResolver(reg),
 		}
 
 		start := time.Now()

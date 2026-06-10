@@ -201,6 +201,8 @@ func installDependenciesForPluginSpec(
 		nil, // debugging
 		newLoader,
 		EnsureLanguageInstalled,
+		nil, // newMapper
+		nil, // newPackageResolver
 	)
 	if err != nil {
 		return err

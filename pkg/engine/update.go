@@ -397,6 +397,16 @@ type UpdateOptions struct {
 	// the plugin host to use for this update
 	Host plugin.Host
 
+	// NewMapper, if set, is used to serve a provider mapper from the plugin host that the engine creates for this
+	// update (when Host is nil). It is offered to providers during Handshake. The mapper/resolver constructors are
+	// supplied by the CLI layer, which can reach the registry; the engine cannot.
+	NewMapper plugin.NewMapperFunc
+
+	// NewPackageResolver, if set, is used to serve a package resolver from the plugin host that the engine creates for
+	// this update (when Host is nil). It is offered to providers during Handshake so they may resolve package
+	// references (e.g. a Terraform module source) into fully-resolved descriptors.
+	NewPackageResolver plugin.NewPackageResolverFunc
+
 	// The plan to use for the update, if any.
 	Plan *deploy.Plan
 

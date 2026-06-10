@@ -124,6 +124,8 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			span := opentracing.SpanFromContext(ctx)
 			projinfo := &engine.Projinfo{Proj: proj, Root: root}
+			registry := cmdCmd.NewDefaultRegistry(
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 			pwd, main, pctx, err := engine.ProjectInfoContext(
 				ctx,
 				projinfo,
@@ -134,6 +136,8 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				false,
 				span,
 				nil,
+				packageworkspace.NewMapperServerFromHost,
+				packageworkspace.NewPackageResolver(registry),
 			)
 			if err != nil {
 				return err
@@ -143,8 +147,6 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			// Process packages section from Pulumi.yaml. Do so before installing language-specific dependencies,
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
-			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, pctx.Diag, env.Global())
 			continuation, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
 				registry, parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
 			)

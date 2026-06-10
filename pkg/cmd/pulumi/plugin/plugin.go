@@ -19,10 +19,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -67,8 +71,12 @@ func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	reg := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 	pwd, main, pctx, err := engine.ProjectInfoContext(
-		ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil,
+		packageworkspace.NewMapperServerFromHost,
+		packageworkspace.NewPackageResolver(reg))
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +106,10 @@ func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) (
 	d := cmdutil.Diag()
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	_, _, pctx, err := engine.ProjectInfoContext(ctx, projinfo, nil, d, d, nil, false, nil, nil)
+	reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, d, env.Global())
+	_, _, pctx, err := engine.ProjectInfoContext(ctx, projinfo, nil, d, d, nil, false, nil, nil,
+		packageworkspace.NewMapperServerFromHost,
+		packageworkspace.NewPackageResolver(reg))
 	if err != nil {
 		return nil, err
 	}

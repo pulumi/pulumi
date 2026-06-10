@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -487,8 +488,11 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), e)
 		_, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil,
+			packageworkspace.NewMapperServerFromHost,
+			packageworkspace.NewPackageResolver(reg))
 		if err != nil {
 			return err
 		}

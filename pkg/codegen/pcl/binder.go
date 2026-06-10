@@ -389,7 +389,9 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 			return nil, nil, err
 		}
 		ctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, cwd, nil, false, nil,
-			schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+			// No mapper/resolver: schema-loading context.
+			nil, nil)
 		if err != nil {
 			return nil, nil, err
 		}

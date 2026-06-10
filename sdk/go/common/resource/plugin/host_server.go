@@ -45,7 +45,10 @@ type hostServer struct {
 }
 
 // newHostServer creates a new host server wired up to the given host and context.
-func newHostServer(host Host, ctx *Context, newLoader NewLoaderFunc) (*hostServer, error) {
+func newHostServer(
+	host Host, ctx *Context,
+	newLoader NewLoaderFunc, newMapper NewMapperFunc, newPackageResolver NewPackageResolverFunc,
+) (*hostServer, error) {
 	// New up an engine RPC server.
 	engine := &hostServer{
 		host:   host,
@@ -60,6 +63,12 @@ func newHostServer(host Host, ctx *Context, newLoader NewLoaderFunc) (*hostServe
 			pulumirpc.RegisterEngineServer(srv, engine)
 			if newLoader != nil {
 				codegenrpc.RegisterLoaderServer(srv, newLoader(host))
+			}
+			if newMapper != nil {
+				codegenrpc.RegisterMapperServer(srv, newMapper(host))
+			}
+			if newPackageResolver != nil {
+				pulumirpc.RegisterPackageResolverServer(srv, newPackageResolver(host))
 			}
 			return nil
 		},

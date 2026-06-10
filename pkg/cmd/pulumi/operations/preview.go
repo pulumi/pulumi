@@ -33,10 +33,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	pkgPlan "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -520,6 +522,7 @@ func NewPreviewCmd() *cobra.Command {
 				return fmt.Errorf("getting autonaming config: %w", err)
 			}
 
+			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, cmdutil.Diag(), env.Global())
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					ParallelDiff:              env.ParallelDiff.Value(),
@@ -546,6 +549,8 @@ func NewPreviewCmd() *cobra.Command {
 					AttachDebugger:       attachDebugger,
 					Autonamer:            autonamer,
 					SkipPluginPreInstall: skipPluginPreInstall,
+					NewMapper:            packageworkspace.NewMapperServerFromHost,
+					NewPackageResolver:   packageworkspace.NewPackageResolver(reg),
 				},
 				Display: displayOpts,
 			}

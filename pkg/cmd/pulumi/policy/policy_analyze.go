@@ -27,7 +27,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -36,6 +38,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -86,8 +89,11 @@ func newPolicyAnalyzeCmd(
 					if err != nil {
 						return nil, nil, fmt.Errorf("getting working directory: %w", err)
 					}
+					reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), env.Global())
 					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+						nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+						packageworkspace.NewMapperServerFromHost,
+						packageworkspace.NewPackageResolver(reg))
 					if err != nil {
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)
 					}

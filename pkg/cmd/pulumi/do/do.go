@@ -35,6 +35,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -154,9 +155,13 @@ func NewDoCmd(
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
 		}
 
+		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, sink, env.Global())
 		pctx, err := plugin.NewContext(
 			ctx, sink, sink, host, nil, wd, nil, false,
-			nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+			packageworkspace.NewMapperServerFromHost,
+			packageworkspace.NewPackageResolver(reg),
+		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}

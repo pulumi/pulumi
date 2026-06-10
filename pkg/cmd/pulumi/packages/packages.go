@@ -27,6 +27,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
@@ -333,8 +335,12 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{ //nolint:forbidigo
 		Color: cmdutil.GetGlobalColorization(),
 	})
+	reg := cmdCmd.NewDefaultRegistry(
+		context.TODO(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil,
-		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
+		packageworkspace.NewMapperServerFromHost,
+		packageworkspace.NewPackageResolver(reg))
 	if err != nil {
 		return nil, err
 	}
@@ -478,14 +484,15 @@ func providerFromSource(
 		}
 	}
 
-	f, spec, _, err := packageinstallation.InstallPlugin(pctx.Request(), packageSpec, nil, "", packageinstallation.Options{
-		Options: packageresolution.Options{
-			ResolveWithRegistry:                        !e.GetBool(env.DisableRegistryResolve),
-			ResolveVersionWithLocalWorkspace:           true,
-			AllowNonInvertableLocalWorkspaceResolution: true,
-		},
-		Concurrency: concurrency,
-	}, reg, installCtx)
+	f, spec, _, err := packageinstallation.InstallPlugin(
+		pctx.Request(), packageSpec, nil, "", packageinstallation.Options{
+			Options: packageresolution.Options{
+				ResolveWithRegistry:                        !e.GetBool(env.DisableRegistryResolve),
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			Concurrency: concurrency,
+		}, reg, installCtx)
 	if err != nil {
 		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to install %s: %w", packageSpec, err)
 	}

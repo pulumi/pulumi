@@ -29,10 +29,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -323,6 +325,7 @@ func NewDestroyCmd() *cobra.Command {
 				}
 			}
 
+			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, cmdutil.Diag(), env.Global())
 			opts.Engine = engine.UpdateOptions{
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
@@ -341,6 +344,8 @@ func NewDestroyCmd() *cobra.Command {
 				ContinueOnError:           continueOnError,
 				DestroyProgram:            runProgram,
 				SkipPluginPreInstall:      skipPluginPreInstall,
+				NewMapper:                 packageworkspace.NewMapperServerFromHost,
+				NewPackageResolver:        packageworkspace.NewPackageResolver(reg),
 			}
 
 			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{

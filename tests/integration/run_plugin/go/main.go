@@ -61,11 +61,11 @@ func main() {
 		}
 
 		sink := cmdutil.Diag()
-		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, nil, nil, wd, nil, false, nil, nil, nil)
+		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, nil, nil, wd, nil, false, nil, nil, nil, nil, nil)
 		if err != nil {
 			return err
 		}
-		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, nil, tokens.PackageName("test"), nil, nil)
+		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, nil, tokens.PackageName("test"), nil, nil, nil, nil)
 		if err != nil {
 			return err
 		}

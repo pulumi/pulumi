@@ -23,8 +23,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -125,9 +127,12 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		return err
 	}
 
+	reg := cmdCmd.NewDefaultRegistry(ctx, lm, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, nil, schema.NewLoaderServerFromHost,
-		pkgWorkspace.EnsureLanguageInstalled)
+		pkgWorkspace.EnsureLanguageInstalled,
+		packageworkspace.NewMapperServerFromHost,
+		packageworkspace.NewPackageResolver(reg))
 	if err != nil {
 		return err
 	}
