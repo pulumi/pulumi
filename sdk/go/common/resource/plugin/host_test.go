@@ -225,7 +225,8 @@ func TestContextCloseRefcountsSharedPlugins(t *testing.T) {
 	}
 
 	analyzer := &stubAnalyzer{}
-	host.analyzerPlugins["test-analyzer"] = &analyzerPlugin{
+	analyzerKey := analyzerPluginKey{name: "test-analyzer"}
+	host.analyzerPlugins[analyzerKey] = &analyzerPlugin{
 		Plugin: analyzer, Name: "test-analyzer", refs: map[*Context]struct{}{ctxB: {}, ctxC: {}},
 	}
 	host.watchContext(ctxB)
@@ -238,7 +239,7 @@ func TestContextCloseRefcountsSharedPlugins(t *testing.T) {
 	readState := func() pluginState {
 		var state pluginState
 		_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-			plug, has := host.analyzerPlugins["test-analyzer"]
+			plug, has := host.analyzerPlugins[analyzerKey]
 			state.analyzerCached = has
 			state.analyzerClosed = analyzer.closed
 			if has {

@@ -33,16 +33,17 @@ import (
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
-// mockSchemaHost returns a plugin host that resolves pluginName@pluginVersion to the given provider.
+// mockSchemaHost returns a plugin context whose host resolves pluginName@pluginVersion to the
+// given provider.
 func mockSchemaHost(
 	t *testing.T, pluginName string, pluginVersion semver.Version, provider plugin.Provider,
-) plugin.Host {
-	return &plugin.MockHost{
-		ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+) *plugin.Context {
+	host := &plugin.MockHost{
+		ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 			assert.Equal(t, pluginName, descriptor.Name)
 			return provider, nil
 		},
-		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(_ *plugin.Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{
 				Name:    pluginName,
 				Kind:    apitype.ResourcePlugin,
@@ -50,6 +51,7 @@ func mockSchemaHost(
 			}, nil
 		},
 	}
+	return plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
 }
 
 func schemaProvider(schemaBytes []byte) *plugin.MockProvider {
@@ -90,8 +92,8 @@ func TestLoaderServerRawSchemaBytes(t *testing.T) {
 	// Distinctive whitespace: re-marshaling would not preserve it, so byte equality proves the raw path was taken.
 	rawSchema := []byte(`{ "name": "test",  "version": "1.2.3",` +
 		` "resources": { "test:index:Resource": { "properties": { "foo": { "type": "string" } } } } }`)
-	host := mockSchemaHost(t, "test", semver.MustParse("1.2.3"), schemaProvider(rawSchema))
-	client := serveLoader(t, NewPluginLoader(host))
+	pctx := mockSchemaHost(t, "test", semver.MustParse("1.2.3"), schemaProvider(rawSchema))
+	client := serveLoader(t, NewPluginLoader(pctx))
 
 	resp, err := client.clientRaw.GetSchema(t.Context(), &codegenrpc.GetSchemaRequest{
 		Package: "test",
@@ -105,7 +107,7 @@ func TestLoaderServerRawSchemaBytes(t *testing.T) {
 
 	clientPkg, err := client.LoadPackageV2(t.Context(), descriptor)
 	require.NoError(t, err)
-	inProcessPkg, err := NewPluginLoader(host).LoadPackageV2(t.Context(), descriptor)
+	inProcessPkg, err := NewPluginLoader(pctx).LoadPackageV2(t.Context(), descriptor)
 	require.NoError(t, err)
 
 	clientSpec, err := clientPkg.MarshalSpec()
@@ -122,8 +124,8 @@ func TestLoaderServerRawSchemaBytesNoVersionFallback(t *testing.T) {
 
 	rawSchema := []byte(`{ "name": "test",` +
 		` "resources": { "test:index:Resource": { "properties": { "foo": { "type": "string" } } } } }`)
-	host := mockSchemaHost(t, "test", semver.MustParse("1.2.3"), schemaProvider(rawSchema))
-	client := serveLoader(t, NewPluginLoader(host))
+	pctx := mockSchemaHost(t, "test", semver.MustParse("1.2.3"), schemaProvider(rawSchema))
+	client := serveLoader(t, NewPluginLoader(pctx))
 
 	resp, err := client.clientRaw.GetSchema(t.Context(), &codegenrpc.GetSchemaRequest{
 		Package: "test",
@@ -140,7 +142,7 @@ func TestLoaderServerRawSchemaBytesNoVersionFallback(t *testing.T) {
 
 	clientRef, err := client.LoadPackageReferenceV2(t.Context(), descriptor)
 	require.NoError(t, err)
-	inProcessRef, err := NewPluginLoader(host).LoadPackageReferenceV2(t.Context(), descriptor)
+	inProcessRef, err := NewPluginLoader(pctx).LoadPackageReferenceV2(t.Context(), descriptor)
 	require.NoError(t, err)
 	assert.Equal(t, &version, clientRef.Version())
 	assert.Equal(t, inProcessRef.Version(), clientRef.Version())
@@ -164,8 +166,8 @@ func TestLoaderServerRawSchemaBytesParameterized(t *testing.T) {
 			Version: semver.MustParse("3.0.0"),
 		}, nil
 	}
-	host := mockSchemaHost(t, "base", semver.MustParse("1.0.0"), provider)
-	client := serveLoader(t, NewPluginLoader(host))
+	pctx := mockSchemaHost(t, "base", semver.MustParse("1.0.0"), provider)
+	client := serveLoader(t, NewPluginLoader(pctx))
 
 	resp, err := client.clientRaw.GetSchema(t.Context(), &codegenrpc.GetSchemaRequest{
 		Package: "base",
@@ -211,12 +213,13 @@ func TestLoaderServerCachedEntryBypassesRawPath(t *testing.T) {
 
 	// A host whose plugin resolution always fails: the cached entry is the only way to serve the schema.
 	host := &plugin.MockHost{
-		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(_ *plugin.Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return nil, workspace.NewMissingError(spec, false)
 		},
 	}
+	pctx := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
 	loader := NewCachedLoaderWithEntries(
-		NewPluginLoader(host),
+		NewPluginLoader(pctx),
 		map[string]PackageReference{pkg.Reference().Identity(): pkg.Reference()},
 	)
 	client := serveLoader(t, loader)
@@ -232,8 +235,8 @@ func TestLoaderServerCachedEntryBypassesRawPath(t *testing.T) {
 func TestLoaderServerRawSchemaBytesEmptySchema(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
-	host := mockSchemaHost(t, "test", semver.MustParse("1.2.3"), schemaProvider([]byte(" { } ")))
-	client := serveLoader(t, NewPluginLoader(host))
+	pctx := mockSchemaHost(t, "test", semver.MustParse("1.2.3"), schemaProvider([]byte(" { } ")))
+	client := serveLoader(t, NewPluginLoader(pctx))
 
 	_, err := client.clientRaw.GetSchema(t.Context(), &codegenrpc.GetSchemaRequest{
 		Package: "test",

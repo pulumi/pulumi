@@ -248,7 +248,7 @@ func newHost(
 		statusDiag:              statusD,
 		hostCtx:                 hostCtx,
 		hostCancel:              hostCancel,
-		analyzerPlugins:         map[string]*analyzerPlugin{},
+		analyzerPlugins:         map[analyzerPluginKey]*analyzerPlugin{},
 		languagePlugins:         map[languagePluginKey]*languagePlugin{},
 		resourcePlugins:         map[Provider]*resourcePlugin{},
 		reportedResourcePlugins: map[string]struct{}{},
@@ -386,7 +386,7 @@ type defaultHost struct {
 	hostCtx    context.Context
 	hostCancel context.CancelFunc
 
-	analyzerPlugins         map[string]*analyzerPlugin            // a cache of analyzer plugins and their processes.
+	analyzerPlugins         map[analyzerPluginKey]*analyzerPlugin // a cache of analyzer plugins and their processes.
 	languagePlugins         map[languagePluginKey]*languagePlugin // a cache of language plugins and their processes.
 	resourcePlugins         map[Provider]*resourcePlugin          // the set of loaded resource plugins.
 	reportedResourcePlugins map[string]struct{}                   // the set of unique resource plugins we'll report.
@@ -409,6 +409,18 @@ type defaultHost struct {
 }
 
 var _ Host = (*defaultHost)(nil)
+
+// analyzerPluginKey identifies a booted analyzer plugin. Analyzers are spawned in the
+// workspace's working directory and resolved against its project plugins; policy analyzers are
+// instead booted from an explicit path and configured by their options. A host shared across
+// workspaces must not serve one workspace's analyzer process to another.
+type analyzerPluginKey struct {
+	name             tokens.QName
+	policy           bool   // true for policy analyzers.
+	workingDirectory string // the workspace's working directory; empty for policy analyzers.
+	path             string // the policy pack path; empty for regular analyzers.
+	options          string // the policy analyzer's options, deterministically rendered; empty for regular analyzers.
+}
 
 type analyzerPlugin struct {
 	Plugin Analyzer
@@ -489,9 +501,7 @@ func (host *defaultHost) loadPlugin(
 
 func (host *defaultHost) Analyzer(ctx *Context, name tokens.QName) (Analyzer, error) {
 	host.watchContext(ctx)
-	// Analyzers are spawned in the workspace's working directory and resolved against its
-	// project plugins, so the cache key must identify the workspace as well as the analyzer.
-	key := fmt.Sprintf("analyzer\x00%s\x00%s", name, ctx.Pwd)
+	key := analyzerPluginKey{name: name, workingDirectory: ctx.Pwd}
 	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[key]; has {
@@ -534,7 +544,7 @@ func (host *defaultHost) PolicyAnalyzer(
 	if opts != nil {
 		optsKey = fmt.Sprintf("%v", *opts)
 	}
-	key := fmt.Sprintf("policy\x00%s\x00%s\x00%s", name, path, optsKey)
+	key := analyzerPluginKey{name: name, policy: true, path: path, options: optsKey}
 	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[key]; has {
@@ -905,7 +915,7 @@ func (host *defaultHost) Close() (err error) {
 		wg.Wait()
 
 		// Empty out all maps.
-		host.analyzerPlugins = map[string]*analyzerPlugin{}
+		host.analyzerPlugins = map[analyzerPluginKey]*analyzerPlugin{}
 		host.languagePlugins = map[languagePluginKey]*languagePlugin{}
 		host.resourcePlugins = map[Provider]*resourcePlugin{}
 
