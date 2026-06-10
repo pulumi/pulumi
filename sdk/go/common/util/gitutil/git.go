@@ -106,7 +106,7 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 		EnableDotGitCommonDir: true,
 	})
 	if errors.Is(err, git.ErrUnsupportedExtensionRepositoryFormatVersion) || errors.Is(err, git.ErrUnknownExtension) {
-		repo, err = openRepoMaskingGrandfatheredExtensions(gitRoot)
+		repo, err = openRepoMaskingLegacyExtensions(gitRoot)
 	}
 	if err == git.ErrRepositoryNotExists {
 		return nil, nil
@@ -123,33 +123,33 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 // (https://github.com/go-git/go-git/issues/1943). Azure DevOps enables worktreeConfig
 // by default, and partial clones are common in CI, so mask these extensions from
 // go-git rather than failing.
-var grandfatheredExtensions = []string{"worktreeConfig", "partialClone", "preciousObjects"}
+var legacyExtensions = []string{"worktreeConfig", "partialClone", "preciousObjects"}
 
-// grandfatheredExtensionMaskingStorer hides the grandfathered extensions from go-git,
-// which would otherwise refuse to open the repository.
-type grandfatheredExtensionMaskingStorer struct {
+// legacyExtensionMaskingStorer hides the legacy extensions from go-git, which would
+// otherwise refuse to open the repository.
+type legacyExtensionMaskingStorer struct {
 	*filesystem.Storage
 }
 
-func (s *grandfatheredExtensionMaskingStorer) Config() (*config.Config, error) {
+func (s *legacyExtensionMaskingStorer) Config() (*config.Config, error) {
 	cfg, err := s.Storage.Config()
 	if err != nil {
 		return nil, err
 	}
 	if cfg.Raw != nil && cfg.Raw.HasSection("extensions") {
 		section := cfg.Raw.Section("extensions")
-		for _, extension := range grandfatheredExtensions {
+		for _, extension := range legacyExtensions {
 			section.RemoveOption(extension)
 		}
 	}
 	return cfg, nil
 }
 
-// openRepoMaskingGrandfatheredExtensions opens the repository rooted at gitRoot (a
-// path to a ".git" directory or file) the same way git.PlainOpenWithOptions does with
-// EnableDotGitCommonDir set, except that the grandfathered extensions are hidden from
+// openRepoMaskingLegacyExtensions opens the repository rooted at gitRoot (a path to a
+// ".git" directory or file) the same way git.PlainOpenWithOptions does with
+// EnableDotGitCommonDir set, except that the legacy extensions are hidden from
 // go-git's repository format validation.
-func openRepoMaskingGrandfatheredExtensions(gitRoot string) (*git.Repository, error) {
+func openRepoMaskingLegacyExtensions(gitRoot string) (*git.Repository, error) {
 	gitDir := gitRoot
 	fi, err := os.Stat(gitRoot)
 	if err != nil {
@@ -192,7 +192,7 @@ func openRepoMaskingGrandfatheredExtensions(gitRoot string) (*git.Repository, er
 	storage := filesystem.NewStorage(
 		dotgit.NewRepositoryFilesystem(osfs.New(gitDir), commonDir),
 		cache.NewObjectLRUDefault())
-	return git.Open(&grandfatheredExtensionMaskingStorer{storage}, osfs.New(filepath.Dir(gitRoot)))
+	return git.Open(&legacyExtensionMaskingStorer{storage}, osfs.New(filepath.Dir(gitRoot)))
 }
 
 // GetGitHubProjectForOrigin returns the GitHub login, and GitHub repo name if the "origin" remote is

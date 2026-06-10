@@ -296,7 +296,7 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 // 5.17+ refuses to open repositories that enable extensions like worktreeConfig
 // (enabled by Azure DevOps pipelines, among others), which broke git metadata
 // detection for Pulumi operations.
-func TestGetGitRepositoryWithGrandfatheredExtensions(t *testing.T) {
+func TestGetGitRepositoryWithLegacyExtensions(t *testing.T) {
 	t.Parallel()
 
 	exts := []struct{ key, value string }{
