@@ -232,7 +232,7 @@ func TestTapSummaryJSON_OmitsResourcesFieldWhenEmpty(t *testing.T) {
 	t.Parallel()
 
 	// No per-resource events: the summary JSON should not include a "resources"
-	// key at all, preserving the pre-existing wire shape for consumers.
+	// key at all.
 	in := make(chan engine.Event, 1)
 	in <- engine.NewEvent(engine.SummaryEventPayload{
 		Result:   apitype.OperationResultSucceeded,
