@@ -337,6 +337,15 @@ type EnvironmentsBackend interface {
 		yaml []byte,
 		etag string,
 	) (apitype.EnvironmentDiagnostics, error)
+
+	// DeleteEnvironmentWithProject deletes a named environment unconditionally, with no etag guard
+	// against concurrent revisions.
+	DeleteEnvironmentWithProject(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+	) error
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the

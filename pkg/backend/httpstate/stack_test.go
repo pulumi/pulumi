@@ -17,6 +17,8 @@ package httpstate
 import (
 	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -25,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCloudBackendReference(t *testing.T) {
@@ -114,4 +117,40 @@ func TestCloudBackendReference(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("%s/%s/%s", defaultOrg, otherProject.Name, stackName), stack)
 		})
 	})
+}
+
+func TestCloudStackRemoveRemoteConfig(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		gotMethod = req.Method
+		gotPath = req.URL.Path
+		rw.WriteHeader(http.StatusOK)
+		_, _ = rw.Write([]byte("{}"))
+	}))
+	defer server.Close()
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b := &cloudBackend{
+		client: client.NewClient(server.URL, "", true, sink),
+		d:      sink,
+	}
+	ref := cloudBackendReference{
+		owner:   "owner",
+		project: "project",
+		name:    tokens.MustParseStackName("stack"),
+		b:       b,
+	}
+	env := "project/stack"
+	s := &cloudStack{ref: ref, b: b, escConfigEnv: &env}
+
+	require.True(t, s.ConfigLocation().IsRemote)
+
+	err := s.RemoveRemoteConfig(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, http.MethodDelete, gotMethod)
+	assert.Equal(t, "/api/stacks/owner/project/stack/config", gotPath)
+
+	assert.False(t, s.ConfigLocation().IsRemote)
 }

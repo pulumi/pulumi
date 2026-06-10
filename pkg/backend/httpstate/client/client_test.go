@@ -1738,3 +1738,27 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		}
 	})
 }
+
+func TestDeleteStackConfig(t *testing.T) {
+	t.Parallel()
+
+	var gotMethod, gotPath string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		gotMethod = req.Method
+		gotPath = req.URL.Path
+		return "{}"
+	})
+	defer server.Close()
+	client := newMockClient(server)
+
+	identifier := StackIdentifier{
+		Owner:   "owner",
+		Project: "project",
+		Stack:   tokens.MustParseStackName("stack"),
+	}
+
+	err := client.DeleteStackConfig(t.Context(), identifier)
+	require.NoError(t, err)
+	assert.Equal(t, http.MethodDelete, gotMethod)
+	assert.Equal(t, "/api/stacks/owner/project/stack/config", gotPath)
+}

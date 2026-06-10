@@ -2367,6 +2367,12 @@ func (pc *Client) UpdateStackConfig(
 	return pc.restCall(ctx, "PUT", getStackPath(stack, "config"), nil, config, nil)
 }
 
+// DeleteStackConfig unlinks the stack from its remote (ESC-backed) configuration; it does not delete
+// the backing environment.
+func (pc *Client) DeleteStackConfig(ctx context.Context, stack StackIdentifier) error {
+	return pc.restCall(ctx, "DELETE", getStackPath(stack, "config"), nil, nil, nil)
+}
+
 func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
 	deployment apitype.DeploymentSettings,
 ) error {

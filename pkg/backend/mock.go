@@ -561,6 +561,13 @@ type MockEnvironmentsBackend struct {
 		yaml []byte,
 		etag string,
 	) (apitype.EnvironmentDiagnostics, error)
+
+	DeleteEnvironmentWithProjectF func(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+	) error
 }
 
 func (be *MockEnvironmentsBackend) CreateEnvironment(
@@ -627,6 +634,18 @@ func (be *MockEnvironmentsBackend) UpdateEnvironmentWithProject(
 	panic("not implemented")
 }
 
+func (be *MockEnvironmentsBackend) DeleteEnvironmentWithProject(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+) error {
+	if be.DeleteEnvironmentWithProjectF != nil {
+		return be.DeleteEnvironmentWithProjectF(ctx, org, projectName, envName)
+	}
+	panic("not implemented")
+}
+
 //
 // Mock stack.
 //
@@ -636,6 +655,7 @@ type MockStack struct {
 	ConfigLocationF       func() StackConfigLocation
 	LoadRemoteF           func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
 	SaveRemoteF           func(ctx context.Context, project *workspace.ProjectStack) error
+	RemoveRemoteF         func(ctx context.Context) error
 	OrgNameF              func() string
 	ConfigF               func() config.Map
 	SnapshotF             func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
@@ -673,6 +693,13 @@ func (ms *MockStack) SaveRemoteConfig(ctx context.Context, project *workspace.Pr
 		return ms.SaveRemoteF(ctx, project)
 	}
 	panic("not implemented: MockStack.SaveRemote")
+}
+
+func (ms *MockStack) RemoveRemoteConfig(ctx context.Context) error {
+	if ms.RemoveRemoteF != nil {
+		return ms.RemoveRemoteF(ctx)
+	}
+	panic("not implemented: MockStack.RemoveRemote")
 }
 
 func (ms *MockStack) OrgName() string {
