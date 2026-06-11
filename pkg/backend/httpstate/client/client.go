@@ -2658,8 +2658,7 @@ type CreateNeoTaskOptions struct {
 	ApprovalMode      NeoApprovalMode
 	PermissionMode    NeoPermissionMode
 	PlanMode          bool
-	// EnabledIntegrations is forwarded verbatim onto NeoTaskRequest; nil inherits the
-	// org's enabled integrations. See that field for the three-state semantics.
+	// Forwarded onto NeoTaskRequest.EnabledIntegrations; nil inherits the org's enabled integrations.
 	EnabledIntegrations *[]string
 }
 

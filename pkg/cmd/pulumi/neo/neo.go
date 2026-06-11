@@ -191,8 +191,7 @@ func NewNeoCmd() *cobra.Command {
 			"stdout, and exit. Intended for use with other AI agents and scripts.")
 	cmd.Flags().BoolVar(&disableIntegrations, "disable-integrations", false,
 		"Run the Neo task with no integration credentials, ignoring any org-enabled "+
-			"integrations. Useful for debugging, reduced latency, or working around a "+
-			"misconfigured integration.")
+			"integrations.")
 
 	return cmd
 }
@@ -229,8 +228,7 @@ func runNeo(
 	printMode bool,
 	disableIntegrations bool,
 ) error {
-	// A non-nil empty slice sends `[]` to opt the task out of every integration; nil lets
-	// the server inherit the org's enabled integrations.
+	// nil lets the server inherit the org's enabled integrations; the empty slice opts out.
 	var enabledIntegrations *[]string
 	if disableIntegrations {
 		enabledIntegrations = &[]string{}
