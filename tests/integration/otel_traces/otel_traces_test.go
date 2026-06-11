@@ -18,9 +18,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -30,6 +28,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 type traceSpan struct {
@@ -43,18 +42,10 @@ type traceSpan struct {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestOtelTraces(t *testing.T) {
-	// Build the testprovider as a standalone binary so the engine launches it directly in ExecPlugin rather than
-	// through RunPlugin. We currently can't gracefully shut down a RunPlugin process and wait for it to finish, so
-	// providers launched that way don't get a chance to flush their OTEL traces before being killed.
-	binDir := t.TempDir()
-	binaryName := "pulumi-resource-testprovider"
-	if runtime.GOOS == "windows" {
-		binaryName += ".exe"
-	}
-	buildCmd := exec.Command("go", "build", "-o", filepath.Join(binDir, binaryName), ".") //nolint:gosec
-	buildCmd.Dir = filepath.Join("..", "..", "testprovider")
-	out, err := buildCmd.CombinedOutput()
-	require.NoError(t, err, "failed to build testprovider: %s", out)
+	// Use the prebuilt standalone testprovider binary so the engine launches it directly in ExecPlugin rather
+	// than through RunPlugin. We currently can't gracefully shut down a RunPlugin process and wait for it to
+	// finish, so providers launched that way don't get a chance to flush their OTEL traces before being killed.
+	binDir := testutil.TestProviderDir(t)
 
 	traceDir := t.TempDir()
 	tracePath, err := filepath.Abs(filepath.Join(traceDir, "traces-{command}.json"))

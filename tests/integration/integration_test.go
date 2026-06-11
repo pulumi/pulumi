@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 // TestStackTagValidation verifies various error scenarios related to stack names and tags.
@@ -1024,7 +1025,7 @@ func TestParentRename_issue13179(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		// Only run up:
 		SkipRefresh: true,
