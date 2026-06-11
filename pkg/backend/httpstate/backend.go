@@ -541,10 +541,11 @@ func validateStoredAccount(
 	organizations := account.Organizations
 	tokenInfo := account.TokenInformation
 	now := time.Now()
-	if tokenInfo != nil && tokenInfo.ExpiresAt != nil && tokenInfo.ExpiresAt.Before(now) {
+	expired := tokenInfo != nil && tokenInfo.ExpiresAt != nil && tokenInfo.ExpiresAt.Before(now)
+	if expired && account.RefreshToken == "" {
 		// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 		valid = false
-	} else if username == "" || account.LastValidatedAt.Add(1*time.Hour).Before(now) {
+	} else if username == "" || account.LastValidatedAt.Add(1*time.Hour).Before(now) || expired {
 		// If the username has not yet been populated, fetch it now.
 		// Also, we do not store the expiration time of the backend access token if oidc token exchange is not used.
 		// So we need to check periodically if it is still valid.
