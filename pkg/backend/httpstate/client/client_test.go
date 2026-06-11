@@ -1919,7 +1919,7 @@ func TestRefreshableAPIAccessToken(t *testing.T) {
 			},
 		}
 
-		require.NoError(t, tok.Refresh(t.Context()))
+		require.NoError(t, tok.Refresh(t.Context(), "stale-access"))
 
 		got, err := tok.Get(t.Context())
 		require.NoError(t, err)
@@ -1940,14 +1940,14 @@ func TestRefreshableAPIAccessToken(t *testing.T) {
 			},
 			writeback: func(at string, _ time.Time, rt string) error { return nil },
 		}
-		require.NoError(t, tok.Refresh(t.Context()))
+		require.NoError(t, tok.Refresh(t.Context(), "stale-access"))
 
 		var seenSecondRefreshToken string
 		tok.refresh = func(_ context.Context, rt string) (string, time.Time, string, error) {
 			seenSecondRefreshToken = rt
 			return "newer-access", time.Time{}, "", nil
 		}
-		require.NoError(t, tok.Refresh(t.Context()))
+		require.NoError(t, tok.Refresh(t.Context(), "new-access"))
 		assert.Equal(t, "stable-refresh", seenSecondRefreshToken,
 			"the wrapper continues to send the original refresh token across calls")
 	})
@@ -1968,7 +1968,7 @@ func TestRefreshableAPIAccessToken(t *testing.T) {
 			},
 		}
 
-		err := tok.Refresh(t.Context())
+		err := tok.Refresh(t.Context(), "original-access")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid_grant")
 		assert.False(t, writebackCalled, "writeback must not fire when the refresh attempt fails")
@@ -1990,7 +1990,7 @@ func TestRefreshableAPIAccessToken(t *testing.T) {
 			writeback: func(_ string, _ time.Time, _ string) error { return errors.New("disk full") },
 		}
 
-		err := tok.Refresh(t.Context())
+		err := tok.Refresh(t.Context(), "original-access")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "disk full")
 	})

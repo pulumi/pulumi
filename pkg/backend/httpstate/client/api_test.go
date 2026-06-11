@@ -450,6 +450,66 @@ func TestCall_RefreshOn401(t *testing.T) {
 		assert.Equal(t, int32(2), calls.Load(), "retry once, then surface")
 		assert.Equal(t, int32(1), refreshCalls.Load(), "refresh fires only once even if retry still 401s")
 	})
+
+	t.Run("concurrent 401s dedupe to a single refresh-grant exchange", func(t *testing.T) {
+		t.Parallel()
+
+		// A Pulumi operation can fan out parallel API calls, so an expired access token may
+		// come back as N concurrent 401s. The wrapper must dedupe into a single refresh
+		// exchange rather than N.
+		const N = 5
+
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			if req.Header.Get("Authorization") == "token fresh" {
+				return &http.Response{
+					StatusCode: 200, Status: "200 OK",
+					Header: http.Header{}, Body: io.NopCloser(bytes.NewReader([]byte(`{}`))),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: 401, Status: "401 Unauthorized",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+			}, nil
+		})
+
+		var refreshCalls atomic.Int32
+		firstRefresh := make(chan struct{})
+		releaseRefresh := make(chan struct{})
+
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale",
+			refreshToken: "rt",
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				if refreshCalls.Add(1) == 1 {
+					close(firstRefresh)
+					<-releaseRefresh
+				}
+				return "fresh", time.Time{}, "rt", nil
+			},
+			writeback: func(_ string, _ time.Time, _ string) error { return nil },
+		}
+
+		results := make(chan error, N)
+		for range N {
+			go func() {
+				results <- rest.Call(t.Context(), sink,
+					"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
+			}()
+		}
+
+		// Once the first goroutine is in refresh, give the rest a moment to queue on the wrapper's
+		// mutex — no Go primitive surfaces "goroutine blocked on Mutex."
+		<-firstRefresh
+		time.Sleep(100 * time.Millisecond)
+		close(releaseRefresh)
+
+		for range N {
+			require.NoError(t, <-results,
+				"all concurrent callers should authenticate after the deduped refresh")
+		}
+		assert.Equal(t, int32(1), refreshCalls.Load(),
+			"concurrent 401s must dedupe to a single /api/oauth/token call")
+	})
 }
 
 //nolint:paralleltest //  subtests mutate the global otel tracer provider.

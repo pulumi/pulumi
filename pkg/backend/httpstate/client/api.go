@@ -173,9 +173,11 @@ type accessToken interface {
 // refreshable is the opt-in interface for access tokens that can renew themselves when the server
 // rejects the current value with 401. defaultRESTClient.Call type-asserts on this after a 401 and,
 // if the assertion succeeds, calls Refresh once and retries the request before surfacing
-// LoginRequiredError.
+// LoginRequiredError. prevAccessToken is the access token the caller sent on the failed request;
+// if it no longer matches the wrapper's current token, another caller has already refreshed and
+// Refresh returns nil without contacting the server.
 type refreshable interface {
-	Refresh(ctx context.Context) error
+	Refresh(ctx context.Context, prevAccessToken string) error
 }
 
 type httpCallOptions struct {
@@ -248,9 +250,14 @@ func (t *refreshableAPIAccessToken) Get(_ context.Context) (string, error) {
 	return t.accessToken, nil
 }
 
-func (t *refreshableAPIAccessToken) Refresh(ctx context.Context) error {
+func (t *refreshableAPIAccessToken) Refresh(ctx context.Context, prevAccessToken string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	// If another caller already refreshed while we were queued for the lock, the in-memory
+	// access token has advanced past the one we sent — bail without burning another grant.
+	if t.accessToken != prevAccessToken {
+		return nil
+	}
 	newAT, expiresAt, newRT, err := t.refresh(ctx, t.refreshToken)
 	if err != nil {
 		return err
@@ -684,12 +691,15 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 
 	// Make API call. If the access token can refresh itself and the server rejects it with
 	// LoginRequiredError, refresh once and retry — this lets agent CLIs survive routine access-token
-	// expiry without bouncing back through a human-driven login.
+	// expiry without bouncing back through a human-driven login. Snapshot the access token before
+	// the send so we can tell Refresh which one we used; concurrent 401s thereby dedupe to one
+	// refresh instead of N.
+	sentAccessToken, _ := tok.Get(ctx)
 	url, resp, err := pulumiAPICall(
 		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil && errors.Is(err, backenderr.LoginRequiredError{}) {
 		if r, ok := tok.(refreshable); ok {
-			if refreshErr := r.Refresh(ctx); refreshErr == nil {
+			if refreshErr := r.Refresh(ctx, sentAccessToken); refreshErr == nil {
 				url, resp, err = pulumiAPICall(
 					ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
 			}
