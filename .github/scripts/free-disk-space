@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+# Frees disk space on Ubuntu runners without blocking the job.
+#
+# This replaces the tgummerer/free-disk-space action (added in #17470 because
+# test jobs ran out of disk; azure-cli kept in #23470). It performs the same
+# cleanup, but everything later steps don't depend on runs in the background
+# so job setup proceeds concurrently. Callers must run `free-disk-space wait`
+# before any step that needs the space (or quiet I/O, e.g. performance tests).
+#
+# Usage:
+#   free-disk-space start   # quick synchronous cleanup, then background the rest
+#   free-disk-space wait    # block until the background cleanup finishes
+#
+# Cleanup is best-effort: `wait` reports the log but never fails the job.
+
+set -uo pipefail
+
+LOG_FILE="${RUNNER_TEMP:-/tmp}/free-disk-space.log"
+PID_FILE="${RUNNER_TEMP:-/tmp}/free-disk-space.pid"
+
+background() {
+  # Android SDK (~10GiB) and Haskell (~3.6GiB).
+  sudo rm -rf /usr/local/lib/android
+  sudo rm -rf /opt/ghc /usr/local/.ghcup
+
+  # Pre-fetched Docker images (~1.9GiB); tests pull what they need.
+  sudo docker image prune --all --force
+
+  # Large apt packages (~3.9GiB). This mirrors the package list of
+  # tgummerer/free-disk-space@865f5375 minus azure-cli (tests need it) and the
+  # aspnetcore/dotnet patterns (/usr/share/dotnet is removed synchronously in
+  # `start`, and no dotnet apt packages exist on the runner image).
+  packages=$(dpkg-query -W -f '${binary:Package}\n' \
+    | grep -E 'firefox|google-chrome-stable|libgl1-mesa-dri|mono-devel|powershell|google-cloud-sdk|google-cloud-cli|(php|^(llvm|mongodb|mysql)-).*$' \
+    | sort -u || true)
+  if [ -n "$packages" ]; then
+    # shellcheck disable=SC2086 # word splitting of the package list is intended
+    sudo apt-get remove -y --fix-missing $packages || echo "apt-get remove failed; proceeding"
+  fi
+  sudo apt-get autoremove -y || echo "apt-get autoremove failed; proceeding"
+  sudo apt-get clean || echo "apt-get clean failed; proceeding"
+
+  echo "Disk space after background cleanup:"
+  df -h /
+}
+
+case "${1:-}" in
+  start)
+    echo "Disk space before cleanup:"
+    df -h /
+    # actions/setup-dotnet installs into /usr/share/dotnet later in the job;
+    # remove it synchronously (~5GiB) so the cleanup cannot race the install.
+    sudo rm -rf /usr/share/dotnet
+    nohup "$0" background >"$LOG_FILE" 2>&1 &
+    echo "$!" >"$PID_FILE"
+    ;;
+  background)
+    background
+    ;;
+  wait)
+    if [ -f "$PID_FILE" ]; then
+      tail --pid="$(cat "$PID_FILE")" -f /dev/null
+      cat "$LOG_FILE"
+    fi
+    ;;
+  *)
+    echo "usage: $0 {start|wait}" >&2
+    exit 1
+    ;;
+esac
