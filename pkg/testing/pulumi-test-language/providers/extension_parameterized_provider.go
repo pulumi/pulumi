@@ -52,7 +52,7 @@ func (p *ExtensionParameterizedProvider) snapshot() (string, string, []byte) {
 
 const (
 	extensionBaseName    = "extbase"
-	extensionBaseVersion = "42.0.0"
+	extensionBaseVersion = "43.0.0"
 )
 
 var _ plugin.Provider = (*ExtensionParameterizedProvider)(nil)

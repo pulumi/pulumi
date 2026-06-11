@@ -3,7 +3,7 @@
 // schema crd2pulumi emits.
 package {
     baseProviderName = "extbase"
-    baseProviderVersion = "42.0.0"
+    baseProviderVersion = "43.0.0"
     parameterization {
         name = "myext"
         version = "2.0.0"
