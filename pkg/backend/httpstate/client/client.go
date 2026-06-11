@@ -645,13 +645,10 @@ func (pc *Client) ExchangeOidcToken(
 }
 
 // RefreshAccessToken exchanges a Pulumi-issued refresh token for a fresh access token via
-// /api/oauth/token (grant_type=refresh_token, RFC 6749 §6). The server resolves which user the
-// refresh token is currently bound to and mints a short-lived OBO access token scoped to that
-// user's organization. Returns the parsed token response, including the refresh_token to use on
-// subsequent calls (Phase 1: the same value the caller presented; rotation may come later).
-//
-// The caller is responsible for writing the response's AccessToken back into credentials.json
-// when the exchange succeeds.
+// /api/oauth/token (grant_type=refresh_token, RFC 6749 §6). Returns the parsed token response;
+// the response's RefreshToken is the value to use on subsequent calls (the server may or may
+// not rotate it). The caller is responsible for writing the response's AccessToken back into
+// credentials.json when the exchange succeeds.
 func (pc *Client) RefreshAccessToken(
 	ctx context.Context,
 	refreshToken string,

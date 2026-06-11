@@ -62,14 +62,14 @@ func getAccountAt(path, key string) (Account, error) {
 	}
 
 	if account, ok := creds.Accounts[key]; ok {
-		account.source = path
+		account.sourcePath = path
 		return account, nil
 	}
 	token, ok := creds.AccessTokens[key]
 	if !ok {
 		return Account{}, nil
 	}
-	return Account{AccessToken: token, source: path}, nil
+	return Account{AccessToken: token, sourcePath: path}, nil
 }
 
 // GetAccountWithAgentFallback returns an account from default credentials, or
@@ -199,11 +199,11 @@ type Account struct {
 	// Information about the token used to authenticate.
 	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
 
-	// source is the credentials file this account was loaded from. Set by the loaders
+	// sourcePath is the credentials file this account was loaded from. Set by the loaders
 	// (GetAccount, GetAgentAccount, GetAccountWithAgentFallback); empty for accounts constructed
 	// in memory (env-var tokens before persistence, test literals, fresh-login pre-persist).
 	// Used by Save to persist credential refreshes back to the file the account came from.
-	source string
+	sourcePath string
 }
 
 // HasCredential reports whether this account carries anything the CLI can use to authenticate —
@@ -233,10 +233,10 @@ func (a *Account) SetCredentials(accessToken string, accessTokenExpiresAt time.T
 // the account has no known source (constructed in memory rather than loaded) — callers in that
 // case should use StoreAccount / StoreAgentAccount with an explicit destination.
 func (a Account) Save(key string, current bool) error {
-	if a.source == "" {
+	if a.sourcePath == "" {
 		return errors.New("cannot Save an account that was not loaded from a credentials file")
 	}
-	return storeAccountAt(a.source, key, a, current)
+	return storeAccountAt(a.sourcePath, key, a, current)
 }
 
 // Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
@@ -382,9 +382,14 @@ func readCredentialsFile(credsFile string) (Credentials, error) {
 			"or delete invalid credentials file: '%s': %w", credsFile, err)
 	}
 
-	secrets := slice.Prealloc[string](len(creds.AccessTokens))
+	secrets := slice.Prealloc[string](len(creds.AccessTokens) + len(creds.Accounts))
 	for _, v := range creds.AccessTokens {
 		secrets = append(secrets, v)
+	}
+	for _, account := range creds.Accounts {
+		if account.RefreshToken != "" {
+			secrets = append(secrets, account.RefreshToken)
+		}
 	}
 
 	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[credential]"))
