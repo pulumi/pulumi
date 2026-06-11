@@ -135,6 +135,7 @@ Flags:
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
+      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
@@ -182,6 +183,7 @@ Flags:
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
+      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
@@ -221,7 +223,7 @@ func TestDoCmdResourceCreate(t *testing.T) {
 name = "example"
 size = 2
 `)
-	cmd.SetArgs([]string{"azure:index:myResource", "create", "--yes", "--input-file", inputFile})
+	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "--yes", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -281,6 +283,7 @@ func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
 
 	inputFile := writeHCLFile(t, "inputs.pcl", `name = "example"`)
 	cmd.SetArgs([]string{
+		"--stateless",
 		"azure:index:myResource", "create",
 		"--yes",
 		"--input-file", inputFile,
@@ -343,7 +346,7 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 			},
 		})
-		cmd.SetArgs([]string{"azure:index:myResource", "delete", "res-1", "--yes"})
+		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes"})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.True(t, deleted)
@@ -409,7 +412,7 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 name = "new"
 enabled = true
 `)
-		cmd.SetArgs([]string{"azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.Equal(t, []string{"read", "check", "diff", "update"}, calls)
@@ -458,7 +461,7 @@ enabled = true
 		})
 
 		inputFile := writeHCLFile(t, "patch.pcl", `enabled = true`)
-		cmd.SetArgs([]string{"azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"id":"res-1","name":"existing","enabled":true}`, stdout.String())
@@ -558,9 +561,9 @@ func TestDoCmdResourceNonInteractiveRequiresYes(t *testing.T) {
 		name string
 		args []string
 	}{
-		{"create", []string{"azure:index:myResource", "create"}},
-		{"patch", []string{"azure:index:myResource", "patch", "res-1"}},
-		{"delete", []string{"azure:index:myResource", "delete", "res-1"}},
+		{"create", []string{"--stateless", "azure:index:myResource", "create"}},
+		{"patch", []string{"--stateless", "azure:index:myResource", "patch", "res-1"}},
+		{"delete", []string{"--stateless", "azure:index:myResource", "delete", "res-1"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -609,7 +612,7 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "inputs.pcl", `name = "example"`)
-		cmd.SetArgs([]string{"azure:index:myResource", "create", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "--yes", "--input-file", inputFile})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), "This will create azure:index:myResource")
 		assert.NotContains(t, stdout.String(), "This will create")
@@ -644,7 +647,7 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "patch.pcl", `name = "new"`)
-		cmd.SetArgs([]string{"azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), "This will update azure:index:myResource")
 		assert.Contains(t, stderr.String(), "~ name")
@@ -661,7 +664,7 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 				},
 			},
 		})
-		cmd.SetArgs([]string{"azure:index:myResource", "delete", "res-1", "--yes"})
+		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes"})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), `This will delete azure:index:myResource "res-1"`)
 		assert.Empty(t, stdout.String())

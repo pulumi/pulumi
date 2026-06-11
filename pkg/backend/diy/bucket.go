@@ -18,11 +18,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
 )
@@ -62,7 +64,48 @@ func retryOp(op func() error) error {
 }
 
 func (b *wrappedBucket) Copy(ctx context.Context, dstKey, srcKey string, opts *blob.CopyOptions) (err error) {
-	return b.bucket.Copy(ctx, filepath.ToSlash(dstKey), filepath.ToSlash(srcKey), opts)
+	var optsCopy blob.CopyOptions
+	if opts != nil {
+		optsCopy = *opts
+	}
+	beforeCopy := optsCopy.BeforeCopy
+	optsCopy.BeforeCopy = func(asFunc func(any) bool) error {
+		var input *awss3.CopyObjectInput
+		if asFunc(&input) {
+			fixupS3CopySource(input)
+		}
+		if beforeCopy != nil {
+			return beforeCopy(asFunc)
+		}
+		return nil
+	}
+	return b.bucket.Copy(ctx, filepath.ToSlash(dstKey), filepath.ToSlash(srcKey), &optsCopy)
+}
+
+// fixupS3CopySource rewrites the copy source gocloud.dev computes for S3
+// CopyObject calls. gocloud.dev v0.46+ percent-encodes the whole
+// "<bucket>/<key>" string, turning the "/" separators into "%2F". AWS accepts
+// that form, but stricter S3-compatible servers such as NetApp StorageGRID
+// reject it (https://github.com/pulumi/pulumi/issues/23478). Escape each path
+// segment individually and keep literal "/" separators, which both AWS and
+// S3-compatible servers accept.
+func fixupS3CopySource(input *awss3.CopyObjectInput) {
+	if input == nil || input.CopySource == nil {
+		return
+	}
+	copySource, err := url.QueryUnescape(*input.CopySource)
+	if err != nil {
+		// Not the encoding we expected; leave the value alone.
+		return
+	}
+	segments := strings.Split(copySource, "/")
+	for i, segment := range segments {
+		// PathEscape leaves "+" alone, but S3 servers decode the copy source
+		// as URL-encoded where "+" can mean a space, so escape it explicitly.
+		segments[i] = strings.ReplaceAll(url.PathEscape(segment), "+", "%2B")
+	}
+	escaped := strings.Join(segments, "/")
+	input.CopySource = &escaped
 }
 
 func (b *wrappedBucket) Delete(ctx context.Context, key string) (err error) {

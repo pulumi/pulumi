@@ -123,6 +123,9 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 		Short: "Create a resource",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !pc.stateless {
+				return errStatefulNotImplemented("create")
+			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
@@ -216,6 +219,9 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 		Short: "Patch a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !pc.stateless {
+				return errStatefulNotImplemented("patch")
+			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
@@ -309,6 +315,9 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 		Short: "Delete a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !pc.stateless {
+				return errStatefulNotImplemented("delete")
+			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
@@ -490,6 +499,14 @@ func (pc *packageCommand) printListResults(cmd *cobra.Command, results []plugin.
 	}
 	fmt.Fprint(cmd.OutOrStdout(), output)
 	return nil
+}
+
+// errStatefulNotImplemented is returned from create/patch/delete when the user did not pass
+// --stateless. The stateful (engine-driven) implementation of these operations is the planned
+// default but isn't built yet, so for now the only working path is opting in to the stateless one.
+func errStatefulNotImplemented(op string) error {
+	return fmt.Errorf("`%s` is not yet implemented in stateful mode; pass --stateless to use the "+
+		"direct-provider implementation", op)
 }
 
 func formatCreateSummary(res *schema.Resource, inputs resource.PropertyMap, showSecrets bool) (string, error) {

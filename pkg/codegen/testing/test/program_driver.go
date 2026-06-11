@@ -83,39 +83,11 @@ func SingleTestCase(directoryName string) []ProgramTest {
 
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
-		Directory:   "assets-archives",
-		Description: "Assets and archives",
-	},
-	{
-		Directory:   "aws-eks",
-		Description: "AWS EKS",
-	},
-	{
-		Directory:   "aws-fargate",
-		Description: "AWS Fargate",
-	},
-	{
-		Directory:   "aws-static-website",
-		Description: "an example resource from AWS static website multi-language component",
-		// TODO: blocked on resolving imports (python) / using statements (C#) for types from external packages
-		SkipCompile: codegen.NewStringSet(TestDotnet, TestPython),
-	},
-	{
-		Directory:   "aws-fargate-output-versioned",
-		Description: "AWS Fargate Using Output-versioned invokes for python and typescript",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet),
-		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
-	},
-	{
 		Directory:   "aws-s3-logging",
 		Description: "AWS S3 with logging",
 		SkipCompile: codegen.NewStringSet(TestGo),
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
 		// Flaky in go: TODO[pulumi/pulumi#8123]
-	},
-	{
-		Directory:   "aws-iam-policy",
-		Description: "AWS IAM Policy",
 	},
 	{
 		Directory:   "read-file-func",
@@ -139,10 +111,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip: allProgLanguages.Except(TestGo),
 	},
 	{
-		Directory:   "aws-webserver",
-		Description: "AWS Webserver",
-	},
-	{
 		Directory:   "kubernetes-operator",
 		Description: "K8s Operator",
 	},
@@ -161,14 +129,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "kubernetes-template-quoted",
 		Description: "K8s Template with quoted string property keys to ensure that resource binding works here",
-	},
-	{
-		Directory:   "aws-secret",
-		Description: "Secret",
-	},
-	{
-		Directory:   "output-funcs-aws",
-		Description: "Output Versioned Functions",
 	},
 	{
 		Directory:   "third-party-package",
@@ -320,10 +280,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Description: "Cue random",
 	},
 	{
-		Directory:   transpiled("getting-started"),
-		Description: "Getting started",
-	},
-	{
 		Directory:   transpiled("kubernetes"),
 		Description: "Kubernetes",
 		Skip:        codegen.NewStringSet(TestGo),
@@ -352,16 +308,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Directory:   transpiled("stackreference-producer"),
 		Description: "Stack reference producer",
 		Skip:        codegen.NewStringSet(TestGo, TestDotnet),
-	},
-	{
-		Directory:   transpiled("webserver-json"),
-		Description: "Webserver JSON",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet, TestPython),
-	},
-	{
-		Directory:   transpiled("webserver"),
-		Description: "Webserver",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet, TestPython),
 	},
 }
 

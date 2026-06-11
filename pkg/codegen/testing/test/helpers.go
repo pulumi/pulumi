@@ -327,8 +327,7 @@ type SchemaVersion = string
 // Schemas are downloaded in the makefile, and the versions specified here
 // should be in sync with the makefile.
 const (
-	AwsSchema              SchemaVersion = "4.26.0"
-	KubernetesSchema       SchemaVersion = "3.7.0"
-	RandomSchema           SchemaVersion = "4.11.2"
-	AwsStaticWebsiteSchema SchemaVersion = "0.4.0"
+	AwsSchema        SchemaVersion = "4.26.0"
+	KubernetesSchema SchemaVersion = "3.7.0"
+	RandomSchema     SchemaVersion = "4.11.2"
 )

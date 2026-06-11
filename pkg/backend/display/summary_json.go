@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -40,14 +41,68 @@ type SummaryJSON struct {
 	Duration time.Duration `json:"duration"`
 	// Summary is the count per operation kind (create, update, etc).
 	Summary display.ResourceChanges `json:"summary,omitempty"`
+	// Resources lists each resource the operation acted on, with its planned
+	// (or performed) operation. Unchanged (`same`) resources are omitted unless
+	// the caller passed `--show-sames`, mirroring the human-readable display.
+	Resources []ResourceJSON `json:"resources,omitempty"`
+}
+
+// ResourceJSON is the per-resource entry that appears in SummaryJSON.Resources.
+// It is intentionally compact: callers that need full diffs / property values
+// should use `--json` (the streaming event format) instead.
+type ResourceJSON struct {
+	// URN is the canonical, globally-unique identifier of the resource.
+	URN string `json:"urn"`
+	// Type is the resource type token (e.g. "aws:s3/bucket:Bucket").
+	Type string `json:"type"`
+	// Name is the resource's program-assigned name.
+	Name string `json:"name"`
+	// Op is the planned (preview) or performed (up/destroy/refresh) operation.
+	Op apitype.OpType `json:"op"`
+	// Parent is the URN of this resource's parent, if any.
+	Parent string `json:"parent,omitempty"`
 }
 
 // summaryJSONFromEvent extracts the summary JSON shape from a SummaryEventPayload.
+// The Resources field is populated separately by the tap as resource events flow
+// past, so this helper only fills the run-level fields.
 func summaryJSONFromEvent(p engine.SummaryEventPayload) SummaryJSON {
 	return SummaryJSON{
 		Result:   p.Result,
 		Duration: p.Duration,
 		Summary:  p.ResourceChanges,
+	}
+}
+
+// resourceJSONFromEvent converts a per-resource pre-event into the summary's
+// per-resource JSON shape. Returns nil when the event should be skipped:
+// internal events never surface to users, and `same` (unchanged) resources are
+// omitted unless the display is configured to show them.
+func resourceJSONFromEvent(p engine.ResourcePreEventPayload, showSames bool) *ResourceJSON {
+	if p.Internal {
+		return nil
+	}
+	if p.Metadata.Op == deploy.OpSame && !showSames {
+		return nil
+	}
+
+	// Parent lives on the post-step state when there is one, and falls back to
+	// the pre-step state for deletes (where New is nil).
+	var parent string
+	switch {
+	case p.Metadata.New != nil:
+		parent = string(p.Metadata.New.Parent)
+	case p.Metadata.Old != nil:
+		parent = string(p.Metadata.Old.Parent)
+	}
+
+	urn := p.Metadata.URN
+	return &ResourceJSON{
+		URN:    string(urn),
+		Type:   string(urn.Type()),
+		Name:   urn.Name(),
+		Op:     apitype.OpType(p.Metadata.Op),
+		Parent: parent,
 	}
 }
 
@@ -65,8 +120,9 @@ func writeSummaryJSON(w io.Writer, s SummaryJSON) error {
 }
 
 // tapSummaryJSON returns a copy of the input channel that, in addition to
-// forwarding every event, watches for a SummaryEvent and writes its summary
-// to stdout as a single-line JSON object.
+// forwarding every event, watches for per-resource events to build up a list
+// of affected resources, and for the SummaryEvent to flush the combined
+// summary JSON to stdout as a single line.
 //
 // The tap is only attached when Options.SummaryJSON is set; the rest of the
 // display pipeline is otherwise unaffected.
@@ -82,10 +138,20 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 	}
 	go func() {
 		defer close(out)
+		var resources []ResourceJSON
 		for e := range in {
-			if e.Type == engine.SummaryEvent {
+			switch e.Type { //nolint:exhaustive // we only care about two event types here
+			case engine.ResourcePreEvent:
+				if payload, ok := e.Payload().(engine.ResourcePreEventPayload); ok {
+					if r := resourceJSONFromEvent(payload, opts.ShowSameResources); r != nil {
+						resources = append(resources, *r)
+					}
+				}
+			case engine.SummaryEvent:
 				if payload, ok := e.Payload().(engine.SummaryEventPayload); ok {
-					if err := writeSummaryJSON(stdout, summaryJSONFromEvent(payload)); err != nil {
+					s := summaryJSONFromEvent(payload)
+					s.Resources = resources
+					if err := writeSummaryJSON(stdout, s); err != nil {
 						fmt.Fprintf(stderr, "warning: failed to write summary JSON: %v\n", err)
 					}
 				}
