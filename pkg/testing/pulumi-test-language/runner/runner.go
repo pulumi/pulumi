@@ -691,8 +691,6 @@ func hasDependency(pkg *schema.Package, dep string) bool {
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (*testingrpc.RunLanguageTestResponse, error) {
-	// See the runSlots field comment: cap concurrent executions at the number
-	// of cores.
 	eng.runSlots <- struct{}{}
 	defer func() { <-eng.runSlots }()
 

@@ -18,11 +18,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
 // Most conformance test projects share a small number of distinct dependency
@@ -82,7 +82,7 @@ func restoreInstallCache(cacheDir, projectDir string) error {
 		if _, err := os.Lstat(src); err != nil {
 			continue
 		}
-		if err := copyFile(src, filepath.Join(projectDir, name)); err != nil {
+		if err := fsutil.CopyFile(filepath.Join(projectDir, name), src, nil); err != nil {
 			return err
 		}
 	}
@@ -109,7 +109,7 @@ func populateInstallCache(projectDir, cacheDir string) error {
 		if _, err := os.Lstat(src); err != nil {
 			continue
 		}
-		if err := copyFile(src, filepath.Join(staging, name)); err != nil {
+		if err := fsutil.CopyFile(filepath.Join(staging, name), src, nil); err != nil {
 			contract.IgnoreError(os.RemoveAll(staging))
 			return err
 		}
@@ -119,25 +119,4 @@ func populateInstallCache(projectDir, cacheDir string) error {
 		return err
 	}
 	return os.Symlink(filepath.Join(cacheDir, "node_modules"), filepath.Join(projectDir, "node_modules"))
-}
-
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	info, err := in.Stat()
-	if err != nil {
-		return err
-	}
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode().Perm())
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(out, in); err != nil {
-		contract.IgnoreClose(out)
-		return err
-	}
-	return out.Close()
 }
