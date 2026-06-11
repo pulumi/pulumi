@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
@@ -120,4 +121,38 @@ runtime: nodejs`)
 	stdout, _ := e.RunCommand("pulumi", "logs", "decrypt", logFile)
 
 	assert.Contains(t, stdout, "Pulumi")
+}
+
+func TestFormatLogChoicesAligns(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	entries := []logEntry{
+		{path: "/p/dev-1.log", stack: "dev", timestamp: now.Add(-2 * time.Hour), updateID: "abc"},
+		{path: "/p/staging-1.log", stack: "staging", timestamp: now.Add(-3 * time.Hour), updateID: "def-update-1"},
+		{path: "/p/cli-1.log", stack: "", cliLevel: true, timestamp: now.Add(-4 * time.Hour), updateID: "1234"},
+	}
+
+	options, optionMap := formatLogChoices(entries)
+	require.Len(t, options, 3)
+	require.Len(t, optionMap, 3)
+
+	// Stack column should be left-padded to the widest stack name.
+	for _, o := range options {
+		assert.True(t, strings.HasPrefix(o, "dev    ") ||
+			strings.HasPrefix(o, "staging") ||
+			strings.HasPrefix(o, "(cli)  "),
+			"unexpected option layout: %q", o)
+	}
+
+	// CLI-level entries should render as "(cli)".
+	var cliOption string
+	for _, o := range options {
+		if strings.HasPrefix(o, "(cli)") {
+			cliOption = o
+		}
+	}
+	require.NotEmpty(t, cliOption)
+	assert.Equal(t, "/p/cli-1.log", optionMap[cliOption])
+	assert.Contains(t, cliOption, "1234")
 }

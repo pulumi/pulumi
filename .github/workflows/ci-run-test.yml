@@ -111,18 +111,6 @@ jobs:
     timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
-      - if: contains(inputs.platform, 'ubuntu')
-        name: Free Disk Space (Ubuntu)
-        uses: tgummerer/free-disk-space@865f5375bb031bd539c76f6309945e0bdd8d7501
-        with:
-          # tool-cache stays off: tests need Node and Python from /opt/hostedtoolcache.
-          tool-cache: false
-          swap-storage: false
-          large-packages: true
-          large-packages-keep: |
-            azure-cli
-          dotnet: true
-
       # Create a coverage file to register a testing job was started.
       # This artifact will be overwritten with "OK" at the end of the job.
       - name: Write test started file
@@ -169,6 +157,12 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
+      # Frees ~24GiB; test jobs run out of disk otherwise (#17470). The bulk of
+      # the cleanup runs in the background, overlapping the setup steps below.
+      # The "Wait for disk cleanup" step joins it before tests run.
+      - if: contains(inputs.platform, 'ubuntu')
+        name: Free Disk Space (Ubuntu)
+        run: ./.github/scripts/free-disk-space start
       - name: Setup versioning env vars
         env:
           version: ${{ inputs.version }}
@@ -391,6 +385,9 @@ jobs:
       - name: Create GCP service account key file
         run: |
           echo -n '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
+      - if: contains(inputs.platform, 'ubuntu')
+        name: Wait for disk cleanup (Ubuntu)
+        run: ./.github/scripts/free-disk-space wait
       - name: run tests "${{ inputs.test-command }}"
         id: test
         run: ${{ inputs.test-command }}
