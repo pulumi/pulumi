@@ -572,7 +572,8 @@ func TestCurrentReturnsNoAccountWhenAccessTokenLocallyExpiredAndNoRefreshToken(t
 	var hits int
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		hits++
-		t.Errorf("no network call should be made when the access token is locally expired and no refresh token is stored: %s", req.URL.Path)
+		t.Errorf("no network call should be made when the access token is locally expired "+
+			"and no refresh token is stored: %s", req.URL.Path)
 		rw.WriteHeader(http.StatusInternalServerError)
 	}))
 	t.Cleanup(server.Close)
