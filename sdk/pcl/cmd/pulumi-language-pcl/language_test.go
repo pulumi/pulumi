@@ -98,8 +98,6 @@ var expectedFailures = map[string]string{
 	"l3-component-nested": "nested component outputs are not propagated correctly",
 	"l2-resource-read":    "need to update pkg",
 	"l1-builtin-min-max":  "cannot pin the current commit",
-	"l2-config-default-from-invoke": "config variable defaulting to an invoke result resolves to unknown " +
-		"instead of the invoke value",
 }
 
 func TestLanguage(t *testing.T) {
