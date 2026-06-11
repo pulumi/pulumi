@@ -696,10 +696,6 @@ func TestRunNeoIntegration_NewNeoCmdRunE(t *testing.T) {
 		"prompt from positional args must reach CreateNeoTask")
 }
 
-// TestRunNeoIntegration_DisableIntegrationsSendsEmptyList pins the end-to-end
-// wiring of --disable-integrations: setting it must put an explicit empty
-// `enabledIntegrations` array in the CreateNeoTask body.
-//
 //nolint:paralleltest // mutates package globals
 func TestRunNeoIntegration_DisableIntegrationsSendsEmptyList(t *testing.T) {
 	isolateWorkspace(t)

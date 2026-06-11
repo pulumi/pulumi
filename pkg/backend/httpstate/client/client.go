@@ -2654,11 +2654,10 @@ func (pc *Client) ExplainPreviewWithNeo(
 // CreateNeoTaskOptions bundles the optional knobs on CreateNeoTask. The zero value
 // accepts the server-side defaults for every field.
 type CreateNeoTaskOptions struct {
-	ToolExecutionMode string
-	ApprovalMode      NeoApprovalMode
-	PermissionMode    NeoPermissionMode
-	PlanMode          bool
-	// Forwarded onto NeoTaskRequest.EnabledIntegrations; nil inherits the org's enabled integrations.
+	ToolExecutionMode   string
+	ApprovalMode        NeoApprovalMode
+	PermissionMode      NeoPermissionMode
+	PlanMode            bool
 	EnabledIntegrations *[]string
 }
 
