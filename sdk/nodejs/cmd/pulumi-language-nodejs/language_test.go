@@ -133,10 +133,14 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 
 			cancel := make(chan bool)
 
+			// Share installed node_modules trees between test projects with
+			// identical dependency manifests; see installcache.go.
+			installCacheDir := t.TempDir()
+
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					host := newLanguageHost(engineAddress, runtime, "", "", forceTsc)
+					host := newLanguageHost(t.Context(), engineAddress, runtime, "", "", forceTsc, installCacheDir)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
