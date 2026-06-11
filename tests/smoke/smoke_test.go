@@ -1314,7 +1314,7 @@ func TestDoCommandLocalCommand(t *testing.T) {
 	e.WriteTestFile("inputs.pcl", "create = \"echo hello\"\n")
 
 	stdout, stderr := e.RunCommand(
-		"pulumi", "do", "command:local:Command", "create",
+		"pulumi", "do", "--stateless", "command:local:Command", "create",
 		"--input-file", "inputs.pcl", "--yes")
 
 	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
