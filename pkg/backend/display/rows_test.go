@@ -101,6 +101,13 @@ func TestResourceRowDataInterruptedStatus(t *testing.T) {
 		Op:  deploy.OpCreate,
 		New: &engine.StepEventStateMetadata{Custom: false},
 	}
+	customToComponentUpdate := engine.StepEventMetadata{
+		URN: "urn:pulumi:stack::proj::my:component:Thing::c",
+		Op:  deploy.OpUpdate,
+		Old: &engine.StepEventStateMetadata{Custom: true},
+		New: &engine.StepEventStateMetadata{Custom: false},
+		Res: &engine.StepEventStateMetadata{Custom: false},
+	}
 
 	for _, tt := range []struct {
 		name        string
@@ -134,6 +141,13 @@ func TestResourceRowDataInterruptedStatus(t *testing.T) {
 			name:        "still running is not interrupted",
 			step:        customCreate,
 			displayDone: false,
+			rejectMatch: "interrupted",
+		},
+		{
+			name:        "custom converted to component without outputs is not interrupted",
+			step:        customToComponentUpdate,
+			displayDone: true,
+			expectMatch: "updated",
 			rejectMatch: "interrupted",
 		},
 	} {
