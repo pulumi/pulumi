@@ -213,6 +213,22 @@ func (a Account) HasCredential() bool {
 	return a.AccessToken != "" || a.RefreshToken != ""
 }
 
+// SetCredentials writes a credential-grant result to this account. A zero
+// accessTokenExpiresAt or empty refreshToken keeps the existing value — for grant
+// responses that omit the field (e.g. a refresh that didn't rotate the refresh token).
+func (a *Account) SetCredentials(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) {
+	a.AccessToken = accessToken
+	if !accessTokenExpiresAt.IsZero() {
+		if a.TokenInformation == nil {
+			a.TokenInformation = &TokenInformation{}
+		}
+		a.TokenInformation.ExpiresAt = &accessTokenExpiresAt
+	}
+	if refreshToken != "" {
+		a.RefreshToken = refreshToken
+	}
+}
+
 // Save persists this account back to the credentials file it was loaded from. Returns an error if
 // the account has no known source (constructed in memory rather than loaded) — callers in that
 // case should use StoreAccount / StoreAgentAccount with an explicit destination.

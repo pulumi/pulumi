@@ -280,9 +280,8 @@ func New(ctx context.Context, d diag.Sink,
 	apiToken := account.AccessToken
 
 	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
-	apiClient.WithRefresh(account.RefreshToken, func(at, rt string) error {
-		account.AccessToken = at
-		account.RefreshToken = rt
+	apiClient.WithRefresh(account.RefreshToken, func(at string, expiresAt time.Time, rt string) error {
+		account.SetCredentials(at, expiresAt, rt)
 		return account.Save(cloudURL, false)
 	})
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
@@ -552,9 +551,8 @@ func validateStoredAccount(
 		// We do this every hour by fetching the account details again using the backend access token.
 		fetchedUser, fetchedOrgs, fetchedTokenInfo, err := getAccountDetails(
 			ctx, cloudURL, insecure, account.AccessToken, account.RefreshToken,
-			func(at, rt string) error {
-				account.AccessToken = at
-				account.RefreshToken = rt
+			func(at string, expiresAt time.Time, rt string) error {
+				account.SetCredentials(at, expiresAt, rt)
 				return nil
 			},
 		)
@@ -563,7 +561,18 @@ func validateStoredAccount(
 		} else if err != nil {
 			return workspace.Account{}, false, err
 		} else {
-			username, organizations, tokenInfo = fetchedUser, fetchedOrgs, fetchedTokenInfo
+			username, organizations = fetchedUser, fetchedOrgs
+			// /api/user reports Name/Organization/Team only; preserve the locally
+			// cached ExpiresAt set by grant responses.
+			if fetchedTokenInfo != nil {
+				if account.TokenInformation == nil {
+					account.TokenInformation = &workspace.TokenInformation{}
+				}
+				account.TokenInformation.Name = fetchedTokenInfo.Name
+				account.TokenInformation.Organization = fetchedTokenInfo.Organization
+				account.TokenInformation.Team = fetchedTokenInfo.Team
+			}
+			tokenInfo = account.TokenInformation
 		}
 		account.LastValidatedAt = now
 	}
@@ -745,20 +754,14 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	if err != nil {
 		return nil, err
 	}
-	if tokenInfo == nil {
-		tokenInfo = &workspace.TokenInformation{}
-	}
-	tokenInfo.ExpiresAt = &signup.AccessTokenValidUntil
-
 	account := workspace.Account{
-		AccessToken:      signup.AccessToken,
-		RefreshToken:     signup.RefreshToken,
 		Username:         username,
 		Organizations:    organizations,
 		TokenInformation: tokenInfo,
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
+	account.SetCredentials(signup.AccessToken, signup.AccessTokenValidUntil, signup.RefreshToken)
 	if err = workspace.StoreAgentAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
@@ -900,19 +903,14 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 		return nil, err
 	}
 
-	if tokenInfo == nil {
-		tokenInfo = &workspace.TokenInformation{}
-	}
-	tokenInfo.ExpiresAt = &expiresAt
-
 	account := workspace.Account{
-		AccessToken:      accessToken,
 		Username:         username,
 		Organizations:    organizations,
 		TokenInformation: tokenInfo,
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
+	account.SetCredentials(accessToken, expiresAt, "")
 	if err = storeUserAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
@@ -2643,9 +2641,8 @@ func getAccountDetails(
 	cloudURL string,
 	insecure bool,
 	accessToken, refreshToken string,
-	onRefresh func(accessToken, refreshToken string) error,
+	onRefresh func(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) error,
 ) (string, []string, *workspace.TokenInformation, error) {
-	// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 	apiClient := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).
 		WithRefresh(refreshToken, onRefresh)
 	username, organizations, tokenInfo, err := apiClient.GetPulumiAccountDetails(ctx)

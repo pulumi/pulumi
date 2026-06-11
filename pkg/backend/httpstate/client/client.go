@@ -286,7 +286,7 @@ func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 // so callers can guard on workspace.Account.RefreshToken without a separate branch.
 func (pc *Client) WithRefresh(
 	refreshToken string,
-	writeback func(accessToken, refreshToken string) error,
+	writeback func(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) error,
 ) *Client {
 	if refreshToken == "" {
 		return pc
@@ -296,12 +296,16 @@ func (pc *Client) WithRefresh(
 	pc.apiToken = &refreshableAPIAccessToken{
 		accessToken:  initial,
 		refreshToken: refreshToken,
-		refresh: func(ctx context.Context, rt string) (string, string, error) {
+		refresh: func(ctx context.Context, rt string) (string, time.Time, string, error) {
 			resp, err := pc.RefreshAccessToken(ctx, rt)
 			if err != nil {
-				return "", "", err
+				return "", time.Time{}, "", err
 			}
-			return resp.AccessToken, resp.RefreshToken, nil
+			var expiresAt time.Time
+			if resp.ExpiresIn > 0 {
+				expiresAt = time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second)
+			}
+			return resp.AccessToken, expiresAt, resp.RefreshToken, nil
 		},
 		writeback: writeback,
 	}

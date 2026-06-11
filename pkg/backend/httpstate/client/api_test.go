@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
@@ -350,12 +351,12 @@ func TestCall_RefreshOn401(t *testing.T) {
 		tok := &refreshableAPIAccessToken{
 			accessToken:  "stale",
 			refreshToken: "rt",
-			refresh: func(_ context.Context, rt string) (string, string, error) {
+			refresh: func(_ context.Context, rt string) (string, time.Time, string, error) {
 				refreshCalls.Add(1)
 				assert.Equal(t, "rt", rt, "the wrapper sends the current refresh token")
-				return "fresh", "rt", nil
+				return "fresh", time.Time{}, "rt", nil
 			},
-			writeback: func(at, rt string) error { return nil },
+			writeback: func(at string, _ time.Time, rt string) error { return nil },
 		}
 
 		err := rest.Call(t.Context(), sink,
@@ -383,10 +384,10 @@ func TestCall_RefreshOn401(t *testing.T) {
 		tok := &refreshableAPIAccessToken{
 			accessToken:  "stale",
 			refreshToken: "rt-revoked",
-			refresh: func(_ context.Context, _ string) (string, string, error) {
-				return "", "", errors.New("invalid_grant")
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				return "", time.Time{}, "", errors.New("invalid_grant")
 			},
-			writeback: func(at, rt string) error { return nil },
+			writeback: func(at string, _ time.Time, rt string) error { return nil },
 		}
 
 		err := rest.Call(t.Context(), sink,
@@ -434,11 +435,11 @@ func TestCall_RefreshOn401(t *testing.T) {
 		tok := &refreshableAPIAccessToken{
 			accessToken:  "stale",
 			refreshToken: "rt",
-			refresh: func(_ context.Context, _ string) (string, string, error) {
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
 				refreshCalls.Add(1)
-				return "still-stale", "rt", nil
+				return "still-stale", time.Time{}, "rt", nil
 			},
-			writeback: func(at, rt string) error { return nil },
+			writeback: func(at string, _ time.Time, rt string) error { return nil },
 		}
 
 		err := rest.Call(t.Context(), sink,

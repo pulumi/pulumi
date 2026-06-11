@@ -549,6 +549,63 @@ func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *test
 	assert.Equal(t, "fresh-access-token", saved.AccessToken,
 		"credentials.json should reflect the refreshed access token")
 	assert.Equal(t, "stored-refresh-token", saved.RefreshToken)
+	require.NotNil(t, saved.TokenInformation, "refresh must update TokenInformation with the new expiry")
+	require.NotNil(t, saved.TokenInformation.ExpiresAt,
+		"the grant's ExpiresIn must land as the new TokenInformation.ExpiresAt; "+
+			"without this the next cold-start can't take the local-expiry refresh path")
+	assert.True(t, saved.TokenInformation.ExpiresAt.After(time.Now()),
+		"the new ExpiresAt must be in the future (roughly now + ExpiresIn)")
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestCurrentPreservesExpiresAtWhenServerAcceptsLocallyExpiredAccessToken(t *testing.T) {
+	// Cold-start with a locally-expired access token whose server-side TTL is actually still
+	// valid: validateStoredAccount enters the refresh-or-fetch branch and /api/user succeeds
+	// without firing a refresh. /api/user never returns ExpiresAt, so the merge must keep the
+	// existing (now-past) ExpiresAt instead of nullifying TokenInformation entirely — otherwise
+	// every subsequent run forfeits the cold-start refresh path and the agent-auth banner
+	// mis-reports the account as unable to authenticate.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/user":
+			assert.Equal(t, "token live-access-token", req.Header.Get("Authorization"),
+				"the existing access token must reach /api/user — refresh should not fire on 200")
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "alice",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		case "/api/oauth/token":
+			t.Errorf("refresh-token grant must not fire when /api/user returns 200")
+			rw.WriteHeader(http.StatusInternalServerError)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	expiredAt := time.Now().Add(-time.Hour)
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  "live-access-token",
+		RefreshToken: "stored-refresh-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiredAt,
+		},
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "live-access-token", account.AccessToken, "no refresh, no rotation")
+	assert.Equal(t, "alice", account.Username)
+	require.NotNil(t, account.TokenInformation,
+		"TokenInformation must survive a fetch that returns no token info of its own")
+	require.NotNil(t, account.TokenInformation.ExpiresAt,
+		"ExpiresAt must survive the merge so the banner and cold-start path keep working")
 }
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
@@ -626,10 +683,11 @@ func TestGetAccountDetailsInstallsRefreshWrapperWhenRefreshTokenSupplied(t *test
 	t.Cleanup(server.Close)
 
 	var gotAT, gotRT string
+	var gotExpiresAt time.Time
 	username, _, _, err := getAccountDetails(t.Context(), server.URL, false,
 		"stale-access", "the-refresh",
-		func(at, rt string) error {
-			gotAT, gotRT = at, rt
+		func(at string, expiresAt time.Time, rt string) error {
+			gotAT, gotRT, gotExpiresAt = at, rt, expiresAt
 			return nil
 		},
 	)
@@ -639,6 +697,10 @@ func TestGetAccountDetailsInstallsRefreshWrapperWhenRefreshTokenSupplied(t *test
 	assert.Equal(t, 2, userCalls, "the /api/user call should retry after refresh")
 	assert.Equal(t, "wrapper-minted-token", gotAT, "onRefresh receives the new access token")
 	assert.Equal(t, "the-refresh", gotRT, "onRefresh receives the (preserved) refresh token")
+	assert.False(t, gotExpiresAt.IsZero(),
+		"onRefresh receives the new access token's ExpiresAt derived from the grant's ExpiresIn")
+	assert.True(t, gotExpiresAt.After(time.Now().Add(50*time.Minute)),
+		"ExpiresAt is roughly now+ExpiresIn (3600s in this fixture)")
 }
 
 //nolint:paralleltest // mutates shared temporary agent credentials

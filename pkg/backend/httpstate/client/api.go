@@ -228,13 +228,14 @@ type refreshableAPIAccessToken struct {
 	// refreshToken is the long-lived credential exchanged at /api/oauth/token for a fresh
 	// access token. Held off the request path and only ever passed to the refresh callback.
 	refreshToken string
-	// refresh exchanges refreshToken for a new access token. Returns the new (access, refresh)
-	// pair; if the server doesn't rotate (Phase 1 behavior) it returns an empty newRefreshToken
-	// and the wrapper keeps the existing one.
-	refresh func(ctx context.Context, refreshToken string) (accessToken, newRefreshToken string, err error)
-	// writeback persists the refreshed credentials. Called with the wrapper's lock held so the
-	// in-memory and on-disk views can't diverge under concurrent refreshes.
-	writeback func(accessToken, refreshToken string) error
+	// refresh exchanges refreshToken for a new access token. Empty newRefreshToken /
+	// zero accessTokenExpiresAt means the server did not supply that field; the
+	// wrapper keeps the existing value.
+	refresh func(ctx context.Context, refreshToken string) (
+		accessToken string, accessTokenExpiresAt time.Time, newRefreshToken string, err error)
+	// writeback persists the refreshed credentials. Called with the wrapper's lock held
+	// so the in-memory and on-disk views can't diverge under concurrent refreshes.
+	writeback func(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) error
 }
 
 func (*refreshableAPIAccessToken) Kind() accessTokenKind {
@@ -250,7 +251,7 @@ func (t *refreshableAPIAccessToken) Get(_ context.Context) (string, error) {
 func (t *refreshableAPIAccessToken) Refresh(ctx context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	newAT, newRT, err := t.refresh(ctx, t.refreshToken)
+	newAT, expiresAt, newRT, err := t.refresh(ctx, t.refreshToken)
 	if err != nil {
 		return err
 	}
@@ -258,7 +259,7 @@ func (t *refreshableAPIAccessToken) Refresh(ctx context.Context) error {
 	if newRT != "" {
 		t.refreshToken = newRT
 	}
-	return t.writeback(t.accessToken, t.refreshToken)
+	return t.writeback(t.accessToken, expiresAt, t.refreshToken)
 }
 
 // UpdateTokenSource allows the API client to request tokens for an in-progress update as near as possible to the
