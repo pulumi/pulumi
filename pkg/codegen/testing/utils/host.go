@@ -95,7 +95,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"tls", "4.10.0"},
 		SchemaProvider{"random", "4.11.2"},
 		SchemaProvider{"kubernetes", "3.7.0"},
-		SchemaProvider{"aws-native", "0.99.0"},
 		SchemaProvider{"std", "1.0.0"},
 		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
 		SchemaProvider{"aws", "5.4.0"},

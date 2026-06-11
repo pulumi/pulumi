@@ -331,5 +331,4 @@ const (
 	KubernetesSchema       SchemaVersion = "3.7.0"
 	RandomSchema           SchemaVersion = "4.11.2"
 	AwsStaticWebsiteSchema SchemaVersion = "0.4.0"
-	AwsNativeSchema        SchemaVersion = "0.99.0"
 )
