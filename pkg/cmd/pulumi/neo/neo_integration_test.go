@@ -294,7 +294,7 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	}()
 
 	select {
@@ -380,7 +380,7 @@ func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	}()
 
 	select {
@@ -408,7 +408,7 @@ func TestRunNeoIntegration_NonInteractiveRequiresPrompt(t *testing.T) {
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "" /*prompt*/, "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt argument is required")
 
@@ -434,7 +434,7 @@ func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
 	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Pulumi Cloud backend",
 		"non-cloud backends must surface a clear error rather than panic on the type assertion")
@@ -465,7 +465,7 @@ func TestRunNeoIntegration_ResolvesCwdWhenEmpty(t *testing.T) {
 		// directory is always a real, readable path, so the tools constructors
 		// accept it and runNeo proceeds.
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", "", /*cwd*/
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	}()
 
 	select {
@@ -489,7 +489,7 @@ func TestRunNeoIntegration_RejectsNonexistentCwd(t *testing.T) {
 
 	missing := t.TempDir() + "/does-not-exist"
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", missing,
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	require.Error(t, err)
 	// The exact wrapping is internal to tools.NewFilesystem, but the missing
 	// path should be referenced so the user can see what went wrong.
@@ -518,7 +518,7 @@ func TestRunNeoIntegration_PropagatesReadProjectError(t *testing.T) {
 	}
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "synthetic ReadProject failure")
 	assert.Empty(t, srv.recordedPosts(),
@@ -563,7 +563,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	t.Cleanup(func() { isInteractive = prevInteractive })
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "creating Neo task")
 }
@@ -636,7 +636,7 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	}()
 
 	select {
@@ -694,4 +694,52 @@ func TestRunNeoIntegration_NewNeoCmdRunE(t *testing.T) {
 	require.NotEmpty(t, posts, "RunE did not reach CreateNeoTask")
 	assert.Contains(t, string(posts[0].body), "my prompt",
 		"prompt from positional args must reach CreateNeoTask")
+}
+
+// TestRunNeoIntegration_DisableIntegrationsSendsEmptyList pins the end-to-end
+// wiring of --disable-integrations: setting it must put an explicit empty
+// `enabledIntegrations` array in the CreateNeoTask body.
+//
+//nolint:paralleltest // mutates package globals
+func TestRunNeoIntegration_DisableIntegrationsSendsEmptyList(t *testing.T) {
+	isolateWorkspace(t)
+
+	srv := newNeoFakeServer(t)
+	installNeoTestEnv(t, srv, false /*interactive*/)
+
+	go func() {
+		if !srv.awaitStreamConnect(t, 2*time.Second) {
+			return
+		}
+		srv.sendFinalAssistantMessage(t)
+		srv.endStream()
+	}()
+
+	cmd := NewNeoCmd()
+	cmd.SetContext(t.Context())
+	require.NoError(t, cmd.Flags().Set("org", "test-org"))
+	require.NoError(t, cmd.Flags().Set("cwd", t.TempDir()))
+	require.NoError(t, cmd.Flags().Set("disable-integrations", "true"))
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.RunE(cmd, []string{"my prompt"})
+	}()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("cmd.RunE did not return within 5s")
+	}
+
+	posts := srv.recordedPosts()
+	require.NotEmpty(t, posts, "RunE did not reach CreateNeoTask")
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(posts[0].body, &body))
+	require.Contains(t, body, "enabledIntegrations",
+		"--disable-integrations must send an explicit enabledIntegrations field")
+	assert.Equal(t, []any{}, body["enabledIntegrations"],
+		"--disable-integrations must send an empty enabledIntegrations array")
 }

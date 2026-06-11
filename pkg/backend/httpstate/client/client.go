@@ -124,6 +124,10 @@ type NeoTaskRequest struct {
 	// NeoTaskSourceCLI; the server validates against apitype.AgentTaskSource and defaults
 	// to "api" if omitted.
 	Source NeoTaskSource `json:"source,omitempty"`
+	// EnabledIntegrations is a three-state pointer matching apitype.CreateAgentTaskRequest:
+	// nil inherits all org-enabled integrations, a non-nil empty slice sends `[]` to opt out
+	// of every integration, and a populated slice allow-lists specific ones.
+	EnabledIntegrations *[]string `json:"enabledIntegrations,omitempty"`
 }
 
 // NeoTaskMessage represents the message content for a Neo task.
@@ -2654,6 +2658,9 @@ type CreateNeoTaskOptions struct {
 	ApprovalMode      NeoApprovalMode
 	PermissionMode    NeoPermissionMode
 	PlanMode          bool
+	// EnabledIntegrations is forwarded verbatim onto NeoTaskRequest; nil inherits the
+	// org's enabled integrations. See that field for the three-state semantics.
+	EnabledIntegrations *[]string
 }
 
 // CreateNeoTask creates a new Neo agent task via the Neo Tasks API. See
@@ -2675,11 +2682,12 @@ func (pc *Client) CreateNeoTask(
 			Content:   content,
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 		},
-		ToolExecutionMode: opts.ToolExecutionMode,
-		ApprovalMode:      opts.ApprovalMode,
-		PermissionMode:    opts.PermissionMode,
-		PlanMode:          opts.PlanMode,
-		Source:            NeoTaskSourceCLI,
+		ToolExecutionMode:   opts.ToolExecutionMode,
+		ApprovalMode:        opts.ApprovalMode,
+		PermissionMode:      opts.PermissionMode,
+		PlanMode:            opts.PlanMode,
+		EnabledIntegrations: opts.EnabledIntegrations,
+		Source:              NeoTaskSourceCLI,
 	}
 	// Only attach a stack entity when we actually have one — the backend rejects
 	// entity_diff entries with empty name/project as "unable to access stack".

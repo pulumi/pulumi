@@ -1475,6 +1475,75 @@ func TestCreateNeoTask(t *testing.T) {
 
 		assert.NotContains(t, gotBody, "permissionMode")
 	})
+
+	t.Run("EnabledIntegrationsEmptyListSerializes", func(t *testing.T) {
+		t.Parallel()
+
+		// The --disable-integrations opt-out must reach the wire as an explicit empty
+		// array, distinct from omitting the field entirely.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_7"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "stack", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode:   "cli",
+			EnabledIntegrations: &[]string{},
+		})
+		require.NoError(t, err)
+
+		require.Contains(t, gotBody, "enabledIntegrations",
+			"an explicit opt-out must send enabledIntegrations, not omit it")
+		assert.Equal(t, []any{}, gotBody["enabledIntegrations"],
+			"enabledIntegrations must serialize as an empty JSON array")
+	})
+
+	t.Run("EnabledIntegrationsOmittedWhenNil", func(t *testing.T) {
+		t.Parallel()
+
+		// A nil pointer must omit the field so the server inherits the org default.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_8"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", CreateNeoTaskOptions{})
+		require.NoError(t, err)
+
+		assert.NotContains(t, gotBody, "enabledIntegrations",
+			"a nil EnabledIntegrations must be omitted so the server inherits the org default")
+	})
+
+	t.Run("EnabledIntegrationsAllowlistSerializes", func(t *testing.T) {
+		t.Parallel()
+
+		// A populated slice is the (future) allow-list state: named integrations
+		// must carry through verbatim.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_9"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "stack", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode:   "cli",
+			EnabledIntegrations: &[]string{"honeycomb", "datadog"},
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, []any{"honeycomb", "datadog"}, gotBody["enabledIntegrations"])
+	})
 }
 
 func TestUpdateNeoTask(t *testing.T) {

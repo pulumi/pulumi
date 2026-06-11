@@ -125,12 +125,13 @@ var (
 // There is no interactive UI yet — the chat happens in the web console.
 func NewNeoCmd() *cobra.Command {
 	var (
-		stackName          string
-		orgFlag            string
-		cwdFlag            string
-		approvalModeFlag   string
-		permissionModeFlag string
-		printMode          bool
+		stackName           string
+		orgFlag             string
+		cwdFlag             string
+		approvalModeFlag    string
+		permissionModeFlag  string
+		printMode           bool
+		disableIntegrations bool
 	)
 
 	cmd := &cobra.Command{
@@ -168,7 +169,8 @@ func NewNeoCmd() *cobra.Command {
 			}
 			return runNeo(
 				ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(),
-				prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode, printMode)
+				prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode, printMode,
+				disableIntegrations)
 		},
 	}
 
@@ -187,6 +189,10 @@ func NewNeoCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&printMode, "print", "p", false,
 		"Run a single prompt non-interactively, print the agent's final response to "+
 			"stdout, and exit. Intended for use with other AI agents and scripts.")
+	cmd.Flags().BoolVar(&disableIntegrations, "disable-integrations", false,
+		"Run the Neo task with no integration credentials, ignoring any org-enabled "+
+			"integrations. Useful for debugging, reduced latency, or working around a "+
+			"misconfigured integration.")
 
 	return cmd
 }
@@ -221,7 +227,15 @@ func runNeo(
 	approvalMode client.NeoApprovalMode,
 	permissionMode client.NeoPermissionMode,
 	printMode bool,
+	disableIntegrations bool,
 ) error {
+	// A non-nil empty slice sends `[]` to opt the task out of every integration; nil lets
+	// the server inherit the org's enabled integrations.
+	var enabledIntegrations *[]string
+	if disableIntegrations {
+		enabledIntegrations = &[]string{}
+	}
+
 	if cwdFlag == "" {
 		var err error
 		cwdFlag, err = os.Getwd()
@@ -289,9 +303,10 @@ func runNeo(
 		taskPrompt := nonInteractivePromptPreamble + "\n\n" + prompt
 		resp, err := createNeoTaskWithEntityRetry(
 			ctx, pc, orgName, taskPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
-				ToolExecutionMode: "cli",
-				ApprovalMode:      approvalMode,
-				PermissionMode:    permissionMode,
+				ToolExecutionMode:   "cli",
+				ApprovalMode:        approvalMode,
+				PermissionMode:      permissionMode,
+				EnabledIntegrations: enabledIntegrations,
 			}, nil)
 		if err != nil {
 			return err
@@ -379,10 +394,11 @@ func runNeo(
 			) error {
 				resp, err := createNeoTaskWithEntityRetry(
 					gctx, pc, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
-						ToolExecutionMode: "cli",
-						ApprovalMode:      createApprovalMode,
-						PermissionMode:    createPermissionMode,
-						PlanMode:          planMode,
+						ToolExecutionMode:   "cli",
+						ApprovalMode:        createApprovalMode,
+						PermissionMode:      createPermissionMode,
+						PlanMode:            planMode,
+						EnabledIntegrations: enabledIntegrations,
 					}, func(originalErr error) {
 						sendUI(uiCh, UIWarning{Message: fmt.Sprintf(
 							"could not attach stack %s/%s/%s to Neo task: %s; "+
