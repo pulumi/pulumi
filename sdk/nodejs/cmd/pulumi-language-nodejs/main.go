@@ -176,7 +176,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, runtimeName, tracing, otelEndpoint, false /* forceTsc */)
+			host := newLanguageHost(context.Background(), engineAddress, runtimeName, tracing, otelEndpoint, false /* forceTsc */)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -356,9 +356,10 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 }
 
 func newLanguageHost(
+	ctx context.Context,
 	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,

@@ -136,7 +136,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					host := newLanguageHost(engineAddress, runtime, "", "", forceTsc)
+					host := newLanguageHost(t.Context(), engineAddress, runtime, "", "", forceTsc)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
