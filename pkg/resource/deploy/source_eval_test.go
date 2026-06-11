@@ -852,8 +852,11 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "proj"},
-		Target:      &Target{Name: tokens.MustParseStackName("stack")},
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
 	}
 
 	expectedURN := resource.NewURN(
@@ -948,8 +951,11 @@ func TestRegistrationObserverNotResolvedForUnsuccessfulRegisterResource(t *testi
 				ProjectRoot: "/",
 				Pwd:         "/",
 				Program:     ".",
-				Proj:        &workspace.Project{Name: "proj"},
-				Target:      &Target{Name: tokens.MustParseStackName("stack")},
+				Proj: &workspace.Project{
+					Name:    "proj",
+					Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+				},
+				Target: &Target{Name: tokens.MustParseStackName("stack")},
 			}
 			expectedURN := resource.NewURN(
 				runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "res1")
@@ -1017,8 +1023,11 @@ func TestRegistrationObserverNotResolvedForLocalComponentOnRegister(t *testing.T
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "proj"},
-		Target:      &Target{Name: tokens.MustParseStackName("stack")},
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
 	}
 
 	expectedURN := resource.NewURN(
@@ -1152,8 +1161,11 @@ func TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs(t *testi
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "proj"},
-		Target:      &Target{Name: tokens.MustParseStackName("stack")},
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
 	}
 	expectedURN := resource.NewURN(
 		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp")
@@ -1198,8 +1210,11 @@ func TestRegistrationObserverRemoteComponentNotResolvedOnRegister(t *testing.T) 
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "proj"},
-		Target:      &Target{Name: tokens.MustParseStackName("stack")},
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
 	}
 	expectedURN := resource.NewURN(
 		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp")
@@ -1264,8 +1279,11 @@ func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "proj"},
-		Target:      &Target{Name: tokens.MustParseStackName("stack")},
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
 	}
 	canonicalURN := resource.NewURN(
 		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "new-name")
@@ -1345,8 +1363,11 @@ func TestRegistrationObserverComponentAliasesArePublishedAtROC(t *testing.T) {
 		ProjectRoot: "/",
 		Pwd:         "/",
 		Program:     ".",
-		Proj:        &workspace.Project{Name: "proj"},
-		Target:      &Target{Name: tokens.MustParseStackName("stack")},
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
 	}
 	canonicalURN := resource.NewURN(
 		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "new-name")
