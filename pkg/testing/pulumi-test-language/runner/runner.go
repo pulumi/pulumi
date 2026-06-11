@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"sort"
 	"strconv"
@@ -91,6 +92,7 @@ func NewLanguageTestServer(testdata fs.FS, languageTests map[string]tests.Langua
 		artifactMap:    gsync.Map[string, string]{},
 		testdata:       testdata,
 		languageTests:  languageTests,
+		runSlots:       make(chan struct{}, runtime.NumCPU()),
 	}
 }
 
@@ -190,6 +192,7 @@ func Start(
 		cliVersion:     "3.200.0",
 		testdata:       testdata,
 		languageTests:  languageTests,
+		runSlots:       make(chan struct{}, runtime.NumCPU()),
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -229,6 +232,13 @@ type languageTestServer struct {
 	// Serializes installs per dependency set so later tests can reuse the
 	// installed dependencies of an identical earlier project. See installcache.go.
 	installCacheLocks gsync.Map[string, *sync.Mutex]
+
+	// Bounds concurrent RunLanguageTest executions to the hardware. Test
+	// suites run with more parallel subtests than CI runners have cores; that
+	// used to be throttled incidentally by every project's dependency install,
+	// but with the install cache the compile-and-run phases of all parallel
+	// tests align and their combined memory demand can take down the runner.
+	runSlots chan struct{}
 
 	// A map storing the paths to the generated package artifacts
 	artifactMap gsync.Map[string, string]
@@ -681,6 +691,11 @@ func hasDependency(pkg *schema.Package, dep string) bool {
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (*testingrpc.RunLanguageTestResponse, error) {
+	// See the runSlots field comment: cap concurrent executions at the number
+	// of cores.
+	eng.runSlots <- struct{}{}
+	defer func() { <-eng.runSlots }()
+
 	test, has := eng.languageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
