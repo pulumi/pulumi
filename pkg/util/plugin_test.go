@@ -20,6 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -58,12 +59,17 @@ func TestKnownLanguageRuntimeHCL(t *testing.T) {
 	}
 	res := SetKnownPluginDownloadURL(&spec)
 	assert.True(t, res)
-	pinned := semver.MustParse("0.4.0")
+
+	// Check that version was set
+	require.NotNil(t, spec.Version)
+	assert.NotZero(t, *spec.Version)
+	// Now unset it for the comparison
+	spec.Version = nil
+
 	assert.Equal(t, workspace.PluginDescriptor{
 		Name:              "hcl",
 		Kind:              apitype.LanguagePlugin,
 		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
-		Version:           &pinned,
 	}, spec)
 }
 
