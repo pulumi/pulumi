@@ -1,6 +1,0 @@
-component: sdk/nodejs
-kind: chore
-body: Improve error logs when serialization fails
-time: 2026-06-03T11:56:41.597699+02:00
-custom:
-  PR: 21901
