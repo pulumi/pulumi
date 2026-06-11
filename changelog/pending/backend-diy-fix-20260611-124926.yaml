@@ -1,0 +1,6 @@
+component: backend/diy
+kind: fix
+body: Fix backwards incompatible gocloud.dev changes
+time: 2026-06-11T12:49:26.352498928+02:00
+custom:
+    PR: "23525"
