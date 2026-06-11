@@ -137,6 +137,7 @@ Flags:
       --param1 string          To set param1 things (alias for --input:param1)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
+      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
 `
 	assert.Equal(t, expected, stdout.String())
 }

@@ -79,6 +79,7 @@ func NewDoCmd(
 	var pkg string
 	var dryrun bool
 	var showSecrets bool
+	var stateless bool
 
 	// buildSubcommand returns the dynamically constructed subcommand along with a cleanup function that must be
 	// deferred by the caller. The cleanup tears down the provider gRPC channel — running it as a defer inside
@@ -246,6 +247,7 @@ func NewDoCmd(
 			spec:              boundpkg,
 			dryrun:            dryrun,
 			showSecrets:       showSecrets,
+			stateless:         stateless,
 		}).newCommand()
 		if err != nil {
 			cleanup()
@@ -411,6 +413,10 @@ converter plugin for that format to be installed.`,
 
 	cmd.PersistentFlags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
 	cmd.PersistentFlags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
+	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
+		"Run create/patch/delete directly against the provider without persisting state. "+
+			"Required for now: the stateful (engine-driven) implementation is still in development, "+
+			"so create/patch/delete error out unless --stateless is set.")
 	cmd.PersistentFlags().StringVar(
 		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
 			"a path to a plugin binary or folder. If the package supports "+
@@ -462,6 +468,7 @@ type packageCommand struct {
 	spec              *schema.Package
 	dryrun            bool
 	showSecrets       bool
+	stateless         bool
 }
 
 func (pc *packageCommand) newCommand() (*cobra.Command, error) {
