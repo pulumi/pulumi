@@ -980,7 +980,7 @@ func TestDeletedWithGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 	})
@@ -1150,7 +1150,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: validateOutputs(map[string]any{
@@ -1193,10 +1193,7 @@ func TestParameterizedGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			// PrePrepareProject below runs `pulumi package gen-sdk` on this
-			// path, which requires a plugin project directory, so it can't use
-			// the prebuilt testutil.TestProvider.
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		PrePrepareProject: func(info *engine.Projinfo) error {
 			e := ptesting.NewEnvironment(t)
@@ -1214,9 +1211,9 @@ func TestParameterizedGo(t *testing.T) {
 			require.NoError(t, err)
 			e.WriteTestFile("main_test.go", string(actualProgram))
 
-			// Generate the SDK for the provider.
-			path := info.Proj.Plugins.Providers[0].Path
-			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", path, "pkg", "--language", "go")
+			// Generate the SDK for the provider. gen-sdk takes the plugin
+			// binary itself and infers the package name from its filename.
+			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", testutil.TestProvider(t), "pkg", "--language", "go")
 
 			// Add a reference to the generated SDK in go.mod.
 			err = appendLines(filepath.Join(e.CWD, "go.mod"), []string{

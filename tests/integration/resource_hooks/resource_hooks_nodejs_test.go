@@ -31,7 +31,7 @@ func TestNodejsResourceHooks(t *testing.T) {
 		Dir:          filepath.Join("nodejs", "step-1"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -56,7 +56,7 @@ func TestNodejsResourceHooksTransform(t *testing.T) {
 		Dir:          "nodejs_transform",
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -96,7 +96,7 @@ func TestNodejsResourceHooksSecrets(t *testing.T) {
 		Dir:          "nodejs_secret",
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

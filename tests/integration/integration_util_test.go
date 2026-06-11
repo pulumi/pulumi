@@ -414,7 +414,7 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
 			}
 			testProvider := integration.LocalDependency{
-				Package: "testprovider", Path: testutil.TestProvider(t),
+				Package: "testprovider", Path: testutil.TestProviderDir(t),
 			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),

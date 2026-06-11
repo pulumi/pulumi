@@ -2008,7 +2008,7 @@ func TestStuckEventLoop(t *testing.T) {
 				filepath.Join("..", "..", "sdk", "python"),
 			},
 			LocalProviders: []integration.LocalDependency{
-				{Package: "testprovider", Path: testutil.TestProvider(t)},
+				{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 			},
 			Stderr:        stderr,
 			Quick:         true,

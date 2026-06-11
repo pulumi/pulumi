@@ -30,7 +30,7 @@ func TestNodejsSimpleTransforms(t *testing.T) {
 		Dir:          d,
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick:                  true,
 		ExtraRuntimeValidation: Validator,
@@ -44,7 +44,7 @@ func TestNodejsSingleTransforms(t *testing.T) {
 		Dir:          d,
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 	})
@@ -59,7 +59,7 @@ func TestNodejsTransformsAsyncResource(t *testing.T) {
 		Dir:          d,
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

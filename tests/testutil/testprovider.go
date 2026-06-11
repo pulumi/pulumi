@@ -29,19 +29,18 @@ import (
 var testProvider struct {
 	once sync.Once
 	dir  string
+	bin  string
 	err  error
 }
 
-// TestProvider builds tests/testprovider once per test process and returns the
-// directory containing the resulting pulumi-resource-testprovider binary, for
-// use as an integration.LocalDependency path.
+// buildTestProvider builds tests/testprovider once per test process.
 //
-// When a local provider path is the testprovider source directory instead, the
-// engine starts the plugin through the Go language host, which runs `go build`
-// every time the engine boots the provider: once per operation per test. On
-// CI runners those concurrent toolchain invocations dominate the test's wall
-// time, so tests should prefer this prebuilt binary.
-func TestProvider(t testing.TB) string {
+// When a test points the engine at the testprovider source directory instead,
+// the engine starts the plugin through the Go language host, which runs
+// `go build` every time the engine boots the provider: once per operation per
+// test. On CI runners those concurrent toolchain invocations dominate the
+// test's wall time, so tests should prefer the prebuilt binary.
+func buildTestProvider(t testing.TB) {
 	testProvider.once.Do(func() {
 		// Not t.TempDir(): that is removed when the test that happens to build
 		// the provider finishes, while every later test still needs the binary.
@@ -63,7 +62,24 @@ func TestProvider(t testing.TB) string {
 			return
 		}
 		testProvider.dir = dir
+		testProvider.bin = binary
 	})
 	require.NoError(t, testProvider.err)
+}
+
+// TestProviderDir returns the directory containing a prebuilt
+// pulumi-resource-testprovider binary, for use as an
+// integration.LocalDependency path: the engine resolves a project plugin path
+// by looking the binary up inside the directory.
+func TestProviderDir(t testing.TB) string {
+	buildTestProvider(t)
 	return testProvider.dir
+}
+
+// TestProvider returns the path of a prebuilt pulumi-resource-testprovider
+// binary, for commands like `pulumi package add` that take the plugin binary
+// itself and infer the package name from its filename.
+func TestProvider(t testing.TB) string {
+	buildTestProvider(t)
+	return testProvider.bin
 }

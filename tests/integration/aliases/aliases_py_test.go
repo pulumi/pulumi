@@ -72,7 +72,7 @@ func TestPythonAliasAfterFailedUpdate(t *testing.T) {
 				filepath.Join("..", "..", "..", "sdk", "python"),
 			},
 			LocalProviders: []integration.LocalDependency{
-				{Package: "testprovider", Path: testutil.TestProvider(t)},
+				{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 			},
 			Quick: true,
 			EditDirs: []integration.EditDir{

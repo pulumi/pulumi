@@ -45,7 +45,7 @@ func TestOtelTraces(t *testing.T) {
 	// Use the prebuilt standalone testprovider binary so the engine launches it directly in ExecPlugin rather
 	// than through RunPlugin. We currently can't gracefully shut down a RunPlugin process and wait for it to
 	// finish, so providers launched that way don't get a chance to flush their OTEL traces before being killed.
-	binDir := testutil.TestProvider(t)
+	binDir := testutil.TestProviderDir(t)
 
 	traceDir := t.TempDir()
 	tracePath, err := filepath.Abs(filepath.Join(traceDir, "traces-{command}.json"))

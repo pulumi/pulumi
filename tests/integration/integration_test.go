@@ -1025,7 +1025,7 @@ func TestParentRename_issue13179(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		// Only run up:
 		SkipRefresh: true,

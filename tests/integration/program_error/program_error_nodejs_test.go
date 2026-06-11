@@ -36,7 +36,7 @@ func TestProgramErrorNodejs(t *testing.T) {
 			"@pulumi/pulumi",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

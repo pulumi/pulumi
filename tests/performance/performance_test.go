@@ -84,7 +84,7 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 		OtelTraces:  otelTracesEndpoint(t),
 		Env:         otelResourceEnv(t),
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 	})
 }
@@ -109,7 +109,7 @@ func TestPerfParentChainUpdate(t *testing.T) {
 		OtelTraces:  otelTracesEndpoint(t),
 		Env:         otelResourceEnv(t),
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 	})
 }

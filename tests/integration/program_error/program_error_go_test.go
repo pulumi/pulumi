@@ -36,7 +36,7 @@ func TestProgramErrorGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: testutil.TestProvider(t)},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
