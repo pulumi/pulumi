@@ -104,6 +104,14 @@ func (ectx *EvalContext) SetVariable(name string, value cty.Value) {
 	ectx.evalContext.Variables[name] = value
 }
 
+// HasVariable reports whether a variable with the given name has been set.
+func (ectx *EvalContext) HasVariable(name string) bool {
+	ectx.evalLock.Lock()
+	defer ectx.evalLock.Unlock()
+	_, ok := ectx.evalContext.Variables[name]
+	return ok
+}
+
 // Evaluate evaluates an expression in the context of the interpreter's evalContext and returns a PropertyValue. If the
 // expression evaluates to a poisoned value, the culprit resource's name will be returned in the second return value. If
 // there are any errors during evaluation, they will be returned in the diagnostics.

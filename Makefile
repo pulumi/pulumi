@@ -305,10 +305,8 @@ get_schemas: \
 			schema-aws!4.26.0           \
 			schema-aws!5.4.0            \
 			schema-aws!5.16.2           \
-			schema-kubernetes!3.0.0     \
 			schema-kubernetes!3.7.0     \
 			schema-random!4.11.2        \
-			schema-eks!0.40.0           \
 			schema-docker!4.0.0-alpha.0 \
 			schema-awsx!1.0.0-beta.5    \
 			schema-tls!4.10.0

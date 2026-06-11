@@ -49,7 +49,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
@@ -562,12 +561,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				clispec.NewGenCLISpecCmd(cmd),
 			},
 		},
-		// AI Commands relating to specifically the Pulumi AI service
-		//     and its related features
 		{
 			Name: "AI Commands",
 			Commands: []*cobra.Command{
-				ai.NewAICommand(),
 				neo.NewNeoCmd(),
 			},
 		},

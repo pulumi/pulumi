@@ -125,6 +125,8 @@ func compileProgram(
 	args := []string{"build", "-buildvcs=false", "-o", outfile}
 	if withDebugFlags {
 		args = append(args, "-gcflags", "all=-N -l")
+	} else {
+		args = append(args, "-trimpath")
 	}
 	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
@@ -1337,7 +1339,7 @@ func (host *goLanguageHost) RunPlugin(
 	defer contract.IgnoreClose(closer)
 
 	program, err := compileProgram(
-		server.Context(), engineClient, req.Info.ProgramDirectory, "", false, os.Stdout, os.Stderr)
+		server.Context(), engineClient, req.Info.ProgramDirectory, "", req.GetAttachDebugger(), os.Stdout, os.Stderr)
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}

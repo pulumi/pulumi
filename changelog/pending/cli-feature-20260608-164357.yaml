@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Include the list of affected resources (urn, type, name, op, parent) in `--output json` for `preview`, `up`, `destroy`, and `refresh`
+time: 2026-06-08T16:43:57+00:00

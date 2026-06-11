@@ -95,13 +95,10 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"tls", "4.10.0"},
 		SchemaProvider{"random", "4.11.2"},
 		SchemaProvider{"kubernetes", "3.7.0"},
-		SchemaProvider{"aws-native", "0.99.0"},
 		SchemaProvider{"std", "1.0.0"},
 		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
 		SchemaProvider{"aws", "5.4.0"},
-		SchemaProvider{"eks", "0.40.0"},
 		SchemaProvider{"awsx", "1.0.0-beta.5"},
-		SchemaProvider{"kubernetes", "3.0.0"},
 
 		SchemaProvider{"component", "13.3.7"},
 		SchemaProvider{"other", "0.1.0"},
@@ -124,8 +121,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"goalias", "1.0.0"},
 		SchemaProvider{"dangling-reference-bad", "0.1.0"},
 		SchemaProvider{"dangling-reference-good", "0.1.0"},
-
-		SchemaProvider{"azure-native", "2.41.0"},
 
 		// parameterized schemas
 		SchemaProvider{"tfe", "0.68.2"},

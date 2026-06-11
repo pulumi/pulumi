@@ -443,14 +443,6 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		i.call,
 	)
 
-	if diags := i.bindConfigVariables(ctx); diags.HasErrors() {
-		return diags
-	}
-
-	if err := i.enforceRequiredVersion(ctx); err != nil {
-		return err
-	}
-
 	if err := i.registerStack(ctx); err != nil {
 		return err
 	}
@@ -508,15 +500,40 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 		}
 	}
 
+	// The required version check must run before any resource is created. Make every resource and
+	// component depend on the pulumi block so the gate is enforced once its own dependencies (e.g. a
+	// config variable holding the version) have been evaluated.
+	if gate := i.requiredVersionGate(); gate != nil {
+		gateDagNode := nodes[gate]
+		for _, node := range i.program.Nodes {
+			switch node.(type) {
+			case *pcl.Resource, *pcl.Component:
+				if err := dag.NewEdge(gateDagNode, nodes[node]); err != nil {
+					return nil, fmt.Errorf("failed to create edge from %s to %s: %w",
+						gate.Name(), node.Name(), err)
+				}
+			}
+		}
+	}
+
 	var outputsLock sync.Mutex
 	outputs := resource.PropertyMap{}
 	err := dag.Walk(ctx, func(ctx context.Context, node pcl.Node) error {
 		switch node := node.(type) {
 		case *pcl.ConfigVariable:
-			// handled before node execution
+			// When executing a component program, config variables are supplied as component inputs
+			// and set before the walk; don't override them with the enclosing program's config.
+			if i.evalContext.HasVariable(node.Name()) {
+				return nil
+			}
+			if diags := i.bindConfigVariable(ctx, node); diags.HasErrors() {
+				return diags
+			}
 			return nil
 		case *pcl.PulumiBlock:
-			// handled before node execution
+			if err := i.enforceRequiredVersion(ctx); err != nil {
+				return err
+			}
 			return nil
 		case *pcl.Hook:
 			if err := i.registerHookNode(ctx, node); err != nil {
@@ -721,56 +738,65 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 	return nil
 }
 
-func (i *Interpreter) bindConfigVariables(ctx context.Context) hcl.Diagnostics {
+// requiredVersionGate returns the pulumi block that enforces a required engine version, or nil if the
+// program has no such constraint.
+func (i *Interpreter) requiredVersionGate() pcl.Node {
+	for _, node := range i.program.Nodes {
+		if block, ok := node.(*pcl.PulumiBlock); ok && block.RequiredVersion != nil {
+			return node
+		}
+	}
+	return nil
+}
+
+func (i *Interpreter) bindConfigVariable(ctx context.Context, cfg *pcl.ConfigVariable) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 	secretKeys := map[string]struct{}{}
 	for _, key := range i.info.ConfigSecrets {
 		secretKeys[key] = struct{}{}
 	}
-	for _, cfg := range i.program.ConfigVariables() {
-		key := fmt.Sprintf("%s:%s", i.info.Project, cfg.LogicalName())
-		raw, has := i.info.Config[key]
-		if !has {
-			if cfg.DefaultValue != nil {
-				value, poison, diags := i.evalContext.Evaluate(cfg.DefaultValue)
-				contract.Assertf(poison == nil, "config variables can't be poisoned")
-				diagnostics = append(diagnostics, diags...)
-				if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
-					value = resource.MakeSecret(value)
-				}
-				if !diags.HasErrors() {
-					if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
-						diagnostics = append(diagnostics, &hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Summary:  err.Error(),
-						})
-					}
-				}
-				continue
-			}
-			if !cfg.Nullable {
-				rng := cfg.SyntaxNode().Range()
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  fmt.Sprintf("missing required configuration value %q", cfg.LogicalName()),
-					Subject:  &rng,
-				})
-			}
-			continue
-		}
-
-		value, diags := parseConfigPropertyValue(raw, cfg.Type())
-		diagnostics = append(diagnostics, diags...)
-		if !diags.HasErrors() {
+	key := fmt.Sprintf("%s:%s", i.info.Project, cfg.LogicalName())
+	raw, has := i.info.Config[key]
+	if !has {
+		if cfg.DefaultValue != nil {
+			value, poison, diags := i.evalContext.Evaluate(cfg.DefaultValue)
+			contract.Assertf(poison == nil, "config variables can't be poisoned")
+			diagnostics = append(diagnostics, diags...)
 			if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
 				value = resource.MakeSecret(value)
 			}
-			if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  err.Error(),
-				})
+			if !diags.HasErrors() {
+				if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  err.Error(),
+					})
+				}
 			}
+			return diagnostics
+		}
+		if !cfg.Nullable {
+			rng := cfg.SyntaxNode().Range()
+			diagnostics = append(diagnostics, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("missing required configuration value %q", cfg.LogicalName()),
+				Subject:  &rng,
+			})
+		}
+		return diagnostics
+	}
+
+	value, diags := parseConfigPropertyValue(raw, cfg.Type())
+	diagnostics = append(diagnostics, diags...)
+	if !diags.HasErrors() {
+		if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
+			value = resource.MakeSecret(value)
+		}
+		if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
+			diagnostics = append(diagnostics, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  err.Error(),
+			})
 		}
 	}
 	return diagnostics

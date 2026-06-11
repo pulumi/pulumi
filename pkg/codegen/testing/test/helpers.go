@@ -328,10 +328,7 @@ type SchemaVersion = string
 // should be in sync with the makefile.
 const (
 	AwsSchema              SchemaVersion = "4.26.0"
-	AzureNativeSchema      SchemaVersion = "1.56.0"
 	KubernetesSchema       SchemaVersion = "3.7.0"
 	RandomSchema           SchemaVersion = "4.11.2"
-	EksSchema              SchemaVersion = "0.40.0"
 	AwsStaticWebsiteSchema SchemaVersion = "0.4.0"
-	AwsNativeSchema        SchemaVersion = "0.99.0"
 )

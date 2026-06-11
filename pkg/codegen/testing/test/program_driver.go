@@ -143,18 +143,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Webserver",
 	},
 	{
-		Directory:   "azure-native-v2-eventgrid",
-		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
-		// Specifically use a simplified azure-native v2.x schema when testing this program
-		// this schema only contains content from the eventgrid module which is sufficient to test with
-		PluginHost: utils.NewHostWithProviders(testdataPath,
-			utils.NewSchemaProvider("azure-native", "2.41.0")),
-	},
-	{
-		Directory:   "using-object-as-input-for-any",
-		Description: "Tests using object as input for a property of type 'any'",
-	},
-	{
 		Directory:   "kubernetes-operator",
 		Description: "K8s Operator",
 	},
@@ -323,25 +311,9 @@ var PulumiPulumiProgramTests = []ProgramTest{
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	// PCL files from pulumi/yaml transpiled examples
 	{
-		Directory:   transpiled("aws-eks"),
-		Description: "AWS EKS",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
-		Directory:   transpiled("aws-static-website"),
-		Description: "AWS static website",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
-	},
-	{
 		Directory:   transpiled("awsx-fargate"),
 		Description: "AWSx Fargate",
 		Skip:        codegen.NewStringSet(TestDotnet, TestNodeJS, TestGo),
-	},
-	{
-		Directory:   transpiled("cue-eks"),
-		Description: "Cue EKS",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   transpiled("cue-random"),

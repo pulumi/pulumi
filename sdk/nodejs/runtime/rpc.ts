@@ -175,7 +175,19 @@ async function serializeFilteredProperties(
         if (acceptKey(k)) {
             // We treat properties with undefined values as if they do not exist.
             const dependentResources = new Set<Resource>();
-            const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources, opts);
+            let v;
+            try {
+                v = await serializeProperty(`${label}.${k}`, props[k], dependentResources, opts);
+            } catch (err) {
+                // Augment the message with the property name, but rethrow the *same* error so its identity is
+                // preserved: our uncaught handler dedupes reported errors by identity, and the same rejection can
+                // surface from more than one awaiter.
+                if (err instanceof Error) {
+                    err.message = `error serializing property "${k}": ${err.message}`;
+                    throw err;
+                }
+                throw new Error(`error serializing property "${k}": ${String(err)}`);
+            }
             if (v !== undefined) {
                 result[k] = v;
                 propertyToDependentResources.set(k, dependentResources);

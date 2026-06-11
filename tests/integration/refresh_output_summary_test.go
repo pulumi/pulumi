@@ -68,4 +68,15 @@ func TestRefresh_OutputJSONSummary(t *testing.T) {
 		"expected stdout to be exactly one JSON summary object, got:\n%s", raw)
 
 	require.Equal(t, apitype.OperationResultSucceeded, summary.Result)
+	// Refresh emits a ResourcePreEvent with Op=refresh for every resource it
+	// inspects (the per-resource ResultOp — same/update — is a separate
+	// post-step computation that doesn't surface here). So Resources is
+	// populated even when nothing actually changes.
+	require.NotEmpty(t, summary.Resources, "summary should list the refreshed resources")
+	for i, r := range summary.Resources {
+		require.NotEmptyf(t, r.URN, "resource %d should have a URN", i)
+		require.NotEmptyf(t, r.Type, "resource %d should have a type", i)
+		require.NotEmptyf(t, r.Name, "resource %d should have a name", i)
+		require.Equalf(t, apitype.OpRefresh, r.Op, "resource %d should be a refresh", i)
+	}
 }
