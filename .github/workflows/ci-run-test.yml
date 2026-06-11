@@ -256,7 +256,11 @@ jobs:
           fi
       - name: Install yarn and pnpm
         run: |
-          npm install -g yarn pnpm@10
+          # pnpm is pinned because 10.34.2 changed how local directory
+          # dependencies are installed, which breaks Node.js component
+          # provider tests (ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING).
+          # See https://github.com/pulumi/pulumi/issues/23523.
+          npm install -g yarn pnpm@10.34.1
       - name: Install bun
         uses: ./.github/actions/retry
         with:
