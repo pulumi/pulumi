@@ -1,0 +1,6 @@
+component: cli
+kind: fix
+body: Read Git metadata correctly in repositories that enable the worktreeConfig extension, such as those hosted on Azure DevOps
+time: 2026-06-11T00:00:00.000000+00:00
+custom:
+    PR: ""

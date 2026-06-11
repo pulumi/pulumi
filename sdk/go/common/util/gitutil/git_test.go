@@ -28,9 +28,10 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/transport/http"
+	gitssh "github.com/go-git/go-git/v6/plumbing/transport/ssh"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
@@ -50,6 +51,42 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 	os.Exit(m.Run())
+}
+
+// TestGetGitRepositoryWithWorktreeConfigExtension is a regression test for
+// https://github.com/pulumi/pulumi/issues/23522. Repositories that enable the
+// worktreeConfig extension (e.g. on Azure DevOps) were rejected by go-git v5
+// with "core.repositoryformatversion does not support extension: worktreeconfig"
+// because its allow-list keyed on the camel-cased extension name while the
+// lookup was lower-cased. go-git v6 lower-cases the allow-list, so the extension
+// is accepted and GetGitRepository can read the repo's metadata.
+func TestGetGitRepositoryWithWorktreeConfigExtension(t *testing.T) {
+	t.Parallel()
+
+	// The check keys on the presence of the extension, not its value, so both a
+	// "true" and a "false" setting reproduce the v5 failure.
+	for _, value := range []string{"true", "false"} {
+		t.Run("worktreeConfig="+value, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			_, err := git.PlainInit(dir, false)
+			require.NoError(t, err)
+
+			// PlainInit writes core.repositoryformatversion = 0; append the
+			// worktreeConfig extension to reproduce the customer's config.
+			configPath := filepath.Join(dir, ".git", "config")
+			f, err := os.OpenFile(configPath, os.O_APPEND|os.O_WRONLY, 0o600)
+			require.NoError(t, err)
+			_, err = f.WriteString("[extensions]\n\tworktreeConfig = " + value + "\n")
+			require.NoError(t, err)
+			require.NoError(t, f.Close())
+
+			repo, err := GetGitRepository(dir)
+			require.NoError(t, err)
+			require.NotNil(t, repo)
+		})
+	}
 }
 
 func TestParseGitRepoURL(t *testing.T) {
@@ -587,7 +624,11 @@ func TestParseAuthURL(t *testing.T) {
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
 		require.NoError(t, err)
 		require.NotNil(t, auth)
-		assert.Equal(t, "user: git, name: ssh-public-keys", auth.String())
+		// go-git v6 auth values no longer share a String()/Name() interface, so
+		// inspect the concrete SSH public-keys auth directly.
+		pubKeys, ok := auth.(*gitssh.PublicKeys)
+		require.True(t, ok)
+		assert.Equal(t, "git", pubKeys.User)
 		assert.Contains(t, parser.sshKeys, "github.com")
 	})
 
@@ -628,7 +669,7 @@ func TestParseAuthURL(t *testing.T) {
 		t.Parallel()
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{err: errors.New("should not be called")},
-			sshKeys: map[string]transport.AuthMethod{
+			sshKeys: map[string]gitAuthMethod{
 				"github.com": &http.BasicAuth{Username: "foo"},
 			},
 		}
@@ -636,7 +677,7 @@ func TestParseAuthURL(t *testing.T) {
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
 		require.NoError(t, err)
 		require.NotNil(t, auth)
-		assert.Equal(t, "http-basic-auth - foo:<empty>", auth.String())
+		assert.Equal(t, &http.BasicAuth{Username: "foo"}, auth)
 	})
 
 	t.Run("Don't cache on error", func(t *testing.T) {

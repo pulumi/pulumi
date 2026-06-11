@@ -28,13 +28,14 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/go-git/go-git/v5/storage/memory"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/config"
+	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/client"
+	"github.com/go-git/go-git/v6/plumbing/transport"
+	"github.com/go-git/go-git/v6/plumbing/transport/http"
+	gitssh "github.com/go-git/go-git/v6/plumbing/transport/ssh"
+	"github.com/go-git/go-git/v6/storage/memory"
 	"github.com/kevinburke/ssh_config"
 	"golang.org/x/crypto/ssh"
 
@@ -97,10 +98,11 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 	}
 
 	// Open the git repo in the .git folder's parent, not the .git folder itself.
-	repo, err := git.PlainOpenWithOptions(filepath.Dir(gitRoot), &git.PlainOpenOptions{
-		EnableDotGitCommonDir: true,
-	})
-	if err == git.ErrRepositoryNotExists {
+	// In go-git v6 the common-dir (worktree) layout is handled unconditionally,
+	// so the v5 EnableDotGitCommonDir option no longer exists. v6 also accepts
+	// the worktreeConfig extension that v5 rejected (pulumi/pulumi#23522).
+	repo, err := git.PlainOpenWithOptions(filepath.Dir(gitRoot), &git.PlainOpenOptions{})
+	if errors.Is(err, git.ErrRepositoryNotExists) {
 		return nil, nil
 	}
 	if err != nil {
@@ -160,14 +162,14 @@ func TryGetVCSInfo(remoteURL string) (_ *VCSInfo, err error) {
 		}
 	}()
 
-	endpoint, err := transport.NewEndpoint(remoteURL)
+	endpoint, err := transport.ParseURL(remoteURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse endpoint: %w", err)
 	}
 
 	// If the remote is using git SSH, then we extract the named groups by matching
 	// with the pre-compiled regex pattern.
-	switch endpoint.Protocol {
+	switch endpoint.Scheme {
 	case "ssh":
 		// Most cloud-hosted VCS have the ssh URL of the format git@somehostname.com:owner/repo
 		if cloudSourceControlSSHRegex.MatchString(remoteURL) {
@@ -192,7 +194,7 @@ func TryGetVCSInfo(remoteURL string) (_ *VCSInfo, err error) {
 		// So it is safe to use it instead of doing any sort of substring matches.
 		project = strings.TrimPrefix(project, "/")
 	default:
-		return nil, fmt.Errorf("unsupported protocol %q", endpoint.Protocol)
+		return nil, fmt.Errorf("unsupported protocol %q", endpoint.Scheme)
 	}
 
 	// We had a valid endpoint but didn't match any known VCS.
@@ -270,9 +272,31 @@ type urlAuthParser struct {
 
 	// sshKeys memoizes keys we've loaded for given host URLs, to avoid needing to
 	// re-fetch public keys.
-	sshKeys map[string]transport.AuthMethod
+	sshKeys map[string]gitAuthMethod
 	// sshConfig allows us to inject config for testing.
 	sshConfig sshUserSettings
+}
+
+// gitAuthMethod is a resolved git authentication method: either an
+// *http.BasicAuth (which implements client.HTTPAuth) or an SSH auth such as
+// *gitssh.PublicKeys / *gitssh.PublicKeysCallback (which implement
+// client.SSHAuth), or nil when no auth applies. go-git v6 dropped the common
+// transport.AuthMethod interface and instead takes functional client options,
+// so we hold the concrete auth value (which keeps it inspectable in tests) and
+// convert it to client options at each transport call site via gitClientOptions.
+type gitAuthMethod = any
+
+// gitClientOptions converts a resolved auth method into go-git v6 transport
+// client options suitable for CloneOptions/FetchOptions/ListOptions.ClientOptions.
+func gitClientOptions(auth gitAuthMethod) []client.Option {
+	switch a := auth.(type) {
+	case client.HTTPAuth:
+		return []client.Option{client.WithHTTPAuth(a)}
+	case client.SSHAuth:
+		return []client.Option{client.WithSSHAuth(a)}
+	default:
+		return nil
+	}
 }
 
 // defaultURLAuthParser uses the host's SSH configuration.
@@ -282,14 +306,20 @@ var defaultURLAuthParser = &urlAuthParser{
 
 // Parse parses a given URL and returns relevant auth. For SSH URLs, keys are
 // read from the provided sshUserSettings.
-func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, error) {
-	endpoint, err := transport.NewEndpoint(remoteURL)
+func (p *urlAuthParser) Parse(remoteURL string) (string, gitAuthMethod, error) {
+	// transport.ParseURL returns a stdlib *url.URL (go-git v6 dropped the bespoke
+	// transport.Endpoint type). Its methods are nil-safe, so endpoint.User may be
+	// nil and endpoint.User.Username() still returns "".
+	endpoint, err := transport.ParseURL(remoteURL)
 	if err != nil {
 		return "", nil, err
 	}
 
-	if endpoint.Protocol == "ssh" {
-		var auth transport.AuthMethod
+	if endpoint.Scheme == "ssh" {
+		host := endpoint.Host
+		user := endpoint.User.Username()
+
+		var auth gitAuthMethod
 		cacheAuthMethod := false
 
 		p.mu.Lock()
@@ -300,19 +330,20 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 				return
 			}
 			if p.sshKeys == nil {
-				p.sshKeys = make(map[string]transport.AuthMethod)
+				p.sshKeys = make(map[string]gitAuthMethod)
 			}
-			logging.V(10).Infof("caching auth for %s", endpoint.Host)
-			p.sshKeys[endpoint.Host] = auth
+			logging.V(10).Infof("caching auth for %s", host)
+			p.sshKeys[host] = auth
 		}()
 
 		// See if we've encountered this host before; if yes, use the existing key.
-		if existing, ok := p.sshKeys[endpoint.Host]; ok {
+		if existing, ok := p.sshKeys[host]; ok {
 			return remoteURL, existing, nil
 		}
 
-		auth, err = getSSHPublicKeys(endpoint.User, endpoint.Host, p.sshConfig)
+		publicKeys, err := getSSHPublicKeys(user, host, p.sshConfig)
 		if err == nil {
+			auth = publicKeys
 			cacheAuthMethod = true
 			return remoteURL, auth, nil
 		}
@@ -321,29 +352,52 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 		// config defined for the host), we still treat the URL as valid
 		// and attempt to use the SSH agent for auth.
 		logging.V(10).Infof("%s: using agent auth instead", err)
-		auth, err = gitssh.DefaultAuthBuilder(endpoint.User)
+		agentAuth, err := gitssh.NewSSHAgentAuth(user)
 		if err != nil {
 			return "", nil, err
 		}
+		auth = agentAuth
 		cacheAuthMethod = true
-		return remoteURL, auth, err
+		return remoteURL, auth, nil
+	}
+
+	// go-git v6's file transport requires an absolute local path; relative paths
+	// are normalized into malformed file:// URLs (e.g. "repo.git" treats
+	// "repo.git" as the host). go-git v5 accepted relative local paths, so
+	// resolve them to absolute here to preserve that behavior.
+	if endpoint.Scheme == "file" {
+		if abs, err := filepath.Abs(endpoint.Path); err == nil {
+			return abs, nil, nil
+		}
 	}
 
 	// For non-SSH URLs, see if there is basic auth info. Strip it from the
 	// endpoint as we go in order to remove it from the string output.
-	if u, p := endpoint.User, endpoint.Password; u != "" || p != "" {
-		auth := &http.BasicAuth{Username: u, Password: p}
-		endpoint.User, endpoint.Password = "", ""
-		return endpoint.String(), auth, nil
+	if endpoint.User != nil {
+		if u, pw := endpoint.User.Username(), passwordOrEmpty(endpoint.User); u != "" || pw != "" {
+			auth := &http.BasicAuth{Username: u, Password: pw}
+			endpoint.User = nil
+			return endpoint.String(), auth, nil
+		}
 	}
-	return endpoint.String(), nil, nil
+	// Otherwise return the URL unchanged. We avoid round-tripping through
+	// endpoint.String() here: go-git v6 normalizes bare/relative local paths
+	// into malformed file:// URLs (e.g. "repo.git" -> "file://repo.git", which
+	// treats "repo.git" as the host), which breaks local clones.
+	return remoteURL, nil, nil
+}
+
+// passwordOrEmpty returns the password from url userinfo, or "" if unset.
+func passwordOrEmpty(u *url.Userinfo) string {
+	pw, _ := u.Password()
+	return pw
 }
 
 // getAuthForURL extracts HTTP basic auth parameters if provided in the URL.
 //
 // If the URL uses SSH, the user's SSH configuration is parsed and relevant
 // public keys are returned for authentication.
-func getAuthForURL(url string) (string, transport.AuthMethod, error) {
+func getAuthForURL(url string) (string, gitAuthMethod, error) {
 	endpoint, auth, err := defaultURLAuthParser.Parse(url)
 	if err != nil {
 		return "", nil, err
@@ -489,9 +543,9 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 	if err != nil {
 		return err
 	}
-	repo, err := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
-		URL:  u,
-		Auth: auth,
+	repo, err := git.PlainCloneContext(ctx, path, &git.CloneOptions{
+		URL:           u,
+		ClientOptions: gitClientOptions(auth),
 	})
 	if err != nil {
 		return err
@@ -522,9 +576,9 @@ func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumb
 	if err != nil {
 		return err
 	}
-	repo, err := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
-		URL:  u,
-		Auth: auth,
+	repo, err := git.PlainCloneContext(ctx, path, &git.CloneOptions{
+		URL:           u,
+		ClientOptions: gitClientOptions(auth),
 	})
 	if err != nil {
 		return err
@@ -585,17 +639,19 @@ func gitCloneOrPull(
 		return err
 	}
 	// Attempt to clone the repo.
-	_, cloneErr := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
+	_, cloneErr := git.PlainCloneContext(ctx, path, &git.CloneOptions{
 		URL:           u,
-		Auth:          auth,
+		ClientOptions: gitClientOptions(auth),
 		ReferenceName: referenceName,
 		SingleBranch:  true,
 		Depth:         depth,
 		Tags:          git.NoTags,
 	})
 	if cloneErr != nil {
-		// If the repo already exists, open it and pull.
-		if cloneErr == git.ErrRepositoryAlreadyExists {
+		// If the repo already exists, open it and pull. go-git v6 replaced
+		// ErrRepositoryAlreadyExists with ErrTargetDirNotEmpty (wrapped with the
+		// path) for this case, so match with errors.Is.
+		if errors.Is(cloneErr, git.ErrTargetDirNotEmpty) {
 			repo, err := git.PlainOpen(path)
 			if err != nil {
 				return err
@@ -620,13 +676,13 @@ func gitCloneOrPull(
 				ReferenceName: referenceName,
 				SingleBranch:  true,
 				Force:         true,
-			}); cloneErr == git.NoErrAlreadyUpToDate {
+			}); errors.Is(cloneErr, git.NoErrAlreadyUpToDate) {
 				return nil
 			}
 		}
 	}
 
-	if cloneErr == git.ErrUnstagedChanges {
+	if errors.Is(cloneErr, git.ErrUnstagedChanges) {
 		// See https://github.com/pulumi/pulumi/issues/11121. We seem to be getting intermittent unstaged
 		// changes errors, which is very hard to reproduce. This block of code catches this error and tries to
 		// do a diff to see what the unstaged change is and tells the user to report this error to the above
@@ -800,12 +856,12 @@ type gitRepoURLParts struct {
 }
 
 func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
-	endpoint, err := transport.NewEndpoint(rawurl)
+	endpoint, err := transport.ParseURL(rawurl)
 	if err != nil {
 		return gitRepoURLParts{}, err
 	}
 
-	if endpoint.Protocol == "ssh" {
+	if endpoint.Scheme == "ssh" {
 		// Normalize SSH URLs (including scp-style git@github.com URLs) into
 		// ssh:// format so we can parse them the same as https:// URLs.
 		rawurl = endpoint.String()
@@ -976,27 +1032,30 @@ func gitListRefs(ctx context.Context, url string) ([]*plumbing.Reference, error)
 		return gitListRefsSystemGit(ctx, url)
 	}
 
+	// Resolve auth first: getAuthForURL also normalizes the URL (absolutizing
+	// local paths and stripping any embedded credentials), so use its returned
+	// endpoint as the remote URL.
+	endpoint, auth, err := getAuthForURL(url)
+	if err != nil {
+		return nil, err
+	}
+
 	// We're only listing the references, so just use in-memory storage.
-	repo, err := git.Init(memory.NewStorage(), nil)
+	repo, err := git.Init(memory.NewStorage())
 	if err != nil {
 		return nil, err
 	}
 
 	remote, err := repo.CreateRemote(&config.RemoteConfig{
 		Name: "origin",
-		URLs: []string{url},
+		URLs: []string{endpoint},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	_, auth, err := getAuthForURL(url)
-	if err != nil {
-		return nil, err
-	}
-
 	return remote.List(&git.ListOptions{
-		Auth: auth,
+		ClientOptions: gitClientOptions(auth),
 	})
 }
 

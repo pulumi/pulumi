@@ -20,24 +20,25 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
 
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/protocol/packp/capability"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/config"
+	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/client"
+	"github.com/go-git/go-git/v6/plumbing/transport/http"
+	"github.com/go-git/go-git/v6/plumbing/transport/ssh"
 )
-
-var transportMutex sync.Mutex
 
 func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (string, error) {
 	cloneOptions := &git.CloneOptions{
 		RemoteName: "origin", // be explicit so we can require it in remote refs
 		URL:        repoArgs.URL,
 	}
+
+	// clientOptions carries the transport authentication for both the clone and
+	// any subsequent fetch. In go-git v6 auth is supplied as transport client
+	// options rather than a single CloneOptions.Auth value.
+	var clientOptions []client.Option
 
 	if repoArgs.Shallow {
 		cloneOptions.Depth = 1
@@ -62,7 +63,7 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 				return "", fmt.Errorf("unable to use SSH Private Key Path: %w", err)
 			}
 
-			cloneOptions.Auth = publicKeys
+			clientOptions = []client.Option{client.WithSSHAuth(publicKeys)}
 		}
 
 		// Then we check if the details of a SSH Private Key as passed
@@ -72,27 +73,29 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 				return "", fmt.Errorf("unable to use SSH Private Key: %w", err)
 			}
 
-			cloneOptions.Auth = publicKeys
+			clientOptions = []client.Option{client.WithSSHAuth(publicKeys)}
 		}
 
 		// Then we check to see if a Personal Access Token has been specified
 		// the username for use with a PAT can be *anything* but an empty string
 		// so we are setting this to `git`
 		if authDetails.PersonalAccessToken != "" {
-			cloneOptions.Auth = &http.BasicAuth{
+			clientOptions = []client.Option{client.WithHTTPAuth(&http.BasicAuth{
 				Username: "git",
 				Password: repoArgs.Auth.PersonalAccessToken,
-			}
+			})}
 		}
 
 		// then we check to see if a username and a password has been specified
 		if authDetails.Password != "" && authDetails.Username != "" {
-			cloneOptions.Auth = &http.BasicAuth{
+			clientOptions = []client.Option{client.WithHTTPAuth(&http.BasicAuth{
 				Username: repoArgs.Auth.Username,
 				Password: repoArgs.Auth.Password,
-			}
+			})}
 		}
 	}
+
+	cloneOptions.ClientOptions = clientOptions
 
 	// *Repository.Clone() will do appropriate fetching given a branch name. We must deal with
 	// different varieties, since people have been advised to use these as a workaround while only
@@ -121,49 +124,25 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		cloneOptions.ReferenceName = refName
 	}
 
-	// Azure DevOps requires multi_ack and multi_ack_detailed capabilities, which go-git doesn't implement.
-	// But: it's possible to do a full clone by saying it's _not_ _un_supported, in which case the library
-	// happily functions so long as it doesn't _actually_ get a multi_ack packet. See
-	// https://github.com/go-git/go-git/blob/v5.5.1/_examples/azure_devops/main.go.
-	repo, err := func() (*git.Repository, error) {
-		// Because transport.UnsupportedCapabilities is a global variable, we need a global lock around the
-		// use of this.
-		transportMutex.Lock()
-		defer transportMutex.Unlock()
-
-		oldUnsupportedCaps := transport.UnsupportedCapabilities
-		// This check is crude, but avoids having another dependency to parse the git URL.
-		if strings.Contains(repoArgs.URL, "dev.azure.com") {
-			transport.UnsupportedCapabilities = []capability.Capability{
-				capability.ThinPack,
-			}
-		}
-
-		// clone
-		repo, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
-
-		// Regardless of error we need to restore the UnsupportedCapabilities
-		transport.UnsupportedCapabilities = oldUnsupportedCaps
-		return repo, err
-	}()
+	// Historically go-git could not clone from Azure DevOps because it advertises the multi_ack /
+	// multi_ack_detailed capabilities that go-git v5 did not implement, and v5 also failed to resolve the
+	// thin packs Azure DevOps sends ("reference delta not found"). v5 worked around this by mutating the
+	// global transport.UnsupportedCapabilities to strip ThinPack. go-git v6 reworked the pack/transport
+	// layer and resolves Azure DevOps thin packs correctly on its own, so the workaround (and the global it
+	// relied on, which v6 removed) is no longer needed.
+	repo, err := git.PlainCloneContext(ctx, workDir, cloneOptions)
 	if err != nil {
 		return "", fmt.Errorf("unable to clone repo: %w", err)
 	}
 
 	if repoArgs.CommitHash != "" {
 		// ensure that the commit has been fetched
-		err := func() error {
-			// repo.FetchContext ends up looking at the global transport.UnsupportedCapabilities, so we need a
-			// global lock around the use of this.
-			transportMutex.Lock()
-			defer transportMutex.Unlock()
-			return repo.FetchContext(ctx, &git.FetchOptions{
-				RemoteName: "origin",
-				Auth:       cloneOptions.Auth,
-				Depth:      cloneOptions.Depth,
-				RefSpecs:   []config.RefSpec{config.RefSpec(repoArgs.CommitHash + ":" + repoArgs.CommitHash)},
-			})
-		}()
+		err := repo.FetchContext(ctx, &git.FetchOptions{
+			RemoteName:    "origin",
+			ClientOptions: clientOptions,
+			Depth:         cloneOptions.Depth,
+			RefSpecs:      []config.RefSpec{config.RefSpec(repoArgs.CommitHash + ":" + repoArgs.CommitHash)},
+		})
 		if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) && !errors.Is(err, git.ErrExactSHA1NotSupported) {
 			return "", fmt.Errorf("fetching commit: %w", err)
 		}
