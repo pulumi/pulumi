@@ -1235,9 +1235,13 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		return nil, fmt.Errorf("marshaling package config: %w", err)
 	}
 
-	spec.Provider, err = pkg.marshalResource(pkg.Provider)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling provider: %w", err)
+	// Provider is nil for packages without one (e.g. extension parameterizations).
+	if pkg.Provider != nil {
+		providerSpec, err := pkg.marshalResource(pkg.Provider)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling provider: %w", err)
+		}
+		spec.Provider = &providerSpec
 	}
 
 	for _, t := range pkg.Types {
@@ -2399,8 +2403,9 @@ type PackageSpec struct {
 	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
 	// defined by this package.
 	Types map[string]ComplexTypeSpec `json:"types,omitempty" yaml:"types,omitempty"`
-	// Provider describes the provider type for this package.
-	Provider ResourceSpec `json:"provider,omitempty" yaml:"provider"`
+	// Provider describes the provider type for this package. It is nil for
+	// packages that have no provider of their own (e.g. extension parameterizations).
+	Provider *ResourceSpec `json:"provider,omitempty" yaml:"provider,omitempty"`
 	// Resources is a map from type token to ResourceSpec that describes the set of resources defined by this package.
 	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.

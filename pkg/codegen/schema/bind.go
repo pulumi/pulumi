@@ -214,6 +214,11 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 
 	diags = diags.Extend(validateNoRequiredObjectCycles(typeList))
 
+	if spec.Parameterization != nil && spec.ExtensionParameterization != nil {
+		diags = diags.Append(errorf("#/parameterization",
+			"a package may declare parameterization or extensionParameterization, not both"))
+	}
+
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
 
@@ -290,6 +295,11 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	// Parameterized packages must always be built in SupportPack mode.
 	if info.Parameterization != nil || info.ExtensionParameterization != nil {
 		supportPack = true
+	}
+
+	if info.Parameterization != nil && info.ExtensionParameterization != nil {
+		diags = diags.Append(errorf("#/parameterization",
+			"a package may declare parameterization or extensionParameterization, not both"))
 	}
 
 	parameterization, parameterizationDiagnostics := bindParameterization(info.Parameterization)
@@ -431,7 +441,14 @@ func (s packageSpecSource) GetFunctionSpec(token string) (FunctionSpec, bool, er
 
 func (s packageSpecSource) GetResourceSpec(token string) (ResourceSpec, bool, error) {
 	if token == "pulumi:providers:"+s.spec.Name {
-		return s.spec.Provider, true, nil
+		if s.spec.Provider != nil {
+			return *s.spec.Provider, true, nil
+		}
+		// Extension parameterizations have no provider.
+		if s.spec.ExtensionParameterization != nil {
+			return ResourceSpec{}, false, nil
+		}
+		return ResourceSpec{}, true, nil
 	}
 	spec, ok := s.spec.Resources[token]
 	return spec, ok, nil
@@ -470,9 +487,12 @@ func (s partialPackageSpecSource) GetFunctionSpec(token string) (FunctionSpec, b
 func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, bool, error) {
 	var rawSpec json.RawMessage
 	if token == "pulumi:providers:"+s.spec.Name {
-		// Extension parameterization deliberately omits Provider.
-		if len(s.spec.Provider) == 0 && s.spec.Parameterization != nil {
-			return ResourceSpec{}, false, nil
+		if len(s.spec.Provider) == 0 {
+			// Extension parameterizations have no provider.
+			if s.spec.ExtensionParameterization != nil {
+				return ResourceSpec{}, false, nil
+			}
+			return ResourceSpec{}, true, nil
 		}
 		rawSpec = s.spec.Provider
 	} else {
@@ -628,8 +648,10 @@ func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	for _, prefix := range spec.AllowedPackageNames {
 		allowedNameSpecs[prefix] = nil
 	}
-	// Extension parameterizations keep their resource tokens under the base
-	// provider's namespace (the SDK is renamed, the tokens are not), so allow it.
+	// An extension parameterization's resource tokens may use either the
+	// extension's own name (already allowed above) or the base provider's
+	// namespace (the SDK is renamed, but the tokens need not be), so allow the
+	// base provider's name too.
 	if spec.ExtensionParameterization != nil {
 		allowedNameSpecs[spec.ExtensionParameterization.BaseProvider.Name] = nil
 	}
@@ -1997,6 +2019,11 @@ func bindExtensionParameterization(spec *ExtensionParameterizationSpec) (*Extens
 		Parameter:    spec.Parameter,
 	}
 	if spec.Replacement != nil {
+		if spec.Replacement.Name == "" {
+			return nil, hcl.Diagnostics{errorf(
+				"#/extensionParameterization/replacement/name",
+				"provider name must be specified")}
+		}
 		rver, err := semver.Parse(spec.Replacement.Version)
 		if err != nil {
 			return nil, hcl.Diagnostics{errorf(
@@ -2228,10 +2255,18 @@ func (t *types) finishResources(
 ) (*Resource, []*Resource, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	provider, provDiags, err := t.bindResourceTypeDef("pulumi:providers:"+t.pkg.Name, options)
-	diags = diags.Extend(provDiags)
-	if err != nil {
-		return nil, nil, diags, fmt.Errorf("error binding provider: %w", err)
+	// Bind the package's provider, if it has one. Extension parameterizations have
+	// none, so GetResourceSpec reports it absent.
+	var provider *ResourceType
+	if _, ok, err := t.spec.GetResourceSpec("pulumi:providers:" + t.pkg.Name); err != nil {
+		return nil, nil, diags, err
+	} else if ok {
+		bound, provDiags, err := t.bindResourceTypeDef("pulumi:providers:"+t.pkg.Name, options)
+		diags = diags.Extend(provDiags)
+		if err != nil {
+			return nil, nil, diags, fmt.Errorf("error binding provider: %w", err)
+		}
+		provider = bound
 	}
 
 	resources := slice.Prealloc[*Resource](len(tokens))
@@ -2248,7 +2283,11 @@ func (t *types) finishResources(
 		return resources[i].Token < resources[j].Token
 	})
 
-	return provider.Resource, resources, diags, nil
+	var providerResource *Resource
+	if provider != nil {
+		providerResource = provider.Resource
+	}
+	return providerResource, resources, diags, nil
 }
 
 func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Function, hcl.Diagnostics, error) {

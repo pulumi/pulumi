@@ -96,16 +96,17 @@ func (p *ConfigurerProvider) GetSchema(
 		}
 	}
 
+	providerResource := resourceSpec(false,
+		"The configurer provider. Its `config` setting is echoed onto each Custom resource it creates.",
+		map[string]schema.PropertySpec{"config": primitive("string")},
+		map[string]schema.PropertySpec{"config": primitive("string")},
+	)
 	pkg := schema.PackageSpec{
 		Name:      configurerPkg,
 		Version:   configurerVersion,
 		Functions: map[string]schema.FunctionSpec{},
 		Resources: map[string]schema.ResourceSpec{},
-		Provider: resourceSpec(false,
-			"The configurer provider. Its `config` setting is echoed onto each Custom resource it creates.",
-			map[string]schema.PropertySpec{"config": primitive("string")},
-			map[string]schema.PropertySpec{"config": primitive("string")},
-		),
+		Provider:  &providerResource,
 	}
 
 	pkg.Resources["configurer:index:Custom"] = resourceSpec(false,

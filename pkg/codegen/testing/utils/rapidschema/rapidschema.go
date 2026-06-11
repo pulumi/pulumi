@@ -152,7 +152,7 @@ func drawPackageSpec(t *rapid.T) schema.PackageSpec {
 		Version: Version().Draw(t, "version").String(),
 		// Provider is required by the binder; an empty object satisfies it
 		// without contributing any properties.
-		Provider:  schema.ResourceSpec{ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"}},
+		Provider:  &schema.ResourceSpec{ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"}},
 		Types:     ctx.typeDefs,
 		Resources: resources,
 	}

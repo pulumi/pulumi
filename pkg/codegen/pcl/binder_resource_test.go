@@ -272,7 +272,7 @@ func TestBindReadComponentResourceFails(t *testing.T) {
 	fooPkgSpec := schema.PackageSpec{
 		Name:    "foo",
 		Version: "1.0.0",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type: "object",
 			},
@@ -325,7 +325,7 @@ func TestBindResourceIgnoreChangesNameCollision(t *testing.T) {
 	pkgSpec := schema.PackageSpec{
 		Name:    "foo",
 		Version: "1.0.0",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"},
 		},
 		Resources: map[string]schema.ResourceSpec{

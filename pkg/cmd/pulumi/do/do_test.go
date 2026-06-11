@@ -135,7 +135,7 @@ func TestDoCmdWithPkgFlagPrintsHelp(t *testing.T) {
 				"aws:index:myResource":         {},
 				"aws:myModule:myOtherResource": {},
 			},
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"region": {
 						TypeSpec: schema.TypeSpec{
@@ -201,7 +201,7 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 				"aws:index:myResource":         {},
 				"aws:myModule:myOtherResource": {},
 			},
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"region": {
 						TypeSpec: schema.TypeSpec{
@@ -420,7 +420,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 				"aws:index:myResource":         {},
 				"aws:myModule:myOtherResource": {},
 			},
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"region": {
 						TypeSpec: schema.TypeSpec{

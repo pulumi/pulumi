@@ -2694,7 +2694,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"pulumi": {
 					TypeSpec: TypeSpec{
@@ -2715,7 +2715,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"version": {
 					TypeSpec: TypeSpec{
@@ -2737,7 +2737,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{
 				Properties: map[string]PropertySpec{
 					"pulumi": {
@@ -2761,7 +2761,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{
 				Properties: map[string]PropertySpec{
 					"version": {
@@ -2790,7 +2790,7 @@ func TestResourceWithKeynameOverlapFunction(t *testing.T) {
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{},
 		},
 		Functions: map[string]FunctionSpec{
@@ -2811,7 +2811,7 @@ func TestResourceWithKeynameOverlapResource(t *testing.T) {
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{},
 		},
 		Resources: map[string]ResourceSpec{
@@ -2832,7 +2832,7 @@ func TestResourceWithKeynameOverlapType(t *testing.T) {
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{},
 		},
 		Types: map[string]ComplexTypeSpec{
@@ -3128,6 +3128,7 @@ func TestBindExtensionParameterized(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, nil, ValidationOptions{AllowDanglingReferences: true})
 	require.NoError(t, err)
 	require.NotNil(t, pkg.ExtensionParameterization)
+	assert.Nil(t, pkg.Provider)
 	assert.Empty(t, diags)
 
 	newSpec, err := pkg.MarshalSpec()
@@ -3138,7 +3139,37 @@ func TestBindExtensionParameterized(t *testing.T) {
 	pkg2, diags, err := BindSpec(*newSpec, nil, ValidationOptions{AllowDanglingReferences: true})
 	require.NoError(t, err)
 	require.NotNil(t, pkg2.ExtensionParameterization)
+	assert.Nil(t, pkg2.Provider)
 	assert.Empty(t, diags)
+}
+
+func TestBindSpecRejectsBothParameterizationFlavors(t *testing.T) {
+	t.Parallel()
+
+	base := BaseProviderSpec{Name: "base", Version: "1.0.0"}
+	spec := PackageSpec{
+		Name: "ext",
+		Parameterization: &ParameterizationSpec{
+			BaseProvider: base,
+			Parameter:    []byte("p"),
+		},
+		ExtensionParameterization: &ExtensionParameterizationSpec{
+			BaseProvider: base,
+			Parameter:    []byte("p"),
+		},
+	}
+	_, diags, err := BindSpec(spec, nil, ValidationOptions{})
+	require.NoError(t, err)
+	require.True(t, diags.HasErrors())
+	var found bool
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError &&
+			strings.Contains(d.Summary, "parameterization or extensionParameterization, not both") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected exclusivity diagnostic, got %v", diags)
 }
 
 func TestMarshalExtensionParameterizationReplacement(t *testing.T) {
