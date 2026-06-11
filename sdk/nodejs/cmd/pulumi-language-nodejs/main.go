@@ -822,6 +822,19 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	// If we're forcing tsc the program directory for running is actually ./bin, we fixup EntryPoint here so execRuntime
 	// passes it to nodejs to run.
 	if host.forceTsc {
+		// InstallDependencies compiles the program, but a test harness that
+		// shares one installed dependency tree between projects skips the
+		// install for all but the first project, so compile here if the
+		// compiled output is missing.
+		if _, err := os.Stat(filepath.Join(req.Info.ProgramDirectory, "bin")); os.IsNotExist(err) {
+			tscCmd := exec.Command("npx", "tsc")
+			tscCmd.Dir = req.Info.ProgramDirectory
+			if output, err := tscCmd.CombinedOutput(); err != nil {
+				return &pulumirpc.RunResponse{
+					Error: fmt.Sprintf("failed to run tsc: %v: %s", err, output),
+				}, nil
+			}
+		}
 		req.Info.EntryPoint = "bin"
 	}
 
