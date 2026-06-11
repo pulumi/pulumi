@@ -604,15 +604,27 @@ type Parameterization struct {
 	Parameter []byte
 }
 
+// ReplacementParameterization is a replacement carried inside an
+// ExtensionParameterization. The base provider it applies to comes from the
+// enclosing ExtensionParameterization, so only the resulting provider's name,
+// version, and parameter are needed here.
+type ReplacementParameterization struct {
+	// Name is the name of the provider produced by the replacement.
+	Name string
+	// Version is the version of the provider produced by the replacement.
+	Version semver.Version
+	// Parameter is the parameter applied to the base provider.
+	Parameter []byte
+}
+
 // ExtensionParameterization describes an extension applied to a base provider.
-// Unlike a replacement Parameterization, it can also carry a Replacement that is
-// applied to the base provider before the extension.
 type ExtensionParameterization struct {
 	// BaseProvider is the plugin the extension is applied to.
 	BaseProvider BaseProvider
-	// Replacement is an optional replacement parameterization applied to the base
-	// provider before the extension. Combining the two is not supported yet.
-	Replacement *Parameterization
+	// Replacement is an optional replacement applied to the base provider before
+	// the extension (extending a provider that was itself replaced). Setting it is
+	// not yet supported.
+	Replacement *ReplacementParameterization
 	// Parameter is the extension parameter passed to the base provider.
 	Parameter []byte
 }
@@ -1152,7 +1164,7 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	var metadata *MetadataSpec
 	// Don't set support pack in meta spec if Parameterization or ExtensionParameterization is present because that
 	// implictly sets SupportPack when reading back in anyway.
-	supportPack := pkg.SupportPack && pkg.Parameterization == nil && pkg.ExtensionParameterization == nil
+	supportPack := pkg.SupportPack && (pkg.Parameterization == nil || pkg.ExtensionParameterization == nil)
 	if pkg.moduleFormat != nil || supportPack {
 		metadata = &MetadataSpec{SupportPack: supportPack}
 		if pkg.moduleFormat != nil {
@@ -1170,14 +1182,21 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 			Parameter: pkg.Parameterization.Parameter,
 		}
 	}
-	var extensionParameterization *ParameterizationSpec
+	var extensionParameterization *ExtensionParameterizationSpec
 	if pkg.ExtensionParameterization != nil {
-		extensionParameterization = &ParameterizationSpec{
+		extensionParameterization = &ExtensionParameterizationSpec{
 			BaseProvider: BaseProviderSpec{
 				Name:    pkg.ExtensionParameterization.BaseProvider.Name,
 				Version: pkg.ExtensionParameterization.BaseProvider.Version.String(),
 			},
 			Parameter: pkg.ExtensionParameterization.Parameter,
+		}
+		if r := pkg.ExtensionParameterization.Replacement; r != nil {
+			extensionParameterization.Replacement = &ReplacementParameterizationSpec{
+				Name:      r.Name,
+				Version:   r.Version.String(),
+				Parameter: r.Parameter,
+			}
 		}
 	}
 
@@ -2290,7 +2309,7 @@ type PackageInfoSpec struct {
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 
 	// ExtensionParameterization is the optional extension parameterization for this package.
-	ExtensionParameterization *ParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"` //nolint:lll
+	ExtensionParameterization *ExtensionParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"` //nolint:lll
 }
 
 // BaseProviderSpec is the serializable description of a Pulumi base provider.
@@ -2306,6 +2325,28 @@ type ParameterizationSpec struct {
 	// The base provider to parameterize.
 	BaseProvider BaseProviderSpec `json:"baseProvider" yaml:"baseProvider"`
 	// The parameter to apply to the base provider.
+	Parameter []byte `json:"parameter" yaml:"parameter"`
+}
+
+// ReplacementParameterizationSpec is the serializable description of a replacement
+// nested inside an extension parameterization. The base provider comes from the
+// enclosing ExtensionParameterizationSpec, so it is not repeated here.
+type ReplacementParameterizationSpec struct {
+	// The name of the provider produced by the replacement.
+	Name string `json:"name" yaml:"name"`
+	// The version of the provider produced by the replacement.
+	Version string `json:"version" yaml:"version"`
+	// The parameter to apply to the base provider.
+	Parameter []byte `json:"parameter" yaml:"parameter"`
+}
+
+// ExtensionParameterizationSpec is the serializable description of an extension parameterization.
+type ExtensionParameterizationSpec struct {
+	// The base provider the extension is applied to.
+	BaseProvider BaseProviderSpec `json:"baseProvider" yaml:"baseProvider"`
+	// An optional replacement to apply to the base provider before the extension.
+	Replacement *ReplacementParameterizationSpec `json:"replacement,omitempty" yaml:"replacement,omitempty"`
+	// The extension parameter to apply to the base provider.
 	Parameter []byte `json:"parameter" yaml:"parameter"`
 }
 
@@ -2371,7 +2412,7 @@ type PackageSpec struct {
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 
 	// ExtensionParameterization is the optional extension-parameterization for the package, if any.
-	ExtensionParameterization *ParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"` //nolint:lll
+	ExtensionParameterization *ExtensionParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"` //nolint:lll
 }
 
 func (p *PackageSpec) Info() PackageInfoSpec {

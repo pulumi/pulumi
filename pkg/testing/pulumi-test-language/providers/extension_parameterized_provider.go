@@ -123,7 +123,7 @@ func (p *ExtensionParameterizedProvider) GetSchema(
 			token:          {ObjectTypeSpec: greetingSpec},
 			componentToken: {IsComponent: true, ObjectTypeSpec: greetingSpec},
 		},
-		ExtensionParameterization: &schema.ParameterizationSpec{
+		ExtensionParameterization: &schema.ExtensionParameterizationSpec{
 			BaseProvider: schema.BaseProviderSpec{
 				Name:    extensionBaseName,
 				Version: extensionBaseVersion,

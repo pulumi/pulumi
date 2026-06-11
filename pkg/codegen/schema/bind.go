@@ -1952,19 +1952,27 @@ func bindMethods(
 	return result, diags, nil
 }
 
-// validateParameterizationExclusivity returns a diagnostic if a spec declares
-// both parameterization flavors. Combining replacement and extension
-// parameterization is not supported yet, so a package may currently declare at
-// most one; relax this guard once the two can coexist.
+// validateParameterizationExclusivity returns diagnostics for unsupported
+// parameterization combinations. A package may declare a replacement
+// parameterization or an extension parameterization, but never both. Extending a
+// provider that was itself replaced (extensionParameterization.replacement) is
+// not yet supported.
 func validateParameterizationExclusivity(
-	parameterization, extensionParameterization *ParameterizationSpec,
+	parameterization *ParameterizationSpec,
+	extensionParameterization *ExtensionParameterizationSpec,
 ) hcl.Diagnostics {
+	var diags hcl.Diagnostics
 	if parameterization != nil && extensionParameterization != nil {
-		return hcl.Diagnostics{errorf(
+		diags = append(diags, errorf(
 			"#/parameterization",
-			"declaring both parameterization and extensionParameterization is not supported yet; declare one")}
+			"a package may declare parameterization or extensionParameterization, not both"))
 	}
-	return nil
+	if extensionParameterization != nil && extensionParameterization.Replacement != nil {
+		diags = append(diags, errorf(
+			"#/extensionParameterization/replacement",
+			"extending a replaced provider is not yet supported"))
+	}
+	return diags
 }
 
 func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Diagnostics) {
@@ -1996,15 +2004,39 @@ func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Di
 
 // bindExtensionParameterization binds an extension parameterization spec to the
 // ExtensionParameterization type.
-func bindExtensionParameterization(spec *ParameterizationSpec) (*ExtensionParameterization, hcl.Diagnostics) {
-	p, diags := bindParameterization(spec)
-	if p == nil {
-		return nil, diags
+func bindExtensionParameterization(spec *ExtensionParameterizationSpec) (*ExtensionParameterization, hcl.Diagnostics) {
+	if spec == nil {
+		return nil, nil
 	}
-	return &ExtensionParameterization{
-		BaseProvider: p.BaseProvider,
-		Parameter:    p.Parameter,
-	}, diags
+	if spec.BaseProvider.Name == "" {
+		return nil, hcl.Diagnostics{errorf(
+			"#/extensionParameterization/baseProvider/name",
+			"provider name must be specified")}
+	}
+	ver, err := semver.Parse(spec.BaseProvider.Version)
+	if err != nil {
+		return nil, hcl.Diagnostics{errorf(
+			"#/extensionParameterization/baseProvider/version",
+			"invalid version %q: %v", spec.BaseProvider.Version, err)}
+	}
+	ext := &ExtensionParameterization{
+		BaseProvider: BaseProvider{Name: spec.BaseProvider.Name, Version: ver},
+		Parameter:    spec.Parameter,
+	}
+	if spec.Replacement != nil {
+		rver, err := semver.Parse(spec.Replacement.Version)
+		if err != nil {
+			return nil, hcl.Diagnostics{errorf(
+				"#/extensionParameterization/replacement/version",
+				"invalid version %q: %v", spec.Replacement.Version, err)}
+		}
+		ext.Replacement = &ReplacementParameterization{
+			Name:      spec.Replacement.Name,
+			Version:   rver,
+			Parameter: spec.Replacement.Parameter,
+		}
+	}
+	return ext, nil
 }
 
 func bindConfig(spec ConfigSpec, types *types, options ValidationOptions) ([]*Property, hcl.Diagnostics, error) {

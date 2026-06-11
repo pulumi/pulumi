@@ -711,13 +711,21 @@ func (p *PartialPackage) Definition() (*Package, error) {
 		}
 	}
 	if p.spec.ExtensionParameterization != nil {
-		pkg.ExtensionParameterization = &ExtensionParameterization{
+		ext := &ExtensionParameterization{
 			BaseProvider: BaseProvider{
 				Name:    p.spec.ExtensionParameterization.BaseProvider.Name,
 				Version: semver.MustParse(p.spec.ExtensionParameterization.BaseProvider.Version),
 			},
 			Parameter: p.spec.ExtensionParameterization.Parameter,
 		}
+		if r := p.spec.ExtensionParameterization.Replacement; r != nil {
+			ext.Replacement = &ReplacementParameterization{
+				Name:      r.Name,
+				Version:   semver.MustParse(r.Version),
+				Parameter: r.Parameter,
+			}
+		}
+		pkg.ExtensionParameterization = ext
 	}
 	if err := pkg.ImportLanguages(p.languages); err != nil {
 		return nil, err
