@@ -598,8 +598,34 @@ type BaseProvider struct {
 }
 
 type Parameterization struct {
+	// BaseProvider is the plugin the parameterization is applied to.
 	BaseProvider BaseProvider
 	// Parameter is the parameter for the provider.
+	Parameter []byte
+}
+
+// ReplacementParameterization is a replacement carried inside an
+// ExtensionParameterization. The base provider it applies to comes from the
+// enclosing ExtensionParameterization, so only the resulting provider's name,
+// version, and parameter are needed here.
+type ReplacementParameterization struct {
+	// Name is the name of the provider produced by the replacement.
+	Name string
+	// Version is the version of the provider produced by the replacement.
+	Version semver.Version
+	// Parameter is the parameter applied to the base provider.
+	Parameter []byte
+}
+
+// ExtensionParameterization describes an extension applied to a base provider.
+type ExtensionParameterization struct {
+	// BaseProvider is the plugin the extension is applied to.
+	BaseProvider BaseProvider
+	// Replacement is an optional replacement applied to the base provider before
+	// the extension (extending a provider that was itself replaced). Setting it is
+	// not yet supported.
+	Replacement *ReplacementParameterization
+	// Parameter is the extension parameter passed to the base provider.
 	Parameter []byte
 }
 
@@ -662,6 +688,9 @@ type Package struct {
 
 	// Parameterization is the optional parameterization for the package, if any.
 	Parameterization *Parameterization
+
+	// ExtensionParameterization is the optional extension-parameterization for the package, if any.
+	ExtensionParameterization *ExtensionParameterization
 
 	resourceTable     map[string]*Resource
 	resourceTypeTable map[string]*ResourceType
@@ -1133,9 +1162,9 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	}
 
 	var metadata *MetadataSpec
-	// Don't set support pack in meta spec if Parameterization is present because that implictly sets
-	// SupportPack when reading back in anyway.
-	supportPack := pkg.SupportPack && pkg.Parameterization == nil
+	// Don't set support pack in meta spec if Parameterization or ExtensionParameterization is present because that
+	// implictly sets SupportPack when reading back in anyway.
+	supportPack := pkg.SupportPack && (pkg.Parameterization == nil || pkg.ExtensionParameterization == nil)
 	if pkg.moduleFormat != nil || supportPack {
 		metadata = &MetadataSpec{SupportPack: supportPack}
 		if pkg.moduleFormat != nil {
@@ -1153,28 +1182,46 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 			Parameter: pkg.Parameterization.Parameter,
 		}
 	}
+	var extensionParameterization *ExtensionParameterizationSpec
+	if pkg.ExtensionParameterization != nil {
+		extensionParameterization = &ExtensionParameterizationSpec{
+			BaseProvider: BaseProviderSpec{
+				Name:    pkg.ExtensionParameterization.BaseProvider.Name,
+				Version: pkg.ExtensionParameterization.BaseProvider.Version.String(),
+			},
+			Parameter: pkg.ExtensionParameterization.Parameter,
+		}
+		if r := pkg.ExtensionParameterization.Replacement; r != nil {
+			extensionParameterization.Replacement = &ReplacementParameterizationSpec{
+				Name:      r.Name,
+				Version:   r.Version.String(),
+				Parameter: r.Parameter,
+			}
+		}
+	}
 
 	spec = &PackageSpec{
-		Name:                pkg.Name,
-		Version:             version,
-		DisplayName:         pkg.DisplayName,
-		Publisher:           pkg.Publisher,
-		Namespace:           pkg.Namespace,
-		Description:         pkg.Description,
-		Keywords:            pkg.Keywords,
-		Homepage:            pkg.Homepage,
-		License:             pkg.License,
-		Attribution:         pkg.Attribution,
-		Repository:          pkg.Repository,
-		LogoURL:             pkg.LogoURL,
-		PluginDownloadURL:   pkg.PluginDownloadURL,
-		Meta:                metadata,
-		Dependencies:        pkg.Dependencies,
-		Types:               map[string]ComplexTypeSpec{},
-		Resources:           map[string]ResourceSpec{},
-		Functions:           map[string]FunctionSpec{},
-		AllowedPackageNames: pkg.AllowedPackageNames,
-		Parameterization:    parameterization,
+		Name:                      pkg.Name,
+		Version:                   version,
+		DisplayName:               pkg.DisplayName,
+		Publisher:                 pkg.Publisher,
+		Namespace:                 pkg.Namespace,
+		Description:               pkg.Description,
+		Keywords:                  pkg.Keywords,
+		Homepage:                  pkg.Homepage,
+		License:                   pkg.License,
+		Attribution:               pkg.Attribution,
+		Repository:                pkg.Repository,
+		LogoURL:                   pkg.LogoURL,
+		PluginDownloadURL:         pkg.PluginDownloadURL,
+		Meta:                      metadata,
+		Dependencies:              pkg.Dependencies,
+		Types:                     map[string]ComplexTypeSpec{},
+		Resources:                 map[string]ResourceSpec{},
+		Functions:                 map[string]FunctionSpec{},
+		AllowedPackageNames:       pkg.AllowedPackageNames,
+		Parameterization:          parameterization,
+		ExtensionParameterization: extensionParameterization,
 	}
 
 	lang, err := marshalLanguage(pkg.Language)
@@ -2260,6 +2307,9 @@ type PackageInfoSpec struct {
 
 	// Parameterization is the optional parameterization for this package.
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+
+	// ExtensionParameterization is the optional extension parameterization for this package.
+	ExtensionParameterization *ExtensionParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"` //nolint:lll
 }
 
 // BaseProviderSpec is the serializable description of a Pulumi base provider.
@@ -2275,6 +2325,28 @@ type ParameterizationSpec struct {
 	// The base provider to parameterize.
 	BaseProvider BaseProviderSpec `json:"baseProvider" yaml:"baseProvider"`
 	// The parameter to apply to the base provider.
+	Parameter []byte `json:"parameter" yaml:"parameter"`
+}
+
+// ReplacementParameterizationSpec is the serializable description of a replacement
+// nested inside an extension parameterization. The base provider comes from the
+// enclosing ExtensionParameterizationSpec, so it is not repeated here.
+type ReplacementParameterizationSpec struct {
+	// The name of the provider produced by the replacement.
+	Name string `json:"name" yaml:"name"`
+	// The version of the provider produced by the replacement.
+	Version string `json:"version" yaml:"version"`
+	// The parameter to apply to the base provider.
+	Parameter []byte `json:"parameter" yaml:"parameter"`
+}
+
+// ExtensionParameterizationSpec is the serializable description of an extension parameterization.
+type ExtensionParameterizationSpec struct {
+	// The base provider the extension is applied to.
+	BaseProvider BaseProviderSpec `json:"baseProvider" yaml:"baseProvider"`
+	// An optional replacement to apply to the base provider before the extension.
+	Replacement *ReplacementParameterizationSpec `json:"replacement,omitempty" yaml:"replacement,omitempty"`
+	// The extension parameter to apply to the base provider.
 	Parameter []byte `json:"parameter" yaml:"parameter"`
 }
 
@@ -2338,28 +2410,32 @@ type PackageSpec struct {
 
 	// Parameterization is the optional parameterization for this package.
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+
+	// ExtensionParameterization is the optional extension-parameterization for the package, if any.
+	ExtensionParameterization *ExtensionParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"` //nolint:lll
 }
 
 func (p *PackageSpec) Info() PackageInfoSpec {
 	return PackageInfoSpec{
-		Name:                p.Name,
-		DisplayName:         p.DisplayName,
-		Version:             p.Version,
-		Description:         p.Description,
-		Keywords:            p.Keywords,
-		Homepage:            p.Homepage,
-		License:             p.License,
-		Attribution:         p.Attribution,
-		Repository:          p.Repository,
-		LogoURL:             p.LogoURL,
-		PluginDownloadURL:   p.PluginDownloadURL,
-		Publisher:           p.Publisher,
-		Namespace:           p.Namespace,
-		Dependencies:        p.Dependencies,
-		Meta:                p.Meta,
-		AllowedPackageNames: p.AllowedPackageNames,
-		Language:            p.Language,
-		Parameterization:    p.Parameterization,
+		Name:                      p.Name,
+		DisplayName:               p.DisplayName,
+		Version:                   p.Version,
+		Description:               p.Description,
+		Keywords:                  p.Keywords,
+		Homepage:                  p.Homepage,
+		License:                   p.License,
+		Attribution:               p.Attribution,
+		Repository:                p.Repository,
+		LogoURL:                   p.LogoURL,
+		PluginDownloadURL:         p.PluginDownloadURL,
+		Publisher:                 p.Publisher,
+		Namespace:                 p.Namespace,
+		Dependencies:              p.Dependencies,
+		Meta:                      p.Meta,
+		AllowedPackageNames:       p.AllowedPackageNames,
+		Language:                  p.Language,
+		Parameterization:          p.Parameterization,
+		ExtensionParameterization: p.ExtensionParameterization,
 	}
 }
 
