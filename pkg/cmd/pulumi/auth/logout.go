@@ -127,9 +127,21 @@ func deleteAccount(cloudURL string) error {
 	if !workspace.AgentCredentialsFallbackEnabled() {
 		return workspace.DeleteAccount(cloudURL)
 	}
-	account, err := workspace.GetAccount(cloudURL)
-	if err == nil && account.AccessToken != "" {
+	creds, err := workspace.GetStoredCredentials()
+	// Tokenless backends, such as DIY backends, still belong to the default credential store.
+	if err == nil && credentialsContainAccount(creds, cloudURL) {
 		return workspace.DeleteAccount(cloudURL)
 	}
 	return workspace.DeleteAgentAccount(cloudURL)
+}
+
+func credentialsContainAccount(creds workspace.Credentials, cloudURL string) bool {
+	if creds.Current == cloudURL {
+		return true
+	}
+	if _, ok := creds.AccessTokens[cloudURL]; ok {
+		return true
+	}
+	_, ok := creds.Accounts[cloudURL]
+	return ok
 }
