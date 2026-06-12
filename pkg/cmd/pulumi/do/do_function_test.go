@@ -135,6 +135,7 @@ Flags:
       --input-file string      Path to a file containing function inputs
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --param1 string          To set param1 things (alias for --input:param1)
+      --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
       --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.

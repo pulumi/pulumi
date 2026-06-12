@@ -19,13 +19,17 @@ import (
 	"context"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -133,6 +137,7 @@ Flags:
   -h, --help                   help for do
       --input string           Format of the provider configuration file (default "pcl")
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
+      --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
       --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
@@ -181,6 +186,7 @@ Flags:
   -h, --help                   help for do
       --input string           Format of the provider configuration file (default "pcl")
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
+      --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
       --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
@@ -669,4 +675,237 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 		assert.Contains(t, stderr.String(), `This will delete azure:index:myResource "res-1"`)
 		assert.Empty(t, stdout.String())
 	})
+}
+
+// TestDoCmdResourceProviderFlagOutsideStackContext checks that the --provider flag errors out when
+// there is no stack context to resolve the URN against — passing it when no Pulumi project is on
+// disk (the default MockContext returns ErrProjectNotFound) should fail with a clear message
+// before any provider configuration happens.
+//
+// don't bother mocking the provider; the bail also happens regardless of subcommand, so we use
+// `read` for brevity.
+func TestDoCmdResourceProviderFlagOutsideStackContext(t *testing.T) {
+	t.Parallel()
+	cmd, _, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "read", "res-1",
+		"--provider", "urn:pulumi:dev::proj::pulumi:providers:azure::default",
+	})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "--provider requires a stack context")
+}
+
+// providerFlagStackContext wires a `do` command up against a mocked workspace + backend so that
+// configureProvider's RequireStack → CurrentBackend → CurrentStack chain finds a stack whose
+// snapshot is exactly `snapshot`. Returns the cmd plus output buffers. The fully-qualified stack
+// name avoids tripping getStackNameWithLegacyOrgNameIfNeeded, which would otherwise call into the
+// MockBackend trying to look up a default org. Tests using this helper must not run in parallel
+// because cmdBackend.BackendInstance is process-global.
+func providerFlagStackContext(
+	t *testing.T, provider *testProvider, snapshot *deploy.Snapshot,
+) (*cobra.Command, *bytes.Buffer, *bytes.Buffer) {
+	t.Helper()
+
+	// state.CurrentStack consults PULUMI_STACK ahead of the workspace's stored selection. Set it
+	// to a fully-qualified name so getStackNameWithLegacyOrgNameIfNeeded skips its default-org
+	// lookup (which would otherwise call into the MockBackend).
+	t.Setenv("PULUMI_STACK", "myorg/proj/dev")
+
+	proj := &workspace.Project{Name: tokens.PackageName("proj")}
+	mws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return proj, t.TempDir(), nil
+		},
+		// `do` populates evalContext.Stack from ws.New().Settings().Stack via currentStackIdentity;
+		// that determines whether configureProvider considers us "in a stack context". PULUMI_STACK
+		// above only feeds the parallel path used by state.CurrentStack — both have to agree.
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "myorg/proj/dev"}
+				},
+			}, nil
+		},
+	}
+
+	stackRef := &backend.MockStackReference{
+		StringV:             "myorg/proj/dev",
+		NameV:               tokens.MustParseStackName("dev"),
+		FullyQualifiedNameV: "myorg/proj/dev",
+	}
+	mockStack := &backend.MockStack{
+		RefF: func() backend.StackReference { return stackRef },
+		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+			return snapshot, nil
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		ParseStackReferenceF: func(_ string) (backend.StackReference, error) { return stackRef, nil },
+		GetStackF: func(_ context.Context, _ backend.StackReference) (backend.Stack, error) {
+			return mockStack, nil
+		},
+	}
+	cmdBackend.BackendInstance = mockBackend
+	t.Cleanup(func() { cmdBackend.BackendInstance = nil })
+
+	mlm := &cmdBackend.MockLoginManager{}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return provider, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	return cmd, &stdout, &stderr
+}
+
+// TestDoCmdResourceProviderFlagURNNotInSnapshot verifies that --provider names a URN that does not
+// match any resource in the current stack's snapshot fails with a "no resource named" error,
+// rather than silently configuring the provider with an empty / default config.
+//
+//nolint:paralleltest // mutates cmdBackend.BackendInstance via providerFlagStackContext.
+func TestDoCmdResourceProviderFlagURNNotInSnapshot(t *testing.T) {
+	cmd, _, _ := providerFlagStackContext(t,
+		&testProvider{spec: doResourceSpec(false)},
+		&deploy.Snapshot{}, // empty snapshot — no resources
+	)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "read", "res-1",
+		"--provider", "urn:pulumi:dev::proj::pulumi:providers:azure::default",
+	})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "no resource named")
+	require.ErrorContains(t, err, "urn:pulumi:dev::proj::pulumi:providers:azure::default")
+}
+
+// TestDoCmdResourceProviderFlagURNNotAProvider verifies that --provider only accepts a URN
+// pointing at a provider resource for the *same* package as the command's target. Two failure
+// modes guarded here:
+//
+//   - "not a provider": the URN names something whose type doesn't start with `pulumi:providers:`
+//     (e.g. an azure:index:Bucket). Without this guard we'd hand a Bucket's inputs to
+//     provider.Configure and get a confusing schema mismatch.
+//   - "wrong package": the URN names a provider for a different package (e.g. pointing at an aws
+//     provider while running `pulumi do azure:...`). Worst case here is a silent
+//     misconfiguration where Configure happily takes the cross-cloud inputs and we authenticate
+//     against the wrong cloud — definitely a loud-fail case.
+//
+//nolint:paralleltest // see TestDoCmdResourceProviderFlagURNNotInSnapshot.
+func TestDoCmdResourceProviderFlagURNNotAProvider(t *testing.T) {
+	bucketURN := resource.URN("urn:pulumi:dev::proj::azure:index:Bucket::mybucket")
+	awsProviderURN := resource.URN("urn:pulumi:dev::proj::pulumi:providers:aws::default")
+
+	cases := []struct {
+		name       string
+		urn        resource.URN
+		resources  []*resource.State
+		wantSubstr string
+	}{
+		{
+			name: "not a provider",
+			urn:  bucketURN,
+			//nolint:requiredfield // Only the fields configureProvider's matcher reads matter here.
+			resources: []*resource.State{
+				(&resource.NewState{
+					Type:   "azure:index:Bucket",
+					URN:    bucketURN,
+					Custom: true,
+					Inputs: resource.PropertyMap{"region": resource.NewProperty("us-east-1")},
+				}).Make(),
+			},
+			wantSubstr: "is not a provider",
+		},
+		{
+			name: "provider for a different package",
+			urn:  awsProviderURN,
+			//nolint:requiredfield // Only the fields configureProvider's matcher reads matter here.
+			resources: []*resource.State{
+				(&resource.NewState{
+					Type:   "pulumi:providers:aws",
+					URN:    awsProviderURN,
+					Custom: true,
+					Inputs: resource.PropertyMap{"region": resource.NewProperty("us-east-1")},
+				}).Make(),
+			},
+			wantSubstr: "provider for a different package",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd, _, _ := providerFlagStackContext(t,
+				&testProvider{spec: doResourceSpec(false)},
+				&deploy.Snapshot{Resources: tc.resources},
+			)
+			cmd.SetArgs([]string{
+				"azure:index:myResource", "read", "res-1",
+				"--provider", string(tc.urn),
+			})
+			err := cmd.Execute()
+			require.ErrorContains(t, err, tc.wantSubstr)
+		})
+	}
+}
+
+// TestDoCmdResourceProviderFlagMergesStackInputs is the positive path: --provider points at a real
+// provider resource in the snapshot, and its Inputs are used as the base. The CLI --input:region
+// flag overlays on top, so the value the provider receives at Configure time is the overlay
+// (us-west-2) — proving that explicit user-supplied values win, while values absent from the
+// overlay (the snapshot's `tenant`) fall through unchanged.
+//
+//nolint:paralleltest // see TestDoCmdResourceProviderFlagURNNotInSnapshot.
+func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
+	providerURN := resource.URN("urn:pulumi:dev::proj::pulumi:providers:azure::shared")
+	// The persistent --<pkg>:<input> flags are driven by spec.Provider.InputProperties; the regular
+	// doResourceSpec helper doesn't populate that, so add region/tenant here for this test only.
+	spec := doResourceSpec(false)
+	spec.Provider = schema.ResourceSpec{
+		InputProperties: map[string]schema.PropertySpec{
+			"region": {TypeSpec: schema.TypeSpec{Type: "string"}},
+			"tenant": {TypeSpec: schema.TypeSpec{Type: "string"}},
+		},
+	}
+	var gotInputs resource.PropertyMap
+	cmd, _, _ := providerFlagStackContext(t, &testProvider{
+		spec: spec,
+		MockProvider: plugin.MockProvider{
+			ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+				gotInputs = req.Inputs
+				return plugin.ConfigureResponse{}, nil
+			},
+			ReadF: func(_ context.Context, _ plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+					ID:      "res-1",
+					Outputs: resource.PropertyMap{"name": resource.NewProperty("hello")},
+				}}, nil
+			},
+		},
+	},
+		//nolint:requiredfield // Only the fields configureProvider's matcher reads matter here.
+		&deploy.Snapshot{Resources: []*resource.State{
+			(&resource.NewState{
+				Type:   "pulumi:providers:azure",
+				URN:    providerURN,
+				Custom: true,
+				Inputs: resource.PropertyMap{
+					"region": resource.NewProperty("us-east-1"),
+					"tenant": resource.NewProperty("acme"),
+				},
+			}).Make(),
+		}},
+	)
+	// --azure:region overlays the snapshot's `region` (the provider package's namespace flag form),
+	// `tenant` is not supplied here and should fall through from the snapshot's inputs.
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "read", "res-1",
+		"--provider", string(providerURN),
+		"--azure:region", "us-west-2",
+	})
+	require.NoError(t, cmd.Execute())
+
+	require.NotNil(t, gotInputs, "provider.Configure should have been called")
+	assert.Equal(t, "us-west-2", gotInputs["region"].StringValue(), "overlay should win for explicitly-set keys")
+	assert.Equal(t, "acme", gotInputs["tenant"].StringValue(),
+		"snapshot value should pass through for keys not in overlay")
 }
