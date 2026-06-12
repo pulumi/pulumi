@@ -35,11 +35,6 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		URL:        repoArgs.URL,
 	}
 
-	// clientOptions carries the transport authentication for both the clone and
-	// any subsequent fetch. In go-git v6 auth is supplied as transport client
-	// options rather than a single CloneOptions.Auth value.
-	var clientOptions []client.Option
-
 	if repoArgs.Shallow {
 		cloneOptions.Depth = 1
 		cloneOptions.SingleBranch = true
@@ -63,7 +58,7 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 				return "", fmt.Errorf("unable to use SSH Private Key Path: %w", err)
 			}
 
-			clientOptions = []client.Option{client.WithSSHAuth(publicKeys)}
+			cloneOptions.ClientOptions = []client.Option{client.WithSSHAuth(publicKeys)}
 		}
 
 		// Then we check if the details of a SSH Private Key as passed
@@ -73,14 +68,14 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 				return "", fmt.Errorf("unable to use SSH Private Key: %w", err)
 			}
 
-			clientOptions = []client.Option{client.WithSSHAuth(publicKeys)}
+			cloneOptions.ClientOptions = []client.Option{client.WithSSHAuth(publicKeys)}
 		}
 
 		// Then we check to see if a Personal Access Token has been specified
 		// the username for use with a PAT can be *anything* but an empty string
 		// so we are setting this to `git`
 		if authDetails.PersonalAccessToken != "" {
-			clientOptions = []client.Option{client.WithHTTPAuth(&http.BasicAuth{
+			cloneOptions.ClientOptions = []client.Option{client.WithHTTPAuth(&http.BasicAuth{
 				Username: "git",
 				Password: repoArgs.Auth.PersonalAccessToken,
 			})}
@@ -88,14 +83,12 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 
 		// then we check to see if a username and a password has been specified
 		if authDetails.Password != "" && authDetails.Username != "" {
-			clientOptions = []client.Option{client.WithHTTPAuth(&http.BasicAuth{
+			cloneOptions.ClientOptions = []client.Option{client.WithHTTPAuth(&http.BasicAuth{
 				Username: repoArgs.Auth.Username,
 				Password: repoArgs.Auth.Password,
 			})}
 		}
 	}
-
-	cloneOptions.ClientOptions = clientOptions
 
 	// *Repository.Clone() will do appropriate fetching given a branch name. We must deal with
 	// different varieties, since people have been advised to use these as a workaround while only
@@ -124,12 +117,6 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		cloneOptions.ReferenceName = refName
 	}
 
-	// Historically go-git could not clone from Azure DevOps because it advertises the multi_ack /
-	// multi_ack_detailed capabilities that go-git v5 did not implement, and v5 also failed to resolve the
-	// thin packs Azure DevOps sends ("reference delta not found"). v5 worked around this by mutating the
-	// global transport.UnsupportedCapabilities to strip ThinPack. go-git v6 reworked the pack/transport
-	// layer and resolves Azure DevOps thin packs correctly on its own, so the workaround (and the global it
-	// relied on, which v6 removed) is no longer needed.
 	repo, err := git.PlainCloneContext(ctx, workDir, cloneOptions)
 	if err != nil {
 		return "", fmt.Errorf("unable to clone repo: %w", err)
@@ -139,7 +126,7 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		// ensure that the commit has been fetched
 		err := repo.FetchContext(ctx, &git.FetchOptions{
 			RemoteName:    "origin",
-			ClientOptions: clientOptions,
+			ClientOptions: cloneOptions.ClientOptions,
 			Depth:         cloneOptions.Depth,
 			RefSpecs:      []config.RefSpec{config.RefSpec(repoArgs.CommitHash + ":" + repoArgs.CommitHash)},
 		})

@@ -42,8 +42,8 @@ func TestGitClone(t *testing.T) {
 	origin, err := git.PlainInit(originDir, false)
 	require.NoError(t, err)
 
-	// go-git v6 honors commit.gpgSign / tag.gpgSign from the user's git config
-	// (v5 did not). Disable it on this scratch repo so committing here doesn't
+	// go-git v6 honors commit.gpgSign / tag.gpgSign from the user's git config.
+	// Disable it on this scratch repo so committing here doesn't
 	// depend on the environment's signing configuration.
 	cfg, err := origin.Config()
 	require.NoError(t, err)

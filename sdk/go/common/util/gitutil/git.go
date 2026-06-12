@@ -96,9 +96,6 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 	}
 
 	// Open the git repo in the .git folder's parent, not the .git folder itself.
-	// In go-git v6 the common-dir (worktree) layout is handled unconditionally,
-	// so the v5 EnableDotGitCommonDir option no longer exists. v6 also accepts
-	// the worktreeConfig extension that v5 rejected (pulumi/pulumi#23522).
 	repo, err := git.PlainOpenWithOptions(filepath.Dir(gitRoot), &git.PlainOpenOptions{})
 	if errors.Is(err, git.ErrRepositoryNotExists) {
 		return nil, nil
@@ -278,14 +275,14 @@ type urlAuthParser struct {
 // gitAuthMethod is a resolved git authentication method: either an
 // *http.BasicAuth (which implements client.HTTPAuth) or an SSH auth such as
 // *gitssh.PublicKeys / *gitssh.PublicKeysCallback (which implement
-// client.SSHAuth), or nil when no auth applies. go-git v6 dropped the common
-// transport.AuthMethod interface and instead takes functional client options,
-// so we hold the concrete auth value (which keeps it inspectable in tests) and
-// convert it to client options at each transport call site via gitClientOptions.
+// client.SSHAuth), or nil when no auth applies. go-git takes functional client
+// options rather than a common auth interface, so we hold the concrete auth
+// value (which keeps it inspectable in tests) and convert it to client options
+// at each transport call site via gitClientOptions.
 type gitAuthMethod = any
 
-// gitClientOptions converts a resolved auth method into go-git v6 transport
-// client options suitable for CloneOptions/FetchOptions/ListOptions.ClientOptions.
+// gitClientOptions converts a resolved auth method into go-git transport client
+// options suitable for CloneOptions/FetchOptions/ListOptions.ClientOptions.
 func gitClientOptions(auth gitAuthMethod) []client.Option {
 	switch a := auth.(type) {
 	case client.HTTPAuth:
@@ -305,9 +302,6 @@ var defaultURLAuthParser = &urlAuthParser{
 // Parse parses a given URL and returns relevant auth. For SSH URLs, keys are
 // read from the provided sshUserSettings.
 func (p *urlAuthParser) Parse(remoteURL string) (string, gitAuthMethod, error) {
-	// transport.ParseURL returns a stdlib *url.URL (go-git v6 dropped the bespoke
-	// transport.Endpoint type). Its methods are nil-safe, so endpoint.User may be
-	// nil and endpoint.User.Username() still returns "".
 	endpoint, err := transport.ParseURL(remoteURL)
 	if err != nil {
 		return "", nil, err
@@ -359,10 +353,6 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, gitAuthMethod, error) {
 		return remoteURL, auth, nil
 	}
 
-	// go-git v6's file transport requires an absolute local path; relative paths
-	// are normalized into malformed file:// URLs (e.g. "repo.git" treats
-	// "repo.git" as the host). go-git v5 accepted relative local paths, so
-	// resolve them to absolute here to preserve that behavior.
 	if endpoint.Scheme == "file" {
 		if abs, err := filepath.Abs(endpoint.Path); err == nil {
 			return abs, nil, nil
@@ -379,9 +369,9 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, gitAuthMethod, error) {
 		}
 	}
 	// Otherwise return the URL unchanged. We avoid round-tripping through
-	// endpoint.String() here: go-git v6 normalizes bare/relative local paths
-	// into malformed file:// URLs (e.g. "repo.git" -> "file://repo.git", which
-	// treats "repo.git" as the host), which breaks local clones.
+	// endpoint.String() here: go-git normalizes bare/relative local paths into
+	// malformed file:// URLs (e.g. "repo.git" -> "file://repo.git", which treats
+	// "repo.git" as the host), which breaks local clones.
 	return remoteURL, nil, nil
 }
 
@@ -629,9 +619,8 @@ func gitCloneOrPull(
 		Tags:          git.NoTags,
 	})
 	if cloneErr != nil {
-		// If the repo already exists, open it and pull. go-git v6 replaced
-		// ErrRepositoryAlreadyExists with ErrTargetDirNotEmpty (wrapped with the
-		// path) for this case, so match with errors.Is.
+		// If the repo already exists, open it and pull. The clone fails with
+		// ErrTargetDirNotEmpty (wrapped with the path), so match with errors.Is.
 		if errors.Is(cloneErr, git.ErrTargetDirNotEmpty) {
 			repo, err := git.PlainOpen(path)
 			if err != nil {

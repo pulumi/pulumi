@@ -54,17 +54,14 @@ func TestMain(m *testing.M) {
 }
 
 // TestGetGitRepositoryWithWorktreeConfigExtension is a regression test for
-// https://github.com/pulumi/pulumi/issues/23522. Repositories that enable the
-// worktreeConfig extension (e.g. on Azure DevOps) were rejected by go-git v5
-// with "core.repositoryformatversion does not support extension: worktreeconfig"
-// because its allow-list keyed on the camel-cased extension name while the
-// lookup was lower-cased. go-git v6 lower-cases the allow-list, so the extension
-// is accepted and GetGitRepository can read the repo's metadata.
+// https://github.com/pulumi/pulumi/issues/23522: repositories that enable the
+// worktreeConfig extension (e.g. on Azure DevOps) must be openable by
+// GetGitRepository.
 func TestGetGitRepositoryWithWorktreeConfigExtension(t *testing.T) {
 	t.Parallel()
 
-	// The check keys on the presence of the extension, not its value, so both a
-	// "true" and a "false" setting reproduce the v5 failure.
+	// The extension is rejected on its presence, not its value, so exercise both
+	// "true" and "false".
 	for _, value := range []string{"true", "false"} {
 		t.Run("worktreeConfig="+value, func(t *testing.T) {
 			t.Parallel()
@@ -624,8 +621,6 @@ func TestParseAuthURL(t *testing.T) {
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
 		require.NoError(t, err)
 		require.NotNil(t, auth)
-		// go-git v6 auth values no longer share a String()/Name() interface, so
-		// inspect the concrete SSH public-keys auth directly.
 		pubKeys, ok := auth.(*gitssh.PublicKeys)
 		require.True(t, ok)
 		assert.Equal(t, "git", pubKeys.User)
