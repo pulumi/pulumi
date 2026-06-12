@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -147,8 +149,10 @@ func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
 }
 
 type testRegEvent struct {
-	goal   *resource.Goal
-	result *RegisterResult
+	goal         *resource.Goal
+	result       *RegisterResult
+	extension    *apitype.Extension
+	extensionRef apitype.ExtensionRef
 }
 
 var _ RegisterResourceEvent = (*testRegEvent)(nil)
@@ -163,6 +167,9 @@ func (g *testRegEvent) Done(result *RegisterResult) {
 	contract.Assertf(g.result == nil, "Attempt to invoke testRegEvent.Done more than once")
 	g.result = result
 }
+
+func (g *testRegEvent) Extension() *apitype.Extension      { return g.extension }
+func (g *testRegEvent) ExtensionRef() apitype.ExtensionRef { return g.extensionRef }
 
 func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
@@ -2778,12 +2785,14 @@ func TestGetDeploymentInfo(t *testing.T) {
 
 func TestSourceEvalServeOptions(t *testing.T) {
 	t.Parallel()
-	require.Len(t,
+	require.Len(
+		t,
 		sourceEvalServeOptions(nil, opentracing.SpanFromContext(t.Context()), "" /* logFile */),
 		2,
 	)
 
-	require.Len(t,
+	require.Len(
+		t,
 		sourceEvalServeOptions(&plugin.Context{
 			DebugTraceMutex: &sync.Mutex{},
 		}, opentracing.SpanFromContext(t.Context()), "logFile.log"),
@@ -3719,7 +3728,8 @@ func TestRegisterResource(t *testing.T) {
 				evt := <-requests
 				ref, err := sdkproviders.NewReference(
 					"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
-					"b2562429-e255-4b8f-904b-2bd239301ff2")
+					"b2562429-e255-4b8f-904b-2bd239301ff2",
+				)
 				require.NoError(t, err)
 				evt.response <- defaultProviderResponse{
 					ref: ref,
@@ -3753,7 +3763,8 @@ func TestRegisterResource(t *testing.T) {
 				evt := <-requests
 				ref, err := sdkproviders.NewReference(
 					"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
-					"denydefaultprovider")
+					"denydefaultprovider",
+				)
 				require.NoError(t, err)
 				evt.response <- defaultProviderResponse{
 					ref: ref,
@@ -3791,7 +3802,8 @@ func TestRegisterResource(t *testing.T) {
 				evt := <-requests
 				ref, err := sdkproviders.NewReference(
 					"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
-					"b2562429-e255-4b8f-904b-2bd239301ff2")
+					"b2562429-e255-4b8f-904b-2bd239301ff2",
+				)
 				require.NoError(t, err)
 				evt.response <- defaultProviderResponse{
 					ref: ref,
@@ -3827,7 +3839,8 @@ func TestRegisterResource(t *testing.T) {
 			evt := <-requests
 			ref, err := sdkproviders.NewReference(
 				"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
-				"b2562429-e255-4b8f-904b-2bd239301ff2")
+				"b2562429-e255-4b8f-904b-2bd239301ff2",
+			)
 			require.NoError(t, err)
 			evt.response <- defaultProviderResponse{
 				ref: ref,
@@ -4041,7 +4054,8 @@ func TestValidationFailures(t *testing.T) {
 			evt := <-requests
 			ref, err := sdkproviders.NewReference(
 				"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
-				"b2562429-e255-4b8f-904b-2bd239301ff2")
+				"b2562429-e255-4b8f-904b-2bd239301ff2",
+			)
 			require.NoError(t, err)
 			evt.response <- defaultProviderResponse{
 				ref: ref,

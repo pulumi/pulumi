@@ -18,6 +18,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -92,6 +93,13 @@ type RegisterResourceEvent interface {
 	Goal() *resource.Goal
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
 	Done(result *RegisterResult)
+	// Extension returns the extension parameterization, if any. A non-nil value
+	// means this resource came from an extension-parameterized package and the
+	// engine must apply that extension to the provider before producing steps.
+	Extension() *apitype.Extension
+	// ExtensionRef returns the per-deployment UUID identifying which extension
+	// registration this resource came from.
+	ExtensionRef() apitype.ExtensionRef
 }
 
 // RegisterResult is the state of the resource after it has been registered.

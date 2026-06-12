@@ -1180,7 +1180,7 @@ func TestJournalEncryptionFailureNotSilent(t *testing.T) {
 	baseSnap := deploy.NewSnapshot(deploy.Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
-	}, sm, nil, nil, deploy.SnapshotMetadata{}, nil)
+	}, sm, nil, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	sp := &MockStackPersister{}
 	j, err := NewSnapshotJournaler(t.Context(), sp, sm, stack.Base64SecretsProvider{}, baseSnap)
