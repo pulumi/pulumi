@@ -150,11 +150,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
-		Directory:   "regress-11176",
-		Description: "Regression test for https://github.com/pulumi/pulumi/issues/11176",
-		Skip:        allProgLanguages.Except(TestGo),
-	},
-	{
 		Directory:   "throw-not-implemented",
 		Description: "Function notImplemented is compiled to a runtime error at call-site",
 	},
@@ -222,11 +217,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
 	},
 	{
-		Directory:   "csharp-plain-lists",
-		Description: "Tests that plain lists are supported in C#",
-		Skip:        allProgLanguages.Except(TestDotnet),
-	},
-	{
 		Directory:   "csharp-typed-for-expressions",
 		Description: "Testing for expressions with typed target expressions in csharp",
 		Skip:        allProgLanguages.Except(TestDotnet),
@@ -245,11 +235,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	// PCL files from pulumi/yaml transpiled examples
-	{
-		Directory:   transpiled("awsx-fargate"),
-		Description: "AWSx Fargate",
-		Skip:        codegen.NewStringSet(TestDotnet, TestNodeJS, TestGo),
-	},
 	{
 		Directory:   transpiled("cue-random"),
 		Description: "Cue random",

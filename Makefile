@@ -320,7 +320,6 @@ schema-%: .make/ensure/curl .make/ensure/jq
 get_schemas: \
 			schema-aws!5.4.0            \
 			schema-random!4.11.2        \
-			schema-awsx!1.0.0-beta.5    \
 			schema-tls!4.10.0
 
 .PHONY: changelog
