@@ -39,10 +39,9 @@ import (
 )
 
 // testWaitTimeout bounds every wait in these integration tests. Generous on
-// purpose: the failure mode they guard against is a permanent hang, so a long
-// deadline loses no detection power, while tight ones flake on starved CI
-// runners (multi-second stalls observed on coverage-instrumented Windows
-// jobs; see pulumi/pulumi#23541).
+// purpose: the tests guard against permanent hangs, so a long deadline loses
+// no detection power, while tight ones flake on starved CI runners
+// (pulumi/pulumi#23541).
 const testWaitTimeout = 30 * time.Second
 
 // neoFakeServer fakes the four Pulumi Cloud HTTP endpoints runNeo touches
@@ -278,12 +277,9 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	// equivalent to "user pressed Ctrl+C twice and the TUI called tea.Quit".
 	go func() {
 		// Wait for runNeo to construct the tea.Program, then for the SSE
-		// stream to open. Both happen in milliseconds locally, but starved CI
-		// runners (notably Windows with coverage instrumentation) have been
-		// observed to take multiple seconds; see pulumi/pulumi#23541. Once the
-		// program exists, always Quit — exiting this goroutine without quitting
-		// would leave the TUI running and turn a slow run into a guaranteed
-		// timeout below.
+		// stream to open. Once the program exists, always Quit — bailing out
+		// here would leave the TUI running and turn a slow run into a
+		// guaranteed timeout below.
 		var p *tea.Program
 		deadline := time.Now().Add(testWaitTimeout)
 		for time.Now().Before(deadline) {
