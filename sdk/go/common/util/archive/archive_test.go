@@ -29,6 +29,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/text/unicode/norm"
 )
 
 func TestIgnoreSimple(t *testing.T) {
@@ -116,6 +117,34 @@ func TestIgnoreNestedGitignore(t *testing.T) {
 		fileContents{name: "pkg/node_modules/included.txt", shouldRetain: true},
 		fileContents{name: "pkg/node_modules/pulumi/excluded.txt", shouldRetain: false},
 		fileContents{name: "pkg/node_modules/pulumi/excluded/excluded.txt", shouldRetain: false})
+}
+
+// TestIgnorePrecomposesUnicode verifies that, on a filesystem that decomposes
+// Unicode, a .gitignore pattern authored in composed (NFC) form still matches a
+// file whose name the filesystem hands back decomposed (NFD) — mirroring git's
+// core.precomposeunicode. The package-level flag is forced on so the behavior is
+// exercised regardless of the host OS.
+//
+//nolint:paralleltest // mutates package-level precomposeUnicodeFS
+func TestIgnorePrecomposesUnicode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: filesystem Unicode normalization is ambiguous there")
+	}
+
+	saved := precomposeUnicodeFS
+	precomposeUnicodeFS = true
+	t.Cleanup(func() { precomposeUnicodeFS = saved })
+
+	// "café" — the directory is created on disk in NFD form (decomposed "e" +
+	// combining acute), while the .gitignore pattern uses NFC (precomposed "é").
+	nfc := norm.NFC.String("café")
+	nfd := norm.NFD.String("café")
+	require.NotEqual(t, nfc, nfd, "expected NFC and NFD forms to differ")
+
+	doArchiveTest(t, ".",
+		fileContents{name: ".gitignore", contents: []byte(nfc + "/"), shouldRetain: true},
+		fileContents{name: "included.txt", shouldRetain: true},
+		fileContents{name: nfd + "/excluded.txt", shouldRetain: false})
 }
 
 func doArchiveTest(t *testing.T, path string, files ...fileContents) {
