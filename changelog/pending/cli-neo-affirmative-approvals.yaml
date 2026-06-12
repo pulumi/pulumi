@@ -1,6 +1,0 @@
-component: cli/neo
-kind: improvement
-body: Treat affirmative replies such as "ok", "approve" and "go ahead" to `pulumi neo` approval prompts as approvals
-time: 2026-06-04T00:00:00.000000+00:00
-custom:
-    PR: "23450"

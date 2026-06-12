@@ -1,6 +1,0 @@
-component: pcl
-kind: fix
-body: Recursively fill schema-declared output fields on resources, so PCL programs that traverse into an optional inner field of a nested output object no longer fail at runtime with an "unsupported attribute" error
-time: 2026-06-05T08:00:00.000000+00:00
-custom:
-  PR: "23458"

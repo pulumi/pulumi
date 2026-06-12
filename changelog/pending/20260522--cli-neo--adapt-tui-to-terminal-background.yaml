@@ -1,6 +1,0 @@
-component: cli/neo
-kind: fix
-body: The `pulumi neo` TUI now adapts its colors to the terminal background instead of hardcoding a dark scheme
-time: 2026-05-22T00:00:00.000000+00:00
-custom:
-    PR: "23333"

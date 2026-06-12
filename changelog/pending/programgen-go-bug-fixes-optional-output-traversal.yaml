@@ -1,6 +1,0 @@
-component: programgen/go
-kind: fix
-body: Fix Go program generation to no longer produce `**T` when an output traversal lands on an optional struct field, and to emit the correct `pulumi.<T>ArrayOutput` cast for traversals to slice-typed fields
-time: 2026-06-04T22:00:00.000000+00:00
-custom:
-  PR: "23458"
