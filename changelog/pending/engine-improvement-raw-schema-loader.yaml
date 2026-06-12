@@ -1,0 +1,7 @@
+component: engine
+kind: improvement
+body: Serve raw schema bytes from the engine's schema loader service instead of binding
+    and re-marshaling the full schema on every request
+time: 2026-06-12T12:43:41Z
+custom:
+    PR: "23551"
