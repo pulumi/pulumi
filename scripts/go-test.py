@@ -129,7 +129,7 @@ if not dryrun:
                         print(msg, end='', file=sys.stderr)
                     print("=== End build errors ===", file=sys.stderr)
             except Exception as json_err:
-                print(json_err, file=sys.stderr)  # Don't mask the original error
+                print(json_err, file=sys.stderr)
         raise e
 else:
     print("Would have run: " + ' '.join(args))
