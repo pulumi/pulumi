@@ -147,14 +147,56 @@ func drawPackageSpec(t *rapid.T) schema.PackageSpec {
 		resources[tok] = drawResourceSpec(t, ctx, tok)
 	}
 
-	return schema.PackageSpec{
-		Name:    name,
-		Version: Version().Draw(t, "version").String(),
-		// Provider is required by the binder; an empty object satisfies it
-		// without contributing any properties.
-		Provider:  &schema.ResourceSpec{ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"}},
+	spec := schema.PackageSpec{
+		Name:      name,
+		Version:   Version().Draw(t, "version").String(),
 		Types:     ctx.typeDefs,
 		Resources: resources,
+	}
+
+	emptyProvider := func() *schema.ResourceSpec {
+		// Provider is required by the binder; an empty object satisfies it
+		// without contributing any properties.
+		return &schema.ResourceSpec{ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"}}
+	}
+	switch rapid.IntRange(0, 2).Draw(t, "parameterization") {
+	case 0:
+		spec.Provider = emptyProvider()
+	case 1:
+		p := drawParameterizationSpec(t, "parameterization")
+		spec.Parameterization = &p
+		spec.Provider = emptyProvider()
+	case 2:
+		e := drawExtensionParameterizationSpec(t, "extensionParameterization")
+		spec.ExtensionParameterization = &e
+	}
+
+	return spec
+}
+
+// drawParameterizationSpec produces a fully-formed ParameterizationSpec.
+// BaseProvider.Name follows the package-name format; Version is a strict
+// semver via Version(); Parameter is arbitrary bytes (often empty).
+func drawParameterizationSpec(t *rapid.T, label string) schema.ParameterizationSpec {
+	return schema.ParameterizationSpec{
+		BaseProvider: schema.BaseProviderSpec{
+			Name:    drawPackageName(t, label+":baseProvider:name"),
+			Version: Version().Draw(t, label+":baseProvider:version").String(),
+		},
+		Parameter: rapid.SliceOfN(rapid.Byte(), 0, 32).Draw(t, label+":parameter"),
+	}
+}
+
+// drawExtensionParameterizationSpec produces a fully-formed
+// ExtensionParameterizationSpec with no replacement. An extension rides on the
+// base provider, so the package must not also declare a provider of its own.
+func drawExtensionParameterizationSpec(t *rapid.T, label string) schema.ExtensionParameterizationSpec {
+	return schema.ExtensionParameterizationSpec{
+		BaseProvider: schema.BaseProviderSpec{
+			Name:    drawPackageName(t, label+":baseProvider:name"),
+			Version: Version().Draw(t, label+":baseProvider:version").String(),
+		},
+		Parameter: rapid.SliceOfN(rapid.Byte(), 0, 32).Draw(t, label+":parameter"),
 	}
 }
 

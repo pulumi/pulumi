@@ -605,7 +605,7 @@ type Parameterization struct {
 }
 
 // ReplacementParameterization is a replacement carried inside an
-// ExtensionParameterization. The base provider it applies to comes from the
+// ExtensionParameterization. The base provider plugin it applies to comes from the
 // enclosing ExtensionParameterization, so only the resulting provider's name,
 // version, and parameter are needed here.
 type ReplacementParameterization struct {
@@ -619,13 +619,13 @@ type ReplacementParameterization struct {
 
 // ExtensionParameterization describes an extension applied to a base provider.
 type ExtensionParameterization struct {
-	// BaseProvider is the plugin the extension is applied to.
-	BaseProvider BaseProvider
-	// Replacement is an optional replacement applied to the base provider before
+	// BasePlugin is the provider plugin the extension is applied to.
+	BasePlugin BaseProvider
+	// Replacement is an optional replacement applied to the base plugin before
 	// the extension (extending a provider that was itself replaced). Setting it is
 	// not yet supported.
 	Replacement *ReplacementParameterization
-	// Parameter is the extension parameter passed to the base provider.
+	// Parameter is the extension parameter passed to the base plugin.
 	Parameter []byte
 }
 
@@ -1186,8 +1186,8 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	if pkg.ExtensionParameterization != nil {
 		extensionParameterization = &ExtensionParameterizationSpec{
 			BaseProvider: BaseProviderSpec{
-				Name:    pkg.ExtensionParameterization.BaseProvider.Name,
-				Version: pkg.ExtensionParameterization.BaseProvider.Version.String(),
+				Name:    pkg.ExtensionParameterization.BasePlugin.Name,
+				Version: pkg.ExtensionParameterization.BasePlugin.Version.String(),
 			},
 			Parameter: pkg.ExtensionParameterization.Parameter,
 		}

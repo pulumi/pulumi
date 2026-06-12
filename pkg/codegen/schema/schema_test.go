@@ -3205,8 +3205,8 @@ func TestMarshalExtensionParameterizationReplacement(t *testing.T) {
 		Version:  &semver.Version{Major: 1},
 		Provider: &Resource{IsProvider: true, Token: "pulumi:providers:ext"},
 		ExtensionParameterization: &ExtensionParameterization{
-			BaseProvider: BaseProvider{Name: "base", Version: semver.MustParse("1.0.0")},
-			Parameter:    []byte("ext"),
+			BasePlugin: BaseProvider{Name: "base", Version: semver.MustParse("1.0.0")},
+			Parameter:  []byte("ext"),
 			Replacement: &ReplacementParameterization{
 				Name:      "replaced",
 				Version:   semver.MustParse("2.0.0"),

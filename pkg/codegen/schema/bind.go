@@ -2025,8 +2025,8 @@ func bindExtensionParameterization(spec *ExtensionParameterizationSpec) (*Extens
 			"invalid version %q: %v", spec.BaseProvider.Version, err)}
 	}
 	ext := &ExtensionParameterization{
-		BaseProvider: BaseProvider{Name: spec.BaseProvider.Name, Version: ver},
-		Parameter:    spec.Parameter,
+		BasePlugin: BaseProvider{Name: spec.BaseProvider.Name, Version: ver},
+		Parameter:  spec.Parameter,
 	}
 	if spec.Replacement != nil {
 		if spec.Replacement.Name == "" {

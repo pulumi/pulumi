@@ -712,7 +712,7 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	}
 	if p.spec.ExtensionParameterization != nil {
 		ext := &ExtensionParameterization{
-			BaseProvider: BaseProvider{
+			BasePlugin: BaseProvider{
 				Name:    p.spec.ExtensionParameterization.BaseProvider.Name,
 				Version: semver.MustParse(p.spec.ExtensionParameterization.BaseProvider.Version),
 			},
