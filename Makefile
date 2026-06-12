@@ -26,6 +26,9 @@ LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulum
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
 
+PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION ?= true
+export PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION
+
 ifeq ($(DEBUG),"true")
 $(info    SHELL           = ${SHELL})
 $(info    VERSION         = ${VERSION})
