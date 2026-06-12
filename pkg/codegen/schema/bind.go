@@ -302,6 +302,16 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 			"a package may declare parameterization or extensionParameterization, not both"))
 	}
 
+	// An extension parameterization rides on the base provider, so it must not
+	// declare a provider of its own. GetResourceSpec reports the provider present
+	// only when an explicit block is set.
+	if info.ExtensionParameterization != nil {
+		if _, hasProvider, provErr := spec.GetResourceSpec("pulumi:providers:" + info.Name); provErr == nil && hasProvider {
+			diags = diags.Append(errorf("#/provider",
+				"a package with an extensionParameterization may not declare a provider"))
+		}
+	}
+
 	parameterization, parameterizationDiagnostics := bindParameterization(info.Parameterization)
 	diags = diags.Extend(parameterizationDiagnostics)
 
