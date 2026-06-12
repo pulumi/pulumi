@@ -21,6 +21,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -324,7 +327,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
 		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false /* persisted */)
+			s.URN(), false /*refresh*/, false, /* persisted */
+		)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -642,7 +646,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
 		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false /* persisted */)
+			s.URN(), false /*refresh*/, false, /* persisted */
+		)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -796,7 +801,8 @@ func (s *DeleteStep) publishSynthesizedViewSteps() error {
 
 	// Reserve a token.
 	_, tokenInfo, err := s.deployment.resourceStatus.reserveToken(
-		s.URN(), false /*refresh*/, false /*persisted*/)
+		s.URN(), false /*refresh*/, false, /*persisted*/
+	)
 	if err != nil {
 		return err
 	}
@@ -958,7 +964,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
 		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false /* persisted */)
+			s.URN(), false /*refresh*/, false, /* persisted */
+		)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -1288,7 +1295,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
 		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false /* persisted */)
+			s.URN(), false /*refresh*/, false, /* persisted */
+		)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -1524,7 +1532,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	resourceStatusAddress := s.deployment.resourceStatus.Address()
 	resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-		s.URN(), true /*refresh*/, s.Persisted() /* persisted */)
+		s.URN(), true /*refresh*/, s.Persisted(), /* persisted */
+	)
 	if err != nil {
 		if s.cts != nil {
 			s.cts.MustReject(err)
@@ -1693,6 +1702,91 @@ func (s *RefreshStep) Skip() {
 	// Nothing to do here.
 }
 
+// ExtensionParameterizeStep is an internal step that applies an extension
+// parameterization to a provider plugin. The step generator emits it when a
+// register-resource event arrives for an extension-parameterized resource and
+// the target provider has not yet been parameterized with that extension.
+//
+// Unlike resource steps, ExtensionParameterizeStep does not correspond to any user
+// resource. URN, Type, and the Old/New/Res accessors all return zero values.
+type ExtensionParameterizeStep struct {
+	deployment *Deployment
+	provider   plugin.Provider
+	ref        apitype.ExtensionRef
+	extension  apitype.Extension
+	cts        *promise.CompletionSource[struct{}]
+}
+
+var _ Step = (*ExtensionParameterizeStep)(nil)
+
+// NewExtensionParameterizeStep creates a new ExtensionParameterizeStep. The completion source must be fulfilled
+// (or rejected) exactly once by Apply().
+func NewExtensionParameterizeStep(
+	deployment *Deployment,
+	provider plugin.Provider,
+	ref apitype.ExtensionRef,
+	extension apitype.Extension,
+	cts *promise.CompletionSource[struct{}],
+) Step {
+	return &ExtensionParameterizeStep{
+		deployment: deployment,
+		provider:   provider,
+		ref:        ref,
+		extension:  extension,
+		cts:        cts,
+	}
+}
+
+// Ref returns the ExtensionRef this step is parameterizing for. SnapshotManager
+// uses this to record the blob keyed by ref when the step is dispatched.
+func (s *ExtensionParameterizeStep) Ref() apitype.ExtensionRef { return s.ref }
+
+// Extension returns the extension blob being applied. Counterpart to Ref().
+func (s *ExtensionParameterizeStep) Extension() apitype.Extension { return s.extension }
+
+func (s *ExtensionParameterizeStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	version, err := semver.ParseTolerant(s.extension.Version)
+	if err != nil {
+		s.cts.MustReject(err)
+		return resource.StatusUnknown, nil, fmt.Errorf("could not parse provider version: %w", err)
+	}
+
+	resp, err := s.provider.Parameterize(context.TODO(), plugin.ParameterizeRequest{
+		Parameters: &plugin.ParameterizeValue{
+			Name:    s.extension.Name,
+			Version: version,
+			Value:   s.extension.Value,
+		},
+	})
+	if err != nil {
+		s.cts.MustReject(err)
+		return resource.StatusUnknown, nil, err
+	}
+	if resp.Name != s.extension.Name {
+		err = fmt.Errorf(
+			"parameterize response name %q does not match expected package %q",
+			resp.Name,
+			s.extension.Name,
+		)
+		s.cts.MustReject(err)
+		return resource.StatusUnknown, nil, err
+	}
+	s.cts.MustFulfill(struct{}{})
+	return resource.StatusOK, nil, nil
+}
+
+func (s *ExtensionParameterizeStep) Op() display.StepOp      { return OpExtendParameterize }
+func (s *ExtensionParameterizeStep) URN() resource.URN       { return "" }
+func (s *ExtensionParameterizeStep) Type() tokens.Type       { return "" }
+func (s *ExtensionParameterizeStep) Provider() string        { return "" }
+func (s *ExtensionParameterizeStep) Old() *resource.State    { return nil }
+func (s *ExtensionParameterizeStep) New() *resource.State    { return nil }
+func (s *ExtensionParameterizeStep) Res() *resource.State    { return nil }
+func (s *ExtensionParameterizeStep) Logical() bool           { return false }
+func (s *ExtensionParameterizeStep) Deployment() *Deployment { return s.deployment }
+func (s *ExtensionParameterizeStep) Fail()                   {}
+func (s *ExtensionParameterizeStep) Skip()                   {}
+
 type ImportStep struct {
 	deployment    *Deployment           // the current deployment.
 	reg           RegisterResourceEvent // the registration intent to convey a URN back to.
@@ -1855,7 +1949,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
 		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false /* persisted */)
+			s.URN(), false /*refresh*/, false, /* persisted */
+		)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -2065,8 +2160,8 @@ const (
 	OpRemovePendingReplace display.StepOp = "remove-pending-replace" // removing a pending replace resource.
 	OpImport               display.StepOp = "import"                 // import an existing resource.
 	OpImportReplacement    display.StepOp = "import-replacement"     // replace an existing resource
-	OpDiff                 display.StepOp = "diff"                   // diffing a resource
-	// with an imported resource.
+	OpDiff                 display.StepOp = "diff"                   // diffing a resource with an imported resource.
+	OpExtendParameterize   display.StepOp = "extend-parameterize"    // applying extension parameterization to a provider
 )
 
 // StepOps contains the full set of step operation types.
@@ -2087,6 +2182,7 @@ var StepOps = []display.StepOp{
 	OpImport,
 	OpImportReplacement,
 	OpDiff,
+	OpExtendParameterize,
 }
 
 func IsReplacementStep(op display.StepOp) bool {
@@ -2312,7 +2408,8 @@ func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	diff, err := diffResource(
 		s.deployment.Diag(),
-		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges)
+		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges,
+	)
 	if err != nil {
 		s.pcs.Reject(err)
 		return resource.StatusOK, nil, nil

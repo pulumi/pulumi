@@ -33,6 +33,7 @@ import (
 )
 
 func newExtractSchemaCommand() *cobra.Command {
+	var asExtension bool
 	cmd := &cobra.Command{
 		Use:   "get-schema",
 		Short: "Get the schema.json from a package",
@@ -57,11 +58,15 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			}
 			defer contract.IgnoreClose(pctx)
 
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+			parameterArgs, err := constrictor.ExtensionArgs(cmd, args, asExtension)
+			if err != nil {
+				return err
+			}
+			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
 			registry := cmdCmd.NewDefaultRegistry(
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
-				registry, env.Global(), 0 /* unbounded concurrency */)
+				registry, env.Global(), 0 /* unbounded concurrency */, asExtension)
 			if err != nil {
 				return err
 			}
@@ -100,6 +105,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
 	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
 	cmd.Use = "get-schema <schema-source> [flags] [--] [provider-parameter]..."
+
+	constrictor.AddExtensionFlag(cmd, &asExtension)
 
 	return cmd
 }

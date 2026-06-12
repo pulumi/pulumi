@@ -732,7 +732,8 @@ func TestImportResourceRef(t *testing.T) {
 
 			// Read in, decode, and import the schema.
 			schemaBytes, err := os.ReadFile(
-				filepath.Join(testdataPath, tt.schemaFile))
+				filepath.Join(testdataPath, tt.schemaFile),
+			)
 			require.NoError(t, err)
 
 			var pkgSpec PackageSpec
@@ -1855,7 +1856,8 @@ func TestReplaceOnChanges(t *testing.T) {
 			sort.Strings(tt.result)
 			sort.Strings(tt.errors)
 			pkgSpec := readSchemaFile(
-				filepath.Join("schema", tt.filePath))
+				filepath.Join("schema", tt.filePath),
+			)
 			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
 				AllowDanglingReferences: true,
 			})
@@ -3102,6 +3104,108 @@ func TestBindParameterizedExternals(t *testing.T) {
 	assert.Empty(t, diags)
 }
 
+// Test that we can bind a package with a top-level extensionParameterization.
+func TestBindExtensionParameterized(t *testing.T) {
+	t.Parallel()
+
+	const schema = `{
+  "name": "extensionref",
+  "version": "1.0.0",
+  "resources": {
+    "extensionref:index:Root": {
+      "type": "object",
+      "properties": { "data": { "type": "string" } }
+    }
+  },
+  "extensionParameterization": {
+    "baseProvider": { "name": "test-base", "version": "1.0.0" },
+    "parameter": "dGVzdA=="
+  }
+}`
+	var pkgSpec PackageSpec
+	require.NoError(t, json.Unmarshal([]byte(schema), &pkgSpec))
+
+	pkg, diags, err := BindSpec(pkgSpec, nil, ValidationOptions{AllowDanglingReferences: true})
+	require.NoError(t, err)
+	require.NotNil(t, pkg.ExtensionParameterization)
+	assert.Empty(t, diags)
+
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	// Bind the round-tripped spec again to confirm the extension parameterization survives.
+	pkg2, diags, err := BindSpec(*newSpec, nil, ValidationOptions{AllowDanglingReferences: true})
+	require.NoError(t, err)
+	require.NotNil(t, pkg2.ExtensionParameterization)
+	assert.Empty(t, diags)
+}
+
+func TestBindSpecRejectsExtensionReplacement(t *testing.T) {
+	t.Parallel()
+
+	const schema = `{
+  "name": "ext",
+  "version": "1.0.0",
+  "extensionParameterization": {
+    "baseProvider": { "name": "base", "version": "1.0.0" },
+    "parameter": "dGVzdA==",
+    "replacement": {
+      "name": "replaced",
+      "version": "2.0.0",
+      "parameter": "cmVwbA=="
+    }
+  }
+}`
+	var pkgSpec PackageSpec
+	require.NoError(t, json.Unmarshal([]byte(schema), &pkgSpec))
+
+	_, diags, err := BindSpec(pkgSpec, nil, ValidationOptions{AllowDanglingReferences: true})
+	require.NoError(t, err)
+	require.True(t, diags.HasErrors())
+	var found bool
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError &&
+			strings.Contains(d.Summary, "extending a replaced provider is not yet supported") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected a 'not yet supported' diagnostic for the replacement, got %v", diags)
+}
+
+func TestMarshalExtensionParameterizationReplacement(t *testing.T) {
+	t.Parallel()
+
+	p := Package{
+		Name:     "ext",
+		Version:  &semver.Version{Major: 1},
+		Provider: &Resource{IsProvider: true, Token: "pulumi:providers:ext"},
+		ExtensionParameterization: &ExtensionParameterization{
+			BaseProvider: BaseProvider{Name: "base", Version: semver.MustParse("1.0.0")},
+			Parameter:    []byte("ext"),
+			Replacement: &ReplacementParameterization{
+				Name:      "replaced",
+				Version:   semver.MustParse("2.0.0"),
+				Parameter: []byte("repl"),
+			},
+		},
+	}
+
+	spec, err := p.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, spec.ExtensionParameterization)
+	assert.Equal(t, "base", spec.ExtensionParameterization.BaseProvider.Name)
+	assert.Equal(t, "1.0.0", spec.ExtensionParameterization.BaseProvider.Version)
+	assert.Equal(t, []byte("ext"), spec.ExtensionParameterization.Parameter)
+
+	r := spec.ExtensionParameterization.Replacement
+	require.NotNil(t, r, "the replacement must be carried into the spec")
+	assert.Equal(t, "replaced", r.Name)
+	assert.Equal(t, "2.0.0", r.Version)
+	assert.Equal(t, []byte("repl"), r.Parameter)
+}
+
 func TestTokenToModuleIndexPrefix(t *testing.T) {
 	t.Parallel()
 
@@ -3630,4 +3734,33 @@ func TestBindSpecReservedPackageNames(t *testing.T) {
 			assert.NotContains(t, d.Summary, "package names 'pulumi' and 'input' are reserved")
 		}
 	})
+}
+
+func TestBindSpecRejectsBothParameterizationFlavors(t *testing.T) {
+	t.Parallel()
+
+	base := BaseProviderSpec{Name: "base", Version: "1.0.0"}
+	spec := PackageSpec{
+		Name: "ext",
+		Parameterization: &ParameterizationSpec{
+			BaseProvider: base,
+			Parameter:    []byte("p"),
+		},
+		ExtensionParameterization: &ExtensionParameterizationSpec{
+			BaseProvider: base,
+			Parameter:    []byte("p"),
+		},
+	}
+	_, diags, err := BindSpec(spec, nil, ValidationOptions{})
+	require.NoError(t, err)
+	require.True(t, diags.HasErrors())
+	var found bool
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError &&
+			strings.Contains(d.Summary, "parameterization or extensionParameterization, not both") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected exclusivity diagnostic, got %v", diags)
 }

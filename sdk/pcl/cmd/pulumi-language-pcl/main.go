@@ -389,6 +389,24 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 		return nil, diags
 	}
 
+	// Tokens like "extbase:index:Greeting" belong to the base provider's namespace
+	// even though the SDK is renamed by an extension parameterization. Build a set
+	// of base names already covered by an extension descriptor so we don't add a
+	// bare duplicate.
+	baseNames := map[string]struct{}{}
+	for _, descriptor := range descriptorMap {
+		if descriptor.Parameterization != nil {
+			baseNames[descriptor.Name] = struct{}{}
+		}
+	}
+	pkgCovered := func(pkg string) bool {
+		if _, ok := descriptorMap[pkg]; ok {
+			return true
+		}
+		_, ok := baseNames[pkg]
+		return ok
+	}
+
 	for _, file := range parser.Files {
 		for _, item := range model.SourceOrderBody(file.Body) {
 			block, ok := item.(*hashihclsyntax.Block)
@@ -399,10 +417,8 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 			if err != nil {
 				return nil, err
 			}
-			if pkg != "" {
-				if _, exists := descriptorMap[pkg]; !exists {
-					descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
-				}
+			if pkg != "" && !pkgCovered(pkg) {
+				descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
 			}
 		}
 
@@ -423,10 +439,8 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 					Detail:   err.Error(),
 				}}
 			}
-			if pkg != "" && pkg != "pulumi" {
-				if _, exists := descriptorMap[pkg]; !exists {
-					descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
-				}
+			if pkg != "" && pkg != "pulumi" && !pkgCovered(pkg) {
+				descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
 			}
 			return nil
 		})
@@ -695,21 +709,34 @@ func (host *pclLanguageHost) GeneratePackage(
 	var baseProviderVersion string
 	baseProviderDownloadURL := pkg.PluginDownloadURL
 
-	if pkg.Parameterization == nil {
+	// Replacement and extension parameterization are rehydrated through the same
+	// descriptor (base provider + name/version/value); the flavor is recovered
+	// from the loaded schema, so the .pp need not distinguish them.
+	var baseProvider *schema.BaseProvider
+	var parameter []byte
+	switch {
+	case pkg.Parameterization != nil:
+		baseProvider = &pkg.Parameterization.BaseProvider
+		parameter = pkg.Parameterization.Parameter
+	case pkg.ExtensionParameterization != nil:
+		baseProvider = &pkg.ExtensionParameterization.BaseProvider
+		parameter = pkg.ExtensionParameterization.Parameter
+	}
+	if baseProvider == nil {
 		baseProviderName = pkg.Name
 		if pkg.Version != nil {
 			baseProviderVersion = pkg.Version.String()
 		}
 	} else {
-		baseProviderName = pkg.Parameterization.BaseProvider.Name
-		baseProviderVersion = pkg.Parameterization.BaseProvider.Version.String()
+		baseProviderName = baseProvider.Name
+		baseProviderVersion = baseProvider.Version.String()
 		if pkg.Version == nil {
 			return nil, errors.New("parameterized package must have a version")
 		}
 		parameterization = &schema.ParameterizationDescriptor{
 			Name:    pkg.Name,
 			Version: *pkg.Version,
-			Value:   pkg.Parameterization.Parameter,
+			Value:   parameter,
 		}
 	}
 

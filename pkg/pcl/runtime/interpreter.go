@@ -637,6 +637,14 @@ func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDes
 	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
 		return descriptor
 	}
+	// Tokens like extbase:index:Greeting belong to the base provider's namespace
+	// but the descriptor that actually owns them is the extension parameterization
+	// that is keyed under the extension's name.
+	for _, descriptor := range i.info.PackageDescriptors {
+		if descriptor != nil && descriptor.Parameterization != nil && descriptor.Name == pkgName {
+			return descriptor
+		}
+	}
 	return &schema.PackageDescriptor{Name: pkgName}
 }
 
@@ -655,11 +663,11 @@ func PackageNameFromToken(token string) (string, error) {
 }
 
 func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
-	pkgName, err := PackageNameFromToken(token)
+	tokenPackage, err := PackageNameFromToken(token)
 	if err != nil {
 		return "", err
 	}
-	return i.packageRefs[pkgName], nil
+	return i.packageRefs[tokenPackage], nil
 }
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {
@@ -689,10 +697,26 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 		if descriptor.Version != nil {
 			request.Version = descriptor.Version.String()
 		}
-		request.Parameterization = &pulumirpc.Parameterization{
+		param := &pulumirpc.Parameterization{
 			Name:    descriptor.Parameterization.Name,
 			Version: descriptor.Parameterization.Version.String(),
 			Value:   descriptor.Parameterization.Value,
+		}
+		// The schema declares which parameterization flavor this is via the
+		// ExtensionParameterization slot; route the wire field accordingly so the
+		// engine parameterizes the right way.
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			return fmt.Errorf("load package %q for register: %w", key, err)
+		}
+		def, err := pkgref.Definition()
+		if err != nil {
+			return fmt.Errorf("load definition for package %q: %w", key, err)
+		}
+		if def.ExtensionParameterization != nil {
+			request.Extension = param
+		} else {
+			request.Parameterization = param
 		}
 
 		resp, err := i.monitor.RegisterPackage(ctx, request)
@@ -705,6 +729,10 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 
 		i.packageRefs[key] = resp.GetRef()
 		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
+		// Extension parameterization keeps tokens in the base provider's namespace,
+		// so register the ref under the base name too — getPackageRefFromToken looks
+		// up by the token's package portion.
+		i.packageRefs[descriptor.Name] = resp.GetRef()
 	}
 
 	return nil

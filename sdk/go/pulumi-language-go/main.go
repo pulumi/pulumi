@@ -699,26 +699,28 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 		return nil, err
 	}
 
-	var server string
-	var parameterization *pulumirpc.PackageParameterization
-	server = pulumiPlugin.Server
-	if pulumiPlugin.Parameterization != nil {
-		parameterization = &pulumirpc.PackageParameterization{
-			Name:    pulumiPlugin.Parameterization.Name,
-			Version: pulumiPlugin.Parameterization.Version,
-			Value:   pulumiPlugin.Parameterization.Value,
+	server := pulumiPlugin.Server
+	toProtoParameterization := func(p *plugin.PulumiParameterizationJSON) *pulumirpc.PackageParameterization {
+		if p == nil {
+			return nil
+		}
+		return &pulumirpc.PackageParameterization{
+			Name:    p.Name,
+			Version: p.Version,
+			Value:   p.Value,
 		}
 	}
 
-	plugin := &pulumirpc.PackageDependency{
+	pkg := &pulumirpc.PackageDependency{
 		Name:             name,
 		Version:          version,
 		Kind:             "resource",
 		Server:           server,
-		Parameterization: parameterization,
+		Parameterization: toProtoParameterization(pulumiPlugin.Parameterization),
+		Extension:        toProtoParameterization(pulumiPlugin.ExtensionParameterization),
 	}
 
-	return plugin, nil
+	return pkg, nil
 }
 
 // Reads and parses the go.mod file for the program at the given path.

@@ -219,9 +219,12 @@ func (c *PackageCache) loadPackageSchemaFromDescriptor(
 }
 
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
+// The package portion is taken from the token itself rather than pkg.Name() so that
+// extension-parameterized schemas, whose tokens live in the base provider's namespace,
+// keep that namespace after canonicalization.
 func canonicalizeToken(tok string, pkg schema.PackageReference) string {
-	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
-	return fmt.Sprintf("%s:%s:%s", pkg.Name(), pkg.TokenToModule(tok), member)
+	pkgName, _, member, _ := DecomposeToken(tok, hcl.Range{})
+	return fmt.Sprintf("%s:%s:%s", pkgName, pkg.TokenToModule(tok), member)
 }
 
 // getPkgOpts gets the package options from an unbound resource node.
@@ -375,8 +378,16 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 
 		var pkg *packageSchema
 		var err error
+		resolvedName := name
 		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
 			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+		} else if extDescriptor, ok := b.findExtensionDescriptorForBase(name); ok {
+			// Extension: load via the extension descriptor and record under its name,
+			// not the base provider's, so dependency checks see the user-facing package.
+			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, extDescriptor)
+			if err == nil {
+				resolvedName = pkg.schema.Name()
+			}
 		} else {
 			pkg, err = b.options.packageCache.loadPackageSchema(
 				ctx, b.options.loader,
@@ -389,7 +400,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 			}
 			return err
 		}
-		b.referencedPackages[name] = pkg.schema
+		b.referencedPackages[resolvedName] = pkg.schema
 	}
 	return nil
 }

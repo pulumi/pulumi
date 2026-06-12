@@ -89,6 +89,10 @@ type SnapshotManager struct {
 
 	isRefresh bool // Whether or not the snapshot is part of a refresh
 
+	// Extension blobs registered during this plan, keyed by ref. Snap() merges these
+	// with baseSnapshot.Extensions, filtered to refs still referenced by resources.
+	extensions map[apitype.ExtensionRef]apitype.Extension
+
 	// events is an optional channel for emitting engine events. When set, the snapshot manager will emit
 	// ErrorEvents to this channel when it detects and auto-repairs snapshot integrity errors.
 	events chan<- engine.Event
@@ -182,11 +186,28 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 		return &removePendingReplaceSnapshotMutation{sm}, nil
 	case deploy.OpImport, deploy.OpImportReplacement:
 		return sm.doImport(step)
+	case deploy.OpExtendParameterize:
+		return sm.doExtendParameterize(step)
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
 	return nil, nil
 }
+
+// doExtendParameterize records the extension blob attached to a ExtensionParameterizeStep so that
+// Snap() can include it in the final snapshot's Extensions map.
+func (sm *SnapshotManager) doExtendParameterize(step deploy.Step) (engine.SnapshotMutation, error) {
+	ps, ok := step.(*deploy.ExtensionParameterizeStep)
+	contract.Assertf(ok, "doExtendParameterize called on non-ExtensionParameterizeStep: %T", step)
+	sm.extensions[ps.Ref()] = ps.Extension()
+	return &noopSnapshotMutation{}, nil
+}
+
+// noopSnapshotMutation records nothing. ExtensionParameterizeStep returns one
+// because parameterizing a plugin changes the plugin process, not the snapshot.
+type noopSnapshotMutation struct{}
+
+func (*noopSnapshotMutation) End(_ deploy.Step, _ bool) error { return nil }
 
 func (sm *SnapshotManager) Write(_ *deploy.Snapshot) error {
 	// We don't need to do anything here. The snapshot manager uses the in-memory snapshot to
@@ -754,7 +775,11 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	}
 
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets)
+
+	snapExtensions, missing := deploy.MapExtensions(resources, sm.extensions, sm.baseSnapshot)
+	contract.Assertf(len(missing) == 0, "snapshot references unknown extensions: %v", missing)
+
+	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets, snapExtensions)
 }
 
 func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {
@@ -957,6 +982,7 @@ func NewSnapshotManager(
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
+		extensions:       make(map[apitype.ExtensionRef]apitype.Extension),
 		events:           events,
 	}
 

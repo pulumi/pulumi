@@ -68,9 +68,10 @@ func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
 // It returns the path to the installed package.
 func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
 	language, root, schemaSource string, parameters plugin.ParameterizeParameters,
-	registry registry.Registry, e env.Env, concurrency int,
+	registry registry.Registry, e env.Env, concurrency int, asExtension bool,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkgSpec, specOverride, err := SchemaFromSchemaSource(ws, pctx, schemaSource, parameters, registry, e, concurrency)
+	pkgSpec, specOverride, err := SchemaFromSchemaSource(ws, pctx, schemaSource, parameters, registry, e, concurrency,
+		asExtension)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
@@ -365,7 +366,7 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescr
 func SchemaFromSchemaSource(
 	ws pkgWorkspace.Context,
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-	env env.Env, concurrency int,
+	env env.Env, concurrency int, asExtension bool,
 ) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 	var spec schema.PackageSpec
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
@@ -404,6 +405,7 @@ func SchemaFromSchemaSource(
 	defer contract.IgnoreClose(p)
 
 	var request plugin.GetSchemaRequest
+	var parameterizationName string
 	if !parameters.Empty() {
 		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 			Parameters: parameters,
@@ -412,6 +414,7 @@ func SchemaFromSchemaSource(
 			return nil, nil, fmt.Errorf("parameterize: %w", err)
 		}
 
+		parameterizationName = resp.Name
 		request = plugin.GetSchemaRequest{
 			SubpackageName:    resp.Name,
 			SubpackageVersion: &resp.Version,
@@ -429,6 +432,32 @@ func SchemaFromSchemaSource(
 	err = json.Unmarshal(schema.Schema, &spec)
 	if err != nil {
 		return nil, nil, err
+	}
+	// --extension asserts the package is an extension; it does not reshape a replacement into one.
+	if asExtension && spec.ExtensionParameterization == nil {
+		return nil, nil, fmt.Errorf(
+			"%s did not return an extension-parameterized schema; the source may not support "+
+				"extension parameterization",
+			packageSource)
+	}
+	if parameterizationName != "" {
+		switch {
+		case spec.Parameterization != nil && spec.ExtensionParameterization != nil:
+			return nil, nil, errors.New(
+				"provider returned schema with both parameterization and extensionParameterization blocks; " +
+					"the provider must emit exactly one")
+		case spec.Parameterization == nil && spec.ExtensionParameterization == nil:
+			return nil, nil, fmt.Errorf(
+				"provider returned schema without a parameterization block but parameterize identified the package as %q; "+
+					"the provider must emit a schema whose parameterization name matches its parameterize response",
+				parameterizationName)
+		}
+		if spec.Name != parameterizationName {
+			return nil, nil, fmt.Errorf(
+				"provider returned schema parameterized as %q but parameterize identified the package as %q; "+
+					"the provider must emit a schema whose parameterization name matches its parameterize response",
+				spec.Name, parameterizationName)
+		}
 	}
 	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {

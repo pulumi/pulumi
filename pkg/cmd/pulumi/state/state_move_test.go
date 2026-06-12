@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -41,7 +42,7 @@ func createStackWithResources(
 ) backend.Stack {
 	sm := b64.NewBase64SecretsManager()
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 	ctx := t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
@@ -1279,7 +1280,8 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 	}
 
 	sourceSnapshot, destSnapshot, stdout := runMoveWithDestResources(
-		t, sourceResources, destResources, []string{string(sourceResources[1].URN)})
+		t, sourceResources, destResources, []string{string(sourceResources[1].URN)},
+	)
 
 	//nolint:lll
 	expectedStdout := `Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:
@@ -1429,7 +1431,8 @@ func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
 
 	sourceSnapshot, destSnapshot, stdout := runMoveWithOptions(
 		t, sourceResources, []string{string(sourceResources[2].URN)},
-		&MoveOptions{IncludeParents: true})
+		&MoveOptions{IncludeParents: true},
+	)
 
 	assert.Contains(t, stdout.String(),
 		"Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:\n\n"+
@@ -1499,4 +1502,148 @@ func TestMoveBreaksCopiedProviderDependenciesToRemainingSourceResources(t *testi
 			"dependencies on resources in organization/test/sourceStack:\n\n"+
 			"  - urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0 has "+
 			"a dependency on urn:pulumi:sourceStack::test::a:b:c::remaining")
+}
+
+func TestMoveExtensionResource(t *testing.T) {
+	t.Parallel()
+
+	// Two resources serve as extension instances, both backed by the same base
+	// provider and the same extension blob. Moving "moveMe" should copy the
+	// blob into the destination; "stayBehind" keeps the blob on the source.
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:extbase", "default_1_0_0")
+	const extRef = "ext-blob-1"
+	sourceResources := []*resource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:extbase::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:          resource.NewURN("sourceStack", "test", "", "extbase:index:Greeting", "stayBehind"),
+			Type:         "extbase:index:Greeting",
+			Provider:     string(providerURN) + "::provider_id",
+			ExtensionRef: extRef,
+		},
+		{
+			URN:          resource.NewURN("sourceStack", "test", "", "extbase:index:Greeting", "moveMe"),
+			Type:         "extbase:index:Greeting",
+			Provider:     string(providerURN) + "::provider_id",
+			ExtensionRef: extRef,
+		},
+	}
+	extensions := map[apitype.ExtensionRef]apitype.Extension{
+		extRef: {Name: "myext", Version: "1.0.0", Value: []byte("Hello")},
+	}
+
+	ctx := t.Context()
+	tmpDir := t.TempDir()
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+	sm := b64.NewBase64SecretsManager()
+
+	importStack := func(
+		name string, resources []*resource.State, exts map[apitype.ExtensionRef]apitype.Extension,
+	) backend.Stack {
+		snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, exts)
+		udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil)
+		require.NoError(t, err)
+		ref, err := b.ParseStackReference(name)
+		require.NoError(t, err)
+		s, err := b.CreateStack(ctx, ref, "", nil, nil)
+		require.NoError(t, err)
+		require.NoError(t, b.ImportDeployment(ctx, s, udep))
+		return s
+	}
+	sourceStack := importStack("organization/test/sourceStack", sourceResources, extensions)
+	destStack := importStack("organization/test/destStack", nil, nil)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) { return sm, nil })
+
+	cmd := stateMoveCmd{Yes: true, Stdout: &bytes.Buffer{}, Colorizer: colors.Never}
+	moveURN := string(sourceResources[2].URN)
+	require.NoError(t, cmd.Run(ctx, sourceStack, destStack, []string{moveURN}, mp, mp))
+
+	sourceSnap, err := sourceStack.Snapshot(ctx, mp)
+	require.NoError(t, err)
+	destSnap, err := destStack.Snapshot(ctx, mp)
+	require.NoError(t, err)
+
+	// stayBehind still references the blob, so the source retains it.
+	require.Contains(t, sourceSnap.Extensions, apitype.ExtensionRef(extRef),
+		"source must retain extension blob still referenced by remaining resources")
+	// Destination must have received the same blob alongside the moved resource.
+	require.Contains(t, destSnap.Extensions, apitype.ExtensionRef(extRef),
+		"destination must receive extension blobs referenced by moved resources")
+	assert.Equal(t, sourceSnap.Extensions[apitype.ExtensionRef(extRef)],
+		destSnap.Extensions[apitype.ExtensionRef(extRef)])
+}
+
+func TestMoveExtensionResourceDropsUnreferencedBlob(t *testing.T) {
+	t.Parallel()
+
+	// The source had two extension blobs; only one was used by the moved
+	// resource. After the move, the source must drop the now-unused blob
+	// associated with the resource that left.
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:extbase", "default_1_0_0")
+	const refKept = "ext-kept"
+	const refMoved = "ext-moved"
+	sourceResources := []*resource.State{
+		{URN: providerURN, Type: "pulumi:providers:extbase::default_1_0_0", ID: "provider_id", Custom: true},
+		{
+			URN:  resource.NewURN("sourceStack", "test", "", "extbase:index:Greeting", "stayBehind"),
+			Type: "extbase:index:Greeting", Provider: string(providerURN) + "::provider_id",
+			ExtensionRef: refKept,
+		},
+		{
+			URN:  resource.NewURN("sourceStack", "test", "", "extbase:index:Greeting", "moveMe"),
+			Type: "extbase:index:Greeting", Provider: string(providerURN) + "::provider_id",
+			ExtensionRef: refMoved,
+		},
+	}
+	extensions := map[apitype.ExtensionRef]apitype.Extension{
+		refKept:  {Name: "keep", Version: "1.0.0", Value: []byte("Hi")},
+		refMoved: {Name: "move", Version: "1.0.0", Value: []byte("Bye")},
+	}
+
+	ctx := t.Context()
+	tmpDir := t.TempDir()
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+	sm := b64.NewBase64SecretsManager()
+
+	importStack := func(
+		name string, resources []*resource.State, exts map[apitype.ExtensionRef]apitype.Extension,
+	) backend.Stack {
+		snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, exts)
+		udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil)
+		require.NoError(t, err)
+		ref, err := b.ParseStackReference(name)
+		require.NoError(t, err)
+		s, err := b.CreateStack(ctx, ref, "", nil, nil)
+		require.NoError(t, err)
+		require.NoError(t, b.ImportDeployment(ctx, s, udep))
+		return s
+	}
+	sourceStack := importStack("organization/test/sourceStack", sourceResources, extensions)
+	destStack := importStack("organization/test/destStack", nil, nil)
+
+	mp := &secrets.MockProvider{}
+	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) { return sm, nil })
+
+	cmd := stateMoveCmd{Yes: true, Stdout: &bytes.Buffer{}, Colorizer: colors.Never}
+	require.NoError(t, cmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp))
+
+	sourceSnap, err := sourceStack.Snapshot(ctx, mp)
+	require.NoError(t, err)
+	destSnap, err := destStack.Snapshot(ctx, mp)
+	require.NoError(t, err)
+
+	assert.Contains(t, sourceSnap.Extensions, apitype.ExtensionRef(refKept))
+	assert.NotContains(t, sourceSnap.Extensions, apitype.ExtensionRef(refMoved),
+		"source must drop blobs no longer referenced after the move")
+	assert.Contains(t, destSnap.Extensions, apitype.ExtensionRef(refMoved))
+	assert.NotContains(t, destSnap.Extensions, apitype.ExtensionRef(refKept),
+		"destination must not receive blobs it has no resources referencing")
 }

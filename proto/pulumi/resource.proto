@@ -453,6 +453,7 @@ message RegisterPackageRequest {
     string download_url = 3; // the optional plugin download url.
     map<string, bytes> checksums = 4; // the optional plugin checksums.
     Parameterization parameterization = 5; // the optional parameterization for this package.
+    Parameterization extension = 6; // the optional extension parameterization for this package.
 }
 
 message RegisterPackageResponse {

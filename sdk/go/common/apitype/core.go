@@ -169,6 +169,8 @@ type DeploymentV3 struct {
 	// "snippets" feature so older CLIs that cannot evaluate them refuse the snapshot rather than silently
 	// dropping the resources they would produce.
 	Snippets []SnippetV1 `json:"snippets,omitempty" yaml:"snippets,omitempty"`
+	// Extensions is a map of extension blobs
+	Extensions map[ExtensionRef]Extension `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (snap *DeploymentV3) ToUntypedDeployment(version int, features []string) (*UntypedDeployment, error) {
@@ -554,6 +556,8 @@ type ResourceV3 struct {
 	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
 	// ResourceHooks is a map of hook types to lists of hook names for the given type.
 	ResourceHooks map[resource.HookType][]string `json:"resourceHooks,omitempty" yaml:"resourceHooks,omitempty"`
+	// ExtensionRef is a pointer into the extensions map if any.
+	ExtensionRef ExtensionRef `json:"extensionRef,omitempty" yaml:"extensionRef,omitempty"`
 }
 
 // StackFrameV1 captures information about a stack frame.
@@ -685,4 +689,16 @@ type OperationStatus struct {
 	Kind    UpdateKind `json:"kind"`
 	Author  string     `json:"author"`
 	Started int64      `json:"started"`
+}
+
+// ExtensionRef identifies an extension parameterization within a deployment. Its
+// value is the package reference RegisterPackage returns to the SDK: an opaque
+// UUID (not a content hash or a name/version tuple). It keys the deployment's
+// Extensions map.
+type ExtensionRef string
+
+type Extension struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Value   []byte `json:"value"`
 }

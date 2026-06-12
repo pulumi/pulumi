@@ -137,6 +137,8 @@ var expectedFailures = map[string]string{
 	"l2-id-type": "codegen isn't keeping track of ID right now",
 
 	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
+
+	"l2-extension-parameterized-resource": "PCL-to-Go program conversion does not yet resolve extension-parameterized tokens to the extension's SDK package", //nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

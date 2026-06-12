@@ -1013,6 +1013,19 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 	return packageDescriptors, diagnostics
 }
 
+// findExtensionDescriptorForBase returns the parameterized descriptor that
+// extends the given base provider, if any. Extension resources are tokenized
+// under the base provider's name (e.g. "extbase:index:Greeting"), so a token in
+// the base namespace is resolved by loading the schema of whatever extends it.
+func (b *binder) findExtensionDescriptorForBase(base string) (*schema.PackageDescriptor, bool) {
+	for _, descriptor := range b.packageDescriptors {
+		if descriptor.Parameterization != nil && descriptor.Name == base {
+			return descriptor, true
+		}
+	}
+	return nil, false
+}
+
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an
 // appropriate diagnostic.
 func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {

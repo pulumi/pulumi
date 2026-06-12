@@ -905,12 +905,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
 	} else {
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts", name)
-		if pkg.Parameterization != nil {
+		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 			fmt.Fprintf(w, ", false /*dependency*/")
 		}
 	}
 
-	if pkg.Parameterization != nil {
+	if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 		fmt.Fprintf(w, ", utilities.getPackage()")
 	}
 
@@ -1031,7 +1031,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		// If the call is on a parameterized package, make sure we pass the parameter.
 		pkg, err := fun.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
-		if pkg.Parameterization != nil {
+		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 			fmt.Fprintf(w, ", utilities.getPackage()")
 		}
 
@@ -1295,7 +1295,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		if err != nil {
 			return info, err
 		}
-		if pkg.Parameterization != nil {
+		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 			fmt.Fprintf(w, ", utilities.getPackage()")
 		}
 
@@ -2468,16 +2468,28 @@ func genNPMPackageMetadata(
 	}
 
 	var pulumiPlugin plugin.PulumiPluginJSON
-	if pkg.Parameterization != nil {
+	if param := pkg.Parameterization; param != nil {
 		pulumiPlugin = plugin.PulumiPluginJSON{
 			Resource: true,
 			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Parameterization.BaseProvider.Name,
-			Version:  pkg.Parameterization.BaseProvider.Version.String(),
+			Name:     param.BaseProvider.Name,
+			Version:  param.BaseProvider.Version.String(),
 			Parameterization: &plugin.PulumiParameterizationJSON{
 				Name:    pkg.Name,
 				Version: pkg.Version.String(),
-				Value:   pkg.Parameterization.Parameter,
+				Value:   param.Parameter,
+			},
+		}
+	} else if param := pkg.ExtensionParameterization; param != nil {
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource: true,
+			Server:   pkg.PluginDownloadURL,
+			Name:     param.BaseProvider.Name,
+			Version:  param.BaseProvider.Version.String(),
+			ExtensionParameterization: &plugin.PulumiParameterizationJSON{
+				Name:    pkg.Name,
+				Version: pkg.Version.String(),
+				Value:   param.Parameter,
 			},
 		}
 	} else {
@@ -2751,7 +2763,10 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 		}
 	}
 
-	scanResource(pkg.Provider)
+	// Extension-parameterized packages don't get their own Provider class.
+	if pkg.ExtensionParameterization == nil {
+		scanResource(pkg.Provider)
+	}
 	for _, r := range pkg.Resources {
 		scanResource(r)
 	}
@@ -2945,8 +2960,26 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 		return err
 	}
 
-	if def.Parameterization != nil {
-		base64Parameter := base64.StdEncoding.EncodeToString(def.Parameterization.Parameter)
+	if def.Parameterization != nil || def.ExtensionParameterization != nil {
+		isExtension := def.Parameterization == nil
+		var baseProvider schema.BaseProvider
+		var parameter []byte
+		if isExtension {
+			baseProvider = def.ExtensionParameterization.BaseProvider
+			parameter = def.ExtensionParameterization.Parameter
+		} else {
+			baseProvider = def.Parameterization.BaseProvider
+			parameter = def.Parameterization.Parameter
+		}
+		base64Parameter := base64.StdEncoding.EncodeToString(parameter)
+
+		// Only extension parameterization sets the extension flag; replacement
+		// parameterization omits it so generated SDKs stay byte-compatible with
+		// runtimes that predate the field.
+		extensionField := ""
+		if isExtension {
+			extensionField = "\n\t\textension: true,"
+		}
 
 		_, err = fmt.Fprintf(w, `
 export async function getPackage(): Promise<string | undefined> {
@@ -2956,16 +2989,17 @@ export async function getPackage(): Promise<string | undefined> {
 		baseProviderDownloadUrl: "%s",
 		packageName: "%s",
 		packageVersion: "%s",
-		base64Parameter: "%s",
+		base64Parameter: "%s",%s
 	});
 }
 `,
-			def.Parameterization.BaseProvider.Name,
-			def.Parameterization.BaseProvider.Version.String(),
+			baseProvider.Name,
+			baseProvider.Version.String(),
 			def.PluginDownloadURL,
 			def.Name,
 			def.Version,
-			base64Parameter)
+			base64Parameter,
+			extensionField)
 	}
 
 	return err

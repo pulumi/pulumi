@@ -1023,6 +1023,12 @@ func (acts *updateActions) OnRebuiltBaseState() error {
 }
 
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
+	// ExtensionParameterizeStep doesn't correspond to a resource registration — it
+	// side-effects the provider plugin. Skip the resource-graph bookkeeping
+	// entirely.
+	if step.Op() == deploy.OpExtendParameterize {
+		return acts.Context.SnapshotManager.BeginMutation(step)
+	}
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
@@ -1042,6 +1048,16 @@ func (acts *updateActions) OnResourceStepPost(
 	ctx any, step deploy.Step,
 	status resource.Status, err error,
 ) error {
+	// ExtensionParameterizeStep doesn't appear in the resource graph; skip the post-hooks
+	// that touch step.Res().
+	if step.Op() == deploy.OpExtendParameterize {
+		if ctx != nil {
+			if mut, ok := ctx.(SnapshotMutation); ok && mut != nil {
+				return mut.End(step, err == nil)
+			}
+		}
+		return nil
+	}
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
@@ -1205,7 +1221,9 @@ type previewActions struct {
 }
 
 func isInternalStep(step deploy.Step) bool {
-	if step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step) {
+	if step.Op() == deploy.OpRemovePendingReplace ||
+		step.Op() == deploy.OpExtendParameterize ||
+		isDefaultProviderStep(step) {
 		return true
 	}
 	refreshStep, ok := step.(*deploy.RefreshStep)
