@@ -2353,7 +2353,7 @@ type BaseProviderRefSpec struct {
 	Version string `json:"version" yaml:"version"`
 	// An optional replacement that produced this provider from a base plugin
 	// (e.g. a dynamically-bridged provider). Omitted when the provider is a plain plugin.
-	Parameterization *BaseProviderParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+	Parameterization *BaseProviderParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"` //nolint:lll
 }
 
 // BaseProviderParameterizationSpec is the replacement that produces a base provider
