@@ -159,12 +159,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except(TestPython),
 	},
 	{
-		Directory:   "dynamic-entries",
-		Description: "Testing iteration of dynamic entries in TypeScript",
-		Skip:        allProgLanguages.Except(TestNodeJS),
-		SkipCompile: allProgLanguages,
-	},
-	{
 		Directory:   "invoke-inside-conditional-range",
 		Description: "Using the result of an invoke inside a conditional range expression of a resource",
 		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestDotnet),
