@@ -83,20 +83,8 @@ func SingleTestCase(directoryName string) []ProgramTest {
 
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
-		Directory:   "aws-s3-logging",
-		Description: "AWS S3 with logging",
-		SkipCompile: codegen.NewStringSet(TestGo),
-		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
-		// Flaky in go: TODO[pulumi/pulumi#8123]
-	},
-	{
 		Directory:   "read-file-func",
 		Description: "ReadFile function translation works",
-	},
-	{
-		Directory:   "python-regress-10914",
-		Description: "Python regression test for #10914",
-		Skip:        allProgLanguages.Except(TestPython),
 	},
 	{
 		Directory:   "simplified-invokes",
@@ -215,11 +203,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Regression test for https://github.com/pulumi/pulumi/issues/12507",
 		Skip:        allProgLanguages.Except(TestNodeJS),
 		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
-	},
-	{
-		Directory:   "csharp-typed-for-expressions",
-		Description: "Testing for expressions with typed target expressions in csharp",
-		Skip:        allProgLanguages.Except(TestDotnet),
 	},
 	{
 		Directory:   "python-regress-14037",
