@@ -66,6 +66,10 @@ type ProviderHandshakeRequest struct {
 	// If true the engine will send `Preview` to `Invoke` methods to let them know if the current operation is a preview
 	// or up.
 	InvokeWithPreview bool
+
+	// The target of a codegen.Mapper service the provider can use to retrieve mappings from other ecosystems to
+	// Pulumi. May be nil on older engines.
+	MapperTarget *string
 }
 
 // The type of responses sent as part of a Handshake call.

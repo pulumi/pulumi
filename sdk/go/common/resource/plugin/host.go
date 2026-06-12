@@ -47,6 +47,10 @@ type Host interface {
 	// LoaderAddr returns the address at which a plugin loader service may be found.
 	LoaderAddr() string
 
+	// MapperAddr returns the address at which a mapper service may be found, or an empty string if the host was not
+	// built with a mapper.
+	MapperAddr() string
+
 	// Log logs a message, including errors and warnings.  Messages can have a resource URN
 	// associated with them.  If no urn is provided, the message is global.
 	Log(sev diag.Severity, urn resource.URN, msg string, streamID int32)
@@ -176,6 +180,8 @@ func collectPluginsFromPackages(
 
 type NewLoaderFunc = func(h Host) codegenrpc.LoaderServer
 
+type NewMapperFunc = func(ctx context.Context, h Host) codegenrpc.MapperServer
+
 // LanguageInstaller downloads and installs an unbundled language runtime on demand, so that
 // loading it via Host.LanguageRuntime works even when the runtime is not bundled with the CLI
 // or already cached. It is the language-runtime analogue of the engine's plugin install path.
@@ -190,7 +196,7 @@ type LanguageInstaller = func(ctx context.Context, runtime string, newLoader New
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
 	config map[config.Key]string, debugging DebugContext, projectName tokens.PackageName,
-	newLoader NewLoaderFunc, installLang LanguageInstaller,
+	newLoader NewLoaderFunc, newMapper NewMapperFunc, installLang LanguageInstaller,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -241,12 +247,13 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 		projectName:             projectName,
 		hasLoaderServer:         newLoader != nil,
 		newLoader:               newLoader,
+		hasMapperServer:         newMapper != nil,
 		installLang:             installLang,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
 	// to "phone home" in case there are things the host must do on behalf of the plugins (like log, etc).
-	svr, err := newHostServer(host, ctx, newLoader)
+	svr, err := newHostServer(host, ctx, newLoader, newMapper)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +373,8 @@ type defaultHost struct {
 	projectPlugins []workspace.ProjectPlugin
 
 	hasLoaderServer bool
-	newLoader       NewLoaderFunc     // the loader the host was built with, passed to installLang.
+	newLoader       NewLoaderFunc // the loader the host was built with, passed to installLang.
+	hasMapperServer bool
 	installLang     LanguageInstaller // installs unbundled language runtimes on demand; may be nil.
 }
 
@@ -396,6 +404,13 @@ func (host *defaultHost) ServerAddr() string {
 
 func (host *defaultHost) LoaderAddr() string {
 	if host.hasLoaderServer {
+		return host.ServerAddr()
+	}
+	return ""
+}
+
+func (host *defaultHost) MapperAddr() string {
+	if host.hasMapperServer {
 		return host.ServerAddr()
 	}
 	return ""

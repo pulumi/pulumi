@@ -25,6 +25,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -66,7 +67,7 @@ func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Hos
 	pctx, err := plugin.NewContextWithRoot(pluginCtx, diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
 		projinfo.Proj.GetPackageSpecs(), config, debugging,
-		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return "", "", nil, err
 	}

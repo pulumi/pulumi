@@ -40,7 +40,7 @@ func TestHostManagedProviderCloseSignalsCancellation(t *testing.T) {
 	t.Parallel()
 
 	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
@@ -71,7 +71,7 @@ func TestClosePanic(t *testing.T) {
 	t.Parallel()
 
 	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
@@ -232,7 +232,7 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	}
 
 	// Create the host with our packages
-	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil, nil)
+	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil, nil, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -298,7 +298,7 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 		"azure":        {Source: "azure"}, // This should be skipped as it's not a local path
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil, nil)
+	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil, nil, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -335,7 +335,7 @@ func TestNewDefaultHost_LoaderAddress(t *testing.T) {
 		return codegenrpc.UnimplementedLoaderServer{}
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader, nil)
+	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader, nil, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -344,6 +344,36 @@ func TestNewDefaultHost_LoaderAddress(t *testing.T) {
 	loaderAddr := host.LoaderAddr()
 	assert.NotEmpty(t, loaderAddr)
 	assert.Equal(t, host.ServerAddr(), loaderAddr)
+
+	assert.Equal(t, "", host.MapperAddr(), "a host built without a mapper should have no mapper address")
+}
+
+func TestNewDefaultHost_MapperAddress(t *testing.T) {
+	t.Parallel()
+
+	ctx := &Context{
+		baseContext: t.Context(),
+		Root:        t.TempDir(),
+		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+			Color: colors.Never,
+		}),
+	}
+
+	var captureHost Host
+	mockMapper := func(_ context.Context, h Host) codegenrpc.MapperServer {
+		captureHost = h
+		return codegenrpc.UnimplementedMapperServer{}
+	}
+
+	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", nil, mockMapper, nil)
+	require.NoError(t, err)
+	defer host.Close()
+
+	assert.Equal(t, host, captureHost, "mapper function should be called during host creation")
+
+	mapperAddr := host.MapperAddr()
+	assert.NotEmpty(t, mapperAddr)
+	assert.Equal(t, host.ServerAddr(), mapperAddr)
 }
 
 func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
@@ -374,7 +404,7 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 		return errInstall
 	}
 
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, mockLoader, installLang)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, mockLoader, nil, installLang)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
