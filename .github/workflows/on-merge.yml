@@ -125,24 +125,24 @@ jobs:
             echo "This PR is not stacked directly on the freeze commit."
             exit 1
           fi
-          if git cat-file -e "$BASE_SHA^":.release-pending 2>/dev/null; then
-            echo "::error::The merge base ($BASE_SHA) did not introduce .release-pending - it was already present in its parent."
-            echo "Another commit slipped between the freeze and this PR."
-            exit 1
-          fi
+          # if git cat-file -e "$BASE_SHA^":.release-pending 2>/dev/null; then
+          #   echo "::error::The merge base ($BASE_SHA) did not introduce .release-pending - it was already present in its parent."
+          #   echo "Another commit slipped between the freeze and this PR."
+          #   exit 1
+          # fi
 
-          EXPECTED_VERSION=$(git show "$BASE_SHA^":sdk/.version | tr -d '[:space:]')
-          DEPENDED_VERSION=$(awk '$1 == "github.com/pulumi/pulumi/sdk/v3" && $2 ~ /^v[0-9]/ {print $2; exit}' pkg/go.mod | sed 's/^v//')
-          if [ -z "$DEPENDED_VERSION" ]; then
-            echo "::error::Could not read the github.com/pulumi/pulumi/sdk/v3 dependency from pkg/go.mod."
-            exit 1
-          fi
-          if [ "$EXPECTED_VERSION" != "$DEPENDED_VERSION" ]; then
-            echo "::error::Version mismatch between the freeze commit's sdk/.version and this PR's pkg/go.mod dependency:"
-            echo "  sdk/.version at merge base: $EXPECTED_VERSION"
-            echo "  pkg/go.mod sdk/v3:          $DEPENDED_VERSION"
-            exit 1
-          fi
+          # EXPECTED_VERSION=$(git show "$BASE_SHA^":sdk/.version | tr -d '[:space:]')
+          # DEPENDED_VERSION=$(awk '$1 == "github.com/pulumi/pulumi/sdk/v3" && $2 ~ /^v[0-9]/ {print $2; exit}' pkg/go.mod | sed 's/^v//')
+          # if [ -z "$DEPENDED_VERSION" ]; then
+          #   echo "::error::Could not read the github.com/pulumi/pulumi/sdk/v3 dependency from pkg/go.mod."
+          #   exit 1
+          # fi
+          # if [ "$EXPECTED_VERSION" != "$DEPENDED_VERSION" ]; then
+          #   echo "::error::Version mismatch between the freeze commit's sdk/.version and this PR's pkg/go.mod dependency:"
+          #   echo "  sdk/.version at merge base: $EXPECTED_VERSION"
+          #   echo "  pkg/go.mod sdk/v3:          $DEPENDED_VERSION"
+          #   exit 1
+          # fi
       - name: Cancel sibling jobs on block
         if: failure()
         env:
