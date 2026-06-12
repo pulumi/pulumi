@@ -58,6 +58,23 @@ func TestDeleteAccountFallsBackToAgentCredentials(t *testing.T) {
 	assert.Empty(t, claim.ClaimURL)
 }
 
+func TestCredentialsContainAccountIncludesTokenlessCurrentBackend(t *testing.T) {
+	t.Parallel()
+
+	cloudURL := "file://~"
+	creds := workspace.Credentials{
+		Current: cloudURL,
+		AccessTokens: map[string]string{
+			cloudURL: "",
+		},
+		Accounts: map[string]workspace.Account{
+			cloudURL: {},
+		},
+	}
+
+	assert.True(t, credentialsContainAccount(creds, cloudURL))
+}
+
 //nolint:paralleltest // mutates env vars
 func TestDeleteAccountSkipsAgentFallbackWhenExplicitPathSet(t *testing.T) {
 	credsDir := t.TempDir()
