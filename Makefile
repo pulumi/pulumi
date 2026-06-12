@@ -297,17 +297,13 @@ schema-%: .make/ensure/curl .make/ensure/jq
 #
 # pkg/codegen/testing/test/helpers.go depends on some of this list, update that file on changes.
 #
-# pkg/codegen/schema/schema_test.go depends on kubernetes@3.7.0, update that file on changes.
+# pkg/codegen/schema/schema_test.go depends on random@4.11.2, update that file on changes.
 #
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
 # separate commit from other changes, as online code review tools may balk at rendering these diffs.
 get_schemas: \
-			schema-aws!4.26.0           \
 			schema-aws!5.4.0            \
-			schema-aws!5.16.2           \
-			schema-kubernetes!3.7.0     \
 			schema-random!4.11.2        \
-			schema-docker!4.0.0-alpha.0 \
 			schema-awsx!1.0.0-beta.5    \
 			schema-tls!4.10.0
 

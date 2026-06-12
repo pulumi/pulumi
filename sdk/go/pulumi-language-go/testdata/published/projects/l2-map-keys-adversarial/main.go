@@ -23,6 +23,7 @@ func main() {
 				"__version":  pulumi.Bool(false),
 				"":           pulumi.Bool(true),
 				"Some ${common} \"characters\" 'that' need escaping: \\ (backslash), \t (tab), \x1b (escape), \a (bell), \x00 (null), \U000e0021 (tag space)": pulumi.Bool(false),
+				"Format and glob specifiers: %percent ...ellipsis {open }close *asterisk ?question ,comma &&and ||or !not =>arrow ==equal :colon /slash":      pulumi.Bool(true),
 			},
 		})
 		if err != nil {
@@ -44,6 +45,7 @@ func main() {
 				"__version":  pulumi.Bool(false),
 				"":           pulumi.Bool(true),
 				"Some ${common} \"characters\" 'that' need escaping: \\ (backslash), \t (tab), \x1b (escape), \a (bell), \x00 (null), \U000e0021 (tag space)": pulumi.Bool(false),
+				"Format and glob specifiers: %percent ...ellipsis {open }close *asterisk ?question ,comma &&and ||or !not =>arrow ==equal :colon /slash":      pulumi.Bool(true),
 			},
 		}, nil)
 		ctx.Export("resourceBooleanMap", res.BooleanMap)

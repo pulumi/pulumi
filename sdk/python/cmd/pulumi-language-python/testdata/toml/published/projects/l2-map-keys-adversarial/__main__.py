@@ -17,6 +17,7 @@ res = primitive.Resource("res",
         "__version": False,
         "": True,
         "Some ${common} \"characters\" 'that' need escaping: \\ (backslash), \x09 (tab), \x1b (escape), \x07 (bell), \x00 (null), \U000e0021 (tag space)": False,
+        "Format and glob specifiers: %percent ...ellipsis {open }close *asterisk ?question ,comma &&and ||or !not =>arrow ==equal :colon /slash": True,
     })
 invoke_result = primitive.invoke_output(boolean=False,
     float=2.17,
@@ -33,6 +34,7 @@ invoke_result = primitive.invoke_output(boolean=False,
         "__version": False,
         "": True,
         "Some ${common} \"characters\" 'that' need escaping: \\ (backslash), \x09 (tab), \x1b (escape), \x07 (bell), \x00 (null), \U000e0021 (tag space)": False,
+        "Format and glob specifiers: %percent ...ellipsis {open }close *asterisk ?question ,comma &&and ||or !not =>arrow ==equal :colon /slash": True,
     })
 pulumi.export("resourceBooleanMap", res.boolean_map)
 pulumi.export("invokeBooleanMap", invoke_result.boolean_map)

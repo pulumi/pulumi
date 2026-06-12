@@ -111,26 +111,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip: allProgLanguages.Except(TestGo),
 	},
 	{
-		Directory:   "kubernetes-operator",
-		Description: "K8s Operator",
-	},
-	{
-		Directory:   "kubernetes-pod",
-		Description: "K8s Pod",
-		SkipCompile: codegen.NewStringSet(TestGo),
-		// Blocked on go:
-		//   TODO[pulumi/pulumi#8073]
-		//   TODO[pulumi/pulumi#8074]
-	},
-	{
-		Directory:   "kubernetes-template",
-		Description: "K8s Template",
-	},
-	{
-		Directory:   "kubernetes-template-quoted",
-		Description: "K8s Template with quoted string property keys to ensure that resource binding works here",
-	},
-	{
 		Directory:   "third-party-package",
 		Description: "Ensuring correct imports for third party packages",
 		// compiling and type checking involves downloading the real package to
@@ -143,11 +123,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "ensure that the this keyword is rewritten when it is a variable but kept as is" +
 			"when it is a reference to this pointer in nodejs",
 		Skip: codegen.NewStringSet(TestDotnet, TestPython, TestGo),
-	},
-	{
-		Directory:   "invalid-go-sprintf",
-		Description: "Regress invalid Go",
-		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   "traverse-union-repro",
@@ -278,11 +253,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	{
 		Directory:   transpiled("cue-random"),
 		Description: "Cue random",
-	},
-	{
-		Directory:   transpiled("kubernetes"),
-		Description: "Kubernetes",
-		Skip:        codegen.NewStringSet(TestGo),
 	},
 	{
 		Directory:   transpiled("pulumi-variable"),

@@ -9,7 +9,7 @@ import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from ._inputs import *
-import pulumi_kubernetes
+import pulumi_other
 
 __all__ = ['ComponentArgs', 'Component']
 
