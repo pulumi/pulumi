@@ -337,6 +337,9 @@ type UpdateOptions struct {
 	// true if the step generator should calculate diffs in parallel via DiffSteps.
 	ParallelDiff bool
 
+	// true if the step generator should run provider checks in parallel via CheckSteps.
+	ParallelCheck bool
+
 	// LocalPolicyPacks contains an optional set of policy packs to run as part of this deployment.
 	LocalPolicyPacks []LocalPolicyPack
 

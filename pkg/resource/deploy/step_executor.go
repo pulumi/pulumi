@@ -469,17 +469,23 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 // verbatim to the post-step event.
 //
 
+// isInternalStep returns true for steps that only exist to run provider calls on the parallel but
+// bounded step workers (DiffStep, CheckStep). They shouldn't be passed to the rest of the system.
+func isInternalStep(step Step) bool {
+	switch step.(type) {
+	case *DiffStep, *CheckStep:
+		return true
+	}
+	return false
+}
+
 // executeStep executes a single step, returning true if the step execution was successful and
 // false if it was not.
 func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	var payload any
 	events := se.deployment.events
 
-	// DiffSteps are special, we just use them for step worker parallelism but they shouldn't be passed to the rest of
-	// the system.
-	_, isDiff := step.(*DiffStep)
-
-	if events != nil && !isDiff {
+	if events != nil && !isInternalStep(step) {
 		var err error
 		payload, err = events.OnResourceStepPre(step)
 		if err != nil {
@@ -497,9 +503,7 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.deployment.opts.DryRun)
 	status, stepComplete, err := step.Apply()
 
-	// DiffSteps are special, we just use them for step worker parallelism but they shouldn't be passed to the rest of
-	// the system.
-	if _, isDiff := step.(*DiffStep); isDiff {
+	if isInternalStep(step) {
 		return nil
 	}
 

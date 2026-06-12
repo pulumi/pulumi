@@ -313,6 +313,7 @@ func NewRefreshCmd() *cobra.Command {
 
 			opts.Engine = engine.UpdateOptions{
 				ParallelDiff:              env.ParallelDiff.Value(),
+				ParallelCheck:             env.ParallelCheck.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,
 				UseLegacyDiff:             env.EnableLegacyDiff.Value(),

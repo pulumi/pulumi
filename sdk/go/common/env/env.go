@@ -141,6 +141,9 @@ var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 var ParallelDiff = env.Bool("PARALLEL_DIFF",
 	"Enable running diff calculations in parallel.")
 
+var ParallelCheck = env.Bool("PARALLEL_CHECK",
+	"Enable running check calculations in parallel.")
+
 var RunProgram = env.Bool("RUN_PROGRAM",
 	"Run the Pulumi program for refresh and destroy operations. This is the same as passing --run-program=true.")
 

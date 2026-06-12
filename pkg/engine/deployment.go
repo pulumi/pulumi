@@ -241,6 +241,7 @@ func newDeployment(
 
 	deplOpts := &deploy.Options{
 		ParallelDiff:              opts.ParallelDiff,
+		ParallelCheck:             opts.ParallelCheck,
 		DryRun:                    opts.DryRun,
 		Parallel:                  opts.Parallel,
 		Refresh:                   opts.Refresh,

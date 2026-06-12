@@ -4884,6 +4884,124 @@ func TestParallelDiff(t *testing.T) {
 	assert.False(t, waitTimeout(&wg, 10*time.Second), "waiting for diff to complete timed out")
 }
 
+// Test that the step generator can issue checks in parallel.
+func TestParallelCheck(t *testing.T) {
+	t.Parallel()
+
+	var wg sync.WaitGroup
+	// We're going to expect to see two calls to check, but we won't return from either till we see both
+	wg.Add(2)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					wg.Done()
+					wg.Wait()
+					return plugin.CheckResponse{Properties: req.News}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// Issue these register resources in parallel, neither will return till both are issued
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			require.NoError(t, err)
+		}()
+
+		go func() {
+			defer wg.Done()
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
+			require.NoError(t, err)
+		}()
+
+		wg.Wait()
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			UpdateOptions: engine.UpdateOptions{
+				ParallelCheck: true,
+				// Need at least two workers for this
+				Parallel: 2,
+			},
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// Run an update, expect the checks to be done in parallel.
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// The default provider and the two custom resources.
+	require.Len(t, snap.Resources, 3)
+
+	// waitTimeout waits for the waitgroup for the specified max timeout.
+	// Returns true if waiting timed out.
+	waitTimeout := func(wg *sync.WaitGroup, timeout time.Duration) bool {
+		c := make(chan struct{})
+		go func() {
+			defer close(c)
+			wg.Wait()
+		}()
+		select {
+		case <-c:
+			return false // completed normally
+		case <-time.After(timeout):
+			return true // timed out
+		}
+	}
+
+	// Wait for the check to complete, but don't wait forever
+	assert.False(t, waitTimeout(&wg, 10*time.Second), "waiting for check to complete timed out")
+}
+
+// Test that an error from a parallel check fails the deployment.
+func TestParallelCheckError(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					return plugin.CheckResponse{}, errors.New("check failed intentionally")
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		return err
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			UpdateOptions: engine.UpdateOptions{
+				ParallelCheck: true,
+				Parallel:      2,
+			},
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.ErrorContains(t, err, "check failed intentionally")
+}
+
 func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 	t.Parallel()
 
