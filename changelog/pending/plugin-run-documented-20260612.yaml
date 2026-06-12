@@ -3,4 +3,4 @@ kind: chore
 body: Document the `pulumi plugin run` command by including it in the generated CLI docs
 time: 2026-06-12T00:00:00+00:00
 custom:
-    PR: ""
+    PR: "23559"
