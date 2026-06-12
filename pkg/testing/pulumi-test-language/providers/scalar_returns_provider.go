@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type ScalarReturnsProvider struct {
@@ -41,10 +40,6 @@ func (p *ScalarReturnsProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *ScalarReturnsProvider) Pkg() tokens.Package {
-	return "scalar-returns"
 }
 
 func (p *ScalarReturnsProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {

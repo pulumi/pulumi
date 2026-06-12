@@ -51,6 +51,7 @@ type Provider struct {
 	CreateF       func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error)
 	UpdateF       func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error)
 	DeleteF       func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error)
+	ListF         func(context.Context, plugin.ListRequest) (*plugin.ListStream, error)
 	ReadF         func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error)
 	ConstructF    func(context.Context, plugin.ConstructRequest, *ResourceMonitor) (plugin.ConstructResponse, error)
 	InvokeF       func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error)
@@ -77,10 +78,6 @@ func (prov *Provider) SignalCancellation(context.Context) error {
 
 func (prov *Provider) Close() error {
 	return nil
-}
-
-func (prov *Provider) Pkg() tokens.Package {
-	return prov.Package
 }
 
 func (prov *Provider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -177,6 +174,13 @@ func (prov *Provider) Delete(ctx context.Context, req plugin.DeleteRequest) (plu
 		return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 	}
 	return prov.DeleteF(ctx, req)
+}
+
+func (prov *Provider) List(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
+	if prov.ListF == nil {
+		return plugin.NewListStream(nil, ""), nil
+	}
+	return prov.ListF(ctx, req)
 }
 
 func (prov *Provider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {

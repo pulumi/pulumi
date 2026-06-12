@@ -105,7 +105,7 @@ func (b *diyBackend) saveStackTags(
 	}
 
 	// Marshal to JSON
-	tagsBytes, err := json.MarshalIndent(tagsFile, "", "    ")
+	tagsBytes, err := diyJSONMarshaler.Marshal(tagsFile)
 	if err != nil {
 		return fmt.Errorf("failed to marshal stack tags: %w", err)
 	}

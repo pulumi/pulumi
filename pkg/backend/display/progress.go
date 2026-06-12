@@ -190,9 +190,6 @@ func newOpStopwatch() opStopwatch {
 	}
 }
 
-// policyPayloads is a collection of policy violation events for a single resource.
-var policyPayloads []engine.PolicyViolationEventPayload
-
 // getEventUrnAndMetadata returns the resource URN associated with an event, or the empty URN if this is not an
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
@@ -849,6 +846,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
+		display.println("    " + "Or run `pulumi neo` for an interactive agent in your terminal.")
 		display.println("")
 	}
 }
@@ -1118,7 +1116,7 @@ func (display *ProgressDisplay) processTick() {
 }
 
 func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
-	// Take the write lock here because this can write the the eventUrnToResourceRow map
+	// Take the write lock here because this can write the eventUrnToResourceRow map
 	display.eventMutex.Lock()
 	defer display.eventMutex.Unlock()
 
@@ -1154,7 +1152,6 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 step,
 		hideRowIfUnnecessary: true,
 	}
@@ -1190,7 +1187,6 @@ func (display *ProgressDisplay) ensureParentRow(metadata *engine.StepEventMetada
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 parentStep,
 		hideRowIfUnnecessary: true,
 	}
@@ -1447,7 +1443,6 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
 		hideRowIfUnnecessary: false,
 	}

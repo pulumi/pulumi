@@ -63,6 +63,7 @@ func newStackRenameCmd() *cobra.Command {
 				stack,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -101,7 +102,7 @@ func newStackRenameCmd() *cobra.Command {
 				return fmt.Errorf("setting current stack: %w", err)
 			}
 
-			fmt.Printf("Renamed %s to %s\n", s.Ref().String(), newStackRef.String())
+			fmt.Fprintf(cmd.OutOrStdout(), "Renamed %s to %s\n", s.Ref().String(), newStackRef.String())
 			return nil
 		},
 	}

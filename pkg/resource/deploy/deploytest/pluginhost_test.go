@@ -157,11 +157,6 @@ func TestPluginHostProvider(t *testing.T) {
 			_, err := host.Analyzer("")
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
-		t.Run("EnsurePlugins", func(t *testing.T) {
-			t.Parallel()
-			host := &pluginHost{closed: true}
-			assert.ErrorIs(t, host.EnsurePlugins(nil, 0), ErrHostIsClosed)
-		})
 		t.Run("PolicyAnalyzer", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
@@ -178,7 +173,7 @@ func TestPluginHostProvider(t *testing.T) {
 			},
 		}
 
-		_, err := host.GetRequiredPackages(plugin.ProgramInfo{}, 0)
+		_, _, err := host.GetRequiredPackages(plugin.ProgramInfo{}, 0)
 		assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 	})
 	t.Run("Close", func(t *testing.T) {

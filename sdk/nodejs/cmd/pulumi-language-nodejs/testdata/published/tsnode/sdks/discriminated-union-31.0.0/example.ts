@@ -62,6 +62,6 @@ export class Example extends pulumi.CustomResource {
  * The set of arguments for constructing a Example resource.
  */
 export interface ExampleArgs {
-    arrayOfUnionOf?: pulumi.Input<pulumi.Input<inputs.VariantOneArgs | inputs.VariantTwoArgs>[]>;
-    unionOf?: pulumi.Input<inputs.VariantOneArgs | inputs.VariantTwoArgs>;
+    arrayOfUnionOf?: pulumi.Input<pulumi.Input<inputs.VariantOneArgs | inputs.VariantTwoArgs>[] | undefined>;
+    unionOf?: pulumi.Input<inputs.VariantOneArgs | inputs.VariantTwoArgs | undefined>;
 }

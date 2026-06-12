@@ -1,0 +1,11 @@
+{
+	"name": "l2-component-call-plain",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/configurer": "ROOT/artifacts/pulumi-configurer-38.0.0.tgz"
+	}
+}

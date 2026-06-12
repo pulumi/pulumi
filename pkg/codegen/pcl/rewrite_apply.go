@@ -377,9 +377,14 @@ func (ctx *observeContext) bestArgName(x model.Expression) string {
 // disambiguateArgName applies type-specific disambiguation to an argument name.
 func (ctx *observeContext) disambiguateArgName(x model.Expression, bestName string) string {
 	if x, ok := x.(*model.ScopeTraversalExpression); ok {
-		if n, ok := x.Parts[0].(*Resource); ok {
-			// If dealing with a broken access, defer to the generic disambiguator. Otherwise, attempt to disambiguate
-			// by prepending the resource's variable name.
+		switch n := x.Parts[0].(type) {
+		// If dealing with a broken access, defer to the generic disambiguator. Otherwise, attempt to disambiguate
+		// by prepending the resource's variable name.
+		case *Resource:
+			if len(x.Traversal) > 1 {
+				return ctx.disambiguateName(n.Name() + titleCase(bestName))
+			}
+		case *ReadResource:
 			if len(x.Traversal) > 1 {
 				return ctx.disambiguateName(n.Name() + titleCase(bestName))
 			}

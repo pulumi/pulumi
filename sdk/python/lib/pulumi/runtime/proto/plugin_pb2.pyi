@@ -204,3 +204,65 @@ class PackageDependency(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["checksums", b"checksums", "kind", b"kind", "name", b"name", "parameterization", b"parameterization", "server", b"server", "version", b"version"]) -> None: ...
 
 global___PackageDependency = PackageDependency
+
+@typing.final
+class PackageSpec(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class ChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    SOURCE_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    PARAMETERS_FIELD_NUMBER: builtins.int
+    CHECKSUMS_FIELD_NUMBER: builtins.int
+    SERVER_FIELD_NUMBER: builtins.int
+    source: builtins.str
+    """The "name" of the plugin.
+
+    Source may be one of:
+    - A simple name, like "pkg"
+    - A registry double or triple: "org/pkg", "source/org/pkg"
+    - A git URL, "git://github.com/pulumi/pulumi-example/path"
+    - An un-prefixed URL, like github.com/pulumi/pulumi-example/path
+    - A local path, like /usr/bin/pkg
+    """
+    version: builtins.str
+    """The version of the provider, may be Semver 2.0 or a git hash."""
+    server: builtins.str
+    """the URL of a server that can be used to download this plugin, if needed."""
+    @property
+    def parameters(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Any parameters needed to configure the package."""
+
+    @property
+    def checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """if set will be used to validate the plugin downloaded matches. This is keyed by
+        "$os-$arch", e.g. "linux-x64".
+        """
+
+    def __init__(
+        self,
+        *,
+        source: builtins.str = ...,
+        version: builtins.str = ...,
+        parameters: collections.abc.Iterable[builtins.str] | None = ...,
+        checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        server: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["checksums", b"checksums", "parameters", b"parameters", "server", b"server", "source", b"source", "version", b"version"]) -> None: ...
+
+global___PackageSpec = PackageSpec

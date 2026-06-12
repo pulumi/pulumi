@@ -17,6 +17,7 @@ package policy
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -33,7 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPolicyLsCmd() *cobra.Command {
+func newPolicyLsCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var jsonOut bool
 
 	cmd := &cobra.Command{
@@ -44,7 +45,6 @@ func newPolicyLsCmd() *cobra.Command {
 			ctx := cmd.Context()
 
 			// Try to read the current project
-			ws := pkgWorkspace.Instance
 			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
@@ -52,7 +52,7 @@ func newPolicyLsCmd() *cobra.Command {
 
 			// Get backend.
 			b, err := cmdBackend.CurrentBackend(
-				ctx, ws, cmdBackend.DefaultLoginManager, project,
+				ctx, ws, lm, project,
 				display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return err
@@ -63,7 +63,7 @@ func newPolicyLsCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				orgName = cliArgs[0]
 			} else {
-				orgName, _, _, err = b.CurrentUser()
+				orgName, err = b.GetDefaultOrg(ctx)
 				if err != nil {
 					return err
 				}
@@ -89,9 +89,9 @@ func newPolicyLsCmd() *cobra.Command {
 			}
 
 			if jsonOut {
-				return formatPolicyPacksJSON(allPolicyPacks)
+				return formatPolicyPacksJSON(cmd.OutOrStdout(), allPolicyPacks)
 			}
-			return formatPolicyPacksConsole(allPolicyPacks)
+			return formatPolicyPacksConsole(cmd.OutOrStdout(), allPolicyPacks)
 		},
 	}
 
@@ -107,7 +107,7 @@ func newPolicyLsCmd() *cobra.Command {
 	return cmd
 }
 
-func formatPolicyPacksConsole(policyPacks []apitype.PolicyPackWithVersions) error {
+func formatPolicyPacksConsole(w io.Writer, policyPacks []apitype.PolicyPackWithVersions) error {
 	// Header string and formatting options to align columns.
 	headers := []string{"NAME", "VERSIONS"}
 
@@ -124,7 +124,7 @@ func formatPolicyPacksConsole(policyPacks []apitype.PolicyPackWithVersions) erro
 		columns := []string{name, versionTags}
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
-	ui.PrintTable(cmdutil.Table{
+	ui.FprintTable(w, cmdutil.Table{
 		Headers: headers,
 		Rows:    rows,
 	}, nil)
@@ -139,7 +139,7 @@ type policyPacksJSON struct {
 	Versions []string `json:"versions"`
 }
 
-func formatPolicyPacksJSON(policyPacks []apitype.PolicyPackWithVersions) error {
+func formatPolicyPacksJSON(w io.Writer, policyPacks []apitype.PolicyPackWithVersions) error {
 	output := make([]policyPacksJSON, len(policyPacks))
 	for i, pack := range policyPacks {
 		output[i] = policyPacksJSON{
@@ -147,5 +147,5 @@ func formatPolicyPacksJSON(policyPacks []apitype.PolicyPackWithVersions) error {
 			Versions: pack.VersionTags,
 		}
 	}
-	return ui.PrintJSON(output)
+	return ui.FprintJSON(w, output)
 }

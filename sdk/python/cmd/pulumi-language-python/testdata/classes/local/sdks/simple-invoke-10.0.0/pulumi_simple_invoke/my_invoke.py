@@ -50,7 +50,7 @@ def my_invoke(value: Optional[_builtins.str] = None,
 
     return AwaitableMyInvokeResult(
         result=pulumi.get(__ret__, 'result'))
-def my_invoke_output(value: Optional[pulumi.Input[_builtins.str]] = None,
+def my_invoke_output(value: pulumi.Input[Optional[_builtins.str]] = None,
                      opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[MyInvokeResult]:
     """
     Use this data source to access information about an existing resource.

@@ -223,6 +223,10 @@ var (
 	// It is used in sandboxed environments where the classic policy template folder may not be writable.
 	PolicyTemplatePath = env.String("POLICY_TEMPLATE_PATH", "Path to a writable policy template cache directory.")
 
+	// PackageTemplatePath is a path to the folder where package templates are stored.
+	// It is used in sandboxed environments where the classic package template folder may not be writable.
+	PackageTemplatePath = env.String("PACKAGE_TEMPLATE_PATH", "Path to a writable package template cache directory.")
+
 	// TemplateGitRepository is the Git URL for Pulumi program templates.
 	// If set, it overrides the compile-time default pulumiTemplateGitRepository.
 	TemplateGitRepository = env.String("TEMPLATE_GIT_REPOSITORY",
@@ -240,10 +244,23 @@ var (
 	// PolicyTemplateBranch is the branch name for the policy pack template repository.
 	// If set, it overrides the compile-time default pulumiPolicyTemplateBranch.
 	PolicyTemplateBranch = env.String("POLICY_TEMPLATE_BRANCH", "Branch name for Pulumi Policy Pack templates repository.")
+
+	// PackageTemplateGitRepository is the Git URL for Pulumi package templates.
+	// If set, it overrides the compile-time default pulumiPackageTemplateGitRepository.
+	PackageTemplateGitRepository = env.String("PACKAGE_TEMPLATE_GIT_REPOSITORY",
+		"Git URL for Pulumi package templates (overrides default).")
+
+	// PackageTemplateBranch is the branch name for the package template repository.
+	// If set, it overrides the compile-time default pulumiPackageTemplateBranch.
+	PackageTemplateBranch = env.String("PACKAGE_TEMPLATE_BRANCH",
+		"Branch name for Pulumi package templates repository.")
 )
 
 var DisableJournaling = env.Bool("DISABLE_JOURNALING",
 	"Disable journaling of engine operations to the backend")
+
+var EnableAutomaticLogging = env.Bool("ENABLE_AUTOMATIC_LOGGING",
+	"Enable automatic encrypted logging of engine operations to disk")
 
 var LogRotationMaxAgeDays = env.Int("LOG_ROTATION_MAX_AGE_DAYS",
 	"Maximum age in days for automatic log files before rotation deletes them (default 7)")

@@ -22,13 +22,11 @@ import (
 )
 
 func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
+	var stackDeploymentConfigFile string
 	cmd := &cobra.Command{
-		// This is temporarily hidden while we iterate over the new set of commands,
-		// we will remove before releasing these new set of features.
-		Hidden: true,
-		Use:    "deployment",
-		Short:  "Manage stack deployments on Pulumi Cloud",
-		Long: "Manage stack deployments on Pulumi Cloud.\n" +
+		Use:   "deployment",
+		Short: "[EXPERIMENTAL] Manage stack deployments on Pulumi Cloud",
+		Long: "[EXPERIMENTAL] Manage stack deployments on Pulumi Cloud.\n" +
 			"\n" +
 			"Use this command to trigger deployment jobs and manage deployment settings.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -42,8 +40,12 @@ func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 		&stackDeploymentConfigFile, "config-file", "",
 		"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml")
 
-	cmd.AddCommand(newDeploymentSettingsCmd())
+	cmd.AddCommand(newDeploymentSettingsCmd(&stackDeploymentConfigFile))
 	cmd.AddCommand(newDeploymentRunCmd(ws))
+	cmd.AddCommand(newDeploymentListCmd())
+	cmd.AddCommand(newDeploymentGetCmd())
+	cmd.AddCommand(newDeploymentCancelCmd())
+	cmd.AddCommand(newDeploymentLogCmd())
 
 	return cmd
 }

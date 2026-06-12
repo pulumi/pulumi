@@ -18,7 +18,7 @@ __all__ = [
 class VariantOneArgs:
     def __init__(__self__, *,
                  discriminant_kind: pulumi.Input[_builtins.str],
-                 field1: Optional[pulumi.Input[_builtins.str]] = None):
+                 field1: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant1')
         if field1 is not None:
             pulumi.set(__self__, "field1", field1)
@@ -34,11 +34,11 @@ class VariantOneArgs:
 
     @_builtins.property
     @pulumi.getter
-    def field1(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def field1(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "field1")
 
     @field1.setter
-    def field1(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def field1(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "field1", value)
 
 
@@ -46,7 +46,7 @@ class VariantOneArgs:
 class VariantTwoArgs:
     def __init__(__self__, *,
                  discriminant_kind: pulumi.Input[_builtins.str],
-                 field2: Optional[pulumi.Input[_builtins.str]] = None):
+                 field2: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant2')
         if field2 is not None:
             pulumi.set(__self__, "field2", field2)
@@ -62,11 +62,11 @@ class VariantTwoArgs:
 
     @_builtins.property
     @pulumi.getter
-    def field2(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def field2(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "field2")
 
     @field2.setter
-    def field2(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def field2(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "field2", value)
 
 

@@ -1,0 +1,14 @@
+# Builds a custom golangci-lint binary that includes the requiredfield and
+# noosexit linters as module plugins. The version below must match
+# GOLANGCI_LINT_VERSION in .github/workflows/ci-lint.yml.
+#
+# Build with: golangci-lint custom
+# Result:     bin/custom-gcl
+version: v2.12.2
+name: custom-gcl
+destination: ./bin
+plugins:
+  - module: github.com/pulumi/pulumi/.golangci/plugins/requiredfield
+    path: ./.golangci/plugins/requiredfield
+  - module: github.com/pulumi/pulumi/.golangci/plugins/noosexit
+    path: ./.golangci/plugins/noosexit

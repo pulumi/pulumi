@@ -28,7 +28,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -70,7 +72,6 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 	newLoader plugin.NewLoaderFunc,
 ) (*semver.Version, error) {
 	util.SetKnownPluginDownloadURL(&pluginSpec)
-	util.SetKnownPluginVersion(&pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
 		pluginSpec.Version, err = pluginstorage.Instance.GetLatestVersion(ctx, pluginSpec)
@@ -109,6 +110,41 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 	}
 
 	return pluginSpec.Version, nil
+}
+
+// EnsureLanguageInstalled downloads and installs the named language runtime if it is not
+// bundled with the CLI and not already cached. This is the language-plugin analogue of
+// EnsurePluginsAreInstalled: it lets the CLI transparently fetch unbundled language runtimes
+// on first use, just like a resource provider.
+//
+// It satisfies plugin.LanguageInstaller and is wired into the plugin host at construction so
+// that every load of a language runtime through a default host triggers the install, rather
+// than each caller of Host.LanguageRuntime having to ensure the plugin is present.
+func EnsureLanguageInstalled(ctx context.Context, runtime string, newLoader plugin.NewLoaderFunc) error {
+	if runtime == "" {
+		return nil
+	}
+	if workspace.IsPluginBundled(apitype.LanguagePlugin, runtime) {
+		return nil
+	}
+	spec := workspace.PluginDescriptor{
+		Kind: apitype.LanguagePlugin,
+		Name: runtime,
+	}
+	if !util.SetKnownPluginDownloadURL(&spec) {
+		return nil
+	}
+	// If the runtime is already resolvable (on $PATH or in the plugin cache) reuse it rather than
+	// downloading, since that is the version the language host will load anyway.
+	quiet := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	if path, err := workspace.GetPluginPath(ctx, quiet, spec, nil); err == nil && path != "" {
+		return nil
+	}
+	log := func(sev diag.Severity, msg string) {
+		logging.V(7).Infof("EnsureLanguageInstalled(%s): %s", runtime, msg)
+	}
+	_, err := InstallPlugin(ctx, spec, log, newLoader)
+	return err
 }
 
 // InstallPluginContent installs a plugin's tarball into the cache, then installs it's
@@ -164,6 +200,7 @@ func installDependenciesForPluginSpec(
 		nil, // config
 		nil, // debugging
 		newLoader,
+		EnsureLanguageInstalled,
 	)
 	if err != nil {
 		return err
@@ -182,7 +219,7 @@ func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, st
 	}
 	entryPoint := "." // Plugin's are not able to set a non-standard entry point.
 	pInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, entryPoint, proj.Runtime.Options())
-	return cmdutil.InstallDependencies(runtime, plugin.InstallDependenciesRequest{
+	return cmdutil.InstallDependencies(pctx.Request(), runtime, plugin.InstallDependenciesRequest{
 		Info:                    pInfo,
 		UseLanguageVersionTools: false,
 		IsPlugin:                true,

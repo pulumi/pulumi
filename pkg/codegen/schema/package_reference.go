@@ -77,6 +77,9 @@ type PackageReference interface {
 
 	// Definition fully loads the referenced package and returns the result.
 	Definition() (*Package, error)
+
+	// CanonicalizeToken returns the canonical form of a token. This takes into account moduleFormat and index elision.
+	CanonicalizeToken(token string) string
 }
 
 // PackageTypes provides random and sequential access to a package's types.
@@ -231,6 +234,10 @@ func (p packageDefRef) Language(language string) (any, error) {
 	return p.pkg.Language[language], nil
 }
 
+func (p packageDefRef) CanonicalizeToken(token string) string {
+	return p.pkg.CanonicalizeToken(token)
+}
+
 func (p packageDefRef) TokenToModule(token string) string {
 	return p.pkg.TokenToModule(token)
 }
@@ -248,7 +255,7 @@ func (p packageDefTypes) Range() TypesIter {
 }
 
 func (p packageDefTypes) Get(token string) (Type, bool, error) {
-	def, ok := p.typeTable[token]
+	def, ok := lookupToken(p.typeTable, token, p.typeAliases)
 	return def, ok, nil
 }
 
@@ -289,7 +296,7 @@ func (p packageDefResources) Get(token string) (*Resource, bool, error) {
 		return p.Provider, true, nil
 	}
 
-	def, ok := p.resourceTable[token]
+	def, ok := lookupToken(p.resourceTable, token, p.resourceAliases)
 	return def, ok, nil
 }
 
@@ -328,7 +335,7 @@ func (p packageDefFunctions) Range() FunctionsIter {
 }
 
 func (p packageDefFunctions) Get(token string) (*Function, bool, error) {
-	def, ok := p.functionTable[token]
+	def, ok := lookupToken(p.functionTable, token, p.functionAliases)
 	return def, ok, nil
 }
 
@@ -369,6 +376,15 @@ type PartialPackage struct {
 	config []*Property
 
 	def *Package
+
+	// specAliases maps PCL-normalized tokens to their source-form keys in spec.Types,
+	// spec.Resources, and spec.Functions. Built lazily on first miss in a Get* call.
+	specAliases struct {
+		once      sync.Once
+		types     map[string]string
+		resources map[string]string
+		functions map[string]string
+	}
 }
 
 func (p *PartialPackage) Name() string {
@@ -577,6 +593,17 @@ func (p *PartialPackage) Language(language string) (any, error) {
 	return imported, nil
 }
 
+func (p *PartialPackage) CanonicalizeToken(token string) string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.CanonicalizeToken(token)
+	}
+
+	return p.types.pkg.CanonicalizeToken(token)
+}
+
 func (p *PartialPackage) TokenToModule(token string) string {
 	p.m.Lock()
 	defer p.m.Unlock()
@@ -585,6 +612,45 @@ func (p *PartialPackage) TokenToModule(token string) string {
 		return p.def.TokenToModule(token)
 	}
 	return p.types.pkg.TokenToModule(token)
+}
+
+// resolveSpecToken returns the source-form key in m matching token. If token is already
+// a direct key of m it is returned unchanged without forcing the alias build; otherwise
+// the (lazy) alias map is consulted. Returns the input token unchanged if neither hits.
+//
+// The caller must hold p.m.
+func resolveSpecToken[V any](m map[string]V, token string, aliases func() map[string]string) string {
+	if _, ok := m[token]; ok {
+		return token
+	}
+	if src, ok := aliases()[token]; ok {
+		return src
+	}
+	return token
+}
+
+func (p *PartialPackage) typeAliases() map[string]string {
+	p.specAliases.once.Do(p.buildSpecAliases)
+	return p.specAliases.types
+}
+
+func (p *PartialPackage) resourceAliases() map[string]string {
+	p.specAliases.once.Do(p.buildSpecAliases)
+	return p.specAliases.resources
+}
+
+func (p *PartialPackage) functionAliases() map[string]string {
+	p.specAliases.once.Do(p.buildSpecAliases)
+	return p.specAliases.functions
+}
+
+// buildSpecAliases builds normalized→source-form alias maps over the spec's token keys.
+// Called via specAliases.once; must not access fields guarded by p.m.
+func (p *PartialPackage) buildSpecAliases() {
+	tokenToModule := p.types.pkg.TokenToModule
+	p.specAliases.types = buildTokenAliases(p.spec.Types, tokenToModule)
+	p.specAliases.resources = buildTokenAliases(p.spec.Resources, tokenToModule)
+	p.specAliases.functions = buildTokenAliases(p.spec.Functions, tokenToModule)
 }
 
 func (p *PartialPackage) Definition() (*Package, error) {
@@ -748,6 +814,7 @@ func (p partialPackageTypes) Get(token string) (Type, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
+	token = resolveSpecToken(p.spec.Types, token, p.typeAliases)
 	typ, diags, err := p.types.bindTypeDef(token, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -793,6 +860,9 @@ func (p partialPackageResources) Get(token string) (*Resource, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
+	if token != "pulumi:providers:"+p.spec.Name {
+		token = resolveSpecToken(p.spec.Resources, token, p.resourceAliases)
+	}
 	res, diags, err := p.types.bindResourceDef(token, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -809,6 +879,9 @@ func (p partialPackageResources) GetType(token string) (*ResourceType, bool, err
 	p.m.Lock()
 	defer p.m.Unlock()
 
+	if token != "pulumi:providers:"+p.spec.Name {
+		token = resolveSpecToken(p.spec.Resources, token, p.resourceAliases)
+	}
 	typ, diags, err := p.types.bindResourceTypeDef(token, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -854,6 +927,7 @@ func (p partialPackageFunctions) Get(token string) (*Function, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
+	token = resolveSpecToken(p.spec.Functions, token, p.functionAliases)
 	fn, diags, err := p.types.bindFunctionDef(token, ValidationOptions{
 		AllowDanglingReferences: true,
 	})

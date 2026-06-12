@@ -30,6 +30,9 @@ var (
 	// ErrLoginRequired is returned when a command requires logging in.
 	ErrLoginRequired LoginRequiredError
 	ErrForbidden     ForbiddenError
+	// ErrNonInteractiveRequiresYes is returned when a command is run
+	// non-interactively without --yes.
+	ErrNonInteractiveRequiresYes NonInteractiveRequiresYesError
 )
 
 // StackNotFoundError is returned when a named stack cannot be found in the backend.
@@ -246,4 +249,13 @@ func (LoginRequiredError) Is(other error) bool {
 	default:
 		return false
 	}
+}
+
+// IsAuthError reports whether err represents an authentication or
+// authorization failure (login required, forbidden, or a missing env var
+// required for non-interactive auth).
+func IsAuthError(err error) bool {
+	return errors.As(err, &LoginRequiredError{}) ||
+		errors.As(err, &ForbiddenError{}) ||
+		errors.As(err, &MissingEnvVarForNonInteractiveError{})
 }

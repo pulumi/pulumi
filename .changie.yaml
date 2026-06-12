@@ -1,0 +1,109 @@
+changesDir: changelog
+unreleasedDir: pending
+headerPath: header.md
+changelogPath: CHANGELOG.md
+versionExt: md
+versionFormat: '## {{.Version}} ({{.Time.Format "2006-01-02"}})'
+kindFormat: '### {{.Kind}}'
+changeFormat: '- [{{.Component}}] {{.Body}}{{if .Custom.PR}} [#{{.Custom.PR}}](https://github.com/pulumi/pulumi/pull/{{.Custom.PR}}){{end}}'
+
+components:
+  - auto
+  - auto/dotnet
+  - auto/go
+  - auto/java
+  - auto/nodejs
+  - auto/python
+  - auto/yaml
+  - backend
+  - backend/diy
+  - backend/service
+  - build
+  - ci
+  - cli
+  - cli/about
+  - cli/cloud
+  - cli/config
+  - cli/convert
+  - cli/deployment
+  - cli/display
+  - cli/do
+  - cli/engine
+  - cli/env
+  - cli/import
+  - cli/install
+  - cli/neo
+  - cli/new
+  - cli/package
+  - cli/plugin
+  - cli/policy
+  - cli/state
+  - components
+  - components/dotnet
+  - components/go
+  - components/java
+  - components/nodejs
+  - components/pcl
+  - components/python
+  - components/yaml
+  - docs
+  - engine
+  - java
+  - pcl
+  - pkg
+  - pkg/testing
+  - programgen
+  - programgen/dotnet
+  - programgen/go
+  - programgen/java
+  - programgen/nodejs
+  - programgen/pcl
+  - programgen/python
+  - programgen/yaml
+  - protobuf
+  - sdk
+  - sdk/bun
+  - sdk/dotnet
+  - sdk/go
+  - sdk/java
+  - sdk/nodejs
+  - sdk/python
+  - sdkgen
+  - sdkgen/docs
+  - sdkgen/dotnet
+  - sdkgen/go
+  - sdkgen/java
+  - sdkgen/nodejs
+  - sdkgen/pcl
+  - sdkgen/python
+  - sdkgen/yaml
+  - yaml
+
+kinds:
+  - label: Features
+    key: feat
+    auto: minor
+  - label: Bug Fixes
+    key: fix
+    auto: patch
+  - label: Improvements
+    key: improvement
+    auto: minor
+  - label: Miscellaneous
+    key: chore
+    auto: patch
+
+custom:
+  - key: PR
+    label: "GitHub Pull Request or Issue Number"
+    type: string
+
+body:
+  minLength: 1
+
+newlines:
+  afterChange: 0
+  beforeChange: 0
+  afterKind: 1
+  beforeKind: 1
+  endOfVersion: 1

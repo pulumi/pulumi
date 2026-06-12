@@ -179,7 +179,7 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 	// the list. All resources that depend directly or indirectly on `res` are prepended
 	// onto `dependents`.
 	//
-	// We also walk through the the list of resources before the requested resource, as resources
+	// We also walk through the list of resources before the requested resource, as resources
 	// sorted later could still be dependent on the requested resource.
 	for i := 0; i < cursorIndex; i++ {
 		candidate := dg.resources[i]

@@ -332,7 +332,7 @@ func TestPostgresBackend(t *testing.T) {
 				"arn":  resource.NewProperty("arn:test:resource"),
 			},
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil)
 
 	// Test deployment serialization - simulate what would happen during a real deployment
 	untypedDeployment, err := stackpkg.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)

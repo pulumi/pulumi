@@ -20,7 +20,7 @@ __all__ = ['SinkArgs', 'Sink']
 @pulumi.input_type
 class SinkArgs:
     def __init__(__self__, *,
-                 string_enum: Optional[pulumi.Input['pulumi_enum.StringEnum']] = None):
+                 string_enum: pulumi.Input[Optional['pulumi_enum.StringEnum']] = None):
         """
         The set of arguments for constructing a Sink resource.
         """
@@ -29,11 +29,11 @@ class SinkArgs:
 
     @_builtins.property
     @pulumi.getter(name="stringEnum")
-    def string_enum(self) -> Optional[pulumi.Input['pulumi_enum.StringEnum']]:
+    def string_enum(self) -> pulumi.Input[Optional['pulumi_enum.StringEnum']]:
         return pulumi.get(self, "string_enum")
 
     @string_enum.setter
-    def string_enum(self, value: Optional[pulumi.Input['pulumi_enum.StringEnum']]):
+    def string_enum(self, value: pulumi.Input[Optional['pulumi_enum.StringEnum']]):
         pulumi.set(self, "string_enum", value)
 
 
@@ -43,7 +43,7 @@ class Sink(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 string_enum: Optional[pulumi.Input['pulumi_enum.StringEnum']] = None,
+                 string_enum: pulumi.Input[Optional['pulumi_enum.StringEnum']] = None,
                  __props__=None):
         """
         Create a Sink resource with the given unique name, props, and options.
@@ -75,7 +75,7 @@ class Sink(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 string_enum: Optional[pulumi.Input['pulumi_enum.StringEnum']] = None,
+                 string_enum: pulumi.Input[Optional['pulumi_enum.StringEnum']] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

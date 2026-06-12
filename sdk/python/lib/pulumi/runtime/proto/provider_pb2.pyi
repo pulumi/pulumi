@@ -640,7 +640,12 @@ class CallRequest(google.protobuf.message.Message):
     ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     STACK_TRACE_HANDLE_FIELD_NUMBER: builtins.int
     tok: builtins.str
-    """the function token to invoke."""
+    """NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)
+    remain for backward compatibility. Newer providers may read these via
+    [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitorEndpoint`.
+
+    the function token to invoke.
+    """
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -1305,6 +1310,7 @@ class ReadRequest(google.protobuf.message.Message):
     RESOURCE_STATUS_ADDRESS_FIELD_NUMBER: builtins.int
     RESOURCE_STATUS_TOKEN_FIELD_NUMBER: builtins.int
     OLD_VIEWS_FIELD_NUMBER: builtins.int
+    TIMEOUT_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the resource to read."""
     urn: builtins.str
@@ -1321,6 +1327,8 @@ class ReadRequest(google.protobuf.message.Message):
     """The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources."""
     resource_status_token: builtins.str
     """The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service."""
+    timeout: builtins.float
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """Any current state for the resource being read. This state should be sufficient to uniquely identify the resource."""
@@ -1349,9 +1357,10 @@ class ReadRequest(google.protobuf.message.Message):
         resource_status_address: builtins.str = ...,
         resource_status_token: builtins.str = ...,
         old_views: collections.abc.Iterable[global___View] | None = ...,
+        timeout: builtins.float = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["inputs", b"inputs", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "name", b"name", "old_views", b"old_views", "properties", b"properties", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "name", b"name", "old_views", b"old_views", "properties", b"properties", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___ReadRequest = ReadRequest
 
@@ -1393,6 +1402,134 @@ class ReadResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "refresh_before_update", b"refresh_before_update"]) -> None: ...
 
 global___ReadResponse = ReadResponse
+
+@typing.final
+class ListRequest(google.protobuf.message.Message):
+    """`ListRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.List) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    QUERY_FIELD_NUMBER: builtins.int
+    LIMIT_FIELD_NUMBER: builtins.int
+    PAGE_SIZE_FIELD_NUMBER: builtins.int
+    CONTINUATION_TOKEN_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    """The resource token (type) to list."""
+    limit: builtins.int
+    """The maximum number of resources to return. If less than 1 then no limit is applied."""
+    page_size: builtins.int
+    """The requested page size for this streaming call. The provider is free to return less, but should not return more."""
+    continuation_token: builtins.str
+    """An opaque token indicating which page to fetch. Empty for the first page. If set `token`, `query`, and `limit`
+    should be the values used to fetch the first page.
+    """
+    @property
+    def query(self) -> google.protobuf.struct_pb2.Struct:
+        """An optional provider-defined filter over resource state. This is a property map and could contain
+        unknown/computed values.
+        """
+
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+        query: google.protobuf.struct_pb2.Struct | None = ...,
+        limit: builtins.int = ...,
+        page_size: builtins.int = ...,
+        continuation_token: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["query", b"query"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["continuation_token", b"continuation_token", "limit", b"limit", "page_size", b"page_size", "query", b"query", "token", b"token"]) -> None: ...
+
+global___ListRequest = ListRequest
+
+@typing.final
+class ListResponse(google.protobuf.message.Message):
+    """`ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List). It must follow one of
+    the following orders. Either it returns a single [](pulumirpc.ListResponse.Computed) or it should return one or more
+    [](pulumirpc.ListResponse.Result) items followed optionally by a [](pulumirpc.ListResponse.Continuation).
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class Computed(google.protobuf.message.Message):
+        """`Computed` is returned if [](pulumirpc.ResourceProvider.List) can't compute the result due to unknown values in the query."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        def __init__(
+            self,
+        ) -> None: ...
+
+    @typing.final
+    class Result(google.protobuf.message.Message):
+        """`Result` is a resource returned by a [](pulumirpc.ResourceProvider.List) call."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        ID_FIELD_NUMBER: builtins.int
+        NAME_FIELD_NUMBER: builtins.int
+        id: builtins.str
+        """The ID of the resource. This should be an importable ID that can be passed to a
+        [](pulumirpc.ResourceProvider.Read) call to read the resource.
+        """
+        name: builtins.str
+        """The resource name, if the provider can supply one. If empty no name was given."""
+        def __init__(
+            self,
+            *,
+            id: builtins.str = ...,
+            name: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["id", b"id", "name", b"name"]) -> None: ...
+
+    @typing.final
+    class Continuation(google.protobuf.message.Message):
+        """`Continuation` indicates whether a [](pulumirpc.ResourceProvider.List) call has another page to fetch."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        CONTINUATION_TOKEN_FIELD_NUMBER: builtins.int
+        continuation_token: builtins.str
+        """An opaque token that can be supplied to a subsequent `List` call to fetch the next page. If empty there are
+        no more results.
+        """
+        def __init__(
+            self,
+            *,
+            continuation_token: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["continuation_token", b"continuation_token"]) -> None: ...
+
+    COMPUTED_FIELD_NUMBER: builtins.int
+    RESULT_FIELD_NUMBER: builtins.int
+    CONTINUATION_FIELD_NUMBER: builtins.int
+    @property
+    def computed(self) -> global___ListResponse.Computed:
+        """A computed marker."""
+
+    @property
+    def result(self) -> global___ListResponse.Result:
+        """A resource entry."""
+
+    @property
+    def continuation(self) -> global___ListResponse.Continuation:
+        """A continuation marker."""
+
+    def __init__(
+        self,
+        *,
+        computed: global___ListResponse.Computed | None = ...,
+        result: global___ListResponse.Result | None = ...,
+        continuation: global___ListResponse.Continuation | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["computed", b"computed", "continuation", b"continuation", "response", b"response", "result", b"result"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["computed", b"computed", "continuation", b"continuation", "response", b"response", "result", b"result"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["response", b"response"]) -> typing.Literal["computed", "result", "continuation"] | None: ...
+
+global___ListResponse = ListResponse
 
 @typing.final
 class UpdateRequest(google.protobuf.message.Message):
@@ -1620,6 +1757,7 @@ class ConstructRequest(google.protobuf.message.Message):
         CREATE_FIELD_NUMBER: builtins.int
         UPDATE_FIELD_NUMBER: builtins.int
         DELETE_FIELD_NUMBER: builtins.int
+        READ_FIELD_NUMBER: builtins.int
         create: builtins.str
         """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Create) operation
         to complete.
@@ -1632,14 +1770,19 @@ class ConstructRequest(google.protobuf.message.Message):
         """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Delete) operation
         to complete.
         """
+        read: builtins.str
+        """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Read) operation
+        to complete.
+        """
         def __init__(
             self,
             *,
             create: builtins.str = ...,
             update: builtins.str = ...,
             delete: builtins.str = ...,
+            read: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "update", b"update"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "read", b"read", "update", b"update"]) -> None: ...
 
     @typing.final
     class ConfigEntry(google.protobuf.message.Message):
@@ -1759,7 +1902,12 @@ class ConstructRequest(google.protobuf.message.Message):
     ALIASES_FIELD_NUMBER: builtins.int
     REPLACEMENT_TRIGGER_FIELD_NUMBER: builtins.int
     project: builtins.str
-    """The project to which this resource and its nested resources will belong."""
+    """NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)
+    remain for backward compatibility. Newer providers may read these via
+    [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitorEndpoint`.
+
+    The project to which this resource and its nested resources will belong.
+    """
     stack: builtins.str
     """The name of the stack being deployed into."""
     dryRun: builtins.bool

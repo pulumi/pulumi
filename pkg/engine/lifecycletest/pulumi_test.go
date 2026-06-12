@@ -178,6 +178,22 @@ func TestEmptyProgramLifecycle(t *testing.T) {
 	p.Run(t, nil)
 }
 
+func TestNoRuntimeLifecycle(t *testing.T) {
+	t.Parallel()
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return errors.New("program should not run")
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+
+	p := &lt.TestPlan{
+		NoRuntime: true,
+		Options:   lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:     lt.MakeBasicLifecycleSteps(t, 0),
+	}
+	p.Run(t, nil)
+}
+
 func TestSingleResourceDiffUnavailable(t *testing.T) {
 	t.Parallel()
 
@@ -1940,7 +1956,7 @@ func TestCustomTimeouts(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			CustomTimeouts: &resource.CustomTimeouts{
-				Create: 60, Delete: 60, Update: 240,
+				Create: 60, Delete: 60, Update: 240, Read: 30,
 			},
 		})
 		require.NoError(t, err)
@@ -1962,6 +1978,7 @@ func TestCustomTimeouts(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Create, float64(60))
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Update, float64(240))
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Delete, float64(60))
+	assert.Equal(t, snap.Resources[1].CustomTimeouts.Read, float64(30))
 }
 
 func TestProviderDiffMissingOldOutputs(t *testing.T) {

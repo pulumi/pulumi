@@ -206,6 +206,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 class MockEngine(proto.EngineServicer):
     def __init__(self):
         self.messages = []
+        self.error_messages = []
 
     """
     Implementation of the proto.EngineServicer protocol for use in tests. Like the
@@ -216,6 +217,7 @@ class MockEngine(proto.EngineServicer):
     def Log(self, request, context):
         self.messages.append(request.message)
         if request.severity == engine_pb2.ERROR:
+            self.error_messages.append(request.message)
             print(f"error: {request.message}")
         return empty_pb2.Empty()
 
@@ -251,6 +253,7 @@ class LanghostTest(unittest.TestCase):
         expected_stderr_contains=None,
         expected_bail=None,
         expected_log_message=None,
+        expected_error_log_message=None,
         organization=None,
     ):
         """
@@ -322,6 +325,18 @@ class LanghostTest(unittest.TestCase):
                 else:
                     print("log messages:", monitor.engine.messages)
                     self.fail("expected log message '" + expected_log_message + "'")
+
+            if expected_error_log_message:
+                for message in monitor.engine.error_messages:
+                    if expected_error_log_message in message:
+                        break
+                else:
+                    print("error log messages:", monitor.engine.error_messages)
+                    self.fail(
+                        "expected error-level log message '"
+                        + expected_error_log_message
+                        + "'"
+                    )
 
             if expected_stderr_contains:
                 if expected_stderr_contains not in str(stderr):

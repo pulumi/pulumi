@@ -16,137 +16,201 @@ package packages
 
 import (
 	"context"
-	"encoding/json"
-	"iter"
-	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+// launchedProvider is the sentinel [plugin.Provider] returned by mockInstallContext.RunPackage. It
+// records what the installation pipeline resolved the source to, so tests can assert on it without a
+// real provider process.
+type launchedProvider struct {
+	plugin.Provider
+
+	pluginPath   string
+	originalSpec workspace.PackageSpec
+}
+
+type mockInstallContext struct {
+	t *testing.T
+
+	// baseProject is returned from LoadBaseProjectFrom. If nil, ErrBaseProjectNotFound is returned.
+	baseProject workspace.BaseProject
+}
+
+const mockPluginDir = "/fake/plugins/resource-test-provider-v1.0.0"
+
+func (mockInstallContext) HasPlugin(context.Context, workspace.PluginDescriptor) bool { return true }
+
+func (mockInstallContext) HasPluginGTE(
+	context.Context, workspace.PluginDescriptor,
+) (bool, *semver.Version, error) {
+	return true, &semver.Version{Major: 1}, nil
+}
+
+func (m mockInstallContext) GetLatestVersion(
+	context.Context, workspace.PluginDescriptor,
+) (*semver.Version, error) {
+	m.t.Error("GetLatestVersion should not be called")
+	return nil, assert.AnError
+}
+
+func (mockInstallContext) GetPlugins(context.Context) ([]workspace.PluginInfo, error) {
+	return nil, nil
+}
+
+func (m mockInstallContext) New() (pkgWorkspace.W, error) {
+	m.t.Error("New should not be called")
+	return nil, assert.AnError
+}
+
+func (m mockInstallContext) ReadProject() (*workspace.Project, string, error) {
+	m.t.Error("ReadProject should not be called")
+	return nil, "", assert.AnError
+}
+
+func (m mockInstallContext) LoadPluginProjectAt(
+	context.Context, string,
+) (*workspace.PluginProject, string, error) {
+	// "test-provider" is a binary plugin, so it has no PulumiPlugin.yaml.
+	return nil, "", workspace.ErrPluginNotFound
+}
+
+func (m mockInstallContext) LoadBaseProjectFrom(
+	context.Context, string,
+) (workspace.BaseProject, string, error) {
+	if m.baseProject == nil {
+		return nil, "", workspace.ErrBaseProjectNotFound
+	}
+	return m.baseProject, "Pulumi.yaml", nil
+}
+
+func (mockInstallContext) GetStoredCredentials() (workspace.Credentials, error) {
+	return workspace.Credentials{}, nil
+}
+
+func (m mockInstallContext) GetPluginPath(context.Context, workspace.PluginDescriptor) (string, error) {
+	return mockPluginDir, nil
+}
+
+func (m mockInstallContext) IsExecutable(context.Context, string) (bool, error) {
+	return true, nil
+}
+
+func (m mockInstallContext) InstallPluginAt(context.Context, string, *workspace.PluginProject) error {
+	m.t.Error("InstallPluginAt should not be called for an already-installed binary plugin")
+	return assert.AnError
+}
+
+func (m mockInstallContext) GetRequiredPackages(
+	context.Context, string, *workspace.PluginProject,
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
+	m.t.Error("GetRequiredPackages should not be called for a binary plugin")
+	return nil, nil, assert.AnError
+}
+
+func (m mockInstallContext) DownloadPlugin(
+	context.Context, workspace.PluginDescriptor,
+) (string, packageinstallation.MarkInstallationDone, error) {
+	m.t.Error("DownloadPlugin should not be called for an already-installed plugin")
+	return "", nil, assert.AnError
+}
+
+func (m mockInstallContext) GenerateLocalSDK(
+	context.Context, *workspace.ProjectRuntimeInfo, string, plugin.Provider,
+) (workspace.LinkablePackageDescriptor, error) {
+	m.t.Error("GenerateLocalSDK should not be called when installing a single plugin")
+	return workspace.LinkablePackageDescriptor{}, assert.AnError
+}
+
+func (m mockInstallContext) LinkIntoProject(
+	context.Context, *workspace.ProjectRuntimeInfo, string, []workspace.LinkablePackageDescriptor,
+) error {
+	m.t.Error("LinkIntoProject should not be called when installing a single plugin")
+	return assert.AnError
+}
+
+func (m mockInstallContext) RunPackage(
+	_ context.Context, _, pluginPath string,
+	_ plugin.ParameterizeParameters, originalSpec workspace.PackageSpec,
+) (plugin.Provider, error) {
+	return launchedProvider{pluginPath: pluginPath, originalSpec: originalSpec}, nil
+}
+
+var _ packageinstallation.Context = mockInstallContext{}
+
 func TestProviderFromSource(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO: Need to figure out the correct way to mock this," +
-		" since packageinstallation doesn't trust host to find plugins")
 
-	test := func(t *testing.T, yaml string, inputSource string) plugin.Provider {
-		t.Helper()
-		tempDir := t.TempDir()
-		if yaml != "" {
-			pulumiYaml := filepath.Join(tempDir, "Pulumi.yaml")
-			err := os.WriteFile(pulumiYaml, []byte(yaml), 0o600)
-			require.NoError(t, err)
-		}
-
-		mockProvider := &plugin.MockProvider{
-			PkgF: func() tokens.Package {
-				return "test-provider"
-			},
-			GetSchemaF: func(ctx context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
-				schemaSpec := schema.PackageSpec{
-					Name:    "test-provider",
-					Version: "1.0.0",
-				}
-				schemaBytes, err := json.Marshal(schemaSpec)
-				if err != nil {
-					return plugin.GetSchemaResponse{}, err
-				}
-				return plugin.GetSchemaResponse{
-					Schema: schemaBytes,
-				}, nil
-			},
-		}
-
-		mockHost := &plugin.MockHost{
-			ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
-				return mockProvider, nil
-			},
-		}
-
-		mockRegistry := registry.Mock{
-			GetPackageF: func(
-				ctx context.Context, source, publisher, name string, version *semver.Version,
-			) (apitype.PackageMetadata, error) {
-				if name == "test-provider" {
-					return apitype.PackageMetadata{
-						Name:              "test-provider",
-						Publisher:         publisher,
-						Source:            source,
-						Version:           semver.Version{Major: 1, Minor: 0, Patch: 0},
-						PluginDownloadURL: "https://example.com/test-provider",
-					}, nil
-				}
-				return apitype.PackageMetadata{}, registry.ErrNotFound
-			},
-			ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-				return func(yield func(apitype.PackageMetadata, error) bool) {
-					if name != nil && *name == "test-provider" {
-						yield(apitype.PackageMetadata{
-							Name:              "test-provider",
-							Publisher:         "pulumi",
-							Source:            "pulumi",
-							Version:           semver.Version{Major: 1, Minor: 0, Patch: 0},
-							PluginDownloadURL: "https://example.com/test-provider",
-						}, nil)
-					}
-				}
-			},
-		}
-
-		pctx, err := plugin.NewContext(
-			t.Context(),
-			nil,
-			nil,
-			mockHost,
-			nil,
-			tempDir,
-			nil,
-			false,
-			nil,
-			schema.NewLoaderServerFromHost,
-		)
-		require.NoError(t, err)
-		defer pctx.Close()
-
-		provider, _, err := ProviderFromSource(pctx, inputSource, mockRegistry, env.NewEnv(env.MapStore{
-			"PULUMI_EXPERIMENTAL": "true",
-		}), 0)
-		require.NoError(t, err)
-		return provider
+	resolvedSpec := workspace.PackageSpec{
+		Source:  "test-provider",
+		Version: "1.0.0",
 	}
 
-	t.Run("empy Pulumi.yaml", func(t *testing.T) {
-		t.Parallel()
-		provider := test(t, `name: test-project
-runtime: yaml
-`, "test-provider")
-		assert.Equal(t, tokens.Package("test-provider"), provider.Pkg())
-	})
+	binaryName := "pulumi-resource-test-provider"
+	if runtime.GOOS == "windows" {
+		binaryName += ".exe"
+	}
+	wantProvider := launchedProvider{
+		pluginPath:   filepath.Join(mockPluginDir, binaryName),
+		originalSpec: resolvedSpec,
+	}
+
+	run := func(
+		t *testing.T, installCtx mockInstallContext, inputSource string,
+	) (plugin.Provider, workspace.PackageSpec) {
+		t.Helper()
+		installCtx.t = t
+
+		pctx, err := plugin.NewContext(
+			t.Context(), nil, nil, nil, nil, t.TempDir(), nil, false, nil, schema.NewLoaderServerFromHost, nil)
+		require.NoError(t, err)
+		defer func() { require.NoError(t, pctx.Close()) }()
+
+		provider, spec, err := providerFromSource(
+			pctx, inputSource, nil,
+			env.NewEnv(env.MapStore{"PULUMI_EXPERIMENTAL": "true"}), 0, installCtx)
+		require.NoError(t, err)
+		return provider, spec
+	}
 
 	t.Run("no Pulumi.yaml", func(t *testing.T) {
 		t.Parallel()
-		provider := test(t, "", "test-provider")
-		assert.Equal(t, tokens.Package("test-provider"), provider.Pkg())
+
+		provider, spec := run(t, mockInstallContext{}, "test-provider@1.0.0")
+
+		assert.Equal(t, resolvedSpec, spec)
+		assert.Equal(t, wantProvider, provider)
 	})
 
-	t.Run("with Pulumi.yaml", func(t *testing.T) {
+	t.Run("with Pulumi.yaml remap", func(t *testing.T) {
 		t.Parallel()
-		provider := test(t, `name: test-project
-runtime: yaml
-packages:
-    local-name: test-provider
-`, "test-provider")
-		assert.Equal(t, tokens.Package("test-provider"), provider.Pkg())
+
+		// The project remaps the source "local-name" to the real "test-provider@1.0.0" package.
+		installCtx := mockInstallContext{
+			baseProject: &workspace.Project{
+				Name:    "test-project",
+				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
+				Packages: map[string]workspace.PackageSpec{
+					"local-name": {Source: "test-provider", Version: "1.0.0"},
+				},
+			},
+		}
+
+		provider, spec := run(t, installCtx, "local-name")
+
+		assert.Equal(t, resolvedSpec, spec)
+		assert.Equal(t, wantProvider, provider)
 	})
 }
 

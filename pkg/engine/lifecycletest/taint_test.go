@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"strconv"
+	"sync/atomic"
 	"testing"
 
 	"github.com/blang/semver"
@@ -115,7 +116,7 @@ func TestTaintMultipleResources(t *testing.T) {
 	t.Parallel()
 
 	createIDs := make(map[string]int)
-	var deleteCalls int
+	var deleteCalls atomic.Int32
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -129,7 +130,7 @@ func TestTaintMultipleResources(t *testing.T) {
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-					deleteCalls++
+					deleteCalls.Add(1)
 					assert.Contains(t, []resource.ID{"resA-v1", "resC-v1"}, req.ID,
 						"should be deleting a tainted resource")
 					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
@@ -193,7 +194,7 @@ func TestTaintMultipleResources(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 2, replacedCount, "should have replaced 2 resources")
-	assert.Equal(t, 2, deleteCalls, "should have deleted 2 resources")
+	assert.Equal(t, int32(2), deleteCalls.Load(), "should have deleted 2 resources")
 }
 
 // TestTaintWithPendingDelete tests that resources marked for deletion are not affected by taint.

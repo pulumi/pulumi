@@ -74,7 +74,7 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateR
 	// e.g. `pulumi login https://api.pulumi.com` or `pulumi login https://api.acme.org`
 	templatePulumiCloudHost := "https://" + u.Host
 
-	account, err := workspace.GetAccount(templatePulumiCloudHost)
+	account, _, err := workspace.GetAccountWithAgentFallback(templatePulumiCloudHost)
 	if err != nil {
 		return workspace.TemplateRepository{}, fmt.Errorf(
 			"looking up pulumi cloud backend %s: %w",

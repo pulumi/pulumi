@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -539,6 +540,80 @@ func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []Resou
 		p2 := reflect.ValueOf(t2[i]).Pointer()
 		assert.Equal(t, p1, p2)
 	}
+}
+
+func TestTransformationPreservesParent(t *testing.T) {
+	t.Parallel()
+
+	identity := func(args *ResourceTransformationArgs) *ResourceTransformationResult {
+		return &ResourceTransformationResult{
+			Props: args.Props,
+			Opts:  args.Opts,
+		}
+	}
+
+	var parents gsync.Map[string, string]
+	monitor := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			parents.Store(args.Name, args.RegisterRPC.GetParent())
+			return args.Name, resource.PropertyMap{}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var withoutT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "without-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withoutT))
+
+		var withT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "with-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withT,
+			Transformations([]ResourceTransformation{identity})))
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+
+	withoutParent, _ := parents.Load("without-transform")
+	withParent, _ := parents.Load("with-transform")
+	require.NotEmpty(t, withoutParent, "baseline should have a parent")
+	assert.Equal(t, withoutParent, withParent,
+		"transformation must not drop the parent")
+}
+
+func TestTransformationCannotChangeParent(t *testing.T) {
+	t.Parallel()
+
+	var parents gsync.Map[string, string]
+	monitor := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			parents.Store(args.Name, args.RegisterRPC.GetParent())
+			return args.Name, resource.PropertyMap{}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var withoutT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "without-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withoutT))
+
+		var withT testResource2
+		return ctx.RegisterResource(
+			"test:resource:type", "with-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withT,
+			Transformations([]ResourceTransformation{
+				func(args *ResourceTransformationArgs) *ResourceTransformationResult {
+					return &ResourceTransformationResult{
+						Props: args.Props,
+						Opts:  append(args.Opts, Parent(&withoutT)),
+					}
+				},
+			}))
+	}, WithMocks("project", "stack", monitor))
+	assert.ErrorIs(t, err, errTransformationsCannotChangeParent)
 }
 
 func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {

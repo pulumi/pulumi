@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
@@ -31,13 +30,14 @@ func NewGenCompletionCmd(root *cobra.Command) *cobra.Command {
 		Aliases: []string{"completion"},
 		Short:   "Generate completion scripts for the Pulumi CLI",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			out := cmd.OutOrStdout()
 			switch args[0] {
 			case "bash":
-				return root.GenBashCompletion(os.Stdout)
+				return root.GenBashCompletion(out)
 			case "zsh":
-				return genZshCompletion(os.Stdout, root)
+				return genZshCompletion(out, root)
 			case "fish":
-				return root.GenFishCompletion(os.Stdout, true)
+				return root.GenFishCompletion(out, true)
 			default:
 				return fmt.Errorf("%q is not a supported shell", args[0])
 			}

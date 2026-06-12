@@ -16,7 +16,6 @@ package diy
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -220,16 +219,17 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 		Snapshot:  nil,
 	}
 	query := operations.LogQuery{}
-	res, err := GetLogsForTarget(target, query)
+	res, err := GetLogsForTarget(t.Context(), target, query)
 	require.NoError(t, err)
 	assert.Nil(t, res)
 }
 
-func makeUntypedDeployment(name string, phrase, state string) (*apitype.UntypedDeployment, error) {
-	return makeUntypedDeploymentTimestamp(name, phrase, state, nil, nil)
+func makeUntypedDeployment(t *testing.T, name string, phrase, state string) (*apitype.UntypedDeployment, error) {
+	return makeUntypedDeploymentTimestamp(t, name, phrase, state, nil, nil)
 }
 
 func makeUntypedDeploymentTimestamp(
+	t *testing.T,
 	name string,
 	phrase, state string,
 	created, modified *time.Time,
@@ -251,10 +251,9 @@ func makeUntypedDeploymentTimestamp(
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
-	ctx := context.Background()
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil)
 
-	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
+	udep, err := stack.SerializeUntypedDeployment(t.Context(), snap, nil /*opts*/)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +279,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 		_, err := b.RemoveStack(ctx, aStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
-	deployment, err := makeUntypedDeployment("a", "abc123",
+	deployment, err := makeUntypedDeployment(t, "a", "abc123",
 		"v1:4iF78gb0nF0=:v1:Co6IbTWYs/UdrjgY:FSrAWOFZnj9ealCUDdJL7LrUKXX9BA==")
 	require.NoError(t, err)
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
@@ -298,7 +297,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 		_, err := b.RemoveStack(ctx, bStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
-	deployment, err = makeUntypedDeployment("b", "123abc",
+	deployment, err = makeUntypedDeployment(t, "b", "123abc",
 		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==")
 	require.NoError(t, err)
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
@@ -666,7 +665,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		rParent,
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil, deploy.SnapshotMetadata{})
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil, deploy.SnapshotMetadata{}, nil)
 	ctx = t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
@@ -787,7 +786,7 @@ func TestHtmlEscaping(t *testing.T) {
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil)
 	ctx := t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
@@ -1497,7 +1496,7 @@ func TestSerializeTimestampRFC3339(t *testing.T) {
 	created := time.Now().UTC()
 	modified := created.Add(time.Hour)
 
-	deployment, err := makeUntypedDeploymentTimestamp("b", "123abc",
+	deployment, err := makeUntypedDeploymentTimestamp(t, "b", "123abc",
 		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==", &created, &modified)
 	require.NoError(t, err)
 
@@ -2104,4 +2103,43 @@ func TestJSONCasing(t *testing.T) {
 	assert.NotContains(t, string(data), `"Latest"`)
 	assert.Contains(t, string(data), `"stack"`)
 	assert.NotContains(t, string(data), `"Stack"`)
+}
+
+func TestJSONCheckpointIsCompact(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	ctx := t.Context()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), &workspace.Project{Name: "testproj"})
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("stack")
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+
+	deployment := &apitype.UntypedDeployment{
+		Version: apitype.DeploymentSchemaVersionCurrent,
+		Deployment: json.RawMessage(`{
+			"manifest": {
+				"time": "2026-03-18T00:00:00Z"
+			},
+			"resources": []
+		}`),
+	}
+	err = b.ImportDeployment(ctx, s, deployment)
+	require.NoError(t, err)
+
+	stackFile := path.Join(stateDir, ".pulumi", "stacks", "testproj", "stack.json")
+	data, err := os.ReadFile(stackFile)
+	require.NoError(t, err)
+
+	var checkpoint apitype.VersionedCheckpoint
+	require.NoError(t, json.Unmarshal(data, &checkpoint))
+	assert.Equal(t, deployment.Version, checkpoint.Version)
+
+	var compact bytes.Buffer
+	require.NoError(t, json.Compact(&compact, data))
+	assert.Equal(t, compact.String(), string(data))
 }

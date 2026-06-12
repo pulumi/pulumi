@@ -135,6 +135,10 @@ func (NopPluginManager) InstallPlugin(
 	return nil
 }
 
+func (NopPluginManager) GetPlugins(ctx context.Context) ([]workspace.PluginInfo, error) {
+	return []workspace.PluginInfo{}, nil
+}
+
 func NewUpdateInfo(project workspace.Project, target deploy.Target) engine.UpdateInfo {
 	return engine.UpdateInfo{
 		// The tests run in-memory, so we don't have a real root. Just pretend we're at the filesystem root.
@@ -275,12 +279,16 @@ func (op TestOp) runWithContext(
 		}
 	}
 
+	pluginManager := opts.PluginManager
+	if pluginManager == nil {
+		pluginManager = NopPluginManager{}
+	}
 	ctx := &engine.Context{
 		Cancel:          cancelCtx,
 		Events:          events,
 		SnapshotManager: combined,
 		BackendClient:   backendClient,
-		PluginManager:   NopPluginManager{},
+		PluginManager:   pluginManager,
 	}
 
 	updateOpts := opts.Options()
@@ -771,7 +779,9 @@ func (t *TestStep) ValidateAnd(f ValidateFunc) {
 type TestUpdateOptions struct {
 	engine.UpdateOptions
 	// a factory to produce a plugin host for an update operation.
-	HostF            deploytest.PluginHostFactory
+	HostF deploytest.PluginHostFactory
+	// PluginManager overrides the engine.Context.PluginManager used by the run. Defaults to NopPluginManager{}.
+	PluginManager    engine.PluginManager
 	T                TB
 	SkipDisplayTests bool
 }
@@ -794,6 +804,7 @@ type TestPlan struct {
 	Project        string
 	Stack          string
 	Runtime        string
+	NoRuntime      bool
 	RuntimeOptions map[string]any
 	Config         config.Map
 	Decrypter      config.Decrypter
@@ -810,7 +821,7 @@ func (p *TestPlan) getNames() (stack tokens.StackName, project tokens.PackageNam
 		project = "test"
 	}
 	runtime = p.Runtime
-	if runtime == "" {
+	if runtime == "" && !p.NoRuntime {
 		runtime = "test"
 	}
 	stack = tokens.MustParseStackName("test")
@@ -836,10 +847,11 @@ func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resour
 func (p *TestPlan) GetProject() workspace.Project {
 	_, projectName, runtime := p.getNames()
 
-	return workspace.Project{
-		Name:    projectName,
-		Runtime: workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions),
+	project := workspace.Project{Name: projectName}
+	if runtime != "" {
+		project.Runtime = workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions)
 	}
+	return project
 }
 
 func (p *TestPlan) GetTarget(t TB, snapshot *deploy.Snapshot) deploy.Target {

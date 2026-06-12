@@ -99,8 +99,12 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
+	"l2-resource-any":               "a list inside an any-typed input generates pulumi.Any{...}, but pulumi.Any is a func not a type; does not compile", //nolint:lll
+	"l2-config-default-from-invoke": "config variable defaulting to an invoke result is never declared; generated code does not compile",                 //nolint:lll
 	"l1-config-types-object":        "fails to compile",
+	"l1-config-types-optional":      "fails to compile: cfg.GetObject signature mismatch (same as l1-config-types-object)", //nolint:lll
 	"l1-builtin-try":                "pulumi#18506 Support try in Go program generation",
+	"l1-expand-final":               "Go program generation does not support `...` argument expansion",
 	"l1-builtin-can":                "pulumi#18570 Support can in Go program generation",
 	"l1-builtin-list":               "list(string) config decoded as string; element/split emit TODO stubs",
 	"l1-builtin-object":             "entries/lookup emit TODO stubs",
@@ -109,6 +113,7 @@ var expectedFailures = map[string]string{
 	"l2-resource-config-primitives": "cannot convert secretBool (variable of struct type pulumi.BoolOutput) to type pulumi.Bool, etc", //nolint:lll
 	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
 	"l2-discriminated-union":        "pulumi#21829: does not compile",
+	"l2-resource-schema-secret":     "does not preserve schema-secret unknown outputs",
 
 	// pulumi/pulumi#18345
 	"l2-map-keys":                         "NonPlainData.InnerData renders as interface{}{} instead of &plain.InnerDataArgs{}",                                           //nolint:lll
@@ -128,6 +133,10 @@ var expectedFailures = map[string]string{
 	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-range-ref":                       "fails with syntax errors",
+
+	"l2-id-type": "codegen isn't keeping track of ID right now",
+
+	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
@@ -168,131 +177,135 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 	},
 }
 
-func TestLanguage(t *testing.T) {
-	t.Parallel()
+// The conformance suite runs in three configurations, one top-level test
+// function per configuration: CI partitions this package's tests across jobs
+// by top-level test name (see scripts/get-job-matrix.py), so keeping each
+// configuration top level lets them run on separate runners.
 
+func TestLanguagePublished(t *testing.T) {
+	t.Parallel()
+	testLanguage(t, languageTestConfig{name: "published"})
+}
+
+func TestLanguageLocal(t *testing.T) {
+	t.Parallel()
+	testLanguage(t, languageTestConfig{name: "local", local: true})
+}
+
+func TestLanguageExtraTypes(t *testing.T) {
+	t.Parallel()
+	testLanguage(t, languageTestConfig{
+		name: "extra-types",
+		// We don't expect extra-types to interact with "local", so we
+		// don't believe it is worth it to test independently.
+		languageInfo: &gocodegen.GoPackageInfo{
+			GenerateResourceContainerTypes: true,
+			// TODO[https://github.com/pulumi/pulumi/issues/21116]:
+			// l2-resource-config requires that RespectSchemaVersion
+			// is set if any language option is set.
+			RespectSchemaVersion: true,
+		},
+	})
+}
+
+type languageTestConfig struct {
+	name         string
+	local        bool
+	languageInfo *gocodegen.GoPackageInfo
+}
+
+func testLanguage(t *testing.T, config languageTestConfig) {
 	engineAddress, engine := runTestingHost(t)
 
 	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	configs := []struct {
-		name         string
-		local        bool
-		languageInfo *gocodegen.GoPackageInfo
-	}{
-		{
-			name: "published",
+	cancel := make(chan bool)
+	// Run the language plugin
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
+			host := newLanguageHost(engineAddress, "", "", "")
+			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+			return nil
 		},
-		{
-			name:  "local",
-			local: true,
-		},
-		{
-			name: "extra-types",
-			// We don't expect extra-types to interact with "local", so we
-			// don't believe it is worth it to test independently.
-			languageInfo: &gocodegen.GoPackageInfo{
-				GenerateResourceContainerTypes: true,
-				// TODO[https://github.com/pulumi/pulumi/issues/21116]:
-				// l2-resource-config requires that RespectSchemaVersion
-				// is set if any language option is set.
-				RespectSchemaVersion: true,
+		Cancel: cancel,
+	})
+	require.NoError(t, err)
+
+	// Create a temp project dir for the test to run in
+	rootDir := t.TempDir()
+
+	snapshotDir := filepath.Join("./testdata", config.name)
+
+	// Prepare to run the tests
+	prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
+		LanguagePluginName:   "go",
+		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		TemporaryDirectory:   rootDir,
+		SnapshotDirectory:    snapshotDir,
+		CoreSdkDirectory:     "../..",
+		CoreSdkVersion:       sdk.Version.String(),
+		PolicyPackDirectory:  "./testdata/policies",
+		Local:                config.local,
+		SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
+			{
+				Path:        "(.+/)?go\\.mod",
+				Pattern:     rootDir + "/",
+				Replacement: "/ROOT/",
 			},
 		},
-	}
+		ProgramOverrides: programOverrides,
+		LanguageInfo: func() string {
+			if config.languageInfo == nil {
+				return ""
+			}
+			b, err := json.Marshal(*config.languageInfo)
+			require.NoError(t, err)
+			return string(b)
+		}(),
+	})
+	require.NoError(t, err)
 
-	for _, config := range configs {
-		t.Run(config.name, func(t *testing.T) {
+	for _, tt := range tests.Tests {
+		t.Run(tt, func(t *testing.T) {
 			t.Parallel()
-			cancel := make(chan bool)
-			// Run the language plugin
-			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-				Init: func(srv *grpc.Server) error {
-					host := newLanguageHost(engineAddress, "", "", "")
-					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-					return nil
-				},
-				Cancel: cancel,
-			})
-			require.NoError(t, err)
 
-			// Create a temp project dir for the test to run in
-			rootDir := t.TempDir()
-
-			snapshotDir := filepath.Join("./testdata", config.name)
-
-			// Prepare to run the tests
-			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-				LanguagePluginName:   "go",
-				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-				TemporaryDirectory:   rootDir,
-				SnapshotDirectory:    snapshotDir,
-				CoreSdkDirectory:     "../..",
-				CoreSdkVersion:       sdk.Version.String(),
-				PolicyPackDirectory:  "./testdata/policies",
-				Local:                config.local,
-				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
-					{
-						Path:        "(.+/)?go\\.mod",
-						Pattern:     rootDir + "/",
-						Replacement: "/ROOT/",
-					},
-				},
-				ProgramOverrides: programOverrides,
-				LanguageInfo: func() string {
-					if config.languageInfo == nil {
-						return ""
-					}
-					b, err := json.Marshal(*config.languageInfo)
-					require.NoError(t, err)
-					return string(b)
-				}(),
-			})
-			require.NoError(t, err)
-
-			for _, tt := range tests.Tests {
-				t.Run(tt, func(t *testing.T) {
-					t.Parallel()
-
-					// We can skip the l1- local tests without any SDK there's nothing new being tested here.
-					if config.local && strings.HasPrefix(tt, "l1-") {
-						t.Skip("Skipping l1- tests in local mode")
-					}
-
-					// TODO[https://github.com/pulumi/pulumi/issues/21292]: Skip provider tests for now, we test these
-					// with NodeJS and Python only.
-					if strings.HasPrefix(tt, "provider-") {
-						t.Skip("Skipping provider tests")
-					}
-
-					if expected, ok := expectedFailures[tt]; ok {
-						t.Skipf("Skipping known failure: %s", expected)
-					}
-
-					if _, has := programOverrides[tt]; config.local && has {
-						t.Skip("Skipping override tests in local mode")
-					}
-
-					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
-						Token: prepare.Token,
-						Test:  tt,
-					})
-
-					require.NoError(t, err)
-					for _, msg := range result.Messages {
-						t.Log(msg)
-					}
-					ptesting.LogTruncated(t, "stdout", result.Stdout)
-					ptesting.LogTruncated(t, "stderr", result.Stderr)
-					assert.True(t, result.Success)
-				})
+			// We can skip the l1- local tests without any SDK there's nothing new being tested here.
+			if config.local && strings.HasPrefix(tt, "l1-") {
+				t.Skip("Skipping l1- tests in local mode")
 			}
 
-			t.Cleanup(func() {
-				close(cancel)
-				require.NoError(t, <-handle.Done)
+			// TODO[https://github.com/pulumi/pulumi/issues/21292]: Skip provider tests for now, we test these
+			// with NodeJS and Python only.
+			if strings.HasPrefix(tt, "provider-") {
+				t.Skip("Skipping provider tests")
+			}
+
+			if expected, ok := expectedFailures[tt]; ok {
+				t.Skipf("Skipping known failure: %s", expected)
+			}
+
+			if _, has := programOverrides[tt]; config.local && has {
+				t.Skip("Skipping override tests in local mode")
+			}
+
+			result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
+				Token: prepare.Token,
+				Test:  tt,
 			})
+
+			require.NoError(t, err)
+			for _, msg := range result.Messages {
+				t.Log(msg)
+			}
+			ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+			ptesting.LogIfVerbose(t, "stderr", result.Stderr)
+			assert.True(t, result.Success)
 		})
 	}
+
+	t.Cleanup(func() {
+		close(cancel)
+		require.NoError(t, <-handle.Done)
+	})
 }

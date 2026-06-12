@@ -413,7 +413,7 @@ func (pack *cloudPolicyPack) Publish(
 		return err
 	}
 
-	analyzerInfo, err := analyzer.GetAnalyzerInfo()
+	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
 	if err != nil {
 		return err
 	}
@@ -450,7 +450,7 @@ func (pack *cloudPolicyPack) Publish(
 	fmt.Println("Uploading policy pack to Pulumi service")
 
 	publishedVersion, err := pack.cl.PublishPolicyPack(
-		ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
+		ctx, pack.ref.orgName, runtime, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
 	if err != nil {
 		return err
 	}
@@ -564,7 +564,7 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	}
 
 	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())
-	err = pkgCmdUtil.InstallDependencies(language, plugin.InstallDependenciesRequest{
+	err = pkgCmdUtil.InstallDependencies(ctx.Request(), language, plugin.InstallDependenciesRequest{
 		Info:                    info,
 		UseLanguageVersionTools: false,
 		IsPlugin:                true,

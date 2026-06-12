@@ -401,20 +401,24 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
         CREATE_FIELD_NUMBER: builtins.int
         UPDATE_FIELD_NUMBER: builtins.int
         DELETE_FIELD_NUMBER: builtins.int
+        READ_FIELD_NUMBER: builtins.int
         create: builtins.float
         """The create resource timeout in seconds."""
         update: builtins.float
         """The update resource timeout in seconds."""
         delete: builtins.float
         """The delete resource timeout in seconds."""
+        read: builtins.float
+        """The read resource timeout in seconds."""
         def __init__(
             self,
             *,
             create: builtins.float = ...,
             update: builtins.float = ...,
             delete: builtins.float = ...,
+            read: builtins.float = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "update", b"update"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "read", b"read", "update", b"update"]) -> None: ...
 
     PROTECT_FIELD_NUMBER: builtins.int
     IGNORECHANGES_FIELD_NUMBER: builtins.int

@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // A small provider with a single resource "Resource" that has a "public" and "private" field, plus two nested
@@ -44,10 +43,6 @@ func (p *SecretProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *SecretProvider) Pkg() tokens.Package {
-	return "secret"
 }
 
 func (p *SecretProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -171,6 +166,21 @@ func (p *SecretProvider) Check(
 		}, nil
 	}
 
+	unsecret := func(v resource.PropertyValue) resource.PropertyValue {
+		for {
+			if v.IsSecret() {
+				v = v.SecretValue().Element
+				continue
+			}
+			if v.IsOutput() {
+				v = v.OutputValue().Element
+				continue
+			}
+			break
+		}
+		return v
+	}
+
 	assertField := func(props resource.PropertyMap, key resource.PropertyKey, typ string,
 		assertType func(resource.PropertyValue) bool,
 	) *plugin.CheckResponse {
@@ -189,18 +199,14 @@ func (p *SecretProvider) Check(
 		return nil
 	}
 
+	// isSecretString and isSecretObject require the outermost wrapper to be a secret,
+	// but accept any number of additional secret layers beneath it.
 	isSecretString := func(v resource.PropertyValue) bool {
-		if !v.IsSecret() {
-			return false
-		}
-		return v.SecretValue().Element.IsString()
+		return v.IsSecret() && unsecret(v).IsString()
 	}
 
 	isSecretObject := func(v resource.PropertyValue) bool {
-		if !v.IsSecret() {
-			return false
-		}
-		return v.SecretValue().Element.IsObject()
+		return v.IsSecret() && unsecret(v).IsObject()
 	}
 
 	check := assertField(req.News, "privateData", "secret object", isSecretObject)
@@ -215,7 +221,9 @@ func (p *SecretProvider) Check(
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "public", "string", resource.PropertyValue.IsString)
+	check = assertField(req.News, "public", "string", func(v resource.PropertyValue) bool {
+		return unsecret(v).IsString()
+	})
 	if check != nil {
 		return *check, nil
 	}
@@ -227,15 +235,15 @@ func (p *SecretProvider) Check(
 	}
 
 	publicData := req.News["publicData"].ObjectValue()
-	check = assertField(publicData, "private", "string or secret string", func(v resource.PropertyValue) bool {
-		// TODO[https://github.com/pulumi/pulumi/issues/10319] publicData.private should be a secret string, but
-		// we tolerate a plain string here. Most SDKs do not correctly send a secret string on nested inputs.
-		return v.IsString() || (v.IsSecret() && v.SecretValue().Element.IsString())
+	check = assertField(publicData, "private", "string", func(v resource.PropertyValue) bool {
+		return unsecret(v).IsString()
 	})
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(publicData, "public", "string", resource.PropertyValue.IsString)
+	check = assertField(publicData, "public", "string", func(v resource.PropertyValue) bool {
+		return unsecret(v).IsString()
+	})
 	if check != nil {
 		return *check, nil
 	}
@@ -245,12 +253,16 @@ func (p *SecretProvider) Check(
 		}, nil
 	}
 
-	privateData := req.News["privateData"].SecretValue().Element.ObjectValue()
-	check = assertField(privateData, "private", "string", resource.PropertyValue.IsString)
+	privateData := unsecret(req.News["privateData"]).ObjectValue()
+	check = assertField(privateData, "private", "string", func(v resource.PropertyValue) bool {
+		return unsecret(v).IsString()
+	})
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(privateData, "public", "string", resource.PropertyValue.IsString)
+	check = assertField(privateData, "public", "string", func(v resource.PropertyValue) bool {
+		return unsecret(v).IsString()
+	})
 	if check != nil {
 		return *check, nil
 	}

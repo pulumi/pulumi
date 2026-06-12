@@ -306,8 +306,8 @@ type BaseProject interface {
 type Project struct {
 	// Name is a required fully qualified name.
 	Name tokens.PackageName `json:"name" yaml:"name"`
-	// Runtime is a required runtime that executes code.
-	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	// Runtime is an optional runtime that executes code. Its name may be empty.
+	Runtime ProjectRuntimeInfo `json:"runtime,omitempty" yaml:"runtime,omitempty"`
 	// Main is an optional override for the program's main entry-point location.
 	Main string `json:"main,omitempty" yaml:"main,omitempty"`
 
@@ -574,17 +574,6 @@ func ValidateProject(raw any) error {
 		return errors.New("project is missing a non-empty string 'name' attribute")
 	}
 
-	if _, ok := project["runtime"]; !ok {
-		closest := findClosestKey("runtime", project, maxValidationAttributeDistance)
-		if closest != "" {
-			return fmt.Errorf(
-				"project is missing a 'runtime' attribute; found '%s' instead",
-				closest,
-			)
-		}
-		return errors.New("project is missing a 'runtime' attribute")
-	}
-
 	// We'll catch everything else with JSON schema, though we'll still try to
 	// suggest fixes for common mistakes.
 	if err = ProjectSchema.Validate(project); err == nil {
@@ -832,9 +821,6 @@ func (proj *Project) Validate() error {
 	if proj.Name == "" {
 		return errors.New("project is missing a 'name' attribute")
 	}
-	if proj.Runtime.Name() == "" {
-		return errors.New("project is missing a 'runtime' attribute")
-	}
 
 	projectName := proj.Name.String()
 	for configKey, configType := range proj.Config {
@@ -949,7 +935,17 @@ type PluginProject struct {
 	// https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
 	// together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
 	// Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
-	RequiredPulumiVersion string `json:"requiredPulumiVersion" yaml:"requiredPulumiVersion"`
+	RequiredPulumiVersion string `json:"requiredPulumiVersion,omitempty" yaml:"requiredPulumiVersion,omitempty"`
+	// Template is an optional template manifest, if this directory is a package template.
+	Template *PluginTemplate `json:"template,omitempty" yaml:"template,omitempty"`
+}
+
+// PluginTemplate is a manifest describing a package template, embedded in PulumiPlugin.yaml.
+type PluginTemplate struct {
+	// Description is an optional description of the template.
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Quickstart contains optional text to be displayed after template creation.
+	Quickstart string `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`
 }
 
 var _ BaseProject = (*PluginProject)(nil)
@@ -1262,10 +1258,16 @@ func (psd *ProjectStackDeployment) Save(path string) error {
 }
 
 func NewProjectRuntimeInfo(name string, options map[string]any) ProjectRuntimeInfo {
+	contract.Requiref(name != "", "name", "must not be empty")
 	return ProjectRuntimeInfo{
 		name:    name,
 		options: options,
 	}
+}
+
+// Used for json/yaml marshalling so omitempty works.
+func (info ProjectRuntimeInfo) IsZero() bool {
+	return info.name == "" && len(info.options) == 0
 }
 
 func (info *ProjectRuntimeInfo) Name() string {

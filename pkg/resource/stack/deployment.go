@@ -69,6 +69,7 @@ const (
 	hooksFeature               = "hooks"
 	taintFeature               = "taint"
 	replaceWithFeature         = "replaceWith"
+	snippetsFeature            = "snippets-prototype"
 )
 
 var (
@@ -125,6 +126,7 @@ var supportedFeatures = map[string]bool{
 	hooksFeature:               true,
 	taintFeature:               true,
 	replaceWithFeature:         true,
+	snippetsFeature:            true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -246,6 +248,15 @@ func SerializeDeploymentWithMetadata(
 		}
 	}
 
+	var snippets []apitype.SnippetV1
+	if len(snap.Snippets) > 0 {
+		snippets = make([]apitype.SnippetV1, len(snap.Snippets))
+		for i, s := range snap.Snippets {
+			snippets[i] = SerializeSnippet(s)
+		}
+		featureMap[snippetsFeature] = true
+	}
+
 	if completeBatch != nil { // If we started a batch operation, complete it.
 		if err := completeBatch(ctx); err != nil {
 			return nil, 0, nil, err
@@ -268,7 +279,76 @@ func SerializeDeploymentWithMetadata(
 		SecretsProviders:  secretsProvider,
 		PendingOperations: operations,
 		Metadata:          metadata,
+		Snippets:          snippets,
 	}, version, features, nil
+}
+
+// SerializeSnippet converts a resource.Snippet into its apitype representation.
+func SerializeSnippet(s resource.Snippet) apitype.SnippetV1 {
+	var refs map[string]string
+	if len(s.References) > 0 {
+		refs = make(map[string]string, len(s.References))
+		for k, v := range s.References {
+			refs[k] = v
+		}
+	}
+	return apitype.SnippetV1{
+		Name:       s.Name,
+		Type:       s.Type,
+		Code:       s.Code,
+		Descriptor: serializePackageDescriptor(s.Descriptor),
+		References: refs,
+	}
+}
+
+func serializePackageDescriptor(d resource.PackageDescriptor) apitype.PackageDescriptorV1 {
+	out := apitype.PackageDescriptorV1{
+		Name:        d.Name,
+		Version:     d.Version,
+		DownloadURL: d.DownloadURL,
+	}
+	if d.Parameterization != nil {
+		out.Parameterization = &apitype.ParameterizationDescriptorV1{
+			Name:    d.Parameterization.Name,
+			Version: d.Parameterization.Version,
+			Value:   d.Parameterization.Value,
+		}
+	}
+	return out
+}
+
+// DeserializeSnippet converts an apitype.SnippetV1 back into a resource.Snippet.
+func DeserializeSnippet(s apitype.SnippetV1) resource.Snippet {
+	var refs map[string]string
+	if len(s.References) > 0 {
+		refs = make(map[string]string, len(s.References))
+		for k, v := range s.References {
+			refs[k] = v
+		}
+	}
+	return resource.Snippet{
+		Name:       s.Name,
+		Type:       s.Type,
+		Code:       s.Code,
+		Descriptor: deserializePackageDescriptor(s.Descriptor),
+		References: refs,
+	}
+}
+
+func deserializePackageDescriptor(d apitype.PackageDescriptorV1) resource.PackageDescriptor {
+	out := resource.PackageDescriptor{
+		Name:        d.Name,
+		Version:     d.Version,
+		DownloadURL: d.DownloadURL,
+	}
+	if d.Parameterization != nil {
+		out.Parameterization = &resource.ParameterizationDescriptor{
+			Name:    d.Parameterization.Name,
+			Version: d.Parameterization.Version,
+			Value:   d.Parameterization.Value,
+		}
+	}
+	return out
 }
 
 // SerializeOptions controls how a deployment is serialized to JSON.
@@ -463,7 +543,14 @@ func DeserializeDeploymentV3(
 		}
 	}
 
-	return deploy.NewSnapshot(*manifest, secretsManager, data.resources, data.ops, metadata), nil
+	var snippets []resource.Snippet
+	if len(deployment.Snippets) > 0 {
+		snippets = make([]resource.Snippet, len(deployment.Snippets))
+		for i, s := range deployment.Snippets {
+			snippets[i] = DeserializeSnippet(s)
+		}
+	}
+	return deploy.NewSnapshot(*manifest, secretsManager, data.resources, data.ops, metadata, snippets), nil
 }
 
 // initializeSecretsManager initializes the secrets manager for a deployment.

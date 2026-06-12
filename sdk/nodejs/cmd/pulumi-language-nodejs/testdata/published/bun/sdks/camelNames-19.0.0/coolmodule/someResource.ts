@@ -64,6 +64,6 @@ export class SomeResource extends pulumi.CustomResource {
  * The set of arguments for constructing a SomeResource resource.
  */
 export interface SomeResourceArgs {
-    resourceName?: pulumi.Input<string>;
+    resourceName?: pulumi.Input<string | undefined>;
     theInput: pulumi.Input<boolean>;
 }

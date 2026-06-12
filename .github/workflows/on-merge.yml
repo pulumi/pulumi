@@ -80,12 +80,85 @@ jobs:
       project: ${{ github.repository }}
     secrets: inherit
 
+  block-during-release:
+    name: block during release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To cancel sibling jobs (ci, performance-gate, prepare-release) so the
+      # merge queue rejects this PR without waiting for the full test suite.
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check release marker
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin master
+
+          # No release in progress - nothing to enforce.
+          if ! git cat-file -e origin/master:.release-pending 2>/dev/null; then
+            exit 0
+          fi
+
+          # Release in progress. The marker must be gone after this PR.
+          if [ -f .release-pending ]; then
+            echo "::error::A release is in progress (.release-pending exists)."
+            echo "Only the post-release changelog/go.mod PR can merge until the marker is removed."
+            exit 1
+          fi
+
+          # The marker is gone in this PR's tree. The merge queue merges all PRs
+          # when the last one in the queue is green. So we need to specifically check
+          # that the changelog/go.mod update PR is merged right after the freeze PR.
+          # We do this by checking that the merge base is the freeze commit and otherwise
+          # fail, by checking that it added the .release-pending file, and checking that
+          # its sdk/.version matches the sdk/v3 version this PR now depends on in its pkg/go.mod
+          #
+          # The merge queue will kick out PRs in order, from the earliest failing one, so it'll
+          # kick out all of the PRs before the changelog/go.mod update PR.
+          git fetch --depth=2 origin "$BASE_SHA"
+
+          if ! git cat-file -e "$BASE_SHA":.release-pending 2>/dev/null; then
+            echo "::error::The merge base ($BASE_SHA) does not contain .release-pending."
+            echo "This PR is not stacked directly on the freeze commit."
+            exit 1
+          fi
+          # if git cat-file -e "$BASE_SHA^":.release-pending 2>/dev/null; then
+          #   echo "::error::The merge base ($BASE_SHA) did not introduce .release-pending - it was already present in its parent."
+          #   echo "Another commit slipped between the freeze and this PR."
+          #   exit 1
+          # fi
+
+          # EXPECTED_VERSION=$(git show "$BASE_SHA^":sdk/.version | tr -d '[:space:]')
+          # DEPENDED_VERSION=$(awk '$1 == "github.com/pulumi/pulumi/sdk/v3" && $2 ~ /^v[0-9]/ {print $2; exit}' pkg/go.mod | sed 's/^v//')
+          # if [ -z "$DEPENDED_VERSION" ]; then
+          #   echo "::error::Could not read the github.com/pulumi/pulumi/sdk/v3 dependency from pkg/go.mod."
+          #   exit 1
+          # fi
+          # if [ "$EXPECTED_VERSION" != "$DEPENDED_VERSION" ]; then
+          #   echo "::error::Version mismatch between the freeze commit's sdk/.version and this PR's pkg/go.mod dependency:"
+          #   echo "  sdk/.version at merge base: $EXPECTED_VERSION"
+          #   echo "  pkg/go.mod sdk/v3:          $DEPENDED_VERSION"
+          #   exit 1
+          # fi
+      - name: Cancel sibling jobs on block
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}"
+
   ci-ok:
     name: ci-ok
-    needs: [ci, performance-gate, prepare-release]
+    needs: [ci, performance-gate, prepare-release, block-during-release]
     if: always() # always report a status
     runs-on: ubuntu-latest
     steps:
+      - name: Release in progress
+        if: ${{ needs.block-during-release.result != 'success' }}
+        run: exit 1
       - name: CI failed
         if: ${{ needs.ci.result != 'success' }}
         run: exit 1

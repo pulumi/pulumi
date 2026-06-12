@@ -235,7 +235,7 @@ func (t *UnionType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+func (t *UnionType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		var conversionKind ConversionKind
 		var diags []lazyDiagnostics
@@ -271,7 +271,7 @@ func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 // If all conversions to a dest type from a union type are safe, the conversion is safe.
 // If no conversions to a dest type from a union type exist, the conversion does not exist.
 // Otherwise, the conversion is unsafe.
-func (t *UnionType) conversionTo(dest Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+func (t *UnionType) conversionTo(dest Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	conversionKind, exists := SafeConversion, false
 	for _, t := range t.ElementTypes {
 		switch kind, _ := dest.conversionFrom(t, unifying, seen); kind {

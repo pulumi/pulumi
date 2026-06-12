@@ -20,22 +20,22 @@ __all__ = [
 ]
 
 class ConfigArgsDict(TypedDict):
-    foo: NotRequired[pulumi.Input[_builtins.str]]
+    foo: NotRequired[pulumi.Input[Optional[_builtins.str]]]
 
 @pulumi.input_type
 class ConfigArgs:
     def __init__(__self__, *,
-                 foo: Optional[pulumi.Input[_builtins.str]] = None):
+                 foo: pulumi.Input[Optional[_builtins.str]] = None):
         if foo is not None:
             pulumi.set(__self__, "foo", foo)
 
     @_builtins.property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def foo(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def foo(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "foo", value)
 
 

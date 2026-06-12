@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/stretchr/testify/assert"
@@ -35,11 +34,6 @@ func TestBuiltinProvider(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
 		require.NoError(t, p.Close())
-	})
-	t.Run("Pkg", func(t *testing.T) {
-		t.Parallel()
-		p := &builtinProvider{}
-		assert.Equal(t, tokens.Package("pulumi"), p.Pkg())
 	})
 	t.Run("GetSchema", func(t *testing.T) {
 		t.Parallel()

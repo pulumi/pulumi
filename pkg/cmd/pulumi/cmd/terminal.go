@@ -14,7 +14,29 @@
 
 package cmd
 
-import "golang.org/x/term"
+import (
+	"io"
+	"os"
+
+	"golang.org/x/term"
+)
+
+const defaultTerminalWidth = 120
+
+// WriterWidth returns the width in columns of w when it is a terminal,
+// falling back to a reasonable default otherwise (piped output, CI, or
+// non-file writers such as a bytes.Buffer in tests).
+func WriterWidth(w io.Writer) int {
+	f, ok := w.(*os.File)
+	if !ok {
+		return defaultTerminalWidth
+	}
+	cols, _, err := term.GetSize(int(f.Fd()))
+	if err != nil || cols <= 0 {
+		return defaultTerminalWidth
+	}
+	return cols
+}
 
 type OptimalPageSizeOpts struct {
 	Nopts          int

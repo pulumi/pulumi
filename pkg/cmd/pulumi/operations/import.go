@@ -48,18 +48,21 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	resourcestack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -172,6 +175,10 @@ type importSpec struct {
 type importFile struct {
 	NameTable map[string]resource.URN `json:"nameTable,omitempty"`
 	Resources []importSpec            `json:"resources,omitempty"`
+	// ProviderInputs maps provider names (as used in NameTable and importSpec.Provider) to
+	// their serialized inputs. This allows the import system to create explicit providers
+	// that are not yet in state with the correct configuration. Secrets are encrypted.
+	ProviderInputs map[string]map[string]any `json:"providerInputs,omitempty"`
 }
 
 func readImportFile(p string) (importFile, error) {
@@ -234,7 +241,8 @@ func writeImportFileTo(v importFile, path string) (string, error) {
 }
 
 func parseImportFile(
-	f importFile, stack tokens.StackName, proj tokens.PackageName, protectResources bool,
+	f importFile, stack tokens.StackName, proj tokens.PackageName,
+	protectResources bool, dec sdkconfig.Decrypter,
 ) ([]deploy.Import, importer.NameTable, error) {
 	// First check for uniqueness and ambiguity, takenNames tracks both that a name is used (it's in the map) and if
 	// it's ambiguous (it's true).
@@ -473,6 +481,18 @@ func parseImportFile(
 			} else {
 				imp.Provider = urn
 			}
+
+			// If the import file includes full inputs for this provider, deserialize them
+			// so the import system can create the provider with the correct configuration.
+			if serializedInputs, ok := f.ProviderInputs[spec.Provider]; ok {
+				providerInputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize provider inputs for %v: %w",
+						describeResource(i, spec), err)
+				} else {
+					imp.ProviderInputs = providerInputs
+				}
+			}
 		}
 
 		if spec.Version != "" {
@@ -499,9 +519,9 @@ func getCurrentDeploymentForStack(
 	if err != nil {
 		return nil, err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
+	snap, err := resourcestack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
 	if err != nil {
-		return nil, stack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
+		return nil, resourcestack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
 	}
 	return snap, err
 }
@@ -526,7 +546,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 				errMsg.WriteString("You will need to copy and paste the generated code into your Pulumi application and manually edit it to correct any errors.\n\n") //nolint:lll
 			}
 			fmt.Fprintf(&errMsg, "%v\n", v)
-			fmt.Print(errMsg.String())
+			fmt.Fprint(out, errMsg.String())
 		}
 	}()
 
@@ -594,11 +614,13 @@ func NewImportCmd() *cobra.Command {
 	var debug bool
 	var message string
 	var stackName string
+	var configFile string
 	var execKind string
 	var execAgent string
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var outputFormat string
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int32
@@ -612,6 +634,7 @@ func NewImportCmd() *cobra.Command {
 	var yes bool
 	var protectResources bool
 	var properties []string
+	var skipPluginPreInstall bool
 
 	var from string
 	var generateResources string
@@ -679,6 +702,16 @@ func NewImportCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			// Validate --output up front. We keep the existing --json flag (which
+			// emits a JSONL stream of engine events) backwards compatible, and
+			// only emit the structured operation summary when --output=json.
+			switch outputFormat {
+			case "default", "json":
+				// No-op.
+			default:
+				return fmt.Errorf("invalid --output value %q (expected %q or %q)", outputFormat, "default", "json")
+			}
+
 			ws := pkgWorkspace.Instance
 
 			proj, root, err := ws.ReadProject()
@@ -697,7 +730,8 @@ func NewImportCmd() *cobra.Command {
 				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
-			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
+			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
+				schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -751,7 +785,7 @@ func NewImportCmd() *cobra.Command {
 				}
 
 				baseMapper, err := convert.NewBasePluginMapper(
-					convert.DefaultWorkspace(),
+					pluginstorage.Instance,
 					from, /*conversionKey*/
 					convert.ProviderFactoryFromHost(ctx, pCtx.Host),
 					installPlugin,
@@ -773,7 +807,12 @@ func NewImportCmd() *cobra.Command {
 					Args:         args,
 				})
 				if err != nil {
-					return err
+					rpcErr := rpcerror.Convert(err)
+					msg := strings.TrimSpace(rpcErr.Message())
+					if msg == "" {
+						return fmt.Errorf("converter %q failed: %w", from, err)
+					}
+					return fmt.Errorf("converter %q failed: %s", from, msg)
 				}
 
 				cmdDiag.PrintDiagnostics(sink, resp.Diagnostics)
@@ -814,7 +853,7 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			if !generateCode && outputFilePath != "" {
-				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
+				fmt.Fprintln(cmd.ErrOrStderr(), "Output file will not be used as --generate-code is false.")
 			}
 
 			var outputResult bytes.Buffer
@@ -855,6 +894,7 @@ func NewImportCmd() *cobra.Command {
 				EventLogPath:     eventLogPath,
 				Debug:            debug,
 				JSONDisplay:      jsonDisplay,
+				SummaryJSON:      outputFormat == "json",
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -879,18 +919,28 @@ func NewImportCmd() *cobra.Command {
 			// Fetch the current stack.
 			s, err := cmdStack.RequireStack(
 				ctx,
-				cmdutil.Diag(),
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
 				cmdStack.LoadOnly,
 				opts.Display,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
 
-			imports, nameTable, err := parseImportFile(importFile, s.Ref().Name(), proj.Name, protectResources)
+			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile)
+			if err != nil {
+				return fmt.Errorf("getting stack configuration: %w", err)
+			}
+
+			decrypter := sm.Decrypter()
+			encrypter := sm.Encrypter()
+
+			imports, nameTable, err := parseImportFile(
+				importFile, s.Ref().Name(), proj.Name, protectResources, decrypter)
 			if err != nil {
 				return err
 			}
@@ -904,7 +954,8 @@ func NewImportCmd() *cobra.Command {
 				}
 				sink := cmdutil.Diag()
 
-				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
+				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
+					schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -925,7 +976,8 @@ func NewImportCmd() *cobra.Command {
 				// this is because we might generate unbound variables in the generated code that reference
 				// a parent resource or a provider
 				strict := false
-				files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
+				files, diagnostics, err := languagePlugin.GenerateProgram(
+					pCtx.Request(), program.Source(), grpcServer.Addr(), strict)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -933,19 +985,11 @@ func NewImportCmd() *cobra.Command {
 				return files, diagnostics, nil
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
-			if err != nil {
-				return fmt.Errorf("getting stack configuration: %w", err)
-			}
-
 			m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, false, cfg, cmd.Flags())
 			if err != nil {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
-
-			decrypter := sm.Decrypter()
-			encrypter := sm.Encrypter()
 
 			stackName := s.Ref().Name().String()
 			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
@@ -966,6 +1010,7 @@ func NewImportCmd() *cobra.Command {
 				UseLegacyDiff:        env.EnableLegacyDiff.Value(),
 				UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 				Experimental:         env.Experimental.Value(),
+				SkipPluginPreInstall: skipPluginPreInstall,
 			}
 
 			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
@@ -979,7 +1024,7 @@ func NewImportCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			}, imports)
 
-			if generateCode {
+			if generateCode && proj.Runtime.Name() != "" {
 				deployment, err := getCurrentDeploymentForStack(ctx, s)
 				if err != nil {
 					return err
@@ -1001,16 +1046,18 @@ func NewImportCmd() *cobra.Command {
 					// in a codegen call
 					// It's a little bit more memory but is a better experience that writing to stdout and then an error
 					// occurring
-					if outputFilePath == "" && !jsonDisplay {
-						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
-							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
+					if outputFilePath == "" && !jsonDisplay && outputFormat != "json" {
+						outW := cmd.OutOrStdout()
+						fmt.Fprint(outW,
+							"Please copy the following code into your Pulumi application. Not doing so\n"+
+								"will cause Pulumi to report that an update will happen on the next update command.\n\n")
 						if protectResources {
-							fmt.Print(("Please note that the imported resources are marked as protected. " +
-								"To destroy them\n" +
-								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
-								"the destroy will take effect.\n\n"))
+							fmt.Fprint(outW, "Please note that the imported resources are marked as protected. "+
+								"To destroy them\n"+
+								"you will need to remove the `protect` option and run `pulumi update` *before*\n"+
+								"the destroy will take effect.\n\n")
 						}
-						fmt.Print(outputResult.String())
+						fmt.Fprint(outW, outputResult.String())
 					}
 				}
 			}
@@ -1073,7 +1120,7 @@ func NewImportCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
 	// Flags for engine.UpdateOptions.
@@ -1092,6 +1139,12 @@ func NewImportCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the import diffs, operations, and overall output as JSON")
+	cmd.Flags().StringVar(
+		&outputFormat, "output", "default",
+		"Output format. Supported values are: default, json")
+	// Hidden until --output is wired up across all operations.
+	_ = cmd.Flags().MarkHidden("output")
+	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
@@ -1118,6 +1171,9 @@ func NewImportCmd() *cobra.Command {
 		&generateResources, "generate-resources", "",
 		//nolint:lll
 		"When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path")
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(

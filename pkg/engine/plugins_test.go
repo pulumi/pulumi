@@ -23,9 +23,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+func TestGetRequiredPluginsWithoutRuntime(t *testing.T) {
+	t.Parallel()
+
+	plugins, err := GetRequiredPlugins(t.Context(), nil, "", plugin.ProgramInfo{})
+	require.NoError(t, err)
+	assert.Empty(t, plugins)
+}
 
 func mustMakeVersion(v string) *semver.Version {
 	ver := semver.MustParse(v)
@@ -52,7 +61,8 @@ func TestDefaultProvidersSingle(t *testing.T) {
 		},
 	})
 
-	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	defaultProviders, err := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	require.NoError(t, err)
 	require.NotNil(t, defaultProviders)
 
 	aws, ok := defaultProviders[tokens.Package("aws")]
@@ -88,7 +98,8 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 		},
 	})
 
-	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	defaultProviders, err := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	require.NoError(t, err)
 	require.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -123,7 +134,8 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 		},
 	})
 
-	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	defaultProviders, err := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	require.NoError(t, err)
 	require.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -151,7 +163,8 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 		},
 	})
 
-	defaultProviders := computeDefaultProviderPackages(languagePlugins, snapshotPlugins)
+	defaultProviders, err := computeDefaultProviderPackages(languagePlugins, snapshotPlugins)
+	require.NoError(t, err)
 	require.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -612,8 +625,113 @@ func TestDefaultProviderPluginsSorting(t *testing.T) {
 		},
 	}
 	plugins := NewPackageSet(p1, p2)
-	result := computeDefaultProviderPackages(plugins, plugins)
+	result, err := computeDefaultProviderPackages(plugins, plugins)
+	require.NoError(t, err)
 	assert.Equal(t, map[tokens.Package]workspace.PackageDescriptor{
 		"foo": p2,
 	}, result)
+}
+
+func TestDefaultProvidersConflictAcrossDifferentPlugins(t *testing.T) {
+	t.Parallel()
+
+	// Two distinct plugins both claim to provide the same Pulumi package name
+	// "target": one native plugin named "target" and one bridge plugin
+	// ("parameterize-base") parameterized as "target". The engine must return
+	// a clear error instead of panicking or silently picking a winner.
+	// Regression test for https://github.com/pulumi/pulumi/issues/22678.
+	target := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "target",
+			Version: mustMakeVersion("1.47.0"),
+			Kind:    apitype.ResourcePlugin,
+		},
+	}
+	parameterized := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "parameterize-base",
+			Version: mustMakeVersion("1.1.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "target",
+			Version: semver.MustParse("2.73.0"),
+		},
+	}
+
+	plugins := NewPackageSet(target, parameterized)
+	_, err := computeDefaultProviderPackages(plugins, plugins)
+
+	var actualErr ambigiousPluginSourceError
+	require.ErrorAs(t, err, &actualErr)
+	assert.Equal(t, ambigiousPluginSourceError{"target", target, parameterized}, actualErr)
+}
+
+func TestDefaultProvidersSameBridgeDifferentVersions(t *testing.T) {
+	t.Parallel()
+
+	// Two PackageDescriptors from the same bridge plugin ("parameterize-base")
+	// with the same parameterization name ("target") but different
+	// parameterization versions should be treated as "same source, different
+	// versions" and resolve cleanly to the newer one, not as a conflict.
+	older := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "parameterize-base",
+			Version: mustMakeVersion("1.1.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "target",
+			Version: semver.MustParse("2.72.0"),
+		},
+	}
+	newer := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "parameterize-base",
+			Version: mustMakeVersion("1.1.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "target",
+			Version: semver.MustParse("2.73.0"),
+		},
+	}
+
+	plugins := NewPackageSet(older, newer)
+	result, err := computeDefaultProviderPackages(plugins, plugins)
+	require.NoError(t, err)
+	assert.Equal(t, map[tokens.Package]workspace.PackageDescriptor{
+		"target": newer,
+	}, result)
+}
+
+func TestAmbigiousPluginSourceErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	target := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "target",
+			Version: mustMakeVersion("1.47.0"),
+			Kind:    apitype.ResourcePlugin,
+		},
+	}
+	parameterized := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "parameterize-base",
+			Version: mustMakeVersion("1.1.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "target",
+			Version: semver.MustParse("2.73.0"),
+		},
+	}
+
+	err := ambigiousPluginSourceError{"target", target, parameterized}
+	assert.Equal(t,
+		`package "target" is provided by more than one plugin:
+  plugin "target" v1.47.0
+  plugin "parameterize-base" v1.1.1 parameterized as "target" v2.73.0
+Remove one of the packages, or pass an explicit `+"`provider`"+` option on each resource to disambiguate.`,
+		err.Error())
 }

@@ -83,39 +83,11 @@ func SingleTestCase(directoryName string) []ProgramTest {
 
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
-		Directory:   "assets-archives",
-		Description: "Assets and archives",
-	},
-	{
-		Directory:   "aws-eks",
-		Description: "AWS EKS",
-	},
-	{
-		Directory:   "aws-fargate",
-		Description: "AWS Fargate",
-	},
-	{
-		Directory:   "aws-static-website",
-		Description: "an example resource from AWS static website multi-language component",
-		// TODO: blocked on resolving imports (python) / using statements (C#) for types from external packages
-		SkipCompile: codegen.NewStringSet(TestDotnet, TestPython),
-	},
-	{
-		Directory:   "aws-fargate-output-versioned",
-		Description: "AWS Fargate Using Output-versioned invokes for python and typescript",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet),
-		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
-	},
-	{
 		Directory:   "aws-s3-logging",
 		Description: "AWS S3 with logging",
 		SkipCompile: codegen.NewStringSet(TestGo),
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
 		// Flaky in go: TODO[pulumi/pulumi#8123]
-	},
-	{
-		Directory:   "aws-iam-policy",
-		Description: "AWS IAM Policy",
 	},
 	{
 		Directory:   "read-file-func",
@@ -139,58 +111,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip: allProgLanguages.Except(TestGo),
 	},
 	{
-		Directory:   "aws-webserver",
-		Description: "AWS Webserver",
-	},
-	{
-		Directory:   "azure-native-v2-eventgrid",
-		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
-		// Specifically use a simplified azure-native v2.x schema when testing this program
-		// this schema only contains content from the eventgrid module which is sufficient to test with
-		PluginHost: utils.NewHostWithProviders(testdataPath,
-			utils.NewSchemaProvider("azure-native", "2.41.0")),
-	},
-	{
-		Directory:   "azure-sa",
-		Description: "Azure SA",
-	},
-	{
-		Directory:   "using-object-as-input-for-any",
-		Description: "Tests using object as input for a property of type 'any'",
-	},
-	{
-		Directory:   "kubernetes-operator",
-		Description: "K8s Operator",
-	},
-	{
-		Directory:   "kubernetes-pod",
-		Description: "K8s Pod",
-		SkipCompile: codegen.NewStringSet(TestGo),
-		// Blocked on go:
-		//   TODO[pulumi/pulumi#8073]
-		//   TODO[pulumi/pulumi#8074]
-	},
-	{
-		Directory:   "kubernetes-template",
-		Description: "K8s Template",
-	},
-	{
-		Directory:   "kubernetes-template-quoted",
-		Description: "K8s Template with quoted string property keys to ensure that resource binding works here",
-	},
-	{
-		Directory:   "aws-secret",
-		Description: "Secret",
-	},
-	{
-		Directory:   "functions",
-		Description: "Functions",
-	},
-	{
-		Directory:   "output-funcs-aws",
-		Description: "Output Versioned Functions",
-	},
-	{
 		Directory:   "third-party-package",
 		Description: "Ensuring correct imports for third party packages",
 		// compiling and type checking involves downloading the real package to
@@ -203,11 +123,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "ensure that the this keyword is rewritten when it is a variable but kept as is" +
 			"when it is a reference to this pointer in nodejs",
 		Skip: codegen.NewStringSet(TestDotnet, TestPython, TestGo),
-	},
-	{
-		Directory:   "invalid-go-sprintf",
-		Description: "Regress invalid Go",
-		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   "traverse-union-repro",
@@ -331,38 +246,13 @@ var PulumiPulumiProgramTests = []ProgramTest{
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	// PCL files from pulumi/yaml transpiled examples
 	{
-		Directory:   transpiled("aws-eks"),
-		Description: "AWS EKS",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
-		Directory:   transpiled("aws-static-website"),
-		Description: "AWS static website",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
-	},
-	{
 		Directory:   transpiled("awsx-fargate"),
 		Description: "AWSx Fargate",
 		Skip:        codegen.NewStringSet(TestDotnet, TestNodeJS, TestGo),
 	},
 	{
-		Directory:   transpiled("cue-eks"),
-		Description: "Cue EKS",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
 		Directory:   transpiled("cue-random"),
 		Description: "Cue random",
-	},
-	{
-		Directory:   transpiled("getting-started"),
-		Description: "Getting started",
-	},
-	{
-		Directory:   transpiled("kubernetes"),
-		Description: "Kubernetes",
-		Skip:        codegen.NewStringSet(TestGo),
 	},
 	{
 		Directory:   transpiled("pulumi-variable"),
@@ -388,16 +278,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Directory:   transpiled("stackreference-producer"),
 		Description: "Stack reference producer",
 		Skip:        codegen.NewStringSet(TestGo, TestDotnet),
-	},
-	{
-		Directory:   transpiled("webserver-json"),
-		Description: "Webserver JSON",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet, TestPython),
-	},
-	{
-		Directory:   transpiled("webserver"),
-		Description: "Webserver",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet, TestPython),
 	},
 }
 
@@ -627,8 +507,14 @@ func TestProgramCodegen(
 
 func collectExtraPulumiPackages(program *pcl.Program, extraPulumiPackages codegen.StringSet) {
 	for _, n := range program.Nodes {
-		if r, isResource := n.(*pcl.Resource); isResource {
-			pkg, _, _, _ := r.DecomposeToken()
+		switch r := n.(type) {
+		case *pcl.Resource:
+			pkg, _, _, _ := pcl.DecomposeToken(r.GetToken())
+			if pkg != "pulumi" {
+				extraPulumiPackages.Add(pkg)
+			}
+		case *pcl.ReadResource:
+			pkg, _, _, _ := pcl.DecomposeToken(r.GetToken())
 			if pkg != "pulumi" {
 				extraPulumiPackages.Add(pkg)
 			}

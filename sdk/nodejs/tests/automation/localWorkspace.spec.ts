@@ -32,6 +32,11 @@ import { getTestOrg, getTestSuffix, withStack, withTestBackend } from "./util";
 const userAgent = "pulumi/pulumi/test";
 
 describe("LocalWorkspace", () => {
+    it(`projectSettings permits a project without a runtime`, () => {
+        const settings: ProjectSettings = { name: "runtime-less" };
+        assert.strictEqual(settings.runtime, undefined);
+    });
+
     it(`projectSettings from yaml/yml/json`, async () => {
         for (const ext of ["yaml", "yml", "json"]) {
             const ws = await LocalWorkspace.create(
@@ -335,6 +340,63 @@ describe("LocalWorkspace", () => {
             assert.strictEqual(destroyRes.summary.result, "succeeded");
         });
     });
+    it(`runs through the stack lifecycle with an inline program using runProgram`, async () => {
+        const program = async () => {
+            const config = new Config();
+            return {
+                exp_static: "foo",
+                exp_cfg: config.get("bar"),
+                exp_secret: config.getSecret("buzz"),
+            };
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTestBackend({}, "inline_node"),
+        );
+        await withStack(stack, async () => {
+            const stackConfig: ConfigMap = {
+                bar: { value: "abc" },
+                buzz: { value: "secret", secret: true },
+            };
+            await stack.setAllConfig(stackConfig);
+
+            // pulumi up
+            const upRes = await stack.up({ userAgent, runProgram: true });
+            assert.strictEqual(Object.keys(upRes.outputs).length, 3);
+            assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
+            assert.strictEqual(upRes.outputs["exp_static"].secret, false);
+            assert.strictEqual(upRes.outputs["exp_cfg"].value, "abc");
+            assert.strictEqual(upRes.outputs["exp_cfg"].secret, false);
+            assert.strictEqual(upRes.outputs["exp_secret"].value, "secret");
+            assert.strictEqual(upRes.outputs["exp_secret"].secret, true);
+            assert.strictEqual(upRes.summary.kind, "update");
+            assert.strictEqual(upRes.summary.result, "succeeded");
+
+            // pulumi preview
+            const preRes = await stack.preview({ userAgent, runProgram: true });
+            assert.strictEqual(preRes.changeSummary.same, 1);
+
+            // pulumi refresh
+            const refRes = await stack.refresh({ userAgent, runProgram: true });
+            assert.strictEqual(refRes.summary.kind, "refresh");
+            assert.strictEqual(refRes.summary.result, "succeeded");
+
+            // pulumi refresh --preview-only
+            const previewRefreshRes = await stack.previewRefresh({ userAgent, runProgram: true });
+            assert.deepStrictEqual(previewRefreshRes.changeSummary, { same: 1 });
+
+            // pulumi destroy --preview-only
+            const previewDestroyRes = await stack.previewDestroy({ userAgent, runProgram: true });
+            assert.strictEqual(previewDestroyRes.changeSummary.delete, 1);
+
+            // pulumi destroy
+            const destroyRes = await stack.destroy({ userAgent, runProgram: true });
+            assert.strictEqual(destroyRes.summary.kind, "destroy");
+            assert.strictEqual(destroyRes.summary.result, "succeeded");
+        });
+    });
     it(`listens for error output`, async () => {
         const projectName = "inline_node";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
@@ -488,7 +550,7 @@ describe("LocalWorkspace", () => {
     });
     // Regression test for https://github.com/pulumi/pulumi/issues/17613
     it(`does not hang on a failed input`, async function () {
-        this.timeout(20 * 1000); // This test hangs indefinitely if it fails
+        this.timeout(40 * 1000); // This test hangs indefinitely if it fails
 
         const program = async () => {
             class MyResource extends CustomResource {

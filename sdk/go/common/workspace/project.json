@@ -262,8 +262,7 @@
         }
     },
     "required":[
-        "name",
-        "runtime"
+        "name"
     ],
     "additionalProperties":true,
     "$defs":{

@@ -14,15 +14,15 @@ else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from . import crd_k8s_amazonaws_com as _crd_k8s_amazonaws_com
-import pulumi_kubernetes
+import pulumi_tls
 
 __all__ = ['ComponentArgs', 'Component']
 
 @pulumi.input_type
 class ComponentArgs:
     def __init__(__self__, *,
-                 eni_config: Optional[pulumi.Input[Mapping[str, pulumi.Input['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs']]]] = None,
-                 pod: Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']] = None):
+                 eni_config: pulumi.Input[Optional[Mapping[str, pulumi.Input['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs']]]] = None,
+                 pod: pulumi.Input[Optional['pulumi_tls.CertRequestSubjectArgs']] = None):
         """
         The set of arguments for constructing a Component resource.
         """
@@ -33,20 +33,20 @@ class ComponentArgs:
 
     @_builtins.property
     @pulumi.getter(name="eniConfig")
-    def eni_config(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs']]]]:
+    def eni_config(self) -> pulumi.Input[Optional[Mapping[str, pulumi.Input['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs']]]]:
         return pulumi.get(self, "eni_config")
 
     @eni_config.setter
-    def eni_config(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs']]]]):
+    def eni_config(self, value: pulumi.Input[Optional[Mapping[str, pulumi.Input['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs']]]]):
         pulumi.set(self, "eni_config", value)
 
     @_builtins.property
     @pulumi.getter
-    def pod(self) -> Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]:
+    def pod(self) -> pulumi.Input[Optional['pulumi_tls.CertRequestSubjectArgs']]:
         return pulumi.get(self, "pod")
 
     @pod.setter
-    def pod(self, value: Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]):
+    def pod(self, value: pulumi.Input[Optional['pulumi_tls.CertRequestSubjectArgs']]):
         pulumi.set(self, "pod", value)
 
 
@@ -56,8 +56,8 @@ class Component(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 eni_config: Optional[pulumi.Input[Mapping[str, pulumi.Input[Union['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs', '_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgsDict']]]]] = None,
-                 pod: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.core.v1.PodArgs']]] = None,
+                 eni_config: pulumi.Input[Optional[Mapping[str, pulumi.Input[Union['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs', '_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgsDict']]]]] = None,
+                 pod: pulumi.Input[Optional[pulumi.InputType['pulumi_tls.CertRequestSubjectArgs']]] = None,
                  __props__=None):
         """
         Create a Component resource with the given unique name, props, and options.
@@ -89,8 +89,8 @@ class Component(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 eni_config: Optional[pulumi.Input[Mapping[str, pulumi.Input[Union['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs', '_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgsDict']]]]] = None,
-                 pod: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.core.v1.PodArgs']]] = None,
+                 eni_config: pulumi.Input[Optional[Mapping[str, pulumi.Input[Union['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs', '_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgsDict']]]]] = None,
+                 pod: pulumi.Input[Optional[pulumi.InputType['pulumi_tls.CertRequestSubjectArgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -118,6 +118,6 @@ class Component(pulumi.ComponentResource):
 
     @_builtins.property
     @pulumi.getter
-    def pod(self) -> pulumi.Output[Optional['pulumi_kubernetes.core.v1.outputs.Pod']]:
+    def pod(self) -> pulumi.Output[Optional['pulumi_tls.outputs.CertRequestSubject']]:
         return pulumi.get(self, "pod")
 

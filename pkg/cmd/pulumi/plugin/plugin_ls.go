@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"fmt"
+	"io"
 	"sort"
 
 	"github.com/dustin/go-humanize"
@@ -25,17 +26,19 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPluginLsCmd() *cobra.Command {
+func newPluginLsCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var projectOnly bool
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List plugins",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List plugins",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Produce a list of plugins, sorted by name and version.
 			var plugins []workspace.PluginInfo
@@ -51,7 +54,7 @@ func newPluginLsCmd() *cobra.Command {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}
 			} else {
-				if plugins, err = workspace.GetPluginsWithMetadata(); err != nil {
+				if plugins, err = pluginContext.GetPlugins(cmd.Context()); err != nil {
 					return fmt.Errorf("loading plugins: %w", err)
 				}
 			}
@@ -70,9 +73,9 @@ func newPluginLsCmd() *cobra.Command {
 			})
 
 			if jsonOut {
-				return formatPluginsJSON(plugins)
+				return formatPluginsJSON(cmd.OutOrStdout(), plugins)
 			}
-			return formatPluginConsole(plugins)
+			return formatPluginConsole(cmd.OutOrStdout(), plugins)
 		},
 	}
 
@@ -99,7 +102,7 @@ type pluginInfoJSON struct {
 	LastUsedTime *string `json:"lastUsedTime,omitempty"`
 }
 
-func formatPluginsJSON(plugins []workspace.PluginInfo) error {
+func formatPluginsJSON(w io.Writer, plugins []workspace.PluginInfo) error {
 	makeStringRef := func(s string) *string {
 		return &s
 	}
@@ -117,19 +120,21 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 			Size:    plugin.Size(),
 		}
 
-		if !plugin.InstallTime.IsZero() {
-			jsonPluginInfo[idx].InstallTime = makeStringRef(cmd.FormatTime(plugin.InstallTime.UTC()))
+		installTime := plugin.InstallTime()
+		if !installTime.IsZero() {
+			jsonPluginInfo[idx].InstallTime = makeStringRef(cmd.FormatTime(installTime.UTC()))
 		}
 
-		if !plugin.LastUsedTime.IsZero() {
-			jsonPluginInfo[idx].LastUsedTime = makeStringRef(cmd.FormatTime(plugin.LastUsedTime.UTC()))
+		lastUsedTime := plugin.LastUsedTime()
+		if !lastUsedTime.IsZero() {
+			jsonPluginInfo[idx].LastUsedTime = makeStringRef(cmd.FormatTime(lastUsedTime.UTC()))
 		}
 	}
 
-	return ui.PrintJSON(jsonPluginInfo)
+	return ui.FprintJSON(w, jsonPluginInfo)
 }
 
-func formatPluginConsole(plugins []workspace.PluginInfo) error {
+func formatPluginConsole(w io.Writer, plugins []workspace.PluginInfo) error {
 	var totalSize uint64
 
 	rows := slice.Prealloc[cmdutil.TableRow](len(plugins))
@@ -145,33 +150,35 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 		} else {
 			bytes = humanize.Bytes(plugin.Size())
 		}
-		var installTime string
-		if plugin.InstallTime.IsZero() {
-			installTime = naString
+		var installTimeStr string
+		installTime := plugin.InstallTime()
+		if installTime.IsZero() {
+			installTimeStr = naString
 		} else {
-			installTime = humanize.Time(plugin.InstallTime)
+			installTimeStr = humanize.Time(installTime)
 		}
-		var lastUsedTime string
-		if plugin.LastUsedTime.IsZero() {
-			lastUsedTime = humanNeverTime
+		var lastUsedTimeStr string
+		lastUsedTime := plugin.LastUsedTime()
+		if lastUsedTime.IsZero() {
+			lastUsedTimeStr = humanNeverTime
 		} else {
-			lastUsedTime = humanize.Time(plugin.LastUsedTime)
+			lastUsedTimeStr = humanize.Time(lastUsedTime)
 		}
 
 		rows = append(rows, cmdutil.TableRow{
-			Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTime, lastUsedTime},
+			Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTimeStr, lastUsedTimeStr},
 		})
 
 		totalSize += plugin.Size()
 	}
 
-	ui.PrintTable(cmdutil.Table{
+	ui.FprintTable(w, cmdutil.Table{
 		Headers: []string{"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED"},
 		Rows:    rows,
 	}, nil)
 
-	fmt.Printf("\n")
-	fmt.Printf("TOTAL plugin cache size: %s\n", humanize.Bytes(totalSize))
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "TOTAL plugin cache size: %s\n", humanize.Bytes(totalSize))
 
 	return nil
 }

@@ -101,14 +101,15 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
+	"l2-config-default-from-invoke":      "config default from an invoke is Output[Any], not str | None; fails mypy",
 	"l1-builtin-try":                     "Temporarily disabled until pr #18915 is submitted",
+	"l1-expand-final":                    "Python program generation does not support `...` argument expansion",
 	"l1-builtin-can":                     "Temporarily disabled until pr #18916 is submitted",
 	"l3-deferred-outputs":                "does not type-check",
-	"l2-resource-optional":               "optional outputs are not assignable to optional inputs",
 	"l3-range-ref":                       `Item "None" of "Target | None" has no attribute "name"  [union-attr]`,
-	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-component-nested":                "syntax error",
+	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 }
 
 type languageTestConfig struct {
@@ -242,8 +243,8 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					ptesting.LogTruncated(t, "stdout", result.Stdout)
-					ptesting.LogTruncated(t, "stderr", result.Stderr)
+					ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+					ptesting.LogIfVerbose(t, "stderr", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}

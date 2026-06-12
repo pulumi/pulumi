@@ -10,8 +10,8 @@ prim = primitive.Resource("prim",
     integer=-12,
     string="Goodbye",
     number_array=[
-        0,
-        1,
+        float(0),
+        float(1),
     ],
     boolean_map={
         "my key": False,

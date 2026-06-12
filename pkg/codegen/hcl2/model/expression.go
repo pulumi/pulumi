@@ -1057,14 +1057,18 @@ func (x *FunctionCallExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 		rng = x.Syntax.Range()
 	}
 
+	// When the call uses `...` to expand its final argument, typecheck and lift detection operate on
+	// the per-element types of the expanded collection rather than the collection itself.
+	effectiveArgs := expandFinalArg(x.Args, x.ExpandFinal)
+
 	// Typecheck the function's arguments.
-	typecheckDiags := typecheckArgs(rng, x.Signature, x.Args...)
+	typecheckDiags := typecheckArgs(rng, x.Signature, effectiveArgs...)
 	diagnostics = append(diagnostics, typecheckDiags...)
 
 	// If any of the inputs are Output<T> but the function only expects T then we need to lift the function into output
 	// space.
 	lift := false
-	for i, arg := range x.Args {
+	for i, arg := range effectiveArgs {
 		var param Parameter
 		if i >= len(x.Signature.Parameters) {
 			if x.Signature.VarargsParameter == nil {
@@ -1084,7 +1088,7 @@ func (x *FunctionCallExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 	}
 
 	if lift {
-		x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
+		x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, effectiveArgs...)
 	}
 
 	return diagnostics

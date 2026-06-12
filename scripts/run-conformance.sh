@@ -12,7 +12,7 @@ ROOT=$(git rev-parse --show-toplevel)
 export PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true
 
 # Run *all* language tests
-if [ "$1" = "" ]; then
+if [ -z "${1+x}" ]; then
     cd "$ROOT/sdk/pcl/cmd/pulumi-language-pcl" && go test . -v -count=1 -run "TestLanguage"
 
     cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguage"
@@ -31,7 +31,9 @@ fi
 
 cd "$ROOT/sdk/pcl/cmd/pulumi-language-pcl" && go test . -v -count=1 -run "TestLanguage/$1"
 
-cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguage/.*/$1"
+cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguagePublished/$1"
+cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguageLocal/$1"
+cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguageExtraTypes/$1"
 
 cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageTSC/.*/$1"
 cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageTSNode/.*/$1"

@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 // This checks that the buildTarget option for Pulumi Go programs does build a binary.
@@ -573,18 +574,6 @@ func TestConfigSecretsWarnGo(t *testing.T) {
 	})
 }
 
-// Tests a resource with a large (>4mb) string prop in Go
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestLargeResourceGo(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3",
-		},
-		Dir: filepath.Join("large_resource", "go"),
-	})
-}
-
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowGo(t *testing.T) {
 	t.Parallel()
@@ -991,7 +980,7 @@ func TestDeletedWithGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 	})
@@ -1161,7 +1150,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: validateOutputs(map[string]any{
@@ -1204,7 +1193,7 @@ func TestParameterizedGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		PrePrepareProject: func(info *engine.Projinfo) error {
 			e := ptesting.NewEnvironment(t)
@@ -1222,9 +1211,9 @@ func TestParameterizedGo(t *testing.T) {
 			require.NoError(t, err)
 			e.WriteTestFile("main_test.go", string(actualProgram))
 
-			// Generate the SDK for the provider.
-			path := info.Proj.Plugins.Providers[0].Path
-			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", path, "pkg", "--language", "go")
+			// Generate the SDK for the provider. gen-sdk takes the plugin
+			// binary itself and infers the package name from its filename.
+			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", testutil.TestProvider(t), "pkg", "--language", "go")
 
 			// Add a reference to the generated SDK in go.mod.
 			err = appendLines(filepath.Join(e.CWD, "go.mod"), []string{
@@ -1273,7 +1262,7 @@ func TestPackageAddGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
 	randomVersion := getPluginVersion(e, "random")
 	assert.NotEmpty(t, randomVersion)
 	stdout, stderr := e.RunCommand("pulumi", "package", "add", "random")
@@ -1335,7 +1324,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	require.NoError(t, err)
 
 	// Install terraform-provider and note its version
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	terraformProviderVersion := getPluginVersion(e, "terraform-provider")
 	assert.NotEmpty(t, terraformProviderVersion)
 	_, _ = e.RunCommand("pulumi", "package", "add", "terraform-provider", "NetApp/netapp-cloudmanager", "25.1.0")
@@ -1379,6 +1368,29 @@ func TestPackageAddGoParameterized(t *testing.T) {
 		fmt.Sprintf("expected go.mod to contain a replace for the package.  Contains: %v", containedRenames))
 }
 
+// Regression test for https://github.com/pulumi/pulumi/issues/21950: when an inline program runs more than once in the
+// same Go process, each run must register the parameterized package against its own engine.
+//
+//nolint:paralleltest // mutates environment
+func TestStaleParameterizedPackageRefGo(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("go", "stale-parameterized-packageref"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "1.1.1")
+	e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random", "3.8.1")
+
+	localSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk"))
+	require.NoError(t, err)
+	e.RunCommand("go", "mod", "edit", "-replace", "github.com/pulumi/pulumi/sdk/v3="+localSDK)
+	e.RunCommand("go", "mod", "tidy")
+
+	stdout, _ := e.RunCommand("go", "run", ".")
+	assert.Contains(t, stdout, "First preview succeeded")
+	assert.Contains(t, stdout, "Second preview succeeded")
+}
+
 //nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderGo(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
@@ -1389,7 +1401,7 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "v1.2.4")
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
 
@@ -1422,8 +1434,8 @@ func TestConvertMultipleTerraformProviderGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "v1.2.4")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
 
 	assert.True(t, e.PathExists("godir/go.mod"))

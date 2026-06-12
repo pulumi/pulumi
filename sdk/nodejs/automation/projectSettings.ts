@@ -18,7 +18,7 @@
  */
 export interface ProjectSettings {
     name: string;
-    runtime: ProjectRuntimeInfo | ProjectRuntime;
+    runtime?: ProjectRuntimeInfo | ProjectRuntime;
     main?: string;
     description?: string;
     author?: string;

@@ -274,13 +274,42 @@ func RunCommandWithOptions(
 	opts *integration.ProgramTestOptions,
 	name string, cwd string, exec string, args ...string,
 ) {
+	stdout, stderr, err := tryRunCommand(t, opts, name, cwd, exec, args...)
+	require.NoError(t, err, "stdout: %s\nstderr: %s", stdout, stderr)
+}
+
+// RunCommandWithRetries is like RunCommand but retries the command up to maxRetries times on failure.
+// This is useful for commands that may fail due to transient network errors (e.g. npm install).
+func RunCommandWithRetries(t *testing.T, name string, cwd string, maxRetries int, exec string, args ...string) {
+	opts := &integration.ProgramTestOptions{}
+	var stdout, stderr string
+	var err error
+	for attempt := range maxRetries {
+		stdout, stderr, err = tryRunCommand(t, opts, name, cwd, exec, args...)
+		if err == nil {
+			return
+		}
+		if attempt < maxRetries-1 {
+			t.Logf("Command %q failed (attempt %d/%d), retrying: %v", name, attempt+1, maxRetries, err)
+		}
+	}
+	require.NoError(t, err, "stdout: %s\nstderr: %s", stdout, stderr)
+}
+
+// tryRunCommand runs a command and returns stdout, stderr, and any error without failing the test.
+func tryRunCommand(
+	t *testing.T,
+	opts *integration.ProgramTestOptions,
+	name string, cwd string, exec string, args ...string,
+) (string, string, error) {
 	exec, err := executable.FindExecutable(exec)
 	if err != nil {
-		t.Error(err)
-		t.FailNow()
+		return "", "", err
 	}
 	wd, err := filepath.Abs(cwd)
-	require.NoError(t, err)
+	if err != nil {
+		return "", "", err
+	}
 	var stdout, stderr bytes.Buffer
 	opts.Stdout = &stdout
 	opts.Stderr = &stderr
@@ -290,18 +319,7 @@ func RunCommandWithOptions(
 		append([]string{exec}, args...),
 		wd,
 		opts)
-	//nolint:forbidigo // We enhance the error message show if the test fails
-	if !assert.NoError(t, err) {
-		stdout := stdout.String()
-		stderr := stderr.String()
-		if len(stdout) > 0 {
-			t.Logf("stdout: %s", stdout)
-		}
-		if len(stderr) > 0 {
-			t.Logf("stderr: %s", stderr)
-		}
-		t.FailNow()
-	}
+	return stdout.String(), stderr.String(), err
 }
 
 type SchemaVersion = string
@@ -309,12 +327,6 @@ type SchemaVersion = string
 // Schemas are downloaded in the makefile, and the versions specified here
 // should be in sync with the makefile.
 const (
-	AwsSchema              SchemaVersion = "4.26.0"
-	AzureNativeSchema      SchemaVersion = "1.56.0"
-	AzureSchema            SchemaVersion = "4.18.0"
-	KubernetesSchema       SchemaVersion = "3.7.0"
-	RandomSchema           SchemaVersion = "4.11.2"
-	EksSchema              SchemaVersion = "0.40.0"
-	AwsStaticWebsiteSchema SchemaVersion = "0.4.0"
-	AwsNativeSchema        SchemaVersion = "0.99.0"
+	AwsSchema    SchemaVersion = "4.26.0"
+	RandomSchema SchemaVersion = "4.11.2"
 )

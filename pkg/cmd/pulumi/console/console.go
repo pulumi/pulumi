@@ -17,6 +17,7 @@ package console
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
@@ -70,7 +71,7 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return err
 					}
 					if stack == nil {
-						fmt.Printf("Stack '%s' does not exist. "+
+						fmt.Fprintf(cmd.OutOrStdout(), "Stack '%s' does not exist. "+
 							"Run `pulumi stack init` to create a new stack.\n", ref.Name())
 						return nil
 					}
@@ -80,7 +81,7 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return err
 					}
 					if stack == nil {
-						fmt.Println("No stack is currently selected. " +
+						fmt.Fprintln(cmd.OutOrStdout(), "No stack is currently selected. "+
 							"Run `pulumi stack select` to select a stack.")
 						return nil
 					}
@@ -95,11 +96,11 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 					// console URL fails.
 					url = cloudBackend.URL()
 				}
-				launchConsole(url)
+				launchConsole(cmd.OutOrStdout(), url)
 				return nil
 			}
-			fmt.Println("This command is not available for your backend. " +
-				"To migrate to the Pulumi Cloud backend, " +
+			fmt.Fprintln(cmd.OutOrStdout(), "This command is not available for your backend. "+
+				"To migrate to the Pulumi Cloud backend, "+
 				"please see https://www.pulumi.com/docs/intro/concepts/state/#pulumi-cloud-backend")
 			return nil
 		},
@@ -112,9 +113,9 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 }
 
 // launchConsole attempts to open the console in the browser using the specified URL.
-func launchConsole(url string) {
+func launchConsole(out io.Writer, url string) {
 	if openErr := browser.OpenURL(url); openErr != nil {
-		fmt.Printf("We couldn't launch your web browser for some reason. \n"+
+		fmt.Fprintf(out, "We couldn't launch your web browser for some reason. \n"+
 			"Please visit: %s", url)
 	}
 }

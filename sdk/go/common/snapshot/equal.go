@@ -39,11 +39,11 @@ func AssertEqual(expected, actual *apitype.DeploymentV3) error {
 	if len(actual.PendingOperations) != len(expected.PendingOperations) {
 		var actualPendingOps strings.Builder
 		for _, op := range actual.PendingOperations {
-			actualPendingOps.WriteString(fmt.Sprintf("%v (%v), ", op.Type, op.Resource))
+			fmt.Fprintf(&actualPendingOps, "%v (%v), ", op.Type, op.Resource)
 		}
 		var expectedPendingOps strings.Builder
 		for _, op := range expected.PendingOperations {
-			expectedPendingOps.WriteString(fmt.Sprintf("%v (%v), ", op.Type, op.Resource))
+			fmt.Fprintf(&expectedPendingOps, "%v (%v), ", op.Type, op.Resource)
 		}
 		return fmt.Errorf(
 			"actual and expected pending operations differ, %d in actual (have %v), %d in expected (have %v)",
@@ -62,7 +62,7 @@ func AssertEqual(expected, actual *apitype.DeploymentV3) error {
 		for _, mop := range pendingOpsMap[jop.Resource.URN] {
 			if diff := deep.Equal(jop, mop); diff != nil {
 				if jop.Resource.URN == mop.Resource.URN {
-					diffStr.WriteString(fmt.Sprintf("%s\n", diff))
+					fmt.Fprintf(&diffStr, "%s\n", diff)
 				}
 			} else {
 				found = true
@@ -72,11 +72,11 @@ func AssertEqual(expected, actual *apitype.DeploymentV3) error {
 		if !found {
 			var pendingOps strings.Builder
 			for _, op := range actual.PendingOperations {
-				pendingOps.WriteString(fmt.Sprintf("%v (%v)\n", op.Type, op.Resource))
+				fmt.Fprintf(&pendingOps, "%v (%v)\n", op.Type, op.Resource)
 			}
 			var expectedPendingOps strings.Builder
 			for _, op := range expected.PendingOperations {
-				expectedPendingOps.WriteString(fmt.Sprintf("%v (%v)\n", op.Type, op.Resource))
+				fmt.Fprintf(&expectedPendingOps, "%v (%v)\n", op.Type, op.Resource)
 			}
 			return fmt.Errorf("actual and expected pending operations differ, %v (%v) not found in expected\n"+
 				"Actual: %v\nExpected: %v\nDiffs: %v",
@@ -87,11 +87,11 @@ func AssertEqual(expected, actual *apitype.DeploymentV3) error {
 	if len(actual.Resources) != len(expected.Resources) {
 		var actualResources strings.Builder
 		for _, r := range actual.Resources {
-			actualResources.WriteString(fmt.Sprintf("%v %v, ", r.URN, r.Delete))
+			fmt.Fprintf(&actualResources, "%v %v, ", r.URN, r.Delete)
 		}
 		var expectedResources strings.Builder
 		for _, r := range expected.Resources {
-			expectedResources.WriteString(fmt.Sprintf("%v %v, ", r.URN, r.Delete))
+			fmt.Fprintf(&expectedResources, "%v %v, ", r.URN, r.Delete)
 		}
 		return fmt.Errorf("actual and expected resources differ, %d in actual (have %v), %d in expected (have %v)",
 			len(actual.Resources), actualResources.String(), len(expected.Resources), expectedResources.String())
@@ -166,7 +166,7 @@ func AssertEqual(expected, actual *apitype.DeploymentV3) error {
 		for _, mr := range resourcesMap[jr.URN] {
 			if diff := deep.Equal(jr, mr); diff != nil {
 				if jr.URN == mr.URN {
-					diffStr.WriteString(fmt.Sprintf("%s\n", diff))
+					fmt.Fprintf(&diffStr, "%s\n", diff)
 				}
 			} else {
 				found = true
@@ -176,11 +176,11 @@ func AssertEqual(expected, actual *apitype.DeploymentV3) error {
 		if !found {
 			var actualResources strings.Builder
 			for _, jr := range actual.Resources {
-				actualResources.WriteString(fmt.Sprintf("Actual resource: %v\n", jr))
+				fmt.Fprintf(&actualResources, "Actual resource: %v\n", jr)
 			}
 			var expectedResources strings.Builder
 			for _, mr := range expected.Resources {
-				expectedResources.WriteString(fmt.Sprintf("Expected resource: %v\n", mr))
+				fmt.Fprintf(&expectedResources, "Expected resource: %v\n", mr)
 			}
 			return fmt.Errorf("actual and expected resources differ, %v not found in expected.\n"+
 				"Actual: %v\nExpected: %v\nDiffs: %v",

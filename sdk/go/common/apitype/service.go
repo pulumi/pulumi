@@ -17,6 +17,8 @@ package apitype
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/blang/semver"
 )
 
 // An APICapability is the name of a capability or feature that a service backend
@@ -45,6 +47,14 @@ const (
 
 	// Indicates whether the service supports retrieving a stack's required policy packs.
 	StackPolicyPacks APICapability = "stack-policy-packs"
+
+	// APIVersion advertises the REST API version range that the service speaks, negotiated
+	// via the `Accept: application/vnd.pulumi+N` header. The configuration carries the
+	// server's max, min, and default API versions; see APIVersionCapabilityConfig.
+	APIVersion APICapability = "api-version"
+
+	// NeoCLIMode advertises minimum CLI requirements for `pulumi neo`; see NeoCLIModeConfig.
+	NeoCLIMode APICapability = "neo-cli-mode"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -57,6 +67,46 @@ type DeltaCheckpointUploadsConfigV2 struct {
 type DeploymentSchemaVersionConfig struct {
 	// Version is the maximum version of the deployment schema that the service supports.
 	Version int `json:"version"`
+}
+
+type NeoCLIModeConfig struct {
+	// MinCLIVersion is the minimum Pulumi CLI semver required to use `pulumi neo`. Empty
+	// means no minimum.
+	MinCLIVersion *semver.Version `json:"minCliVersion,omitempty"`
+}
+
+// APIVersionCapabilityConfig is the configuration for the api-version capability. It advertises
+// the REST API version range (negotiated via the `Accept: application/vnd.pulumi+N` header) that
+// the service speaks.
+type APIVersionCapabilityConfig struct {
+	// MaxVersion is the highest API version the service understands.
+	MaxVersion int `json:"maxVersion"`
+	// MinVersion is the lowest API version the service accepts. Requests asking for a lower
+	// version via the Accept header will be rejected.
+	MinVersion int `json:"minVersion"`
+	// DefaultVersion is the version the service assumes when the client does not send an
+	// Accept header. Today this equals MaxVersion, but the two may diverge during a staged
+	// rollout of a new version.
+	DefaultVersion int `json:"defaultVersion"`
+}
+
+// validate checks that the version triple satisfies the required invariants:
+// minVersion >= 1, maxVersion >= minVersion, and defaultVersion ∈ [minVersion, maxVersion].
+// A server that advertises values outside these bounds is considered misconfigured.
+func (c APIVersionCapabilityConfig) validate() error {
+	if c.MinVersion < 1 {
+		return fmt.Errorf("minVersion must be >= 1, got %d", c.MinVersion)
+	}
+	if c.MaxVersion < c.MinVersion {
+		return fmt.Errorf("maxVersion (%d) must be >= minVersion (%d)", c.MaxVersion, c.MinVersion)
+	}
+	if c.DefaultVersion < c.MinVersion || c.DefaultVersion > c.MaxVersion {
+		return fmt.Errorf(
+			"defaultVersion (%d) must be in [minVersion, maxVersion] = [%d, %d]",
+			c.DefaultVersion, c.MinVersion, c.MaxVersion,
+		)
+	}
+	return nil
 }
 
 // APICapabilityConfig captures a service backend capability and any associated
@@ -93,6 +143,14 @@ type Capabilities struct {
 
 	// Indicates whether the service supports retrieving a stack's required policy packs.
 	StackPolicyPacks bool
+
+	// If non-nil, indicates the REST API version range the service speaks (negotiated via
+	// the `Accept: application/vnd.pulumi+N` header).
+	APIVersion *APIVersionCapabilityConfig
+
+	// If non-nil, indicates that the service has advertised minimum CLI requirements
+	// for `pulumi neo`.
+	NeoCLIMode *NeoCLIModeConfig
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -135,6 +193,25 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 		case StackPolicyPacks:
 			if entry.Version == 1 {
 				parsed.StackPolicyPacks = true
+			}
+		case APIVersion:
+			if entry.Version == 1 {
+				var cfg APIVersionCapabilityConfig
+				if err := json.Unmarshal(entry.Configuration, &cfg); err != nil {
+					return Capabilities{}, fmt.Errorf("decoding APIVersionCapabilityConfig returned %w", err)
+				}
+				if err := cfg.validate(); err != nil {
+					return Capabilities{}, fmt.Errorf("invalid APIVersionCapabilityConfig: %w", err)
+				}
+				parsed.APIVersion = &cfg
+			}
+		case NeoCLIMode:
+			if entry.Version == 1 {
+				var cfg NeoCLIModeConfig
+				if err := json.Unmarshal(entry.Configuration, &cfg); err != nil {
+					return Capabilities{}, fmt.Errorf("decoding NeoCLIModeConfig returned %w", err)
+				}
+				parsed.NeoCLIMode = &cfg
 			}
 		default:
 			continue

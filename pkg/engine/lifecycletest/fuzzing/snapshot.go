@@ -105,13 +105,13 @@ func (s *SnapshotSpec) AsSnapshot() *deploy.Snapshot {
 // in debugging output and error messages.
 func (s *SnapshotSpec) Pretty(indent string) string {
 	var rendered strings.Builder
-	rendered.WriteString(fmt.Sprintf("%sSnapshot %p", indent, s))
+	fmt.Fprintf(&rendered, "%sSnapshot %p", indent, s)
 	if len(s.Resources) == 0 {
-		rendered.WriteString(fmt.Sprintf("\n%s  No resources", indent))
+		fmt.Fprintf(&rendered, "\n%s  No resources", indent)
 	} else {
-		rendered.WriteString(fmt.Sprintf("\n%s  Resources (%d):", indent, len(s.Resources)))
+		fmt.Fprintf(&rendered, "\n%s  Resources (%d):", indent, len(s.Resources))
 		for _, r := range s.Resources {
-			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    ")))
+			fmt.Fprintf(&rendered, "\n%s    %s", indent, r.Pretty(indent+"    "))
 		}
 	}
 

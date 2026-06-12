@@ -30,7 +30,7 @@ func TestPythonErrorHooks(t *testing.T) {
 			filepath.Join("..", "..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

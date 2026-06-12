@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
@@ -50,16 +51,17 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			sink := cmdutil.Diag()
 			pctx, err := plugin.NewContext(
 				cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost)
+				nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
-				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-				env.Global(), 0 /* unbounded concurrency */)
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
+				registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}
@@ -68,7 +70,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return err
 			}
 			bytes = append(bytes, '\n')
-			n, err := os.Stdout.Write(bytes)
+			n, err := cmd.OutOrStdout().Write(bytes)
 			if err != nil {
 				return err
 			}

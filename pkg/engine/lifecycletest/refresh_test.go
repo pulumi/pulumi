@@ -3161,9 +3161,6 @@ func TestRefreshV2TargetedWithPropertyDependencies(t *testing.T) {
 func TestRefreshV2TargetNotInProgram(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#21431]: Remove this once the underlying issue is fixed.
-	t.Skip("Skipping test, repro for snapshot integrity issue")
-
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",
@@ -3258,9 +3255,6 @@ func TestRefreshV2TargetNotInProgram(t *testing.T) {
 
 func TestRefreshV2ParentChildOrdering(t *testing.T) {
 	t.Parallel()
-
-	// TODO[pulumi/pulumi#21386]: re-enable this test when the underlying issue is fixed
-	t.Skip("Skipping test, repro for snapshot integrity issue")
 
 	p := &lt.TestPlan{
 		Project: "test-project",
@@ -3656,9 +3650,6 @@ func TestRefreshV2IncludeTarget(t *testing.T) {
 // the referencing resource, violating a snapshot integrity constraint.
 func TestRefreshV2DeletedWithOrdering(t *testing.T) {
 	t.Parallel()
-
-	// TODO[pulumi/pulumi#22481]: Fix the underlying issue and remove the skip.
-	t.Skip("Skipping test due to snapshot integrity error with DeletedWith during refreshV2")
 
 	p := &lt.TestPlan{
 		Project: "test-project",

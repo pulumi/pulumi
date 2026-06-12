@@ -105,6 +105,7 @@ func newPulumiPackage() *Package {
 	}
 
 	pkg, diags, err := bindSpec(spec, nil, nullLoader{}, false, ValidationOptions{
+		AllowPulumiPackage:      true,
 		AllowDanglingReferences: true,
 	})
 	if err == nil && diags.HasErrors() {

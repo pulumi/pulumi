@@ -23,6 +23,7 @@ import (
 	"slices"
 	"strings"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
@@ -57,7 +58,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 			sink := cmdutil.Diag()
 			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost)
+				nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return err
 			}
@@ -68,9 +69,10 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			spec, _, err := packages.SchemaFromSchemaSource(pctx, args[0], parameters,
-				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-				env.Global(), 0 /* unbounded concurrency */)
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, args[0], parameters,
+				registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}

@@ -36,7 +36,7 @@ func SetupPulumiBinary() {
 	stdout, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
 		fmt.Printf("error finding repo root: %v\n", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:noosexit // test setup helper invoked from TestMain.
 	}
 	repoRoot := strings.TrimSpace(string(stdout))
 	if os.Getenv("PULUMI_INTEGRATION_REBUILD_BINARIES") == "true" {
@@ -45,7 +45,7 @@ func SetupPulumiBinary() {
 		stdout, err = cmd.CombinedOutput()
 		if err != nil {
 			fmt.Printf("error building plugin: %v.  Output: %v\n", err, string(stdout))
-			os.Exit(1)
+			os.Exit(1) //nolint:noosexit // test setup helper invoked from TestMain.
 		}
 	}
 	repoBin := filepath.Join(repoRoot, "bin")
@@ -71,7 +71,7 @@ func InstallPythonProvider() {
 	stdout, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
 		fmt.Printf("error finding repo root: %v\n", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:noosexit // test setup helper invoked from TestMain.
 	}
 	repoRoot := strings.TrimSpace(string(stdout))
 
@@ -81,7 +81,7 @@ func InstallPythonProvider() {
 	stdout, err = cmd.CombinedOutput()
 	if err != nil {
 		fmt.Printf("error install requirements for plugin: %v.  Output: %v\n", err, string(stdout))
-		os.Exit(1)
+		os.Exit(1) //nolint:noosexit // test setup helper invoked from TestMain.
 	}
 }
 

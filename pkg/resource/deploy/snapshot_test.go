@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1248,4 +1249,59 @@ func TestSnapshotToposort_DetectsCycles(t *testing.T) {
 			assert.ErrorContains(t, err, "snapshot has cyclic dependencies")
 		})
 	}
+}
+
+// TestSnapshotVerifyIntegrity_SnippetReferencesKnownURN is the positive case: a snippet whose
+// References map points at a URN that exists in snap.Resources passes integrity verification.
+func TestSnapshotVerifyIntegrity_SnippetReferencesKnownURN(t *testing.T) {
+	t.Parallel()
+
+	target := resource.NewURN("stack", "project", "", "pkgA:index:res", "target")
+	snap := &Snapshot{
+		Resources: []*resource.State{
+			{URN: target, Type: "pkgA:index:res"},
+		},
+		Snippets: []resource.Snippet{
+			{
+				Name: "consumer",
+				Type: "pkgA:index:res",
+				Code: `propA = target.id`,
+				References: map[string]string{
+					"target": string(target),
+				},
+			},
+		},
+	}
+
+	require.NoError(t, snap.VerifyIntegrity())
+}
+
+// TestSnapshotVerifyIntegrity_SnippetReferencesUnknownURN is the negative case: a snippet that
+// references a URN absent from snap.Resources produces a snapshot integrity error naming the
+// snippet, the bad URN, and the identifier through which it was referenced.
+func TestSnapshotVerifyIntegrity_SnippetReferencesUnknownURN(t *testing.T) {
+	t.Parallel()
+
+	missing := resource.NewURN("stack", "project", "", "pkgA:index:res", "missing")
+	snap := &Snapshot{
+		// No resources at all — the snippet's reference is therefore dangling.
+		Snippets: []resource.Snippet{
+			{
+				Name: "consumer",
+				Type: "pkgA:index:res",
+				Code: `propA = ghost.id`,
+				References: map[string]string{
+					"ghost": string(missing),
+				},
+			},
+		},
+	}
+
+	err := snap.VerifyIntegrity()
+	require.Error(t, err)
+	require.ErrorContains(t, err, "unknown URN")
+	require.ErrorContains(t, err, string(missing))
+	require.ErrorContains(t, err, `"ghost"`)
+	_, ok := snapshot.AsSnapshotIntegrityError(err)
+	require.True(t, ok, "should be a SnapshotIntegrityError")
 }

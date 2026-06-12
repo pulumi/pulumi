@@ -84,7 +84,7 @@ jobs:
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
@@ -92,18 +92,20 @@ jobs:
           CACHE_KEY: "matrix-setup"
         run: echo "$CACHE_KEY" > .gocache.tmp
       - name: Setup Go Caching
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5 # only used by gotestsum
+        uses: actions/setup-go@v6 # only used by gotestsum
         with:
           go-version: '>=1.19.0' # decoupled from version sets, only used by gotestsum
           cache: true
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: ./.github/actions/retry
         with:
-          repository: dnephin/gotestsum
-          ref: d09768c81065b404caed0855eb3ab8f11a2a4431
-          path: vendor/gotestsum
+          action: actions/checkout@v6
+          with: |
+            repository: dnephin/gotestsum
+            ref: d09768c81065b404caed0855eb3ab8f11a2a4431
+            path: vendor/gotestsum
       - run: |
           cd vendor/gotestsum
           go install .
@@ -112,9 +114,11 @@ jobs:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
-      - uses: jdx/mise-action@v2
+      - uses: ./.github/actions/retry
         with:
-          experimental: true
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
@@ -160,6 +164,8 @@ jobs:
             --platform "${INTEGRATION_PLATFORMS[@]}" "${ACCEPTANCE_PLATFORMS[@]}" \
             --version-set current \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
+            --partition-package github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language \
+                pkg/testing/pulumi-test-language 2 \
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
             --partition-module tests 8
@@ -175,7 +181,8 @@ jobs:
             --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module pkg 1 \
             --partition-module sdk 1 \
-            --partition-module sdk/go/pulumi-language-go 1 \
+            --partition-package github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3 \
+                sdk/go/pulumi-language-go 3 \
             --partition-package github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl \
                 sdk/pcl/cmd/pulumi-language-pcl 2 \
             --partition-package github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3 \
@@ -233,7 +240,7 @@ jobs:
               --version-set current \
               --partition-module pkg 1 \
               --partition-module sdk 1 \
-              --partition-module tests 4 \
+              --partition-module tests 8 \
               --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
               --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
             )
@@ -502,15 +509,17 @@ jobs:
               exit 1
           fi
       # Checkout repository to upload coverage results.
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
       - name: Retrieve code coverage reports
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          pattern: coverage-*
-          merge-multiple: true
-          path: coverage
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            pattern: coverage-*
+            merge-multiple: true
+            path: coverage
       # For PRs we need to set the merge base manually, otherwise it is sometimes incorrect.  See https://github.com/pulumi/pulumi/pull/17204#issuecomment-2405599310
       - name: Set codecov PR base
         if: github.event_name == 'pull_request'

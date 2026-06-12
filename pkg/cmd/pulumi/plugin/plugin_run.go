@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -34,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -102,7 +104,8 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 					source = fmt.Sprintf("%s@%s", source, pluginSpec.Version)
 				}
 
-				d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
+				d := diag.DefaultSink(
+					cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
 
 				pluginPath, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
 				if err != nil {
@@ -131,7 +134,8 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			pluginArgs := args[1:]
 
-			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil, schema.NewLoaderServerFromHost)
+			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil,
+				schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}
@@ -165,20 +169,21 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// For stdin, we start a copy goroutine but don't wait for it since it will block
 			// indefinitely if there's no stdin input.
 
+			stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
 			var wg sync.WaitGroup
 			wg.Add(2) // Only wait for stdout and stderr, not stdin
 			go func() {
 				defer wg.Done()
-				_, err := io.Copy(os.Stdout, plugin.Stdout)
+				_, err := io.Copy(stdout, plugin.Stdout)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error reading plugin stdout: %v\n", err)
+					fmt.Fprintf(stderr, "error reading plugin stdout: %v\n", err)
 				}
 			}()
 			go func() {
 				defer wg.Done()
-				_, err := io.Copy(os.Stderr, plugin.Stderr)
+				_, err := io.Copy(stderr, plugin.Stderr)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error reading plugin stderr: %v\n", err)
+					fmt.Fprintf(stderr, "error reading plugin stderr: %v\n", err)
 				}
 			}()
 			// Copy stdin in a separate goroutine but don't wait for it.
@@ -196,7 +201,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return fmt.Errorf("plugin %s exited with error: %w", source, err)
 			}
 			if code != 0 {
-				os.Exit(code)
+				return pluginErrorCode{source, code}
 			}
 			return nil
 		},
@@ -216,3 +221,20 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	return cmd
 }
+
+var _ cmd.CustomExitCodeError = pluginErrorCode{}
+
+type pluginErrorCode struct {
+	plugin string
+	code   int
+}
+
+func (pec pluginErrorCode) CustomExitCode() int {
+	return pec.code
+}
+
+func (pec pluginErrorCode) Error() string {
+	return fmt.Sprintf("plugin %s exited with non-zero error code %d", pec.plugin, pec.code)
+}
+
+func (pec pluginErrorCode) Unwrap() error { return result.BailError(pec) }

@@ -41,7 +41,7 @@ jobs:
     name: python
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -50,12 +50,12 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Set up uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
       - name: Build Pulumi Python SDK wheel
@@ -64,18 +64,20 @@ jobs:
           sed -i.bak "s/^version = .*/version = \"${PYPI_VERSION}\"/g" pyproject.toml && rm pyproject.toml.bak
           make build_package
       - name: Upload pulumi.whl
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-python-sdk
-          path: sdk/python/build/*.whl
-          retention-days: 1
-          if-no-files-found: error
+          action: actions/upload-artifact@v7
+          with: |
+            name: artifacts-python-sdk
+            path: sdk/python/build/*.whl
+            retention-days: 1
+            if-no-files-found: error
 
   build_node_sdk:
     name: nodejs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -84,7 +86,7 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
@@ -114,9 +116,43 @@ jobs:
           cd sdk/nodejs/bin
           npm pack
       - name: Upload pulumi-node-sdk.tgz
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-nodejs-sdk
-          path: sdk/nodejs/bin/*.tgz
-          retention-days: 1
-          if-no-files-found: error
+          action: actions/upload-artifact@v7
+          with: |
+            name: artifacts-nodejs-sdk
+            path: sdk/nodejs/bin/*.tgz
+            retention-days: 1
+            if-no-files-found: error
+
+  build_npm_package:
+    name: npm cli wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Setup versioning env vars
+        env:
+          version: ${{ inputs.version }}
+        run: |
+          ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+      - name: Build and test the npm CLI wrapper
+        run: |
+          make -C npm test
+      - name: Pack the npm CLI wrapper
+        run: |
+          cd npm && npm pack
+      - name: Upload sdk-npm-pulumi.tgz
+        uses: ./.github/actions/retry
+        with:
+          action: actions/upload-artifact@v7
+          with: |
+            name: artifacts-npm-package
+            path: npm/*.tgz
+            retention-days: 1
+            if-no-files-found: error

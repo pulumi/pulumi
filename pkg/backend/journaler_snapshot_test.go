@@ -15,7 +15,11 @@
 package backend
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,6 +34,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
 func MockJournalSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotManager, *MockStackPersister) {
@@ -1114,4 +1120,130 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJ
 
 	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
+}
+
+// failingBatchEncryptSecretsManager wraps a working secrets manager but always fails
+// its BatchEncrypt call, modeling a transient encryption-service failure (e.g. a 5xx
+// from Pulumi Cloud's secrets endpoint, an expired token, or a network blip).
+type failingBatchEncryptSecretsManager struct{}
+
+func (failingBatchEncryptSecretsManager) Type() string                  { return "failing" }
+func (failingBatchEncryptSecretsManager) State() json.RawMessage        { return nil }
+func (f failingBatchEncryptSecretsManager) Encrypter() config.Encrypter { return f }
+func (f failingBatchEncryptSecretsManager) Decrypter() config.Decrypter { return f }
+
+func (failingBatchEncryptSecretsManager) EncryptValue(
+	_ context.Context, plaintext string,
+) (string, error) {
+	return "encrypted:" + plaintext, nil
+}
+
+func (failingBatchEncryptSecretsManager) BatchEncrypt(
+	_ context.Context, _ []string,
+) ([]string, error) {
+	return nil, errors.New("batch encrypt boom")
+}
+
+func (failingBatchEncryptSecretsManager) DecryptValue(
+	_ context.Context, ciphertext string,
+) (string, error) {
+	return ciphertext, nil
+}
+
+func (failingBatchEncryptSecretsManager) BatchDecrypt(
+	_ context.Context, ciphertexts []string,
+) ([]string, error) {
+	return ciphertexts, nil
+}
+
+// TestJournalEncryptionFailureNotSilent reproduces https://github.com/pulumi/pulumi/issues/23144.
+//
+// When a journal entry contains a secret value, SnapshotJournaler.AddJournalEntry passes the
+// entry through stack.BatchEncrypt, which begins a batch on the secrets manager, queues each
+// SecretV1 target via Enqueue, then flushes the batch in a deferred completeBatch call. If the
+// underlying BatchEncrypt fails, the queued targets keep Ciphertext == "". With both
+// Ciphertext and Plaintext empty and `omitempty` JSON tags, the persisted SecretV1 reduces to
+// just {"4dabf18193072939515e22adb298388d":"1b47..."} on disk -- which fails to deserialize on
+// the next operation with:
+//
+//	malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied
+//
+// The bug is that stack.BatchEncrypt ends with `return result, nil`, discarding the error it
+// accumulated from completeBatch. AddJournalEntry therefore returns nil and silently persists
+// the malformed entry.
+func TestJournalEncryptionFailureNotSilent(t *testing.T) {
+	t.Parallel()
+
+	sm := stack.NewBatchingCachingSecretsManager(failingBatchEncryptSecretsManager{})
+
+	// Empty base snapshot so the constructor's own SerializeDeployment doesn't trip.
+	baseSnap := deploy.NewSnapshot(deploy.Manifest{
+		Time:    time.Now(),
+		Version: version.Version,
+	}, sm, nil, nil, deploy.SnapshotMetadata{}, nil)
+
+	sp := &MockStackPersister{}
+	j, err := NewSnapshotJournaler(t.Context(), sp, sm, stack.Base64SecretsProvider{}, baseSnap)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = j.Close() })
+
+	// Mirror the issue's repro: a resource whose outputs contain a secret value, like an
+	// aws.ssm.Parameter's `value` / `valueWo`.
+	urn := resource.NewURN("test-stack", "test-project", "", "aws:ssm/parameter:Parameter", "p")
+	state := &resource.State{
+		Type:   tokens.Type("aws:ssm/parameter:Parameter"),
+		URN:    urn,
+		Custom: true,
+		Inputs: resource.PropertyMap{},
+		Outputs: resource.PropertyMap{
+			"value": resource.MakeSecret(resource.NewProperty("super-secret")),
+		},
+	}
+
+	err = j.AddJournalEntry(engine.JournalEntry{
+		SequenceID:  1,
+		Kind:        engine.JournalEntrySuccess,
+		OperationID: 1,
+		State:       state,
+	})
+
+	// Bug: today AddJournalEntry returns nil because stack.BatchEncrypt drops the error
+	// from completeBatch. Once stack.BatchEncrypt is fixed to return its accumulated error,
+	// this assertion will pass. Use assert (not require) so the secondary check on the
+	// persisted snapshot below also runs and surfaces the visible state corruption.
+	if assert.Error(t, err, "AddJournalEntry must surface batch encryption failures (#23144)") {
+		assert.Contains(t, err.Error(), "batch encrypt boom")
+	}
+
+	// Belt-and-braces: a persisted snapshot must never contain a SecretV1 with neither
+	// ciphertext nor plaintext, regardless of whether the error is propagated.
+	for _, snap := range sp.SavedSnapshots {
+		for _, res := range snap.Resources {
+			assertNoMalformedSecrets(t, res.Inputs)
+			assertNoMalformedSecrets(t, res.Outputs)
+		}
+	}
+}
+
+// assertNoMalformedSecrets walks the persisted property tree and asserts that no SecretV1
+// has both Ciphertext and Plaintext empty. A SecretV1 in that state serializes (via
+// `omitempty` on both fields) to just {"4dabf18193072939515e22adb298388d":"..."}, which
+// fails to deserialize on the next operation -- the corruption signature in #23144.
+func assertNoMalformedSecrets(t *testing.T, props map[string]any) {
+	t.Helper()
+	for k, v := range props {
+		switch v := v.(type) {
+		case *apitype.SecretV1:
+			assert.Truef(t, v.Ciphertext != "" || v.Plaintext != "",
+				"property %q is a SecretV1 with neither ciphertext nor plaintext: %+v", k, v)
+		case map[string]any:
+			if sig, _ := v[resource.SigKey].(string); sig == resource.SecretSig {
+				cipher, _ := v["ciphertext"].(string)
+				plain, _ := v["plaintext"].(string)
+				assert.Truef(t, cipher != "" || plain != "",
+					"property %q is a SecretV1 with neither ciphertext nor plaintext: %+v", k, v)
+			}
+			assertNoMalformedSecrets(t, v)
+		}
+	}
 }

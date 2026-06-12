@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // A small provider with a single resource "Resource" that has a boolean, number, string, array, and map property.
@@ -43,10 +42,6 @@ func (p *OptionalPrimitiveProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *OptionalPrimitiveProvider) Pkg() tokens.Package {
-	return "optionalprimitive"
 }
 
 func (p *OptionalPrimitiveProvider) GetSchema(

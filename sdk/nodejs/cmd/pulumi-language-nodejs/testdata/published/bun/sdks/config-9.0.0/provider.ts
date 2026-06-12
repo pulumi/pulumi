@@ -51,5 +51,5 @@ export class Provider extends pulumi.ProviderResource {
  */
 export interface ProviderArgs {
     name: pulumi.Input<string>;
-    pluginDownloadURL?: pulumi.Input<string>;
+    pluginDownloadURL?: pulumi.Input<string | undefined>;
 }

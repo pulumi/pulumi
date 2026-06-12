@@ -8,7 +8,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
-import pulumi_kubernetes
+import pulumi_other
 
 __all__ = [
     'MyType',
@@ -19,7 +19,7 @@ __all__ = [
 class MyType:
     def __init__(__self__, *,
                  my_prop: _builtins.str,
-                 external_prop: Optional['pulumi_kubernetes.core.v1.PodArgs'] = None,
+                 external_prop: Optional['pulumi_other.module.Config'] = None,
                  my_other_prop: Optional[_builtins.float] = None):
         pulumi.set(__self__, "my_prop", my_prop)
         if external_prop is not None:
@@ -38,11 +38,11 @@ class MyType:
 
     @_builtins.property
     @pulumi.getter(name="externalProp")
-    def external_prop(self) -> Optional['pulumi_kubernetes.core.v1.PodArgs']:
+    def external_prop(self) -> Optional['pulumi_other.module.Config']:
         return pulumi.get(self, "external_prop")
 
     @external_prop.setter
-    def external_prop(self, value: Optional['pulumi_kubernetes.core.v1.PodArgs']):
+    def external_prop(self, value: Optional['pulumi_other.module.Config']):
         pulumi.set(self, "external_prop", value)
 
     @_builtins.property
@@ -59,8 +59,8 @@ class MyType:
 class MyTypeArgs:
     def __init__(__self__, *,
                  my_prop: pulumi.Input[_builtins.str],
-                 external_prop: Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']] = None,
-                 my_other_prop: Optional[pulumi.Input[_builtins.float]] = None):
+                 external_prop: pulumi.Input[Optional['pulumi_other.module.ConfigArgs']] = None,
+                 my_other_prop: pulumi.Input[Optional[_builtins.float]] = None):
         pulumi.set(__self__, "my_prop", my_prop)
         if external_prop is not None:
             pulumi.set(__self__, "external_prop", external_prop)
@@ -78,20 +78,20 @@ class MyTypeArgs:
 
     @_builtins.property
     @pulumi.getter(name="externalProp")
-    def external_prop(self) -> Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]:
+    def external_prop(self) -> pulumi.Input[Optional['pulumi_other.module.ConfigArgs']]:
         return pulumi.get(self, "external_prop")
 
     @external_prop.setter
-    def external_prop(self, value: Optional[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]):
+    def external_prop(self, value: pulumi.Input[Optional['pulumi_other.module.ConfigArgs']]):
         pulumi.set(self, "external_prop", value)
 
     @_builtins.property
     @pulumi.getter(name="myOtherProp")
-    def my_other_prop(self) -> Optional[pulumi.Input[_builtins.float]]:
+    def my_other_prop(self) -> pulumi.Input[Optional[_builtins.float]]:
         return pulumi.get(self, "my_other_prop")
 
     @my_other_prop.setter
-    def my_other_prop(self, value: Optional[pulumi.Input[_builtins.float]]):
+    def my_other_prop(self, value: pulumi.Input[Optional[_builtins.float]]):
         pulumi.set(self, "my_other_prop", value)
 
 

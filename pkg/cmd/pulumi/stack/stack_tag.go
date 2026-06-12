@@ -16,6 +16,7 @@ package stack
 
 import (
 	"fmt"
+	"io"
 	"sort"
 
 	"github.com/spf13/cobra"
@@ -79,6 +80,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 				*stack,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -86,7 +88,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 
 			tags := s.Tags()
 			if value, ok := tags[name]; ok {
-				fmt.Printf("%v\n", value)
+				fmt.Fprintf(cmd.OutOrStdout(), "%v\n", value)
 				return nil
 			}
 
@@ -125,6 +127,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 				*stack,
 				SetCurrent,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -133,10 +136,10 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 			tags := s.Tags()
 
 			if jsonOut {
-				return ui.PrintJSON(tags)
+				return ui.FprintJSON(cmd.OutOrStdout(), tags)
 			}
 
-			printStackTags(tags)
+			printStackTags(cmd.OutOrStdout(), tags)
 			return nil
 		},
 	}
@@ -149,7 +152,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 	return cmd
 }
 
-func printStackTags(tags map[apitype.StackTagName]string) {
+func printStackTags(w io.Writer, tags map[apitype.StackTagName]string) {
 	names := slice.Prealloc[string](len(tags))
 	for n := range tags {
 		names = append(names, n)
@@ -161,7 +164,7 @@ func printStackTags(tags map[apitype.StackTagName]string) {
 		rows = append(rows, cmdutil.TableRow{Columns: []string{name, tags[name]}})
 	}
 
-	ui.PrintTable(cmdutil.Table{
+	ui.FprintTable(w, cmdutil.Table{
 		Headers: []string{"NAME", "VALUE"},
 		Rows:    rows,
 	}, nil)
@@ -188,6 +191,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 				*stack,
 				SetCurrent,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -232,6 +236,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 				*stack,
 				SetCurrent,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err

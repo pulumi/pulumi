@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -113,7 +115,7 @@ func TestNoInternalTests(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 
 	response, err := engine.GetLanguageTests(ctx, &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
@@ -133,7 +135,7 @@ func TestUniqueProviderVersions(t *testing.T) {
 	highestVersion := semver.Version{Major: 0, Minor: 0, Patch: 0}
 	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
-			version, _ := getProviderVersion(provider())
+			version, _ := runner.GetProviderVersion(t.Context(), provider())
 			if version.GT(highestVersion) {
 				highestVersion = version
 			}
@@ -149,8 +151,10 @@ func TestUniqueProviderVersions(t *testing.T) {
 		for _, provider := range test.Providers {
 			provider := provider()
 
-			pkg := string(provider.Pkg())
-			version, err := getProviderVersion(provider)
+			pkg, err := runner.GetProviderName(t.Context(), provider)
+			require.NoError(t, err)
+
+			version, err := runner.GetProviderVersion(t.Context(), provider)
 			require.NoError(t, err)
 
 			vstr := version.String()
@@ -179,23 +183,24 @@ func TestProviderVersions(t *testing.T) {
 	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
 			provider := provider()
-			pkg := string(provider.Pkg())
-			if pkg == "parameterized" {
-				// for parameterized provider, the version is set in the parameterization
-				// it is not necessarily the case that the plugin info version is the same as package version
-				continue
-			}
-			version, err := getProviderVersion(provider)
+			version, err := runner.GetProviderVersion(t.Context(), provider)
 			require.NoError(t, err)
 
 			schema, err := provider.GetSchema(t.Context(), plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 
 			var schemaJSON struct {
+				Name    string `json:"name"`
 				Version string `json:"version"`
 			}
 			err = json.Unmarshal(schema.Schema, &schemaJSON)
 			require.NoError(t, err)
+			pkg := schemaJSON.Name
+			if pkg == "parameterized" {
+				// for parameterized provider, the version is set in the parameterization
+				// it is not necessarily the case that the plugin info version is the same as package version
+				continue
+			}
 
 			assert.Equal(t, version.String(), schemaJSON.Version,
 				"provider %s reports different versions in schema %s and plugin info %s", pkg, version, schemaJSON.Version)
@@ -218,17 +223,17 @@ func TestProviderSchemas(t *testing.T) {
 		for _, provider := range test.Providers {
 			provider := provider()
 
-			if provider.Pkg() == "parameterized" {
-				// We don't currently support testing the schemas of parameterized providers.
-				continue
-			}
-
 			resp, err := provider.GetSchema(t.Context(), plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 
 			var spec schema.PackageSpec
 			err = json.Unmarshal(resp.Schema, &spec)
 			require.NoError(t, err)
+
+			if spec.Name == "parameterized" {
+				// We don't currently support testing the schemas of parameterized providers.
+				continue
+			}
 
 			pkg, diags, err := schema.BindSpec(spec, loader, schema.ValidationOptions{
 				AllowDanglingReferences: true,
@@ -329,7 +334,11 @@ func (l *inMemoryProviderLoader) LoadPackageReferenceV2(
 	var provider plugin.Provider
 	for _, p := range l.providers {
 		p := p()
-		if string(p.Pkg()) == descriptor.Name {
+		pkg, err := runner.GetProviderName(ctx, p)
+		if err != nil {
+			return nil, err
+		}
+		if pkg == descriptor.Name {
 			info, err := p.GetPluginInfo(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("get plugin info for %s: %w", descriptor.Name, err)

@@ -498,10 +498,6 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#21700]: Fix the underlying issue and re-enable this test. Note that this test is flaky,
-	// so you need to run it with `-count=1000` to make sure you see the failure.
-	t.Skip("Skipping test due to underlying panic")
-
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",
@@ -643,9 +639,6 @@ func TestUntargetedComponentResource(t *testing.T) {
 func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#22511]: Fix the underlying issue and re-enable this test.
-	t.Skip("Skipping: targeted update with refresh produces unknown provider reference for child providers")
-
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",
@@ -731,6 +724,140 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+			Targets: deploy.NewUrnTargets([]string{targetURN}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+// TestTargetedUpdateRefreshWithDeletedParent reproduces a fuzz-found snapshot
+// integrity error where a targeted update with refresh runs against a snapshot
+// that contains a top-level component resource marked for deletion which has
+// children. The rebuilt snapshot orders the deleted parent after its children,
+// violating the invariant that a parent resource must precede its children.
+//
+// Reproducer for the fuzz failure at:
+//
+//	cd pkg && PULUMI_LIFECYCLE_TEST_FUZZ=1 go test ./engine/lifecycletest \
+//	  -run '^TestFuzz$' -tags all -rapid.seed=11828830533255979657 -count=1 -v
+func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#22923]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping: targeted update with refresh reorders a deleted parent after its children")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	snap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
+			Custom: true,
+			ID:     "id-prov",
+		}
+		s.Resources = append(s.Resources, prov)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		// A top-level custom resource that the target component is parented under.
+		parentA := &resource.State{
+			Type:           "pkgA:m:TypeA",
+			URN:            "urn:pulumi:test-stack::test-project::pkgA:m:TypeA::res-shared",
+			Custom:         true,
+			ID:             "id-parentA",
+			Provider:       provRef.String(),
+			RetainOnDelete: true,
+		}
+		s.Resources = append(s.Resources, parentA)
+
+		// The targeted component resource, parented under parentA.
+		target := &resource.State{
+			Type:           "pkgA:m:TypeB",
+			URN:            "urn:pulumi:test-stack::test-project::pkgA:m:TypeA$pkgA:m:TypeB::res-target",
+			Custom:         false,
+			Provider:       provRef.String(),
+			Parent:         parentA.URN,
+			RetainOnDelete: true,
+		}
+		s.Resources = append(s.Resources, target)
+
+		// A separate, top-level component resource marked for deletion. This
+		// shares a name with the target but has a different URN.
+		deletedParent := &resource.State{
+			Type:           "pkgA:m:TypeB",
+			URN:            "urn:pulumi:test-stack::test-project::pkgA:m:TypeB::res-target",
+			Custom:         false,
+			Delete:         true,
+			Provider:       provRef.String(),
+			RetainOnDelete: true,
+		}
+		s.Resources = append(s.Resources, deletedParent)
+
+		// A child of the deleted parent that is also marked for deletion. This
+		// shares a name with parentA but has a different URN.
+		deletedChild := &resource.State{
+			Type:     "pkgA:m:TypeA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:TypeB$pkgA:m:TypeA::res-shared",
+			Custom:   true,
+			Delete:   true,
+			ID:       "id-deletedChild",
+			Provider: provRef.String(),
+			Parent:   deletedParent.URN,
+		}
+		s.Resources = append(s.Resources, deletedChild)
+
+		return s
+	}()
+	require.NoError(t, snap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:TypeA", "res-shared", true, deploytest.ResourceOptions{
+			Provider:       provRef.String(),
+			RetainOnDelete: ptr(true),
+		})
+		require.NoError(t, err)
+
+		// Re-register the resource that matches the deleted top-level component
+		// in the snapshot. The targeted nested component is not re-registered
+		// and so will be marked for deletion during the targeted update.
+		_, err = monitor.RegisterResource("pkgA:m:TypeB", "res-target", false, deploytest.ResourceOptions{
+			Provider:       provRef.String(),
+			RetainOnDelete: ptr(true),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	targetURN := "urn:pulumi:test-stack::test-project::pkgA:m:TypeA$pkgA:m:TypeB::res-target"
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
 		UpdateOptions: engine.UpdateOptions{
 			Refresh: true,
 			Targets: deploy.NewUrnTargets([]string{targetURN}),

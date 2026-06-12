@@ -66,6 +66,7 @@ func runTotalStateEdit(
 		stackName,
 		cmdStack.OfferNew,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err
@@ -96,6 +97,7 @@ func runTotalStateEditWithPrompt(
 		stackName,
 		cmdStack.OfferNew,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err
@@ -130,7 +132,8 @@ func TotalStateEdit(
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
 		}, &confirm, ui.SurveyIcons(opts.Color)); err != nil || !confirm {
-			return result.FprintBailf(os.Stdout, "confirmation declined")
+			// Shared helper; uses process stdout when not given a writer.
+			return result.FprintBailf(os.Stdout, "confirmation declined") //nolint:forbidigo
 		}
 	}
 
@@ -174,7 +177,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 		var errorMsg strings.Builder
 		errorMsg.WriteString("Resource URN ambiguously referred to multiple resources. Did you mean:\n")
 		for _, res := range candidateResources {
-			errorMsg.WriteString(fmt.Sprintf("  %s\n", res.ID))
+			fmt.Fprintf(&errorMsg, "  %s\n", res.ID)
 		}
 		return nil, errors.New(errorMsg.String())
 	}
@@ -252,6 +255,7 @@ func getURNFromState(
 			stackName,
 			cmdStack.LoadOnly,
 			opts,
+			"",
 		)
 		if err != nil {
 			return "", err

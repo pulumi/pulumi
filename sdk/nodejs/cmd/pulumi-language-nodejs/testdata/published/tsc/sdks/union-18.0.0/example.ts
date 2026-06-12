@@ -69,8 +69,8 @@ export class Example extends pulumi.CustomResource {
  * The set of arguments for constructing a Example resource.
  */
 export interface ExampleArgs {
-    mapMapUnionProperty?: pulumi.Input<{[key: string]: pulumi.Input<{[key: string]: pulumi.Input<string | pulumi.Input<string>[]>}>}>;
-    stringEnumUnionListProperty?: pulumi.Input<pulumi.Input<string | enums.AccessRights>[]>;
-    stringOrIntegerProperty?: pulumi.Input<string | number>;
-    typedEnumProperty?: pulumi.Input<string | enums.BlobType>;
+    mapMapUnionProperty?: pulumi.Input<{[key: string]: pulumi.Input<{[key: string]: pulumi.Input<string | pulumi.Input<string>[]>}>} | undefined>;
+    stringEnumUnionListProperty?: pulumi.Input<pulumi.Input<string | enums.AccessRights>[] | undefined>;
+    stringOrIntegerProperty?: pulumi.Input<string | number | undefined>;
+    typedEnumProperty?: pulumi.Input<string | enums.BlobType | undefined>;
 }

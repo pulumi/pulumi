@@ -34,22 +34,11 @@ func init() {
 					changes := res.Changes
 
 					RequireStackResource(l, err, changes)
-					require.Len(l, snap.Resources, 5, "expected 5 resources")
-					// TODO https://github.com/pulumi/pulumi/issues/17816
-					// TODO: the root stack must be the first resource to be registered
-					// such that snap.Resources[0].Type == resource.RootStackType
-					// however with the python SDK, that is not the case, instead the default
-					// provider gets registered first. This is indicating that something might be wrong
-					// with the how python SDK registers resources
-					var stack *resource.State
-					for _, r := range snap.Resources {
-						if r.Type == resource.RootStackType {
-							stack = r
-							break
-						}
-					}
+					require.Len(l, snap.Resources, 4, "expected 4 resources")
 
-					require.NotNil(l, stack, "expected a stack resource")
+					stack := snap.Resources[0]
+					require.Equal(l, resource.RootStackType, stack.Type)
+
 					outputs := stack.Outputs
 					AssertPropertyMapMember(l, outputs, "hello", resource.NewProperty("hello world"))
 

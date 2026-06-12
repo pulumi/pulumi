@@ -33,7 +33,7 @@ func (md *mapper) encode(vsrc reflect.Value) (map[string]any, MappingError) {
 
 	// Fetch the type; if it's a pointer, do a quick nil check, otherwise operate on its underlying type.
 	vsrcType := vsrc.Type()
-	if vsrcType.Kind() == reflect.Ptr {
+	if vsrcType.Kind() == reflect.Pointer {
 		if vsrc.IsNil() {
 			return nil, nil
 		}
@@ -99,7 +99,7 @@ func (md *mapper) encodeValue(vsrc reflect.Value) (any, MappingError) {
 		return vsrc.String(), nil
 
 	// Pointers:
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if vsrc.IsNil() {
 			return nil, nil
 		}

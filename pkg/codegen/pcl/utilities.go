@@ -227,20 +227,17 @@ func Linearize(p *Program) []Node {
 // The resultant program should be a shallow copy of the source with only the modified resource nodes copied.
 func MapProvidersAsResources(p *Program) {
 	for _, n := range p.Nodes {
-		if r, ok := n.(*Resource); ok && r.Schema != nil {
-			pkg, mod, name, _ := r.DecomposeToken()
+		switch r := n.(type) {
+		case *Resource:
+			if r.Schema == nil {
+				continue
+			}
+			pkg, mod, name, _ := DecomposeToken(r.GetToken())
 			if r.Schema.IsProvider && pkg == "pulumi" && mod == "providers" {
 				// the binder emits tokens like this when the module is "index"
-				r.Token = name + "::Provider"
+				r.token = name + "::Provider"
 			}
 		}
-	}
-}
-
-func FixupPulumiPackageTokens(r *Resource) {
-	pkg, mod, name, _ := r.DecomposeToken()
-	if pkg == "pulumi" && mod == "pulumi" {
-		r.Token = "pulumi::" + name
 	}
 }
 

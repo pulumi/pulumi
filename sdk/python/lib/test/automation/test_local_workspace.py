@@ -570,27 +570,31 @@ class TestLocalWorkspace(unittest.TestCase):
         stack_name = fully_qualified_stack_name(get_test_org(), project_name, "dev")
         project_dir = get_test_path("data", project_name)
         stack = create_or_select_stack(stack_name, work_dir=project_dir)
-        with stack_cleanup(stack, destroy=False):
-            all_config = stack.get_all_config()
-            outer_val = all_config["nested_config:outer"]
-            self.assertFalse(outer_val.secret)
-            self.assertEqual(
-                outer_val.value, '{"inner":"my_value","other":"something_else"}'
-            )
 
-            list_val = all_config["nested_config:myList"]
-            self.assertFalse(list_val.secret)
-            self.assertEqual(list_val.value, '["one","two","three"]')
+        all_config = stack.get_all_config()
+        outer_val = all_config["nested_config:outer"]
+        self.assertFalse(outer_val.secret)
+        self.assertEqual(
+            outer_val.value, '{"inner":"my_value","other":"something_else"}'
+        )
 
-            outer = stack.get_config("outer")
-            self.assertFalse(outer.secret)
-            self.assertEqual(
-                outer_val.value, '{"inner":"my_value","other":"something_else"}'
-            )
+        list_val = all_config["nested_config:myList"]
+        self.assertFalse(list_val.secret)
+        self.assertEqual(list_val.value, '["one","two","three"]')
 
-            arr = stack.get_config("myList")
-            self.assertFalse(arr.secret)
-            self.assertEqual(arr.value, '["one","two","three"]')
+        outer = stack.get_config("outer")
+        self.assertFalse(outer.secret)
+        self.assertEqual(
+            outer_val.value, '{"inner":"my_value","other":"something_else"}'
+        )
+
+        arr = stack.get_config("myList")
+        self.assertFalse(arr.secret)
+        self.assertEqual(arr.value, '["one","two","three"]')
+
+        # We're intentionally skipping removing this particular stack at the end of the test,
+        # because it requires the Pulumi.dev.yaml file to be present, and we'll re-use this stack
+        # name in other tests.
 
     def test_tag_methods(self):
         if os.getenv("PULUMI_ACCESS_TOKEN") is None:
@@ -836,6 +840,55 @@ class TestLocalWorkspace(unittest.TestCase):
 
             # pulumi destroy
             destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+
+    def test_stack_lifecycle_inline_program_run_program(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
+
+        stack_config: ConfigMap = {
+            "bar": ConfigValue(value="abc"),
+            "buzz": ConfigValue(value="secret", secret=True),
+        }
+
+        with stack_cleanup(stack):
+            stack.set_all_config(stack_config)
+
+            # pulumi up
+            up_res = stack.up(run_program=True)
+            self.assertEqual(len(up_res.outputs), 3)
+            self.assertEqual(up_res.outputs["exp_static"].value, "foo")
+            self.assertFalse(up_res.outputs["exp_static"].secret)
+            self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
+            self.assertFalse(up_res.outputs["exp_cfg"].secret)
+            self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
+            self.assertTrue(up_res.outputs["exp_secret"].secret)
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi preview
+            preview_result = stack.preview(run_program=True)
+            self.assertEqual(preview_result.change_summary.get(OpType.SAME), 1)
+
+            # pulumi refresh
+            refresh_res = stack.refresh(run_program=True)
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
+
+            # pulumi refresh --preview-only
+            preview_refresh_res = stack.preview_refresh(run_program=True)
+            self.assertEqual(preview_refresh_res.change_summary, {"same": 1})
+
+            # pulumi destroy --preview-only
+            preview_destroy_res = stack.preview_destroy(run_program=True)
+            self.assertEqual(preview_destroy_res.change_summary.get("delete"), 1)
+
+            # pulumi destroy
+            destroy_res = stack.destroy(run_program=True)
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
 
@@ -1552,13 +1605,16 @@ class TestLocalWorkspace(unittest.TestCase):
         mock_cmd = MockCmd()
         ws = LocalWorkspace(pulumi_command=mock_cmd)
 
+        # The generated interface emits flags in alphabetical order and adds a
+        # ``--`` separator before positional arguments.
+        #
         # Basic call with no options.
         ws.new()
         self.assertEqual(mock_cmd.args[0], ["new", "--yes"])
 
         # With template.
         ws.new("typescript")
-        self.assertEqual(mock_cmd.args[0], ["new", "--yes", "typescript"])
+        self.assertEqual(mock_cmd.args[0], ["new", "--yes", "--", "typescript"])
 
         # With name and generate-only.
         ws.new(name="my-project", generate_only=True, force=True)
@@ -1589,6 +1645,7 @@ class TestLocalWorkspace(unittest.TestCase):
                 "A test project",
                 "--stack",
                 "dev",
+                "--",
                 "aws-typescript",
             ],
         )
@@ -1616,6 +1673,7 @@ class TestLocalWorkspace(unittest.TestCase):
                 "--offline",
                 "--remote-stack-config",
                 "--template-mode",
+                "--",
                 "yaml",
             ],
         )

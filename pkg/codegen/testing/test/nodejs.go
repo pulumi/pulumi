@@ -106,7 +106,7 @@ func typeCheckNodeJS(t *testing.T, path string, _ codegen.StringSet, linkLocal b
 }
 
 func TypeCheckNodeJSPackage(t *testing.T, pwd string, linkLocal bool) {
-	RunCommand(t, "npm_install", pwd, "npm", "install")
+	RunCommandWithRetries(t, "npm_install", pwd, 3, "npm", "install")
 	if linkLocal {
 		RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
 	}
@@ -129,20 +129,8 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 		switch d {
 		case "aws":
 			set(AwsSchema)
-		case "azure-native":
-			set(AzureNativeSchema)
-		case "azure":
-			set(AzureSchema)
-		case "kubernetes":
-			set(KubernetesSchema)
 		case "random":
 			set(RandomSchema)
-		case "eks":
-			set(EksSchema)
-		case "aws-static-website":
-			set(AwsStaticWebsiteSchema)
-		case "aws-native":
-			set(AwsNativeSchema)
 		default:
 			t.Logf("Unknown package requested: %s", d)
 		}

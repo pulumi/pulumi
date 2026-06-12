@@ -35,7 +35,7 @@ type EnumProvider struct {
 
 var _ plugin.Provider = (*EnumProvider)(nil)
 
-func (p *EnumProvider) Pkg() tokens.Package {
+func (p *EnumProvider) pkg() tokens.Package {
 	return "enum"
 }
 
@@ -47,7 +47,7 @@ func (p *EnumProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
 	pkg := schema.PackageSpec{
-		Name:      p.Pkg().String(),
+		Name:      p.pkg().String(),
 		Version:   p.version().String(),
 		Resources: map[string]schema.ResourceSpec{},
 		Types:     map[string]schema.ComplexTypeSpec{},
@@ -109,7 +109,7 @@ func (p *EnumProvider) CheckConfig(
 
 func (p *EnumProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ref(p.version()),
+		Version: ptr(p.version()),
 	}, nil
 }
 
@@ -139,9 +139,9 @@ func (p *EnumProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
 	switch req.URN.Type().String() {
-	case fmt.Sprintf("%s:index:Res", p.Pkg()),
-		fmt.Sprintf("%s:mod:Res", p.Pkg()),
-		fmt.Sprintf("%s:mod/nested:Res", p.Pkg()):
+	case fmt.Sprintf("%s:index:Res", p.pkg()),
+		fmt.Sprintf("%s:mod:Res", p.pkg()),
+		fmt.Sprintf("%s:mod/nested:Res", p.pkg()):
 		return plugin.CheckResponse{Properties: req.News}, nil
 	default:
 		return plugin.CheckResponse{
@@ -154,9 +154,9 @@ func (p *EnumProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
 	switch req.URN.Type().String() {
-	case fmt.Sprintf("%s:index:Res", p.Pkg()),
-		fmt.Sprintf("%s:mod:Res", p.Pkg()),
-		fmt.Sprintf("%s:mod/nested:Res", p.Pkg()):
+	case fmt.Sprintf("%s:index:Res", p.pkg()),
+		fmt.Sprintf("%s:mod:Res", p.pkg()),
+		fmt.Sprintf("%s:mod/nested:Res", p.pkg()):
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
 			Properties: req.Properties,

@@ -148,11 +148,11 @@ def get_ami_ids(executable_users: Optional[Sequence[_builtins.str]] = None,
         name_regex=pulumi.get(__ret__, 'name_regex'),
         owners=pulumi.get(__ret__, 'owners'),
         sort_ascending=pulumi.get(__ret__, 'sort_ascending'))
-def get_ami_ids_output(executable_users: Optional[pulumi.Input[Optional[Sequence[_builtins.str]]]] = None,
-                       filters: Optional[pulumi.Input[Optional[Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']]]]] = None,
-                       name_regex: Optional[pulumi.Input[Optional[_builtins.str]]] = None,
-                       owners: Optional[pulumi.Input[Sequence[_builtins.str]]] = None,
-                       sort_ascending: Optional[pulumi.Input[Optional[_builtins.bool]]] = None,
+def get_ami_ids_output(executable_users: pulumi.Input[Optional[Optional[Sequence[_builtins.str]]]] = None,
+                       filters: pulumi.Input[Optional[Optional[Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']]]]] = None,
+                       name_regex: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
+                       owners: pulumi.Input[Optional[Sequence[_builtins.str]]] = None,
+                       sort_ascending: pulumi.Input[Optional[Optional[_builtins.bool]]] = None,
                        opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[GetAmiIdsResult]:
     """
     Taken from pulumi-AWS to regress an issue

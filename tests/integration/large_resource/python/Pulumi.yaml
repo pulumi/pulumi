@@ -1,3 +1,0 @@
-name: large_resource_python
-runtime: python
-description: A python program with a >4mb string resource

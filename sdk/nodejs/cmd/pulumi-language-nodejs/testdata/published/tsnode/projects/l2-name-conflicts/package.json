@@ -1,0 +1,12 @@
+{
+	"name": "l2-name-conflicts",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/module-format": "ROOT/artifacts/pulumi-module-format-29.0.0.tgz",
+		"@pulumi/names": "ROOT/artifacts/pulumi-names-6.0.0.tgz"
+	}
+}

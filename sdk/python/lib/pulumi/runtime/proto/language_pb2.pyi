@@ -365,22 +365,35 @@ class GetRequiredPackagesResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PACKAGES_FIELD_NUMBER: builtins.int
+    SPECS_FIELD_NUMBER: builtins.int
     @property
     def packages(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.plugin_pb2.PackageDependency]:
         """The packages required by the program specified by the request."""
+
+    @property
+    def specs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.plugin_pb2.PackageSpec]:
+        """The package specs required by the program specified by the request.
+
+        Only specs not included in packages should be included.
+        """
 
     def __init__(
         self,
         *,
         packages: collections.abc.Iterable[pulumi.plugin_pb2.PackageDependency] | None = ...,
+        specs: collections.abc.Iterable[pulumi.plugin_pb2.PackageSpec] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["packages", b"packages"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["packages", b"packages", "specs", b"specs"]) -> None: ...
 
 global___GetRequiredPackagesResponse = GetRequiredPackagesResponse
 
 @typing.final
 class RunRequest(google.protobuf.message.Message):
-    """`RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call."""
+    """`RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call.
+    NOTE: execution context fields (project/stack/config/dryRun/parallel/organization) remain for
+    backward compatibility. Newer language runtimes may read monitor execution context via
+    [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitor_address`.
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -416,6 +429,7 @@ class RunRequest(google.protobuf.message.Message):
     INFO_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     ATTACH_DEBUGGER_FIELD_NUMBER: builtins.int
+    MAPPER_TARGET_FIELD_NUMBER: builtins.int
     project: builtins.str
     """The project name."""
     stack: builtins.str
@@ -448,6 +462,8 @@ class RunRequest(google.protobuf.message.Message):
     """The target of a codegen.LoaderServer to use for loading schemas."""
     attach_debugger: builtins.bool
     """True if and only if the host should start the program under a debugger."""
+    mapper_target: builtins.str
+    """The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi."""
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """Any arguments to pass to the program."""
@@ -489,9 +505,10 @@ class RunRequest(google.protobuf.message.Message):
         info: global___ProgramInfo | None = ...,
         loader_target: builtins.str = ...,
         attach_debugger: builtins.bool = ...,
+        mapper_target: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["configPropertyMap", b"configPropertyMap", "info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "loader_target", b"loader_target", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
 
 global___RunRequest = RunRequest
 

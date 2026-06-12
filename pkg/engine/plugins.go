@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -280,11 +281,15 @@ func (p PackageSet) UpdatesTo(old PackageSet) []PackageUpdate {
 
 // GetRequiredPlugins lists a full set of plugins that will be required by the given program.
 func GetRequiredPlugins(
+	ctx context.Context,
 	host plugin.Host,
 	runtime string,
 	info plugin.ProgramInfo,
 ) ([]workspace.PluginDescriptor, error) {
 	plugins := make([]workspace.PluginDescriptor, 0, 1)
+	if runtime == "" {
+		return plugins, nil
+	}
 
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
@@ -293,7 +298,7 @@ func GetRequiredPlugins(
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
 	// Query the language runtime plugin for its version.
-	langInfo, err := lang.GetPluginInfo()
+	langInfo, err := lang.GetPluginInfo(ctx)
 	if err != nil {
 		// Don't error if this fails, just warn and return the version as unknown.
 		host.Log(diag.Warning, "", fmt.Sprintf("failed to get plugin info for language plugin %s: %v", runtime, err), 0)
@@ -313,7 +318,7 @@ func GetRequiredPlugins(
 	// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
 	//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
 	//     later than we do (right now, we do it up front, but at that point we don't know the version).
-	deps, err := lang.GetRequiredPackages(info)
+	deps, _, err := lang.GetRequiredPackages(ctx, info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover plugin requirements: %w", err)
 	}
@@ -328,15 +333,23 @@ func GetRequiredPlugins(
 // function. If the language host does not support this operation, the empty set is returned.
 func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plugin.ProgramInfo) (PackageSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPackagesFromProgram(): gathering plugins from language host")
+	if runtime == "" {
+		return NewPackageSet(), nil
+	}
 
 	lang, err := plugctx.Host.LanguageRuntime(runtime)
 	if lang == nil || err != nil {
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
 
-	pkgs, err := lang.GetRequiredPackages(info)
+	pkgs, specs, err := lang.GetRequiredPackages(plugctx.Request(), info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover package requirements: %w", err)
+	}
+	if len(specs) > 0 {
+		return nil, fmt.Errorf("language runtime %q returned %d unresolved package spec(s), "+
+			"which are not supported during this operation; run `pulumi install` to resolve them",
+			runtime, len(specs))
 	}
 
 	set := NewPackageSet()
@@ -422,6 +435,12 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := cmdutil.StartSpan(ctx, tracer, "EnsurePluginsAreInstalled")
 	defer span.End()
+
+	// When SkipPluginPreInstall is set, callers that aren't explicitly running the install command want the
+	// engine to defer to lazy plugin install by the provider registry.
+	if !explicitInstall && opts != nil && opts.SkipPluginPreInstall {
+		return nil
+	}
 
 	manager := newInstallManager(true /*returnPluginErrors*/)
 	err := ensurePluginsAreInstalled(ctx, opts, d, plugins, projectPlugins, reinstall, explicitInstall, manager)
@@ -511,10 +530,42 @@ func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 	return nil
 }
 
-// ensurePluginsAreLoaded ensures that all of the plugins in the given plugin set that match the given plugin flags are
-// loaded.
+// ensurePluginsAreLoaded ensures all plugins in the given array are loaded and ready to use. If any plugins are
+// missing, and/or there are errors loading one or more plugins, a non-nil error is returned.
 func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins PluginSet, kinds plugin.Flags) error {
-	return plugctx.Host.EnsurePlugins(plugins.Values(), kinds)
+	host := plugctx.Host
+
+	// Use a multieerror to track failures so we can return one big list of all failures at the end.
+	var result error
+	for _, p := range plugins {
+		switch p.Kind {
+		case apitype.AnalyzerPlugin:
+			if kinds&plugin.AnalyzerPlugins != 0 {
+				if _, err := host.Analyzer(tokens.QName(p.Name)); err != nil {
+					result = multierror.Append(result,
+						fmt.Errorf("failed to load analyzer plugin %s: %w", p.Name, err))
+				}
+			}
+		case apitype.LanguagePlugin:
+			if kinds&plugin.LanguagePlugins != 0 {
+				if _, err := host.LanguageRuntime(p.Name); err != nil {
+					result = multierror.Append(result,
+						fmt.Errorf("failed to load language plugin %s: %w", p.Name, err))
+				}
+			}
+		case apitype.ResourcePlugin:
+			if kinds&plugin.ResourcePlugins != 0 {
+				if _, err := host.Provider(p, env.Global()); err != nil {
+					result = multierror.Append(result,
+						fmt.Errorf("failed to load resource plugin %s: %w", p.Name, err))
+				}
+			}
+		case apitype.ConverterPlugin, apitype.ToolPlugin:
+			contract.Failf("unexpected plugin kind: %s", p.Kind)
+		}
+	}
+
+	return result
 }
 
 // installPlugin installs a plugin from the given backend client.
@@ -567,6 +618,7 @@ func installPlugin(
 		withDownloadProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {
 			return workspace.ReadCloserProgressBar(
 				stream,
+				os.Stderr,
 				size,
 				downloadMessage,
 				cmdutil.GetGlobalColorization(),
@@ -638,6 +690,52 @@ func installPlugin(
 	return nil
 }
 
+// samePluginSource reports whether two PackageDescriptors refer to the same
+// underlying plugin (matching binary Name and matching parameterization
+// origin). Two descriptors that differ only in version are the same source;
+// two descriptors with different plugin Names (for example, a native
+// "scaleway" provider and a "terraform-provider" bridge parameterized as
+// "scaleway") are not.
+func samePluginSource(a, b workspace.PackageDescriptor) bool {
+	return a.Name == b.Name &&
+		(a.Parameterization == nil) == (b.Parameterization == nil) &&
+		(a.Parameterization == nil || a.Parameterization.Name == b.Parameterization.Name)
+}
+
+// describePluginSource returns a human-readable description of a plugin that
+// distinguishes bridged (parameterized) packages from native ones. The output
+// of PackageDescriptor.String is insufficient here because it collapses both
+// forms onto the parameterized name, which hides the distinction users need
+// to resolve a conflict.
+func describePluginSource(p workspace.PackageDescriptor) string {
+	var pluginVer string
+	if p.Version != nil {
+		pluginVer = " v" + p.Version.String()
+	}
+	if p.Parameterization != nil {
+		return fmt.Sprintf("plugin %q%s parameterized as %q v%s",
+			p.Name, pluginVer, p.Parameterization.Name, p.Parameterization.Version.String())
+	}
+	return fmt.Sprintf("plugin %q%s", p.Name, pluginVer)
+}
+
+// ambigiousPluginSourceError is returned when two distinct plugins both claim
+// to provide the same default provider package name.
+type ambigiousPluginSourceError struct {
+	pkg  tokens.Package
+	a, b workspace.PackageDescriptor
+}
+
+func (err ambigiousPluginSourceError) Error() string {
+	return fmt.Sprintf(
+		"package %q is provided by more than one plugin:\n"+
+			"  %s\n"+
+			"  %s\n"+
+			"Remove one of the packages, or pass an explicit `provider` "+
+			"option on each resource to disambiguate.",
+		err.pkg, describePluginSource(err.a), describePluginSource(err.b))
+}
+
 // computeDefaultProviderPackages computes, for every package, a mapping from packages to semver versions reflecting the
 // version of a provider that should be used as the "default" resource when registering resources. This function takes
 // two sets of packages:
@@ -662,7 +760,7 @@ func installPlugin(
 func computeDefaultProviderPackages(
 	languagePackages PackageSet,
 	allPackages PackageSet,
-) map[tokens.Package]workspace.PackageDescriptor {
+) (map[tokens.Package]workspace.PackageDescriptor, error) {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
@@ -704,6 +802,10 @@ func computeDefaultProviderPackages(
 		name := tokens.Package(p.PackageName())
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
+			if !samePluginSource(seenPlugin, p) {
+				return nil, ambigiousPluginSourceError{name, seenPlugin, p}
+			}
+
 			if seenPlugin.Version == nil {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, previous was nil)",
@@ -731,7 +833,7 @@ func computeDefaultProviderPackages(
 		defaultProviderPlugins[name] = p
 	}
 
-	if logging.V(preparePluginLog) {
+	if logging.V(preparePluginLog).Enabled() {
 		logging.V(preparePluginLog).Infoln("computeDefaultProviderPlugins(): summary of default plugins:")
 		for pkg, info := range defaultProviderPlugins {
 			logging.V(preparePluginLog).Infof("  %-15s = %s", pkg, info.Version)
@@ -743,5 +845,5 @@ func computeDefaultProviderPackages(
 		defaultProviderInfo[name] = plugin
 	}
 
-	return defaultProviderInfo
+	return defaultProviderInfo, nil
 }

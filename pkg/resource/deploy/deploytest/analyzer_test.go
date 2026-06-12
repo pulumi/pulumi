@@ -54,7 +54,7 @@ func TestAnalyzer(t *testing.T) {
 					return plugin.AnalyzeResponse{}, nil
 				},
 			}
-			res, err := a.Analyze(plugin.AnalyzerResource{})
+			res, err := a.Analyze(t.Context(), plugin.AnalyzerResource{})
 			assert.True(t, called)
 			require.NoError(t, err)
 			assert.Nil(t, res.Diagnostics)
@@ -63,7 +63,7 @@ func TestAnalyzer(t *testing.T) {
 			t.Parallel()
 
 			a := &Analyzer{}
-			res, err := a.Analyze(plugin.AnalyzerResource{})
+			res, err := a.Analyze(t.Context(), plugin.AnalyzerResource{})
 			require.NoError(t, err)
 			assert.Nil(t, res.Diagnostics)
 		})
@@ -80,7 +80,7 @@ func TestAnalyzer(t *testing.T) {
 					return plugin.AnalyzeResponse{}, nil
 				},
 			}
-			res, err := a.AnalyzeStack(nil)
+			res, err := a.AnalyzeStack(t.Context(), nil)
 			assert.True(t, called)
 			require.NoError(t, err)
 			assert.Nil(t, res.Diagnostics)
@@ -89,7 +89,7 @@ func TestAnalyzer(t *testing.T) {
 			t.Parallel()
 
 			a := &Analyzer{}
-			res, err := a.AnalyzeStack(nil)
+			res, err := a.AnalyzeStack(t.Context(), nil)
 			require.NoError(t, err)
 			assert.Nil(t, res.Diagnostics)
 		})
@@ -106,7 +106,7 @@ func TestAnalyzer(t *testing.T) {
 					return plugin.RemediateResponse{}, nil
 				},
 			}
-			res, err := a.Remediate(plugin.AnalyzerResource{})
+			res, err := a.Remediate(t.Context(), plugin.AnalyzerResource{})
 			assert.True(t, called)
 			require.NoError(t, err)
 			assert.Nil(t, res.Remediations)
@@ -115,7 +115,7 @@ func TestAnalyzer(t *testing.T) {
 			t.Parallel()
 
 			a := &Analyzer{}
-			res, err := a.Remediate(plugin.AnalyzerResource{})
+			res, err := a.Remediate(t.Context(), plugin.AnalyzerResource{})
 			require.NoError(t, err)
 			assert.Nil(t, res.Remediations)
 		})
@@ -127,7 +127,7 @@ func TestAnalyzer(t *testing.T) {
 				Version: "2.0.0",
 			},
 		}
-		info, err := a.GetPluginInfo()
+		info, err := a.GetPluginInfo(t.Context())
 		require.NoError(t, err)
 		assert.Equal(t, &semver.Version{Major: 2}, info.Version)
 	})
@@ -143,14 +143,14 @@ func TestAnalyzer(t *testing.T) {
 					return nil
 				},
 			}
-			require.NoError(t, a.Configure(nil))
+			require.NoError(t, a.Configure(t.Context(), nil))
 			assert.True(t, called)
 		})
 		t.Run("no ConfigureF", func(t *testing.T) {
 			t.Parallel()
 
 			a := &Analyzer{}
-			require.NoError(t, a.Configure(nil))
+			require.NoError(t, a.Configure(t.Context(), nil))
 		})
 	})
 }

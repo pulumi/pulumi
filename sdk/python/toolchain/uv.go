@@ -33,11 +33,10 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"gopkg.in/yaml.v3"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type uv struct {
@@ -120,40 +119,24 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 		}
 	}
 
-	// If there's no `uv.lock` or `pyproject.toml` file, we first need to prepare the project.
+	// If there's no `uv.lock` we first need to prepare the project.
 	if _, err := searchup(cwd, "uv.lock"); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("error while looking for uv.lock in %s: %w", cwd, err)
 		}
-		// No uv.lock found, look for pyproject.toml.
-		if _, err := searchup(cwd, "pyproject.toml"); err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
-			}
-			// No pyproject.toml found, this is likely a template with a requirements.txt, convert it to a
-			// pyproject.toml file.
-			// We can't use workspace.LoadProject here because the workspace module depends on toolchain.
-			// TODO: https://github.com/pulumi/pulumi/issues/20953
-			//
-			// We can also remove the call to `PrepareProject` here eventually. Before `Language.Template` existed, the
-			// creation of a `pyproject.toml` file happened during `pulumi install`. It is possible to have a half
-			// initialized project, for example from `pulumi new ... --generate-only` which has a `requirements.txt`
-			// that still needs to be converted. We want to maintain the same behavior as before here for a while.
-			// TODO: https://github.com/pulumi/pulumi/issues/20987
-			var projectName string
-			pulumiYamlPath := filepath.Join(cwd, "Pulumi.yaml")
-			if pulumiYamlData, err := os.ReadFile(pulumiYamlPath); err == nil {
-				var pulumiConfig struct {
-					Name tokens.PackageName `json:"name" yaml:"name"`
-				}
-				if err := yaml.Unmarshal(pulumiYamlData, &pulumiConfig); err == nil {
-					projectName = string(pulumiConfig.Name)
-				}
-			}
-			if err := u.PrepareProject(ctx, projectName, cwd, showOutput, infoWriter, errorWriter); err != nil {
-				return fmt.Errorf("error preparing project: %w", err)
+		var projectName string
+		if projectPath, err := workspace.DetectProjectPathFrom(cwd); err == nil && projectPath != "" {
+			if project, err := workspace.LoadProject(projectPath); err == nil {
+				projectName = string(project.Name)
 			}
 		}
+		if err := u.PrepareProject(ctx, projectName, cwd, showOutput, infoWriter, errorWriter); err != nil {
+			return fmt.Errorf("error preparing project: %w", err)
+		}
+	}
+
+	if err := u.checkPyprojectHasProject(cwd); err != nil {
+		return err
 	}
 
 	// We now have either a uv.lock or at least a pyproject.toml file, and we can use uv
@@ -168,16 +151,52 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 }
 
 // PrepareProject prepares a project for use with uv. It will create a suitable pyproject.toml project file. If a
-// requirements.txt file exists, its dependencies will be added to pyproject.toml. No-op if pyproject.toml exists.
+// requirements.txt file exists, its dependencies will be added to pyproject.toml. If a pyproject.toml exists but
+// has no [project] section and a colocated requirements.txt is present, [project] is appended and the deps from
+// requirements.txt are merged in. No-op if pyproject.toml already has a [project] section.
 func (u *uv) PrepareProject(
 	ctx context.Context, projectName, cwd string, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
-	_, err := searchup(cwd, "pyproject.toml")
-	if err == nil {
-		// There's already a pyproject.toml, we're done.
-		return nil
-	} else if !errors.Is(err, os.ErrNotExist) {
+	existingPyprojectDir, err := searchup(cwd, "pyproject.toml")
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("error while looking for nearest pyproject.toml in %s: %w", cwd, err)
+	}
+	if err == nil {
+		py, err := LoadPyproject(existingPyprojectDir)
+		if err != nil {
+			return err
+		}
+		if py.Project != nil {
+			// Already has a [project] section, nothing to do.
+			return nil
+		}
+		// pyproject.toml exists but has no [project]. If requirements.txt sits next to it, append a minimal
+		// [project] section and merge the deps in.
+		requirementsTxt := filepath.Join(existingPyprojectDir, "requirements.txt")
+		if _, statErr := os.Stat(requirementsTxt); statErr != nil {
+			if errors.Is(statErr, os.ErrNotExist) {
+				return nil
+			}
+			return fmt.Errorf("error while looking for requirements.txt: %w", statErr)
+		}
+		name := projectName
+		if name == "" {
+			name = filepath.Base(existingPyprojectDir)
+		}
+		pyprojectPath := filepath.Join(existingPyprojectDir, "pyproject.toml")
+		section := fmt.Sprintf("\n[project]\nname = %q\nversion = \"0.1.0\"\ndependencies = []\n", name)
+		f, err := os.OpenFile(pyprojectPath, os.O_APPEND|os.O_WRONLY, 0)
+		if err != nil {
+			return fmt.Errorf("opening %s: %w", pyprojectPath, err)
+		}
+		if _, err := f.WriteString(section); err != nil {
+			contract.IgnoreClose(f)
+			return fmt.Errorf("appending [project] to %s: %w", pyprojectPath, err)
+		}
+		if err := f.Close(); err != nil {
+			return fmt.Errorf("closing %s: %w", pyprojectPath, err)
+		}
+		return u.mergeRequirementsTxt(ctx, existingPyprojectDir, showOutput, infoWriter, errorWriter)
 	}
 
 	requirementsTxtDir, err := searchup(cwd, "requirements.txt")
@@ -213,29 +232,8 @@ func (u *uv) PrepareProject(
 	}
 
 	if hasRequirementsTxt {
-		requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
-		args := []string{"add", "--no-sync", "-r", requirementsTxt}
-		needs, err := u.needsNoWorkspacesFlag(ctx)
-		if err != nil {
+		if err := u.mergeRequirementsTxt(ctx, requirementsTxtDir, showOutput, infoWriter, errorWriter); err != nil {
 			return err
-		}
-		if needs {
-			args = append(args, "--no-workspace")
-		}
-		addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, args...)
-		if err := addCmd.Run(); err != nil {
-			return errutil.ErrorWithStderr(err, "error installing dependecies from requirements.txt")
-		}
-		// Remove the requirements.txt file, after calling `uv add`, the
-		// dependencies are tracked in pyproject.toml.
-		if err := os.Remove(requirementsTxt); err != nil {
-			return fmt.Errorf("failed to remove %q: %w", requirementsTxt, err)
-		}
-		if showOutput {
-			if _, err := infoWriter.Write([]byte("Deleted requirements.txt, " +
-				"dependencies for this project are tracked in pyproject.toml\n")); err != nil {
-				return fmt.Errorf("failed to write to infoWriter: %w", err)
-			}
 		}
 	}
 
@@ -270,6 +268,12 @@ func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error
 func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
 	infoWriter, errorWriter io.Writer,
 ) error {
+	// Skip if the venv already exists. `uv venv --allow-existing` re-copies the launcher into `python.exe`, and on
+	// Windows that can fail with a file-lock error if any earlier process still holds the existing python.exe (e.g.
+	// recursive plugin installs that run multiple uv operations against the same venv).
+	if IsVirtualEnv(u.virtualenvPath) {
+		return nil
+	}
 	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet",
 		"--allow-existing", u.virtualenvPath)
 	if err := venvCmd.Run(); err != nil {
@@ -350,6 +354,9 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 		}
 	}
 	if pyprojectTomlDir != "" {
+		if err := u.checkPyprojectHasProject(u.root); err != nil {
+			return nil, err
+		}
 		// uv run does an "inexact" sync, that is it leaves extraneous
 		// dependencies alone and does not remove them.
 		venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync", "--inexact")
@@ -428,6 +435,61 @@ func (u *uv) pythonExecutable() (string, string) {
 
 func (u *uv) VirtualEnvPath(_ context.Context) (string, error) {
 	return u.virtualenvPath, nil
+}
+
+// mergeRequirementsTxt runs `uv add -r requirements.txt` against the pyproject.toml in pyprojectDir, then removes the
+// requirements.txt file
+func (u *uv) mergeRequirementsTxt(
+	ctx context.Context, pyprojectDir string, showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
+	requirementsTxt := filepath.Join(pyprojectDir, "requirements.txt")
+	args := []string{"add", "--no-sync", "-r", requirementsTxt}
+	needs, err := u.needsNoWorkspacesFlag(ctx)
+	if err != nil {
+		return err
+	}
+	if needs {
+		args = append(args, "--no-workspace")
+	}
+	addCmd := u.uvCommand(ctx, pyprojectDir, showOutput, infoWriter, errorWriter, args...)
+	if err := addCmd.Run(); err != nil {
+		return errutil.ErrorWithStderr(err, "error installing dependencies from requirements.txt")
+	}
+	if err := os.Remove(requirementsTxt); err != nil {
+		return fmt.Errorf("failed to remove %q: %w", requirementsTxt, err)
+	}
+	if showOutput && infoWriter != nil {
+		if _, err := infoWriter.Write([]byte("Deleted requirements.txt, " +
+			"dependencies for this project are tracked in pyproject.toml\n")); err != nil {
+			return fmt.Errorf("failed to write to infoWriter: %w", err)
+		}
+	}
+	return nil
+}
+
+func (u *uv) checkPyprojectHasProject(cwd string) error {
+	if _, err := searchup(cwd, "uv.lock"); err == nil {
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("error while looking for uv.lock in %s: %w", cwd, err)
+	}
+	pyprojectDir, err := searchup(cwd, "pyproject.toml")
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
+	}
+	pyproject, err := LoadPyproject(pyprojectDir)
+	if err != nil {
+		return err
+	}
+	if pyproject.Project == nil {
+		return fmt.Errorf("%s is missing a [project] section, which uv requires to install dependencies; "+
+			"add a [project] section with a name and dependencies to use the uv toolchain",
+			filepath.Join(pyprojectDir, "pyproject.toml"))
+	}
+	return nil
 }
 
 func (u *uv) needsNoWorkspacesFlag(ctx context.Context) (bool, error) {

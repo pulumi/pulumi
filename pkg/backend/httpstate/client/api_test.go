@@ -20,11 +20,15 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sync/atomic"
 	"testing"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -153,6 +157,39 @@ func TestHTTPClientUserAgent(t *testing.T) {
 	assert.Equal(t, UserAgent(), inReq.Header.Get("User-Agent"))
 }
 
+//nolint:paralleltest // mutates the package-level state observed by UserAgent()
+func TestUserAgentExtras(t *testing.T) {
+	t.Cleanup(func() {
+		SetUserAgentCommand("")
+		SetUserAgentAIAgent("")
+	})
+
+	SetUserAgentCommand("")
+	SetUserAgentAIAgent("")
+	base := UserAgent()
+	assert.Regexp(t, `^pulumi-cli/1 \([^()]*\)$`, base)
+	assert.NotContains(t, base, "cmd=")
+	assert.NotContains(t, base, "agent=")
+
+	SetUserAgentCommand("stack ls")
+	withCmd := UserAgent()
+	assert.Contains(t, withCmd, "; cmd=stack-ls)")
+	assert.NotContains(t, withCmd, "agent=")
+
+	SetUserAgentAIAgent("claude")
+	withBoth := UserAgent()
+	assert.Contains(t, withBoth, "; cmd=stack-ls;")
+	assert.Contains(t, withBoth, "; agent=claude)")
+
+	SetUserAgentCommand("")
+	withAgentOnly := UserAgent()
+	assert.NotContains(t, withAgentOnly, "cmd=")
+	assert.Contains(t, withAgentOnly, "; agent=claude)")
+
+	SetUserAgentCommand("weird (cmd; with) bits")
+	assert.Contains(t, UserAgent(), "; cmd=weird-cmd-with-bits;")
+}
+
 func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 	t.Parallel()
 
@@ -263,4 +300,123 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 
 		assert.True(t, errors.Is(err, backenderr.LoginRequiredError{}))
 	})
+}
+
+//nolint:paralleltest //  subtests mutate the global otel tracer provider.
+func TestDoCreatesPerAttemptSpans(t *testing.T) {
+	t.Run("single successful request", func(t *testing.T) {
+		recorder := tracetest.NewSpanRecorder()
+		tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+		prev := otel.GetTracerProvider()
+		otel.SetTracerProvider(tp)
+		t.Cleanup(func() {
+			otel.SetTracerProvider(prev)
+		})
+
+		client := &defaultHTTPClient{
+			&http.Client{
+				Transport: &errorTransport{
+					roundTripFunc: func(req *http.Request) (*http.Response, error) {
+						return &http.Response{
+							StatusCode: 200,
+							Status:     "200 OK",
+							Body:       io.NopCloser(bytes.NewReader(nil)),
+						}, nil
+					},
+				},
+			},
+		}
+
+		req, err := http.NewRequest("GET", "https://api.example.com/test", nil)
+		require.NoError(t, err)
+
+		resp, err := client.Do(req, retryAllMethods)
+		require.NoError(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+
+		tp.ForceFlush(t.Context())
+		spans := recorder.Ended()
+
+		// Should have an "HTTP attempt" span nested under an "HTTP request" span.
+		attemptSpans := filterSpansByName(spans, "HTTP attempt")
+		require.Len(t, attemptSpans, 1)
+		assertSpanAttribute(t, attemptSpans[0], "http.attempt", int64(1))
+		assertSpanAttribute(t, attemptSpans[0], "http.status_code", int64(200))
+	})
+
+	t.Run("retries on 500", func(t *testing.T) {
+		recorder := tracetest.NewSpanRecorder()
+		tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+		prev := otel.GetTracerProvider()
+		otel.SetTracerProvider(tp)
+		t.Cleanup(func() {
+			otel.SetTracerProvider(prev)
+		})
+
+		var callCount atomic.Int32
+		client := &defaultHTTPClient{
+			&http.Client{
+				Transport: &errorTransport{
+					roundTripFunc: func(req *http.Request) (*http.Response, error) {
+						n := callCount.Add(1)
+						if n <= 2 {
+							return &http.Response{
+								StatusCode: 500,
+								Status:     "500 Internal Server Error",
+								Body:       io.NopCloser(bytes.NewReader(nil)),
+							}, nil
+						}
+						return &http.Response{
+							StatusCode: 200,
+							Status:     "200 OK",
+							Body:       io.NopCloser(bytes.NewReader(nil)),
+						}, nil
+					},
+				},
+			},
+		}
+
+		req, err := http.NewRequest("GET", "https://api.example.com/test", nil)
+		require.NoError(t, err)
+
+		resp, err := client.Do(req, retryAllMethods)
+		require.NoError(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+
+		tp.ForceFlush(t.Context())
+		spans := recorder.Ended()
+
+		attemptSpans := filterSpansByName(spans, "HTTP attempt")
+		require.Len(t, attemptSpans, 3, "expected 2 failed + 1 successful attempt")
+
+		// Verify attempt numbers are sequential.
+		for i, span := range attemptSpans {
+			assertSpanAttribute(t, span, "http.attempt", int64(i+1))
+		}
+		// First two should have 500 status, last should have 200.
+		assertSpanAttribute(t, attemptSpans[0], "http.status_code", int64(500))
+		assertSpanAttribute(t, attemptSpans[1], "http.status_code", int64(500))
+		assertSpanAttribute(t, attemptSpans[2], "http.status_code", int64(200))
+	})
+}
+
+func filterSpansByName(spans []sdktrace.ReadOnlySpan, name string) []sdktrace.ReadOnlySpan {
+	var result []sdktrace.ReadOnlySpan
+	for _, s := range spans {
+		if s.Name() == name {
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
+func assertSpanAttribute(t *testing.T, span sdktrace.ReadOnlySpan, key string, want int64) {
+	t.Helper()
+	for _, attr := range span.Attributes() {
+		if string(attr.Key) == key {
+			require.Equal(t, want, attr.Value.AsInt64(), "attribute %s", key)
+			return
+		}
+	}
+	require.Failf(t, "attribute not found", "attribute %q not found on span %q", key, span.Name())
 }

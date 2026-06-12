@@ -49,6 +49,9 @@ func newPolicyInstallCmd() *cobra.Command {
 			"This command installs the policy packs required by the stack's organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			if policyInstallCmd.stderr == nil {
+				policyInstallCmd.stderr = cmd.ErrOrStderr()
+			}
 			return policyInstallCmd.Run(ctx, stack)
 		},
 	}
@@ -83,16 +86,15 @@ func (cmd *policyInstallCmd) Run(
 		cmd.diag = cmdutil.Diag()
 	}
 	if cmd.stderr == nil {
-		cmd.stderr = os.Stderr
+		cmd.stderr = io.Discard
 	}
-
 	if cmd.requireStack == nil {
 		cmd.requireStack = func(ctx context.Context, stackName string) (backend.Stack, error) {
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 			return cmdStack.RequireStack(ctx, cmd.diag, pkgWorkspace.Instance,
-				cmdBackend.DefaultLoginManager, stackName, cmdStack.LoadOnly, displayOpts)
+				cmdBackend.DefaultLoginManager, stackName, cmdStack.LoadOnly, displayOpts, "")
 		}
 	}
 
@@ -122,7 +124,8 @@ func (cmd *policyInstallCmd) Run(
 		return fmt.Errorf("getting current working directory: %w", err)
 	}
 
-	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
+	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, nil, nil, cwd, nil, true, nil,
+		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return fmt.Errorf("creating plugin context: %w", err)
 	}

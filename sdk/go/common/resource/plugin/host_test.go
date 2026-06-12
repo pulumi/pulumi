@@ -15,6 +15,8 @@
 package plugin
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -29,11 +31,47 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestHostManagedProviderCloseSignalsCancellation locks in the contract that hostManagedProvider.Close sends
+// SignalCancellation before tearing the underlying provider down. Without this, Plugin.Close treats the subsequent
+// process exit as a premature crash (since shutdownAcknowledged is only flipped on Cancel RPC ack) and emits a
+// misleading "exited prematurely" error to the user. defaultHost.Close does the same thing for plugins still
+// registered at shutdown; callers that close individual providers (e.g. the convert mapper) bypass that path.
+func TestHostManagedProviderCloseSignalsCancellation(t *testing.T) {
+	t.Parallel()
+
+	sink := diagtest.LogSink(t)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil)
+	require.NoError(t, err)
+	host, ok := ctx.Host.(*defaultHost)
+	require.True(t, ok)
+	t.Cleanup(func() { require.NoError(t, host.Close()) })
+
+	var calls []string
+	mockProv := &MockProvider{
+		SignalCancellationF: func(context.Context) error {
+			calls = append(calls, "SignalCancellation")
+			return nil
+		},
+		CloseF: func() error {
+			calls = append(calls, "Close")
+			return nil
+		},
+	}
+
+	host.resourcePlugins[mockProv] = &resourcePlugin{Plugin: mockProv, Name: "mock"}
+
+	managed := hostManagedProvider{Provider: mockProv, host: host}
+	require.NoError(t, managed.Close())
+
+	require.Equal(t, []string{"SignalCancellation", "Close"}, calls)
+	require.NotContains(t, host.resourcePlugins, Provider(mockProv))
+}
+
 func TestClosePanic(t *testing.T) {
 	t.Parallel()
 
 	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
@@ -177,7 +215,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 
 	// Create a context for testing
 	ctx := &Context{
-		Root: tempDir,
+		baseContext: t.Context(),
+		Root:        tempDir,
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -193,7 +232,7 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	}
 
 	// Create the host with our packages
-	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil)
+	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -239,7 +278,8 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 
 	// Create a context for testing
 	ctx := &Context{
-		Root: tempDir,
+		baseContext: t.Context(),
+		Root:        tempDir,
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -258,7 +298,7 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 		"azure":        {Source: "azure"}, // This should be skipped as it's not a local path
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil)
+	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -282,7 +322,8 @@ func TestNewDefaultHost_LoaderAddress(t *testing.T) {
 	t.Parallel()
 
 	ctx := &Context{
-		Root: t.TempDir(),
+		baseContext: t.Context(),
+		Root:        t.TempDir(),
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -294,7 +335,7 @@ func TestNewDefaultHost_LoaderAddress(t *testing.T) {
 		return codegenrpc.UnimplementedLoaderServer{}
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader)
+	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader, nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -303,4 +344,53 @@ func TestNewDefaultHost_LoaderAddress(t *testing.T) {
 	loaderAddr := host.LoaderAddr()
 	assert.NotEmpty(t, loaderAddr)
 	assert.Equal(t, host.ServerAddr(), loaderAddr)
+}
+
+func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
+	t.Parallel()
+
+	sink := diagtest.LogSink(t)
+
+	var loaderCalls int
+	mockLoader := func(Host) codegenrpc.LoaderServer {
+		loaderCalls++
+		return codegenrpc.UnimplementedLoaderServer{}
+	}
+
+	errInstall := errors.New("install boom")
+	var (
+		installCalls   int
+		gotRuntime     string
+		gotLoaderIsNil bool
+	)
+	installLang := func(_ context.Context, runtime string, newLoader NewLoaderFunc) error {
+		installCalls++
+		gotRuntime = runtime
+		gotLoaderIsNil = newLoader == nil
+		// Invoke the loader we were handed to prove it is the host's loader, not nil.
+		if newLoader != nil {
+			newLoader(nil)
+		}
+		return errInstall
+	}
+
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, mockLoader, installLang)
+	require.NoError(t, err)
+	host, ok := ctx.Host.(*defaultHost)
+	require.True(t, ok)
+	t.Cleanup(func() { require.NoError(t, host.Close()) })
+
+	loaderCallsBeforeLoad := loaderCalls
+	lang, err := host.LanguageRuntime("test-lang")
+
+	// The installer ran exactly once, for the requested runtime, and its error gated the load so we never
+	// got a runtime back.
+	require.ErrorIs(t, err, errInstall)
+	assert.Nil(t, lang)
+	assert.Equal(t, 1, installCalls)
+	assert.Equal(t, "test-lang", gotRuntime)
+
+	// The installer received the host's loader, not nil, and was able to invoke it.
+	assert.False(t, gotLoaderIsNil, "host should thread its loader to the installer")
+	assert.Greater(t, loaderCalls, loaderCallsBeforeLoad, "installer should have invoked the host's loader")
 }

@@ -299,12 +299,17 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.new.URN,
 				s.new.URN.Name(),
 				s.Type(),
+				nil, /* oldOptions */
+				resourceOptionsFromState(s.new),
 				s.new.Inputs,
 				nil, /* oldInputs */
 				s.new.Outputs,
 				nil, /* oldOutputs */
 			); err != nil {
-				return err
+				// Component was registered successfully; only the after-hook failed. Surface the error and record it as
+				// a deployment-level failure, but let the step succeed.
+				s.Deployment().Diag().Errorf(diag.RawMessage(s.new.URN, err.Error()))
+				s.Deployment().RecordPostStepError(err)
 			}
 		} else if s, ok := reg.(*UpdateStep); ok {
 			if err := s.Deployment().RunHooks(
@@ -314,12 +319,17 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.new.URN,
 				s.new.URN.Name(),
 				s.Type(),
+				resourceOptionsFromState(s.old),
+				resourceOptionsFromState(s.new),
 				s.new.Inputs,
 				s.old.Inputs,
 				s.new.Outputs,
 				s.old.Outputs,
 			); err != nil {
-				return err
+				// Component was registered successfully; only the after-hook failed. Surface the error and record it as
+				// a deployment-level failure, but let the step succeed.
+				s.Deployment().Diag().Errorf(diag.RawMessage(s.new.URN, err.Error()))
+				s.Deployment().RecordPostStepError(err)
 			}
 		}
 	}
@@ -342,6 +352,12 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 			return nil
 		}
 	}
+
+	// If a component after-hook recorded a post-step error, fail fast, unless ContinueOnError is set.
+	if !se.deployment.opts.ContinueOnError && se.deployment.PostStepError() != nil {
+		se.cancel()
+	}
+
 	if !finalizingStackOutputs {
 		e.Done()
 	}
@@ -620,12 +636,18 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 		return StepApplyFailed{err}
 	}
 
+	// If the step succeeded but recorded a post-step error (e.g. a failing after-hook), cancel further execution to
+	// fail fast, unless ContinueOnError is set.
+	if !se.deployment.opts.ContinueOnError && se.deployment.PostStepError() != nil {
+		se.cancel()
+	}
+
 	return nil
 }
 
 // log is a simple logging helper for the step executor.
 func (se *stepExecutor) log(workerID int, msg string, args ...any) {
-	if logging.V(stepExecutorLogLevel) {
+	if logging.V(stepExecutorLogLevel).Enabled() {
 		message := fmt.Sprintf(msg, args...)
 		logging.V(stepExecutorLogLevel).Infof("StepExecutor worker(%d): %s", workerID, message)
 	}

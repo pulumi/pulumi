@@ -57,9 +57,9 @@ func (r registryClient) GetPackage(
 }
 
 func (r registryClient) ListTemplates(
-	ctx context.Context, name *string,
+	ctx context.Context, opts registry.ListTemplatesOptions,
 ) iter.Seq2[apitype.TemplateMetadata, error] {
-	return r.c.ListTemplates(ctx, name)
+	return r.c.ListTemplates(ctx, opts)
 }
 
 func (r registryClient) GetTemplate(

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
@@ -58,14 +59,16 @@ empty string.`,
 			sink := cmdutil.Diag()
 			pctx, err := plugin.NewContext(
 				cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost)
+				nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
 
-			registry := cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
-			p, _, err := packages.ProviderFromSource(pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			p, _, err := packages.ProviderFromSource(
+				pkgWorkspace.Instance, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
@@ -93,7 +96,7 @@ empty string.`,
 				return fmt.Errorf("no mapping found for key %q", key)
 			}
 
-			fmt.Fprintf(os.Stderr, "%s maps to provider %s\n", source, mapping.Provider)
+			fmt.Fprintf(cmd.ErrOrStderr(), "%s maps to provider %s\n", source, mapping.Provider)
 
 			// If the user has specified out, then write out the mapping data
 			// to a file.
@@ -104,7 +107,7 @@ empty string.`,
 				}
 			} else {
 				// Otherwise, just write it to stdout
-				_, err := os.Stdout.Write(mapping.Data)
+				_, err := cmd.OutOrStdout().Write(mapping.Data)
 				if err != nil {
 					return fmt.Errorf("failed to write mapping data to stdout: %w", err)
 				}

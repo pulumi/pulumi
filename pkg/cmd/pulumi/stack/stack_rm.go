@@ -78,19 +78,20 @@ func newStackRmCmd() *cobra.Command {
 				stack,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
 			}
 
 			if !cmdutil.Interactive() && !yes {
-				return backenderr.NonInteractiveRequiresYesError{}
+				return backenderr.ErrNonInteractiveRequiresYes
 			}
 
 			// Ensure the user really wants to do this.
 			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
 			if !yes && !ui.ConfirmPrompt(prompt, s.Ref().String(), opts) {
-				return result.FprintBailf(os.Stdout, "confirmation declined")
+				return result.FprintBailf(cmd.OutOrStdout(), "confirmation declined")
 			}
 
 			hasResources, err := backend.RemoveStack(ctx, s, force, removeBackups)
@@ -120,7 +121,7 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Ref(), colors.Reset)
-			fmt.Println(opts.Color.Colorize(msg))
+			fmt.Fprintln(cmd.OutOrStdout(), opts.Color.Colorize(msg))
 
 			contract.IgnoreError(state.SetCurrentStack(ws, ""))
 			return nil

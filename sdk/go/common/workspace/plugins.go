@@ -1363,16 +1363,45 @@ func (spec PluginDescriptor) String() string {
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
-	Name         string             // the simple name of the plugin.
-	Path         string             // the path that a plugin was loaded from (this will always be a directory)
-	Kind         apitype.PluginKind // the kind of the plugin (language, resource, etc).
-	Version      *semver.Version    // the plugin's semantic version, if present.
-	InstallTime  time.Time          // the time the plugin was installed.
-	LastUsedTime time.Time          // the last time the plugin was used.
-	SchemaPath   string             // if set, used as the path for loading and caching the schema
-	SchemaTime   time.Time          // if set and newer than the file at SchemaPath, used to invalidate a cached schema
+	Name    string             // the simple name of the plugin.
+	Path    string             // the path that a plugin was loaded from (this will always be a directory)
+	Kind    apitype.PluginKind // the kind of the plugin (language, resource, etc).
+	Version *semver.Version    // the plugin's semantic version, if present.
+
+	installTime  time.Time // cached time the plugin was installed.
+	lastUsedTime time.Time // cached last time the plugin was used.
 
 	size uint64 // cached plugin size in bytes
+}
+
+// InstallTime returns the time the plugin was installed.
+func (info *PluginInfo) InstallTime() time.Time {
+	if !info.installTime.IsZero() {
+		return info.installTime
+	}
+
+	err := info.setFileMetadata()
+	if err != nil {
+		logging.V(6).Infof("unable to get plugin install time for %s: %v", info.Path, err)
+		return time.Time{}
+	}
+
+	return info.installTime
+}
+
+// LastUsedTime returns the last time the plugin was used.
+func (info *PluginInfo) LastUsedTime() time.Time {
+	if !info.lastUsedTime.IsZero() {
+		return info.lastUsedTime
+	}
+
+	err := info.setFileMetadata()
+	if err != nil {
+		logging.V(6).Infof("unable to get plugin last used time for %s: %v", info.Path, err)
+		return time.Time{}
+	}
+
+	return info.lastUsedTime
 }
 
 // Size calculates the size of the plugin, in bytes.
@@ -1417,9 +1446,13 @@ func (info *PluginInfo) Delete() error {
 }
 
 // setFileMetadata adds extra metadata from the given file, representing this plugin's directory.
-func (info *PluginInfo) setFileMetadata(path string) error {
+func (info *PluginInfo) setFileMetadata() error {
+	if info.Path == "" {
+		return nil
+	}
+
 	// Get the file info.
-	file, err := os.Stat(path)
+	file, err := os.Stat(info.Path)
 	if err != nil {
 		return err
 	}
@@ -1428,21 +1461,12 @@ func (info *PluginInfo) setFileMetadata(path string) error {
 	tinfo := times.Get(file)
 
 	if tinfo.HasChangeTime() {
-		info.InstallTime = tinfo.ChangeTime()
+		info.installTime = tinfo.ChangeTime()
 	} else {
-		info.InstallTime = tinfo.ModTime()
+		info.installTime = tinfo.ModTime()
 	}
 
-	info.LastUsedTime = tinfo.AccessTime()
-
-	if info.Kind == apitype.ResourcePlugin {
-		var v string
-		if info.Version != nil {
-			v = "-" + info.Version.String() + "-"
-		}
-		info.SchemaPath = filepath.Join(filepath.Dir(path), "schema-"+info.Name+v+".json")
-		info.SchemaTime = tinfo.ModTime()
-	}
+	info.lastUsedTime = tinfo.AccessTime()
 
 	return nil
 }
@@ -1945,19 +1969,6 @@ func GetPlugins() ([]PluginInfo, error) {
 	return GetPluginsFromDir(dir)
 }
 
-// GetPluginsWithMetadata returns a list of installed plugins with metadata about size,
-// and last access (POOR RUNTIME PERF). Plugin size requires recursively traversing the
-// plugin directory, which can be extremely expensive with the introduction of
-// nodejs multilang components that have deeply nested node_modules folders.
-func GetPluginsWithMetadata() ([]PluginInfo, error) {
-	// To get the list of plugins, simply scan the directory in the usual place.
-	dir, err := GetPluginDir()
-	if err != nil {
-		return nil, err
-	}
-	return GetPluginsFromDir(dir)
-}
-
 func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -1985,9 +1996,6 @@ func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 			} else if !os.IsNotExist(err) {
 				return nil, err
 			}
-			if err = plugin.setFileMetadata(path); err != nil {
-				return nil, err
-			}
 			plugins = append(plugins, plugin)
 		}
 	}
@@ -2004,6 +2012,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 		(kind == apitype.LanguagePlugin && name == "dotnet") ||
 		(kind == apitype.LanguagePlugin && name == "yaml") ||
 		(kind == apitype.LanguagePlugin && name == "java") ||
+		(kind == apitype.LanguagePlugin && name == "pcl") ||
 		(kind == apitype.ResourcePlugin && name == "pulumi-nodejs") ||
 		(kind == apitype.ResourcePlugin && name == "pulumi-python")
 }
@@ -2014,7 +2023,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, true /* skipMetadata */, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -2026,7 +2035,7 @@ func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, proj
 
 func GetPluginInfo(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -2060,7 +2069,7 @@ func getPluginPath(info *PluginInfo) string {
 func getPluginInfoAndPath(
 	ctx context.Context,
 	d diag.Sink,
-	spec PluginDescriptor, skipMetadata bool,
+	spec PluginDescriptor,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, string, error) {
 	filename := spec.File()
@@ -2104,12 +2113,6 @@ func getPluginInfoAndPath(
 			Kind:    localSpec.Kind,
 			Version: localSpec.Version,
 			Path:    filepath.Clean(plugin.Path),
-		}
-		// computing plugin sizes can be very expensive (nested node_modules)
-		if !skipMetadata {
-			if err := info.setFileMetadata(info.Path); err != nil {
-				return nil, "", err
-			}
 		}
 		path := getPluginPath(info)
 		return info, path, nil
@@ -2185,23 +2188,11 @@ func getPluginInfoAndPath(
 			Name: spec.Name,
 			Path: filepath.Dir(pluginPath),
 		}
-		// computing plugin sizes can be very expensive (nested node_modules)
-		if !skipMetadata {
-			if err := info.setFileMetadata(info.Path); err != nil {
-				return nil, "", err
-			}
-		}
 		return info, pluginPath, nil
 	}
 
 	// Wasn't ambient, and wasn't bundled, so now check the plugin cache.
-	var plugins []PluginInfo
-	var err error
-	if skipMetadata {
-		plugins, err = GetPlugins()
-	} else {
-		plugins, err = GetPluginsWithMetadata()
-	}
+	plugins, err := GetPlugins()
 	if err != nil {
 		return nil, "", fmt.Errorf("loading plugin list: %w", err)
 	}
@@ -2398,19 +2389,18 @@ func SelectCompatiblePlugin(
 
 // ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
 func ReadCloserProgressBar(
-	closer io.ReadCloser, size int64, message string, colorization colors.Colorization,
+	closer io.ReadCloser, w io.Writer, size int64, message string, colorization colors.Colorization,
 ) io.ReadCloser {
-	if size == -1 {
-		return closer
-	}
-
-	if !cmdutil.Interactive() {
+	if size == -1 || !cmdutil.Interactive() {
+		// We can't render a progress bar (unknown size, or non-interactive output), but still tell the
+		// user what's happening.
+		fmt.Fprintln(w, colorization.Colorize(colors.SpecUnimportant+message+colors.Reset))
 		return closer
 	}
 
 	// If we know the length of the download, show a progress bar.
 	bar := pb.New(int(size))
-	bar.Output = os.Stderr
+	bar.Output = w
 	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
 	bar.Postfix(colorization.Colorize(colors.Reset))
 	bar.SetMaxWidth(80)
@@ -2550,6 +2540,6 @@ func (bc *barCloser) Read(dest []byte) (int, error) {
 }
 
 func (bc *barCloser) Close() error {
-	bc.bar.FinishPrint("\r")
+	bc.bar.Finish()
 	return bc.readCloser.Close()
 }

@@ -25,6 +25,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -555,10 +556,14 @@ func (b *diyBackend) upgradeStack(
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
-// can support.  Importantly, s3/azblob/gs paths should not be touched. This will only affect
-// file:// paths which have a few oddities around them that we want to ensure work properly.
+// can support.  For s3:// paths this translates AWS SDK v1-era query parameters to their v2
+// equivalents; azblob/gs paths are not touched. file:// paths have a few oddities around them that
+// we want to ensure work properly.
 func massageBlobPath(path string) (string, error) {
 	if !strings.HasPrefix(path, FilePathPrefix) {
+		if strings.HasPrefix(path, "s3://") {
+			return translateLegacyS3Params(path)
+		}
 		// Not a file:// path.  Keep this untouched and pass directly to gocloud.
 		return path, nil
 	}
@@ -618,6 +623,53 @@ func massageBlobPath(path string) (string, error) {
 	}
 
 	return FilePathPrefix + path + queryString, nil
+}
+
+// translateLegacyS3Params rewrites query parameters on s3:// URLs that were supported by the
+// AWS SDK v1-based s3blob driver in gocloud.dev before v0.46, so that backend URLs configured
+// before the upgrade keep working:
+//
+//   - disableSSL becomes disable_https; gocloud.dev v0.46 rejects the v1 name as an unknown
+//     query parameter.
+//   - a scheme-less endpoint (e.g. endpoint=minio:9000) gets an explicit http:// or https://
+//     scheme depending on disableSSL; the v1 SDK implied the scheme, while the v2 SDK
+//     requires one.
+//
+// The other v1-era parameters (s3ForcePathStyle, awssdk) are still understood by gocloud.dev
+// and need no translation.
+func translateLegacyS3Params(urlstr string) (string, error) {
+	u, err := url.Parse(urlstr)
+	if err != nil {
+		return "", fmt.Errorf("parsing the provided URL: %w", err)
+	}
+	query := u.Query()
+	changed := false
+
+	disableSSL := false
+	if values, ok := query["disableSSL"]; ok {
+		disableSSL, err = strconv.ParseBool(values[len(values)-1])
+		if err != nil {
+			return "", fmt.Errorf("invalid value for query parameter %q: %w", "disableSSL", err)
+		}
+		query.Del("disableSSL")
+		query.Set("disable_https", strconv.FormatBool(disableSSL))
+		changed = true
+	}
+
+	if endpoint := query.Get("endpoint"); endpoint != "" && !strings.Contains(endpoint, "://") {
+		scheme := "https"
+		if disableSSL {
+			scheme = "http"
+		}
+		query.Set("endpoint", scheme+"://"+endpoint)
+		changed = true
+	}
+
+	if !changed {
+		return urlstr, nil
+	}
+	u.RawQuery = query.Encode()
+	return u.String(), nil
 }
 
 func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Project) (Backend, error) {
@@ -768,7 +820,11 @@ func (b *diyBackend) CreateStack(
 	}
 
 	if initialState != nil {
-		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, initialState)
+		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+			diyJSONMarshaler,
+			stackName,
+			initialState,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -1021,15 +1077,9 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 		}
 	}
 
-	chkJSON, err := encoding.JSON.Marshal(chk)
+	versionedCheckpoint, err := marshalVersionedCheckpoint(version, features, *chk)
 	if err != nil {
-		return fmt.Errorf("marshalling checkpoint: %w", err)
-	}
-
-	versionedCheckpoint := &apitype.VersionedCheckpoint{
-		Version:    version,
-		Features:   features,
-		Checkpoint: json.RawMessage(chkJSON),
+		return err
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
@@ -1196,7 +1246,8 @@ func (b *diyBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
+		op.Opts.Display.Type != display.DisplayWatch {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -1348,7 +1399,8 @@ func (b *diyBackend) apply(
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
+	if !op.Opts.Display.SuppressPermalink && opts.ShowLink &&
+		!op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
@@ -1367,7 +1419,7 @@ func (b *diyBackend) apply(
 				// printing a statefile perma link happens after all the providers have finished
 				// deploying the infrastructure, failing the pulumi update because there was a
 				// problem printing a statefile perma link can be missleading in automated CI environments.
-				cmdutil.Diag().Warningf(diag.Message("", "Unable to create signed url for current backend to "+
+				b.d.Warningf(diag.Message("", "Unable to create signed url for current backend to "+
 					"create a Permalink. Please visit https://www.pulumi.com/docs/troubleshooting/ "+
 					"for more information\n"))
 			}
@@ -1414,11 +1466,13 @@ func (b *diyBackend) GetLogs(ctx context.Context,
 		return nil, err
 	}
 
-	return GetLogsForTarget(target, query)
+	return GetLogsForTarget(ctx, target, query)
 }
 
 // GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
-func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
+func GetLogsForTarget(
+	ctx context.Context, target *deploy.Target, query operations.LogQuery,
+) ([]operations.LogEntry, error) {
 	contract.Requiref(target != nil, "target", "must not be nil")
 
 	if target.Snapshot == nil {
@@ -1433,7 +1487,7 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 
 	components := operations.NewResourceTree(target.Snapshot.Resources)
 	ops := components.OperationsProvider(config)
-	logs, err := ops.GetLogs(query)
+	logs, err := ops.GetLogs(ctx, query)
 	if logs == nil {
 		return nil, err
 	}
@@ -1480,7 +1534,11 @@ func (b *diyBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	defer b.Unlock(ctx, diyStackRef)
 
 	stackName := diyStackRef.FullyQualifiedName()
-	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, deployment)
+	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+		diyJSONMarshaler,
+		stackName,
+		deployment,
+	)
 	if err != nil {
 		return err
 	}

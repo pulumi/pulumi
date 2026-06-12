@@ -26,8 +26,9 @@ import (
 // Example PCL:
 //
 //	hook "myHook" {
-//	    command  = ["touch", hookTestFile]
-//	    onDryRun = false
+//	    command      = ["touch", hookTestFile]
+//	    onDryRun     = false
+//	    ignoreErrors = false
 //	}
 //
 // A hook can then be referenced in a resource's hooks option:
@@ -51,6 +52,10 @@ type Hook struct {
 	// OnDryRun, when set to true, causes the hook to run during preview operations.
 	// Defaults to false.
 	OnDryRun model.Expression
+
+	// IgnoreErrors, when set to true, causes errors from the hook to be logged as warnings
+	// instead of failing the program. Defaults to false.
+	IgnoreErrors model.Expression
 }
 
 // SyntaxNode returns the syntax node associated with the hook.

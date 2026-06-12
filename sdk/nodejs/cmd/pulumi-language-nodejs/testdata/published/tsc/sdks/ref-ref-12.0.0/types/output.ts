@@ -11,6 +11,7 @@ export interface Data {
     float: number;
     innerData: outputs.InnerData;
     integer: number;
+    optionalInner?: outputs.InnerData;
     string: string;
     stringMap: {[key: string]: string};
 }

@@ -480,6 +480,27 @@ describe("rpc", () => {
                 }
             },
         },
+        serialization_error: {
+            pwd: path.join(base, "081.serialization_error"),
+            expectResourceCount: 0,
+            expectError: "",
+            expectBail: true,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: any, message: string) => {
+                assert.strictEqual(severity, engineproto.LogSeverity.ERROR);
+                assert.ok(
+                    message.includes('serializing property "bad"'),
+                    `expected the failing property name in the log, got: ${message}`,
+                );
+                assert.ok(
+                    message.includes("serialization goes boom"),
+                    `expected the original error in the log, got: ${message}`,
+                );
+            },
+        },
         // A simple test of the read resource behavior.
         read_resource: {
             pwd: path.join(base, "014.read_resource"),

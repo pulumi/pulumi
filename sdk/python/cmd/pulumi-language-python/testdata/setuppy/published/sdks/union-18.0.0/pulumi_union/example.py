@@ -20,10 +20,10 @@ __all__ = ['ExampleArgs', 'Example']
 @pulumi.input_type
 class ExampleArgs:
     def __init__(__self__, *,
-                 map_map_union_property: Optional[pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]] = None,
-                 string_enum_union_list_property: Optional[pulumi.Input[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]] = None,
-                 string_or_integer_property: Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]] = None,
-                 typed_enum_property: Optional[pulumi.Input[Union[_builtins.str, 'BlobType']]] = None):
+                 map_map_union_property: pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]] = None,
+                 string_enum_union_list_property: pulumi.Input[Optional[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]] = None,
+                 string_or_integer_property: pulumi.Input[Optional[Union[_builtins.str, _builtins.int]]] = None,
+                 typed_enum_property: pulumi.Input[Optional[Union[_builtins.str, 'BlobType']]] = None):
         """
         The set of arguments for constructing a Example resource.
         """
@@ -38,38 +38,38 @@ class ExampleArgs:
 
     @_builtins.property
     @pulumi.getter(name="mapMapUnionProperty")
-    def map_map_union_property(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]]:
+    def map_map_union_property(self) -> pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]]:
         return pulumi.get(self, "map_map_union_property")
 
     @map_map_union_property.setter
-    def map_map_union_property(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]]):
+    def map_map_union_property(self, value: pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]]):
         pulumi.set(self, "map_map_union_property", value)
 
     @_builtins.property
     @pulumi.getter(name="stringEnumUnionListProperty")
-    def string_enum_union_list_property(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]]:
+    def string_enum_union_list_property(self) -> pulumi.Input[Optional[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]]:
         return pulumi.get(self, "string_enum_union_list_property")
 
     @string_enum_union_list_property.setter
-    def string_enum_union_list_property(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]]):
+    def string_enum_union_list_property(self, value: pulumi.Input[Optional[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]]):
         pulumi.set(self, "string_enum_union_list_property", value)
 
     @_builtins.property
     @pulumi.getter(name="stringOrIntegerProperty")
-    def string_or_integer_property(self) -> Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]]:
+    def string_or_integer_property(self) -> pulumi.Input[Optional[Union[_builtins.str, _builtins.int]]]:
         return pulumi.get(self, "string_or_integer_property")
 
     @string_or_integer_property.setter
-    def string_or_integer_property(self, value: Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]]):
+    def string_or_integer_property(self, value: pulumi.Input[Optional[Union[_builtins.str, _builtins.int]]]):
         pulumi.set(self, "string_or_integer_property", value)
 
     @_builtins.property
     @pulumi.getter(name="typedEnumProperty")
-    def typed_enum_property(self) -> Optional[pulumi.Input[Union[_builtins.str, 'BlobType']]]:
+    def typed_enum_property(self) -> pulumi.Input[Optional[Union[_builtins.str, 'BlobType']]]:
         return pulumi.get(self, "typed_enum_property")
 
     @typed_enum_property.setter
-    def typed_enum_property(self, value: Optional[pulumi.Input[Union[_builtins.str, 'BlobType']]]):
+    def typed_enum_property(self, value: pulumi.Input[Optional[Union[_builtins.str, 'BlobType']]]):
         pulumi.set(self, "typed_enum_property", value)
 
 
@@ -79,10 +79,10 @@ class Example(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 map_map_union_property: Optional[pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]] = None,
-                 string_enum_union_list_property: Optional[pulumi.Input[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]] = None,
-                 string_or_integer_property: Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]] = None,
-                 typed_enum_property: Optional[pulumi.Input[Union[_builtins.str, 'BlobType']]] = None,
+                 map_map_union_property: pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]] = None,
+                 string_enum_union_list_property: pulumi.Input[Optional[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]] = None,
+                 string_or_integer_property: pulumi.Input[Optional[Union[_builtins.str, _builtins.int]]] = None,
+                 typed_enum_property: pulumi.Input[Optional[Union[_builtins.str, 'BlobType']]] = None,
                  __props__=None):
         """
         Create a Example resource with the given unique name, props, and options.
@@ -114,10 +114,10 @@ class Example(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 map_map_union_property: Optional[pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]] = None,
-                 string_enum_union_list_property: Optional[pulumi.Input[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]] = None,
-                 string_or_integer_property: Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]] = None,
-                 typed_enum_property: Optional[pulumi.Input[Union[_builtins.str, 'BlobType']]] = None,
+                 map_map_union_property: pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]] = None,
+                 string_enum_union_list_property: pulumi.Input[Optional[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]] = None,
+                 string_or_integer_property: pulumi.Input[Optional[Union[_builtins.str, _builtins.int]]] = None,
+                 typed_enum_property: pulumi.Input[Optional[Union[_builtins.str, 'BlobType']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

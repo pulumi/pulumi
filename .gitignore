@@ -19,6 +19,8 @@ venv/
 # Ignore VSCode created solution file
 /pulumi.sln
 .mono
+# Ignore VSCode created cache files (https://github.com/microsoft/vscode-dotnettools/issues/2952)
+*.lscache
 
 # Ignore user-provided go.work files.
 /go.work
@@ -94,3 +96,7 @@ yarn-error.log
 # Local environment settings
 .env
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Local mise.toml
+.mise.local.toml

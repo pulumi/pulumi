@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"iter"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -282,6 +283,8 @@ type ReadRequest struct {
 	Type          tokens.Type
 	ID            resource.ID
 	Inputs, State resource.PropertyMap
+	// Timeout is the time, in seconds, that the caller is prepared to wait for the operation to complete.
+	Timeout float64
 	// The gRPC address of the ResourceStatus service which can be used to read view resources.
 	ResourceStatusAddress string
 	// The ResourceStatus service token to pass when calling methods on the service.
@@ -337,6 +340,91 @@ type DeleteRequest struct {
 
 type DeleteResponse struct {
 	Status resource.Status
+}
+
+// ListRequest is the type of requests sent as part of a [Provider.List] call.
+type ListRequest struct {
+	// Token is the resource type to enumerate.
+	Token tokens.Type
+	// Query is an optional provider-defined filter over resource state. It may contain unknown values, in which case
+	// the provider should respond with a [ListResponse] whose Computed flag is set.
+	Query resource.PropertyMap
+	// Limit caps the total number of results across the entire enumeration. A value of zero means "no limit". The
+	// provider may return fewer results than Limit even when more match.
+	Limit int64
+	// PageSize is the maximum number of results the caller wants in a single page. The provider is free to return
+	// fewer than PageSize, but should not exceed it. A value of zero lets the provider choose.
+	PageSize int64
+	// ContinuationToken is the opaque token returned by a previous List call. Empty for the first page; non-empty to
+	// fetch the next page using the same Token/Query/Limit as the original call.
+	ContinuationToken string
+}
+
+// ListResult is a single resource returned by a [Provider.List] call.
+type ListResult struct {
+	// ID is an importable identifier for the resource. It can be passed to [Provider.Read] to fetch full state.
+	ID resource.ID
+	// Name is the provider-supplied name for the resource, or empty if the provider does not supply one.
+	Name string
+}
+
+// ListStream is the streamed response of a [Provider.List] call. The caller iterates Items to receive each
+// resource one at a time; after iteration completes, Computed and ContinuationToken hold any trailing metadata
+// the provider returned.
+//
+// The contract for Items is:
+//
+//   - Each yield delivers either (item, nil) for a successful result, or (zero, err) for an error. An error pair is
+//     always the final yield — the iterator returns immediately afterwards.
+//   - Items must be drained to completion to ensure the underlying transport is closed and Computed /
+//     ContinuationToken are populated. Stopping early (e.g. break out of the range loop) is allowed but those
+//     metadata fields may not reflect the full stream.
+//   - Items may only be iterated once.
+//
+// A typical caller looks like:
+//
+//	stream, err := p.List(req)
+//	if err != nil { return err }
+//	for item, err := range stream.Items {
+//	    if err != nil { return err }
+//	    // process item
+//	}
+//	if stream.Computed { /* query had unknowns */ }
+//	next := stream.ContinuationToken
+type ListStream struct {
+	// Items yields each list result. See the [ListStream] doc comment for the iteration contract.
+	Items iter.Seq2[ListResult, error]
+	// Computed is set after Items completes if the provider could not compute the list, typically because the query
+	// contained unknown values. When true, no items will have been yielded.
+	Computed bool
+	// ContinuationToken is set after Items completes to the cursor for the next page. Empty when there are no more
+	// pages.
+	ContinuationToken string
+}
+
+// NewListStream builds a ListStream that yields each entry in results, then exposes the supplied continuationToken.
+// It is intended for synthetic implementations such as test doubles. The returned stream's Items can be iterated
+// exactly once.
+func NewListStream(results []ListResult, continuationToken string) *ListStream {
+	return &ListStream{
+		Items: func(yield func(ListResult, error) bool) {
+			for _, r := range results {
+				if !yield(r, nil) {
+					return
+				}
+			}
+		},
+		ContinuationToken: continuationToken,
+	}
+}
+
+// NewComputedListStream builds a ListStream that yields no items and reports Computed=true. It is intended for
+// providers that detect unknown values in the query at construction time.
+func NewComputedListStream() *ListStream {
+	return &ListStream{
+		Items:    func(yield func(ListResult, error) bool) {},
+		Computed: true,
+	}
 }
 
 type ConstructRequest struct {
@@ -410,9 +498,6 @@ type Provider interface {
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
 
-	// Pkg fetches this provider's package.
-	Pkg() tokens.Package
-
 	// Handshake is the first call made by the engine to a provider. It is used to pass the engine's address to the
 	// provider so that it may establish its own connections back, and to establish protocol configuration that will be
 	// used to communicate between the two parties. Providers that support Handshake should return a response consistent
@@ -448,6 +533,11 @@ type Provider interface {
 	Update(context.Context, UpdateRequest) (UpdateResponse, error)
 	// Delete tears down an existing resource. The inputs and outputs are the last recorded ones from state.
 	Delete(context.Context, DeleteRequest) (DeleteResponse, error)
+	// List enumerates resources of the given type managed by this provider. The returned ListStream yields each
+	// resource one at a time; after Items has finished iterating, ContinuationToken (if non-empty) can be passed
+	// back in a follow-up ListRequest to fetch the next page, and Computed reports whether the provider could not
+	// compute the list (typically because the query contained unknown values).
+	List(context.Context, ListRequest) (*ListStream, error)
 
 	// Construct creates a new component resource.
 	Construct(context.Context, ConstructRequest) (ConstructResponse, error)
@@ -775,6 +865,7 @@ type ReadResult struct {
 type ConstructInfo struct {
 	Project          string                // the project name housing the program being run.
 	Stack            string                // the stack name being evaluated.
+	Organization     string                // the organization name housing the program being run (might be empty).
 	Config           map[config.Key]string // the configuration variables to apply before running.
 	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
 	DryRun           bool                  // true if we are performing a dry-run (preview).
@@ -848,6 +939,7 @@ type CustomTimeouts struct {
 	Create string
 	Update string
 	Delete string
+	Read   string
 }
 
 // ConstructResult is the result of a call to Construct.

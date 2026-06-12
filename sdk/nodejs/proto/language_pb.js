@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var proto = { codegen: { }, pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 goog.object.extend(proto, pulumi_codegen_hcl_pb);
@@ -2530,7 +2530,7 @@ proto.pulumirpc.GetRequiredPackagesRequest.prototype.hasInfo = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.GetRequiredPackagesResponse.repeatedFields_ = [1];
+proto.pulumirpc.GetRequiredPackagesResponse.repeatedFields_ = [1,2];
 
 
 
@@ -2564,7 +2564,9 @@ proto.pulumirpc.GetRequiredPackagesResponse.prototype.toObject = function(opt_in
 proto.pulumirpc.GetRequiredPackagesResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
 packagesList: jspb.Message.toObjectList(msg.getPackagesList(),
-    pulumi_plugin_pb.PackageDependency.toObject, includeInstance)
+    pulumi_plugin_pb.PackageDependency.toObject, includeInstance),
+specsList: jspb.Message.toObjectList(msg.getSpecsList(),
+    pulumi_plugin_pb.PackageSpec.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -2606,6 +2608,11 @@ proto.pulumirpc.GetRequiredPackagesResponse.deserializeBinaryFromReader = functi
       reader.readMessage(value,pulumi_plugin_pb.PackageDependency.deserializeBinaryFromReader);
       msg.addPackages(value);
       break;
+    case 2:
+      var value = new pulumi_plugin_pb.PackageSpec;
+      reader.readMessage(value,pulumi_plugin_pb.PackageSpec.deserializeBinaryFromReader);
+      msg.addSpecs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2641,6 +2648,14 @@ proto.pulumirpc.GetRequiredPackagesResponse.serializeBinaryToWriter = function(m
       1,
       f,
       pulumi_plugin_pb.PackageDependency.serializeBinaryToWriter
+    );
+  }
+  f = message.getSpecsList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      2,
+      f,
+      pulumi_plugin_pb.PackageSpec.serializeBinaryToWriter
     );
   }
 };
@@ -2681,6 +2696,44 @@ proto.pulumirpc.GetRequiredPackagesResponse.prototype.addPackages = function(opt
  */
 proto.pulumirpc.GetRequiredPackagesResponse.prototype.clearPackagesList = function() {
   return this.setPackagesList([]);
+};
+
+
+/**
+ * repeated PackageSpec specs = 2;
+ * @return {!Array<!proto.pulumirpc.PackageSpec>}
+ */
+proto.pulumirpc.GetRequiredPackagesResponse.prototype.getSpecsList = function() {
+  return /** @type{!Array<!proto.pulumirpc.PackageSpec>} */ (
+    jspb.Message.getRepeatedWrapperField(this, pulumi_plugin_pb.PackageSpec, 2));
+};
+
+
+/**
+ * @param {!Array<!proto.pulumirpc.PackageSpec>} value
+ * @return {!proto.pulumirpc.GetRequiredPackagesResponse} returns this
+*/
+proto.pulumirpc.GetRequiredPackagesResponse.prototype.setSpecsList = function(value) {
+  return jspb.Message.setRepeatedWrapperField(this, 2, value);
+};
+
+
+/**
+ * @param {!proto.pulumirpc.PackageSpec=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.PackageSpec}
+ */
+proto.pulumirpc.GetRequiredPackagesResponse.prototype.addSpecs = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.pulumirpc.PackageSpec, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.GetRequiredPackagesResponse} returns this
+ */
+proto.pulumirpc.GetRequiredPackagesResponse.prototype.clearSpecsList = function() {
+  return this.setSpecsList([]);
 };
 
 
@@ -2738,7 +2791,8 @@ organization: jspb.Message.getFieldWithDefault(msg, 12, ""),
 configpropertymap: (f = msg.getConfigpropertymap()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f),
 loaderTarget: jspb.Message.getFieldWithDefault(msg, 15, ""),
-attachDebugger: jspb.Message.getBooleanFieldWithDefault(msg, 16, false)
+attachDebugger: jspb.Message.getBooleanFieldWithDefault(msg, 16, false),
+mapperTarget: jspb.Message.getFieldWithDefault(msg, 17, "")
   };
 
   if (includeInstance) {
@@ -2842,6 +2896,10 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 16:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAttachDebugger(value);
+      break;
+    case 17:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setMapperTarget(value);
       break;
     default:
       reader.skipField();
@@ -2980,6 +3038,13 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
   if (f) {
     writer.writeBool(
       16,
+      f
+    );
+  }
+  f = message.getMapperTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      17,
       f
     );
   }
@@ -3352,6 +3417,24 @@ proto.pulumirpc.RunRequest.prototype.getAttachDebugger = function() {
  */
 proto.pulumirpc.RunRequest.prototype.setAttachDebugger = function(value) {
   return jspb.Message.setProto3BooleanField(this, 16, value);
+};
+
+
+/**
+ * optional string mapper_target = 17;
+ * @return {string}
+ */
+proto.pulumirpc.RunRequest.prototype.getMapperTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 17, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.setMapperTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 17, value);
 };
 
 

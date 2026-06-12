@@ -58,17 +58,17 @@ export interface ConfigGroupArgs {
     /**
      * Set of paths or a URLs that uniquely identify files.
      */
-    files?: pulumi.Input<string | pulumi.Input<string>[]>;
+    files?: pulumi.Input<string | pulumi.Input<string>[] | undefined>;
     /**
      * Objects representing Kubernetes resources.
      */
-    objs?: pulumi.Input<any | any[]>;
+    objs?: pulumi.Input<any | any[] | undefined>;
     /**
      * An optional prefix for the auto-generated resource names. Example: A resource created with resourcePrefix="foo" would produce a resource named "foo-resourceName".
      */
-    resourcePrefix?: pulumi.Input<string>;
+    resourcePrefix?: pulumi.Input<string | undefined>;
     /**
      * YAML text containing Kubernetes resource definitions.
      */
-    yaml?: pulumi.Input<string | pulumi.Input<string>[]>;
+    yaml?: pulumi.Input<string | pulumi.Input<string>[] | undefined>;
 }

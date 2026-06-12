@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
@@ -65,7 +66,7 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 			_, diags, err := schema.BindSpec(*spec, nil, schema.ValidationOptions{
 				AllowDanglingReferences: schemaCheckArgs.allowDanglingReferences,
 			})
-			diagWriter := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 0, true)
+			diagWriter := hcl.NewDiagnosticTextWriter(cmd.ErrOrStderr(), nil, 0, true)
 			wrErr := diagWriter.WriteDiagnostics(diags)
 			contract.IgnoreError(wrErr)
 			if err == nil && diags.HasErrors() {
@@ -108,16 +109,17 @@ func schemaFromSourceOrStdin(cmd *cobra.Command, source string, extraArgs []stri
 	}
 	sink := cmdutil.Diag()
 	pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-		nil, schema.NewLoaderServerFromHost)
+		nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return nil, err
 	}
 	defer contract.IgnoreClose(pctx)
 
 	parameters := &plugin.ParameterizeArgs{Args: extraArgs}
-	spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
-		cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-		env.Global(), 0 /* unbounded concurrency */)
+	registry := cmdCmd.NewDefaultRegistry(
+		cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+	spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
+		registry, env.Global(), 0 /* unbounded concurrency */)
 	if err != nil {
 		return nil, err
 	}

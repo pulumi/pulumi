@@ -30,17 +30,19 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPluginRmCmd() *cobra.Command {
+func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var all bool
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove one or more plugins from the download cache",
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "Remove one or more plugins from the download cache",
 		Long: "Remove one or more plugins from the download cache.\n" +
 			"\n" +
 			"Specify KIND, NAME, and/or VERSION to narrow down what will be removed.\n" +
@@ -82,7 +84,7 @@ func newPluginRmCmd() *cobra.Command {
 
 			// Now build a list of plugins that match.
 			var deletes []workspace.PluginInfo
-			plugins, err := workspace.GetPlugins()
+			plugins, err := pluginContext.GetPlugins(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("loading plugins: %w", err)
 			}
@@ -100,18 +102,19 @@ func newPluginRmCmd() *cobra.Command {
 				return nil
 			}
 
+			out := cmd.OutOrStdout()
 			// Confirm that the user wants to do this (unless --yes was passed).
 			if !yes {
 				var suffix string
 				if len(deletes) != 1 {
 					suffix = "s"
 				}
-				fmt.Print(
+				fmt.Fprint(out,
 					opts.Color.Colorize(
 						fmt.Sprintf("%sThis will remove %d plugin%s from the cache:%s\n",
 							colors.SpecAttention, len(deletes), suffix, colors.Reset)))
 				for _, del := range deletes {
-					fmt.Printf("    %s %s\n", del.Kind, del.String())
+					fmt.Fprintf(out, "    %s %s\n", del.Kind, del.String())
 				}
 				if !ui.ConfirmPrompt("", "yes", opts) {
 					return nil
@@ -122,7 +125,7 @@ func newPluginRmCmd() *cobra.Command {
 			var result error
 			for _, plugin := range deletes {
 				if err := plugin.Delete(); err == nil {
-					fmt.Printf("removed: %s %v\n", plugin.Kind, plugin)
+					fmt.Fprintf(out, "removed: %s %v\n", plugin.Kind, plugin)
 				} else {
 					result = multierror.Append(
 						result, fmt.Errorf("failed to delete %s plugin %s: %w", plugin.Kind, plugin, err))

@@ -15,6 +15,7 @@
 package operations
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -140,7 +141,7 @@ type resourceOperations struct {
 var _ Provider = (*resourceOperations)(nil)
 
 // GetLogs gets logs for a Resource
-func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *resourceOperations) GetLogs(ctx context.Context, query LogQuery) (*[]LogEntry, error) {
 	if ops.resource == nil {
 		return nil, nil
 	}
@@ -155,7 +156,7 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			ResourceFilter: nil,
 		}
 		// Try to get an operations provider for this resource, it may be `nil`
-		opsProvider, err := ops.getOperationsProvider()
+		opsProvider, err := ops.getOperationsProvider(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +164,7 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			// If this resource has an operations provider - use it and don't recur into children.  It is the
 			// responsibility of it's GetLogs implementation to aggregate all logs from children, either by passing them
 			// through or by filtering specific content out.
-			logsResult, err := opsProvider.GetLogs(query)
+			logsResult, err := opsProvider.GetLogs(ctx, query)
 			if err != nil {
 				return logsResult, err
 			}
@@ -183,7 +184,7 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			config:   ops.config,
 		}
 		go func() {
-			childLogs, err := childOps.GetLogs(query)
+			childLogs, err := childOps.GetLogs(ctx, query)
 			ch <- childLogs
 			errch <- err
 		}()
@@ -256,7 +257,7 @@ func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) boo
 	return false
 }
 
-func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
+func (ops *resourceOperations) getOperationsProvider(ctx context.Context) (Provider, error) {
 	if ops.resource == nil || ops.resource.State == nil {
 		return nil, nil
 	}
@@ -270,9 +271,9 @@ func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
 	case "cloud":
 		return CloudOperationsProvider(ops.config, ops.resource)
 	case "aws":
-		return AWSOperationsProvider(ops.config, ops.resource)
+		return AWSOperationsProvider(ctx, ops.config, ops.resource)
 	case "gcp":
-		return GCPOperationsProvider(ops.config, ops.resource)
+		return GCPOperationsProvider(ctx, ops.config, ops.resource)
 	default:
 		return nil, nil
 	}

@@ -16,8 +16,8 @@ __all__ = ['ExampleArgs', 'Example']
 @pulumi.input_type
 class ExampleArgs:
     def __init__(__self__, *,
-                 array_of_union_of: Optional[pulumi.Input[Sequence[pulumi.Input[Union['VariantOneArgs', 'VariantTwoArgs']]]]] = None,
-                 union_of: Optional[pulumi.Input[Union['VariantOneArgs', 'VariantTwoArgs']]] = None):
+                 array_of_union_of: pulumi.Input[Optional[Sequence[pulumi.Input[Union['VariantOneArgs', 'VariantTwoArgs']]]]] = None,
+                 union_of: pulumi.Input[Optional[Union['VariantOneArgs', 'VariantTwoArgs']]] = None):
         """
         The set of arguments for constructing a Example resource.
         """
@@ -28,20 +28,20 @@ class ExampleArgs:
 
     @_builtins.property
     @pulumi.getter(name="arrayOfUnionOf")
-    def array_of_union_of(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[Union['VariantOneArgs', 'VariantTwoArgs']]]]]:
+    def array_of_union_of(self) -> pulumi.Input[Optional[Sequence[pulumi.Input[Union['VariantOneArgs', 'VariantTwoArgs']]]]]:
         return pulumi.get(self, "array_of_union_of")
 
     @array_of_union_of.setter
-    def array_of_union_of(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[Union['VariantOneArgs', 'VariantTwoArgs']]]]]):
+    def array_of_union_of(self, value: pulumi.Input[Optional[Sequence[pulumi.Input[Union['VariantOneArgs', 'VariantTwoArgs']]]]]):
         pulumi.set(self, "array_of_union_of", value)
 
     @_builtins.property
     @pulumi.getter(name="unionOf")
-    def union_of(self) -> Optional[pulumi.Input[Union['VariantOneArgs', 'VariantTwoArgs']]]:
+    def union_of(self) -> pulumi.Input[Optional[Union['VariantOneArgs', 'VariantTwoArgs']]]:
         return pulumi.get(self, "union_of")
 
     @union_of.setter
-    def union_of(self, value: Optional[pulumi.Input[Union['VariantOneArgs', 'VariantTwoArgs']]]):
+    def union_of(self, value: pulumi.Input[Optional[Union['VariantOneArgs', 'VariantTwoArgs']]]):
         pulumi.set(self, "union_of", value)
 
 
@@ -51,8 +51,8 @@ class Example(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 array_of_union_of: Optional[pulumi.Input[Sequence[pulumi.Input[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]]]] = None,
-                 union_of: Optional[pulumi.Input[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]] = None,
+                 array_of_union_of: pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]]]] = None,
+                 union_of: pulumi.Input[Optional[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]] = None,
                  __props__=None):
         """
         Create a Example resource with the given unique name, props, and options.
@@ -84,8 +84,8 @@ class Example(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 array_of_union_of: Optional[pulumi.Input[Sequence[pulumi.Input[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]]]] = None,
-                 union_of: Optional[pulumi.Input[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]] = None,
+                 array_of_union_of: pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]]]] = None,
+                 union_of: pulumi.Input[Optional[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

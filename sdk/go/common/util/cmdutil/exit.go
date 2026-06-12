@@ -48,7 +48,7 @@ func DetailedError(err error) string {
 
 			// Append the stack trace.
 			for _, f := range stackerr.StackTrace() {
-				msg.WriteString(fmt.Sprintf("%+v\n", f))
+				fmt.Fprintf(&msg, "%+v\n", f)
 			}
 
 			// Keep going up the causer chain, if any.
@@ -73,14 +73,13 @@ func DetailedError(err error) string {
 //
 // If run returns a BailError, we will not print an error message.
 //
-// Deprecated: Instead of using [RunFunc], you should call [DisplayErrorMessage] and then
-// manually exit with `os.Exit(-1)`
+// Deprecated: Use the default cobra error handling logic.
 func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		err := run(cmd, args)
 		if err != nil {
 			DisplayErrorMessage(err)
-			os.Exit(-1)
+			os.Exit(-1) //nolint:noosexit // RunFunc is deprecated
 		}
 	}
 }
@@ -115,7 +114,7 @@ func Exit(err error) {
 // ExitError issues an error and exits with a standard error exit code.
 func ExitError(msg string) {
 	Diag().Errorf(diag.Message("", "%s"), msg)
-	os.Exit(ExitCodeError)
+	os.Exit(ExitCodeError) //nolint:noosexit // ExitError is also forbidden outside of main functions
 }
 
 // Exit code taxonomy for the Pulumi CLI. These values form part of the
@@ -150,9 +149,9 @@ func errorMessage(err error) string {
 
 	default:
 		var msg strings.Builder
-		msg.WriteString(fmt.Sprintf("%d errors occurred:", len(underlying)))
+		fmt.Fprintf(&msg, "%d errors occurred:", len(underlying))
 		for i, werr := range underlying {
-			msg.WriteString(fmt.Sprintf("\n    %d) %s", i+1, errorMessage(werr)))
+			fmt.Fprintf(&msg, "\n    %d) %s", i+1, errorMessage(werr))
 		}
 		return msg.String()
 	}

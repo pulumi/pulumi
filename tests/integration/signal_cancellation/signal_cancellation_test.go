@@ -34,6 +34,8 @@ func TestSignalCancellation(t *testing.T) {
 		t.Skip("Sending SIGINT to a process is not supported on Windows")
 	}
 	t.Parallel()
+	// TODO[pulumi/pulumi#22683]: Re-enable when we fix the underlying issue
+	t.Skip("flaky test, see pulumi/pulumi#22683")
 	for _, lang := range []string{"go", "python", "nodejs"} {
 		t.Run(lang, func(t *testing.T) {
 			t.Parallel()
@@ -87,6 +89,8 @@ func TestSignalCancellationForceKill(t *testing.T) {
 		t.Skip("Sending SIGINT to a process is not supported on Windows")
 	}
 	t.Parallel()
+	// TODO[pulumi/pulumi#22683]: Re-enable when we fix the underlying issue
+	t.Skip("flaky test, see pulumi/pulumi#22683")
 	for _, lang := range []string{"go_ignore", "python_ignore", "nodejs_ignore"} {
 		t.Run(lang, func(t *testing.T) {
 			t.Parallel()
@@ -138,6 +142,8 @@ func TestPluginSignalCancellation(t *testing.T) {
 		t.Skip("Sending SIGINT to a process is not supported on Windows")
 	}
 	t.Parallel()
+	// TODO[pulumi/pulumi#22683]: Re-enable when we fix the underlying issue
+	t.Skip("flaky test, see pulumi/pulumi#22683")
 	for _, lang := range []string{"plugin_go", "plugin_python", "plugin_nodejs"} {
 		t.Run(lang, func(t *testing.T) {
 			t.Parallel()
@@ -199,6 +205,8 @@ func TestPluginSignalCancellationForceKill(t *testing.T) {
 		t.Skip("Sending SIGINT to a process is not supported on Windows")
 	}
 	t.Parallel()
+	// TODO[pulumi/pulumi#22683]: Re-enable when we fix the underlying issue
+	t.Skip("flaky test, see pulumi/pulumi#22683")
 	for _, lang := range []string{"plugin_go_ignore", "plugin_python_ignore", "plugin_nodejs_ignore"} {
 		t.Run(lang, func(t *testing.T) {
 			t.Parallel()

@@ -31,9 +31,9 @@ import (
 	"golang.org/x/term"
 )
 
-func makeStreamMock() *streamMock {
+func makeStreamMock(t *testing.T) *streamMock {
 	return &streamMock{
-		ctx: context.Background(),
+		ctx: t.Context(),
 	}
 }
 
@@ -61,7 +61,7 @@ func (m *streamMock) Send(resp *pulumirpc.InstallDependenciesResponse) error {
 func TestWriter_NoTerminal(t *testing.T) {
 	t.Parallel()
 
-	server := makeStreamMock()
+	server := makeStreamMock(t)
 
 	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, false)
 	require.NoError(t, err)
@@ -90,7 +90,7 @@ func TestWriter_NoTerminal(t *testing.T) {
 func TestWriter_Terminal(t *testing.T) {
 	t.Parallel()
 
-	server := makeStreamMock()
+	server := makeStreamMock(t)
 
 	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, true)
 	require.NoError(t, err)
@@ -168,7 +168,7 @@ func TestWriter_Terminal(t *testing.T) {
 func TestWriter_IsPTY(t *testing.T) {
 	t.Parallel()
 
-	server := makeStreamMock()
+	server := makeStreamMock(t)
 
 	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, true)
 	require.NoError(t, err)
@@ -189,7 +189,7 @@ func TestWriter_IsPTY(t *testing.T) {
 func TestWriter_SafeToCloseTwice(t *testing.T) {
 	t.Parallel()
 
-	server := makeStreamMock()
+	server := makeStreamMock(t)
 
 	closer, _, _, err := MakeInstallDependenciesStreams(server, true)
 	require.NoError(t, err)

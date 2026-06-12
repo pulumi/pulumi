@@ -1,4 +1,5 @@
 import pulumi
+from typing import Any
 import pulumi_unknown as unknown
 
 provider = pulumi.providers.Unknown("provider")
@@ -7,7 +8,7 @@ main = unknown.Main("main",
     second={
         foo: bar,
     })
-from_module = []
+from_module: list[Any] = []
 for range in [{"value": i} for i in range(0, 10)]:
     from_module.append(unknown.eks.Example(f"fromModule-{range['value']}", associated_main=main.id))
 pulumi.export("mainId", main["id"])

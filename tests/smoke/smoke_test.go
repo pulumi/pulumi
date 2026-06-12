@@ -78,6 +78,42 @@ func TestLanguageNewSmoke(t *testing.T) {
 	}
 }
 
+// Quick sanity test that `pulumi package new` can scaffold a package from a live template.
+func TestPackageNewSmoke(t *testing.T) {
+	t.Parallel()
+
+	for _, template := range []string{"component-nodejs", "component-python"} {
+		t.Run(template, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+
+			// make sure we can download needed plugins
+			e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+			packageDir := filepath.Join(e.RootPath, "package")
+			err := os.Mkdir(packageDir, 0o700)
+			require.NoError(t, err)
+
+			e.CWD = packageDir
+
+			e.RunCommand("pulumi", "package", "new", template, "--name", "my-package",
+				"--description", "A smoke-tested package", "--yes")
+
+			pluginPath := filepath.Join(packageDir, "PulumiPlugin.yaml")
+			plugin, err := workspace.LoadPluginProject(pluginPath)
+			require.NoError(t, err)
+			assert.Nil(t, plugin.Template, "template block should be stripped from the saved manifest")
+			assert.NotEmpty(t, plugin.Runtime.Name())
+
+			schemaJSON, _ := e.RunCommand("pulumi", "package", "get-schema", ".")
+			var spec schema.PackageSpec
+			require.NoError(t, json.Unmarshal([]byte(schemaJSON), &spec))
+			assert.Equal(t, "my-package", spec.Name)
+		})
+	}
+}
+
 // Quick sanity tests that YAML convert works.
 func TestYamlConvertSmoke(t *testing.T) {
 	t.Parallel()
@@ -595,7 +631,7 @@ func TestInstall(t *testing.T) {
 
 			// Ensure `install` works and subsequent `up` and `destroy` operations work.
 			_, stderr := e.RunCommand("pulumi", "install")
-			assert.Regexp(t, regexp.MustCompile(`resource plugin random.+ installing`), stderr)
+			assert.Regexp(t, regexp.MustCompile(`Downloading provider random`), stderr)
 			e.RunCommand("pulumi", "stack", "init", "test")
 			e.RunCommand("pulumi", "up", "--yes")
 			e.RunCommand("pulumi", "destroy", "--yes")
@@ -1207,4 +1243,98 @@ func TestTerraformUp(t *testing.T) {
 		"To convert this configuration to a Pulumi project, "+
 		"please see the documentation at "+
 		"https://www.pulumi.com/docs/iac/guides/migration/migrating-to-pulumi/from-terraform/")
+}
+
+// Test that `pulumi do` can invoke a real provider function end-to-end. We use the command provider's local:run
+// function because it's small, well-behaved, and exercises both an input file and a structured JSON output.
+func TestDoCommandLocalRun(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Allow auto-acquiring the command plugin.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	// logging = "none" suppresses the command provider's own stdout/stderr echo so the only thing on our stdout
+	// is the JSON result. The provider still captures stdout/stderr as outputs.
+	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n"+`logging = "none"`+"\n")
+
+	stdout, stderr := e.RunCommand("pulumi", "do", "command:local:run", "--input-file", "inputs.pcl")
+
+	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
+	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
+	// when it happens the test should fail loudly.
+	assert.NotContains(t, stderr, "panic:", "pulumi do should not panic; stderr:\n%s", stderr)
+
+	var result map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "expected JSON output, got: %s", stdout)
+	assert.Equal(t, "hello", strings.TrimSpace(fmt.Sprint(result["stdout"])))
+}
+
+// Test that `pulumi do <pkg:module>` renders the expected help text for a module-level command. We only assert on
+// the do-specific portion.
+func TestDoCommandLocalHelp(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	stdout, _ := e.RunCommand("pulumi", "do", "command:local")
+
+	expected := `Functions and resources for the local module.
+
+Run 'pulumi do <module/resource/function> --help' for more details on usage.
+
+Functions:
+  command:local:run
+
+Resources:
+  command:local:Command
+
+`
+	assert.Equal(t, expected, stdout,
+		"stdout did not match expected help text.\nExpected:\n%s\nActual:\n%s",
+		expected, stdout)
+}
+
+// Test that `pulumi do` can invoke a real provider resource end-to-end. We use the command provider's local:Command
+// resource because it's small, well-behaved, and exercises both an input file and a structured JSON output.
+func TestDoCommandLocalCommand(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Allow auto-acquiring the command plugin.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	e.WriteTestFile("inputs.pcl", "create = \"echo hello\"\n")
+
+	stdout, stderr := e.RunCommand(
+		"pulumi", "do", "--stateless", "command:local:Command", "create",
+		"--input-file", "inputs.pcl", "--yes")
+
+	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
+	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
+	// when it happens the test should fail loudly.
+	assert.NotContains(t, stderr, "panic:", "pulumi do should not panic; stderr:\n%s", stderr)
+
+	assert.Truef(t, strings.HasPrefix(stdout, "hello\n"),
+		"stdout did not start with hello\nActual:\n%s", stdout)
+}
+
+// Sanity test that we can `pulumi new -y` and then do some basic operations like stack selection and config.
+func TestPulumiNewEmptyOperations(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	require.NoError(t, os.Remove(filepath.Join(e.RootPath, ".yarnrc")))
+
+	e.RunCommand("pulumi", "new", "-y")
+	e.RunCommand("pulumi", "stack", "init", "testing")
+	e.RunCommand("pulumi", "config", "set", "key", "value")
 }

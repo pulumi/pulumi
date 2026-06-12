@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -70,6 +69,7 @@ func newStackLsCmd() *cobra.Command {
 				orgFilter:  orgFilter,
 				projFilter: projFilter,
 				tagFilter:  tagFilter,
+				stdout:     cmd.OutOrStdout(),
 			}
 			return runStackLS(ctx, cmdArgs)
 		},
@@ -104,7 +104,7 @@ type stackLSArgs struct {
 
 func runStackLS(ctx context.Context, args stackLSArgs) error {
 	if args.stdout == nil {
-		args.stdout = os.Stdout
+		args.stdout = io.Discard
 	}
 	// Build up the stack filters. We do not support accepting empty strings as filters
 	// from command-line arguments, though the API technically supports it.
@@ -198,7 +198,7 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 		return formatStackSummariesJSON(b, current, allStackSummaries, args.stdout)
 	}
 
-	return formatStackSummariesConsole(b, current, allStackSummaries)
+	return formatStackSummariesConsole(args.stdout, b, current, allStackSummaries)
 }
 
 // parseTagFilter parses a tag filter into its separate name and value parts, separatedby an equal sign.
@@ -260,7 +260,9 @@ func formatStackSummariesJSON(
 	return ui.FprintJSON(stdout, output)
 }
 
-func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
+func formatStackSummariesConsole(
+	w io.Writer, b backend.Backend, currentStack string, stackSummaries []backend.StackSummary,
+) error {
 	_, showURLColumn := b.(httpstate.Backend)
 
 	// Header string and formatting options to align columns.
@@ -313,7 +315,7 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
 
-	ui.PrintTable(cmdutil.Table{
+	ui.FprintTable(w, cmdutil.Table{
 		Headers: headers,
 		Rows:    rows,
 	}, nil)

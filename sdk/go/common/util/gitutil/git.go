@@ -360,6 +360,23 @@ func getAuthForURL(url string) (string, transport.AuthMethod, error) {
 				Username: "oauth2",
 				Password: os.Getenv("GITLAB_TOKEN"),
 			}
+		} else if (strings.Contains(endpoint, "dev.azure.com") ||
+			strings.Contains(endpoint, "visualstudio.com")) &&
+			os.Getenv("AZURE_DEV_OPS_TOKEN") != "" {
+			auth = &http.BasicAuth{
+				Username: "x-access-token",
+				Password: os.Getenv("AZURE_DEV_OPS_TOKEN"),
+			}
+		} else if strings.Contains(endpoint, "bitbucket") && os.Getenv("BITBUCKET_TOKEN") != "" {
+			auth = &http.BasicAuth{
+				Username: "x-token-auth",
+				Password: os.Getenv("BITBUCKET_TOKEN"),
+			}
+		} else if os.Getenv("GENERIC_VCS_TOKEN") != "" {
+			auth = &http.BasicAuth{
+				Username: "x-access-token",
+				Password: os.Getenv("GENERIC_VCS_TOKEN"),
+			}
 		} else if os.Getenv("GIT_USERNAME") != "" || os.Getenv("GIT_PASSWORD") != "" {
 			auth = &http.BasicAuth{
 				Username: os.Getenv("GIT_USERNAME"),
@@ -876,6 +893,10 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 // Additionally, it supports nested git projects, as used by GitLab.
 // For example, "https://github.com/pulumi/platform-team/templates.git/templates/javascript"
 // returns "https://github.com/pulumi/platform-team/templates.git" and "templates/javascript"
+//
+// Paths longer than owner/repo are ambiguous without a ".git" marker: use
+// e.g. "https://gitlab.com/group/subgroup/repo.git" to target a nested
+// GitLab subgroup project.
 //
 // Note: URL with a hostname of `dev.azure.com`, are currently treated as a raw git clone url
 // and currently do not support subpaths.

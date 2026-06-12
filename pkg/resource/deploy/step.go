@@ -164,7 +164,8 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// old inputs, not the new ones.
 			st := s.new.Copy()
 			st.Inputs = s.old.Inputs
-			err := s.Deployment().SameProvider(st)
+			// fromCheck=true because we're coming from the Check→Diff→Same flow where Diff determined no changes.
+			err := s.Deployment().SameProvider(st, true)
 			if err != nil {
 				return resource.StatusOK, nil,
 					fmt.Errorf("bad provider state for resource %v: %w", s.URN(), err)
@@ -297,6 +298,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.URN,
 		s.URN().Name(),
 		s.Type(),
+		nil, /* oldOptions */
+		resourceOptionsFromState(s.new),
 		s.new.Inputs,
 		nil, /* oldInputs */
 		nil, /* newOutputs */
@@ -361,9 +364,6 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 				return resp, err
 			},
-			func(resp plugin.CreateResponse, err error) bool {
-				return resp.Status == resource.StatusPartialFailure
-			},
 			func(resp plugin.CreateResponse, failures []string) (bool, error) {
 				shouldRetry, err := s.Deployment().RunErrorHooks(
 					s.new.ResourceHooks[resource.OnError],
@@ -371,6 +371,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.new.URN,
 					s.URN().Name(),
 					s.Type(),
+					nil, /* oldOptions */
+					resourceOptionsFromState(s.new),
 					s.new.Inputs,
 					nil, /* oldInputs */
 					nil, /* oldOutputs */
@@ -457,12 +459,18 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.URN,
 			s.new.URN.Name(),
 			s.new.Type,
+			nil, /* oldOptions */
+			resourceOptionsFromState(s.new),
 			s.new.Inputs,
 			nil, /* oldInputs */
 			s.new.Outputs,
 			nil, /* oldOutputs */
 		); err != nil {
-			return resourceStatus, complete, err
+			// The cloud resource was created successfully, only the after-hook failed. Surface the error as a
+			// diagnostic and record it as a deployment-level failure, but let the step's snapshot commit go through so
+			// state matches the cloud.
+			s.Deployment().Diag().Errorf(diag.RawMessage(s.new.URN, err.Error()))
+			s.Deployment().RecordPostStepError(err)
 		}
 	}
 
@@ -593,6 +601,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.URN,
 		s.URN().Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		nil, /* newOptions */
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -668,11 +678,6 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 				return resp, err
 			},
-
-			func(_ plugin.DeleteResponse, _ error) bool {
-				return true
-			},
-
 			func(_ plugin.DeleteResponse, failures []string) (bool, error) {
 				shouldRetry, err := s.Deployment().RunErrorHooks(
 					s.old.ResourceHooks[resource.OnError],
@@ -680,6 +685,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.old.URN,
 					s.URN().Name(),
 					s.Type(),
+					resourceOptionsFromState(s.old),
+					nil, /* newOptions */
 					nil, /* newInputs */
 					s.old.Inputs,
 					s.old.Outputs,
@@ -757,12 +764,18 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.URN,
 		s.old.URN.Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		nil, /* newOptions */
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
 		s.old.Outputs,
 	); err != nil {
-		return resource.StatusOK, nil, err
+		// The cloud resource was deleted successfully, only the after-hook failed. Surface the error and record it as a
+		// deployment-level failure, but let the step's snapshot commit go through so state matches the cloud (resource
+		// removed).
+		s.Deployment().Diag().Errorf(diag.RawMessage(s.old.URN, err.Error()))
+		s.Deployment().RecordPostStepError(err)
 	}
 
 	return resource.StatusOK, func() {}, nil
@@ -924,6 +937,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.URN,
 		s.URN().Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		resourceOptionsFromState(s.new),
 		s.new.Inputs,
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -989,9 +1004,6 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 				return resp, err
 			},
-			func(resp plugin.UpdateResponse, err error) bool {
-				return resp.Status == resource.StatusPartialFailure
-			},
 			func(resp plugin.UpdateResponse, failures []string) (bool, error) {
 				shouldRetry, err := s.Deployment().RunErrorHooks(
 					s.new.ResourceHooks[resource.OnError],
@@ -999,6 +1011,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.new.URN,
 					s.URN().Name(),
 					s.Type(),
+					resourceOptionsFromState(s.old),
+					resourceOptionsFromState(s.new),
 					s.new.Inputs,
 					s.old.Inputs,
 					s.old.Outputs,
@@ -1071,12 +1085,17 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.URN,
 			s.new.URN.Name(),
 			s.Type(),
+			resourceOptionsFromState(s.old),
+			resourceOptionsFromState(s.new),
 			s.new.Inputs,
 			s.old.Inputs,
 			s.new.Outputs,
 			s.old.Outputs,
 		); err != nil {
-			return resourceStatus, nil, err
+			// The cloud resource was updated successfully, only the after-hook failed. Surface the error and record it
+			// as a deployment-level failure, but let the step's snapshot commit go through so state matches the cloud.
+			s.Deployment().Diag().Errorf(diag.RawMessage(s.new.URN, err.Error()))
+			s.Deployment().RecordPostStepError(err)
 		}
 	}
 
@@ -1284,6 +1303,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			ID:                    id,
 			Inputs:                s.new.Inputs,
 			State:                 s.new.Inputs,
+			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
 		})
@@ -1520,6 +1540,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		ID:                    resourceID,
 		Inputs:                s.old.Inputs,
 		State:                 s.old.Outputs,
+		Timeout:               s.old.CustomTimeouts.Read,
 		ResourceStatusAddress: resourceStatusAddress,
 		ResourceStatusToken:   resourceStatusToken,
 		OldViews:              s.oldViews,
@@ -1844,6 +1865,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			Name:                  s.new.URN.Name(),
 			Type:                  s.new.URN.Type(),
 			ID:                    s.new.ImportID,
+			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
 		})
@@ -2399,7 +2421,7 @@ func (s *ViewStep) ResultOp() display.StepOp {
 func (s *ViewStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// ViewStep is a special step that that represents an operation for a view resource.
 	// It doesn't actually do anything in Apply. It's used to flow the step through the
-	// system for display in the UI and so the the result of the operation is recorded
+	// system for display in the UI and so the result of the operation is recorded
 	// in the state.
 
 	if s.error != "" {

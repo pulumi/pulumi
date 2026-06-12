@@ -1,0 +1,7 @@
+name: l2-provider-config-enum
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: mypy
+    virtualenv: venv

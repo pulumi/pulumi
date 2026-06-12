@@ -37,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	diagutils "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -115,11 +114,29 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 	}
 
 	info := plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options())
-	return cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
+	return cmdutil.InstallDependencies(ctx, lang, plugin.InstallDependenciesRequest{
 		Info:                    info,
 		UseLanguageVersionTools: w.options.UseLanguageVersionTools,
 		IsPlugin:                true,
 	}, w.stdout, w.stderr)
+}
+
+// Get a list of packages required by the source based plugin at dirPath.
+func (w Workspace) GetRequiredPackages(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
+	lang, err := w.host.LanguageRuntime(project.Runtime.Name())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if !filepath.IsAbs(dirPath) {
+		dirPath, err = filepath.Abs(dirPath)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return lang.GetRequiredPackages(ctx, plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options()))
 }
 
 // IsExecutable returns if the file at binaryPath can be executed.
@@ -148,7 +165,6 @@ func (w Workspace) DownloadPlugin(
 	defer span.End()
 
 	util.SetKnownPluginDownloadURL(&pluginSpec)
-	util.SetKnownPluginVersion(&pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
 		pluginSpec.Version, err = pluginstorage.Instance.GetLatestVersion(ctx, pluginSpec)
@@ -158,9 +174,9 @@ func (w Workspace) DownloadPlugin(
 	}
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		// Log at info but to stderr so we don't pollute stdout for commands like `package get-schema`
-		fmt.Fprintf(w.stderr, "Downloading provider: %s\n", pluginSpec.Name)
-		return stream
+		// Renders a progress bar to stderr in interactive terminals and prints a plain message otherwise.
+		return workspace.ReadCloserProgressBar(
+			stream, w.stderr, size, "Downloading provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
 	}
 
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
@@ -175,8 +191,17 @@ func (w Workspace) DownloadPlugin(
 	}
 
 	logging.V(1).Infof("unpacking provider %s", pluginSpec.Name)
+	// Wrap the downloaded tarball with a progress bar sized by the downloaded tarball, so extraction shows progress
+	// during unpacking. [pluginstorage.UnpackContents] closes the content (and thus this stream) when it returns, which
+	// is what finishes the bar.
+	var unpackStream io.ReadCloser = downloadedFile
+	if fi, statErr := downloadedFile.Stat(); statErr == nil {
+		unpackStream = workspace.ReadCloserProgressBar(
+			downloadedFile, w.stderr, fi.Size(),
+			"Unpacking provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
+	}
 	cleanup, err := pluginstorage.UnpackContents(
-		ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), true, /* reinstall */
+		ctx, pluginSpec, pluginstorage.TarPlugin(unpackStream), true, /* reinstall */
 	)
 	if err != nil {
 		return "", nil, err
@@ -194,6 +219,11 @@ func (w Workspace) GenerateLocalSDK(
 	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string,
 	provider plugin.Provider,
 ) (workspace.LinkablePackageDescriptor, error) {
+	if runtimeInfo.Name() == "" {
+		return workspace.LinkablePackageDescriptor{}, errors.New(
+			"cannot generate an SDK for a project without a runtime")
+	}
+
 	tracer := otel.Tracer("pulumi-cli")
 
 	ctx, schemaSpan := diagutils.StartSpan(ctx, tracer, "get-schema")
@@ -279,6 +309,10 @@ func (w Workspace) LinkIntoProject(
 	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string,
 	packageDescriptors []workspace.LinkablePackageDescriptor,
 ) error {
+	if runtimeInfo.Name() == "" {
+		return errors.New("cannot link packages into a project without a runtime")
+	}
+
 	w.unlinkedProjectsM.Lock()
 	refs := w.unlinkedProjects[projectDir]
 	delete(w.unlinkedProjects, projectDir)
@@ -298,6 +332,7 @@ func (w Workspace) LinkIntoProject(
 	}
 
 	instructions, err := servers.lang.Link(
+		ctx,
 		plugin.NewProgramInfo(projectDir, projectDir, ".", runtimeInfo.Options()),
 		packageDescriptors,
 		servers.grpc.Addr(),
@@ -379,7 +414,7 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 		return "", errors.Join(err, os.RemoveAll(tmpDir))
 	}
 
-	diags, err := s.lang.GeneratePackage(tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
+	diags, err := s.lang.GeneratePackage(ctx, tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
 	if err != nil {
 		return "", errors.Join(err, s.Close(), os.RemoveAll(tmpDir))
 	}
@@ -394,13 +429,12 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 
 // Run a package from a directory, parameterized by params.
 func (w Workspace) RunPackage(
-	ctx context.Context, rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	ctx context.Context, rootDir, pluginPath string, params plugin.ParameterizeParameters,
 	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := diagutils.StartSpan(ctx, tracer, "run-plugin",
 		trace.WithAttributes(
-			attribute.String("plugin", string(pkgName)),
 			attribute.String("path", pluginPath),
 		))
 	defer span.End()
@@ -410,7 +444,7 @@ func (w Workspace) RunPackage(
 	})
 
 	pctx := plugin.NewContextWithHost(ctx, d, d, w.host, rootDir, rootDir, w.parentSpan)
-	p, err := plugin.NewProviderFromPath(w.host, pctx, pkgName, pluginPath)
+	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
 	}

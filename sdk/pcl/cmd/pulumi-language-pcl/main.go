@@ -45,9 +45,8 @@ import (
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pclruntime "github.com/pulumi/pulumi/pkg/v3/pcl/runtime"
 	aferoutil "github.com/pulumi/pulumi/pkg/v3/util/afero"
-	"github.com/pulumi/pulumi/sdk/pcl/v3/runtime"
-	pclruntime "github.com/pulumi/pulumi/sdk/pcl/v3/runtime"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	pulumiencoding "github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -396,7 +395,7 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 			if !ok || block.Type != "resource" || len(block.Labels) < 2 {
 				continue
 			}
-			pkg, err := runtime.PackageNameFromToken(block.Labels[1])
+			pkg, err := pclruntime.PackageNameFromToken(block.Labels[1])
 			if err != nil {
 				return nil, err
 			}
@@ -416,7 +415,7 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 			if !ok {
 				return nil
 			}
-			pkg, err := runtime.PackageNameFromToken(token)
+			pkg, err := pclruntime.PackageNameFromToken(token)
 			if err != nil {
 				return hcl.Diagnostics{{
 					Severity: hcl.DiagError,
@@ -526,12 +525,6 @@ func invokeToken(call *hashihclsyntax.FunctionCallExpr) (string, bool) {
 func (host *pclLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest,
 	server pulumirpc.LanguageRuntime_RunPluginServer,
-) error {
-	return errors.New("not implemented")
-}
-
-func (host *pclLanguageHost) RunPlugin2(
-	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
 ) error {
 	return errors.New("not implemented")
 }

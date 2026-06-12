@@ -39,10 +39,10 @@ import (
 // GCPOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
 // underlying resources of the `@pulumi/gcp` implementation.
 func GCPOperationsProvider(
+	ctx context.Context,
 	config map[config.Key]string,
 	component *Resource,
 ) (Provider, error) {
-	ctx := context.TODO()
 	client, err := gcplogging.NewClient(ctx, option.WithScopes("https://www.googleapis.com/auth/logging.read"))
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ const (
 	gcpFunctionType = tokens.Type("gcp:cloudfunctions/function:Function")
 )
 
-func (ops *gcpOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *gcpOpsProvider) GetLogs(ctx context.Context, query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
 	//exhaustive:ignore

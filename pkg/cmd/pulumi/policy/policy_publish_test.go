@@ -54,6 +54,9 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 					assert.Contains(t, name, "org1")
 					return mockPolicyPack, nil
 				},
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
+					return "org1", nil
+				},
 			}, nil
 		},
 	}
@@ -65,9 +68,6 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 				return "", err
 			}
 			return filepath.Join(cwd, "testdata"), nil
-		},
-		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-			return "org1", nil
 		},
 	}
 

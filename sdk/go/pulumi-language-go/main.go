@@ -120,9 +120,13 @@ func compileProgram(
 		return "", fmt.Errorf("unable to find 'go' executable: %w", err)
 	}
 	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
-	args := []string{"build", "-o", outfile}
+	// We add the `-buildvcs=false` flag here because it sometimes fails on Windows.
+	// See also https://github.com/pulumi/pulumi/pull/22788
+	args := []string{"build", "-buildvcs=false", "-o", outfile}
 	if withDebugFlags {
 		args = append(args, "-gcflags", "all=-N -l")
+	} else {
+		args = append(args, "-trimpath")
 	}
 	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
@@ -1333,7 +1337,7 @@ func (host *goLanguageHost) RunPlugin(
 	defer contract.IgnoreClose(closer)
 
 	program, err := compileProgram(
-		server.Context(), engineClient, req.Info.ProgramDirectory, "", false, os.Stdout, os.Stderr)
+		server.Context(), engineClient, req.Info.ProgramDirectory, "", req.GetAttachDebugger(), os.Stdout, os.Stderr)
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
@@ -1682,7 +1686,7 @@ func (host *goLanguageHost) Link(
 		if !strings.HasPrefix(dep.Path, start) {
 			modules[modulePath] = start + dep.Path
 		}
-		imports.WriteString(fmt.Sprintf("    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference())))
+		fmt.Fprintf(&imports, "    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference()))
 	}
 	instructions += imports.String()
 	instructions += "  )\n"

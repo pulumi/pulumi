@@ -159,7 +159,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	if len(args) < 2 {
 		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
 	}
-	sig, err := b.signatureForArgs(fn, args[1])
+	sig, err := b.signatureForArgs(fn, args[1].Type())
 	if err != nil {
 		diag := hcl.Diagnostics{errorf(tokenRange, "Invoke binding error: %v", err)}
 		return b.zeroSignature(), diag
@@ -212,8 +212,8 @@ func (b *binder) zeroSignature() model.StaticFunctionSignature {
 	return b.makeSignature(model.NewOptionalType(model.DynamicType), model.DynamicType)
 }
 
-func (b *binder) signatureForArgs(fn *schema.Function, args model.Expression) (model.StaticFunctionSignature, error) {
-	if args != nil && b.useOutputVersion(fn, args) {
+func (b *binder) signatureForArgs(fn *schema.Function, argsType model.Type) (model.StaticFunctionSignature, error) {
+	if argsType != nil && b.useOutputVersion(fn, argsType) {
 		return b.outputVersionSignature(fn)
 	}
 	return b.regularSignature(fn), nil
@@ -221,9 +221,10 @@ func (b *binder) signatureForArgs(fn *schema.Function, args model.Expression) (m
 
 // Heuristic to decide when to use `fnOutput` form of a function. Will
 // conservatively prefer `false` unless bind option choose to prefer otherwise.
+//
 // It decides to return `true` if doing so avoids the need to introduce an `apply` form to
 // accommodate `Output` args (`Promise` args do not count).
-func (b *binder) useOutputVersion(fn *schema.Function, args model.Expression) bool {
+func (b *binder) useOutputVersion(fn *schema.Function, argsType model.Type) bool {
 	if fn.ReturnType == nil {
 		// No code emitted for an `fnOutput` form, impossible.
 		return false
@@ -240,11 +241,16 @@ func (b *binder) useOutputVersion(fn *schema.Function, args model.Expression) bo
 
 	outputFormParamType := b.schemaTypeToType(fn.Inputs.InputShape)
 	regularFormParamType := b.schemaTypeToType(fn.Inputs)
-	argsType := args.Type()
 
+	// If we can't convert to the plain type, but we can convert to the output type, do that.
 	if regularFormParamType.ConversionFrom(argsType) == model.NoConversion &&
-		outputFormParamType.ConversionFrom(argsType) == model.SafeConversion &&
+		outputFormParamType.ConversionFrom(argsType) != model.NoConversion &&
 		model.ContainsOutputs(argsType) {
+		return true
+	}
+
+	// If the args themselves represent an output, we need to use the outputty version.
+	if _, ok := argsType.(*model.OutputType); ok {
 		return true
 	}
 

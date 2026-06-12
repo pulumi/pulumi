@@ -32,6 +32,7 @@ export class Resource extends pulumi.CustomResource {
     }
 
     declare public /*out*/ readonly output: pulumi.Output<string>;
+    declare public /*out*/ readonly secretOutput: pulumi.Output<string>;
     declare public readonly value: pulumi.Output<number>;
 
     /**
@@ -50,11 +51,15 @@ export class Resource extends pulumi.CustomResource {
             }
             resourceInputs["value"] = args?.value;
             resourceInputs["output"] = undefined /*out*/;
+            resourceInputs["secretOutput"] = undefined /*out*/;
         } else {
             resourceInputs["output"] = undefined /*out*/;
+            resourceInputs["secretOutput"] = undefined /*out*/;
             resourceInputs["value"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+        const secretOpts = { additionalSecretOutputs: ["secretOutput"] };
+        opts = pulumi.mergeOptions(opts, secretOpts);
         super(Resource.__pulumiType, name, resourceInputs, opts);
     }
 }

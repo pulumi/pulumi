@@ -36,6 +36,48 @@ else:
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
+class _ResourceMonitorFeature:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_ResourceMonitorFeature.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    RESOURCE_MONITOR_FEATURE_SECRETS: _ResourceMonitorFeature.ValueType  # 0
+    RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES: _ResourceMonitorFeature.ValueType  # 1
+    RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES: _ResourceMonitorFeature.ValueType  # 2
+    RESOURCE_MONITOR_FEATURE_ALIAS_SPECS: _ResourceMonitorFeature.ValueType  # 3
+    RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER: _ResourceMonitorFeature.ValueType  # 4
+    RESOURCE_MONITOR_FEATURE_DELETED_WITH: _ResourceMonitorFeature.ValueType  # 5
+    RESOURCE_MONITOR_FEATURE_REPLACE_WITH: _ResourceMonitorFeature.ValueType  # 6
+    RESOURCE_MONITOR_FEATURE_TRANSFORMS: _ResourceMonitorFeature.ValueType  # 7
+    RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS: _ResourceMonitorFeature.ValueType  # 8
+    RESOURCE_MONITOR_FEATURE_PARAMETERIZATION: _ResourceMonitorFeature.ValueType  # 9
+    RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS: _ResourceMonitorFeature.ValueType  # 10
+    RESOURCE_MONITOR_FEATURE_ERROR_HOOKS: _ResourceMonitorFeature.ValueType  # 11
+    RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: _ResourceMonitorFeature.ValueType  # 12
+
+class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
+    """ResourceMonitorFeature is a strongly typed monitor capability identifier.
+
+    The string IDs used by SupportsFeature are preserved for compatibility; new
+    clients should prefer these enum values from DeploymentInfo.
+    """
+
+RESOURCE_MONITOR_FEATURE_SECRETS: ResourceMonitorFeature.ValueType  # 0
+RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES: ResourceMonitorFeature.ValueType  # 1
+RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES: ResourceMonitorFeature.ValueType  # 2
+RESOURCE_MONITOR_FEATURE_ALIAS_SPECS: ResourceMonitorFeature.ValueType  # 3
+RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER: ResourceMonitorFeature.ValueType  # 4
+RESOURCE_MONITOR_FEATURE_DELETED_WITH: ResourceMonitorFeature.ValueType  # 5
+RESOURCE_MONITOR_FEATURE_REPLACE_WITH: ResourceMonitorFeature.ValueType  # 6
+RESOURCE_MONITOR_FEATURE_TRANSFORMS: ResourceMonitorFeature.ValueType  # 7
+RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS: ResourceMonitorFeature.ValueType  # 8
+RESOURCE_MONITOR_FEATURE_PARAMETERIZATION: ResourceMonitorFeature.ValueType  # 9
+RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS: ResourceMonitorFeature.ValueType  # 10
+RESOURCE_MONITOR_FEATURE_ERROR_HOOKS: ResourceMonitorFeature.ValueType  # 11
+RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: ResourceMonitorFeature.ValueType  # 12
+global___ResourceMonitorFeature = ResourceMonitorFeature
+
 class _Result:
     ValueType = typing.NewType("ValueType", builtins.int)
     V: typing_extensions.TypeAlias = ValueType
@@ -52,6 +94,76 @@ SUCCESS: Result.ValueType  # 0
 FAIL: Result.ValueType  # 1
 SKIP: Result.ValueType  # 2
 global___Result = Result
+
+@typing.final
+class DeploymentInfo(google.protobuf.message.Message):
+    """DeploymentInfo returns monitor execution state currently sent to programs
+    and/or providers through other channels.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class ConfigEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    PROJECT_FIELD_NUMBER: builtins.int
+    STACK_FIELD_NUMBER: builtins.int
+    ORGANIZATION_FIELD_NUMBER: builtins.int
+    CONFIG_FIELD_NUMBER: builtins.int
+    CONFIGSECRETKEYS_FIELD_NUMBER: builtins.int
+    DRYRUN_FIELD_NUMBER: builtins.int
+    PARALLEL_FIELD_NUMBER: builtins.int
+    SUPPORTEDFEATURES_FIELD_NUMBER: builtins.int
+    project: builtins.str
+    """The project name."""
+    stack: builtins.str
+    """The stack name."""
+    organization: builtins.str
+    """The organization name."""
+    dryRun: builtins.bool
+    """True if the current execution is preview/dry-run."""
+    parallel: builtins.int
+    """Requested operation parallelism (<=1 for serial execution)."""
+    @property
+    def config(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """The stack configuration values."""
+
+    @property
+    def configSecretKeys(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Configuration keys whose values are secret."""
+
+    @property
+    def supportedFeatures(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[global___ResourceMonitorFeature.ValueType]:
+        """The set of monitor-supported protocol features."""
+
+    def __init__(
+        self,
+        *,
+        project: builtins.str = ...,
+        stack: builtins.str = ...,
+        organization: builtins.str = ...,
+        config: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
+        dryRun: builtins.bool = ...,
+        parallel: builtins.int = ...,
+        supportedFeatures: collections.abc.Iterable[global___ResourceMonitorFeature.ValueType] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "organization", b"organization", "parallel", b"parallel", "project", b"project", "stack", b"stack", "supportedFeatures", b"supportedFeatures"]) -> None: ...
+
+global___DeploymentInfo = DeploymentInfo
 
 @typing.final
 class SupportsFeatureRequest(google.protobuf.message.Message):
@@ -265,20 +377,24 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         CREATE_FIELD_NUMBER: builtins.int
         UPDATE_FIELD_NUMBER: builtins.int
         DELETE_FIELD_NUMBER: builtins.int
+        READ_FIELD_NUMBER: builtins.int
         create: builtins.str
         """The create resource timeout represented as a string e.g. 5m."""
         update: builtins.str
         """The update resource timeout represented as a string e.g. 5m."""
         delete: builtins.str
         """The delete resource timeout represented as a string e.g. 5m."""
+        read: builtins.str
+        """The read resource timeout represented as a string e.g. 5m."""
         def __init__(
             self,
             *,
             create: builtins.str = ...,
             update: builtins.str = ...,
             delete: builtins.str = ...,
+            read: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "update", b"update"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "read", b"read", "update", b"update"]) -> None: ...
 
     @typing.final
     class PropertyDependenciesEntry(google.protobuf.message.Message):
@@ -1038,6 +1154,134 @@ class TransformResourceOptions(google.protobuf.message.Message):
 global___TransformResourceOptions = TransformResourceOptions
 
 @typing.final
+class ResourceOptions(google.protobuf.message.Message):
+    """ResourceOptions is a subset of all resource options that are relevant to
+    hook callbacks.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class ProvidersEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    @typing.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    DEPENDS_ON_FIELD_NUMBER: builtins.int
+    PROTECT_FIELD_NUMBER: builtins.int
+    IGNORE_CHANGES_FIELD_NUMBER: builtins.int
+    REPLACE_ON_CHANGES_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    ALIASES_FIELD_NUMBER: builtins.int
+    PROVIDER_FIELD_NUMBER: builtins.int
+    CUSTOM_TIMEOUTS_FIELD_NUMBER: builtins.int
+    PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    RETAIN_ON_DELETE_FIELD_NUMBER: builtins.int
+    DELETED_WITH_FIELD_NUMBER: builtins.int
+    DELETE_BEFORE_REPLACE_FIELD_NUMBER: builtins.int
+    ADDITIONAL_SECRET_OUTPUTS_FIELD_NUMBER: builtins.int
+    PROVIDERS_FIELD_NUMBER: builtins.int
+    PLUGIN_CHECKSUMS_FIELD_NUMBER: builtins.int
+    HOOKS_FIELD_NUMBER: builtins.int
+    IMPORT_FIELD_NUMBER: builtins.int
+    HIDE_DIFF_FIELD_NUMBER: builtins.int
+    REPLACE_WITH_FIELD_NUMBER: builtins.int
+    REPLACEMENT_TRIGGER_FIELD_NUMBER: builtins.int
+    PARENT_FIELD_NUMBER: builtins.int
+    protect: builtins.bool
+    version: builtins.str
+    provider: builtins.str
+    plugin_download_url: builtins.str
+    retain_on_delete: builtins.bool
+    deleted_with: builtins.str
+    delete_before_replace: builtins.bool
+    parent: builtins.str
+    @property
+    def depends_on(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def ignore_changes(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def replace_on_changes(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def aliases(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.alias_pb2.Alias]: ...
+    @property
+    def custom_timeouts(self) -> global___RegisterResourceRequest.CustomTimeouts: ...
+    @property
+    def additional_secret_outputs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def providers(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]: ...
+    @property
+    def plugin_checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
+    @property
+    def hooks(self) -> global___RegisterResourceRequest.ResourceHooksBinding: ...
+    @property
+    def hide_diff(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def replace_with(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def replacement_trigger(self) -> google.protobuf.struct_pb2.Value: ...
+    def __init__(
+        self,
+        *,
+        depends_on: collections.abc.Iterable[builtins.str] | None = ...,
+        protect: builtins.bool | None = ...,
+        ignore_changes: collections.abc.Iterable[builtins.str] | None = ...,
+        replace_on_changes: collections.abc.Iterable[builtins.str] | None = ...,
+        version: builtins.str = ...,
+        aliases: collections.abc.Iterable[pulumi.alias_pb2.Alias] | None = ...,
+        provider: builtins.str = ...,
+        custom_timeouts: global___RegisterResourceRequest.CustomTimeouts | None = ...,
+        plugin_download_url: builtins.str = ...,
+        retain_on_delete: builtins.bool | None = ...,
+        deleted_with: builtins.str = ...,
+        delete_before_replace: builtins.bool | None = ...,
+        additional_secret_outputs: collections.abc.Iterable[builtins.str] | None = ...,
+        providers: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        hooks: global___RegisterResourceRequest.ResourceHooksBinding | None = ...,
+        hide_diff: collections.abc.Iterable[builtins.str] | None = ...,
+        replace_with: collections.abc.Iterable[builtins.str] | None = ...,
+        replacement_trigger: google.protobuf.struct_pb2.Value | None = ...,
+        parent: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "hooks", b"hooks", "protect", b"protect", "replacement_trigger", b"replacement_trigger", "retain_on_delete", b"retain_on_delete"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "hide_diff", b"hide_diff", "hooks", b"hooks", "ignore_changes", b"ignore_changes", "import", b"import", "parent", b"parent", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_delete_before_replace", b"_delete_before_replace"]) -> typing.Literal["delete_before_replace"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_protect", b"_protect"]) -> typing.Literal["protect"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_retain_on_delete", b"_retain_on_delete"]) -> typing.Literal["retain_on_delete"] | None: ...
+
+global___ResourceOptions = ResourceOptions
+
+@typing.final
 class TransformRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -1218,6 +1462,8 @@ class ResourceHookRequest(google.protobuf.message.Message):
     OLD_INPUTS_FIELD_NUMBER: builtins.int
     NEW_OUTPUTS_FIELD_NUMBER: builtins.int
     OLD_OUTPUTS_FIELD_NUMBER: builtins.int
+    OLD_OPTIONS_FIELD_NUMBER: builtins.int
+    NEW_OPTIONS_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the urn of the resource for which the hook is called."""
     id: builtins.str
@@ -1242,6 +1488,14 @@ class ResourceHookRequest(google.protobuf.message.Message):
     def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
         """the optional old outputs of the resource."""
 
+    @property
+    def old_options(self) -> global___ResourceOptions:
+        """optional old resource options for the resource. Old engines may not set this."""
+
+    @property
+    def new_options(self) -> global___ResourceOptions:
+        """optional new resource options for the resource. Old engines may not set this."""
+
     def __init__(
         self,
         *,
@@ -1253,9 +1507,15 @@ class ResourceHookRequest(google.protobuf.message.Message):
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
         new_outputs: google.protobuf.struct_pb2.Struct | None = ...,
         old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_options: global___ResourceOptions | None = ...,
+        new_options: global___ResourceOptions | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_new_options", b"_new_options", "_old_options", b"_old_options", "new_inputs", b"new_inputs", "new_options", b"new_options", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_options", b"old_options", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_new_options", b"_new_options", "_old_options", b"_old_options", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_options", b"new_options", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_options", b"old_options", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_new_options", b"_new_options"]) -> typing.Literal["new_options"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_old_options", b"_old_options"]) -> typing.Literal["old_options"] | None: ...
 
 global___ResourceHookRequest = ResourceHookRequest
 
@@ -1292,6 +1552,8 @@ class ErrorHookRequest(google.protobuf.message.Message):
     OLD_OUTPUTS_FIELD_NUMBER: builtins.int
     FAILED_OPERATION_FIELD_NUMBER: builtins.int
     ERRORS_FIELD_NUMBER: builtins.int
+    OLD_OPTIONS_FIELD_NUMBER: builtins.int
+    NEW_OPTIONS_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the urn of the resource for which the hook is called."""
     id: builtins.str
@@ -1318,6 +1580,14 @@ class ErrorHookRequest(google.protobuf.message.Message):
     def errors(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """the errors that have been seen so far (newest-first)."""
 
+    @property
+    def old_options(self) -> global___ResourceOptions:
+        """optional old resource options for the resource. Old engines may not set this."""
+
+    @property
+    def new_options(self) -> global___ResourceOptions:
+        """optional new resource options for the resource. Old engines may not set this."""
+
     def __init__(
         self,
         *,
@@ -1330,9 +1600,11 @@ class ErrorHookRequest(google.protobuf.message.Message):
         old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
         failed_operation: builtins.str = ...,
         errors: collections.abc.Iterable[builtins.str] | None = ...,
+        old_options: global___ResourceOptions | None = ...,
+        new_options: global___ResourceOptions | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["errors", b"errors", "failed_operation", b"failed_operation", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "new_options", b"new_options", "old_inputs", b"old_inputs", "old_options", b"old_options", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["errors", b"errors", "failed_operation", b"failed_operation", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_options", b"new_options", "old_inputs", b"old_inputs", "old_options", b"old_options", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___ErrorHookRequest = ErrorHookRequest
 
@@ -1461,12 +1733,15 @@ class RegisterResourceHookRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     CALLBACK_FIELD_NUMBER: builtins.int
     ON_DRY_RUN_FIELD_NUMBER: builtins.int
+    IGNORE_ERRORS_FIELD_NUMBER: builtins.int
     name: builtins.str
     """The name of the hook. Must be unique within a program, registering the
     same name twice is an error.
     """
     on_dry_run: builtins.bool
     """whether to run the hook on dry runs."""
+    ignore_errors: builtins.bool
+    """If true, errors from this hook are logged as warnings instead of failing the program."""
     @property
     def callback(self) -> pulumi.callback_pb2.Callback:
         """the callback that the engine can call to run the hook."""
@@ -1477,9 +1752,10 @@ class RegisterResourceHookRequest(google.protobuf.message.Message):
         name: builtins.str = ...,
         callback: pulumi.callback_pb2.Callback | None = ...,
         on_dry_run: builtins.bool = ...,
+        ignore_errors: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["callback", b"callback"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["callback", b"callback", "name", b"name", "on_dry_run", b"on_dry_run"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["callback", b"callback", "ignore_errors", b"ignore_errors", "name", b"name", "on_dry_run", b"on_dry_run"]) -> None: ...
 
 global___RegisterResourceHookRequest = RegisterResourceHookRequest
 

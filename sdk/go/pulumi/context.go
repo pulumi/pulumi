@@ -410,6 +410,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 					Create: rpcReq.Options.CustomTimeouts.Create,
 					Update: rpcReq.Options.CustomTimeouts.Update,
 					Delete: rpcReq.Options.CustomTimeouts.Delete,
+					Read:   rpcReq.Options.CustomTimeouts.Read,
 				}
 			}
 			if rpcReq.Options.DeleteBeforeReplace != nil {
@@ -526,6 +527,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 					Create: opts.CustomTimeouts.Create,
 					Update: opts.CustomTimeouts.Update,
 					Delete: opts.CustomTimeouts.Delete,
+					Read:   opts.CustomTimeouts.Read,
 				}
 			}
 
@@ -841,7 +843,7 @@ func (ctx *Context) invokePackageRaw(
 }
 
 func validInvokeResult(resultV reflect.Value) bool {
-	isPointer := resultV.Kind() == reflect.Ptr
+	isPointer := resultV.Kind() == reflect.Pointer
 	isMap := resultV.Elem().Kind() == reflect.Map && resultV.Elem().Type().Key().Kind() == reflect.String
 	structOrMap := resultV.Elem().Kind() == reflect.Struct || isMap
 	return isPointer && structOrMap
@@ -1219,7 +1221,7 @@ func (ctx *Context) CallPackageSingle(
 		// if the result is an object return the first element
 		v := reflect.ValueOf(r)
 
-		if v.Kind() == reflect.Ptr {
+		if v.Kind() == reflect.Pointer {
 			// Check if the pointer is nil
 			if v.IsNil() {
 				return zeroType, errors.New("input cannot be a nil pointer")
@@ -1328,7 +1330,7 @@ func (ctx *Context) readPackageResource(
 
 	if props != nil {
 		propsType := reflect.TypeOf(props)
-		if propsType.Kind() == reflect.Ptr {
+		if propsType.Kind() == reflect.Pointer {
 			propsType = propsType.Elem()
 		}
 		//nolint:staticcheck // Not applying de-morgens law right now
@@ -1686,7 +1688,7 @@ func (ctx *Context) registerResource(
 
 	if props != nil {
 		propsType := reflect.TypeOf(props)
-		if propsType.Kind() == reflect.Ptr {
+		if propsType.Kind() == reflect.Pointer {
 			propsType = propsType.Elem()
 		}
 		//nolint:staticcheck // Not applying de-morgens law right now
@@ -2032,6 +2034,9 @@ type resourceState struct {
 	transformations   []ResourceTransformation
 }
 
+var errTransformationsCannotChangeParent = errors.New(
+	"transformations cannot currently be used to change the `parent` of a resource")
+
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
 func applyTransformations(t, name string, props Input, resource Resource, opts []ResourceOption,
 	options *resourceOptions,
@@ -2055,8 +2060,9 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 			resOptions := merge(res.Opts...)
 
 			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
-				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
+				return nil, nil, nil, errTransformationsCannotChangeParent
 			}
+			resOptions.Parent = options.Parent // Callers *must* re-apply the parent option, so we do it for them
 			props = res.Props
 			options = resOptions
 		}
@@ -2181,7 +2187,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	// ought to.
 	res := reflect.ValueOf(resourceV)
 	typ := res.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return &resourceState{}
 	}
 	res, typ = res.Elem(), typ.Elem()
@@ -2728,6 +2734,7 @@ func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_Cust
 		timeouts.Update = custom.Update
 		timeouts.Create = custom.Create
 		timeouts.Delete = custom.Delete
+		timeouts.Read = custom.Read
 	}
 	return &timeouts
 }
@@ -2986,13 +2993,16 @@ func (ctx *Context) RegisterResourceHook(
 			return
 		}
 		onDryRun := false
+		ignoreErrors := false
 		if opts != nil {
 			onDryRun = opts.OnDryRun
+			ignoreErrors = opts.IgnoreErrors
 		}
 		req := &pulumirpc.RegisterResourceHookRequest{
-			Name:     name,
-			Callback: cb,
-			OnDryRun: onDryRun,
+			Name:         name,
+			Callback:     cb,
+			OnDryRun:     onDryRun,
+			IgnoreErrors: ignoreErrors,
 		}
 		_, err = ctx.state.monitor.RegisterResourceHook(ctx.ctx, req)
 		if err != nil {

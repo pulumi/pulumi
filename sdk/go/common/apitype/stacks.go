@@ -71,7 +71,10 @@ type CreateStackRequest struct {
 }
 
 // CreateStackResponse is the response from a create Stack request.
-type CreateStackResponse struct{}
+type CreateStackResponse struct {
+	// Messages is a list of messages that should be displayed to the user.
+	Messages []Message `json:"messages,omitempty"`
+}
 
 // EncryptValueRequest defines the request body for encrypting a value.
 type EncryptValueRequest struct {

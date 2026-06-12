@@ -25,7 +25,7 @@ class InvokeResult:
         if boolean_map and not isinstance(boolean_map, dict):
             raise TypeError("Expected argument 'boolean_map' to be a dict")
         pulumi.set(__self__, "boolean_map", boolean_map)
-        if float and not isinstance(float, float):
+        if float and not isinstance(float, _builtins.float):
             raise TypeError("Expected argument 'float' to be a float")
         pulumi.set(__self__, "float", float)
         if integer and not isinstance(integer, int):
@@ -110,12 +110,12 @@ def invoke(boolean: Optional[_builtins.bool] = None,
         integer=pulumi.get(__ret__, 'integer'),
         number_array=pulumi.get(__ret__, 'number_array'),
         string=pulumi.get(__ret__, 'string'))
-def invoke_output(boolean: Optional[pulumi.Input[_builtins.bool]] = None,
-                  boolean_map: Optional[pulumi.Input[Mapping[str, _builtins.bool]]] = None,
-                  float: Optional[pulumi.Input[_builtins.float]] = None,
-                  integer: Optional[pulumi.Input[_builtins.int]] = None,
-                  number_array: Optional[pulumi.Input[Sequence[_builtins.float]]] = None,
-                  string: Optional[pulumi.Input[_builtins.str]] = None,
+def invoke_output(boolean: pulumi.Input[Optional[_builtins.bool]] = None,
+                  boolean_map: pulumi.Input[Optional[Mapping[str, _builtins.bool]]] = None,
+                  float: pulumi.Input[Optional[_builtins.float]] = None,
+                  integer: pulumi.Input[Optional[_builtins.int]] = None,
+                  number_array: pulumi.Input[Optional[Sequence[_builtins.float]]] = None,
+                  string: pulumi.Input[Optional[_builtins.str]] = None,
                   opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[InvokeResult]:
     """
     Use this data source to access information about an existing resource.

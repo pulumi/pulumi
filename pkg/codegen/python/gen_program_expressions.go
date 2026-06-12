@@ -272,10 +272,7 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 	if x.Name != pcl.Invoke {
 		return functionImports[x.Name]
 	}
-
-	pkg, _, _, diags := functionName(x.Args[0])
-	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
-	return []string{"pulumi_" + pkg}
+	return nil
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -283,9 +280,44 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]
 		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
-		output, isOutput := to.(*model.OutputType)
-		if isOutput {
-			to = output.ElementType
+		to = model.ResolveOutputs(to)
+		if cns, ok := to.(*model.ConstType); ok {
+			to = cns.Type
+		}
+
+		fromType := from.Type()
+		isFromOutput, isFromPromise := model.ContainsEventuals(fromType)
+		fromType = model.ResolveOutputs(fromType)
+		if cns, ok := fromType.(*model.ConstType); ok {
+			fromType = cns.Type
+		}
+		// If fromType is optional (union(T, None)), unwrap to T. LowerConversion already selects a specific element
+		// type from the target union (stripping optionality from to), so we symmetrically unwrap fromType to avoid
+		// false type mismatches (e.g., treating Optional[bool] as needing string-to-bool conversion).
+		if union, ok := fromType.(*model.UnionType); ok && len(union.ElementTypes) == 2 {
+			if union.ElementTypes[0] == model.NoneType {
+				fromType = union.ElementTypes[1]
+			} else if union.ElementTypes[1] == model.NoneType {
+				fromType = union.ElementTypes[0]
+			}
+		}
+
+		genMaybeOutputConversion := func(conversionExpr func(string)) {
+			if isFromPromise {
+				g.Fgenf(w, "output(%.v).apply(lambda x: ", from)
+				conversionExpr("x")
+				g.Fgenf(w, ")")
+				return
+			}
+			if isFromOutput {
+				g.Fgenf(w, "%.v.apply(lambda x: ", from)
+				conversionExpr("x")
+				g.Fgenf(w, ")")
+				return
+			}
+			var t bytes.Buffer
+			g.Fgenf(&t, "%.v", from)
+			conversionExpr(t.String())
 		}
 		switch to := to.(type) {
 		case *model.EnumType:
@@ -313,7 +345,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				pkg += "." + strings.ReplaceAll(m, "/", ".")
 			}
 
-			if isOutput {
+			if isFromOutput {
 				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
 			} else {
 				diag := pcl.GenEnum(to, from, func(member *schema.Enum) {
@@ -332,11 +364,34 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				}
 			}
 		default:
-			switch arg := from.(type) {
-			case *model.ObjectConsExpression:
-				g.genObjectConsExpression(w, arg, expr.Type())
+			switch {
+			case model.BoolType.AssignableFrom(to) && !model.BoolType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, `%s == "true"`, v)
+				})
+			case model.StringType.AssignableFrom(to) && !model.StringType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					if model.BoolType.AssignableFrom(fromType) {
+						g.Fgenf(w, `"true" if %s else "false"`, v)
+						return
+					}
+					g.Fgenf(w, "str(%s)", v)
+				})
+			case model.NumberType.AssignableFrom(to) && !model.NumberType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "float(%s)", v)
+				})
+			case model.IntType.AssignableFrom(to) && !model.IntType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "int(%s)", v)
+				})
 			default:
-				g.Fgenf(w, "%.v", expr.Args[0])
+				switch arg := from.(type) {
+				case *model.ObjectConsExpression:
+					g.genObjectConsExpression(w, arg, expr.Type())
+				default:
+					g.Fgenf(w, "%.v", expr.Args[0])
+				}
 			}
 		}
 	case pcl.IntrinsicApply:
@@ -419,7 +474,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if module != "" {
 			module = "." + module
 		}
-		name := fmt.Sprintf("%s%s.%s", pkg, module, PyName(fn))
+		name := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, PyName(fn))
 
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		if isOut {
@@ -491,8 +546,31 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%v)", optionsBag)
 	case "join":
 		g.Fgenf(w, "%.16v.join(%v)", expr.Args[0], expr.Args[1])
+	case "max":
+		g.Fgen(w, "max(")
+		for i, arg := range expr.Args {
+			if i > 0 {
+				g.Fgen(w, ", ")
+			}
+			g.Fgenf(w, "%v", arg)
+		}
+		g.Fgen(w, ")")
+	case "min":
+		g.Fgen(w, "min(")
+		for i, arg := range expr.Args {
+			if i > 0 {
+				g.Fgen(w, ", ")
+			}
+			g.Fgenf(w, "%v", arg)
+		}
+		g.Fgen(w, ")")
 	case "length":
-		g.Fgenf(w, "len(%.v)", expr.Args[0])
+		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
+		if model.StringType.AssignableFrom(argType) {
+			g.Fgenf(w, "grapheme_length(%.v)", expr.Args[0])
+		} else {
+			g.Fgenf(w, "len(%.v)", expr.Args[0])
+		}
 	case "lookup":
 		g.Fgenf(w, "%.16v.get(%.v, %.v)",
 			expr.Args[0], expr.Args[1], expr.Args[2])
@@ -837,7 +915,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		}
 	}
 
-	rootName := PyName(expr.RootName)
+	rootName := g.nodeName(expr.RootName)
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
 		for _, configVar := range g.program.ConfigVariables() {

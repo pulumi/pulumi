@@ -42,7 +42,7 @@ func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapsho
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, ops, SnapshotMetadata{})
+	}, b64.NewBase64SecretsManager(), resources, ops, SnapshotMetadata{}, nil)
 }
 
 func TestPendingOperationsDeployment(t *testing.T) {
@@ -59,7 +59,7 @@ func TestPendingOperationsDeployment(t *testing.T) {
 		},
 	})
 
-	_, err := NewDeployment(&plugin.Context{}, &Options{}, nil, &Target{}, snap, nil, NewNullSource("test"), nil, nil, nil)
+	_, err := NewDeployment(&plugin.Context{}, &Options{}, nil, &Target{}, snap, nil, NewNullSource("test"), nil, nil)
 	require.NoError(t, err)
 }
 

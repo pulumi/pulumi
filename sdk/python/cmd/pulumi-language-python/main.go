@@ -1023,7 +1023,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
-	if logging.V(5) {
+	if logging.V(5).Enabled() {
 		commandStr := strings.Join(args, " ")
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
@@ -1112,8 +1112,9 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		if err != nil {
 			return nil, err
 		}
-		typecheckerCmd.Stdout = os.Stdout
-		typecheckerCmd.Stderr = os.Stderr
+		var typecheckerOutput bytes.Buffer
+		typecheckerCmd.Stdout = io.MultiWriter(os.Stdout, &typecheckerOutput)
+		typecheckerCmd.Stderr = io.MultiWriter(os.Stderr, &typecheckerOutput)
 		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
@@ -1126,9 +1127,8 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 
 		if err := typecheckerCmd.Run(); err != nil {
-			var exiterr *exec.ExitError
-			if errors.As(err, &exiterr) && len(exiterr.Stderr) > 0 {
-				return nil, fmt.Errorf("%s failed: %w: %s", typechecker, exiterr, exiterr.Stderr)
+			if output := typecheckerOutput.String(); output != "" {
+				return nil, fmt.Errorf("%s failed: %w\n%s", typechecker, err, output)
 			}
 			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
 		}
@@ -1891,7 +1891,7 @@ func (host *pythonLanguageHost) Handshake(ctx context.Context,
 	}()
 	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
 	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
+		return nil, fmt.Errorf("could not start health check host RPC server: %w", err)
 	}
 
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
@@ -1988,7 +1988,7 @@ func (host *pythonLanguageHost) Link(
 			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
 		}
 		packages[packageName] = dep.Path
-		imports.WriteString(fmt.Sprintf("  import %s as %s\n", packageName, importName))
+		fmt.Fprintf(&imports, "  import %s as %s\n", packageName, importName)
 	}
 	instructions += imports.String()
 

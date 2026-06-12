@@ -18,9 +18,13 @@ import (
 	"cmp"
 	"context"
 	_ "embed"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash"
+	"hash/fnv"
 	"io"
+	"maps"
 	"math"
 	"net/url"
 	"os"
@@ -29,9 +33,11 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -90,6 +96,15 @@ func warningf(path, message string, args ...any) *hcl.Diagnostic {
 		Severity: hcl.DiagWarning,
 		Summary:  summary,
 	}
+}
+
+func validatePrintableName(path, kind, name string) *hcl.Diagnostic {
+	for _, r := range name {
+		if !unicode.IsPrint(r) || unicode.IsSpace(r) {
+			return errorf(path, "%s must contain only printable, non-whitespace characters (found U+%04X)", kind, r)
+		}
+	}
+	return nil
 }
 
 func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
@@ -166,6 +181,13 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 
 	diags = diags.Extend(spec.validateTypeTokens())
 
+	// Disallow the package names "pulumi" and "input". "pulumi" is reserved for the builtin package and provider
+	// resources, and "input" is reserved for `pulumi do` to use as a discriminator for input flags.
+	if (!options.AllowPulumiPackage && spec.Name == "pulumi") || spec.Name == "input" {
+		diags = diags.Append(errorf("#/name",
+			"invalid package name '%s' (package names 'pulumi' and 'input' are reserved)", spec.Name))
+	}
+
 	config, configDiags, err := bindConfig(spec.Config, types, options)
 	diags = diags.Extend(configDiags)
 	if err != nil {
@@ -190,10 +212,12 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		return nil, diags, err
 	}
 
+	diags = diags.Extend(validateNoRequiredObjectCycles(typeList))
+
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
 
-	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions))
+	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions, types.pkg.TokenToModule))
 
 	pkg := types.pkg
 	pkg.Config = config
@@ -297,7 +321,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil, NewLoaderServerFromHost)
+		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil,
+			NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -317,7 +342,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		resources:    map[string]*ResourceType{},
 		arrays:       map[Type]*ArrayType{},
 		maps:         map[Type]*MapType{},
-		unions:       map[string]*UnionType{},
+		unions:       map[typeHash]*UnionType{},
 		tokens:       map[string]*TokenType{},
 		inputs:       map[Type]*InputType{},
 		optionals:    map[Type]*OptionalType{},
@@ -330,6 +355,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 
 // Options that affect the validation of the packgae schema.
 type ValidationOptions struct {
+	// Internal flag set to allow the builtin pulumi package to bind.
+	AllowPulumiPackage      bool
 	AllowDanglingReferences bool
 }
 
@@ -466,7 +493,7 @@ type types struct {
 	resources map[string]*ResourceType
 	arrays    map[Type]*ArrayType
 	maps      map[Type]*MapType
-	unions    map[string]*UnionType
+	unions    map[typeHash]*UnionType
 	tokens    map[string]*TokenType
 	inputs    map[Type]*InputType
 	optionals map[Type]*OptionalType
@@ -770,11 +797,94 @@ func (t *types) newUnionType(
 		Discriminator: discriminator,
 		Mapping:       mapping,
 	}
-	if typ, ok := t.unions[union.String()]; ok {
+	key := hashType(union)
+	if typ, ok := t.unions[key]; ok {
 		return typ
 	}
-	t.unions[union.String()] = union
+	t.unions[key] = union
 	return union
+}
+
+// typeHash is a structural fingerprint of a Type.
+//
+// It should be used for structural type comparisons, instead of [(Type).String()].
+type typeHash uint64
+
+// hashType returns the structural hash of t.
+func hashType(t Type) typeHash {
+	h := fnv.New64a()
+	hashTypeInto(h, t)
+	return typeHash(h.Sum64())
+}
+
+// hashTypeInto is the recursive worker behind hashType. It mirrors the
+// kinds handled by compareTypes; any new Type kind added there must be
+// added here too.
+func hashTypeInto(h hash.Hash64, t Type) {
+	var buf [8]byte
+	writeTag := func(b byte) { _, _ = h.Write([]byte{b}) }
+	writeUint := func(u uint64) {
+		binary.LittleEndian.PutUint64(buf[:], u)
+		_, _ = h.Write(buf[:])
+	}
+	writeStr := func(s string) {
+		writeUint(uint64(len(s)))
+		_, _ = h.Write([]byte(s))
+	}
+
+	switch t := t.(type) {
+	case nil:
+		writeTag(0)
+	case primitiveType:
+		writeTag(1)
+		writeUint(uint64(t))
+	case *ArrayType:
+		writeTag(2)
+		hashTypeInto(h, t.ElementType)
+	case *MapType:
+		writeTag(3)
+		hashTypeInto(h, t.ElementType)
+	case *OptionalType:
+		writeTag(4)
+		hashTypeInto(h, t.ElementType)
+	case *InputType:
+		writeTag(5)
+		hashTypeInto(h, t.ElementType)
+	case *UnionType:
+		writeTag(6)
+		writeUint(uint64(len(t.ElementTypes)))
+		for _, el := range t.ElementTypes {
+			hashTypeInto(h, el)
+		}
+		hashTypeInto(h, t.DefaultType)
+		writeStr(t.Discriminator)
+		writeUint(uint64(len(t.Mapping)))
+		for _, k := range slices.Sorted(maps.Keys(t.Mapping)) {
+			writeStr(k)
+			writeStr(t.Mapping[k])
+		}
+	case *ObjectType:
+		writeTag(7)
+		writeStr(t.Token)
+		if t.IsInputShape() {
+			writeTag(1)
+		} else {
+			writeTag(0)
+		}
+	case *ResourceType:
+		writeTag(8)
+		writeStr(t.Token)
+	case *EnumType:
+		writeTag(9)
+		writeStr(t.Token)
+	case *TokenType:
+		writeTag(10)
+		writeStr(t.Token)
+	case *InvalidType:
+		writeTag(11)
+	default:
+		contract.Failf("unknown type %T", t)
+	}
 }
 
 func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.Diagnostics, error) {
@@ -791,6 +901,9 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 
 	var diags hcl.Diagnostics
 	path := memberPath("types", token)
+	if diag := validatePrintableName(path, "type name", token); diag != nil {
+		diags = diags.Append(diag)
+	}
 	parts := strings.Split(token, ":")
 	if len(parts) == 3 {
 		name := parts[2]
@@ -1137,22 +1250,27 @@ func bindConstValue(path, kind string, value any, typ Type) (any, hcl.Diagnostic
 		}
 		return v, nil
 	case IntType:
-		v, ok := value.(int)
-		if !ok {
-			v, ok := value.(float64)
-			if !ok {
-				return 0, typeError("integer")
+		clamp := func(i int) (any, hcl.Diagnostics) {
+			if i < math.MinInt32 || i > math.MaxInt32 {
+				return nil, typeError("integer")
 			}
-			if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
-				return 0, typeError("integer")
-			}
-			return int32(v), nil
+			//nolint:gosec // int -> int32 conversion is guarded above.
+			return int32(i), nil
 		}
-		if v < math.MinInt32 || v > math.MaxInt32 {
+
+		switch v := value.(type) {
+		case int:
+			return clamp(v)
+		case int32:
+			return v, nil
+		case float64:
+			if math.Trunc(v) != v {
+				return 0, typeError("integer")
+			}
+			return clamp(int(v))
+		default:
 			return 0, typeError("integer")
 		}
-		//nolint:gosec // int -> int32 conversion is guarded above.
-		return int32(v), nil
 	case NumberType:
 		v, ok := value.(float64)
 		if !ok {
@@ -1220,8 +1338,12 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 ) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 	for name := range properties {
+		propertyPath := path + "/" + url.PathEscape(name)
+		if diag := validatePrintableName(propertyPath, "property name", name); diag != nil {
+			diags = diags.Append(diag)
+		}
 		if isReservedKeyword(name) {
-			diags = diags.Append(errorf(path+"/"+name, "%s", name+" is a reserved property name"))
+			diags = diags.Append(errorf(propertyPath, "%s", name+" is a reserved property name"))
 		}
 	}
 	if diags.HasErrors() {
@@ -1399,6 +1521,89 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 	}, diags
 }
 
+// validateNoRequiredObjectCycles reports a diagnostic for every object type
+// whose required-property graph contains a cycle returning to itself. Such a
+// schema describes a value of infinite size and so cannot be satisfied.
+//
+// Only direct ObjectType references count: Array, Map, and Union members all
+// have a finite empty form (or a non-recursive branch), so they break the
+// cycle. Optional properties also break the cycle.
+func validateNoRequiredObjectCycles(typeList []Type) hcl.Diagnostics {
+	// Each object is bound twice in typeList — once as a plain shape and once
+	// as an input shape — so dedupe by Token to report each logical cycle once.
+	// Visit objects in lexicographic Token order so that the chosen DFS root,
+	// and therefore the cycle text and diagnostic order, are deterministic.
+	objects := make([]*ObjectType, 0, len(typeList))
+	for _, t := range typeList {
+		if obj, ok := t.(*ObjectType); ok {
+			objects = append(objects, obj)
+		}
+	}
+	sort.Slice(objects, func(i, j int) bool { return objects[i].Token < objects[j].Token })
+
+	var diags hcl.Diagnostics
+	reported := map[string]bool{}
+	for _, obj := range objects {
+		if reported[obj.Token] {
+			continue
+		}
+		if cycle := findRequiredObjectCycle(obj, nil, map[*ObjectType]bool{}); cycle != nil {
+			tokens := make([]string, len(cycle))
+			for i, c := range cycle {
+				tokens[i] = c.Token
+				reported[c.Token] = true
+			}
+			diags = diags.Append(errorf(memberPath("types", obj.Token),
+				"object type has unsatisfiable required-property cycle: %s",
+				strings.Join(tokens, " -> ")))
+		}
+	}
+	return diags
+}
+
+// findRequiredObjectCycle DFSes the required-property graph rooted at obj.
+// If a cycle is found, it returns the slice of object types on that cycle,
+// starting at the first repeated node and ending with the same node again.
+func findRequiredObjectCycle(obj *ObjectType, path []*ObjectType, onPath map[*ObjectType]bool) []*ObjectType {
+	// walkRequiredType strips non-cycling wrappers (InputType) and recurses into
+	// ObjectType refs. Array, Map, Union, and Optional are not followed because
+	// they admit a non-recursive value. TokenType is also a leaf: it stands for
+	// a reference into another schema, which we treat as opaque — cycles cannot
+	// span schemas, and other schemas are assumed to have been validated.
+	var walkRequiredType func(typ Type, path []*ObjectType) []*ObjectType
+	walkRequiredType = func(typ Type, path []*ObjectType) []*ObjectType {
+		switch t := typ.(type) {
+		case *InputType:
+			return walkRequiredType(t.ElementType, path)
+		case *ObjectType:
+			return findRequiredObjectCycle(t, path, onPath)
+		}
+		return nil
+	}
+
+	if onPath[obj] {
+		idx := 0
+		for i, c := range path {
+			if c == obj {
+				idx = i
+				break
+			}
+		}
+		return append(append([]*ObjectType{}, path[idx:]...), obj)
+	}
+	onPath[obj] = true
+	defer delete(onPath, obj)
+	for _, p := range obj.Properties {
+		if !p.IsRequired() {
+			continue
+		}
+		if cycle := walkRequiredType(p.Type, append(path, obj)); cycle != nil {
+			return cycle
+		}
+	}
+	return nil
+}
+
 func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
@@ -1436,20 +1641,167 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 		typeList = append(typeList, t)
 	}
 
-	sort.Slice(typeList, func(i, j int) bool {
-		return typeList[i].String() < typeList[j].String()
-	})
+	slices.SortFunc(typeList, compareTypes)
 
 	return typeList, diags, nil
 }
 
+// compareTypes is a total order on Type values used to sort the package's
+// type list deterministically.
+func compareTypes(a, b Type) int {
+	if c := cmp.Compare(typeOrder(a), typeOrder(b)); c != 0 {
+		return c
+	}
+
+	switch a := a.(type) {
+	case primitiveType:
+		return cmp.Compare(a, b.(primitiveType))
+	case *ArrayType:
+		return compareTypes(a.ElementType, b.(*ArrayType).ElementType)
+	case *MapType:
+		return compareTypes(a.ElementType, b.(*MapType).ElementType)
+	case *OptionalType:
+		return compareTypes(a.ElementType, b.(*OptionalType).ElementType)
+	case *UnionType:
+		b := b.(*UnionType)
+		if c := cmp.Compare(len(a.ElementTypes), len(b.ElementTypes)); c != 0 {
+			return c
+		}
+		for i := range a.ElementTypes {
+			if c := compareTypes(a.ElementTypes[i], b.ElementTypes[i]); c != 0 {
+				return c
+			}
+		}
+		if c := compareTypes(a.DefaultType, b.DefaultType); c != 0 {
+			return c
+		}
+		if c := strings.Compare(a.Discriminator, b.Discriminator); c != 0 {
+			return c
+		}
+
+		if c := cmp.Compare(len(a.Mapping), len(b.Mapping)); c != 0 {
+			return c
+		}
+		aKeys, bKeys := slices.Sorted(maps.Keys(a.Mapping)), slices.Sorted(maps.Keys(b.Mapping))
+		if c := slices.Compare(aKeys, bKeys); c != 0 {
+			return c
+		}
+		for _, k := range aKeys {
+			if c := strings.Compare(a.Mapping[k], b.Mapping[k]); c != 0 {
+				return c
+			}
+		}
+
+		return 0
+	case *ObjectType:
+		b := b.(*ObjectType)
+		if c := strings.Compare(a.Token, b.Token); c != 0 {
+			return c
+		}
+		bToI := func(b bool) int8 {
+			if b {
+				return 1
+			}
+			return 0
+		}
+
+		return cmp.Compare(bToI(a.IsInputShape()), bToI(b.IsInputShape()))
+	case *ResourceType:
+		return strings.Compare(a.Token, b.(*ResourceType).Token)
+	case *EnumType:
+		return strings.Compare(a.Token, b.(*EnumType).Token)
+	case *InvalidType, nil:
+		return 0 // All invalid types are the same
+	case *TokenType:
+		return strings.Compare(a.Token, b.(*TokenType).Token)
+	case *InputType:
+		return compareTypes(a.ElementType, b.(*InputType).ElementType)
+	default:
+		contract.Failf("unknown type %T", a)
+		return -1
+	}
+}
+
+func typeOrder(t Type) int {
+	switch t.(type) {
+	case nil:
+		return 0
+	case primitiveType:
+		return 1
+	case *ArrayType:
+		return 2
+	case *MapType:
+		return 3
+	case *OptionalType:
+		return 4
+	case *UnionType:
+		return 5
+	case *ObjectType:
+		return 6
+	case *EnumType:
+		return 7
+	case *ResourceType:
+		return 8
+	case *InvalidType:
+		return 9
+	case *TokenType:
+		return 10
+	case *InputType:
+		return 11
+	default:
+		contract.Failf("unknown type %T", t)
+		return -1
+	}
+}
+
 func checkDuplicates(
-	resources map[string]ResourceSpec, functions map[string]FunctionSpec,
+	resources map[string]ResourceSpec,
+	functions map[string]FunctionSpec,
+	tokenToModule func(string) string,
 ) hcl.Diagnostics {
 	type schemaPath = string
 	type token = string
 	names := make(map[token][]schemaPath, len(resources)+len(functions))
 	duplicates := map[token]struct{}{}
+	modules := make(map[string]struct{})
+	moduleCollision := make(map[string]schemaPath)
+
+	// normalize folds tok to its case-insensitive canonical form, applying Meta.ModuleFormat
+	// to the module component. PCL canonicalizes tokens before lookup, so two source tokens
+	// that share a normalized form are unreachable through any external reference.
+	normalize := func(tok string) string {
+		parts := strings.Split(tok, ":")
+		if len(parts) != 3 {
+			return tok // Token is invalid, and will error later.
+		}
+		if p1 := tokenToModule(tok); p1 != "" {
+			parts[1] = p1
+		}
+		return strings.ToLower(strings.Join(parts, ":"))
+	}
+
+	// As well as tracking duplicate tokens we also need to check tokens don't collide with module names. That is given
+	// a token "test:index:A" and another "test:A:B", the first's name is at the same "level" as the second's module, so
+	// they collide.
+	addModule := func(tok string) {
+		// We Only check normalized module names here for conflicts, nothing really refers to the full form modules by
+		// paths.
+		tok = normalize(tok)
+		module := tokenToModule(tok)
+		if module != "" {
+			parts := strings.Split(module, "/")
+			for i := 1; i <= len(parts); i++ {
+				prefix := strings.Join(parts[:i], "/")
+				modules[prefix] = struct{}{}
+			}
+		}
+	}
+	for r := range resources {
+		addModule(r)
+	}
+	for f := range functions {
+		addModule(f)
+	}
 
 	process := func(token token, schemaPath schemaPath) {
 		v := append(names[token], schemaPath)
@@ -1457,13 +1809,42 @@ func checkDuplicates(
 		if len(v) > 1 {
 			duplicates[token] = struct{}{}
 		}
+		// Check if this token collides with a module name.
+		parts := strings.Split(token, ":")
+		if len(parts) != 3 {
+			return
+		}
+		path := parts[2]
+		if parts[1] != "index" {
+			path = parts[1] + "/" + parts[2]
+		}
+		if _, ok := modules[path]; ok {
+			moduleCollision[path] = schemaPath
+		}
+	}
+
+	// Each source token contributes both its lowercased literal form and its canonical
+	// (moduleFormat-applied) form. Collisions across either dimension are ambiguous: a
+	// query for X may match a source whose literal is X *or* a source whose canonical
+	// form is X, and PCL has no way to disambiguate. For example, with ModuleFormat
+	// "(\w+)_v\d+", the source tokens "test:mod_v1_v2:A" (canonical "test:mod_v1:A")
+	// and "test:mod_v1:A" (canonical "test:mod:A") have disjoint canonicals but the
+	// first's canonical equals the second's literal — querying "test:mod_v1:A" is
+	// ambiguous.
+	processSource := func(tok, schemaPath string) {
+		lit := strings.ToLower(tok)
+		canon := normalize(tok)
+		process(lit, schemaPath)
+		if canon != lit {
+			process(canon, schemaPath)
+		}
 	}
 
 	for r := range resources {
-		process(strings.ToLower(r), memberPath("resources", r))
+		processSource(r, memberPath("resources", r))
 	}
 	for f := range functions {
-		process(strings.ToLower(f), memberPath("functions", f))
+		processSource(f, memberPath("functions", f))
 	}
 
 	diags := slice.Prealloc[*hcl.Diagnostic](len(duplicates))
@@ -1484,6 +1865,11 @@ func checkDuplicates(
 			}
 			diags = append(diags, err)
 		}
+	}
+
+	for module, path := range moduleCollision {
+		err := errorf(path, "token collides with module %s", module)
+		diags = append(diags, err)
 	}
 
 	return diags
@@ -1601,6 +1987,9 @@ func (t *types) bindResourceDef(
 		t.resourceDefs[token] = res
 
 		path := memberPath("resources", token)
+		if diag := validatePrintableName(path, "resource name", token); diag != nil {
+			diags = diags.Append(diag)
+		}
 		parts := strings.Split(token, ":")
 		if len(parts) == 3 {
 			name := parts[2]
@@ -1676,12 +2065,30 @@ func (t *types) bindResourceDetails(
 
 	var stateInputs *ObjectType
 	if spec.StateInputs != nil {
+		for name := range spec.StateInputs.Properties {
+			if isReservedStateInputPropertyKey(name) {
+				diags = diags.Append(errorf(
+					path+"/stateInputs/properties/"+name,
+					"%s is a reserved property name for stateInputs", name))
+			}
+		}
+
 		si, stateDiags, err := t.bindAnonymousObjectType(path+"/stateInputs", token+"Args", *spec.StateInputs, options)
 		diags = diags.Extend(stateDiags)
 		if err != nil {
 			return diags, fmt.Errorf("error binding inputs for %v: %w", token, err)
 		}
 		stateInputs = si.InputShape
+	}
+
+	var listInputs *ObjectType
+	if spec.ListInputs != nil {
+		li, listDiags, err := t.bindAnonymousObjectType(path+"/listInputs", token+"ListArgs", *spec.ListInputs, options)
+		diags = diags.Extend(listDiags)
+		if err != nil {
+			return diags, fmt.Errorf("error binding list inputs for %v: %w", token, err)
+		}
+		listInputs = li.InputShape
 	}
 
 	aliases := slice.Prealloc[*Alias](len(spec.Aliases))
@@ -1696,6 +2103,7 @@ func (t *types) bindResourceDetails(
 		InputProperties:           inputProperties,
 		Properties:                properties,
 		StateInputs:               stateInputs,
+		ListInputs:                listInputs,
 		Aliases:                   aliases,
 		DeprecationMessage:        spec.DeprecationMessage,
 		Language:                  makeLanguageMap(spec.Language),
@@ -1738,11 +2146,16 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 	stringProperties := slice.Prealloc[*Property](len(decl.Properties))
 	for _, prop := range decl.Properties {
 		typ := plainType(prop.Type)
-		if tokenType, isTokenType := typ.(*TokenType); isTokenType {
-			if tokenType.UnderlyingType != stringType {
+		switch typ := typ.(type) {
+		case *TokenType:
+			if typ.UnderlyingType != stringType {
 				continue
 			}
-		} else {
+		case *EnumType:
+			if typ.ElementType != stringType {
+				continue
+			}
+		default:
 			if typ != stringType {
 				continue
 			}
@@ -1797,6 +2210,9 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	var diags hcl.Diagnostics
 
 	path := memberPath("functions", token)
+	if diag := validatePrintableName(path, "function name", token); diag != nil {
+		diags = diags.Append(diag)
+	}
 	parts := strings.Split(token, ":")
 	if len(parts) == 3 {
 		name := parts[2]

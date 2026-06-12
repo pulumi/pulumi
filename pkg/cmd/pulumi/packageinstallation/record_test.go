@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -181,6 +180,13 @@ func (w *recordingWorkspace) GetStoredCredentials() (workspace.Credentials, erro
 	return creds, err
 }
 
+func (w *recordingWorkspace) GetPlugins(ctx context.Context) ([]workspace.PluginInfo, error) {
+	w.start("GetPlugins", ctx)
+	plugins, err := w.w.GetPlugins(ctx)
+	w.finish(plugins, err)
+	return plugins, err
+}
+
 func (w *recordingWorkspace) LoadPluginProjectAt(
 	ctx context.Context, path string,
 ) (*workspace.PluginProject, string, error) {
@@ -221,13 +227,22 @@ func (w *recordingWorkspace) LinkIntoProject(
 	return err
 }
 
+func (w *recordingWorkspace) GetRequiredPackages(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
+	w.start("GetRequiredPackages", ctx, dirPath, project)
+	packages, specs, err := w.w.GetRequiredPackages(ctx, dirPath, project)
+	w.finish(packages, specs, err)
+	return packages, specs, err
+}
+
 func (w *recordingWorkspace) RunPackage(
 	ctx context.Context,
-	rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	rootDir, pluginPath string, params plugin.ParameterizeParameters,
 	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
-	w.start("RunPackage", ctx, rootDir, pluginPath, pkgName, params)
-	provider, err := w.w.RunPackage(ctx, rootDir, pluginPath, pkgName, params, originalSpec)
+	w.start("RunPackage", ctx, rootDir, pluginPath, params)
+	provider, err := w.w.RunPackage(ctx, rootDir, pluginPath, params, originalSpec)
 	w.finish(provider, err)
 	return provider, err
 }
@@ -250,7 +265,7 @@ func formatValue(v reflect.Value) string {
 	}
 
 	// Handle pointers
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return "nil"
 		}

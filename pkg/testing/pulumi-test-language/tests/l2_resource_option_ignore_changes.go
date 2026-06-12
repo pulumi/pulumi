@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,11 +44,18 @@ func init() {
 					assert.Equal(l, []string{"details[0].key"}, receiverIgnore.IgnoreChanges)
 
 					mapIgnore := RequireSingleNamedResource(l, snap.Resources, "mapIgnore")
-					assert.Equal(l, []string{
-						`tags["env"]`,
-						`tags["with.dot"]`,
-						`tags["with escaped \""]`,
-					}, mapIgnore.IgnoreChanges)
+
+					ignoreChanges := make([]property.Glob, len(mapIgnore.IgnoreChanges))
+					for i, v := range mapIgnore.IgnoreChanges {
+						require.NoError(l, (&ignoreChanges[i]).UnmarshalText([]byte(v)))
+					}
+					glob := property.GlobFromSegments
+					segment := property.NewSegment[string]
+					assert.Equal(l, []property.Glob{
+						glob(segment("tags"), segment("env")),
+						glob(segment("tags"), segment("with.dot")),
+						glob(segment("tags"), segment("with escaped \"")),
+					}, ignoreChanges)
 
 					noIgnore := RequireSingleNamedResource(l, snap.Resources, "noIgnore")
 					assert.Empty(l, noIgnore.IgnoreChanges)

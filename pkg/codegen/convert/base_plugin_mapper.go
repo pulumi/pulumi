@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -57,39 +58,39 @@ type basePluginMapperSpec struct {
 	version semver.Version
 }
 
+// parseDebugProviderNames returns the provider names listed in a
+// PULUMI_DEBUG_PROVIDERS env var (format: name:port[,name:port…]).
+func parseDebugProviderNames(env string) []string {
+	if env == "" {
+		return nil
+	}
+	var out []string
+	for entry := range strings.SplitSeq(env, ",") {
+		k, _, ok := strings.Cut(entry, ":")
+		if !ok {
+			continue
+		}
+		out = append(out, strings.TrimSpace(k))
+	}
+	return out
+}
+
 // Workspace encapsulates an environment containing an enumerable set of plugins.
-type Workspace interface {
-	// GetPlugins returns the list of plugins installed in the workspace.
-	GetPlugins() ([]workspace.PluginInfo, error)
-}
-
-type defaultWorkspace struct{}
-
-func (defaultWorkspace) GetPlugins() ([]workspace.PluginInfo, error) {
-	return workspace.GetPlugins()
-}
-
-// DefaultWorkspace returns a default workspace implementation that uses the workspace module directly to get plugin
-// info.
-func DefaultWorkspace() Workspace {
-	return defaultWorkspace{}
-}
-
-// NewBasePluginMapper creates a new plugin mapper backed by the supplied workspace.
+// NewBasePluginMapper creates a new plugin mapper backed by the supplied plugin context.
 func NewBasePluginMapper(
-	ws Workspace,
+	pluginContext pluginstorage.Context,
 	conversionKey string,
 	providerFactory ProviderFactory,
 	installPlugin func(pluginName string) *semver.Version,
 	mappings []string,
 ) (Mapper, error) {
-	contract.Requiref(ws != nil, "ws", "must not be nil")
+	contract.Requiref(pluginContext != nil, "pluginContext", "must not be nil")
 	contract.Requiref(providerFactory != nil, "providerFactory", "must not be nil")
 
 	// Enumerate _all_ our installed plugins to ask for any mappings they provide. This allows users to convert aws
 	// terraform code for example by just having 'pulumi-aws' plugin locally, without needing to specify it anywhere on
 	// the command line, and without tf2pulumi needing to know about every possible plugin.
-	allPlugins, err := ws.GetPlugins()
+	allPlugins, err := pluginContext.GetPlugins(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("could not get plugins: %w", err)
 	}
@@ -117,6 +118,7 @@ func NewBasePluginMapper(
 	// We now have a list of plugin specs (i.e. a name and version). Save that list because we don't want to iterate all
 	// the plugins now because the convert might not even ask for any mappings.
 	plugins := []basePluginMapperSpec{}
+	seen := map[string]bool{}
 	for _, plugin := range allPlugins {
 		if plugin.Kind != apitype.ResourcePlugin {
 			continue
@@ -129,6 +131,17 @@ func NewBasePluginMapper(
 			name:    plugin.Name,
 			version: version,
 		})
+		seen[plugin.Name] = true
+	}
+
+	// Also enumerate providers attached via PULUMI_DEBUG_PROVIDERS so the
+	// mapper considers them alongside installed plugins. The host's Provider
+	// loader respects the same env var, so providerFactory will dial them.
+	for _, name := range parseDebugProviderNames(os.Getenv("PULUMI_DEBUG_PROVIDERS")) {
+		if seen[name] {
+			continue
+		}
+		plugins = append(plugins, basePluginMapperSpec{name: name})
 	}
 
 	// Explicitly supplied mappings take precedence over any plugin returned mappings, but we want to error early if we

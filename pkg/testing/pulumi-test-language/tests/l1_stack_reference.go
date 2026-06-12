@@ -43,9 +43,10 @@ func init() {
 
 					outputs := stack.Outputs
 
-					require.Len(l, outputs, 2, "expected 2 outputs")
+					require.Len(l, outputs, 3, "expected 3 outputs")
 					AssertPropertyMapMember(l, outputs, "plain", resource.NewProperty("plain"))
 					AssertPropertyMapMember(l, outputs, "secret", resource.MakeSecret(resource.NewProperty("secret")))
+					AssertPropertyMapMember(l, outputs, "secret_unsecret", resource.NewProperty("secret"))
 				},
 			},
 		},

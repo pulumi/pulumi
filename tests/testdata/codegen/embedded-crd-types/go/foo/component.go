@@ -9,7 +9,7 @@ import (
 
 	"embedded-crd-types/foo/crd.k8s.amazonaws.com/v1alpha1"
 	"embedded-crd-types/foo/internal"
-	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/core/v1"
+	"github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -17,7 +17,7 @@ type Component struct {
 	pulumi.ResourceState
 
 	EniConfig v1alpha1.ENIConfigSpecMapOutput `pulumi:"eniConfig"`
-	Pod       *corev1.PodTypeOutput           `pulumi:"pod"`
+	Pod       tls.CertRequestSubjectPtrOutput `pulumi:"pod"`
 }
 
 // NewComponent registers a new resource with the given unique name, arguments, and options.
@@ -38,13 +38,13 @@ func NewComponent(ctx *pulumi.Context,
 
 type componentArgs struct {
 	EniConfig map[string]v1alpha1.ENIConfigSpec `pulumi:"eniConfig"`
-	Pod       *corev1.PodType                   `pulumi:"pod"`
+	Pod       *tls.CertRequestSubject           `pulumi:"pod"`
 }
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
 	EniConfig v1alpha1.ENIConfigSpecMapInput
-	Pod       *corev1.PodTypeInput
+	Pod       tls.CertRequestSubjectPtrInput
 }
 
 func (ComponentArgs) ElementType() reflect.Type {
@@ -88,8 +88,8 @@ func (o ComponentOutput) EniConfig() v1alpha1.ENIConfigSpecMapOutput {
 	return o.ApplyT(func(v *Component) v1alpha1.ENIConfigSpecMapOutput { return v.EniConfig }).(v1alpha1.ENIConfigSpecMapOutput)
 }
 
-func (o ComponentOutput) Pod() *corev1.PodTypeOutput {
-	return o.ApplyT(func(v *Component) *corev1.PodTypeOutput { return v.Pod }).(*corev1.PodTypeOutput)
+func (o ComponentOutput) Pod() tls.CertRequestSubjectPtrOutput {
+	return o.ApplyT(func(v *Component) tls.CertRequestSubjectPtrOutput { return v.Pod }).(tls.CertRequestSubjectPtrOutput)
 }
 
 func init() {

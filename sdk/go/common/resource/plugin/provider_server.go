@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -364,7 +365,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		inputs = args
 	} else {
 		inputs = make(resource.PropertyMap)
-		for k, v := range req.GetVariables() {
+		for k, v := range req.GetVariables() { //nolint:staticcheck // maintain backwards compatibility
 			key, err := config.ParseKey(k)
 			if err != nil {
 				return nil, err
@@ -620,6 +621,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		ID:                    requestID,
 		Inputs:                inputs,
 		State:                 state,
+		Timeout:               req.GetTimeout(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),
 		OldViews:              oldViews,
@@ -644,6 +646,58 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		Inputs:              rpcInputs,
 		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
 	}, nil
+}
+
+func (p *providerServer) List(
+	req *pulumirpc.ListRequest,
+	stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
+) error {
+	query, err := UnmarshalProperties(req.GetQuery(), p.unmarshalOptions("list.query", false))
+	if err != nil {
+		return err
+	}
+	listStream, err := p.provider.List(stream.Context(), ListRequest{
+		Token:             tokens.Type(req.GetToken()),
+		Query:             query,
+		Limit:             req.GetLimit(),
+		PageSize:          req.GetPageSize(),
+		ContinuationToken: req.GetContinuationToken(),
+	})
+	if err != nil {
+		return err
+	}
+	for result, err := range listStream.Items {
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{
+					Id:   string(result.ID),
+					Name: result.Name,
+				},
+			},
+		}); err != nil {
+			return err
+		}
+	}
+	if listStream.Computed {
+		return stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Computed_{
+				Computed: &pulumirpc.ListResponse_Computed{},
+			},
+		})
+	}
+	if listStream.ContinuationToken != "" {
+		return stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Continuation_{
+				Continuation: &pulumirpc.ListResponse_Continuation{
+					ContinuationToken: listStream.ContinuationToken,
+				},
+			},
+		})
+	}
+	return nil
 }
 
 func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
@@ -798,6 +852,7 @@ func (p *providerServer) Construct(ctx context.Context,
 	info := ConstructInfo{
 		Project:          req.GetProject(),
 		Stack:            req.GetStack(),
+		Organization:     req.GetOrganization(),
 		Config:           cfg,
 		ConfigSecretKeys: cfgSecretKeys,
 		DryRun:           req.GetDryRun(),

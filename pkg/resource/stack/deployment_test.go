@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -222,6 +223,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 	tests := []struct {
 		name             string
 		resources        []*resource.State
+		snippets         []resource.Snippet
 		expectedVersion  int
 		expectedFeatures []string
 	}{
@@ -234,6 +236,23 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 			},
 			expectedVersion:  3,
 			expectedFeatures: nil,
+		},
+		{
+			name: "v4 deployment with snippets",
+			resources: []*resource.State{
+				{
+					URN: "urn1",
+				},
+			},
+			snippets: []resource.Snippet{
+				{
+					Name: "r", Type: "pkgA:index:res",
+					Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+					Code:       `propA = true`,
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{snippetsFeature},
 		},
 		{
 			name: "v4 deployment with refreshBeforeUpdate",
@@ -292,6 +311,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 
 			snap := &deploy.Snapshot{
 				Resources: tt.resources,
+				Snippets:  tt.snippets,
 			}
 			deployment, version, features, err := SerializeDeploymentWithMetadata(ctx, snap, false)
 			require.NoError(t, err)
@@ -363,6 +383,51 @@ func TestUnsupportedFeature(t *testing.T) {
 	var expectedErr *ErrDeploymentUnsupportedFeatures
 	require.ErrorAs(t, err, &expectedErr)
 	require.Equal(t, []string{"unsupported-feature"}, expectedErr.Features)
+}
+
+// TestSnippetRoundTrip verifies that snippets attached to a snapshot survive an untyped-deployment
+// round trip and that the resulting deployment is gated by the "snippets" feature.
+func TestSnippetRoundTrip(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	version := semver.MustParse("1.2.3")
+	snap := &deploy.Snapshot{
+		Snippets: []resource.Snippet{
+			{
+				Name: "r1", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       `propA = true`,
+			},
+			{
+				Name: "r2", Type: "pkgB:index:res",
+				Descriptor: resource.PackageDescriptor{
+					Name:        "pkgB",
+					Version:     &version,
+					DownloadURL: "https://example/pkgB",
+					Parameterization: &resource.ParameterizationDescriptor{
+						Name:    "child",
+						Version: version,
+						Value:   []byte("hello"),
+					},
+				},
+				Code: `propB = "x"`,
+				References: map[string]string{
+					"comp": "urn:pulumi:dev::proj::pkgA:index:Comp::comp",
+				},
+			},
+		},
+	}
+
+	untyped, err := SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+	require.Equal(t, DeploymentSchemaVersionLatest, untyped.Version)
+	require.Equal(t, []string{snippetsFeature}, untyped.Features)
+	require.NoError(t, ValidateUntypedDeployment(untyped))
+
+	roundTripped, err := DeserializeUntypedDeployment(ctx, untyped, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	require.Equal(t, snap.Snippets, roundTripped.Snippets)
 }
 
 // TestDeserializeUntypedDeploymentFeatures tests that the deserializer does not error for features that are supported.
@@ -758,8 +823,8 @@ func TestDeserializePropertyValue(t *testing.T) {
 	})
 }
 
-func wireValue(v resource.PropertyValue) (any, error) {
-	object, err := SerializePropertyValue(context.Background(), v, config.NopEncrypter, false)
+func wireValue(ctx context.Context, v resource.PropertyValue) (any, error) {
+	object, err := SerializePropertyValue(ctx, v, config.NopEncrypter, false)
 	if err != nil {
 		return nil, err
 	}
@@ -782,7 +847,7 @@ func TestPropertyValueSchema(t *testing.T) {
 
 	//nolint:paralleltest // uses rapid.T not golang testing.T
 	t.Run("serialized", rapid.MakeCheck(func(t *rapid.T) {
-		wireObject, err := wireValue(resource_testing.PropertyValueGenerator(6).Draw(t, "property value"))
+		wireObject, err := wireValue(t.Context(), resource_testing.PropertyValueGenerator(6).Draw(t, "property value"))
 		require.NoError(t, err)
 
 		err = propertyValueSchema.Validate(wireObject)
@@ -830,7 +895,7 @@ func TestRoundTripPropertyValue(t *testing.T) {
 
 	rapid.Check(t, func(t *rapid.T) {
 		original := resource_testing.PropertyValueGenerator(6).Draw(t, "property value")
-		wireObject, err := wireValue(original)
+		wireObject, err := wireValue(t.Context(), original)
 		require.NoError(t, err)
 
 		deserialized, err := DeserializePropertyValue(wireObject, config.NopDecrypter)

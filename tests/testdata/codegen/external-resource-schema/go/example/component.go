@@ -9,19 +9,18 @@ import (
 
 	"errors"
 	"external-resource-schema/example/internal"
-	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ec2"
-	"github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes"
-	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/meta/v1"
-	storagev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/storage/v1"
+	"git.example.org/thirdparty/sdk/go/pkg"
+	"git.example.org/thirdparty/sdk/go/pkg/module/sub"
+	mod1alias "github.com/pulumi/pulumi-goalias/sdk/go/goalias/mod1/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Component struct {
 	pulumi.CustomResourceState
 
-	Provider       kubernetes.ProviderOutput       `pulumi:"provider"`
-	SecurityGroup  ec2.SecurityGroupOutput         `pulumi:"securityGroup"`
-	StorageClasses storagev1.StorageClassMapOutput `pulumi:"storageClasses"`
+	Provider       other.ProviderOutput `pulumi:"provider"`
+	Res            mod1alias.ResOutput  `pulumi:"res"`
+	StorageClasses other.ThingMapOutput `pulumi:"storageClasses"`
 }
 
 // NewComponent registers a new resource with the given unique name, arguments, and options.
@@ -73,22 +72,22 @@ func (ComponentState) ElementType() reflect.Type {
 }
 
 type componentArgs struct {
-	Metadata              *metav1.ObjectMeta           `pulumi:"metadata"`
-	MetadataArray         []metav1.ObjectMeta          `pulumi:"metadataArray"`
-	MetadataMap           map[string]metav1.ObjectMeta `pulumi:"metadataMap"`
-	RequiredMetadata      metav1.ObjectMeta            `pulumi:"requiredMetadata"`
-	RequiredMetadataArray []metav1.ObjectMeta          `pulumi:"requiredMetadataArray"`
-	RequiredMetadataMap   map[string]metav1.ObjectMeta `pulumi:"requiredMetadataMap"`
+	Metadata              *sub.Config           `pulumi:"metadata"`
+	MetadataArray         []sub.Config          `pulumi:"metadataArray"`
+	MetadataMap           map[string]sub.Config `pulumi:"metadataMap"`
+	RequiredMetadata      sub.Config            `pulumi:"requiredMetadata"`
+	RequiredMetadataArray []sub.Config          `pulumi:"requiredMetadataArray"`
+	RequiredMetadataMap   map[string]sub.Config `pulumi:"requiredMetadataMap"`
 }
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
-	Metadata              metav1.ObjectMetaPtrInput
-	MetadataArray         metav1.ObjectMetaArrayInput
-	MetadataMap           metav1.ObjectMetaMapInput
-	RequiredMetadata      metav1.ObjectMetaInput
-	RequiredMetadataArray metav1.ObjectMetaArrayInput
-	RequiredMetadataMap   metav1.ObjectMetaMapInput
+	Metadata              *sub.ConfigInput
+	MetadataArray         sub.ConfigArrayInput
+	MetadataMap           sub.ConfigMapInput
+	RequiredMetadata      sub.ConfigInput
+	RequiredMetadataArray sub.ConfigArrayInput
+	RequiredMetadataMap   sub.ConfigMapInput
 }
 
 func (ComponentArgs) ElementType() reflect.Type {
@@ -178,16 +177,16 @@ func (o ComponentOutput) ToComponentOutputWithContext(ctx context.Context) Compo
 	return o
 }
 
-func (o ComponentOutput) Provider() kubernetes.ProviderOutput {
-	return o.ApplyT(func(v *Component) kubernetes.ProviderOutput { return v.Provider }).(kubernetes.ProviderOutput)
+func (o ComponentOutput) Provider() other.ProviderOutput {
+	return o.ApplyT(func(v *Component) other.ProviderOutput { return v.Provider }).(other.ProviderOutput)
 }
 
-func (o ComponentOutput) SecurityGroup() ec2.SecurityGroupOutput {
-	return o.ApplyT(func(v *Component) ec2.SecurityGroupOutput { return v.SecurityGroup }).(ec2.SecurityGroupOutput)
+func (o ComponentOutput) Res() mod1alias.ResOutput {
+	return o.ApplyT(func(v *Component) mod1alias.ResOutput { return v.Res }).(mod1alias.ResOutput)
 }
 
-func (o ComponentOutput) StorageClasses() storagev1.StorageClassMapOutput {
-	return o.ApplyT(func(v *Component) storagev1.StorageClassMapOutput { return v.StorageClasses }).(storagev1.StorageClassMapOutput)
+func (o ComponentOutput) StorageClasses() other.ThingMapOutput {
+	return o.ApplyT(func(v *Component) other.ThingMapOutput { return v.StorageClasses }).(other.ThingMapOutput)
 }
 
 type ComponentArrayOutput struct{ *pulumi.OutputState }

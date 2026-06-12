@@ -31,12 +31,13 @@ func init() {
 			},
 			Assert: func(l *L, res AssertArgs) {
 				require.NoError(l, res.Err)
-				require.Len(l, res.Snap.Resources, 8)
+				require.Len(l, res.Snap.Resources, 9)
 
 				noTimeouts := RequireSingleNamedResource(l, res.Snap.Resources, "noTimeouts")
 				createOnly := RequireSingleNamedResource(l, res.Snap.Resources, "createOnly")
 				updateOnly := RequireSingleNamedResource(l, res.Snap.Resources, "updateOnly")
 				deleteOnly := RequireSingleNamedResource(l, res.Snap.Resources, "deleteOnly")
+				readOnly := RequireSingleNamedResource(l, res.Snap.Resources, "readOnly")
 				allTimeouts := RequireSingleNamedResource(l, res.Snap.Resources, "allTimeouts")
 
 				assert.Equal(l, resource.CustomTimeouts{}, noTimeouts.CustomTimeouts)
@@ -54,9 +55,14 @@ func init() {
 				}, deleteOnly.CustomTimeouts)
 
 				assert.Equal(l, resource.CustomTimeouts{
+					Read: 540,
+				}, readOnly.CustomTimeouts)
+
+				assert.Equal(l, resource.CustomTimeouts{
 					Create: 120,
 					Update: 240,
 					Delete: 60,
+					Read:   300,
 				}, allTimeouts.CustomTimeouts)
 
 				configTimeout := RequireSingleNamedResource(l, res.Snap.Resources, "configTimeout")

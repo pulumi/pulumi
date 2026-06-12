@@ -19,13 +19,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"slices"
 
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // A small provider with a single resource "Resource" that has a single field "Data" which is a type with some primitive
@@ -44,10 +44,6 @@ func (p *RefRefProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *RefRefProvider) Pkg() tokens.Package {
-	return "ref-ref"
 }
 
 func (p *RefRefProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -94,7 +90,13 @@ func (p *RefRefProvider) GetSchema(
 			Ref:  "#/types/ref-ref:index:InnerData",
 		},
 	}
-	dataRequired := append(typeRequired, "innerData")
+	dataProperties["optionalInner"] = schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{
+			Type: "ref",
+			Ref:  "#/types/ref-ref:index:InnerData",
+		},
+	}
+	dataRequired := slices.Concat(typeRequired, []string{"innerData"})
 
 	resourceProperties := map[string]schema.PropertySpec{
 		"data": {

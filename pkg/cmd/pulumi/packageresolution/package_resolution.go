@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"path"
 	"strings"
 
@@ -35,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -260,6 +262,23 @@ func registryResolution(
 	return pkg, nil
 }
 
+func IsPluginInstalled(
+	ctx context.Context,
+	plugin workspace.PluginDescriptor, ws pluginstorage.Context, options Options,
+) (bool, *semver.Version, error) {
+	if ws.HasPlugin(ctx, plugin) {
+		return true, plugin.Version, nil
+	}
+
+	if plugin.Version == nil && options.ResolveVersionWithLocalWorkspace {
+		has, version, err := ws.HasPluginGTE(ctx, plugin)
+		if err != nil || has {
+			return has, version, err
+		}
+	}
+	return false, nil, nil
+}
+
 func Resolve(
 	ctx context.Context,
 	reg registry.Registry,
@@ -278,49 +297,36 @@ func Resolve(
 
 	naivePackageDescriptor, err := naivePackageDescriptor(ctx, spec)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse spec: %w", err)
+		return nil, fmt.Errorf("unable to parse spec: %w%s", err, vcsURLHint(spec.Source))
 	}
 
 	if options.AllowNonInvertableLocalWorkspaceResolution {
-		if ws.HasPlugin(ctx, naivePackageDescriptor.PluginDescriptor) {
-			return naiveResolution(spec, naivePackageDescriptor, true), nil
+		installed, atVersion, err := IsPluginInstalled(ctx, naivePackageDescriptor.PluginDescriptor, ws, options)
+		if err != nil {
+			return nil, err
 		}
-
-		if naivePackageDescriptor.Version == nil {
-			has, version, err := ws.HasPluginGTE(ctx, naivePackageDescriptor.PluginDescriptor)
-			if err != nil {
-				return nil, err
+		if installed {
+			if atVersion != nil {
+				spec.Version = atVersion.String()
+				naivePackageDescriptor.Version = atVersion
 			}
-			if has {
-				if version != nil {
-					naivePackageDescriptor.Version = version
-					spec.Version = version.String()
-				}
-				return naiveResolution(spec, naivePackageDescriptor, true), nil
-			}
+			return naiveResolution(spec, naivePackageDescriptor, true), nil
 		}
 	}
 
 	remoteResolution := func() (Resolution, error) {
 		logging.V(3).Infof("Resolved package %#v to an external source %#v\n",
 			spec, naivePackageDescriptor)
-		// If we have the exact version installed, then use that
-		if ws.HasPlugin(ctx, naivePackageDescriptor.PluginDescriptor) {
-			return naiveResolution(spec, naivePackageDescriptor, true), nil
+		installed, atVersion, err := IsPluginInstalled(ctx, naivePackageDescriptor.PluginDescriptor, ws, options)
+		if err != nil {
+			return nil, err
 		}
-		// If we don't have a version specified and we are referencing the local workspace
-		if naivePackageDescriptor.Version == nil && options.ResolveVersionWithLocalWorkspace {
-			has, version, err := ws.HasPluginGTE(ctx, naivePackageDescriptor.PluginDescriptor)
-			if err != nil {
-				return nil, err
+		if installed {
+			if atVersion != nil {
+				naivePackageDescriptor.Version = atVersion
+				spec.Version = atVersion.String()
 			}
-			if has {
-				if version != nil {
-					naivePackageDescriptor.Version = version
-					spec.Version = version.String()
-				}
-				return naiveResolution(spec, naivePackageDescriptor, true), nil
-			}
+			return naiveResolution(spec, naivePackageDescriptor, true), nil
 		}
 
 		// We still don't have a version, so let's look up the latest version.
@@ -421,5 +427,50 @@ func Resolve(
 		Package:     spec.Source,
 		Version:     spec.Version,
 		OriginalErr: registryNotFoundErr,
+	}
+}
+
+// vcsURLHint returns a suffix suggesting a repo-boundary marker when source
+// looks like an ambiguous VCS URL, or "" otherwise. GitHub, GitLab, and
+// Bitbucket use a ".git" suffix on the repo name; Azure DevOps uses a
+// "_git/" segment before the repo name.
+func vcsURLHint(source string) string {
+	u, err := url.Parse(source)
+	if err != nil || u == nil {
+		return ""
+	}
+	p := strings.Trim(u.Path, "/")
+	if p == "" {
+		return ""
+	}
+	host := strings.TrimPrefix(u.Host, "www.")
+	switch host {
+	case gitutil.GitHubHostName, gitutil.GitLabHostName, gitutil.BitbucketHostName:
+		if strings.HasSuffix(p, ".git") || strings.Contains(p, ".git/") {
+			return ""
+		}
+		if strings.Count(p, "/") < 2 {
+			return ""
+		}
+		return fmt.Sprintf(
+			"\n\nhint: URL %q has more than two path segments without a .git marker, "+
+				"so the repo boundary is ambiguous. Add .git after the repo name "+
+				"(e.g. %q for a nested repo, or owner/repo.git/subdir for a subdirectory).",
+			source, source+".git",
+		)
+	case gitutil.AzureDevOpsHostName:
+		if strings.Contains(p, "/_git/") {
+			return ""
+		}
+		if strings.Count(p, "/") < 2 {
+			return ""
+		}
+		return fmt.Sprintf(
+			"\n\nhint: Azure DevOps URL %q is missing the \"_git\" segment. "+
+				"Use the form https://dev.azure.com/{organization}/{project}/_git/{repository}.",
+			source,
+		)
+	default:
+		return ""
 	}
 }

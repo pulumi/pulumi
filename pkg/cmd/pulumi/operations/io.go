@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -44,6 +44,7 @@ func parseAndSaveConfigArray(
 	s backend.Stack,
 	configArray []string,
 	path bool,
+	configFile string,
 ) error {
 	if len(configArray) == 0 {
 		return nil
@@ -53,7 +54,7 @@ func parseAndSaveConfigArray(
 		return err
 	}
 
-	if err = newcmd.SaveConfig(ctx, sink, ws, s, commandLineConfig); err != nil {
+	if err = newcmd.SaveConfig(ctx, sink, ws, s, commandLineConfig, configFile); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil

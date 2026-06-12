@@ -83,8 +83,8 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 
 	if len(lockKeys) > 0 {
 		var errorString strings.Builder
-		errorString.WriteString(fmt.Sprintf("the stack is currently locked by %v lock(s). Either wait for the other "+
-			"process(es) to end or delete the lock file with `pulumi cancel`.", len(lockKeys)))
+		fmt.Fprintf(&errorString, "the stack is currently locked by %v lock(s). Either wait for the other "+
+			"process(es) to end or delete the lock file with `pulumi cancel`.", len(lockKeys))
 
 		for _, lock := range lockKeys {
 			content, err := b.bucket.ReadAll(ctx, lock)
@@ -97,13 +97,12 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 				return err
 			}
 
-			errorString.WriteString(fmt.Sprintf("\n  %v: created by %v@%v (pid %v) at %v",
+			fmt.Fprintf(&errorString, "\n  %v: created by %v@%v (pid %v) at %v",
 				b.lockURLForError(lock),
 				l.Username,
 				l.Hostname,
 				l.Pid,
-				l.Timestamp.Format(time.RFC3339),
-			))
+				l.Timestamp.Format(time.RFC3339))
 		}
 
 		return errors.New(errorString.String())
@@ -114,8 +113,13 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 // lockURLForError returns a URL that can be used in error messages to help users find the lock file.
 func (b *diyBackend) lockURLForError(lockPath string) string {
 	if parsedURL, err := url.Parse(b.url); err == nil {
+		if parsedURL.User != nil {
+			parsedURL.User = url.UserPassword("****", "****")
+		}
 		parsedURL.Path = path.Join(parsedURL.Path, lockPath)
-		return parsedURL.String()
+		// Go's URL encoder percent-encodes '*' as '%2A'; replace back so the
+		// redaction placeholder is human-readable in error messages.
+		return strings.ReplaceAll(parsedURL.String(), "%2A", "*")
 	}
 	// If we couldn't parse the URL, we'll just return a naive concatenation,
 	// which is what we used to do before we started using URL parsing.
@@ -153,7 +157,7 @@ func (b *diyBackend) Unlock(ctx context.Context, stackRef backend.StackReference
 	if err != nil {
 		b.d.Errorf(
 			diag.Message("", "there was a problem deleting the lock at %v, manual clean up may be required: %v"),
-			path.Join(b.url, b.lockPath(stackRef)),
+			b.lockURLForError(b.lockPath(stackRef)),
 			err)
 	}
 }

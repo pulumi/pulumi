@@ -20,7 +20,9 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -67,6 +69,30 @@ func TestEmptyDetailedDiff(t *testing.T) {
 	assert.Equal(t, expected, string(jsonEvent))
 }
 
+// TestSummaryEventResultRoundTrip verifies that the new Result field survives
+// the engine -> apitype -> engine conversion path.
+func TestSummaryEventResultRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	original := engine.SummaryEventPayload{
+		MaybeCorrupt:    true,
+		Duration:        2 * time.Second,
+		ResourceChanges: display.ResourceChanges{deploy.OpCreate: 2, deploy.OpUpdate: 1},
+		PolicyPacks:     map[string]string{"pack": "v1.0.0"},
+		Result:          apitype.OperationResultFailed,
+	}
+
+	apiEvent, err := ConvertEngineEvent(engine.NewEvent(original), false /* showSecrets */)
+	require.NoError(t, err)
+	require.NotNil(t, apiEvent.SummaryEvent)
+	assert.Equal(t, apitype.OperationResultFailed, apiEvent.SummaryEvent.Result)
+
+	roundTripped, err := ConvertJSONEvent(apiEvent)
+	require.NoError(t, err)
+	payload := roundTripped.Payload().(engine.SummaryEventPayload)
+	assert.Equal(t, original.Result, payload.Result)
+}
+
 // TestConvertJSONEventExhaustive tests that all fields of the EngineEvent type are handled by ConvertJSONEvent.
 func TestConvertJSONEventExhaustive(t *testing.T) {
 	t.Parallel()
@@ -75,7 +101,7 @@ func TestConvertJSONEventExhaustive(t *testing.T) {
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
 		// Only consider exported pointer-to-struct fields.
-		if f.PkgPath != "" || f.Type.Kind() != reflect.Ptr || f.Type.Elem().Kind() != reflect.Struct {
+		if f.PkgPath != "" || f.Type.Kind() != reflect.Pointer || f.Type.Elem().Kind() != reflect.Struct {
 			continue
 		}
 

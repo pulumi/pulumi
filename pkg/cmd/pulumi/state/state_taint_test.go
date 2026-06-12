@@ -393,7 +393,7 @@ func TestTaintMultipleResourcesWithErrors(t *testing.T) {
 			Type:  "a:b:c",
 			Taint: false,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil)
 
 	// Try to taint multiple resources with some non-existent
 	urns := []string{
@@ -504,7 +504,7 @@ func TestTaintResourceWithDeleteTrue(t *testing.T) {
 			Delete: false, // This is the replacement resource
 			Taint:  false,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil)
 
 	// Try to taint the resource
 	urns := []string{string(resourceURN)}
@@ -552,7 +552,7 @@ func TestTaintAllResourcesWithDeleteTrue(t *testing.T) {
 			Delete: false,
 			Taint:  false,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil)
 
 	// Try to taint all resources
 	urns := []string{
@@ -594,7 +594,7 @@ func TestTaintOnlyDeletedResource(t *testing.T) {
 			Delete: true, // Resource is marked for deletion
 			Taint:  false,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil)
 
 	// Try to taint the deleted resource
 	urns := []string{string(deletedURN)}

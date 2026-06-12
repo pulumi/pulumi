@@ -45,6 +45,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -78,6 +79,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -176,7 +178,8 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, runtimeName, tracing, otelEndpoint, false /* forceTsc */)
+			host := newLanguageHost(context.Background(),
+				engineAddress, runtimeName, tracing, otelEndpoint, false /* forceTsc */, "" /* installCacheDir */)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -262,6 +265,13 @@ type nodeLanguageHost struct {
 
 	// used by language conformance tests to force TSC usage
 	forceTsc bool
+
+	// installCacheDir, when non-empty, makes InstallDependencies share
+	// installed node_modules trees between projects with identical dependency
+	// manifests. Used by language conformance tests; see installcache.go for
+	// why it must stay disabled for real projects.
+	installCacheDir   string
+	installCacheLocks gsync.Map[string, *sync.Mutex]
 }
 
 type nodeOptions struct {
@@ -356,17 +366,19 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 }
 
 func newLanguageHost(
-	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool,
+	ctx context.Context,
+	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool, installCacheDir string,
 ) pulumirpc.LanguageRuntimeServer {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	return &nodeLanguageHost{
-		engineAddress: engineAddress,
-		tracing:       tracing,
-		otelEndpoint:  otelEndpoint,
-		forceTsc:      forceTsc,
-		runtime:       runtime,
-		cancelCtx:     ctx,
-		cancelFunc:    cancel,
+		engineAddress:   engineAddress,
+		tracing:         tracing,
+		otelEndpoint:    otelEndpoint,
+		forceTsc:        forceTsc,
+		installCacheDir: installCacheDir,
+		runtime:         runtime,
+		cancelCtx:       ctx,
+		cancelFunc:      cancel,
 	}
 }
 
@@ -918,7 +930,7 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 
 	runtimeArgs = append(runtimeArgs, args...)
 
-	if logging.V(5) {
+	if logging.V(5).Enabled() {
 		commandStr := strings.Join(runtimeArgs, " ")
 		logging.V(5).Infoln("Language host launching process: ", runtimeBin, commandStr)
 	}
@@ -1189,8 +1201,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
-	_, err = npm.Install(ctx, opts.packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
-	if err != nil {
+	if err := host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, stdout, stderr); err != nil {
 		return err
 	}
 
@@ -1413,7 +1424,7 @@ func (host *nodeLanguageHost) Handshake(ctx context.Context,
 	}()
 	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
 	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
+		return nil, fmt.Errorf("could not start health check host RPC server: %w", err)
 	}
 
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
@@ -2222,9 +2233,9 @@ func (host *nodeLanguageHost) Link(
 
 		importName := cgstrings.Camel(pkgRef.Name())
 		if usesModuleSyntax {
-			imports.WriteString(fmt.Sprintf("  import * as %s from \"%s\";\n", importName, packageName))
+			fmt.Fprintf(&imports, "  import * as %s from \"%s\";\n", importName, packageName)
 		} else {
-			imports.WriteString(fmt.Sprintf("  const %s = require(\"%s\");\n", importName, packageName))
+			fmt.Fprintf(&imports, "  const %s = require(\"%s\");\n", importName, packageName)
 		}
 	}
 	instructions += imports.String()

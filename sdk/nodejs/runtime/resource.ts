@@ -692,6 +692,7 @@ export function registerResource(
                     customTimeouts.setCreate(opts.customTimeouts.create || "");
                     customTimeouts.setUpdate(opts.customTimeouts.update || "");
                     customTimeouts.setDelete(opts.customTimeouts.delete || "");
+                    customTimeouts.setRead(opts.customTimeouts.read || "");
                 }
                 req.setCustomtimeouts(customTimeouts);
 

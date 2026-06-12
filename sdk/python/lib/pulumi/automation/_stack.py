@@ -813,7 +813,32 @@ class Stack:
         args.extend(extra_args)
         args.extend(self._remote_args())
 
-        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        kind = ExecKind.LOCAL.value
+        on_exit = None
+
+        if self.workspace.program:
+            self._check_inline_support()
+
+            kind = ExecKind.INLINE.value
+            server = grpc.server(
+                futures.ThreadPoolExecutor(max_workers=4),
+                options=_GRPC_CHANNEL_OPTIONS,
+            )
+            language_server = LanguageServer(self.workspace.program)
+            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
+                language_server, server
+            )
+
+            port = server.add_insecure_port(address="127.0.0.1:0")
+            server.start()
+
+            def on_exit_fn():
+                server.stop(0)
+
+            on_exit = on_exit_fn
+
+            args.append(f"--client=127.0.0.1:{port}")
+
         args.extend(["--exec-kind", kind])
 
         summary_events: list[SummaryEvent] = []
@@ -834,7 +859,7 @@ class Stack:
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event, None, grpc_server)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit, grpc_server)
 
         if not summary_events:
             raise RuntimeError("summary event never found")
@@ -1086,7 +1111,32 @@ class Stack:
         args.extend(extra_args)
         args.extend(self._remote_args())
 
-        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        kind = ExecKind.LOCAL.value
+        on_exit = None
+
+        if self.workspace.program:
+            self._check_inline_support()
+
+            kind = ExecKind.INLINE.value
+            server = grpc.server(
+                futures.ThreadPoolExecutor(max_workers=4),
+                options=_GRPC_CHANNEL_OPTIONS,
+            )
+            language_server = LanguageServer(self.workspace.program)
+            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
+                language_server, server
+            )
+
+            port = server.add_insecure_port(address="127.0.0.1:0")
+            server.start()
+
+            def on_exit_fn():
+                server.stop(0)
+
+            on_exit = on_exit_fn
+
+            args.append(f"--client=127.0.0.1:{port}")
+
         args.extend(["--exec-kind", kind])
 
         summary_events: list[SummaryEvent] = []
@@ -1107,7 +1157,7 @@ class Stack:
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event, None, grpc_server)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit, grpc_server)
 
         if not summary_events:
             raise RuntimeError("summary event never found")
@@ -1398,7 +1448,51 @@ class Stack:
         Note that this operation is **very dangerous**, and may leave the stack in an inconsistent state
         if a resource operation was pending when the update was canceled.
         """
-        self._run_pulumi_cmd_sync(["cancel", "--yes"])
+        self._run_api(lambda api, **kwargs: api.cancel(stack=self.name, **kwargs))
+
+    def _base_kwargs(
+        self,
+        on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
+    ) -> dict[str, Any]:
+        """
+        Build the shared low-level CLI kwargs for this stack, mirroring the
+        environment setup done by ``_run_pulumi_cmd_sync``.
+        """
+        envs: dict[str, str] = {"PULUMI_DEBUG_COMMANDS": "true"}
+        if self._remote:
+            envs["PULUMI_EXPERIMENTAL"] = "true"
+        if self.workspace.pulumi_home is not None:
+            envs["PULUMI_HOME"] = self.workspace.pulumi_home
+        envs = {**envs, **self.workspace.env_vars}
+
+        kwargs: dict[str, Any] = {
+            "cwd": self.workspace.work_dir,
+            "additional_env": envs,
+        }
+        if on_output is not None:
+            kwargs["on_output"] = on_output
+        if on_error is not None:
+            kwargs["on_error"] = on_error
+        return kwargs
+
+    def _run_api(
+        self,
+        build: Callable[..., CommandResult],
+        on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
+    ) -> CommandResult:
+        """
+        Invoke a low-level CLI operation with shared wiring and the
+        post-command callback. ``build`` receives the ``API`` along with the
+        base kwargs (``cwd``, ``additional_env``, optionally ``on_output`` and
+        ``on_error``) and is responsible for calling the right method with any
+        extra command-specific kwargs.
+        """
+        kwargs = self._base_kwargs(on_output, on_error)
+        result = build(self.workspace.cli_api, **kwargs)
+        self.workspace.post_command_callback(self.name)
+        return result
 
     def export_stack(self) -> Deployment:
         """
@@ -1660,7 +1754,7 @@ def _cleanup(
     # after 5 seconds. This gives the thread some time to read the events log.
     if thread:
         thread.join(5)
-    # If an error occured before the actual Pulumi operation started, we will
+    # If an error occurred before the actual Pulumi operation started, we will
     # never write a CancelEvent to the events log, and the thread will continue
     # polling forever. Set the stop_event to stop the polling loop.
     if stop_event:

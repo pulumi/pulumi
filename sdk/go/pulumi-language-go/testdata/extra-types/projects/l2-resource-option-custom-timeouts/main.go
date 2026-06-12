@@ -34,9 +34,15 @@ func main() {
 		if err != nil {
 			return err
 		}
+		_, err = simple.NewResource(ctx, "readOnly", &simple.ResourceArgs{
+			Value: pulumi.Bool(true),
+		}, pulumi.Timeouts(&pulumi.CustomTimeouts{Read: "9m"}))
+		if err != nil {
+			return err
+		}
 		_, err = simple.NewResource(ctx, "allTimeouts", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
-		}, pulumi.Timeouts(&pulumi.CustomTimeouts{Create: "2m", Update: "4m", Delete: "1m"}))
+		}, pulumi.Timeouts(&pulumi.CustomTimeouts{Create: "2m", Update: "4m", Delete: "1m", Read: "5m"}))
 		if err != nil {
 			return err
 		}

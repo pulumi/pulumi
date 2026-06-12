@@ -16,6 +16,7 @@ package operations
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -42,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -49,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -60,7 +63,10 @@ import (
 )
 
 // buildImportFile takes an event stream from the engine and builds an import file from it for every create.
-func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
+// The encrypter is used to encrypt any secret provider inputs that are serialized into the import file.
+func buildImportFile(
+	ctx context.Context, events <-chan engine.Event, enc sdkconfig.Encrypter,
+) *promise.Promise[importFile] {
 	return promise.Run(func() (importFile, error) {
 		// We may exit the below loop early if we encounter an error, so we need to make sure we drain the events
 		// channel.
@@ -75,6 +81,9 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 		importSet := map[resource.URN]struct{}{}
 		// All providers that we've seen so far, used to build Version and PluginDownloadURL.
 		providerInputs := map[resource.URN]resource.PropertyMap{}
+		// Full (unfiltered) provider inputs from the resource State, used to serialize into the
+		// import file for explicit providers that need creation.
+		providerFullInputs := map[resource.URN]resource.PropertyMap{}
 
 		imports := importFile{
 			NameTable: map[string]resource.URN{},
@@ -144,6 +153,9 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			// any resources that use it.
 			if sdkproviders.IsProviderType(urn.Type()) {
 				providerInputs[urn] = preEvent.Metadata.Res.Inputs
+				contract.Assertf(preEvent.Metadata.Res.State != nil,
+					"%s: expected State to be non-nil for provider", urn)
+				providerFullInputs[urn] = preEvent.Metadata.Res.State.Inputs
 			}
 
 			// Only interested in creates
@@ -158,8 +170,9 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			// We're importing this URN so track that we've seen it.
 			importSet[urn] = struct{}{}
 
-			// We can't actually import providers yet, just skip them. We'll only error if anything
-			// actually tries to use it.
+			// Provider resources are not imported with an ID like regular resources. Instead,
+			// their inputs are serialized into the import file's providerInputs section so the
+			// import system can create them with the correct configuration.
 			if sdkproviders.IsProviderType(urn.Type()) {
 				continue
 			}
@@ -188,18 +201,31 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
-				// If we're trying to create this provider in the same deployment and it's not a default provider then
-				// we need to error, the import system can't yet "import" providers.
+				// Providers are not imported as resources (we skip them above), but resources
+				// that use a new explicit provider can still be in the import file. We serialize
+				// the provider's full inputs so the import system can create it.
 				if !sdkproviders.IsDefaultProvider(ref.URN()) {
-					if _, has := importSet[ref.URN()]; has {
-						return importFile{}, fmt.Errorf("cannot import resource %q with a new explicit provider %q", new.URN, ref.URN())
-					}
-
 					var has bool
 					provider, has = fullNameTable[ref.URN()]
 					contract.Assertf(has, "expected provider %q to be in full name table", new.Provider)
 
 					imports.NameTable[provider] = ref.URN()
+
+					// If this provider is being created in this deployment, serialize its full inputs
+					// so the import system can recreate it with the correct configuration.
+					if _, inImportSet := importSet[ref.URN()]; inImportSet {
+						if fullInputs, ok := providerFullInputs[ref.URN()]; ok {
+							serialized, serErr := stack.SerializeProperties(ctx, fullInputs, enc, false)
+							if serErr != nil {
+								return importFile{}, fmt.Errorf(
+									"could not serialize provider inputs for %s: %w", ref.URN(), serErr)
+							}
+							if imports.ProviderInputs == nil {
+								imports.ProviderInputs = map[string]map[string]any{}
+							}
+							imports.ProviderInputs[provider] = serialized
+						}
+					}
 				}
 
 				inputs, has := providerInputs[ref.URN()]
@@ -259,6 +285,7 @@ func NewPreviewCmd() *cobra.Command {
 	var execAgent string
 	var stackName string
 	var configArray []string
+	var configFile string
 	var configPath bool
 	var client string
 	var planFilePath string
@@ -271,6 +298,7 @@ func NewPreviewCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var output string
 	var policyPackPaths []string
 	var policyPackConfigPaths []string
 	var diffDisplay bool
@@ -294,6 +322,7 @@ func NewPreviewCmd() *cobra.Command {
 	var targetDependents bool
 	var excludeDependents bool
 	var attachDebugger []string
+	var skipPluginPreInstall bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -334,6 +363,16 @@ func NewPreviewCmd() *cobra.Command {
 				return err
 			}
 
+			// Validate --output up front. We keep the existing --json flag (which
+			// emits a JSONL stream of engine events) backwards compatible, and
+			// only emit the structured operation summary when --output=json.
+			switch output {
+			case "default", "json":
+				// No-op.
+			default:
+				return fmt.Errorf("invalid --output value %q (expected %q or %q)", output, "default", "json")
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			displayType := display.DisplayProgress
 			if diffDisplay {
@@ -355,6 +394,7 @@ func NewPreviewCmd() *cobra.Command {
 				IsInteractive:          cmdutil.Interactive(),
 				Type:                   displayType,
 				JSONDisplay:            jsonDisplay,
+				SummaryJSON:            output == "json",
 				EventLogPath:           eventLogPath,
 				Debug:                  debug,
 			}
@@ -371,7 +411,7 @@ func NewPreviewCmd() *cobra.Command {
 				err := deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
 					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, nil, replaces,
-					targetReplaces, targetDependents, planFilePath, cmdStack.ConfigFile, runProgram)
+					targetReplaces, targetDependents, planFilePath, configFile, runProgram)
 				if err != nil {
 					return err
 				}
@@ -399,6 +439,10 @@ func NewPreviewCmd() *cobra.Command {
 				displayOpts.SuppressPermalink = true
 			}
 
+			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
+			logging.V(7).Infof("PULUMI_SUPPRESS_NEO_LINK=%v", env.SuppressNeoLink.Value())
+			displayOpts.ShowLinkToNeo = !env.SuppressNeoLink.Value()
+
 			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
 			configureNeoTaskOption(neoTaskOnFailure, cmd, &displayOpts, isDIYBackend)
 
@@ -414,17 +458,18 @@ func NewPreviewCmd() *cobra.Command {
 				stackName,
 				cmdStack.OfferNew,
 				displayOpts,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
 
 			// Save any config values passed via flags.
-			if err = parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath); err != nil {
+			if err = parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath, configFile); err != nil {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -496,10 +541,11 @@ func NewPreviewCmd() *cobra.Command {
 					ExcludeDependents:         excludeDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
-					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
-					Experimental:   env.Experimental.Value(),
-					AttachDebugger: attachDebugger,
-					Autonamer:      autonamer,
+					GeneratePlan:         env.Experimental.Value() || planFilePath != "",
+					Experimental:         env.Experimental.Value(),
+					AttachDebugger:       attachDebugger,
+					Autonamer:            autonamer,
+					SkipPluginPreInstall: skipPluginPreInstall,
 				},
 				Display: displayOpts,
 			}
@@ -510,7 +556,7 @@ func NewPreviewCmd() *cobra.Command {
 			var events chan engine.Event
 			if importFilePath != "" {
 				events = make(chan engine.Event)
-				importFilePromise = buildImportFile(events)
+				importFilePromise = buildImportFile(ctx, events, sm.Encrypter())
 			}
 
 			start := time.Now()
@@ -552,7 +598,7 @@ func NewPreviewCmd() *cobra.Command {
 					}
 
 					// Write out message on how to use the plan (if not writing out --json)
-					if !jsonDisplay {
+					if !jsonDisplay && output != "json" {
 						var buf bytes.Buffer
 						ui.Fprintf(&buf, "Update plan written to '%s'", planFilePath)
 						ui.Fprintf(
@@ -602,7 +648,7 @@ func NewPreviewCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
@@ -670,6 +716,12 @@ func NewPreviewCmd() *cobra.Command {
 		&jsonDisplay, "json", "j", false,
 		"Serialize the preview diffs, operations, and overall output as JSON."+
 			" Set PULUMI_ENABLE_STREAMING_JSON_PREVIEW to stream JSON events instead.")
+	cmd.Flags().StringVar(
+		&output, "output", "default",
+		"Output format. Supported values are: default, json")
+	// Hidden until --output is wired up across all operations.
+	_ = cmd.Flags().MarkHidden("output")
+	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
@@ -718,6 +770,10 @@ func NewPreviewCmd() *cobra.Command {
 		&attachDebugger, "attach-debugger", []string{},
 		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'.")
 	cmd.Flag("attach-debugger").NoOptDefVal = "program"
+
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

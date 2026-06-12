@@ -226,9 +226,9 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Comman
 
 			if currentUser, _, _, err := be.CurrentUser(); err == nil {
 				// TODO should we print the token information here? (via team MyTeam token MyToken)
-				fmt.Printf("Logged in to %s as %s (%s)\n", be.Name(), currentUser, be.URL())
+				fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s as %s (%s)\n", be.Name(), currentUser, be.URL())
 			} else {
-				fmt.Printf("Logged in to %s (%s)\n", be.Name(), be.URL())
+				fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s (%s)\n", be.Name(), be.URL())
 			}
 
 			return nil

@@ -15,7 +15,7 @@ __all__ = ['SomeResourceArgs', 'SomeResource']
 class SomeResourceArgs:
     def __init__(__self__, *,
                  the_input: pulumi.Input[_builtins.bool],
-                 resource_name: Optional[pulumi.Input[_builtins.str]] = None):
+                 resource_name: pulumi.Input[Optional[_builtins.str]] = None):
         """
         The set of arguments for constructing a SomeResource resource.
         """
@@ -34,11 +34,11 @@ class SomeResourceArgs:
 
     @_builtins.property
     @pulumi.getter(name="resourceName")
-    def resource_name(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def resource_name(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "resource_name")
 
     @resource_name.setter
-    def resource_name(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def resource_name(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "resource_name", value)
 
 
@@ -48,8 +48,8 @@ class SomeResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 resource_name_: Optional[pulumi.Input[_builtins.str]] = None,
-                 the_input: Optional[pulumi.Input[_builtins.bool]] = None,
+                 resource_name_: pulumi.Input[Optional[_builtins.str]] = None,
+                 the_input: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         """
         Create a SomeResource resource with the given unique name, props, and options.
@@ -81,8 +81,8 @@ class SomeResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 resource_name_: Optional[pulumi.Input[_builtins.str]] = None,
-                 the_input: Optional[pulumi.Input[_builtins.bool]] = None,
+                 resource_name_: pulumi.Input[Optional[_builtins.str]] = None,
+                 the_input: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

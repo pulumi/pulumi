@@ -98,10 +98,11 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-resource-optional":               "optional outputs are not assignable to optional inputs",
+	"l1-expand-final":                    "Node.js program generation does not support `...` argument expansion",
 	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
 	"l3-range-ref":                       "Property 'k1' does not exist on type 'Target[]'",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
@@ -132,10 +133,14 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 
 			cancel := make(chan bool)
 
+			// Share installed node_modules trees between test projects with
+			// identical dependency manifests; see installcache.go.
+			installCacheDir := t.TempDir()
+
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					host := newLanguageHost(engineAddress, runtime, "", "", forceTsc)
+					host := newLanguageHost(t.Context(), engineAddress, runtime, "", "", forceTsc, installCacheDir)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
@@ -204,7 +209,8 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 					}
 
 					if runtime == "bun" {
-						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" {
+						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" ||
+							tt == "provider-replacement-trigger-component" {
 							t.Skip(
 								"On linux bun has trouble resolving indirect dependencies that point to a local file" +
 									"https://github.com/pulumi/pulumi/issues/22100")
@@ -240,8 +246,8 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					ptesting.LogTruncated(t, "stdout", result.Stdout)
-					ptesting.LogTruncated(t, "stderr", result.Stderr)
+					ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+					ptesting.LogIfVerbose(t, "stderr", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}

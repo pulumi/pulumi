@@ -430,7 +430,12 @@ export abstract class Resource {
      * @param opts
      *  A bag of options that control this resource's behavior.
      * @param remote
-     *  True if this is a remote component resource.
+     *  This parameter is intended for use by code-generated component SDKs;
+     *  end users authoring their own {@link ComponentResource} subclasses
+     *  should leave this at its default (`false`). When `true`, the
+     *  component's children are constructed by the engine rather than in
+     *  this process, and the constructor skips local child registration
+     *  accordingly.
      * @param dependency
      *  True if this is a synthetic resource used internally for dependency tracking.
      */
@@ -900,6 +905,11 @@ export interface CustomTimeouts {
      * The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
      */
     delete?: string;
+
+    /**
+     * The optional read timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    read?: string;
 }
 
 /**
@@ -1111,6 +1121,10 @@ export interface ResourceHookOptions {
      * Run the hook during dry run (preview) operations. Defaults to false.
      */
     onDryRun?: boolean;
+    /**
+     * If true, errors from this hook are logged as warnings instead of failing the program.
+     */
+    ignoreErrors?: boolean;
 }
 
 /**
@@ -1536,7 +1550,12 @@ export class ComponentResource<TData = any> extends Resource {
      * @param opts
      *  A bag of options that control this resource's behavior.
      * @param remote
-     *  True if this is a remote component resource.
+     *  This parameter is intended for use by code-generated component SDKs;
+     *  end users authoring their own {@link ComponentResource} subclasses
+     *  should leave this at its default (`false`). When `true`, the
+     *  component's children are constructed by the engine rather than in
+     *  this process, and the constructor skips local child registration
+     *  accordingly.
      */
     constructor(
         type: string,
@@ -1702,6 +1721,7 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
             "afterUpdate",
             "beforeDelete",
             "afterDelete",
+            "onError",
         ] as const;
         for (const hookType of hookTypes) {
             const destHooks = dest?.hooks?.[hookType];

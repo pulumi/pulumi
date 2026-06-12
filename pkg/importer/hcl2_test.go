@@ -37,6 +37,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -69,7 +71,7 @@ var names = NameTable{
 	logicalURN:  logicalName,
 }
 
-func renderExpr(t *testing.T, x model.Expression) property.Value {
+func renderExpr(t require.TestingT, x model.Expression) property.Value {
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
 		return renderLiteralValue(t, x)
@@ -89,7 +91,10 @@ func renderExpr(t *testing.T, x model.Expression) property.Value {
 	}
 }
 
-func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) property.Value {
+func renderLiteralValue(t require.TestingT, x *model.LiteralValueExpression) property.Value {
+	if x.Value.IsNull() {
+		return property.New(property.Null)
+	}
 	switch x.Value.Type() {
 	case cty.Bool:
 		return property.New(x.Value.True())
@@ -99,12 +104,12 @@ func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) property.
 	case cty.String:
 		return property.New(x.Value.AsString())
 	default:
-		assert.Failf(t, "", "unexpected literal of type %v", x.Value.Type())
+		assert.Failf(t, "", "unexpected literal of type %v (value %v)", x.Value.Type().FriendlyName(), x.Value.GoString())
 		return property.New(property.Null)
 	}
 }
 
-func renderTemplate(t *testing.T, x *model.TemplateExpression) property.Value {
+func renderTemplate(t require.TestingT, x *model.TemplateExpression) property.Value {
 	if len(x.Parts) == 1 {
 		return renderLiteralValue(t, x.Parts[0].(*model.LiteralValueExpression))
 	}
@@ -115,7 +120,7 @@ func renderTemplate(t *testing.T, x *model.TemplateExpression) property.Value {
 	return property.New(b.String())
 }
 
-func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) property.Value {
+func renderObjectCons(t require.TestingT, x *model.ObjectConsExpression) property.Value {
 	obj := map[string]property.Value{}
 	for _, item := range x.Items {
 		kv := renderExpr(t, item.Key)
@@ -127,7 +132,7 @@ func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) property.Valu
 	return property.New(obj)
 }
 
-func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) property.Value {
+func renderScopeTraversal(t require.TestingT, x *model.ScopeTraversalExpression) property.Value {
 	require.Len(t, x.Traversal, 1)
 
 	switch x.RootName {
@@ -140,7 +145,7 @@ func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) prope
 	}
 }
 
-func renderTupleCons(t *testing.T, x *model.TupleConsExpression) property.Value {
+func renderTupleCons(t require.TestingT, x *model.TupleConsExpression) property.Value {
 	arr := make([]property.Value, len(x.Expressions))
 	for i, x := range x.Expressions {
 		arr[i] = renderExpr(t, x)
@@ -148,7 +153,7 @@ func renderTupleCons(t *testing.T, x *model.TupleConsExpression) property.Value 
 	return property.New(arr)
 }
 
-func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) property.Value {
+func renderFunctionCall(t require.TestingT, x *model.FunctionCallExpression) property.Value {
 	switch x.Name {
 	case "fileArchive":
 		require.Len(t, x.Args, 1)
@@ -164,6 +169,58 @@ func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) property.
 			return property.New(property.Null)
 		}
 		return expr
+	case "stringAsset":
+		require.Len(t, x.Args, 1)
+		expr := renderExpr(t, x.Args[0])
+		if !assert.True(t, expr.IsString()) {
+			return property.New(property.Null)
+		}
+		a, err := asset.FromText(expr.AsString())
+		require.NoError(t, err)
+		return property.New(a)
+	case "remoteAsset":
+		require.Len(t, x.Args, 1)
+		expr := renderExpr(t, x.Args[0])
+		if !assert.True(t, expr.IsString()) {
+			return property.New(property.Null)
+		}
+		a, err := asset.FromURI(expr.AsString())
+		require.NoError(t, err)
+		return property.New(a)
+	case "remoteArchive":
+		require.Len(t, x.Args, 1)
+		expr := renderExpr(t, x.Args[0])
+		if !assert.True(t, expr.IsString()) {
+			return property.New(property.Null)
+		}
+		a, err := archive.FromURI(expr.AsString())
+		require.NoError(t, err)
+		return property.New(a)
+	case "assetArchive":
+		require.Len(t, x.Args, 1)
+		obj, ok := x.Args[0].(*model.ObjectConsExpression)
+		if !assert.True(t, ok, "assetArchive arg must be an object cons") {
+			return property.New(property.Null)
+		}
+		assets := map[string]any{}
+		for _, item := range obj.Items {
+			kv := renderExpr(t, item.Key)
+			if !assert.True(t, kv.IsString()) {
+				continue
+			}
+			v := renderExpr(t, item.Value)
+			switch {
+			case v.IsAsset():
+				assets[kv.AsString()] = v.AsAsset()
+			case v.IsArchive():
+				assets[kv.AsString()] = v.AsArchive()
+			default:
+				assert.Failf(t, "", "assetArchive entry %q is %v, want asset or archive", kv.AsString(), v)
+			}
+		}
+		a, err := archive.FromAssets(assets)
+		require.NoError(t, err)
+		return property.New(a)
 	case "secret":
 		require.Len(t, x.Args, 1)
 		return renderExpr(t, x.Args[0]).WithSecret(true)
@@ -173,7 +230,7 @@ func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) property.
 	}
 }
 
-func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
+func renderResource(t require.TestingT, r *pcl.Resource) *resource.State {
 	inputs := map[string]property.Value{}
 	for _, attr := range r.Inputs {
 		inputs[attr.Name] = renderExpr(t, attr.Value)
@@ -942,6 +999,10 @@ func makeArrayType(elementType schema.Type) *schema.ArrayType {
 	return &schema.ArrayType{ElementType: elementType}
 }
 
+func makeMapType(elementType schema.Type) *schema.MapType {
+	return &schema.MapType{ElementType: elementType}
+}
+
 func makeProperty(name string, t schema.Type) *schema.Property {
 	return &schema.Property{Name: name, Type: t}
 }
@@ -1109,6 +1170,312 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 		assert.True(t, valueStructurallyTypedAs(complexFittingValue, complexUnionOfObjects))
 	})
+
+	t.Run("Enum", func(t *testing.T) {
+		t.Parallel()
+
+		// An enum is represented on the wire as a value of its underlying
+		// primitive type. valueStructurallyTypedAs must look through the enum
+		// to its ElementType so a primitive value can be accepted.
+		stringEnum := &schema.EnumType{
+			Token:       "a:index:S",
+			ElementType: schema.StringType,
+			Elements:    []*schema.Enum{{Value: "x"}, {Value: "y"}},
+		}
+		boolEnum := &schema.EnumType{
+			Token:       "a:index:B",
+			ElementType: schema.BoolType,
+			Elements:    []*schema.Enum{{Value: true}, {Value: false}},
+		}
+
+		assert.True(t, valueStructurallyTypedAs(property.New("x"), stringEnum))
+		assert.True(t, valueStructurallyTypedAs(property.New(false), boolEnum))
+		// A bool against a string-typed enum is still rejected.
+		assert.False(t, valueStructurallyTypedAs(property.New(true), stringEnum))
+		// Enum wrapped in InputType is unwrapped too.
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(false),
+			&schema.InputType{ElementType: boolEnum}))
+	})
+
+	t.Run("MissingTypeCases", func(t *testing.T) {
+		t.Parallel()
+
+		// schema.JSONType and schema.AnyResourceType share the
+		// "pulumi:pulumi:Any" token with schema.AnyType but are distinct
+		// singletons. All three accept any value structurally.
+		assert.True(t, valueStructurallyTypedAs(property.New(""), schema.JSONType))
+		assert.True(t, valueStructurallyTypedAs(property.New(false), schema.JSONType))
+		assert.True(t, valueStructurallyTypedAs(property.New(""), schema.AnyResourceType))
+		assert.True(t, valueStructurallyTypedAs(property.New(false), schema.AnyResourceType))
+
+		// A property.Map value against *schema.MapType must accept entries
+		// whose values match the element type (the previous implementation
+		// only handled ObjectType and UnionType for IsMap values).
+		stringMap := &schema.MapType{ElementType: schema.StringType}
+		assert.True(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"k": property.New("v")}),
+			stringMap))
+		// Empty maps trivially match.
+		assert.True(t, valueStructurallyTypedAs(makeObject(nil), stringMap))
+		// Mismatched element type is still rejected.
+		assert.False(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"k": property.New(42.0)}),
+			stringMap))
+	})
+
+	t.Run("UnionOfInputWrappedObjects", func(t *testing.T) {
+		t.Parallel()
+
+		// Schema-bound unions wrap their members in *schema.InputType, e.g.
+		// Map<Union<Input<Obj>, Input<Archive>>>. valueStructurallyTypedAs
+		// strips *schema.InputType from its argument *before* the union is
+		// reduced, but reduceUnionType returns the chosen element as-is —
+		// typically Input<Obj>. The type switch below must still see the
+		// underlying type, so the function must strip the wrapper again
+		// after the reduction.
+		objectType := makeObjectType(
+			makeProperty("foo", schema.StringType),
+		)
+		union := makeUnionType(
+			&schema.InputType{ElementType: objectType},
+			&schema.InputType{ElementType: schema.ArchiveType},
+		)
+
+		// A map that fits Obj is accepted even though Obj is wrapped in
+		// *schema.InputType inside the union.
+		assert.True(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"foo": property.New("x")}),
+			union))
+		// A map that does not fit Obj (unknown property) is still rejected.
+		assert.False(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"unknown": property.New("x")}),
+			union))
+	})
+
+	t.Run("OptionalWrappers", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(false),
+			&schema.OptionalType{ElementType: schema.BoolType}))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(""),
+			&schema.OptionalType{ElementType: &schema.InputType{ElementType: schema.AnyType}}))
+		// Optional<Object> with a present, conforming value.
+		assert.True(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"foo": property.New("x")}),
+			&schema.OptionalType{ElementType: makeObjectType(
+				makeProperty("foo", schema.StringType),
+			)}))
+		// Optional<Object> with a present, non-conforming value still rejected.
+		assert.False(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"foo": property.New(42.0)}),
+			&schema.OptionalType{ElementType: makeObjectType(
+				makeProperty("foo", schema.StringType),
+			)}))
+	})
+
+	t.Run("OptionalAcceptsNull", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(property.Null),
+			&schema.OptionalType{ElementType: schema.StringType}))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(property.Null),
+			&schema.OptionalType{ElementType: &schema.InputType{ElementType: schema.BoolType}}))
+		// A required (non-Optional) T must still reject null.
+		assert.False(t, valueStructurallyTypedAs(
+			property.New(property.Null),
+			schema.StringType))
+	})
+
+	t.Run("UnionOfInputWrappedEnums", func(t *testing.T) {
+		t.Parallel()
+
+		// Schema-bound unions wrap enum members in *schema.InputType too, e.g.
+		// Union<Input<Enum<bool>>, Input<bool>>. reduceUnionType returns the
+		// chosen member as-is (Input<Enum<bool>>), so valueStructurallyTypedAs
+		// must strip *both* the input wrapper *and* the enum wrapper after the
+		// reduction — otherwise the IsBool case never sees BoolType and the
+		// value is wrongly rejected.
+		boolEnum := &schema.EnumType{
+			Token:       "a:index:B",
+			ElementType: schema.BoolType,
+			Elements:    []*schema.Enum{{Value: true}, {Value: false}},
+		}
+		stringEnum := &schema.EnumType{
+			Token:       "a:index:S",
+			ElementType: schema.StringType,
+			Elements:    []*schema.Enum{{Value: "x"}, {Value: "y"}},
+		}
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(false),
+			makeUnionType(&schema.InputType{ElementType: boolEnum})))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(true),
+			makeUnionType(&schema.InputType{ElementType: boolEnum}, schema.NumberType)))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New("x"),
+			makeUnionType(&schema.InputType{ElementType: stringEnum})))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(1.5),
+			makeUnionType(
+				&schema.InputType{ElementType: boolEnum},
+				&schema.InputType{ElementType: schema.NumberType},
+			)))
+	})
+
+	t.Run("Archive", func(t *testing.T) {
+		t.Parallel()
+		value := property.New(&archive.Archive{Sig: archive.ArchiveSig, Assets: map[string]any{}})
+
+		assert.True(t, valueStructurallyTypedAs(value, schema.ArchiveType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.AnyType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.JSONType))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.ArchiveType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.ArchiveType, schema.StringType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.StringType, schema.ArchiveType)))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(map[string]property.Value{"k": value}),
+			makeMapType(schema.ArchiveType)))
+
+		assert.False(t, valueStructurallyTypedAs(value, schema.AssetType))
+		assert.False(t, valueStructurallyTypedAs(value, schema.StringType))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(schema.AssetType, schema.StringType)))
+	})
+
+	t.Run("Asset", func(t *testing.T) {
+		t.Parallel()
+		a, err := asset.FromText("hello")
+		require.NoError(t, err)
+		value := property.New(a)
+
+		assert.True(t, valueStructurallyTypedAs(value, schema.AssetType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.AnyType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.JSONType))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.AssetType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.AssetType, schema.StringType)))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New([]property.Value{value}),
+			makeArrayType(schema.AssetType)))
+
+		assert.False(t, valueStructurallyTypedAs(value, schema.ArchiveType))
+		assert.False(t, valueStructurallyTypedAs(value, schema.StringType))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(schema.ArchiveType, schema.StringType)))
+	})
+
+	t.Run("ResourceReference", func(t *testing.T) {
+		t.Parallel()
+		value := property.New(property.ResourceReference{
+			URN: "urn:pulumi:s::p::pkg:index:R::r",
+			ID:  property.New("id"),
+		})
+		resType := &schema.ResourceType{Token: "pkg:index:R"}
+
+		assert.True(t, valueStructurallyTypedAs(value, resType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.AnyResourceType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.AnyType))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(resType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(resType, schema.StringType)))
+
+		assert.False(t, valueStructurallyTypedAs(value, schema.StringType))
+		assert.False(t, valueStructurallyTypedAs(value, schema.ArchiveType))
+	})
+}
+
+func TestGenerateValuePreservesProviderDiscriminators(t *testing.T) {
+	t.Parallel()
+
+	value := property.New(map[string]property.Value{
+		"__type": property.New("PermissionDescriptorGroup"),
+		"name":   property.New("root"),
+		"items": property.New([]property.Value{
+			property.New(map[string]property.Value{
+				"__type": property.New("PermissionDescriptorCondition"),
+				"name":   property.New("child"),
+			}),
+		}),
+	})
+
+	expr, err := generateValue(
+		&schema.MapType{ElementType: schema.AnyType},
+		value,
+		ImportState{},
+		func(string) {},
+	)
+	require.NoError(t, err)
+
+	formatted := fmt.Sprintf("%v", expr)
+	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorGroup"`)
+	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorCondition"`)
+}
+
+func TestGenerateValueDropsNonConformingMapEntries(t *testing.T) {
+	t.Parallel()
+
+	value := property.New(map[string]property.Value{
+		"good1": property.New("hello"),
+		"good2": property.New("world"),
+		"bad1":  property.New(42.0),
+		"bad2":  property.New(true),
+		"bad3":  property.New(property.Array{}),
+	})
+
+	expr, err := generateValue(
+		&schema.MapType{ElementType: schema.StringType},
+		value,
+		ImportState{},
+		func(string) {},
+	)
+	require.NoError(t, err)
+
+	rendered := renderExpr(t, expr)
+	require.True(t, rendered.IsMap())
+
+	assert.Equal(t, map[string]property.Value{
+		"\"good1\"": property.New("hello"),
+		"\"good2\"": property.New("world"),
+	}, rendered.AsMap().AsMap())
+}
+
+// TestGenerateValueEscapesTemplateMapKeys verifies that map keys containing
+// HCL template-interpolation sequences (`${`, `%{`) are escaped so the
+// resulting text round-trips through the HCL parser without losing one of
+// the leading sigils.
+func TestGenerateValueEscapesTemplateMapKeys(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		key string
+		hcl string
+	}{
+		{"$${", `"$$${"`},
+		{"%{", `"%%{"`},
+		{"${foo}", `"$${foo}"`},
+		{"plain", `"plain"`},
+	}
+
+	for _, c := range cases {
+		t.Run(c.key, func(t *testing.T) {
+			t.Parallel()
+			value := property.New(map[string]property.Value{
+				c.key: property.New("v"),
+			})
+			expr, err := generateValue(
+				&schema.MapType{ElementType: schema.StringType},
+				value, ImportState{}, func(string) {},
+			)
+			require.NoError(t, err)
+			obj, ok := expr.(*model.ObjectConsExpression)
+			require.True(t, ok)
+			require.Len(t, obj.Items, 1)
+			lit, ok := obj.Items[0].Key.(*model.LiteralValueExpression)
+			require.True(t, ok)
+			assert.Equal(t, c.hcl, lit.Value.AsString())
+		})
+	}
 }
 
 func TestReduceUnionTypeEliminatesUnionsBasicCase(t *testing.T) {

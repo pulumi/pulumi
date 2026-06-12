@@ -42,6 +42,7 @@ func NewWatchCmd() *cobra.Command {
 	var execKind string
 	var stackName string
 	var configArray []string
+	var configFile string
 	var pathArray []string
 	var configPath bool
 
@@ -55,6 +56,7 @@ func NewWatchCmd() *cobra.Command {
 	var showSames bool
 	var showURNs bool
 	var secretsProvider string
+	var skipPluginPreInstall bool
 
 	cmd := &cobra.Command{
 		Use:        "watch",
@@ -105,13 +107,14 @@ func NewWatchCmd() *cobra.Command {
 				stackName,
 				cmdStack.OfferNew,
 				opts.Display,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
 
 			// Save any config values passed via flags.
-			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath); err != nil {
+			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath, configFile); err != nil {
 				return err
 			}
 
@@ -120,7 +123,7 @@ func NewWatchCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -159,6 +162,7 @@ func NewWatchCmd() *cobra.Command {
 				DisableResourceReferences: env.DisableResourceReferences.Value(),
 				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Experimental:              env.Experimental.Value(),
+				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
 			err = backend.WatchStack(ctx, s, backend.UpdateOperation{
@@ -196,7 +200,7 @@ func NewWatchCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
@@ -238,6 +242,9 @@ func NewWatchCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showURNs, "urns", false,
 		"Display full URNs instead of short resource names")
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist

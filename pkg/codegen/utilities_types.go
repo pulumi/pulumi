@@ -137,6 +137,21 @@ func MapOptionalType(t schema.Type, f func(schema.Type) schema.Type) schema.Type
 	return f(t)
 }
 
+// PushOptionalIntoInput rewrites Optional(Input(T)) to Input(Optional(T))
+func PushOptionalIntoInput(t schema.Type) schema.Type {
+	opt, ok := t.(*schema.OptionalType)
+	if !ok {
+		return t
+	}
+	input, ok := opt.ElementType.(*schema.InputType)
+	if !ok {
+		return t
+	}
+	return &schema.InputType{
+		ElementType: &schema.OptionalType{ElementType: SimplifyInputUnion(input.ElementType)},
+	}
+}
+
 func IsNOptionalInput(t schema.Type) bool {
 	for {
 		switch typ := t.(type) {

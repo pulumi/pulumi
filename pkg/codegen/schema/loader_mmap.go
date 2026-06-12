@@ -24,21 +24,20 @@ import (
 	"github.com/edsrzf/mmap-go"
 )
 
-var mmapedFiles = make(map[string]mmap.MMap)
-
-func (l *pluginLoader) loadCachedSchemaBytes(pkg string, path string, schemaTime time.Time) ([]byte, bool) {
+// loadCachedSchemaBytes returns the cached schema at path if the cache file is newer than
+// pluginInstallTime (i.e. the schema was written after the plugin was last installed).
+func (l *pluginLoader) loadCachedSchemaBytes(path string, pluginInstallTime time.Time) ([]byte, bool) {
 	if l.cacheOptions.disableFileCache {
 		return nil, false
-	}
-
-	if schemaMmap, ok := mmapedFiles[path]; ok {
-		return schemaMmap, true
 	}
 
 	success := false
 	schemaFile, err := os.OpenFile(path, os.O_RDONLY, 0o644)
 	defer func() {
-		if !success {
+		// Close on failure, or on a plain read where the data has already been
+		// copied. For mmap, the file must remain open while the mapping is active
+		// (required on Windows), so we leave it open in that case.
+		if !success || l.cacheOptions.disableMmap {
 			schemaFile.Close()
 		}
 	}()
@@ -50,9 +49,8 @@ func (l *pluginLoader) loadCachedSchemaBytes(pkg string, path string, schemaTime
 	if err != nil {
 		return nil, success
 	}
-	cachedAt := stat.ModTime()
 
-	if schemaTime.After(cachedAt) {
+	if pluginInstallTime.After(stat.ModTime()) {
 		return nil, success
 	}
 

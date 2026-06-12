@@ -214,6 +214,14 @@ export interface Store {
      * Tracks the list of resource modules that have been registered.
      */
     resourceModules: Map<string, ResourceModule[]>;
+
+    /**
+     * Caches package references returned by `RegisterPackage` for
+     * parameterized providers. Scoped to the deployment so concurrent inline
+     * programs each register against their own engine and receive distinct
+     * refs.
+     */
+    packageRefs: Map<string, Promise<string>>;
 }
 
 /**
@@ -266,6 +274,7 @@ export class LocalStore implements Store {
     supportsErrorHooks = false;
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
+    packageRefs = new Map<string, Promise<string>>();
 }
 
 /**
@@ -306,6 +315,21 @@ export function getResourceModules(): Map<string, ResourceModule[]> {
         store.resourceModules = new Map<string, ResourceModule[]>();
     }
     return store.resourceModules;
+}
+
+/**
+ * Get the package reference cache for the current stack deployment.
+ *
+ * @internal
+ */
+export function getPackageRefs(): Map<string, Promise<string>> {
+    const store = getStore();
+    if (store.packageRefs === undefined) {
+        // packageRefs may be undefined if the Store was created by an older
+        // copy of the SDK runtime that didn't define this field.
+        store.packageRefs = new Map<string, Promise<string>>();
+    }
+    return store.packageRefs;
 }
 
 /**

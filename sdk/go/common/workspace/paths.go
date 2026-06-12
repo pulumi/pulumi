@@ -27,8 +27,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const (
@@ -54,6 +56,8 @@ const (
 	TemplateDir = "templates"
 	// TemplatePolicyDir is the name of the directory containing templates for Policy Packs.
 	TemplatePolicyDir = "templates-policy"
+	// TemplatePackageDir is the name of the directory containing templates for Pulumi packages.
+	TemplatePackageDir = "templates-packages"
 	// WorkspaceDir is the name of the directory that holds workspace information for projects.
 	WorkspaceDir = "workspaces"
 
@@ -401,8 +405,51 @@ func GetPulumiPath(elem ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	homeDir, err = pulumiHomeDirForPath(homeDir)
+	if err != nil {
+		return "", err
+	}
 
 	return filepath.Join(append([]string{homeDir}, elem...)...), nil
+}
+
+// pulumiHomeDirForPath returns the Pulumi home directory to use for path
+// construction, falling back to the shared agent directory when an agent cannot
+// write the default home directory.
+func pulumiHomeDirForPath(homeDir string) (string, error) {
+	agent := agentdetect.Detect(os.Getenv)
+	if agent == "" || hasExplicitPulumiPathEnv() {
+		return homeDir, nil
+	}
+	if err := ensurePulumiHomeWritable(homeDir); err == nil {
+		return homeDir, nil
+	} else {
+		logging.V(7).Infof(
+			"Could not use default Pulumi home directory %q in agent mode (%s); using shared agent Pulumi directory: %v",
+			homeDir, agent, err)
+	}
+	return getAgentPulumiDir()
+}
+
+// ensurePulumiHomeWritable verifies dir can be created and written by creating
+// and removing a temporary file inside it.
+func ensurePulumiHomeWritable(dir string) error {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	file, err := os.CreateTemp(dir, ".pulumi-write-test-*")
+	if err != nil {
+		return err
+	}
+	name := file.Name()
+	var result error
+	if err = file.Close(); err != nil {
+		result = errors.Join(result, err)
+	}
+	if err = os.Remove(name); err != nil && !os.IsNotExist(err) {
+		result = errors.Join(result, err)
+	}
+	return result
 }
 
 // qnameFileName takes a qname and cleans it for use as a filename (by replacing tokens.QNameDelimter with a dash)

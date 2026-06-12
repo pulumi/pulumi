@@ -128,7 +128,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -147,7 +147,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -167,7 +167,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -209,7 +209,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -240,7 +240,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -274,7 +274,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -294,27 +294,30 @@ type mockAnalyzer struct {
 
 func (a *mockAnalyzer) Close() error       { return nil }
 func (a *mockAnalyzer) Name() tokens.QName { return a.name }
-func (a *mockAnalyzer) Analyze(plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+func (a *mockAnalyzer) Analyze(context.Context, plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *mockAnalyzer) AnalyzeStack([]plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+func (a *mockAnalyzer) AnalyzeStack(context.Context, []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *mockAnalyzer) Remediate(plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
+func (a *mockAnalyzer) Remediate(context.Context, plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 	return plugin.RemediateResponse{}, nil
 }
 
-func (a *mockAnalyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
+func (a *mockAnalyzer) GetAnalyzerInfo(context.Context) (plugin.AnalyzerInfo, error) {
 	return plugin.AnalyzerInfo{}, nil
 }
 
-func (a *mockAnalyzer) GetPluginInfo() (plugin.PluginInfo, error) {
+func (a *mockAnalyzer) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{}, nil
 }
-func (a *mockAnalyzer) Configure(map[string]plugin.AnalyzerPolicyConfig) error { return nil }
-func (a *mockAnalyzer) Cancel(context.Context) error                           { return nil }
+
+func (a *mockAnalyzer) Configure(context.Context, map[string]plugin.AnalyzerPolicyConfig) error {
+	return nil
+}
+func (a *mockAnalyzer) Cancel(context.Context) error { return nil }
 
 func TestParsePolicyConfigKey(t *testing.T) {
 	t.Parallel()

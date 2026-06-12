@@ -142,42 +142,43 @@ func newProjectLsCmd() *cobra.Command {
 				results = append(results, project)
 			}
 
+			out := cmd.OutOrStdout()
 			// If no projects, return empty array for JSON output
 			if len(results) == 0 {
 				if jsonOut {
-					fmt.Println("[]")
+					fmt.Fprintln(out, "[]")
 					return nil
 				}
 
 				if orgName != "" {
-					fmt.Println("No projects found in organization", orgName)
+					fmt.Fprintln(out, "No projects found in organization", orgName)
 				} else {
-					fmt.Println("No projects found")
+					fmt.Fprintln(out, "No projects found")
 				}
 				return nil
 			}
 
 			// Output the results
 			if jsonOut {
-				out, err := json.MarshalIndent(results, "", "    ")
+				marshaled, err := json.MarshalIndent(results, "", "    ")
 				if err != nil {
 					return err
 				}
-				fmt.Println(string(out))
+				fmt.Fprintln(out, string(marshaled))
 			} else {
 				// Display header
 				if orgName != "" {
-					fmt.Printf("PROJECTS IN ORGANIZATION %s:\n", orgName)
+					fmt.Fprintf(out, "PROJECTS IN ORGANIZATION %s:\n", orgName)
 				} else {
-					fmt.Println("PROJECTS:")
+					fmt.Fprintln(out, "PROJECTS:")
 				}
 
 				// Display all projects consistently with organization if available
 				for _, result := range results {
 					if result.Organization != "" {
-						fmt.Printf("  %s (org: %s, stacks: %d)\n", result.Name, result.Organization, result.StackCount)
+						fmt.Fprintf(out, "  %s (org: %s, stacks: %d)\n", result.Name, result.Organization, result.StackCount)
 					} else {
-						fmt.Printf("  %s (stacks: %d)\n", result.Name, result.StackCount)
+						fmt.Fprintf(out, "  %s (stacks: %d)\n", result.Name, result.StackCount)
 					}
 				}
 			}

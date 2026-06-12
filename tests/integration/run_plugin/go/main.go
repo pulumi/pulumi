@@ -29,12 +29,13 @@ import (
 
 func testProvider(ctx context.Context, host plugin.Host, pCtx *plugin.Context, name string) error {
 	providerLocation := filepath.Join("..", name)
-	prov, err := plugin.NewProviderFromPath(host, pCtx, "", providerLocation)
+	prov, err := plugin.NewProviderFromPath(host, pCtx, providerLocation)
 	if err != nil {
 		return err
 	}
 	defer prov.Close()
-	_, err = prov.Configure(ctx, plugin.ConfigureRequest{})
+	providerType := tokens.Type("pulumi:providers:test")
+	_, err = prov.Configure(ctx, plugin.ConfigureRequest{Type: &providerType})
 	if err != nil {
 		return err
 	}
@@ -60,11 +61,11 @@ func main() {
 		}
 
 		sink := cmdutil.Diag()
-		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, nil, nil, wd, nil, false, nil, nil)
+		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, nil, nil, wd, nil, false, nil, nil, nil)
 		if err != nil {
 			return err
 		}
-		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, nil, tokens.PackageName("test"), nil)
+		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, nil, tokens.PackageName("test"), nil, nil)
 		if err != nil {
 			return err
 		}

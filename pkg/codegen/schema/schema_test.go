@@ -273,7 +273,7 @@ func TestImportSpec(t *testing.T) {
 	t.Parallel()
 
 	// Read in, decode, and import the schema.
-	pkgSpec := readSchemaFile("kubernetes-3.7.0.json")
+	pkgSpec := readSchemaFile("random-4.11.2.json")
 
 	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
 		AllowDanglingReferences: true,
@@ -597,6 +597,54 @@ func TestRejectDuplicateNames(t *testing.T) {
 				},
 			},
 		},
+		{
+			"root type name conflicts with module",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:Res": {},
+					"test:res:Other": {},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:index:Res: token collides with module res",
+				},
+			},
+		},
+		{
+			"nested type name conflicts with module",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:a/b:C": {},
+					"test:a:b":   {},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:a:b: token collides with module a/b",
+				},
+			},
+		},
+		{
+			"type conflicts with non-leaf module",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:A": {},
+					"test:a/b:C":   {},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:index:A: token collides with module a",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -614,6 +662,8 @@ func TestRejectDuplicateNames(t *testing.T) {
 }
 
 func TestImportResourceRef(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		schemaFile string
@@ -673,24 +723,37 @@ func TestImportResourceRef(t *testing.T) {
 			},
 		},
 	}
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+			t.Parallel()
 
 			// Read in, decode, and import the schema.
 			schemaBytes, err := os.ReadFile(
-				filepath.Join("..", "testing", "test", "testdata", tt.schemaFile))
+				filepath.Join(testdataPath, tt.schemaFile))
 			require.NoError(t, err)
 
 			var pkgSpec PackageSpec
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
 			require.NoError(t, err)
 
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 				AllowDanglingReferences: true,
 			})
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ImportSpec() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				if err == nil && !diags.HasErrors() {
+					t.Errorf("BindSpec() expected error but got none")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("BindSpec() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if diags.HasErrors() {
+				t.Errorf("BindSpec() diagnostics = %v, wantErr %v", diags, tt.wantErr)
 				return
 			}
 			tt.validator(pkg)
@@ -1117,6 +1180,221 @@ func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
 	assert.Nil(t, pkg)
 }
 
+func TestBindSpecPrintableNames(t *testing.T) {
+	t.Parallel()
+
+	stringProperty := PropertySpec{TypeSpec: TypeSpec{Type: "string"}}
+	tests := []struct {
+		name        string
+		spec        PackageSpec
+		wantSummary string
+	}{
+		{
+			name: "config property",
+			spec: PackageSpec{
+				Name: "test",
+				Config: ConfigSpec{
+					Variables: map[string]PropertySpec{
+						"bad\nproperty": stringProperty,
+					},
+				},
+			},
+			wantSummary: "#/config/variables/bad%0Aproperty: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "config property space",
+			spec: PackageSpec{
+				Name: "test",
+				Config: ConfigSpec{
+					Variables: map[string]PropertySpec{
+						"bad property": stringProperty,
+					},
+				},
+			},
+			wantSummary: "#/config/variables/bad%20property: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "resource output property",
+			spec: PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:TestResource": {
+						ObjectTypeSpec: ObjectTypeSpec{
+							Properties: map[string]PropertySpec{
+								"bad\tproperty": stringProperty,
+							},
+						},
+					},
+				},
+			},
+			wantSummary: "#/resources/test:index:TestResource/properties/bad%09property: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "resource input property",
+			spec: PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:TestResource": {
+						InputProperties: map[string]PropertySpec{
+							"bad\x7fproperty": stringProperty,
+						},
+					},
+				},
+			},
+			wantSummary: "#/resources/test:index:TestResource/inputProperties/bad%7Fproperty: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "object type property",
+			spec: PackageSpec{
+				Name: "test",
+				Types: map[string]ComplexTypeSpec{
+					"test:index:TestType": {
+						ObjectTypeSpec: ObjectTypeSpec{
+							Type: "object",
+							Properties: map[string]PropertySpec{
+								"bad\x00property": stringProperty,
+							},
+						},
+					},
+				},
+			},
+			wantSummary: "#/types/test:index:TestType/properties/bad%00property: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "resource name",
+			spec: PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:Bad\tResource": {},
+				},
+			},
+			wantSummary: "#/resources/test:index:Bad%09Resource: " +
+				"resource name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "resource name space",
+			spec: PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:Bad Resource": {},
+				},
+			},
+			wantSummary: "#/resources/test:index:Bad%20Resource: " +
+				"resource name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "type name",
+			spec: PackageSpec{
+				Name: "test",
+				Types: map[string]ComplexTypeSpec{
+					"test:index:Bad\x00Type": {
+						ObjectTypeSpec: ObjectTypeSpec{
+							Type: "object",
+						},
+					},
+				},
+			},
+			wantSummary: "#/types/test:index:Bad%00Type: " +
+				"type name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "type name space",
+			spec: PackageSpec{
+				Name: "test",
+				Types: map[string]ComplexTypeSpec{
+					"test:index:Bad Type": {
+						ObjectTypeSpec: ObjectTypeSpec{
+							Type: "object",
+						},
+					},
+				},
+			},
+			wantSummary: "#/types/test:index:Bad%20Type: " +
+				"type name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "function name",
+			spec: PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					"test:index:bad\x7ffunction": {},
+				},
+			},
+			wantSummary: "#/functions/test:index:bad%7Ffunction: " +
+				"function name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "function name space",
+			spec: PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					"test:index:bad function": {},
+				},
+			},
+			wantSummary: "#/functions/test:index:bad%20function: " +
+				"function name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "function input property",
+			spec: PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					"test:index:function": {
+						Inputs: &ObjectTypeSpec{
+							Properties: map[string]PropertySpec{
+								"bad\nproperty": stringProperty,
+							},
+						},
+					},
+				},
+			},
+			wantSummary: "#/functions/test:index:function/inputs/properties/bad%0Aproperty: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "function output property",
+			spec: PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					"test:index:function": {
+						Outputs: &ObjectTypeSpec{
+							Properties: map[string]PropertySpec{
+								"bad\nproperty": stringProperty,
+							},
+						},
+					},
+				},
+			},
+			wantSummary: "#/functions/test:index:function/outputs/properties/bad%0Aproperty: " +
+				"property name must contain only printable, non-whitespace characters",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, diags, _ := BindSpec(tt.spec, noOpLoader{}, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
+			require.True(t, diags.HasErrors(), "expected errors for %s", tt.name)
+			found := false
+			for _, d := range diags {
+				if strings.Contains(d.Summary, tt.wantSummary) {
+					found = true
+					break
+				}
+			}
+			assert.True(t, found, "expected diagnostic containing %q, got %v", tt.wantSummary, diags)
+		})
+	}
+}
+
 func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
@@ -1148,6 +1426,47 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	require.Len(t, diags, 1)
 	assert.Equal(t, diags[0].Severity, hcl.DiagWarning)
 	assert.Contains(t, diags[0].Summary, "id is a reserved property name")
+}
+
+func TestUsingIdInStateInputsIsAnError(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"value": {
+							TypeSpec: TypeSpec{Type: "string"},
+						},
+					},
+				},
+				InputProperties: map[string]PropertySpec{
+					"value": {
+						TypeSpec: TypeSpec{Type: "string"},
+					},
+				},
+				StateInputs: &ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"id": {
+							TypeSpec: TypeSpec{Type: "string"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, pkg)
+	require.True(t, diags.HasErrors())
+	assert.Contains(t, diags.Error(), "id is a reserved property name for stateInputs")
 }
 
 func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
@@ -1308,8 +1627,11 @@ func TestMethods(t *testing.T) {
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
+			// provider-methods-3.json declares the builtin "pulumi" package to exercise method binding on
+			// pulumi:providers:pulumi; allow the reserved name for these fixtures.
 			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
 				AllowDanglingReferences: true,
+				AllowPulumiPackage:      true,
 			})
 			if tt.expectedError != "" {
 				assert.ErrorContains(t, err, tt.expectedError)
@@ -1868,6 +2190,127 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 	assert.IsType(t, RawMessage{}, prspec.Language["csharp"])
 }
 
+type noOpLoader struct{}
+
+func (noOpLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
+	return nil, fmt.Errorf("unexpected call to LoadPackage(%s)", pkg)
+}
+
+func (noOpLoader) LoadPackageV2(ctx context.Context, descriptor *PackageDescriptor) (*Package, error) {
+	return nil, fmt.Errorf("unexpected call to LoadPackageV2(%s)", descriptor.Name)
+}
+
+func TestResourceListInputsRoundtrip(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name: "test",
+		Resources: map[string]ResourceSpec{
+			"test:index:Widget": {
+				ListInputs: &ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"scope": {
+							TypeSpec: TypeSpec{Type: "string"},
+						},
+					},
+					Required: []string{"scope"},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(spec, noOpLoader{}, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), diags.Error())
+
+	require.Len(t, pkg.Resources, 1)
+	res := pkg.Resources[0]
+	require.Equal(t, "test:index:Widget", res.Token)
+	require.NotNil(t, res.ListInputs)
+	scope, ok := res.ListInputs.Property("scope")
+	require.True(t, ok)
+	assert.Equal(t, stringType, plainType(scope.Type))
+	assert.True(t, scope.IsRequired())
+
+	marshaledSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	listInputs := marshaledSpec.Resources["test:index:Widget"].ListInputs
+	require.NotNil(t, listInputs)
+	require.Contains(t, listInputs.Properties, "scope")
+
+	_, diags, err = BindSpec(*marshaledSpec, noOpLoader{}, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), diags.Error())
+}
+
+func TestResourceListInputsReservedNames(t *testing.T) {
+	t.Parallel()
+
+	t.Run("pulumi disallowed", func(t *testing.T) {
+		t.Parallel()
+
+		spec := PackageSpec{
+			Name: "test",
+			Resources: map[string]ResourceSpec{
+				"test:index:Widget": {
+					ListInputs: &ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]PropertySpec{
+							"pulumi": {
+								TypeSpec: TypeSpec{Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		_, diags, err := BindSpec(spec, noOpLoader{}, ValidationOptions{
+			AllowDanglingReferences: true,
+		})
+		require.Error(t, err)
+		require.True(t, diags.HasErrors())
+		assert.Contains(t, diags.Error(), "pulumi is a reserved property name")
+	})
+
+	t.Run("id and urn allowed", func(t *testing.T) {
+		t.Parallel()
+
+		spec := PackageSpec{
+			Name: "test",
+			Resources: map[string]ResourceSpec{
+				"test:index:Widget": {
+					ListInputs: &ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]PropertySpec{
+							"id": {
+								TypeSpec: TypeSpec{Type: "string"},
+							},
+							"urn": {
+								TypeSpec: TypeSpec{Type: "string"},
+							},
+						},
+						Required: []string{"id", "urn"},
+					},
+				},
+			},
+		}
+
+		pkg, diags, err := BindSpec(spec, noOpLoader{}, ValidationOptions{
+			AllowDanglingReferences: true,
+		})
+		require.NoError(t, err)
+		require.False(t, diags.HasErrors(), diags.Error())
+		require.Len(t, pkg.Resources, 1)
+		require.NotNil(t, pkg.Resources[0].ListInputs)
+	})
+}
+
 func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 	t.Parallel()
 
@@ -2212,7 +2655,7 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 		Color: cmdutil.GetGlobalColorization(),
 	})
 	//nolint:usetesting // plugin.NewContext manages the lifecycle of gRPC providers; t.Context cancels before they shut down
-	pluginCtx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost)
+	pluginCtx, err := plugin.NewContext(t.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost, nil)
 	require.NoError(t, err)
 	return pluginCtx.Host
 }
@@ -2672,4 +3115,519 @@ func TestTokenToModuleIndexPrefix(t *testing.T) {
 	}
 	assert.Equal(t, "", formattedPkg.TokenToModule("test:index/getResource:getResource"))
 	assert.Equal(t, "indexMine", formattedPkg.TokenToModule("test:indexMine/getResource:getResource"))
+}
+
+// TestAliasBuildIsLazy verifies that the alias maps stay unbuilt when every Get* call
+// is satisfied by a direct table hit.
+func TestAliasBuildIsLazy(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:mod:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+		},
+		Functions: map[string]FunctionSpec{
+			"test:mod:getThing": {},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"test:mod:ThingBlock": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+		},
+	}
+
+	t.Run("Package", func(t *testing.T) {
+		t.Parallel()
+
+		pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+
+		_, ok := pkg.GetResource("test:mod:Thing")
+		require.True(t, ok)
+		_, ok = pkg.GetFunction("test:mod:getThing")
+		require.True(t, ok)
+		_, ok = pkg.GetType("test:mod:ThingBlock")
+		require.True(t, ok)
+		_, ok = pkg.GetResourceType("test:mod:Thing")
+		require.True(t, ok)
+
+		assert.Nil(t, pkg.aliases.resources)
+		assert.Nil(t, pkg.aliases.functions)
+		assert.Nil(t, pkg.aliases.types)
+		assert.Nil(t, pkg.aliases.resourceTypes)
+	})
+
+	t.Run("PartialPackage", func(t *testing.T) {
+		t.Parallel()
+
+		raw, err := json.Marshal(spec)
+		require.NoError(t, err)
+		var partial PartialPackageSpec
+		require.NoError(t, json.Unmarshal(raw, &partial))
+
+		pkg, err := ImportPartialSpec(partial, nil, nil)
+		require.NoError(t, err)
+
+		_, ok, err := pkg.Resources().Get("test:mod:Thing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		_, ok, err = pkg.Functions().Get("test:mod:getThing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		_, ok, err = pkg.Types().Get("test:mod:ThingBlock")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		assert.Nil(t, pkg.specAliases.resources)
+		assert.Nil(t, pkg.specAliases.functions)
+		assert.Nil(t, pkg.specAliases.types)
+	})
+}
+
+// TestGetWithIndexAliases verifies short-form aliases for tokens whose normalized module
+// is "index" — both "pkg:name" and "pkg::name" should resolve to the source token.
+func TestGetWithIndexAliases(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+		},
+	}
+
+	pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+	require.NoError(t, err)
+
+	for _, query := range []string{"test:index:Thing", "test::Thing", "test:Thing"} {
+		r, ok := pkg.GetResource(query)
+		require.Truef(t, ok, "query %q should resolve", query)
+		assert.Equal(t, "test:index:Thing", r.Token)
+	}
+}
+
+// TestGetWithModuleFormat verifies that the schema's Get* methods accept tokens normalized
+// via Meta.ModuleFormat as well as the source-form token. PCL canonicalizes tokens before
+// lookup (e.g. "test:mod/getThing:getThing" → "test:mod:getThing"), so callers should not
+// have to reconstruct the source token themselves.
+func TestGetWithModuleFormat(t *testing.T) {
+	t.Parallel()
+
+	// A deliberately non-standard ModuleFormat: strip a "_v\d+" suffix from the module
+	// (e.g. source "mod_v2" → normalized "mod"). This exercises the actual regex rather
+	// than masquerading as the default format.
+	spec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+		Resources: map[string]ResourceSpec{
+			"test:mod_v2:Thing": {
+				ObjectTypeSpec: ObjectTypeSpec{Type: "object"},
+			},
+		},
+		Functions: map[string]FunctionSpec{
+			"test:mod_v2:getThing": {},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"test:mod_v2:ThingBlock": {
+				ObjectTypeSpec: ObjectTypeSpec{Type: "object"},
+			},
+		},
+	}
+
+	t.Run("Package", func(t *testing.T) {
+		t.Parallel()
+
+		pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+
+		r, ok := pkg.GetResource("test:mod:Thing")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", r.Token)
+
+		f, ok := pkg.GetFunction("test:mod:getThing")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:getThing", f.Token)
+
+		typ, ok := pkg.GetType("test:mod:ThingBlock")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:ThingBlock", typ.(*ObjectType).Token)
+
+		rt, ok := pkg.GetResourceType("test:mod:Thing")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", rt.Token)
+	})
+
+	t.Run("PartialPackage", func(t *testing.T) {
+		t.Parallel()
+
+		raw, err := json.Marshal(spec)
+		require.NoError(t, err)
+		var partial PartialPackageSpec
+		require.NoError(t, json.Unmarshal(raw, &partial))
+
+		pkg, err := ImportPartialSpec(partial, nil, nil)
+		require.NoError(t, err)
+
+		r, ok, err := pkg.Resources().Get("test:mod:Thing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", r.Token)
+
+		f, ok, err := pkg.Functions().Get("test:mod:getThing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:getThing", f.Token)
+
+		typ, ok, err := pkg.Types().Get("test:mod:ThingBlock")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:ThingBlock", typ.(*ObjectType).Token)
+
+		rt, ok, err := pkg.Resources().GetType("test:mod:Thing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", rt.Token)
+	})
+}
+
+// TestModuleFormatTokenCollisions verifies that schema validation rejects packages whose
+// resource or function tokens collide after applying Meta.ModuleFormat (and case folding).
+func TestModuleFormatTokenCollisions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ResourcesDifferingOnlyInModuleFormat", func(t *testing.T) {
+		t.Parallel()
+
+		// "(\w+)_v\d+" maps both "mod_v1" and "mod_v2" to "mod".
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v2:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:thing")
+	})
+
+	t.Run("ChainedModuleVersionsAdjacentLevelsCollide", func(t *testing.T) {
+		t.Parallel()
+
+		// mod_v1_v2_v3 → canonical mod_v1_v2; mod_v1_v2 is itself a literal source token.
+		// PCL's one-level canonicalization makes a query for "test:mod_v1_v2:A" ambiguous.
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1_v2_v3:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1_v2:A":    {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1_v2:a")
+	})
+
+	t.Run("ChainedModuleVersionsNonAdjacentLevelsDoNotCollide", func(t *testing.T) {
+		t.Parallel()
+
+		// mod_v1_v2_v3 (canonical mod_v1_v2) and mod_v1 (canonical mod) have disjoint
+		// literal and canonical forms. PCL's one-level canonicalization cannot reach one
+		// from a query for the other, so no collision.
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1_v2_v3:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1:A":       {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+	})
+
+	t.Run("LiteralCollidesWithAnothersCanonical", func(t *testing.T) {
+		t.Parallel()
+
+		// With format "(\w+)_v\d+":
+		//   "test:mod_v1_v2:A" canonicalizes to "test:mod_v1:A"
+		//   "test:mod_v1:A"    canonicalizes to "test:mod:A"
+		// The two canonical forms are distinct, but the first source's canonical form
+		// equals the second source's literal form, so a query for "test:mod_v1:A" is
+		// ambiguous.
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1_v2:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1:A":    {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1:a")
+	})
+
+	t.Run("ModuleFormatPlusCaseFold", func(t *testing.T) {
+		t.Parallel()
+
+		// "pkg:mod/a:A" normalizes via the format to "pkg:mod:A", which case-folds to
+		// "pkg:mod:a" — colliding with the literal "pkg:mod:a".
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(.*)(?:/[^/]*)`},
+			Resources: map[string]ResourceSpec{
+				"test:mod/a:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod:a":   {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:a")
+	})
+
+	t.Run("NoCollisionPasses", func(t *testing.T) {
+		t.Parallel()
+
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1:B": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+	})
+}
+
+// TestRequiredObjectCycles covers validateNoRequiredObjectCycles: object types
+// whose required-property graph reaches themselves through only direct object
+// references describe values of infinite size and must be rejected, while
+// cycles that pass through Array, Map, Union, or Optional are satisfiable and
+// must continue to bind.
+func TestRequiredObjectCycles(t *testing.T) {
+	t.Parallel()
+
+	stringSpec := TypeSpec{Type: "string"}
+	refSpec := func(token string) TypeSpec { return TypeSpec{Ref: "#/types/" + token} }
+	objType := func(props map[string]PropertySpec, required ...string) ComplexTypeSpec {
+		return ComplexTypeSpec{ObjectTypeSpec: ObjectTypeSpec{
+			Type:       "object",
+			Properties: props,
+			Required:   required,
+		}}
+	}
+	pkgWithTypes := func(types map[string]ComplexTypeSpec) PackageSpec {
+		return PackageSpec{Name: "test", Version: "1.0.0", Types: types}
+	}
+
+	t.Run("DirectRequiredCycleErrors", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"foo": {TypeSpec: refSpec("test:index:A")},
+			}, "foo"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Equal(t, hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary: "#/types/test:index:A: object type has unsatisfiable required-property cycle: " +
+				"test:index:A -> test:index:A",
+		}}, diags)
+	})
+
+	t.Run("IndirectRequiredCycleErrorsOncePerCycle", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"b": {TypeSpec: refSpec("test:index:B")},
+			}, "b"),
+			"test:index:B": objType(map[string]PropertySpec{
+				"a": {TypeSpec: refSpec("test:index:A")},
+			}, "a"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Equal(t, hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary: "#/types/test:index:A: object type has unsatisfiable required-property cycle: " +
+				"test:index:A -> test:index:B -> test:index:A",
+		}}, diags)
+	})
+
+	t.Run("ThreeNodeRequiredCycleErrorsOncePerCycle", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"b": {TypeSpec: refSpec("test:index:B")},
+			}, "b"),
+			"test:index:B": objType(map[string]PropertySpec{
+				"c": {TypeSpec: refSpec("test:index:C")},
+			}, "c"),
+			"test:index:C": objType(map[string]PropertySpec{
+				"a": {TypeSpec: refSpec("test:index:A")},
+			}, "a"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Equal(t, hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary: "#/types/test:index:A: object type has unsatisfiable required-property cycle: " +
+				"test:index:A -> test:index:B -> test:index:C -> test:index:A",
+		}}, diags)
+	})
+
+	t.Run("OptionalSelfReferenceIsAllowed", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"foo": {TypeSpec: refSpec("test:index:A")},
+			}),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("RequiredSelfReferenceThroughArrayIsAllowed", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"foo": {TypeSpec: TypeSpec{
+					Type:  "array",
+					Items: &TypeSpec{Ref: "#/types/test:index:A"},
+				}},
+			}, "foo"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("RequiredSelfReferenceThroughMapIsAllowed", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"foo": {TypeSpec: TypeSpec{
+					Type:                 "object",
+					AdditionalProperties: &TypeSpec{Ref: "#/types/test:index:A"},
+				}},
+			}, "foo"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("RequiredSelfReferenceThroughUnionIsAllowed", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"foo": {TypeSpec: TypeSpec{
+					OneOf: []TypeSpec{stringSpec, refSpec("test:index:A")},
+				}},
+			}, "foo"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("AcyclicRequiredGraphIsAllowed", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:Leaf": objType(map[string]PropertySpec{
+				"name": {TypeSpec: stringSpec},
+			}, "name"),
+			"test:index:Branch": objType(map[string]PropertySpec{
+				"leaf": {TypeSpec: refSpec("test:index:Leaf")},
+			}, "leaf"),
+			"test:index:Root": objType(map[string]PropertySpec{
+				"branch": {TypeSpec: refSpec("test:index:Branch")},
+				"leaf":   {TypeSpec: refSpec("test:index:Leaf")},
+			}, "branch", "leaf"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("DisjointCyclesAreReportedSeparately", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"a": {TypeSpec: refSpec("test:index:A")},
+			}, "a"),
+			"test:index:B": objType(map[string]PropertySpec{
+				"b": {TypeSpec: refSpec("test:index:B")},
+			}, "b"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Equal(t, hcl.Diagnostics{
+			{
+				Severity: hcl.DiagError,
+				Summary: "#/types/test:index:A: object type has unsatisfiable required-property cycle: " +
+					"test:index:A -> test:index:A",
+			},
+			{
+				Severity: hcl.DiagError,
+				Summary: "#/types/test:index:B: object type has unsatisfiable required-property cycle: " +
+					"test:index:B -> test:index:B",
+			},
+		}, diags)
+	})
+}
+
+// TestBindSpecReservedPackageNames asserts that the package names "pulumi" and "input" are rejected at bind time.
+// "pulumi" is reserved for the builtin package/provider resources; "input" is reserved for `pulumi do` to use as
+// a flag-vs-token discriminator.
+func TestBindSpecReservedPackageNames(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{"pulumi", "input"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, diags, err := BindSpec(PackageSpec{Name: name}, nil, ValidationOptions{})
+			require.NoError(t, err)
+			require.True(t, diags.HasErrors(), "expected errors for reserved name %q, got %v", name, diags)
+			found := false
+			for _, d := range diags {
+				if d.Severity == hcl.DiagError &&
+					strings.Contains(d.Summary, "invalid package name '"+name+"'") {
+					found = true
+					break
+				}
+			}
+			assert.True(t, found, "expected a reserved-name diagnostic for %q, got %v", name, diags)
+		})
+	}
+
+	// Sanity-check: any other name binds without that specific diagnostic.
+	t.Run("non-reserved", func(t *testing.T) {
+		t.Parallel()
+		_, diags, _ := BindSpec(PackageSpec{Name: "aws"}, nil, ValidationOptions{})
+		for _, d := range diags {
+			assert.NotContains(t, d.Summary, "package names 'pulumi' and 'input' are reserved")
+		}
+	})
 }

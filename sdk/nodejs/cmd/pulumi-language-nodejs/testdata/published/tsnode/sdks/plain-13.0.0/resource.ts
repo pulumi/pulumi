@@ -76,5 +76,5 @@ export interface ResourceArgs {
     /**
      * A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
      */
-    nonPlainData?: pulumi.Input<inputs.DataArgs>;
+    nonPlainData?: pulumi.Input<inputs.DataArgs | undefined>;
 }

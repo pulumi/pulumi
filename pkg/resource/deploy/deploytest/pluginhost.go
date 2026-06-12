@@ -199,7 +199,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		contract.IgnoreClose(wrapper)
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
-	wrapped := plugin.NewProviderWithClient(nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
+	wrapped := plugin.NewProviderWithClient(nil, pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil
 }
 
@@ -227,7 +227,7 @@ func wrapAnalyzerWithGrpc(analyzer plugin.Analyzer) (plugin.Analyzer, io.Closer,
 		contract.IgnoreClose(wrapper)
 		return nil, nil, fmt.Errorf("could not connect to policy analyzer service: %w", err)
 	}
-	wrapped := plugin.NewAnalyzerWithClient(nil, analyzer.Name(), pulumirpc.NewAnalyzerClient(conn))
+	wrapped := plugin.NewAnalyzerWithClient(analyzer.Name(), pulumirpc.NewAnalyzerClient(conn))
 	return wrapped, wrapper, nil
 }
 
@@ -485,7 +485,7 @@ func (host *pluginHost) SignalCancellation() error {
 	}
 
 	if host.languageRuntime != nil {
-		if lErr := host.languageRuntime.Cancel(); lErr != nil {
+		if lErr := host.languageRuntime.Cancel(context.TODO()); lErr != nil {
 			err = lErr
 		}
 	}
@@ -544,13 +544,6 @@ func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.PolicyAnalyzer(nm, "", nil)
 }
 
-func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
-	if host.isClosed() {
-		return ErrHostIsClosed
-	}
-	return nil
-}
-
 func (host *pluginHost) ResolvePlugin(
 	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
@@ -564,8 +557,8 @@ func (host *pluginHost) ResolvePlugin(
 			Kind:    v.kind,
 			Name:    v.name,
 			Version: &v.version,
-			// Path and SchemaPath not set as these plugins aren't actually on disk.
-			// SchemaTime not set as caching is indefinite.
+			// Path not set as these plugins aren't actually on disk.
+			// InstallTime not set as caching is indefinite.
 		}
 		plugins = append(plugins, p)
 	}
@@ -584,8 +577,8 @@ func (host *pluginHost) ResolvePlugin(
 func (host *pluginHost) GetRequiredPackages(
 	info plugin.ProgramInfo,
 	kinds plugin.Flags,
-) ([]workspace.PackageDescriptor, error) {
-	return host.languageRuntime.GetRequiredPackages(info)
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
+	return host.languageRuntime.GetRequiredPackages(context.TODO(), info)
 }
 
 func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
@@ -603,11 +596,4 @@ func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
 		return nil, err
 	}
 	return plug.(plugin.Analyzer), nil
-}
-
-func (host *pluginHost) ListAnalyzers() []plugin.Analyzer {
-	host.m.Lock()
-	defer host.m.Unlock()
-
-	return host.analyzers
 }

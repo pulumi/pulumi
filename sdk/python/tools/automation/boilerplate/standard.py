@@ -19,24 +19,25 @@ from typing import Any, Optional
 from pulumi.automation._cmd import CommandResult, PulumiCommand
 
 
-class BaseOptions:
-    cwd: Optional[str]
-    additional_env: Optional[Mapping[str, str]]
-    on_output: Optional[Callable[[str], Any]]
-    on_error: Optional[Callable[[str], Any]]
-
-
 class API:
     _command: PulumiCommand
 
     def __init__(self, command: PulumiCommand) -> None:
         self._command = command
 
-    def _run(self, options: BaseOptions, args: list[str]) -> CommandResult:
+    def _run(
+        self,
+        args: list[str],
+        *,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ) -> CommandResult:
         return self._command.run(
             args,
-            options.cwd if getattr(options, "cwd", None) is not None else os.getcwd(),
-            getattr(options, "additional_env", None) or {},
-            getattr(options, "on_output", None),
-            getattr(options, "on_error", None),
+            cwd or os.getcwd(),
+            additional_env or {},
+            on_output,
+            on_error,
         )

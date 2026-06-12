@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -28,7 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -43,6 +44,7 @@ type newPolicyArgs struct {
 	generateOnly      bool
 	offline           bool
 	templateNameOrURL string
+	stdout            io.Writer
 }
 
 func newPolicyNewCmd() *cobra.Command {
@@ -65,6 +67,7 @@ func newPolicyNewCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}
+			args.stdout = cmd.OutOrStdout()
 			return runNewPolicyPack(ctx, args)
 		},
 	}
@@ -93,6 +96,9 @@ func newPolicyNewCmd() *cobra.Command {
 }
 
 func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
+	if args.stdout == nil {
+		args.stdout = io.Discard
+	}
 	// Prepare options.
 	opts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
@@ -172,7 +178,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 		return err
 	}
 
-	fmt.Println("Created Policy Pack!")
+	fmt.Fprintln(args.stdout, "Created Policy Pack!")
 
 	proj, projPath, root, err := ReadPolicyProject(cwd)
 	if err != nil {
@@ -193,23 +199,25 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := InstallPluginDependencies(ctx, root, proj.Runtime); err != nil {
+		if err := InstallPluginDependencies(ctx, args.stdout, args.stdout, root, proj.Runtime); err != nil {
 			return err
 		}
 	}
 
-	fmt.Println(
+	fmt.Fprintln(args.stdout,
 		opts.Color.Colorize(
-			colors.BrightGreen+colors.Bold+"Your new Policy Pack is ready to go!"+colors.Reset) +
-			" " + cmdutil.EmojiOr("✨", ""))
-	fmt.Println()
+			colors.BrightGreen+colors.Bold+"Your new Policy Pack is ready to go!"+colors.Reset)+
+			" "+cmdutil.EmojiOr("✨", ""))
+	fmt.Fprintln(args.stdout)
 
-	printPolicyPackNextSteps(proj, root, args.generateOnly, opts)
+	printPolicyPackNextSteps(args.stdout, proj, root, args.generateOnly, opts)
 
 	return nil
 }
 
-func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, generateOnly bool, opts display.Options) {
+func printPolicyPackNextSteps(
+	w io.Writer, proj *workspace.PolicyPackProject, root string, generateOnly bool, opts display.Options,
+) {
 	var commands []string
 	if generateOnly {
 		// We didn't install dependencies, so instruct the user to do so.
@@ -219,18 +227,18 @@ func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, ge
 	if len(commands) == 1 {
 		installMsg := fmt.Sprintf("To install dependencies for the Policy Pack, run `%s`", commands[0])
 		installMsg = colors.Highlight(installMsg, commands[0], colors.BrightBlue+colors.Bold)
-		fmt.Println(opts.Color.Colorize(installMsg))
-		fmt.Println()
+		fmt.Fprintln(w, opts.Color.Colorize(installMsg))
+		fmt.Fprintln(w)
 	}
 
 	if len(commands) > 1 {
-		fmt.Println("To install dependencies for the Policy Pack, run the following commands:")
-		fmt.Println()
+		fmt.Fprintln(w, "To install dependencies for the Policy Pack, run the following commands:")
+		fmt.Fprintln(w)
 		for i, cmd := range commands {
 			cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
-			fmt.Printf("   %d. %s\n", i+1, opts.Color.Colorize(cmdColors))
+			fmt.Fprintf(w, "   %d. %s\n", i+1, opts.Color.Colorize(cmdColors))
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
 
 	usageCommandPreambles := []string{
@@ -251,16 +259,16 @@ func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, ge
 		usageMsg := fmt.Sprintf("Once you're done editing your Policy Pack, to %s `%s`", usageCommandPreambles[0],
 			usageCommands[0])
 		usageMsg = colors.Highlight(usageMsg, usageCommands[0], colors.BrightBlue+colors.Bold)
-		fmt.Println(opts.Color.Colorize(usageMsg))
-		fmt.Println()
+		fmt.Fprintln(w, opts.Color.Colorize(usageMsg))
+		fmt.Fprintln(w)
 	} else {
-		fmt.Println("Once you're done editing your Policy Pack:")
-		fmt.Println()
+		fmt.Fprintln(w, "Once you're done editing your Policy Pack:")
+		fmt.Fprintln(w)
 		for i, cmd := range usageCommands {
 			cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
-			fmt.Printf("   * To %s `%s`\n", usageCommandPreambles[i], opts.Color.Colorize(cmdColors))
+			fmt.Fprintf(w, "   * To %s `%s`\n", usageCommandPreambles[i], opts.Color.Colorize(cmdColors))
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
 }
 

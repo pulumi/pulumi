@@ -234,6 +234,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
         return proto.ReadResponse(**fields)
 
+    def List(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("List is not implemented by the dynamic provider")
+        raise NotImplementedError("List is not implemented by the dynamic provider")
+
     def __init__(self):
         pass
 

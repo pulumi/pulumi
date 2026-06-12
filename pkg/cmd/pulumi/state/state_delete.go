@@ -75,7 +75,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			var handleProtected func(*resource.State) error
 			if force {
 				handleProtected = func(res *resource.State) error {
-					cmdutil.Diag().Warningf(diag.Message(res.URN,
+					sink.Warningf(diag.Message(res.URN,
 						"deleting protected resource %s due to presence of --force"), res.URN)
 					res.Protect = false
 					return nil
@@ -121,7 +121,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					message.WriteString(" can't be safely deleted because the following resources depend on it:\n")
 					for _, dependentResource := range e.Dependencies {
 						depUrn := dependentResource.URN
-						message.WriteString(fmt.Sprintf(" * %-15q (%s)\n", depUrn.Name(), depUrn))
+						fmt.Fprintf(&message, " * %-15q (%s)\n", depUrn.Name(), depUrn)
 					}
 					message.WriteString("\nDelete those resources first or pass --target-dependents.")
 					return errors.New(message.String())
@@ -134,11 +134,11 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				}
 			}
 			if all {
-				fmt.Println("Resources deleted")
+				fmt.Fprintln(cmd.OutOrStdout(), "Resources deleted")
 			} else if nDeleted == 1 {
-				fmt.Println("Resource deleted")
+				fmt.Fprintln(cmd.OutOrStdout(), "Resource deleted")
 			} else {
-				fmt.Printf("%d resources deleted\n", nDeleted)
+				fmt.Fprintf(cmd.OutOrStdout(), "%d resources deleted\n", nDeleted)
 			}
 			return nil
 		},

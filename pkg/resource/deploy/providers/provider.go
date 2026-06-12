@@ -118,7 +118,7 @@ func (p ProviderRequest) DefaultName() string {
 	if v != nil {
 		// QNames are forbidden to contain dashes, so we construct a string here using the semantic
 		// version's component parts.
-		base.WriteString(fmt.Sprintf("_%d_%d_%d", v.Major, v.Minor, v.Patch))
+		fmt.Fprintf(&base, "_%d_%d_%d", v.Major, v.Minor, v.Patch)
 		for _, pre := range v.Pre {
 			base.WriteString("_" + pre.String())
 		}

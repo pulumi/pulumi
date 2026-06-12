@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -210,6 +211,19 @@ func TestArgumentTypeName(t *testing.T) {
 	inputDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), true /*isInput*/)
 	assert.Equal(t, "pulumi.Array", inputDynamicListType)
 
+	// Asset and Archive opaque types must be qualified with the pulumi package, otherwise nested compositions
+	// render bare names like []AssetMap which is invalid Go.
+	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, false /*isInput*/))
+	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, true /*isInput*/))
+	assert.Equal(t, "pulumi.Archive", g.argumentTypeName(pcl.ArchiveType, false /*isInput*/))
+	assert.Equal(t, "pulumi.Archive", g.argumentTypeName(pcl.ArchiveType, true /*isInput*/))
+	assert.Equal(t,
+		"pulumi.AssetOrArchiveArrayMap",
+		g.argumentTypeName(
+			model.NewObjectType(map[string]model.Type{"k": model.NewListType(pcl.AssetType)}),
+			true, /*isInput*/
+		))
+
 	// assert that the Output[T] + input=false is the same as T + input=true
 	// in this case where T = string
 	assert.Equal(t,
@@ -372,6 +386,29 @@ func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
 
 	g.Fgenf(&index, "%v", expr)
 	assert.Equal(t, "pulumi.String(notSecret)", index.String())
+}
+
+// Regression test for pulumi/pulumi#22256.
+func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	var index bytes.Buffer
+
+	// Resource argument Input<T> binds as union(T, Output<T>) annotated with
+	// schema.InputType.
+	inputType := model.NewUnionTypeAnnotated(
+		[]model.Type{model.StringType, model.NewOutputType(model.StringType)},
+		&schema.InputType{ElementType: schema.StringType},
+	)
+
+	expr := pcl.NewConvertCall(
+		model.VariableReference(&model.Variable{Name: "bucketName", VariableType: model.StringType}),
+		inputType,
+	)
+
+	g.Fgenf(&index, "%v", expr)
+	assert.Equal(t, "pulumi.String(bucketName)", index.String())
 }
 
 func TestTupleConsExpression(t *testing.T) {

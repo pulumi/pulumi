@@ -64,8 +64,8 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			var err error
 			if all {
-				err = workspace.DeleteAllAccounts()
-				fmt.Println("Logged out of everything")
+				err = deleteAllAccounts()
+				fmt.Fprintln(cmd.OutOrStdout(), "Logged out of everything")
 			} else {
 				if cloudURL == "" {
 					// Try to read the current project
@@ -74,7 +74,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return err
 					}
 
-					cloudURL, err = pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+					cloudURL, err = pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 					if err != nil {
 						return fmt.Errorf("could not determine current cloud: %w", err)
 					}
@@ -84,8 +84,8 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 					cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
 				}
 
-				err = workspace.DeleteAccount(cloudURL)
-				fmt.Printf("Logged out of %s\n", cloudURL)
+				err = deleteAccount(cloudURL)
+				fmt.Fprintf(cmd.OutOrStdout(), "Logged out of %s\n", cloudURL)
 			}
 
 			return err
@@ -107,4 +107,29 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 		"Log out of using local mode")
 
 	return cmd
+}
+
+// deleteAllAccounts removes user credentials and, in agent mode, any shared
+// temporary agent credentials.
+func deleteAllAccounts() error {
+	if !workspace.AgentCredentialsFallbackEnabled() {
+		return workspace.DeleteAllAccounts()
+	}
+	if err := workspace.DeleteAllAccounts(); err != nil {
+		return workspace.DeleteAgentCredentials()
+	}
+	return workspace.DeleteAgentCredentials()
+}
+
+// deleteAccount removes credentials for a cloud URL, falling back to shared
+// temporary agent credentials when default credentials are unavailable.
+func deleteAccount(cloudURL string) error {
+	if !workspace.AgentCredentialsFallbackEnabled() {
+		return workspace.DeleteAccount(cloudURL)
+	}
+	account, err := workspace.GetAccount(cloudURL)
+	if err == nil && account.AccessToken != "" {
+		return workspace.DeleteAccount(cloudURL)
+	}
+	return workspace.DeleteAgentAccount(cloudURL)
 }

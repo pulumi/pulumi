@@ -187,6 +187,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 				Create: t.GetCreate(),
 				Update: t.GetUpdate(),
 				Delete: t.GetDelete(),
+				Read:   t.GetRead(),
 			}
 		}
 		if len(req.GetReplaceWith()) > 0 {
@@ -363,7 +364,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 	}
 
 	// Allocate storage as necessary.
-	for dest.Kind() == reflect.Ptr {
+	for dest.Kind() == reflect.Pointer {
 		elem := reflect.New(dest.Type().Elem())
 		dest.Set(elem)
 		dest = elem.Elem()
@@ -422,7 +423,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 		// Try to determine the input type from the interface.
 		if it := internal.InputInterfaceTypeToConcreteType(dest.Type()); it != nil {
 			inputType := it
-			for inputType.Kind() == reflect.Ptr {
+			for inputType.Kind() == reflect.Pointer {
 				inputType = inputType.Elem()
 			}
 
@@ -663,7 +664,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]any, args any) error 
 	}
 	argsV := reflect.ValueOf(args)
 	typ := argsV.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return errors.New("args must be a pointer to a struct")
 	}
 	argsV, typ = argsV.Elem(), typ.Elem()
@@ -789,7 +790,7 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 
 	resourceV := reflect.ValueOf(resource)
 	typ := resourceV.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return nil, nil, errors.New("resource must be a pointer to a struct")
 	}
 	resourceV, typ = resourceV.Elem(), typ.Elem()
@@ -989,7 +990,7 @@ func newCallResult(result any) (Input, error) {
 
 	resultV := reflect.ValueOf(result)
 	typ := resultV.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return nil, errors.New("result must be a pointer to a struct")
 	}
 	resultV, typ = resultV.Elem(), typ.Elem()

@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type OutputOnlyInvokeProvider struct {
@@ -41,10 +40,6 @@ func (p *OutputOnlyInvokeProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *OutputOnlyInvokeProvider) Pkg() tokens.Package {
-	return "output-only-invoke"
 }
 
 func (p *OutputOnlyInvokeProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -66,8 +61,6 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 	}
 	resourceRequired := []string{"text"}
 
-	ref := func(b bool) *bool { return &b }
-
 	pkg := schema.PackageSpec{
 		Name:    "output-only-invoke",
 		Version: "24.0.0",
@@ -85,7 +78,7 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 		},
 		Functions: map[string]schema.FunctionSpec{
 			"output-only-invoke:index:myInvoke": {
-				Plain: ref(false),
+				Plain: ptr(false),
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -112,7 +105,7 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 				},
 			},
 			"output-only-invoke:index:unit": {
-				Plain: ref(false),
+				Plain: ptr(false),
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 				},
@@ -131,7 +124,7 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 				},
 			},
 			"output-only-invoke:index:secretInvoke": {
-				Plain: ref(false),
+				Plain: ptr(false),
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{

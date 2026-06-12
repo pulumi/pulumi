@@ -67,3 +67,16 @@ func CloudConsoleURL(cloudURL string, paths ...string) string {
 	u.Path = path.Join(paths...)
 	return u.String()
 }
+
+// AgentClaimURL returns the Pulumi Console URL for claiming an ephemeral agent
+// account, or "" if the console URL cannot be derived from cloudURL.
+func AgentClaimURL(cloudURL, claimToken string) string {
+	if strings.TrimSpace(claimToken) == "" {
+		return ""
+	}
+	claimURL := CloudConsoleURL(cloudURL, "claim", claimToken)
+	if claimURL == "" {
+		return ""
+	}
+	return claimURL
+}
