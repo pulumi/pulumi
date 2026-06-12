@@ -495,6 +495,7 @@ func setValidateAgentClaim(
 func clearAgentEnv(t *testing.T) {
 	t.Helper()
 	for _, name := range []string{
+		"AI_AGENT",
 		"CURSOR_TRACE_ID",
 		"CURSOR_AGENT",
 		"GEMINI_CLI",
