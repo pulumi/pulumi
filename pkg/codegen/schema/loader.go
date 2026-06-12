@@ -108,11 +108,28 @@ type ReferenceLoader interface {
 	LoadPackageReferenceV2(ctx context.Context, descriptor *PackageDescriptor) (PackageReference, error)
 }
 
+// RawLoader is an optional interface implemented by loaders that can return the raw JSON schema bytes for a
+// package descriptor without binding the schema.
+type RawLoader interface {
+	ReferenceLoader
+
+	// LoadRawSchemaBytes returns the raw JSON schema bytes for the given package descriptor.
+	//
+	// ok reports whether the bytes faithfully represent the package that LoadPackageReferenceV2 would load for the
+	// same descriptor; when ok is false the caller must fall back to a bind-based load.
+	LoadRawSchemaBytes(ctx context.Context, descriptor *PackageDescriptor) (data []byte, ok bool, err error)
+}
+
 type pluginLoader struct {
 	host plugin.Host
 
 	cacheOptions pluginLoaderCacheOptions
 }
+
+var (
+	_ ReferenceLoader = (*pluginLoader)(nil)
+	_ RawLoader       = (*pluginLoader)(nil)
+)
 
 // Caching options intended for benchmarking or debugging:
 type pluginLoaderCacheOptions struct {
@@ -225,6 +242,49 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 		return nil, err
 	}
 	return p, nil
+}
+
+func (l *pluginLoader) LoadRawSchemaBytes(
+	ctx context.Context, descriptor *PackageDescriptor,
+) ([]byte, bool, error) {
+	if descriptor.Name == "pulumi" {
+		// DefaultPulumiPackage is served from memory; there are no raw bytes for it.
+		return nil, false, nil
+	}
+
+	schemaBytes, pluginVersion, err := l.loadSchemaBytes(ctx, descriptor)
+	if err != nil {
+		return nil, false, err
+	}
+	if schemaIsEmpty(schemaBytes) {
+		return nil, false, getSchemaNotImplemented{}
+	}
+
+	// LoadPackageReferenceV2 defaults a missing schema version to the resolved plugin version. Raw bytes can't
+	// carry that fix-up, so when it would apply the caller has to take the bind-based path instead.
+	if pluginVersion != nil && descriptor.Parameterization == nil && !hasTopLevelVersion(schemaBytes) {
+		return nil, false, nil
+	}
+
+	return schemaBytes, true, nil
+}
+
+// hasTopLevelVersion reports whether the top-level JSON object in schemaBytes has a "version" key with a
+// non-empty string value.
+func hasTopLevelVersion(schemaBytes []byte) bool {
+	wantValue := false
+	for tok := json.NewTokenizer(schemaBytes); tok.Next(); {
+		if tok.Depth != 1 || tok.Delim == ':' || tok.Delim == ',' {
+			continue
+		}
+		if wantValue {
+			return tok.Value.String() && len(tok.String()) > 0
+		}
+		if tok.IsKey && string(tok.String()) == "version" {
+			wantValue = true
+		}
+	}
+	return false
 }
 
 // LoadPackageReference loads a package reference for the given pkg+version using the
