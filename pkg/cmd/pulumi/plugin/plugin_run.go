@@ -71,9 +71,8 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
-		Use:    "run",
-		Hidden: !env.Dev.Value(),
-		Short:  "Run a command on a plugin binary",
+		Use:   "run",
+		Short: "Run a command on a plugin binary",
 		Long: "[EXPERIMENTAL] Run a command on a plugin binary.\n" +
 			"\n" +
 			"Directly executes a plugin binary, if VERSION is not specified " +
