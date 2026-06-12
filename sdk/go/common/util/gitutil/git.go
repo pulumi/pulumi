@@ -267,23 +267,22 @@ type urlAuthParser struct {
 
 	// sshKeys memoizes keys we've loaded for given host URLs, to avoid needing to
 	// re-fetch public keys.
-	sshKeys map[string]gitAuthMethod
+	sshKeys map[string]any
 	// sshConfig allows us to inject config for testing.
 	sshConfig sshUserSettings
 }
 
-// gitAuthMethod is a resolved git authentication method: either an
-// *http.BasicAuth (which implements client.HTTPAuth) or an SSH auth such as
-// *gitssh.PublicKeys / *gitssh.PublicKeysCallback (which implement
-// client.SSHAuth), or nil when no auth applies. go-git takes functional client
-// options rather than a common auth interface, so we hold the concrete auth
-// value (which keeps it inspectable in tests) and convert it to client options
-// at each transport call site via gitClientOptions.
-type gitAuthMethod = any
-
 // gitClientOptions converts a resolved auth method into go-git transport client
 // options suitable for CloneOptions/FetchOptions/ListOptions.ClientOptions.
-func gitClientOptions(auth gitAuthMethod) []client.Option {
+//
+// The resolved auth is either an *http.BasicAuth (which implements
+// client.HTTPAuth) or an SSH auth such as *gitssh.PublicKeys /
+// *gitssh.PublicKeysCallback (which implement client.SSHAuth), or nil when no
+// auth applies. go-git takes functional client options rather than a common
+// auth interface, so we hold the concrete auth value (which keeps it
+// inspectable in tests) and convert it to client options here at each transport
+// call site.
+func gitClientOptions(auth any) []client.Option {
 	switch a := auth.(type) {
 	case client.HTTPAuth:
 		return []client.Option{client.WithHTTPAuth(a)}
@@ -301,7 +300,7 @@ var defaultURLAuthParser = &urlAuthParser{
 
 // Parse parses a given URL and returns relevant auth. For SSH URLs, keys are
 // read from the provided sshUserSettings.
-func (p *urlAuthParser) Parse(remoteURL string) (string, gitAuthMethod, error) {
+func (p *urlAuthParser) Parse(remoteURL string) (string, any, error) {
 	endpoint, err := transport.ParseURL(remoteURL)
 	if err != nil {
 		return "", nil, err
@@ -311,7 +310,7 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, gitAuthMethod, error) {
 		host := endpoint.Host
 		user := endpoint.User.Username()
 
-		var auth gitAuthMethod
+		var auth any
 		cacheAuthMethod := false
 
 		p.mu.Lock()
@@ -322,7 +321,7 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, gitAuthMethod, error) {
 				return
 			}
 			if p.sshKeys == nil {
-				p.sshKeys = make(map[string]gitAuthMethod)
+				p.sshKeys = make(map[string]any)
 			}
 			logging.V(10).Infof("caching auth for %s", host)
 			p.sshKeys[host] = auth
@@ -385,7 +384,7 @@ func passwordOrEmpty(u *url.Userinfo) string {
 //
 // If the URL uses SSH, the user's SSH configuration is parsed and relevant
 // public keys are returned for authentication.
-func getAuthForURL(url string) (string, gitAuthMethod, error) {
+func getAuthForURL(url string) (string, any, error) {
 	endpoint, auth, err := defaultURLAuthParser.Parse(url)
 	if err != nil {
 		return "", nil, err
@@ -619,8 +618,7 @@ func gitCloneOrPull(
 		Tags:          git.NoTags,
 	})
 	if cloneErr != nil {
-		// If the repo already exists, open it and pull. The clone fails with
-		// ErrTargetDirNotEmpty (wrapped with the path), so match with errors.Is.
+		// If the repo already exists, open it and pull.
 		if errors.Is(cloneErr, git.ErrTargetDirNotEmpty) {
 			repo, err := git.PlainOpen(path)
 			if err != nil {

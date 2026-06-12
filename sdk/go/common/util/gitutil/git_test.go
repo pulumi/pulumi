@@ -664,7 +664,7 @@ func TestParseAuthURL(t *testing.T) {
 		t.Parallel()
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{err: errors.New("should not be called")},
-			sshKeys: map[string]gitAuthMethod{
+			sshKeys: map[string]any{
 				"github.com": &http.BasicAuth{Username: "foo"},
 			},
 		}
