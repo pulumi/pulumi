@@ -101,6 +101,10 @@ type EvalSourceOptions struct {
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
 // a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
+//
+// observer is the per-update registration observer the resource monitor will use to publish RegisterResource
+// outputs. It may be nil for callers that don't need cross-source URN coordination; in that case the monitor
+// simply does not publish.
 func NewEvalSource(
 	plugctx *plugin.Context,
 	runinfo *EvalRunInfo,
@@ -108,6 +112,7 @@ func NewEvalSource(
 	resourceHooks *ResourceHooks,
 	opts EvalSourceOptions,
 	panicErrs chan<- error,
+	observer *RegistrationObserver,
 	runner func(string) *promise.Promise[struct{}],
 ) Source {
 	return &evalSource{
@@ -117,6 +122,7 @@ func NewEvalSource(
 		resourceHooks:       resourceHooks,
 		opts:                opts,
 		panicErrs:           panicErrs,
+		observer:            observer,
 		runner:              runner,
 	}
 }
@@ -129,6 +135,10 @@ type evalSource struct {
 	opts                EvalSourceOptions                              // options for the evaluation source.
 	// channel for reporting panics from goroutines
 	panicErrs chan<- error
+
+	// observer is the per-update registration observer the resource monitor publishes RegisterResource outputs
+	// to. Nil when cross-source URN coordination is not in use.
+	observer *RegistrationObserver
 
 	// the function to run the evaluation with.
 	runner func(resourceMonitorTarget string) *promise.Promise[struct{}]
@@ -444,6 +454,16 @@ type resmon struct {
 
 	// the organization name for the deployment.
 	organization string
+
+	// observer, if non-nil, is the per-update registration observer the monitor publishes RegisterResource
+	// outputs to so concurrent sources (e.g. snippet sources) can wait for resources registered by other sources.
+	observer *RegistrationObserver
+	// componentAliases stashes the alias URNs declared at RegisterResource time for each component
+	// resource (custom resources publish to the observer immediately on register, but components defer
+	// until RegisterResourceOutputs, by which time the request no longer carries aliases). Read and
+	// cleared by the RegisterResourceOutputs publish step. Only populated when observer is non-nil.
+	componentAliases     map[resource.URN][]resource.URN
+	componentAliasesLock sync.Mutex
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -501,6 +521,8 @@ func newResourceMonitor(
 		resourceTransforms:  map[resource.URN][]TransformFunction{},
 		packageRefMap:       map[string]providers.ProviderRequest{},
 		grpcDialOptions:     src.plugctx.DialOptions,
+		observer:            src.observer,
+		componentAliases:    map[resource.URN][]resource.URN{},
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -2736,6 +2758,42 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		outputs = resource.PropertyMap{}
 	}
 
+	// Publish the registered outputs on the registration observer so other concurrent sources waiting on this URN
+	// can wake up.
+	// Customs publish here because their outputs (and ID) are final once Create returns. Components — local OR
+	// remote — defer publication to RegisterResourceOutputs, since that's when their outputs are final; in that
+	// case we stash the alias URNs here so they can be republished alongside the canonical URN at outputs time.
+	// Aliases let consumers blocked on a pre-rename URN find the resource via its new canonical URN; the
+	// snippet's References map is rewritten to the canonical URN at snapshot-write time by NormalizeURNReferences.
+	if rm.observer != nil && result.Result == ResultStateSuccess && result.State.URN != "" {
+		if custom {
+			rm.observer.Resolve(result.State.URN, result.State.ID, outputs)
+			// Publish under each alias too. We use parsedAliases (the request's aliases) rather than
+			// result.State.Aliases because the Construct path only fills in URN+Outputs on the result, leaving
+			// Aliases empty.
+			for _, alias := range parsedAliases {
+				if aliasURN := alias.GetURN(); aliasURN != "" && aliasURN != result.State.URN {
+					rm.observer.Resolve(aliasURN, result.State.ID, outputs)
+				}
+			}
+		} else if !remote {
+			// Component: stash the alias URNs so RegisterResourceOutputs can publish them once the outputs
+			// arrive. Skipped if there are no aliases — the canonical URN alone is published unconditionally
+			// from RegisterResourceOutputs.
+			var aliasURNs []resource.URN
+			for _, alias := range parsedAliases {
+				if aliasURN := alias.GetURN(); aliasURN != "" && aliasURN != result.State.URN {
+					aliasURNs = append(aliasURNs, aliasURN)
+				}
+			}
+			if len(aliasURNs) > 0 {
+				rm.componentAliasesLock.Lock()
+				rm.componentAliases[result.State.URN] = aliasURNs
+				rm.componentAliasesLock.Unlock()
+			}
+		}
+	}
+
 	if !req.GetSupportsPartialValues() {
 		logging.V(5).Infof("stripping unknowns from RegisterResource response for urn %v", result.State.URN)
 		filtered := resource.PropertyMap{}
@@ -2883,6 +2941,21 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
 		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on output step's done channel")
+	}
+
+	// Publish the component's outputs on the registration observer now that they're final. Custom resources
+	// publish at RegisterResource time and never reach this path; only components (local or remote)
+	// land here. ID is empty for components by construction. Aliases were stashed at register time
+	// and are republished here so consumers blocked on a pre-rename URN find the resource.
+	if rm.observer != nil {
+		rm.observer.Resolve(urn, "", outs)
+		rm.componentAliasesLock.Lock()
+		aliasURNs := rm.componentAliases[urn]
+		delete(rm.componentAliases, urn)
+		rm.componentAliasesLock.Unlock()
+		for _, aliasURN := range aliasURNs {
+			rm.observer.Resolve(aliasURN, "", outs)
+		}
 	}
 
 	logging.V(5).Infof(

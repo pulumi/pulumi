@@ -24,6 +24,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
@@ -497,6 +498,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		nil,
 		EvalSourceOptions{},
 		nil,
+		nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
 	).Iterate(t.Context(), &testProviderSource{})
 	require.NoError(t, err)
@@ -756,6 +758,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		nil,
 		EvalSourceOptions{},
 		nil,
+		nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
 	).Iterate(t.Context(), &testProviderSource{})
 	require.NoError(t, err)
@@ -840,6 +843,571 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	assert.Equal(t, len(steps)+len(defaults), processed)
 }
 
+// TestRegistrationObserverResolveOnRegisterResource verifies that the resource monitor publishes a registered
+// custom resource's outputs to the registration observer so concurrent sources waiting on that URN can wake up.
+func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
+	t.Parallel()
+
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
+	}
+
+	expectedURN := resource.NewURN(
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "res1")
+	expectedOutputs := resource.PropertyMap{"k": resource.NewProperty("v")}
+
+	steps := []RegisterResourceEvent{
+		// A single custom resource whose outputs we control via the iter-side reg.Done call below.
+		&testRegEvent{
+			goal: resource.NewGoal{ //nolint:requiredfield
+				Type:               "pkgA:index:res",
+				Name:               "res1",
+				Custom:             true,
+				Properties:         resource.PropertyMap{},
+				InitErrors:         []string{},
+				ReplacementTrigger: resource.NewNullProperty(),
+			}.Make(),
+		},
+	}
+
+	ctx, err := newTestPluginContext(t, fixedProgram(steps))
+	require.NoError(t, err)
+
+	observer := NewRegistrationObserver()
+
+	// Spin up a getter for the URN before iteration begins. It must block until the monitor publishes.
+	type result struct {
+		reg URNRegistration
+		err error
+	}
+	getterDone := make(chan result, 1)
+	go func() {
+		reg, err := observer.Get(expectedURN).Result(t.Context())
+		getterDone <- result{reg, err}
+	}()
+
+	iter, err := NewEvalSource(
+		ctx,
+		runInfo,
+		nil,
+		nil,
+		EvalSourceOptions{},
+		nil,
+		observer,
+		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+	).Iterate(t.Context(), &testProviderSource{})
+	require.NoError(t, err)
+
+	for {
+		ev, err := iter.Next()
+		require.NoError(t, err)
+		if ev == nil {
+			break
+		}
+		reg, ok := ev.(RegisterResourceEvent)
+		require.True(t, ok, "expected a RegisterResourceEvent, got %T", ev)
+		goal := reg.Goal()
+		urn := resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
+		reg.Done(&RegisterResult{
+			State: resource.NewState{ //nolint:requiredfield
+				Type:               goal.Type,
+				URN:                urn,
+				Custom:             goal.Custom,
+				ID:                 "id1",
+				Inputs:             goal.Properties,
+				Outputs:            expectedOutputs,
+				ReplacementTrigger: resource.NewNullProperty(),
+			}.Make(),
+		})
+	}
+
+	got := <-getterDone
+	require.NoError(t, got.err)
+	require.Equal(t, expectedOutputs, got.reg.Outputs, "observer should have received the registered outputs")
+	require.Equal(t, resource.ID("id1"), got.reg.ID, "observer should have received the registered ID")
+}
+
+func TestRegistrationObserverNotResolvedForUnsuccessfulRegisterResource(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name        string
+		resultState ResultState
+	}{
+		{name: "failed", resultState: ResultStateFailed},
+		{name: "skipped", resultState: ResultStateSkipped},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runInfo := &EvalRunInfo{
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj: &workspace.Project{
+					Name:    "proj",
+					Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+				},
+				Target: &Target{Name: tokens.MustParseStackName("stack")},
+			}
+			expectedURN := resource.NewURN(
+				runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "res1")
+
+			program := func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pkgA:index:res", "res1", true, deploytest.ResourceOptions{
+					SupportsResultReporting: true,
+				})
+				return err
+			}
+
+			ctx, err := newTestPluginContext(t, program)
+			require.NoError(t, err)
+
+			observer := NewRegistrationObserver()
+			iter, err := NewEvalSource(
+				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
+				NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+			).Iterate(t.Context(), &testProviderSource{})
+			require.NoError(t, err)
+
+			for {
+				ev, err := iter.Next()
+				require.NoError(t, err)
+				if ev == nil {
+					break
+				}
+
+				reg, ok := ev.(RegisterResourceEvent)
+				require.True(t, ok, "expected a RegisterResourceEvent, got %T", ev)
+				goal := reg.Goal()
+				urn := resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
+				result := ResultStateSuccess
+				if urn == expectedURN {
+					result = tt.resultState
+				}
+				reg.Done(&RegisterResult{
+					State: resource.NewState{ //nolint:requiredfield
+						Type:               goal.Type,
+						URN:                urn,
+						Custom:             goal.Custom,
+						ID:                 "id1",
+						Inputs:             goal.Properties,
+						Outputs:            resource.PropertyMap{"k": resource.NewProperty("v")},
+						ReplacementTrigger: resource.NewNullProperty(),
+					}.Make(),
+					Result: result,
+				})
+			}
+
+			if registration, _, ok := observer.Get(expectedURN).TryResult(); ok {
+				t.Fatalf("observer should not resolve an unsuccessful registration: %+v", registration)
+			}
+		})
+	}
+}
+
+// TestRegistrationObserverNotResolvedForLocalComponentOnRegister verifies that the observer is NOT resolved at
+// RegisterResource time for a local (non-remote) component, since its outputs aren't final yet — a
+// later RegisterResourceOutputs call is what publishes them.
+func TestRegistrationObserverNotResolvedForLocalComponentOnRegister(t *testing.T) {
+	t.Parallel()
+
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
+	}
+
+	expectedURN := resource.NewURN(
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp")
+
+	steps := []RegisterResourceEvent{
+		// A local component resource — Custom=false, Remote=false.
+		&testRegEvent{
+			goal: resource.NewGoal{ //nolint:requiredfield
+				Type:               "pkgA:index:Comp",
+				Name:               "comp",
+				Custom:             false,
+				Properties:         resource.PropertyMap{},
+				InitErrors:         []string{},
+				ReplacementTrigger: resource.NewNullProperty(),
+			}.Make(),
+		},
+	}
+
+	ctx, err := newTestPluginContext(t, fixedProgram(steps))
+	require.NoError(t, err)
+
+	observer := NewRegistrationObserver()
+
+	iter, err := NewEvalSource(
+		ctx,
+		runInfo,
+		nil,
+		nil,
+		EvalSourceOptions{},
+		nil,
+		observer,
+		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+	).Iterate(t.Context(), &testProviderSource{})
+	require.NoError(t, err)
+
+	for {
+		ev, err := iter.Next()
+		require.NoError(t, err)
+		if ev == nil {
+			break
+		}
+		reg, ok := ev.(RegisterResourceEvent)
+		require.True(t, ok, "expected a RegisterResourceEvent, got %T", ev)
+		goal := reg.Goal()
+		urn := resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
+		reg.Done(&RegisterResult{
+			State: resource.NewState{ //nolint:requiredfield
+				Type:               goal.Type,
+				URN:                urn,
+				Custom:             goal.Custom,
+				Inputs:             goal.Properties,
+				Outputs:            resource.PropertyMap{"k": resource.NewProperty("v")},
+				ReplacementTrigger: resource.NewNullProperty(),
+			}.Make(),
+		})
+	}
+
+	// After RegisterResource alone, a local component's observer entry should still be pending. We
+	// check this by spawning a getter, giving it a brief window to settle, and asserting it has
+	// not completed.
+	type result struct {
+		reg URNRegistration
+		err error
+	}
+	getterDone := make(chan result, 1)
+	getterCtx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	go func() {
+		reg, err := observer.Get(expectedURN).Result(getterCtx)
+		getterDone <- result{reg, err}
+	}()
+
+	select {
+	case got := <-getterDone:
+		t.Fatalf("observer should not have resolved local component on RegisterResource alone; got %+v err=%v",
+			got.reg, got.err)
+	case <-time.After(50 * time.Millisecond):
+		// Expected: still pending.
+	}
+}
+
+// driveIter pumps the EvalSourceIterator until it returns nil. Each RegisterResourceEvent is completed
+// with a Same-shaped state built from the goal; each RegisterResourceOutputsEvent is acknowledged. Used
+// by the observer tests below to exercise the full register + outputs flow without each test reinventing
+// the loop.
+func driveIter(t *testing.T, iter SourceIterator, runInfo *EvalRunInfo) {
+	t.Helper()
+	for {
+		ev, err := iter.Next()
+		require.NoError(t, err)
+		if ev == nil {
+			return
+		}
+		switch e := ev.(type) {
+		case RegisterResourceEvent:
+			goal := e.Goal()
+			urn := resource.NewURN(
+				runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
+			id := resource.ID("")
+			if goal.Custom {
+				id = "id"
+			}
+			e.Done(&RegisterResult{
+				State: resource.NewState{ //nolint:requiredfield
+					Type:               goal.Type,
+					URN:                urn,
+					Custom:             goal.Custom,
+					ID:                 id,
+					Inputs:             goal.Properties,
+					Outputs:            resource.PropertyMap{},
+					ReplacementTrigger: resource.NewNullProperty(),
+				}.Make(),
+			})
+		case RegisterResourceOutputsEvent:
+			e.Done()
+		default:
+			t.Fatalf("unexpected event type %T", ev)
+		}
+	}
+}
+
+// TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs verifies that a local component
+// resource is published when the program calls RegisterResourceOutputs — not at RegisterResource time.
+// Pairs with TestRegistrationObserverNotResolvedForLocalComponentOnRegister, which covers the negative
+// half of the same contract.
+func TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs(t *testing.T) {
+	t.Parallel()
+
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
+	}
+	expectedURN := resource.NewURN(
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp")
+	expectedOutputs := resource.PropertyMap{"out": resource.NewProperty("v")}
+
+	program := func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pkgA:index:Comp", "comp", false, deploytest.ResourceOptions{})
+		if err != nil {
+			return err
+		}
+		return monitor.RegisterResourceOutputs(resp.URN, expectedOutputs)
+	}
+
+	ctx, err := newTestPluginContext(t, program)
+	require.NoError(t, err)
+
+	observer := NewRegistrationObserver()
+
+	iter, err := NewEvalSource(
+		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
+		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+	).Iterate(t.Context(), &testProviderSource{})
+	require.NoError(t, err)
+
+	driveIter(t, iter, runInfo)
+
+	// After both RegisterResource and RegisterResourceOutputs have run, the observer should resolve.
+	got, err := observer.Get(expectedURN).Result(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, expectedOutputs, got.Outputs, "observer should publish ROC outputs")
+	require.Equal(t, resource.ID(""), got.ID, "component ID should be empty")
+}
+
+// TestRegistrationObserverRemoteComponentNotResolvedOnRegister verifies that a remote component is
+// treated the same as a local component for publish timing: nothing on the observer at RegisterResource
+// time, even though the Construct response carries the URN. This pins the design choice that remote
+// components publish via RegisterResourceOutputs rather than via the Construct return value.
+func TestRegistrationObserverRemoteComponentNotResolvedOnRegister(t *testing.T) {
+	t.Parallel()
+
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
+	}
+	expectedURN := resource.NewURN(
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp")
+
+	program := func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:index:Comp", "comp", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		return err
+	}
+
+	ctx, err := newTestPluginContext(t, program)
+	require.NoError(t, err)
+
+	observer := NewRegistrationObserver()
+
+	provider := &deploytest.Provider{
+		ConstructF: func(
+			_ context.Context, req plugin.ConstructRequest, _ *deploytest.ResourceMonitor,
+		) (plugin.ConstructResponse, error) {
+			return plugin.ConstructResponse{
+				URN: resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", req.Type, req.Name),
+				Outputs: resource.PropertyMap{
+					"constructed": resource.NewProperty("v"),
+				},
+			}, nil
+		},
+	}
+
+	iter, err := NewEvalSource(
+		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
+		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+	).Iterate(t.Context(), &testProviderSource{defaultProvider: provider})
+	require.NoError(t, err)
+
+	driveIter(t, iter, runInfo)
+
+	// No RegisterResourceOutputs was called, so the observer entry should still be pending.
+	getterCtx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := observer.Get(expectedURN).Result(getterCtx)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		t.Fatalf("observer should not have resolved a remote component lacking RegisterResourceOutputs; err=%v", err)
+	case <-time.After(50 * time.Millisecond):
+		// Expected: still pending.
+	}
+}
+
+// TestRegistrationObserverCustomResourceAliasesArePublished verifies that when a custom resource is
+// registered with aliases, the observer Resolve fires for every alias URN as well as the canonical
+// one — consumers blocked on a pre-rename URN should still find the resource via its alias.
+func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
+	t.Parallel()
+
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
+	}
+	canonicalURN := resource.NewURN(
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "new-name")
+	aliasURN := resource.NewURN(
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "old-name")
+	expectedOutputs := resource.PropertyMap{"k": resource.NewProperty("v")}
+
+	program := func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:index:res", "new-name", true, deploytest.ResourceOptions{
+			Aliases: []*pulumirpc.Alias{
+				{Alias: &pulumirpc.Alias_Urn{Urn: string(aliasURN)}},
+			},
+		})
+		return err
+	}
+
+	ctx, err := newTestPluginContext(t, program)
+	require.NoError(t, err)
+
+	observer := NewRegistrationObserver()
+
+	iter, err := NewEvalSource(
+		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
+		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+	).Iterate(t.Context(), &testProviderSource{})
+	require.NoError(t, err)
+
+	// Drive the iter. A custom resource implicitly requests a default provider, so two
+	// RegisterResourceEvents arrive (the provider, then the resource). Each gets a URN computed from
+	// its own goal — only the resource (not the provider event) receives expectedOutputs / "id1".
+	for {
+		ev, err := iter.Next()
+		require.NoError(t, err)
+		if ev == nil {
+			break
+		}
+		reg, ok := ev.(RegisterResourceEvent)
+		require.True(t, ok, "expected a RegisterResourceEvent, got %T", ev)
+		goal := reg.Goal()
+		urn := resource.NewURN(
+			runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
+		outputs := resource.PropertyMap{}
+		id := resource.ID("prov-id")
+		if !sdkproviders.IsProviderType(goal.Type) {
+			outputs = expectedOutputs
+			id = "id1"
+		}
+		reg.Done(&RegisterResult{
+			State: resource.NewState{ //nolint:requiredfield
+				Type:               goal.Type,
+				URN:                urn,
+				Custom:             goal.Custom,
+				ID:                 id,
+				Inputs:             goal.Properties,
+				Outputs:            outputs,
+				ReplacementTrigger: resource.NewNullProperty(),
+			}.Make(),
+		})
+	}
+
+	for _, urn := range []resource.URN{canonicalURN, aliasURN} {
+		got, err := observer.Get(urn).Result(t.Context())
+		require.NoError(t, err, "Get %s", urn)
+		require.Equal(t, expectedOutputs, got.Outputs, "outputs for %s", urn)
+		require.Equal(t, resource.ID("id1"), got.ID, "id for %s", urn)
+	}
+}
+
+// TestRegistrationObserverComponentAliasesArePublishedAtROC verifies that aliases for a component are
+// stashed at RegisterResource time and republished alongside the canonical URN when
+// RegisterResourceOutputs fires. The publish must NOT happen at register time (since the outputs
+// aren't final yet) and MUST happen at outputs time (mirroring the canonical publish).
+func TestRegistrationObserverComponentAliasesArePublishedAtROC(t *testing.T) {
+	t.Parallel()
+
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj: &workspace.Project{
+			Name:    "proj",
+			Runtime: workspace.NewProjectRuntimeInfo("mock", nil),
+		},
+		Target: &Target{Name: tokens.MustParseStackName("stack")},
+	}
+	canonicalURN := resource.NewURN(
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "new-name")
+	aliasURN := resource.NewURN(
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "old-name")
+	expectedOutputs := resource.PropertyMap{"k": resource.NewProperty("v")}
+
+	program := func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pkgA:index:Comp", "new-name", false, deploytest.ResourceOptions{
+			Aliases: []*pulumirpc.Alias{
+				{Alias: &pulumirpc.Alias_Urn{Urn: string(aliasURN)}},
+			},
+		})
+		if err != nil {
+			return err
+		}
+		return monitor.RegisterResourceOutputs(resp.URN, expectedOutputs)
+	}
+
+	ctx, err := newTestPluginContext(t, program)
+	require.NoError(t, err)
+
+	observer := NewRegistrationObserver()
+
+	iter, err := NewEvalSource(
+		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
+		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+	).Iterate(t.Context(), &testProviderSource{})
+	require.NoError(t, err)
+
+	driveIter(t, iter, runInfo)
+
+	for _, urn := range []resource.URN{canonicalURN, aliasURN} {
+		got, err := observer.Get(urn).Result(t.Context())
+		require.NoError(t, err, "Get %s", urn)
+		require.Equal(t, expectedOutputs, got.Outputs, "outputs for %s should be the ROC outputs", urn)
+		require.Equal(t, resource.ID(""), got.ID, "component %s ID should be empty", urn)
+	}
+}
+
 func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	t.Parallel()
 
@@ -914,7 +1482,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	require.NoError(t, err)
 
 	iter, err := NewEvalSource(
-		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil,
+		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil)).Iterate(t.Context(), providerSource)
 	require.NoError(t, err)
 
@@ -1030,7 +1598,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	providerSource := &testProviderSource{providers: make(map[sdkproviders.Reference]plugin.Provider)}
 
 	iter, err := NewEvalSource(
-		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil,
+		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil)).Iterate(t.Context(), providerSource)
 	require.NoError(t, err)
 
@@ -1285,7 +1853,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 			require.NoError(t, err)
 
 			iter, err := NewEvalSource(
-				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil,
+				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 				NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil)).Iterate(t.Context(), providerSource)
 			require.NoError(t, err)
 
@@ -1563,7 +2131,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			pluginCtx, err := newTestPluginContext(t, program)
 			require.NoError(t, err, "build plugin context")
 
-			evalSource := NewEvalSource(pluginCtx, runInfo, nil, nil, EvalSourceOptions{}, nil,
+			evalSource := NewEvalSource(pluginCtx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 				NewProgramSource(pluginCtx, runInfo, EvalSourceOptions{}, nil))
 			defer func() {
 				require.NoError(t, evalSource.Close(), "close eval source")

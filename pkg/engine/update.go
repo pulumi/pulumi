@@ -932,7 +932,7 @@ func newUpdateSource(ctx context.Context,
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	return deploy.NewEvalSource(plugctx, runinfo,
-		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, program), nil
+		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, nil, program), nil
 }
 
 func update(
