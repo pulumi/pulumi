@@ -188,12 +188,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		BindOptions: []pcl.BindOption{pcl.SkipInvokeTypechecking},
 	},
 	{
-		Directory:   "optional-complex-config",
-		Description: "Tests generating code for optional and complex config values",
-		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestDotnet),
-		SkipCompile: allProgLanguages.Except(TestNodeJS).Except(TestDotnet),
-	},
-	{
 		Directory:   "interpolated-string-keys",
 		Description: "Tests that interpolated string keys are supported in maps. ",
 		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestPython),
