@@ -1,0 +1,20 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>link<{%reset%}>
+
+<{%reset%}>Configuration:<{%reset%}>
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack myproject-dev running 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> aws:s3:Bucket completed-bucket <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> aws:s3:Bucket completed-bucket <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> my:component:WebService interrupted-component <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> aws:ec2:Instance interrupted-instance <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> aws:rds:Instance interrupted-db <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~instanceClass<{%reset%}><{%reset%}>]
+ <{%fg 2%}>+ <{%reset%}> aws:ec2:Instance interrupted-instance <{%fg 3%}>creating (interrupted)<{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> aws:rds:Instance interrupted-db <{%fg 3%}>updating (interrupted)<{%reset%}> [diff: <{%fg 3%}>~instanceClass<{%reset%}><{%reset%}>]
+ <{%fg 2%}>+ <{%reset%}> my:component:WebService interrupted-component <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack myproject-dev <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 7s
+

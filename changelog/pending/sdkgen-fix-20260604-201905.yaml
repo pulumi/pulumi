@@ -1,6 +1,0 @@
-component: sdkgen
-kind: fix
-body: Validate schema names to not contain whitespace or control characters
-time: 2026-06-04T20:19:05.187697+01:00
-custom:
-    PR: "23460"

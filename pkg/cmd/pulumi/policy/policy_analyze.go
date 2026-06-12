@@ -29,6 +29,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -87,7 +88,8 @@ func newPolicyAnalyzeCmd(
 						return nil, nil, fmt.Errorf("getting working directory: %w", err)
 					}
 					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+						nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost,
+						convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 					if err != nil {
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)
 					}

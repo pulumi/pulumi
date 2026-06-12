@@ -173,8 +173,13 @@ lint_fix:: lint_golang_fix lint_pulumi_json_fix
 # bin/custom-gcl is a golangci-lint binary with the requiredfield and noosexit
 # linters baked in as module plugins. Built from .custom-gcl.yml and the
 # wrappers under .golangci/plugins/.
+#
+# It also depends on .make/go-version: golangci-lint's analysis loader rejects
+# source files that require a newer Go version than the linter binary itself,
+# so the binary must be rebuilt when the toolchain changes.
 CUSTOM_GCL := bin/custom-gcl
 CUSTOM_GCL_DEPS := .custom-gcl.yml \
+		   .make/go-version \
 		   .golangci/plugins/requiredfield/go.mod \
 		   .golangci/plugins/requiredfield/go.sum \
 		   .golangci/plugins/requiredfield/plugin.go \
@@ -184,6 +189,17 @@ CUSTOM_GCL_DEPS := .custom-gcl.yml \
 
 $(CUSTOM_GCL): $(CUSTOM_GCL_DEPS) .make/ensure/golangci-lint
 	golangci-lint custom
+
+# .make/go-version records `go version` output; the recipe only rewrites the
+# file when the output changes, so dependents rebuild on toolchain upgrades
+# without being touched on every make invocation.
+.PHONY: .check-go-version
+.make/go-version: .check-go-version
+	@mkdir -p $(dir $@)
+	@version=$$(go version); \
+	if [ "$$version" != "$$(cat $@ 2>/dev/null)" ]; then \
+		echo "$$version" > $@; \
+	fi
 
 define lint_golang_pkg
 	@echo "[golangci-lint] Linting $(1)..."
@@ -297,18 +313,13 @@ schema-%: .make/ensure/curl .make/ensure/jq
 #
 # pkg/codegen/testing/test/helpers.go depends on some of this list, update that file on changes.
 #
-# pkg/codegen/schema/schema_test.go depends on kubernetes@3.7.0, update that file on changes.
+# pkg/codegen/schema/schema_test.go depends on random@4.11.2, update that file on changes.
 #
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
 # separate commit from other changes, as online code review tools may balk at rendering these diffs.
 get_schemas: \
-			schema-aws!4.26.0           \
 			schema-aws!5.4.0            \
-			schema-aws!5.16.2           \
-			schema-kubernetes!3.7.0     \
 			schema-random!4.11.2        \
-			schema-docker!4.0.0-alpha.0 \
-			schema-awsx!1.0.0-beta.5    \
 			schema-tls!4.10.0
 
 .PHONY: changelog

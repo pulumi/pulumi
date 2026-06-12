@@ -26,6 +26,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 )
 
 //nolint:paralleltest // mutates environment
@@ -898,28 +900,7 @@ func setAgentEnv(t *testing.T) {
 
 func clearAgentEnv(t *testing.T) {
 	t.Helper()
-	for _, name := range []string{
-		"AI_AGENT",
-		"CURSOR_TRACE_ID",
-		"CURSOR_AGENT",
-		"GEMINI_CLI",
-		"CODEX_SANDBOX",
-		"CODEX_CI",
-		"CODEX_THREAD_ID",
-		"ANTIGRAVITY_AGENT",
-		"AUGMENT_AGENT",
-		"OPENCODE",
-		"OPENCODE_CALLER",
-		"OPENCODE_CLIENT",
-		"CLAUDE_CODE_IS_COWORK",
-		"CLAUDECODE",
-		"CLAUDE_CODE",
-		"REPL_ID",
-		"COPILOT_MODEL",
-		"COPILOT_ALLOW_ALL",
-		"COPILOT_GITHUB_TOKEN",
-		"GOOSE_PROVIDER",
-	} {
+	for _, name := range agentdetect.DetectionEnvVars() {
 		t.Setenv(name, "")
 	}
 }

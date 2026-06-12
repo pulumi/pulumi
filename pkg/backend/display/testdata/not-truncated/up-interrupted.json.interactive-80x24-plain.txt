@@ -1,0 +1,42 @@
+View in Browser (Ctrl+O): link
+
+     Type                        Name                   Status                 
+     pulumi:pulumi:Stack         myproject-dev                                 
+ +   ├─ my:component:WebService  interrupted-component  created                
+ +   │  └─ aws:ec2:Instance      interrupted-instance   creating (interrupted) 
+ ~   ├─ aws:rds:Instance         interrupted-db         updating (interrupted) 
+ +   └─ aws:s3:Bucket            completed-bucket       created                
+
+Changes:
+  aws:ec2:Instance (interrupted-instance):
+    + aws:ec2/instance:Instance: (create)
+        [urn=urn:pulumi:dev::myproject::aws:ec2/instance:Instance::interrupted-instance]
+        ami         : "ami-12345678"
+        instanceType: "t3.micro"
+
+  aws:rds:Instance (interrupted-db):
+    ~ aws:rds/instance:Instance: (update)
+        [id=interrupted-db-7654321]
+        [urn=urn:pulumi:dev::myproject::aws:rds/instance:Instance::interrupted-db]
+      ~ instanceClass: "db.t3.micro" => "db.t3.small"
+
+  aws:s3:Bucket (completed-bucket):
+    + aws:s3/bucket:Bucket: (create)
+        [urn=urn:pulumi:dev::myproject::aws:s3/bucket:Bucket::completed-bucket]
+        acl: "private"
+        arn: "arn:aws:s3:::completed-bucket-1234567"
+
+  my:component:WebService (interrupted-component):
+    + my:component:WebService: (create)
+        [urn=urn:pulumi:dev::myproject::my:component:WebService::interrupted-component]
+
+Diagnostics:
+  pulumi:pulumi:Stack (myproject-dev):
+    Configuration:
+
+Resources:
+    + 1 created
+    1 unchanged
+
+Duration: 7s
+

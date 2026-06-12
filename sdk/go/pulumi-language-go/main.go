@@ -126,7 +126,7 @@ func compileProgram(
 	if withDebugFlags {
 		args = append(args, "-gcflags", "all=-N -l")
 	} else {
-		args = append(args, "-trimpath")
+		args = append(args, "-trimpath", "-ldflags", "-w -s")
 	}
 	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory

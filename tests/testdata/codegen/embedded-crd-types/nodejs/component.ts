@@ -6,7 +6,7 @@ import * as inputs from "./types/input";
 import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
-import * as pulumiKubernetes from "@pulumi/kubernetes";
+import * as pulumiTls from "@pulumi/tls";
 
 export class Component extends pulumi.ComponentResource {
     /** @internal */
@@ -24,7 +24,7 @@ export class Component extends pulumi.ComponentResource {
     }
 
     declare public readonly eniConfig: pulumi.Output<{[key: string]: outputs.crd.k8s.amazonaws.com.v1alpha1.ENIConfigSpec} | undefined>;
-    declare public readonly pod: pulumi.Output<pulumiKubernetes.types.output.core.v1.Pod | undefined>;
+    declare public readonly pod: pulumi.Output<pulumiTls.types.output.CertRequestSubject | undefined>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.
@@ -53,5 +53,5 @@ export class Component extends pulumi.ComponentResource {
  */
 export interface ComponentArgs {
     eniConfig?: pulumi.Input<{[key: string]: pulumi.Input<inputs.crd.k8s.amazonaws.com.v1alpha1.ENIConfigSpecArgs>} | undefined>;
-    pod?: pulumi.Input<pulumiKubernetes.types.input.core.v1.Pod | undefined>;
+    pod?: pulumi.Input<pulumiTls.types.input.CertRequestSubject | undefined>;
 }

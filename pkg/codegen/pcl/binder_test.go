@@ -620,9 +620,9 @@ func TestTransitivePackageReferencesAreLoadedFromTopLevelResourceDefinition(t *t
 	t.Parallel()
 	// when binding a resource from a package that has a transitive dependency
 	// then that transitive dependency is part of the program package references.
-	// for example when binding a resource from AWSX package and that resources uses types from the AWS package
-	// then both AWSX and AWS packages are part of the program package references
-	source := `resource "example" "awsx:ecs:EC2Service" { }`
+	// for example when binding a resource from the remoteref package and that resource uses types
+	// from the goalias package then both packages are part of the program package references
+	source := `resource "example" "remoteref:index:Root" { }`
 
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
 	require.NoError(t, err)
@@ -640,8 +640,8 @@ func TestTransitivePackageReferencesAreLoadedFromTopLevelResourceDefinition(t *t
 		return false
 	}
 
-	assert.True(t, packageRefExists("awsx"), "The program has a reference to the awsx package")
-	assert.True(t, packageRefExists("aws"), "The program has a reference to the aws package")
+	assert.True(t, packageRefExists("remoteref"), "The program has a reference to the remoteref package")
+	assert.True(t, packageRefExists("goalias"), "The program has a reference to the goalias package")
 }
 
 func TestAllowMissingVariablesShouldNotErrorOnUnboundVariableReferences(t *testing.T) {

@@ -1,6 +1,0 @@
-component: cli/cloud
-kind: improvement
-body: Improve the interactive `pulumi login` prompt wording and coloring
-time: 2026-06-02T13:01:11.249892-07:00
-custom:
-    PR: "23417"
