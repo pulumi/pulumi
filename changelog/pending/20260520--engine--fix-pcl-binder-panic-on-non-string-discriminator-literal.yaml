@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix PCL binder panicking with "not a string" when an object expression used as a union member has a non-string literal at the discriminator key
