@@ -1452,8 +1452,8 @@ func runLanguageTests(
 				} else {
 					desc = workspace.PackageDescriptor{
 						PluginDescriptor: workspace.PluginDescriptor{
-							Name:    pkgDef.Parameterization.BaseProvider.Name,
-							Version: &pkgDef.Parameterization.BaseProvider.Version,
+							Name:    pkgDef.Parameterization.BasePlugin.Name,
+							Version: &pkgDef.Parameterization.BasePlugin.Version,
 						},
 						Parameterization: &workspace.Parameterization{
 							Name:    pkgDef.Name,

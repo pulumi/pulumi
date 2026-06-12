@@ -2472,8 +2472,8 @@ func genNPMPackageMetadata(
 		pulumiPlugin = plugin.PulumiPluginJSON{
 			Resource: true,
 			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Parameterization.BaseProvider.Name,
-			Version:  pkg.Parameterization.BaseProvider.Version.String(),
+			Name:     pkg.Parameterization.BasePlugin.Name,
+			Version:  pkg.Parameterization.BasePlugin.Version.String(),
 			Parameterization: &plugin.PulumiParameterizationJSON{
 				Name:    pkg.Name,
 				Version: pkg.Version.String(),
@@ -2960,8 +2960,8 @@ export async function getPackage(): Promise<string | undefined> {
 	});
 }
 `,
-			def.Parameterization.BaseProvider.Name,
-			def.Parameterization.BaseProvider.Version.String(),
+			def.Parameterization.BasePlugin.Name,
+			def.Parameterization.BasePlugin.Version.String(),
 			def.PluginDownloadURL,
 			def.Name,
 			def.Version,

@@ -1999,7 +1999,7 @@ func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Di
 	}
 
 	return &Parameterization{
-		BaseProvider: BaseProvider{
+		BasePlugin: BaseProvider{
 			Name:    spec.BaseProvider.Name,
 			Version: ver,
 		},
@@ -2024,29 +2024,25 @@ func bindExtensionParameterization(spec *ExtensionParameterizationSpec) (*Extens
 			"#/extensionParameterization/baseProvider/version",
 			"invalid version %q: %v", spec.BaseProvider.Version, err)}
 	}
-	ext := &ExtensionParameterization{
-		BasePlugin: BaseProvider{Name: spec.BaseProvider.Name, Version: ver},
-		Parameter:  spec.Parameter,
-	}
-	if spec.Replacement != nil {
-		if spec.Replacement.Name == "" {
+	base := BaseProviderRef{Name: spec.BaseProvider.Name, Version: ver}
+	if p := spec.BaseProvider.Parameterization; p != nil {
+		if p.BasePlugin.Name == "" {
 			return nil, hcl.Diagnostics{errorf(
-				"#/extensionParameterization/replacement/name",
+				"#/extensionParameterization/baseProvider/parameterization/basePlugin/name",
 				"provider name must be specified")}
 		}
-		rver, err := semver.Parse(spec.Replacement.Version)
+		pver, err := semver.Parse(p.BasePlugin.Version)
 		if err != nil {
 			return nil, hcl.Diagnostics{errorf(
-				"#/extensionParameterization/replacement/version",
-				"invalid version %q: %v", spec.Replacement.Version, err)}
+				"#/extensionParameterization/baseProvider/parameterization/basePlugin/version",
+				"invalid version %q: %v", p.BasePlugin.Version, err)}
 		}
-		ext.Replacement = &ReplacementParameterization{
-			Name:      spec.Replacement.Name,
-			Version:   rver,
-			Parameter: spec.Replacement.Parameter,
+		base.Parameterization = &Parameterization{
+			BasePlugin: BaseProvider{Name: p.BasePlugin.Name, Version: pver},
+			Parameter:  p.Parameter,
 		}
 	}
-	return ext, nil
+	return &ExtensionParameterization{BaseProvider: base, Parameter: spec.Parameter}, nil
 }
 
 func bindConfig(spec ConfigSpec, types *types, options ValidationOptions) ([]*Property, hcl.Diagnostics, error) {

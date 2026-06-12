@@ -3154,7 +3154,7 @@ func TestBindSpecRejectsBothParameterizationFlavors(t *testing.T) {
 			Parameter:    []byte("p"),
 		},
 		ExtensionParameterization: &ExtensionParameterizationSpec{
-			BaseProvider: base,
+			BaseProvider: BaseProviderRefSpec{Name: base.Name, Version: base.Version},
 			Parameter:    []byte("p"),
 		},
 	}
@@ -3179,7 +3179,7 @@ func TestBindSpecRejectsExtensionWithProvider(t *testing.T) {
 		Name:     "ext",
 		Provider: &ResourceSpec{},
 		ExtensionParameterization: &ExtensionParameterizationSpec{
-			BaseProvider: BaseProviderSpec{Name: "base", Version: "1.0.0"},
+			BaseProvider: BaseProviderRefSpec{Name: "base", Version: "1.0.0"},
 			Parameter:    []byte("p"),
 		},
 	}
@@ -3197,21 +3197,22 @@ func TestBindSpecRejectsExtensionWithProvider(t *testing.T) {
 	assert.True(t, found, "expected provider-rejection diagnostic, got %v", diags)
 }
 
-func TestMarshalExtensionParameterizationReplacement(t *testing.T) {
+func TestMarshalExtensionParameterizationNestedParameterization(t *testing.T) {
 	t.Parallel()
 
 	p := Package{
-		Name:     "ext",
-		Version:  &semver.Version{Major: 1},
-		Provider: &Resource{IsProvider: true, Token: "pulumi:providers:ext"},
+		Name:    "ext",
+		Version: &semver.Version{Major: 1},
 		ExtensionParameterization: &ExtensionParameterization{
-			BasePlugin: BaseProvider{Name: "base", Version: semver.MustParse("1.0.0")},
-			Parameter:  []byte("ext"),
-			Replacement: &ReplacementParameterization{
-				Name:      "replaced",
-				Version:   semver.MustParse("2.0.0"),
-				Parameter: []byte("repl"),
+			BaseProvider: BaseProviderRef{
+				Name:    "base",
+				Version: semver.MustParse("1.0.0"),
+				Parameterization: &Parameterization{
+					BasePlugin: BaseProvider{Name: "baseplugin", Version: semver.MustParse("2.0.0")},
+					Parameter:  []byte("repl"),
+				},
 			},
+			Parameter: []byte("ext"),
 		},
 	}
 
@@ -3222,11 +3223,11 @@ func TestMarshalExtensionParameterizationReplacement(t *testing.T) {
 	assert.Equal(t, "1.0.0", spec.ExtensionParameterization.BaseProvider.Version)
 	assert.Equal(t, []byte("ext"), spec.ExtensionParameterization.Parameter)
 
-	r := spec.ExtensionParameterization.Replacement
-	require.NotNil(t, r, "the replacement must be carried into the spec")
-	assert.Equal(t, "replaced", r.Name)
-	assert.Equal(t, "2.0.0", r.Version)
-	assert.Equal(t, []byte("repl"), r.Parameter)
+	pp := spec.ExtensionParameterization.BaseProvider.Parameterization
+	require.NotNil(t, pp, "the nested parameterization must be carried into the spec")
+	assert.Equal(t, "baseplugin", pp.BasePlugin.Name)
+	assert.Equal(t, "2.0.0", pp.BasePlugin.Version)
+	assert.Equal(t, []byte("repl"), pp.Parameter)
 }
 
 func TestTokenToModuleIndexPrefix(t *testing.T) {

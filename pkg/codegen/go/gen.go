@@ -4840,8 +4840,8 @@ func GeneratePackage(tool string,
 			Version: pulumiPlugin.Version,
 			Value:   pkg.Parameterization.Parameter,
 		}
-		pulumiPlugin.Name = pkg.Parameterization.BaseProvider.Name
-		pulumiPlugin.Version = pkg.Parameterization.BaseProvider.Version.String()
+		pulumiPlugin.Name = pkg.Parameterization.BasePlugin.Name
+		pulumiPlugin.Version = pkg.Parameterization.BasePlugin.Version.String()
 	}
 
 	pulumiPluginJSON, err := pulumiPlugin.JSON()
@@ -5398,7 +5398,7 @@ func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
 		_, err = fmt.Fprintf(w, packageRefTemplate,
 			key,
 			value,
-			p.Parameterization.BaseProvider.Name, p.Parameterization.BaseProvider.Version.String(), p.PluginDownloadURL,
+			p.Parameterization.BasePlugin.Name, p.Parameterization.BasePlugin.Version.String(), p.PluginDownloadURL,
 			p.Name, p.Version.String(),
 		)
 		if err != nil {

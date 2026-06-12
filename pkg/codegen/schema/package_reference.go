@@ -292,7 +292,8 @@ func (p packageDefResources) Range() ResourcesIter {
 }
 
 func (p packageDefResources) Get(token string) (*Resource, bool, error) {
-	if token == p.Provider.Token {
+	// Extension parameterizations have no provider of their own, so Provider is nil.
+	if p.Provider != nil && token == p.Provider.Token {
 		return p.Provider, true, nil
 	}
 
@@ -703,7 +704,7 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	pkg.resourceTypeTable = p.types.resources
 	if p.spec.Parameterization != nil {
 		pkg.Parameterization = &Parameterization{
-			BaseProvider: BaseProvider{
+			BasePlugin: BaseProvider{
 				Name:    p.spec.Parameterization.BaseProvider.Name,
 				Version: semver.MustParse(p.spec.Parameterization.BaseProvider.Version),
 			},
@@ -711,21 +712,24 @@ func (p *PartialPackage) Definition() (*Package, error) {
 		}
 	}
 	if p.spec.ExtensionParameterization != nil {
-		ext := &ExtensionParameterization{
-			BasePlugin: BaseProvider{
-				Name:    p.spec.ExtensionParameterization.BaseProvider.Name,
-				Version: semver.MustParse(p.spec.ExtensionParameterization.BaseProvider.Version),
-			},
-			Parameter: p.spec.ExtensionParameterization.Parameter,
+		base := p.spec.ExtensionParameterization.BaseProvider
+		ref := BaseProviderRef{
+			Name:    base.Name,
+			Version: semver.MustParse(base.Version),
 		}
-		if r := p.spec.ExtensionParameterization.Replacement; r != nil {
-			ext.Replacement = &ReplacementParameterization{
-				Name:      r.Name,
-				Version:   semver.MustParse(r.Version),
-				Parameter: r.Parameter,
+		if pp := base.Parameterization; pp != nil {
+			ref.Parameterization = &Parameterization{
+				BasePlugin: BaseProvider{
+					Name:    pp.BasePlugin.Name,
+					Version: semver.MustParse(pp.BasePlugin.Version),
+				},
+				Parameter: pp.Parameter,
 			}
 		}
-		pkg.ExtensionParameterization = ext
+		pkg.ExtensionParameterization = &ExtensionParameterization{
+			BaseProvider: ref,
+			Parameter:    p.spec.ExtensionParameterization.Parameter,
+		}
 	}
 	if err := pkg.ImportLanguages(p.languages); err != nil {
 		return nil, err

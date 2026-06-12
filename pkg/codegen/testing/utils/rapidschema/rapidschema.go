@@ -175,7 +175,7 @@ func drawPackageSpec(t *rapid.T) schema.PackageSpec {
 }
 
 // drawParameterizationSpec produces a fully-formed ParameterizationSpec.
-// BaseProvider.Name follows the package-name format; Version is a strict
+// BasePlugin.Name follows the package-name format; Version is a strict
 // semver via Version(); Parameter is arbitrary bytes (often empty).
 func drawParameterizationSpec(t *rapid.T, label string) schema.ParameterizationSpec {
 	return schema.ParameterizationSpec{
@@ -188,15 +188,26 @@ func drawParameterizationSpec(t *rapid.T, label string) schema.ParameterizationS
 }
 
 // drawExtensionParameterizationSpec produces a fully-formed
-// ExtensionParameterizationSpec with no replacement. An extension rides on the
-// base provider, so the package must not also declare a provider of its own.
+// ExtensionParameterizationSpec. The base provider is sometimes itself a
+// parameterization of a plugin. An extension rides on the base provider, so the
+// package must not also declare a provider of its own.
 func drawExtensionParameterizationSpec(t *rapid.T, label string) schema.ExtensionParameterizationSpec {
+	base := schema.BaseProviderRefSpec{
+		Name:    drawPackageName(t, label+":baseProvider:name"),
+		Version: Version().Draw(t, label+":baseProvider:version").String(),
+	}
+	if rapid.Bool().Draw(t, label+":baseProvider:hasParameterization") {
+		base.Parameterization = &schema.BaseProviderParameterizationSpec{
+			BasePlugin: schema.BaseProviderSpec{
+				Name:    drawPackageName(t, label+":baseProvider:basePlugin:name"),
+				Version: Version().Draw(t, label+":baseProvider:basePlugin:version").String(),
+			},
+			Parameter: rapid.SliceOfN(rapid.Byte(), 0, 32).Draw(t, label+":baseProvider:basePlugin:parameter"),
+		}
+	}
 	return schema.ExtensionParameterizationSpec{
-		BaseProvider: schema.BaseProviderSpec{
-			Name:    drawPackageName(t, label+":baseProvider:name"),
-			Version: Version().Draw(t, label+":baseProvider:version").String(),
-		},
-		Parameter: rapid.SliceOfN(rapid.Byte(), 0, 32).Draw(t, label+":parameter"),
+		BaseProvider: base,
+		Parameter:    rapid.SliceOfN(rapid.Byte(), 0, 32).Draw(t, label+":parameter"),
 	}
 }
 

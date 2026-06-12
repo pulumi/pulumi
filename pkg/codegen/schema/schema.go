@@ -598,35 +598,32 @@ type BaseProvider struct {
 }
 
 type Parameterization struct {
-	// BaseProvider is the plugin the parameterization is applied to.
-	BaseProvider BaseProvider
+	// BasePlugin is the plugin the parameterization is applied to.
+	BasePlugin BaseProvider
 	// Parameter is the parameter for the provider.
-	Parameter []byte
-}
-
-// ReplacementParameterization is a replacement carried inside an
-// ExtensionParameterization. The base provider plugin it applies to comes from the
-// enclosing ExtensionParameterization, so only the resulting provider's name,
-// version, and parameter are needed here.
-type ReplacementParameterization struct {
-	// Name is the name of the provider produced by the replacement.
-	Name string
-	// Version is the version of the provider produced by the replacement.
-	Version semver.Version
-	// Parameter is the parameter applied to the base provider.
 	Parameter []byte
 }
 
 // ExtensionParameterization describes an extension applied to a base provider.
 type ExtensionParameterization struct {
-	// BasePlugin is the provider plugin the extension is applied to.
-	BasePlugin BaseProvider
-	// Replacement is an optional replacement applied to the base plugin before
-	// the extension (extending a provider that was itself replaced). Setting it is
-	// not yet supported.
-	Replacement *ReplacementParameterization
-	// Parameter is the extension parameter passed to the base plugin.
+	// BaseProvider is the provider the extension is layered onto. Its Name is the
+	// namespace the extension's resource tokens live in.
+	BaseProvider BaseProviderRef
+	// Parameter is the extension parameter applied to the base provider.
 	Parameter []byte
+}
+
+// BaseProviderRef identifies the provider an extension is layered onto. When that
+// provider is itself produced by parameterizing a plugin (e.g. a dynamically
+// bridged provider), Parameterization describes how; it is nil for a plain plugin.
+type BaseProviderRef struct {
+	// Name is the provider's name (the resource-token namespace).
+	Name string
+	// Version is the provider's version.
+	Version semver.Version
+	// Parameterization, if set, is the replacement that produced this provider from
+	// a base plugin. Nil when the provider is itself a plain plugin.
+	Parameterization *Parameterization
 }
 
 // Package describes a Pulumi package.
@@ -1133,11 +1130,11 @@ func (pkg *Package) Reference() PackageReference {
 func (pkg *Package) Descriptor(ctx context.Context) (workspace.PackageDescriptor, error) {
 	version := pkg.Version
 	if pkg.Parameterization != nil {
-		version = &pkg.Parameterization.BaseProvider.Version
+		version = &pkg.Parameterization.BasePlugin.Version
 	}
 	name := pkg.Name
 	if pkg.Parameterization != nil {
-		name = pkg.Parameterization.BaseProvider.Name
+		name = pkg.Parameterization.BasePlugin.Name
 	}
 	pluginSpec, err := workspace.NewPluginDescriptor(ctx, name, apitype.ResourcePlugin, version,
 		pkg.PluginDownloadURL, nil)
@@ -1176,27 +1173,31 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	if pkg.Parameterization != nil {
 		parameterization = &ParameterizationSpec{
 			BaseProvider: BaseProviderSpec{
-				Name:    pkg.Parameterization.BaseProvider.Name,
-				Version: pkg.Parameterization.BaseProvider.Version.String(),
+				Name:    pkg.Parameterization.BasePlugin.Name,
+				Version: pkg.Parameterization.BasePlugin.Version.String(),
 			},
 			Parameter: pkg.Parameterization.Parameter,
 		}
 	}
 	var extensionParameterization *ExtensionParameterizationSpec
 	if pkg.ExtensionParameterization != nil {
-		extensionParameterization = &ExtensionParameterizationSpec{
-			BaseProvider: BaseProviderSpec{
-				Name:    pkg.ExtensionParameterization.BasePlugin.Name,
-				Version: pkg.ExtensionParameterization.BasePlugin.Version.String(),
-			},
-			Parameter: pkg.ExtensionParameterization.Parameter,
+		base := pkg.ExtensionParameterization.BaseProvider
+		baseSpec := BaseProviderRefSpec{
+			Name:    base.Name,
+			Version: base.Version.String(),
 		}
-		if r := pkg.ExtensionParameterization.Replacement; r != nil {
-			extensionParameterization.Replacement = &ReplacementParameterizationSpec{
-				Name:      r.Name,
-				Version:   r.Version.String(),
-				Parameter: r.Parameter,
+		if p := base.Parameterization; p != nil {
+			baseSpec.Parameterization = &BaseProviderParameterizationSpec{
+				BasePlugin: BaseProviderSpec{
+					Name:    p.BasePlugin.Name,
+					Version: p.BasePlugin.Version.String(),
+				},
+				Parameter: p.Parameter,
 			}
+		}
+		extensionParameterization = &ExtensionParameterizationSpec{
+			BaseProvider: baseSpec,
+			Parameter:    pkg.ExtensionParameterization.Parameter,
 		}
 	}
 
@@ -2332,25 +2333,37 @@ type ParameterizationSpec struct {
 	Parameter []byte `json:"parameter" yaml:"parameter"`
 }
 
-// ReplacementParameterizationSpec is the serializable description of a replacement
-// nested inside an extension parameterization. The base provider comes from the
-// enclosing ExtensionParameterizationSpec, so it is not repeated here.
-type ReplacementParameterizationSpec struct {
-	// The name of the provider produced by the replacement.
-	Name string `json:"name" yaml:"name"`
-	// The version of the provider produced by the replacement.
-	Version string `json:"version" yaml:"version"`
-	// The parameter to apply to the base provider.
+// ExtensionParameterizationSpec is the serializable description of an extension parameterization.
+type ExtensionParameterizationSpec struct {
+	// The base provider the extension is applied to. Its name is the namespace the
+	// extension's resource tokens live in.
+	BaseProvider BaseProviderRefSpec `json:"baseProvider" yaml:"baseProvider"`
+	// The extension parameter to apply to the base provider.
 	Parameter []byte `json:"parameter" yaml:"parameter"`
 }
 
-// ExtensionParameterizationSpec is the serializable description of an extension parameterization.
-type ExtensionParameterizationSpec struct {
-	// The base provider the extension is applied to.
-	BaseProvider BaseProviderSpec `json:"baseProvider" yaml:"baseProvider"`
-	// An optional replacement to apply to the base provider before the extension.
-	Replacement *ReplacementParameterizationSpec `json:"replacement,omitempty" yaml:"replacement,omitempty"`
-	// The extension parameter to apply to the base provider.
+// BaseProviderRefSpec is the serializable description of the provider an extension
+// is applied to. It mirrors a top-level package header (name, version, and an
+// optional parameterization), so a base provider that is itself a parameterized
+// plugin is described the same way a package would be.
+type BaseProviderRefSpec struct {
+	// The provider's name (the extension's resource-token namespace).
+	Name string `json:"name" yaml:"name"`
+	// The provider's version.
+	Version string `json:"version" yaml:"version"`
+	// An optional replacement that produced this provider from a base plugin
+	// (e.g. a dynamically-bridged provider). Omitted when the provider is a plain plugin.
+	Parameterization *BaseProviderParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+}
+
+// BaseProviderParameterizationSpec is the replacement that produces a base provider
+// from a base plugin. It has the same shape as ParameterizationSpec, but because it
+// is new it can name the plugin field "basePlugin" rather than the locked
+// "baseProvider" tag the top-level ParameterizationSpec must keep.
+type BaseProviderParameterizationSpec struct {
+	// The base plugin that is parameterized to produce the base provider.
+	BasePlugin BaseProviderSpec `json:"basePlugin" yaml:"basePlugin"`
+	// The parameter applied to the base plugin.
 	Parameter []byte `json:"parameter" yaml:"parameter"`
 }
 
