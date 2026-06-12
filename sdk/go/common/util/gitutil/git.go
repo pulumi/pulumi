@@ -267,30 +267,30 @@ type urlAuthParser struct {
 
 	// sshKeys memoizes keys we've loaded for given host URLs, to avoid needing to
 	// re-fetch public keys.
-	sshKeys map[string]any
+	sshKeys map[string]clientOption
 	// sshConfig allows us to inject config for testing.
 	sshConfig sshUserSettings
 }
 
-// gitClientOptions converts a resolved auth method into go-git transport client
-// options suitable for CloneOptions/FetchOptions/ListOptions.ClientOptions.
-//
-// The resolved auth is either an *http.BasicAuth (which implements
-// client.HTTPAuth) or an SSH auth such as *gitssh.PublicKeys /
-// *gitssh.PublicKeysCallback (which implement client.SSHAuth), or nil when no
-// auth applies. go-git takes functional client options rather than a common
-// auth interface, so we hold the concrete auth value (which keeps it
-// inspectable in tests) and convert it to client options here at each transport
-// call site.
-func gitClientOptions(auth any) []client.Option {
-	switch a := auth.(type) {
-	case client.HTTPAuth:
-		return []client.Option{client.WithHTTPAuth(a)}
-	case client.SSHAuth:
-		return []client.Option{client.WithSSHAuth(a)}
-	default:
+type clientOption interface {
+	into() client.Option
+}
+
+type httpAuth struct{ auth client.HTTPAuth }
+
+func (a httpAuth) into() client.Option { return client.WithHTTPAuth(a.auth) }
+
+type sshAuth struct{ auth client.SSHAuth }
+
+func (a sshAuth) into() client.Option { return client.WithSSHAuth(a.auth) }
+
+// gitClientOptions converts resolved auth into go-git transport client
+// options, returning nil when no auth applies.
+func gitClientOptions(auth clientOption) []client.Option {
+	if auth == nil {
 		return nil
 	}
+	return []client.Option{auth.into()}
 }
 
 // defaultURLAuthParser uses the host's SSH configuration.
@@ -300,7 +300,7 @@ var defaultURLAuthParser = &urlAuthParser{
 
 // Parse parses a given URL and returns relevant auth. For SSH URLs, keys are
 // read from the provided sshUserSettings.
-func (p *urlAuthParser) Parse(remoteURL string) (string, any, error) {
+func (p *urlAuthParser) Parse(remoteURL string) (string, clientOption, error) {
 	endpoint, err := transport.ParseURL(remoteURL)
 	if err != nil {
 		return "", nil, err
@@ -310,7 +310,7 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, any, error) {
 		host := endpoint.Host
 		user := endpoint.User.Username()
 
-		var auth any
+		var auth clientOption
 		cacheAuthMethod := false
 
 		p.mu.Lock()
@@ -321,7 +321,7 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, any, error) {
 				return
 			}
 			if p.sshKeys == nil {
-				p.sshKeys = make(map[string]any)
+				p.sshKeys = make(map[string]clientOption)
 			}
 			logging.V(10).Infof("caching auth for %s", host)
 			p.sshKeys[host] = auth
@@ -334,7 +334,7 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, any, error) {
 
 		publicKeys, err := getSSHPublicKeys(user, host, p.sshConfig)
 		if err == nil {
-			auth = publicKeys
+			auth = sshAuth{publicKeys}
 			cacheAuthMethod = true
 			return remoteURL, auth, nil
 		}
@@ -347,7 +347,7 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, any, error) {
 		if err != nil {
 			return "", nil, err
 		}
-		auth = agentAuth
+		auth = sshAuth{agentAuth}
 		cacheAuthMethod = true
 		return remoteURL, auth, nil
 	}
@@ -362,7 +362,7 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, any, error) {
 	// endpoint as we go in order to remove it from the string output.
 	if endpoint.User != nil {
 		if u, pw := endpoint.User.Username(), passwordOrEmpty(endpoint.User); u != "" || pw != "" {
-			auth := &http.BasicAuth{Username: u, Password: pw}
+			auth := httpAuth{&http.BasicAuth{Username: u, Password: pw}}
 			endpoint.User = nil
 			return endpoint.String(), auth, nil
 		}
@@ -384,7 +384,7 @@ func passwordOrEmpty(u *url.Userinfo) string {
 //
 // If the URL uses SSH, the user's SSH configuration is parsed and relevant
 // public keys are returned for authentication.
-func getAuthForURL(url string) (string, any, error) {
+func getAuthForURL(url string) (string, clientOption, error) {
 	endpoint, auth, err := defaultURLAuthParser.Parse(url)
 	if err != nil {
 		return "", nil, err
@@ -392,37 +392,37 @@ func getAuthForURL(url string) (string, any, error) {
 	// If we have no auth, try to get it from the environment.
 	if auth == nil {
 		if strings.Contains(endpoint, "github") && os.Getenv("GITHUB_TOKEN") != "" {
-			auth = &http.BasicAuth{
+			auth = httpAuth{&http.BasicAuth{
 				Username: "x-access-token",
 				Password: os.Getenv("GITHUB_TOKEN"),
-			}
+			}}
 		} else if strings.Contains(endpoint, "gitlab") && os.Getenv("GITLAB_TOKEN") != "" {
-			auth = &http.BasicAuth{
+			auth = httpAuth{&http.BasicAuth{
 				Username: "oauth2",
 				Password: os.Getenv("GITLAB_TOKEN"),
-			}
+			}}
 		} else if (strings.Contains(endpoint, "dev.azure.com") ||
 			strings.Contains(endpoint, "visualstudio.com")) &&
 			os.Getenv("AZURE_DEV_OPS_TOKEN") != "" {
-			auth = &http.BasicAuth{
+			auth = httpAuth{&http.BasicAuth{
 				Username: "x-access-token",
 				Password: os.Getenv("AZURE_DEV_OPS_TOKEN"),
-			}
+			}}
 		} else if strings.Contains(endpoint, "bitbucket") && os.Getenv("BITBUCKET_TOKEN") != "" {
-			auth = &http.BasicAuth{
+			auth = httpAuth{&http.BasicAuth{
 				Username: "x-token-auth",
 				Password: os.Getenv("BITBUCKET_TOKEN"),
-			}
+			}}
 		} else if os.Getenv("GENERIC_VCS_TOKEN") != "" {
-			auth = &http.BasicAuth{
+			auth = httpAuth{&http.BasicAuth{
 				Username: "x-access-token",
 				Password: os.Getenv("GENERIC_VCS_TOKEN"),
-			}
+			}}
 		} else if os.Getenv("GIT_USERNAME") != "" || os.Getenv("GIT_PASSWORD") != "" {
-			auth = &http.BasicAuth{
+			auth = httpAuth{&http.BasicAuth{
 				Username: os.Getenv("GIT_USERNAME"),
 				Password: os.Getenv("GIT_PASSWORD"),
-			}
+			}}
 		}
 	}
 

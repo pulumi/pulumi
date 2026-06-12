@@ -31,7 +31,6 @@ import (
 	git "github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/transport/http"
-	gitssh "github.com/go-git/go-git/v6/plumbing/transport/ssh"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
@@ -507,7 +506,7 @@ func TestParseAuthURL(t *testing.T) {
 
 		url, auth, err := getAuthForURL("http://user@github.com/pulumi/templates")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "user"}, auth)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "user"}}, auth)
 		assert.Equal(t, "http://github.com/pulumi/templates", url)
 	})
 
@@ -515,19 +514,21 @@ func TestParseAuthURL(t *testing.T) {
 		t.Parallel()
 		url, auth, err := getAuthForURL("http://user:password@github.com/pulumi/templates")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "user", Password: "password"}}, auth)
 		assert.Equal(t, "http://github.com/pulumi/templates", url)
 	})
 
 	t.Run("with GITHUB_TOKEN set in environment", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", "token-1")
+		expected := httpAuth{&http.BasicAuth{Username: "x-access-token", Password: "token-1"}}
+
 		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+		assert.Equal(t, expected, auth)
 
 		_, auth, err = getAuthForURL("http://github.enterprise.example.com/pulumi/templates")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+		assert.Equal(t, expected, auth)
 
 		_, auth, err = getAuthForURL("http://gitlab.com/pulumi/templates")
 		require.NoError(t, err)
@@ -537,13 +538,15 @@ func TestParseAuthURL(t *testing.T) {
 	t.Run("with GITLAB_TOKEN set in environment", func(t *testing.T) {
 		t.Setenv("GITLAB_TOKEN", "token-1")
 		t.Setenv("GITHUB_TOKEN", "")
+		expected := httpAuth{&http.BasicAuth{Username: "oauth2", Password: "token-1"}}
+
 		_, auth, err := getAuthForURL("http://gitlab.com/pulumi/templates")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "oauth2", Password: "token-1"}, auth)
+		assert.Equal(t, expected, auth)
 
 		_, auth, err = getAuthForURL("http://gitlab.enterprise.example.com/pulumi/templates")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "oauth2", Password: "token-1"}, auth)
+		assert.Equal(t, expected, auth)
 
 		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
 		require.NoError(t, err)
@@ -553,14 +556,16 @@ func TestParseAuthURL(t *testing.T) {
 	t.Run("with AZURE_DEV_OPS_TOKEN set in environment", func(t *testing.T) {
 		t.Setenv("AZURE_DEV_OPS_TOKEN", "token-1")
 		t.Setenv("GITHUB_TOKEN", "")
+		expected := httpAuth{&http.BasicAuth{Username: "x-access-token", Password: "token-1"}}
+
 		_, auth, err := getAuthForURL("http://dev.azure.com/org/project/_git/repo")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+		assert.Equal(t, expected, auth)
 
 		// Also works with legacy visualstudio.com URLs.
 		_, auth, err = getAuthForURL("http://org.visualstudio.com/project/_git/repo")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+		assert.Equal(t, expected, auth)
 
 		// Does not leak to non-ADO URLs.
 		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
@@ -573,7 +578,7 @@ func TestParseAuthURL(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", "")
 		_, auth, err := getAuthForURL("http://bitbucket.org/team/repo")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "x-token-auth", Password: "token-1"}, auth)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "x-token-auth", Password: "token-1"}}, auth)
 
 		// Does not leak to non-Bitbucket URLs.
 		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
@@ -591,7 +596,7 @@ func TestParseAuthURL(t *testing.T) {
 		// Generic token is used as a fallback for unknown hosts.
 		_, auth, err := getAuthForURL("http://git.example.com/org/repo")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "x-access-token", Password: "token-1"}}, auth)
 	})
 
 	t.Run("provider-specific token takes precedence over GENERIC_VCS_TOKEN", func(t *testing.T) {
@@ -599,7 +604,7 @@ func TestParseAuthURL(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", "github")
 		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "github"}, auth)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "x-access-token", Password: "github"}}, auth)
 	})
 
 	t.Run("with GIT_USERNAME/GIT_PASSWORD set in environment", func(t *testing.T) {
@@ -607,7 +612,7 @@ func TestParseAuthURL(t *testing.T) {
 		t.Setenv("GIT_PASSWORD", "password")
 		_, auth, err := getAuthForURL("http://example.com/pulumi/templates")
 		require.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "user", Password: "password"}}, auth)
 	})
 
 	t.Run("with passphrase-protected key and environment variable", func(t *testing.T) {
@@ -620,10 +625,9 @@ func TestParseAuthURL(t *testing.T) {
 
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
 		require.NoError(t, err)
-		require.NotNil(t, auth)
-		pubKeys, ok := auth.(*gitssh.PublicKeys)
-		require.True(t, ok)
-		assert.Equal(t, "git", pubKeys.User)
+		expectedKeys, err := getSSHPublicKeys("git", "github.com", parser.sshConfig)
+		require.NoError(t, err)
+		assert.Equal(t, sshAuth{expectedKeys}, auth)
 		assert.Contains(t, parser.sshKeys, "github.com")
 	})
 
@@ -664,15 +668,14 @@ func TestParseAuthURL(t *testing.T) {
 		t.Parallel()
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{err: errors.New("should not be called")},
-			sshKeys: map[string]any{
-				"github.com": &http.BasicAuth{Username: "foo"},
+			sshKeys: map[string]clientOption{
+				"github.com": httpAuth{&http.BasicAuth{Username: "foo"}},
 			},
 		}
 
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
 		require.NoError(t, err)
-		require.NotNil(t, auth)
-		assert.Equal(t, &http.BasicAuth{Username: "foo"}, auth)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "foo"}}, auth)
 	})
 
 	t.Run("Don't cache on error", func(t *testing.T) {
