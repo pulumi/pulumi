@@ -590,16 +590,16 @@ func (fun *Function) NeedsOutputVersion() bool {
 }
 
 // BaseProvider
-type BaseProvider struct {
-	// Name is the name of the provider.
+type BasePlugin struct {
+	// Name is the name of the plugin.
 	Name string
-	// Version is the version of the provider.
+	// Version is the version of the plugin.
 	Version semver.Version
 }
 
 type Parameterization struct {
 	// BasePlugin is the plugin the parameterization is applied to.
-	BasePlugin BaseProvider
+	BasePlugin BasePlugin
 	// Parameter is the parameter for the provider.
 	Parameter []byte
 }
@@ -608,15 +608,15 @@ type Parameterization struct {
 type ExtensionParameterization struct {
 	// BaseProvider is the provider the extension is layered onto. Its Name is the
 	// namespace the extension's resource tokens live in.
-	BaseProvider BaseProviderRef
+	BaseProvider BaseProvider
 	// Parameter is the extension parameter applied to the base provider.
 	Parameter []byte
 }
 
-// BaseProviderRef identifies the provider an extension is layered onto. When that
+// BaseProvider identifies the provider an extension is layered onto. When that
 // provider is itself produced by parameterizing a plugin (e.g. a dynamically
 // bridged provider), Parameterization describes how; it is nil for a plain plugin.
-type BaseProviderRef struct {
+type BaseProvider struct {
 	// Name is the provider's name (the resource-token namespace).
 	Name string
 	// Version is the provider's version.

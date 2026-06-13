@@ -3204,11 +3204,11 @@ func TestMarshalExtensionParameterizationNestedParameterization(t *testing.T) {
 		Name:    "ext",
 		Version: &semver.Version{Major: 1},
 		ExtensionParameterization: &ExtensionParameterization{
-			BaseProvider: BaseProviderRef{
+			BaseProvider: BaseProvider{
 				Name:    "base",
 				Version: semver.MustParse("1.0.0"),
 				Parameterization: &Parameterization{
-					BasePlugin: BaseProvider{Name: "baseplugin", Version: semver.MustParse("2.0.0")},
+					BasePlugin: BasePlugin{Name: "baseplugin", Version: semver.MustParse("2.0.0")},
 					Parameter:  []byte("repl"),
 				},
 			},

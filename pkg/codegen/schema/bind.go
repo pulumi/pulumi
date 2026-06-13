@@ -1999,7 +1999,7 @@ func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Di
 	}
 
 	return &Parameterization{
-		BasePlugin: BaseProvider{
+		BasePlugin: BasePlugin{
 			Name:    spec.BaseProvider.Name,
 			Version: ver,
 		},
@@ -2024,7 +2024,7 @@ func bindExtensionParameterization(spec *ExtensionParameterizationSpec) (*Extens
 			"#/extensionParameterization/baseProvider/version",
 			"invalid version %q: %v", spec.BaseProvider.Version, err)}
 	}
-	base := BaseProviderRef{Name: spec.BaseProvider.Name, Version: ver}
+	base := BaseProvider{Name: spec.BaseProvider.Name, Version: ver}
 	if p := spec.BaseProvider.Parameterization; p != nil {
 		if p.BasePlugin.Name == "" {
 			return nil, hcl.Diagnostics{errorf(
@@ -2038,7 +2038,7 @@ func bindExtensionParameterization(spec *ExtensionParameterizationSpec) (*Extens
 				"invalid version %q: %v", p.BasePlugin.Version, err)}
 		}
 		base.Parameterization = &Parameterization{
-			BasePlugin: BaseProvider{Name: p.BasePlugin.Name, Version: pver},
+			BasePlugin: BasePlugin{Name: p.BasePlugin.Name, Version: pver},
 			Parameter:  p.Parameter,
 		}
 	}

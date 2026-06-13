@@ -704,7 +704,7 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	pkg.resourceTypeTable = p.types.resources
 	if p.spec.Parameterization != nil {
 		pkg.Parameterization = &Parameterization{
-			BasePlugin: BaseProvider{
+			BasePlugin: BasePlugin{
 				Name:    p.spec.Parameterization.BaseProvider.Name,
 				Version: semver.MustParse(p.spec.Parameterization.BaseProvider.Version),
 			},
@@ -713,13 +713,13 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	}
 	if p.spec.ExtensionParameterization != nil {
 		base := p.spec.ExtensionParameterization.BaseProvider
-		ref := BaseProviderRef{
+		ref := BaseProvider{
 			Name:    base.Name,
 			Version: semver.MustParse(base.Version),
 		}
 		if pp := base.Parameterization; pp != nil {
 			ref.Parameterization = &Parameterization{
-				BasePlugin: BaseProvider{
+				BasePlugin: BasePlugin{
 					Name:    pp.BasePlugin.Name,
 					Version: semver.MustParse(pp.BasePlugin.Version),
 				},
