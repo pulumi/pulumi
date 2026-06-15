@@ -53,6 +53,10 @@ type testHost struct {
 	// here when Loader runs so the conformance runner can reuse it to bind PCL programs.
 	loader *providerLoader
 
+	// services are the loader/mapper gRPC servers this host hosts; they are shut down in
+	// ReleaseContext.
+	services []*plugin.GrpcServer
+
 	connectionsMutex sync.Mutex
 	connections      map[plugin.Provider]io.Closer
 
@@ -219,10 +223,17 @@ func (h *testHost) ResolvePlugin(
 	}, nil
 }
 
-// ReleaseContext is a no-op: the conformance test host tears its providers down when it closes
-// rather than scoping them to a context.
+// ReleaseContext shuts down the loader and mapper gRPC servers this host hosts for the context.
+// The test host's providers are not scoped to a context and are torn down when it closes.
 func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
-	return nil
+	var errs []error
+	for _, srv := range h.services {
+		if err := srv.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	h.services = nil
+	return errors.Join(errs...)
 }
 
 // Loader serves the conformance runner's provider-backed schema loader, bound to ctx. The loader
@@ -234,17 +245,27 @@ func (h *testHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) {
 		pctx:         ctx,
 		host:         h,
 	}
-	return plugin.NewServer(ctx, func(srv *grpc.Server) {
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
 		codegenrpc.RegisterLoaderServer(srv, schema.NewLoaderServer(h.loader))
 	})
+	if err != nil {
+		return nil, err
+	}
+	h.services = append(h.services, srv)
+	return srv, nil
 }
 
 // Mapper serves the standard conversion mapper bound to ctx, sourcing mappings from the plugins
 // installed in the global plugin storage.
 func (h *testHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
-	return plugin.NewServer(ctx, func(srv *grpc.Server) {
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
 		codegenrpc.RegisterMapperServer(srv, convert.NewMapperServerFromContext(ctx))
 	})
+	if err != nil {
+		return nil, err
+	}
+	h.services = append(h.services, srv)
+	return srv, nil
 }
 
 func (h *testHost) SignalCancellation() error {
