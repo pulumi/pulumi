@@ -34,6 +34,12 @@ type Renderer struct {
 	md *markdown.Renderer
 }
 
+func NewRenderer() *Renderer {
+	return &Renderer{
+		md: &markdown.Renderer{},
+	}
+}
+
 // MarkdownRenderer returns the underlying Markdown renderer used by the Renderer.
 func (r *Renderer) MarkdownRenderer() *markdown.Renderer {
 	return r.md
@@ -45,6 +51,9 @@ func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 
 	// inlines
 	reg.Register(ast.KindLink, r.renderLink)
+
+	// refs
+	reg.Register(KindRef, r.renderRef)
 }
 
 func (r *Renderer) renderShortcode(w util.BufWriter, source []byte, node ast.Node, enter bool) (ast.WalkStatus, error) {
@@ -69,6 +78,16 @@ func (r *Renderer) renderShortcode(w util.BufWriter, source []byte, node ast.Nod
 
 func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, enter bool) (ast.WalkStatus, error) {
 	return r.md.RenderLink(w, source, node, enter)
+}
+
+func (r *Renderer) renderRef(w util.BufWriter, source []byte, node ast.Node, enter bool) (ast.WalkStatus, error) {
+	if enter {
+		_, err := fmt.Fprintf(r.md.Writer(w), "{{%% ref %s %%}}", node.(*Ref).Destination)
+		if err != nil {
+			return ast.WalkStop, err
+		}
+	}
+	return ast.WalkContinue, nil
 }
 
 // RenderDocs renders parsed documentation to the given Writer. The source that was used to parse the documentation

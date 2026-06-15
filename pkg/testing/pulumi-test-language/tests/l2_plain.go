@@ -64,6 +64,18 @@ func init() {
 								"y": "200",
 							},
 						}),
+						"dataList": []any{
+							resource.NewPropertyMapFromMap(map[string]any{
+								"boolean":   true,
+								"float":     3.14,
+								"integer":   42,
+								"string":    "Plain",
+								"boolArray": []any{true},
+								"stringMap": map[string]any{
+									"one": "partridge",
+								},
+							}),
+						},
 					})
 					assert.Equal(l, want, plain.Inputs, "expected inputs to be %v", want)
 					assert.Equal(l, plain.Inputs, plain.Outputs, "expected inputs and outputs to match")

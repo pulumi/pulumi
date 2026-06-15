@@ -1,6 +1,0 @@
-component: cli
-kind: feat
-body: Add `pulumi logs ls` to list automatic log files
-time: 2026-06-04T10:10:37+00:00
-custom:
-  PR: 23449

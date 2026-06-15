@@ -202,6 +202,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
+				MapperTarget:                hostMapperTarget(host),
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -265,6 +266,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
+				MapperTarget:                hostMapperTarget(host),
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -318,6 +320,15 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	return p, nil
 }
 
+// hostMapperTarget returns the host's mapper address as an optional handshake field, nil when the host has no mapper
+// service.
+func hostMapperTarget(host Host) *string {
+	if addr := host.MapperAddr(); addr != "" {
+		return &addr
+	}
+	return nil
+}
+
 func handshake(
 	ctx context.Context,
 	bin string,
@@ -334,6 +345,7 @@ func handshake(
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
+		MapperTarget:                req.MapperTarget,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -392,6 +404,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			InvokeWithPreview:           true,
+			MapperTarget:                hostMapperTarget(host),
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -518,6 +531,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
+		MapperTarget:                req.MapperTarget,
 	})
 	if err != nil {
 		return nil, err

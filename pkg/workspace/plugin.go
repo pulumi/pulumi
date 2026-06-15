@@ -25,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
@@ -200,6 +201,7 @@ func installDependenciesForPluginSpec(
 		nil, // config
 		nil, // debugging
 		newLoader,
+		convert.NewMapperServerFromHost,
 		EnsureLanguageInstalled,
 	)
 	if err != nil {

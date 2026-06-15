@@ -1,4 +1,0 @@
-component: cli/do
-kind: feat
-body: Add a `--stateless` flag to `pulumi do`. `create`, `patch`, and `delete` now require `--stateless` for the existing direct-provider behavior; the default will switch to a stateful (engine-driven) implementation in a future release
-time: 2026-06-11T00:00:00.000000+01:00

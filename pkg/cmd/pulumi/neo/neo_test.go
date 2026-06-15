@@ -341,6 +341,10 @@ func TestNewNeoCmd_RegistersFlags(t *testing.T) {
 	require.NotNil(t, print, "--print flag must be registered")
 	assert.Equal(t, "p", print.Shorthand)
 
+	disableIntegrations := cmd.Flags().Lookup("disable-integrations")
+	require.NotNil(t, disableIntegrations, "--disable-integrations flag must be registered")
+	assert.Equal(t, "false", disableIntegrations.DefValue, "--disable-integrations must default to off")
+
 	// cobra.MaximumNArgs(1): 0 or 1 prompt args OK, 2+ rejected.
 	require.NoError(t, cmd.Args(cmd, []string{}))
 	require.NoError(t, cmd.Args(cmd, []string{"hello"}))

@@ -76,6 +76,22 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 		descriptor.Parameterization.Version = v
 	}
 
+	// If the loader can hand us the raw schema bytes, ship those directly: the client parses and lazily binds
+	// them anyway, so binding and re-marshaling the package here would be pure overhead.
+	if rawLoader, ok := m.loader.(RawLoader); ok {
+		data, ok, err := rawLoader.LoadRawSchemaBytes(ctx, descriptor)
+		if err != nil {
+			logging.V(7).Infof("%s failed: %v", label, err)
+			return nil, err
+		}
+		if ok {
+			logging.V(7).Infof("%s success: data=#%d", label, len(data))
+			return &codegenrpc.GetSchemaResponse{
+				Schema: data,
+			}, nil
+		}
+	}
+
 	pkg, err := m.loader.LoadPackageV2(ctx, descriptor)
 	if err != nil {
 		logging.V(7).Infof("%s failed: %v", label, err)

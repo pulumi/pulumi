@@ -482,6 +482,100 @@ resource property "foo:index:Foo" {
 	}
 }
 
+// TestBindResourceQuotedPropertyKeys ensures that nested object literals written with quoted keys
+// are annotated with their schema types, just as they are with bare keys (pulumi/pulumi#15001).
+func TestBindResourceQuotedPropertyKeys(t *testing.T) {
+	t.Parallel()
+
+	pkgSpec := schema.PackageSpec{
+		Name:    "foo",
+		Version: "1.0.0",
+		Provider: schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"},
+		},
+		Types: map[string]schema.ComplexTypeSpec{
+			"foo:index:Spec": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"template": {TypeSpec: schema.TypeSpec{Type: "ref", Ref: "#/types/foo:index:Template"}},
+					},
+				},
+			},
+			"foo:index:Template": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+			},
+		},
+		Resources: map[string]schema.ResourceSpec{
+			"foo:index:Foo": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"spec": {TypeSpec: schema.TypeSpec{Type: "ref", Ref: "#/types/foo:index:Spec"}},
+					},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"spec": {TypeSpec: schema.TypeSpec{Type: "ref", Ref: "#/types/foo:index:Spec"}},
+				},
+			},
+		},
+	}
+	pkg, diags, err := schema.BindSpec(pkgSpec, nil, schema.ValidationOptions{})
+	require.NoError(t, err, "BindSpec failed")
+	require.False(t, diags.HasErrors(), "BindSpec diagnostics: %v", diags.Error())
+
+	src := `resource foo "foo:index:Foo" {
+	spec = {
+		"template" = {
+			name = "first"
+		}
+	}
+}`
+
+	parser := syntax.NewParser()
+	require.NoError(t,
+		parser.ParseFile(strings.NewReader(src), "test.pp"),
+		"parse failed")
+
+	prog, bindDiags, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+		Package: pkg,
+	}))
+	require.NoError(t, err, "bind returned error")
+	require.Falsef(t, bindDiags.HasErrors(), "bind diagnostics: %v", bindDiags.Error())
+	require.Len(t, prog.Nodes, 1, "expected one node")
+	res := prog.Nodes[0].(*Resource)
+	AnnotateResourceInputs(res)
+
+	var spec *model.Attribute
+	for _, attr := range res.Inputs {
+		if attr.Name == "spec" {
+			spec = attr
+		}
+	}
+	require.NotNil(t, spec, "no spec attribute on the bound resource")
+
+	requireAnnotatedWith := func(expr model.Expression, token string) {
+		obj, ok := expr.(*model.ObjectConsExpression)
+		require.Truef(t, ok, "expected an object literal, got %T", expr)
+		schemaType, ok := GetSchemaForType(obj.Type())
+		require.Truef(t, ok, "object literal has no schema type annotation")
+		objType, ok := schemaType.(*schema.ObjectType)
+		require.Truef(t, ok, "expected an object type annotation, got %T", schemaType)
+		require.Equal(t, token, objType.Token)
+	}
+
+	requireAnnotatedWith(spec.Value, "foo:index:Spec")
+
+	outer := spec.Value.(*model.ObjectConsExpression)
+	require.Len(t, outer.Items, 1)
+	requireAnnotatedWith(outer.Items[0].Value, "foo:index:Template")
+}
+
 type stubSchemaLoader struct {
 	Package *schema.Package
 }

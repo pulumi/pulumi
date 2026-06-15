@@ -29,6 +29,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -389,7 +390,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 			return nil, nil, err
 		}
 		ctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, cwd, nil, false, nil,
-			schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -1,4 +1,0 @@
-component: cli
-kind: feat
-body: Add `pulumi logs rm` to remove automatic log files
-time: 2026-06-08T00:00:00+00:00

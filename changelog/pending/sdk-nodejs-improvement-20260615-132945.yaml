@@ -1,0 +1,6 @@
+component: sdk/nodejs
+kind: improvement
+body: Allow running the postinstall script for local SDKs under npm 12
+time: 2026-06-15T13:29:45.095155+02:00
+custom:
+    PR: "23568"

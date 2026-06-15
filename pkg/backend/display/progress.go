@@ -1488,15 +1488,67 @@ func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEvent
 }
 
 // getStepStatus handles getting the value to put in the status column.
-func (display *ProgressDisplay) getStepStatus(step engine.StepEventMetadata, done bool, failed bool) string {
+func (display *ProgressDisplay) getStepStatus(step engine.StepEventMetadata, done, failed, interrupted bool) string {
 	var status string
-	if done {
+	switch {
+	case interrupted:
+		status = display.getStepInterruptedDescription(step)
+	case done:
 		status = display.getStepDoneDescription(step, failed)
-	} else {
+	default:
 		status = display.getStepInProgressDescription(step)
 	}
 	status = addRetainStatusFlag(status, step)
 	return status
+}
+
+// getStepInterruptedDescription returns the status for a custom resource whose
+// operation was still in flight when the update was cancelled or terminated. We
+// avoid the success verb (e.g. "created") because the operation never completed;
+// the resource is left as a pending operation in the snapshot.
+func (display *ProgressDisplay) getStepInterruptedDescription(step engine.StepEventMetadata) string {
+	opText := getStepInProgressOpText(display.getStepOp(step))
+	return colors.SpecWarning + opText + " (interrupted)" + colors.Reset
+}
+
+// getStepInProgressOpText returns the present-tense text for the given step
+// operation, e.g. "creating".
+func getStepInProgressOpText(op display.StepOp) string {
+	switch op {
+	case deploy.OpSame:
+		return ""
+	case deploy.OpCreate:
+		return "creating"
+	case deploy.OpUpdate:
+		return "updating"
+	case deploy.OpDelete:
+		return "deleting"
+	case deploy.OpReplace:
+		return "replacing"
+	case deploy.OpCreateReplacement:
+		return "creating replacement"
+	case deploy.OpDeleteReplaced:
+		return "deleting original"
+	case deploy.OpRead:
+		return "reading"
+	case deploy.OpReadReplacement:
+		return "reading for replacement"
+	case deploy.OpRefresh:
+		return "refreshing"
+	case deploy.OpReadDiscard:
+		return "discarding"
+	case deploy.OpDiscardReplaced:
+		return "discarding original"
+	case deploy.OpImport:
+		return "importing"
+	case deploy.OpImportReplacement:
+		return "importing replacement"
+	case deploy.OpRemovePendingReplace:
+		return ""
+	default:
+		contract.Failf("Unrecognized resource step op: %v", op)
+		return ""
+	}
 }
 
 func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {
@@ -1747,42 +1799,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return display.getPreviewText(step)
 		}
 
-		var opText string
-		switch op {
-		case deploy.OpSame:
-			opText = ""
-		case deploy.OpCreate:
-			opText = "creating"
-		case deploy.OpUpdate:
-			opText = "updating"
-		case deploy.OpDelete:
-			opText = "deleting"
-		case deploy.OpReplace:
-			opText = "replacing"
-		case deploy.OpCreateReplacement:
-			opText = "creating replacement"
-		case deploy.OpDeleteReplaced:
-			opText = "deleting original"
-		case deploy.OpRead:
-			opText = "reading"
-		case deploy.OpReadReplacement:
-			opText = "reading for replacement"
-		case deploy.OpRefresh:
-			opText = "refreshing"
-		case deploy.OpReadDiscard:
-			opText = "discarding"
-		case deploy.OpDiscardReplaced:
-			opText = "discarding original"
-		case deploy.OpImport:
-			opText = "importing"
-		case deploy.OpImportReplacement:
-			opText = "importing replacement"
-		case deploy.OpRemovePendingReplace:
-			opText = ""
-		default:
-			contract.Failf("Unrecognized resource step op: %v", op)
-			return ""
-		}
+		opText := getStepInProgressOpText(op)
 
 		if op == deploy.OpSame || display.opts.DeterministicOutput || display.opts.SuppressTimings {
 			return opText

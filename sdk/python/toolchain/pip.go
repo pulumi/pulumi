@@ -519,7 +519,9 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 				return nil
 			}
 			if attempt < maxAttempts-1 && pipErrorIsTransient(stderrBuf.String()) {
-				fmt.Fprintf(errorWriter, "Retrying (%d/%d)...\n", attempt+1, maxAttempts)
+				if showOutput {
+					fmt.Fprintf(errorWriter, "Retrying (%d/%d)...\n", attempt+1, maxAttempts)
+				}
 				continue
 			}
 			return lastErr

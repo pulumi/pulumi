@@ -17,6 +17,7 @@ const res = new primitive.Resource("res", {
         __version: false,
         "": true,
         "Some ${common} \"characters\" 'that' need escaping: \\ (backslash), \x09 (tab), \x1b (escape), \x07 (bell), \x00 (null), \u{e0021} (tag space)": false,
+        "Format and glob specifiers: %percent ...ellipsis {open }close *asterisk ?question ,comma &&and ||or !not =>arrow ==equal :colon /slash": true,
     },
 });
 const invokeResult = primitive.invokeOutput({
@@ -35,6 +36,7 @@ const invokeResult = primitive.invokeOutput({
         __version: false,
         "": true,
         "Some ${common} \"characters\" 'that' need escaping: \\ (backslash), \x09 (tab), \x1b (escape), \x07 (bell), \x00 (null), \u{e0021} (tag space)": false,
+        "Format and glob specifiers: %percent ...ellipsis {open }close *asterisk ?question ,comma &&and ||or !not =>arrow ==equal :colon /slash": true,
     },
 });
 export const resourceBooleanMap = res.booleanMap;

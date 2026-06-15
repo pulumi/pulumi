@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -545,7 +546,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 	// Start up a plugin context
 	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, nil, "", "", nil, false, nil, nil, nil, nil,
-		nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		nil, schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -734,7 +735,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	// Start up a plugin context
 	pctx, err := plugin.NewContextWithRoot(
 		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil,
-		nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		nil, schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}

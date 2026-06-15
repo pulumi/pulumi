@@ -33,7 +33,7 @@ setup(name='pulumi_typedDictDisabledExample',
       install_requires=[
           'parver>=0.2.1',
           'pulumi>=3.0.0,<4.0.0',
-          'pulumi-kubernetes>=3.0.0,<4.0.0',
-          'semver>=2.8.1'
+          'semver>=2.8.1',
+          'third-party>=0.1.0,<0.2.0'
       ],
       zip_safe=False)

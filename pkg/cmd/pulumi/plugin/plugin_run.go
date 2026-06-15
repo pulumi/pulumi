@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -70,9 +71,8 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
-		Use:    "run",
-		Hidden: !env.Dev.Value(),
-		Short:  "Run a command on a plugin binary",
+		Use:   "run",
+		Short: "Run a command on a plugin binary",
 		Long: "[EXPERIMENTAL] Run a command on a plugin binary.\n" +
 			"\n" +
 			"Directly executes a plugin binary, if VERSION is not specified " +
@@ -135,7 +135,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			pluginArgs := args[1:]
 
 			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil,
-				schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}

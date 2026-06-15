@@ -114,6 +114,9 @@ var expectedFailures = map[string]string{
 	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
 	"l2-discriminated-union":        "pulumi#21829: does not compile",
 	"l2-resource-schema-secret":     "does not preserve schema-secret unknown outputs",
+	"l2-invoke-multi-argument":      "Go SDK-gen does not implement MultiArgumentInputs for functions",
+
+	"l2-plain": "map literals nested in plain list elements render without a type; generated code does not compile",
 
 	// pulumi/pulumi#18345
 	"l2-map-keys":                         "NonPlainData.InnerData renders as interface{}{} instead of &plain.InnerDataArgs{}",                                           //nolint:lll

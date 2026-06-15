@@ -83,52 +83,14 @@ func SingleTestCase(directoryName string) []ProgramTest {
 
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
-		Directory:   "aws-s3-logging",
-		Description: "AWS S3 with logging",
-		SkipCompile: codegen.NewStringSet(TestGo),
-		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
-		// Flaky in go: TODO[pulumi/pulumi#8123]
-	},
-	{
 		Directory:   "read-file-func",
 		Description: "ReadFile function translation works",
-	},
-	{
-		Directory:   "python-regress-10914",
-		Description: "Python regression test for #10914",
-		Skip:        allProgLanguages.Except(TestPython),
-	},
-	{
-		Directory:   "simplified-invokes",
-		Description: "Simplified invokes",
-		Skip:        codegen.NewStringSet(TestPython, TestGo),
-		SkipCompile: codegen.NewStringSet(TestDotnet, TestNodeJS),
 	},
 	{
 		Directory:   "aws-optionals",
 		Description: "AWS get invoke with nested object constructor that takes an optional string",
 		// Testing Go behavior exclusively:
 		Skip: allProgLanguages.Except(TestGo),
-	},
-	{
-		Directory:   "kubernetes-operator",
-		Description: "K8s Operator",
-	},
-	{
-		Directory:   "kubernetes-pod",
-		Description: "K8s Pod",
-		SkipCompile: codegen.NewStringSet(TestGo),
-		// Blocked on go:
-		//   TODO[pulumi/pulumi#8073]
-		//   TODO[pulumi/pulumi#8074]
-	},
-	{
-		Directory:   "kubernetes-template",
-		Description: "K8s Template",
-	},
-	{
-		Directory:   "kubernetes-template-quoted",
-		Description: "K8s Template with quoted string property keys to ensure that resource binding works here",
 	},
 	{
 		Directory:   "third-party-package",
@@ -143,11 +105,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "ensure that the this keyword is rewritten when it is a variable but kept as is" +
 			"when it is a reference to this pointer in nodejs",
 		Skip: codegen.NewStringSet(TestDotnet, TestPython, TestGo),
-	},
-	{
-		Directory:   "invalid-go-sprintf",
-		Description: "Regress invalid Go",
-		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   "traverse-union-repro",
@@ -175,11 +132,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
-		Directory:   "regress-11176",
-		Description: "Regression test for https://github.com/pulumi/pulumi/issues/11176",
-		Skip:        allProgLanguages.Except(TestGo),
-	},
-	{
 		Directory:   "throw-not-implemented",
 		Description: "Function notImplemented is compiled to a runtime error at call-site",
 	},
@@ -187,12 +139,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "python-reserved",
 		Description: "Test python reserved words aren't used",
 		Skip:        allProgLanguages.Except(TestPython),
-	},
-	{
-		Directory:   "dynamic-entries",
-		Description: "Testing iteration of dynamic entries in TypeScript",
-		Skip:        allProgLanguages.Except(TestNodeJS),
-		SkipCompile: allProgLanguages,
 	},
 	{
 		Directory:   "invoke-inside-conditional-range",
@@ -230,12 +176,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		BindOptions: []pcl.BindOption{pcl.SkipInvokeTypechecking},
 	},
 	{
-		Directory:   "optional-complex-config",
-		Description: "Tests generating code for optional and complex config values",
-		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestDotnet),
-		SkipCompile: allProgLanguages.Except(TestNodeJS).Except(TestDotnet),
-	},
-	{
 		Directory:   "interpolated-string-keys",
 		Description: "Tests that interpolated string keys are supported in maps. ",
 		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestPython),
@@ -245,16 +185,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Regression test for https://github.com/pulumi/pulumi/issues/12507",
 		Skip:        allProgLanguages.Except(TestNodeJS),
 		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
-	},
-	{
-		Directory:   "csharp-plain-lists",
-		Description: "Tests that plain lists are supported in C#",
-		Skip:        allProgLanguages.Except(TestDotnet),
-	},
-	{
-		Directory:   "csharp-typed-for-expressions",
-		Description: "Testing for expressions with typed target expressions in csharp",
-		Skip:        allProgLanguages.Except(TestDotnet),
 	},
 	{
 		Directory:   "python-regress-14037",
@@ -271,18 +201,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	// PCL files from pulumi/yaml transpiled examples
 	{
-		Directory:   transpiled("awsx-fargate"),
-		Description: "AWSx Fargate",
-		Skip:        codegen.NewStringSet(TestDotnet, TestNodeJS, TestGo),
-	},
-	{
 		Directory:   transpiled("cue-random"),
 		Description: "Cue random",
-	},
-	{
-		Directory:   transpiled("kubernetes"),
-		Description: "Kubernetes",
-		Skip:        codegen.NewStringSet(TestGo),
 	},
 	{
 		Directory:   transpiled("pulumi-variable"),

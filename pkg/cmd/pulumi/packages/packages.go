@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
@@ -337,7 +338,7 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 		Color: cmdutil.GetGlobalColorization(),
 	})
 	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil,
-		schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return nil, err
 	}
