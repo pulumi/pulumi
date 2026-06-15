@@ -3776,7 +3776,7 @@ func TestMissingRefErrors(t *testing.T) {
 				},
 			},
 		},
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{
 				Description: missingRef,
 				Properties: map[string]PropertySpec{
