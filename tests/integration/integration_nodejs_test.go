@@ -2549,7 +2549,11 @@ func TestPackageAddNode(t *testing.T) {
 			case "npm":
 				allowScripts, ok := packagesJSON["allowScripts"].(map[string]any)
 				require.True(t, ok, "expected allowScripts in package.json")
-				assert.Equal(t, true, allowScripts["file:sdks/random"])
+				normalized := make(map[string]any, len(allowScripts))
+				for k, v := range allowScripts {
+					normalized[filepath.ToSlash(k)] = v
+				}
+				assert.Equal(t, true, normalized["file:sdks/random"])
 			case "bun":
 				trusted, ok := packagesJSON["trustedDependencies"].([]any)
 				require.True(t, ok, "expected trustedDependencies in package.json")

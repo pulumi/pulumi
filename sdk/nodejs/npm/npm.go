@@ -17,6 +17,7 @@ package npm
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -101,15 +102,32 @@ func (node *npmManager) Link(ctx context.Context, dir, packageName, path string)
 
 	// Local SDKs have a postinstall script that needs to run to compile the SDK from TypeScript. Starting with
 	// npm 11.16.0, npm warns about packages whose install scripts are not covered by the `allowScripts` field in
-	// package.json, and npm 12 will skip those scripts unless they are allowlisted. Add the local SDK to
-	// `allowScripts` so its postinstall script keeps running.
+	// package.json, and npm 12 will skip those scripts unless they are allowlisted. Add the package to
+	// `allowScripts`, keyed by its `file:` dependency spec, so its install scripts keep running.
 	// https://docs.npmjs.com/cli/configuring-npm/package-json#allowscripts
-	allowScripts := fmt.Sprintf("allowScripts[file:%s]=true", path)
+	cmd = exec.CommandContext(ctx, "npm", "pkg", "get", "allowScripts")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error running %s: %w, output: %s", cmd.String(), err, out)
+	}
+	out = bytes.TrimSpace(out)
+	allowScripts := map[string]bool{}
+	if len(out) > 0 && string(out) != "undefined" {
+		if err := json.Unmarshal(out, &allowScripts); err != nil {
+			allowScripts = map[string]bool{}
+		}
+	}
+	allowScripts["file:"+path] = true
+	jsonData, err := json.Marshal(allowScripts)
+	if err != nil {
+		return fmt.Errorf("error marshaling allowScripts to JSON: %w", err)
+	}
 	//nolint:gosec
-	cmd = exec.CommandContext(ctx, "npm", "pkg", "set", allowScripts, "--json")
+	cmd = exec.CommandContext(ctx, "npm", "pkg", "set", "--json", "allowScripts="+string(jsonData))
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("error executing npm command %s: %w, output: %s", cmd.String(), err, out)
+		return fmt.Errorf("error running %s: %w, output: %s", cmd.String(), err, out)
 	}
 	return nil
 }
