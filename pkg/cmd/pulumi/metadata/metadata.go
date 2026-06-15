@@ -84,7 +84,7 @@ func GetLanguageRuntimeMetadata(
 		defer pctx.Close()
 
 		programInfo := plugin.NewProgramInfo(root, pwd, main, proj.Runtime.Options())
-		lang, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
+		lang, err := pctx.Host.LanguageRuntime(pctx, proj.Runtime.Name())
 		if err != nil {
 			return nil, err
 		}

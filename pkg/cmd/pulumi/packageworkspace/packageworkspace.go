@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -57,13 +58,13 @@ type Options struct {
 func New(
 	packageresolution pluginstorage.Context,
 	pkgworkspace pkgWorkspace.Context,
-	host plugin.Host, stdout, stderr io.Writer,
+	pctx *plugin.Context, stdout, stderr io.Writer,
 	parentSpan opentracing.Span, options Options,
 ) Workspace {
 	return Workspace{
 		packageresolution,
 		pkgworkspace,
-		host, stdout, stderr,
+		pctx, stdout, stderr,
 		options, parentSpan,
 		new(sync.Mutex),
 		map[string][]schema.PackageReference{},
@@ -78,7 +79,7 @@ type (
 type Workspace struct {
 	pluginStorageContext
 	pkgWorkspaceContext
-	host           plugin.Host
+	pctx           *plugin.Context
 	stdout, stderr io.Writer
 	options        Options
 	parentSpan     opentracing.Span
@@ -101,7 +102,7 @@ func (Workspace) GetPluginPath(ctx context.Context, spec workspace.PluginDescrip
 // InstallPlugin should assume that all dependencies of the plugin are already
 // installed.
 func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project *workspace.PluginProject) error {
-	lang, err := w.host.LanguageRuntime(project.Runtime.Name())
+	lang, err := w.pctx.Host.LanguageRuntime(w.pctx, project.Runtime.Name())
 	if err != nil {
 		return err
 	}
@@ -125,7 +126,7 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 func (w Workspace) GetRequiredPackages(
 	ctx context.Context, dirPath string, project *workspace.PluginProject,
 ) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
-	lang, err := w.host.LanguageRuntime(project.Runtime.Name())
+	lang, err := w.pctx.Host.LanguageRuntime(w.pctx, project.Runtime.Name())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -238,7 +239,7 @@ func (w Workspace) GenerateLocalSDK(
 		return workspace.LinkablePackageDescriptor{}, err
 	}
 
-	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.host))
+	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.pctx))
 	if err != nil {
 		return workspace.LinkablePackageDescriptor{}, fmt.Errorf("failed to bind schema: %w", err)
 	}
@@ -335,7 +336,7 @@ func (w Workspace) LinkIntoProject(
 		ctx,
 		plugin.NewProgramInfo(projectDir, projectDir, ".", runtimeInfo.Options()),
 		packageDescriptors,
-		servers.grpc.Addr(),
+		servers.pctx.LoaderAddr(),
 	)
 	if err != nil {
 		return errors.Join(fmt.Errorf("linking package: %w", err), servers.Close())
@@ -347,13 +348,13 @@ func (w Workspace) LinkIntoProject(
 type servers struct {
 	pctx *plugin.Context
 	lang plugin.LanguageRuntime
-	grpc *plugin.GrpcServer
 }
 
 func (s servers) Close() error {
 	// We do not call s.lang.Close() since that closes the original host,
-	// and thus effectively closes the Workspace.
-	return errors.Join(s.grpc.Close(), s.pctx.Close())
+	// and thus effectively closes the Workspace. The context's loader service dies with the
+	// context.
+	return s.pctx.Close()
 }
 
 func (w Workspace) servers(
@@ -363,7 +364,7 @@ func (w Workspace) servers(
 	tracer := otel.Tracer("pulumi-cli")
 	_, langSpan := diagutils.StartSpan(ctx, tracer, "load-language-host",
 		trace.WithAttributes(attribute.String("language", language)))
-	languageRuntime, err := w.host.LanguageRuntime(language)
+	languageRuntime, err := w.pctx.Host.LanguageRuntime(w.pctx, language)
 	langSpan.End()
 	if err != nil {
 		return servers{}, err
@@ -378,17 +379,16 @@ func (w Workspace) servers(
 		refs[v.Identity()] = v
 	}
 
-	pctx := plugin.NewContextWithHost(ctx, d, d, noopCloseHost{w.host}, dir, dir, w.parentSpan)
-	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx.Host), refs)
-	loaderServer := schema.NewLoaderServer(loader)
-	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
+	pctx := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, dir, dir, w.parentSpan)
+	err = pctx.StartLoader(func(pctx *plugin.Context) codegenrpc.LoaderServer {
+		return schema.NewLoaderServer(schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx), refs))
+	})
 	if err != nil {
 		return servers{}, err
 	}
 	return servers{
 		pctx: pctx,
 		lang: languageRuntime,
-		grpc: grpcServer,
 	}, nil
 }
 
@@ -414,7 +414,7 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 		return "", errors.Join(err, os.RemoveAll(tmpDir))
 	}
 
-	diags, err := s.lang.GeneratePackage(ctx, tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
+	diags, err := s.lang.GeneratePackage(ctx, tmpDir, string(jsonBytes), nil, s.pctx.LoaderAddr(), nil, true /* local */)
 	if err != nil {
 		return "", errors.Join(err, s.Close(), os.RemoveAll(tmpDir))
 	}
@@ -443,8 +443,11 @@ func (w Workspace) RunPackage(
 		Color: diagutils.GetGlobalColorization(),
 	})
 
-	pctx := plugin.NewContextWithHost(ctx, d, d, w.host, rootDir, rootDir, w.parentSpan)
-	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginPath)
+	pctx := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
+	if err := pctx.StartLoader(schema.NewLoaderServerFromContext); err != nil {
+		return nil, fmt.Errorf("could not start loader for plugin at %q: %w", pluginPath, err)
+	}
+	p, err := plugin.NewProviderFromPath(w.pctx.Host, pctx, pluginPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
 	}
@@ -543,9 +546,3 @@ func (p pluginProvider) Parameterize(
 	}
 	return p.Provider.Parameterize(ctx, req)
 }
-
-type noopCloseHost struct {
-	plugin.Host
-}
-
-func (h noopCloseHost) Close() error { return nil }

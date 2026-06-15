@@ -72,7 +72,7 @@ func TestRoundtripRemoteTypeRef(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("remoteref-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
@@ -96,7 +96,7 @@ func TestRoundtripLocalTypeRef(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("localref-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
@@ -133,7 +133,7 @@ func TestRoundtripEnum(t *testing.T) {
 	}
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("enum-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
@@ -245,7 +245,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 	}
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("plain-properties-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
@@ -651,7 +651,7 @@ func TestRejectDuplicateNames(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, diags, err := BindSpec(tt.spec, NewPluginLoader(utils.NewHost(testdataPath)), ValidationOptions{
+			_, diags, err := BindSpec(tt.spec, NewPluginLoader(utils.NewContext(testdataPath)), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			require.NoError(t, err)
@@ -724,7 +724,7 @@ func TestImportResourceRef(t *testing.T) {
 		},
 	}
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -898,7 +898,7 @@ func Test_parseTypeSpecRef(t *testing.T) {
 
 func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -949,7 +949,7 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 
 func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -991,7 +991,7 @@ func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 
 func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1028,7 +1028,7 @@ func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 
 func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1057,7 +1057,7 @@ func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
 
 func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1086,7 +1086,7 @@ func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
 
 func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1123,7 +1123,7 @@ func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 
 func TestUsingVersionPropertyNameIsOk(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1153,7 +1153,7 @@ func TestUsingVersionPropertyNameIsOk(t *testing.T) {
 
 func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1398,7 +1398,7 @@ func TestBindSpecPrintableNames(t *testing.T) {
 
 func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1431,7 +1431,7 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 
 func TestUsingIdInStateInputsIsAnError(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1472,7 +1472,7 @@ func TestUsingIdInStateInputsIsAnError(t *testing.T) {
 
 func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name: "test",
 		Meta: &MetadataSpec{
@@ -1491,7 +1491,7 @@ func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 
 func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -2591,8 +2591,9 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 }
 
 func TestLoaderRespectsDebugProviders(t *testing.T) {
-	host := debugProvidersHelperHost(t)
-	loader := NewPluginLoader(host)
+	pluginCtx := debugProvidersHelperContext(t)
+	host := pluginCtx.Host
+	loader := NewPluginLoader(pluginCtx)
 	cancel := make(chan bool)
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancel,
@@ -2649,24 +2650,25 @@ func (*debugProvidersHelperServer) Attach(
 	return &emptypb.Empty{}, nil
 }
 
-// This is the host that pulumi-yaml is using. Somehow the test does not work with utils.NewHost,
+// This is the host that pulumi-yaml is using. Somehow the test does not work with utils.NewContext,
 // perhaps that does not support PULUMI_DEBUG_PROVIDERS yet.
-func debugProvidersHelperHost(t *testing.T) plugin.Host {
+func debugProvidersHelperContext(t *testing.T) *plugin.Context {
 	cwd := t.TempDir()
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
 	//nolint:usetesting // plugin.NewContext manages the lifecycle of gRPC providers; t.Context cancels before they shut down
-	pluginCtx, err := plugin.NewContext(t.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost, nil, nil)
+	pluginCtx, err := plugin.NewContext(
+		t.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
-	return pluginCtx.Host
+	return pluginCtx
 }
 
 func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	// c.f. https://github.com/pulumi/pulumi/issues/16757
 	t.Parallel()
 
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	// Test that certain names aren't allowed as a property in the package config.
 	pkgSpec := PackageSpec{
@@ -2785,7 +2787,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 func TestResourceWithKeynameOverlapFunction(t *testing.T) {
 	t.Parallel()
 
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
@@ -2806,7 +2808,7 @@ func TestResourceWithKeynameOverlapFunction(t *testing.T) {
 func TestResourceWithKeynameOverlapResource(t *testing.T) {
 	t.Parallel()
 
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
@@ -2827,7 +2829,7 @@ func TestResourceWithKeynameOverlapResource(t *testing.T) {
 func TestResourceWithKeynameOverlapType(t *testing.T) {
 	t.Parallel()
 
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
@@ -2861,7 +2863,7 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("aliases-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
@@ -2885,7 +2887,7 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("aliases-1.0.0.yaml")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
@@ -2909,7 +2911,7 @@ func TestDanglingReferences(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("dangling-reference-bad-0.1.0.json")
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
 
@@ -2925,7 +2927,7 @@ func TestNoDanglingReferences(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("dangling-reference-good-0.1.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
 	require.NoError(t, err)
@@ -3085,7 +3087,7 @@ func TestBindParameterizedExternals(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("parameterized-schemas/parameterizedref-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,

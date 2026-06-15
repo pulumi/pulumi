@@ -38,7 +38,7 @@ import (
 
 func TestGenerateLanguageDefinition(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	cases, err := readTestCases("testdata/cases.json")
 	require.NoError(t, err)
@@ -110,7 +110,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 func TestGenerateLanguageDefinitionsReferencesOtherResources(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	var generatedProgram strings.Builder
 	generator := func(_ io.Writer, p *pcl.Program) error {
@@ -184,7 +184,7 @@ func TestGenerateLanguageDefinitionsReferencesOtherResourcesByName(t *testing.T)
 
 	testAttribute := func(t *testing.T, names NameTable, expectedCode string) {
 		t.Helper()
-		loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+		loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 		var generatedProgram strings.Builder
 		generator := func(_ io.Writer, p *pcl.Program) error {
@@ -287,7 +287,7 @@ resource obj "aws:s3/bucketObject:BucketObject" {
 
 func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularReferences(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	var generatedProgram strings.Builder
 	generator := func(_ io.Writer, p *pcl.Program) error {
@@ -365,7 +365,7 @@ resource second "aws:s3/bucketObject:BucketObject" {
 func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T) {
 	t.Parallel()
 
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	var generatedProgram strings.Builder
 	generator := func(_ io.Writer, p *pcl.Program) error {

@@ -88,8 +88,8 @@ func newPolicyAnalyzeCmd(
 						return nil, nil, fmt.Errorf("getting working directory: %w", err)
 					}
 					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost,
-						convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+						nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromContext,
+						convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 					if err != nil {
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)
 					}

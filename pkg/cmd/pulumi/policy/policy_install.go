@@ -126,7 +126,7 @@ func (cmd *policyInstallCmd) Run(
 	}
 
 	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, nil, nil, cwd, nil, true, nil,
-		schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return fmt.Errorf("creating plugin context: %w", err)
 	}

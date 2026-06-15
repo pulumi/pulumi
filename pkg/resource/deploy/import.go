@@ -138,7 +138,7 @@ func NewImportDeployment(
 	)
 
 	// Create a new provider registry.
-	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
+	reg := providers.NewRegistry(ctx, opts.DryRun, builtins)
 
 	// Return the prepared deployment.
 	return &Deployment{
@@ -154,7 +154,7 @@ func NewImportDeployment(
 		goals:                           newGoals,
 		imports:                         imports,
 		isImport:                        true,
-		schemaLoader:                    schema.NewPluginLoader(ctx.Host),
+		schemaLoader:                    schema.NewPluginLoader(ctx),
 		source:                          NewErrorSource(projectName),
 		providers:                       reg,
 		newPlans:                        newResourcePlan(target.Config),

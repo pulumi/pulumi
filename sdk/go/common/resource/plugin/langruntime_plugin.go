@@ -112,7 +112,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 				Name: strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
 				Kind: apitype.LanguagePlugin,
 			},
-			host.GetProjectPlugins(),
+			ctx.ProjectPlugins(),
 		)
 		if err != nil {
 			return nil, err
