@@ -190,8 +190,8 @@ from the parameters, as in:
 							packageSpec.Version = pkg.Version.String()
 						}
 					} else {
-						packageSpec.Source = pkg.Parameterization.BaseProvider.Name
-						packageSpec.Version = pkg.Parameterization.BaseProvider.Version.String()
+						packageSpec.Source = pkg.Parameterization.BasePlugin.Name
+						packageSpec.Version = pkg.Parameterization.BasePlugin.Version.String()
 					}
 				}
 			}

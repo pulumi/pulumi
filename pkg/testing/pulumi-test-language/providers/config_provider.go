@@ -79,7 +79,7 @@ func (p *ConfigProvider) GetSchema(
 			Required:  []string{"name"},
 		},
 		PluginDownloadURL: "http://example.com",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type: "object",
 				Properties: map[string]schema.PropertySpec{

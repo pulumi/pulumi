@@ -596,7 +596,7 @@ async def get_package():
 		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
 	return _package_ref
 	`,
-			pkg.Name, param, pkg.Parameterization.BaseProvider.Name, pkg.Parameterization.BaseProvider.Version)
+			pkg.Name, param, pkg.Parameterization.BasePlugin.Name, pkg.Parameterization.BasePlugin.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -2390,8 +2390,8 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 			Version: pulumiPlugin.Version,
 			Value:   pkg.Parameterization.Parameter,
 		}
-		pulumiPlugin.Name = pkg.Parameterization.BaseProvider.Name
-		pulumiPlugin.Version = pkg.Parameterization.BaseProvider.Version.String()
+		pulumiPlugin.Name = pkg.Parameterization.BasePlugin.Name
+		pulumiPlugin.Version = pkg.Parameterization.BasePlugin.Version.String()
 	}
 
 	return pulumiPlugin.JSON()

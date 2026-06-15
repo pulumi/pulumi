@@ -107,7 +107,7 @@ func (p *CallProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plug
 		Version:   "15.7.9",
 		Functions: map[string]schema.FunctionSpec{},
 		Resources: map[string]schema.ResourceSpec{},
-		Provider: customResource(
+		Provider: ptr(customResource(
 			"The `call` package's provider resource",
 			map[string]schema.PropertySpec{
 				"value": primitiveType("string"),
@@ -115,7 +115,7 @@ func (p *CallProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plug
 			map[string]schema.PropertySpec{
 				"value": primitiveType("string"),
 			},
-		),
+		)),
 	}
 	pkg.Functions["pulumi:providers:call/identity"] = schema.FunctionSpec{
 		Description: "The `identity` method of the `call` package's provider. " +

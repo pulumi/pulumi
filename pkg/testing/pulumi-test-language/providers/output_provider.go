@@ -76,7 +76,7 @@ func (p *OutputProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    "output",
 		Version: "23.0.0",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			InputProperties: map[string]schema.PropertySpec{
 				"elideUnknowns": {
 					TypeSpec: schema.TypeSpec{

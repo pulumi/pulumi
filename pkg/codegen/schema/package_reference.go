@@ -299,7 +299,8 @@ func (p packageDefResources) Range() ResourcesIter {
 }
 
 func (p packageDefResources) Get(token string) (*Resource, bool, error) {
-	if token == p.Provider.Token {
+	// Extension parameterizations have no provider of their own, so Provider is nil.
+	if p.Provider != nil && token == p.Provider.Token {
 		return p.Provider, true, nil
 	}
 
@@ -710,11 +711,31 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	pkg.resourceTypeTable = p.types.resources
 	if p.spec.Parameterization != nil {
 		pkg.Parameterization = &Parameterization{
-			BaseProvider: BaseProvider{
+			BasePlugin: BasePlugin{
 				Name:    p.spec.Parameterization.BaseProvider.Name,
 				Version: semver.MustParse(p.spec.Parameterization.BaseProvider.Version),
 			},
 			Parameter: p.spec.Parameterization.Parameter,
+		}
+	}
+	if p.spec.ExtensionParameterization != nil {
+		base := p.spec.ExtensionParameterization.BaseProvider
+		ref := BaseProvider{
+			Name:    base.Name,
+			Version: semver.MustParse(base.Version),
+		}
+		if pp := base.Parameterization; pp != nil {
+			ref.Parameterization = &Parameterization{
+				BasePlugin: BasePlugin{
+					Name:    pp.BasePlugin.Name,
+					Version: semver.MustParse(pp.BasePlugin.Version),
+				},
+				Parameter: pp.Parameter,
+			}
+		}
+		pkg.ExtensionParameterization = &ExtensionParameterization{
+			BaseProvider: ref,
+			Parameter:    p.spec.ExtensionParameterization.Parameter,
 		}
 	}
 	if err := pkg.ImportLanguages(p.languages); err != nil {
