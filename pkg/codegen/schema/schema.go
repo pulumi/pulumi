@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"gopkg.in/yaml.v3"
@@ -679,6 +680,8 @@ type Package struct {
 	}
 
 	importedLanguages map[string]struct{}
+
+	interpretPulumiRefs func(string, PulumiRefResolver) (string, error)
 }
 
 // Language provides hooks for importing language-specific metadata in a package.
@@ -897,6 +900,11 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 	}
 
 	return nil
+}
+
+func (pkg *Package) InterpretPulumiRefs(tok string, resolver PulumiRefResolver) (string, error) {
+	contract.Assertf(pkg.interpretPulumiRefs != nil, "interpretPulumiRefs function is not initialized")
+	return pkg.interpretPulumiRefs(tok, resolver)
 }
 
 func packageIdentity(name string, version *semver.Version) string {
