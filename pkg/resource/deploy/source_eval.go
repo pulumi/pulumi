@@ -464,6 +464,13 @@ type resmon struct {
 	// cleared by the RegisterResourceOutputs publish step. Only populated when observer is non-nil.
 	componentAliases     map[resource.URN][]resource.URN
 	componentAliasesLock sync.Mutex
+
+	// componentOutputs records the outputs reported by RegisterResourceOutputs for component URNs.
+	// Used by the remote-component Construct path to detect divergence between the outputs a
+	// provider's Construct returns and the outputs the inner program actually published. A missing
+	// entry means RegisterResourceOutputs was never called for the URN.
+	componentOutputs     map[resource.URN]resource.PropertyMap
+	componentOutputsLock sync.Mutex
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -523,6 +530,7 @@ func newResourceMonitor(
 		grpcDialOptions:     src.plugctx.DialOptions,
 		observer:            src.observer,
 		componentAliases:    map[resource.URN][]resource.URN{},
+		componentOutputs:    map[resource.URN]resource.PropertyMap{},
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -2606,6 +2614,28 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				"resource monitor shut down while waiting for construct to complete")
 		}
 
+		// Diagnose divergence between the outputs the provider's Construct returned and what the
+		// component actually published via RegisterResourceOutputs. By the time Construct returns,
+		// the inner program (which runs synchronously inside the provider) has finished, so any
+		// RegisterResourceOutputs call has already been processed by the engine. The remote
+		// component protocol does not enforce that these agree, so a misbehaving provider can
+		// return outputs that never make it into state, or omit outputs that do. We warn rather
+		// than fail to preserve back-compat.
+		rm.componentOutputsLock.Lock()
+		registeredOutputs, registered := rm.componentOutputs[constructResult.URN]
+		rm.componentOutputsLock.Unlock()
+		switch {
+		case !registered && len(constructResult.Outputs) > 0:
+			rm.diagnostics.Warningf(diag.Message(constructResult.URN,
+				"Construct returned outputs for %v but the component never called RegisterResourceOutputs; "+
+					"these outputs will not be saved to state"), constructResult.URN)
+		case registered && !registeredOutputs.DeepEqualsIncludeUnknowns(constructResult.Outputs):
+			rm.diagnostics.Warningf(diag.Message(constructResult.URN,
+				"Construct returned outputs for %v that differ from those reported via "+
+					"RegisterResourceOutputs; the RegisterResourceOutputs values will be saved to state"),
+				constructResult.URN)
+		}
+
 		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
 		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
@@ -2942,6 +2972,28 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
 		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on output step's done channel")
 	}
+
+	// Record the outputs reported for this URN so the remote-component Construct path can detect
+	// divergence between what a provider's Construct returns and what the inner program publishes.
+	// We re-unmarshal here keeping OutputValues so that the recorded form matches what
+	// provider Construct produces (which preserves OutputValues), allowing apples-to-apples
+	// comparison via DeepEqualsIncludeUnknowns.
+	componentOuts, err := plugin.UnmarshalProperties(
+		req.GetOutputs(), plugin.MarshalOptions{
+			Label:              label,
+			KeepUnknowns:       true,
+			ComputeAssetHashes: true,
+			KeepSecrets:        true,
+			KeepResources:      true,
+			KeepOutputValues:   true,
+			WorkingDirectory:   rm.workingDirectory,
+		})
+	if err != nil {
+		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)
+	}
+	rm.componentOutputsLock.Lock()
+	rm.componentOutputs[urn] = componentOuts
+	rm.componentOutputsLock.Unlock()
 
 	// Publish the component's outputs on the registration observer now that they're final. Custom resources
 	// publish at RegisterResource time and never reach this path; only components (local or remote)

@@ -3,7 +3,13 @@
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:index:Custom: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Custom::custom]
 <{%reset%}><{%fg 2%}>        foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+<{%reset%}><{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
+<{%fg 2%}>    custom: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>        URN: <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Custom::custom"
+<{%reset%}><{%fg 2%}>        ID : <{%reset%}><{%fg 2%}>"custom-id"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        PackageVersion: <{%reset%}><{%fg 2%}>""
+<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 2 created<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

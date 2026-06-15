@@ -1,0 +1,9 @@
+component: engine
+kind: improvement
+body: Warn when a remote component's Construct return outputs differ from the outputs
+    its inner program reports via RegisterResourceOutputs (or when RegisterResourceOutputs
+    is never called), surfacing a divergence that would otherwise leave callers and
+    state showing different values
+time: 2026-06-15T12:00:00Z
+custom:
+    PR: ""

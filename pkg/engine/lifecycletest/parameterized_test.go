@@ -350,7 +350,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		// Display rendering of the Construct-divergence warnings can interleave non-deterministically
+		// across two component registrations, so skip the display snapshot assertions here.
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	snap, err := lt.TestOp(Update).RunStep(

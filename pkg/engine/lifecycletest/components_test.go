@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -24,6 +25,7 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -90,6 +92,201 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		Steps:   lt.MakeBasicLifecycleSteps(t, 3),
 	}
 	p.Run(t, nil)
+}
+
+// assertConstructDivergenceWarning returns a ValidateFunc that asserts exactly one warning diag
+// event fired whose message contains the given substring. Used to verify the divergence checks
+// added to the remote-component Construct path.
+func assertConstructDivergenceWarning(t *testing.T, substr string) lt.ValidateFunc {
+	return func(_ workspace.Project, _ deploy.Target, _ engine.JournalEntries,
+		events []engine.Event, err error,
+	) error {
+		require.NoError(t, err)
+		var warnings []string
+		for _, ev := range events {
+			if ev.Type != engine.DiagEvent {
+				continue
+			}
+			payload := ev.Payload().(engine.DiagEventPayload)
+			if payload.Severity != diag.Warning {
+				continue
+			}
+			warnings = append(warnings, payload.Message)
+		}
+		require.Lenf(t, warnings, 1, "expected exactly one warning, got %v", warnings)
+		assert.Contains(t, warnings[0], substr)
+		return nil
+	}
+}
+
+// TestRemoteComponentConstructOutputsDivergeWarn checks that when a remote component's Construct
+// returns outputs that differ from those reported via RegisterResourceOutputs the engine emits a
+// warning. The two are independent code paths in the protocol and a misbehaving provider can make
+// them disagree; the warning surfaces the discrepancy without breaking back-compat.
+func TestRemoteComponentConstructOutputsDivergeWarn(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{
+						"foo": resource.NewProperty("from-rro"),
+					})
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{
+						URN: resp.URN,
+						Outputs: resource.PropertyMap{
+							"foo": resource.NewProperty("from-construct"),
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(engine.Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		assertConstructDivergenceWarning(t, "differ from those reported via RegisterResourceOutputs"))
+	require.NoError(t, err)
+}
+
+// TestRemoteComponentConstructOutputsNoRROWarn checks that when a remote component's Construct
+// returns outputs but the inner component never calls RegisterResourceOutputs at all, the engine
+// emits a warning. In this case the outputs are returned to the caller but never persisted to
+// state, which is a meaningful protocol mismatch.
+func TestRemoteComponentConstructOutputsNoRROWarn(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{
+						URN: resp.URN,
+						Outputs: resource.PropertyMap{
+							"foo": resource.NewProperty("from-construct"),
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(engine.Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		assertConstructDivergenceWarning(t, "never called RegisterResourceOutputs"))
+	require.NoError(t, err)
+}
+
+// TestRemoteComponentConstructOutputsAgreeNoWarn checks the happy path: when Construct's returned
+// outputs match what was published via RegisterResourceOutputs, no divergence warning is emitted.
+func TestRemoteComponentConstructOutputsAgreeNoWarn(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					outs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+					err = monitor.RegisterResourceOutputs(resp.URN, outs)
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{URN: resp.URN, Outputs: outs}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(engine.Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ engine.JournalEntries,
+			events []engine.Event, err error,
+		) error {
+			require.NoError(t, err)
+			for _, ev := range events {
+				if ev.Type != engine.DiagEvent {
+					continue
+				}
+				payload := ev.Payload().(engine.DiagEventPayload)
+				if payload.Severity == diag.Warning &&
+					strings.Contains(payload.Message, "Construct") {
+					t.Errorf("unexpected Construct-divergence warning: %s", payload.Message)
+				}
+			}
+			return nil
+		})
+	require.NoError(t, err)
 }
 
 func TestRemoteComponentConstructInfoIncludesOrganization(t *testing.T) {
@@ -424,12 +621,15 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 
 						// Return a secret and unknown output depending on some internal resource
 						deps := []resource.URN{respA.URN}
+						outputs := resource.PropertyMap{
+							"foo": resource.MakeSecret(resource.NewProperty("foo")),
+							"bar": resource.MakeComputed(resource.NewProperty("")),
+						}
+						err = monitor.RegisterResourceOutputs(resp.URN, outputs)
+						require.NoError(t, err)
 						return plugin.ConstructResponse{
-							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							URN:     resp.URN,
+							Outputs: outputs,
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -570,19 +770,22 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 
 						// Return a secret and unknown output depending on some internal resource
 						deps := []resource.URN{respA.URN}
+						outputs := resource.PropertyMap{
+							"foo": resource.NewProperty(resource.Output{
+								Element:      resource.NewProperty("foo"),
+								Known:        true,
+								Secret:       true,
+								Dependencies: deps,
+							}),
+							"bar": resource.NewProperty(resource.Output{
+								Dependencies: deps,
+							}),
+						}
+						err = monitor.RegisterResourceOutputs(resp.URN, outputs)
+						require.NoError(t, err)
 						return plugin.ConstructResponse{
-							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.NewProperty(resource.Output{
-									Element:      resource.NewProperty("foo"),
-									Known:        true,
-									Secret:       true,
-									Dependencies: deps,
-								}),
-								"bar": resource.NewProperty(resource.Output{
-									Dependencies: deps,
-								}),
-							},
+							URN:                resp.URN,
+							Outputs:            outputs,
 							OutputDependencies: nil, // Left blank on purpose because AcceptsOutputs is true
 						}, nil
 					},
@@ -728,12 +931,15 @@ func TestConstructCallSendDependencies(t *testing.T) {
 
 						// Return a secret and unknown output depending on some internal resource
 						deps := []resource.URN{respA.URN}
+						outputs := resource.PropertyMap{
+							"foo": resource.MakeSecret(resource.NewProperty("foo")),
+							"bar": resource.MakeComputed(resource.NewProperty("")),
+						}
+						err = monitor.RegisterResourceOutputs(resp.URN, outputs)
+						require.NoError(t, err)
 						return plugin.ConstructResponse{
-							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							URN:     resp.URN,
+							Outputs: outputs,
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -893,12 +1099,15 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 
 						// Return a secret and unknown output depending on some internal resource
 						deps := []resource.URN{respA.URN}
+						outputs := resource.PropertyMap{
+							"foo": resource.MakeSecret(resource.NewProperty("foo")),
+							"bar": resource.MakeComputed(resource.NewProperty("")),
+						}
+						err = monitor.RegisterResourceOutputs(resp.URN, outputs)
+						require.NoError(t, err)
 						return plugin.ConstructResponse{
-							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							URN:     resp.URN,
+							Outputs: outputs,
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -1243,11 +1452,14 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 						})
 						require.NoError(t, err)
 
+						outputs := resource.PropertyMap{
+							"custom": resource.MakeCustomResourceReference(custom.URN, custom.ID, ""),
+						}
+						err = rm.RegisterResourceOutputs(component.URN, outputs)
+						require.NoError(t, err)
 						return plugin.ConstructResponse{
-							URN: component.URN,
-							Outputs: resource.PropertyMap{
-								"custom": resource.MakeCustomResourceReference(custom.URN, custom.ID, ""),
-							},
+							URN:     component.URN,
+							Outputs: outputs,
 						}, nil
 					}
 
@@ -1356,11 +1568,14 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 						})
 						require.NoError(t, err)
 
+						outputs := resource.PropertyMap{
+							"custom": resource.MakeCustomResourceReference(custom.URN, custom.ID, ""),
+						}
+						err = rm.RegisterResourceOutputs(component.URN, outputs)
+						require.NoError(t, err)
 						return plugin.ConstructResponse{
-							URN: component.URN,
-							Outputs: resource.PropertyMap{
-								"custom": resource.MakeCustomResourceReference(custom.URN, custom.ID, ""),
-							},
+							URN:     component.URN,
+							Outputs: outputs,
 						}, nil
 					}
 
@@ -1500,11 +1715,14 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 						)
 						require.NoError(t, err)
 
+						outputs := resource.PropertyMap{
+							"custom": resource.MakeCustomResourceReference(customURN, customID, ""),
+						}
+						err = rm.RegisterResourceOutputs(component.URN, outputs)
+						require.NoError(t, err)
 						return plugin.ConstructResponse{
-							URN: component.URN,
-							Outputs: resource.PropertyMap{
-								"custom": resource.MakeCustomResourceReference(customURN, customID, ""),
-							},
+							URN:     component.URN,
+							Outputs: outputs,
 						}, nil
 					}
 
@@ -1625,11 +1843,14 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 						)
 						require.NoError(t, err)
 
+						outputs := resource.PropertyMap{
+							"custom": resource.MakeCustomResourceReference(customURN, customID, ""),
+						}
+						err = rm.RegisterResourceOutputs(component.URN, outputs)
+						require.NoError(t, err)
 						return plugin.ConstructResponse{
-							URN: component.URN,
-							Outputs: resource.PropertyMap{
-								"custom": resource.MakeCustomResourceReference(customURN, customID, ""),
-							},
+							URN:     component.URN,
+							Outputs: outputs,
 						}, nil
 					}
 

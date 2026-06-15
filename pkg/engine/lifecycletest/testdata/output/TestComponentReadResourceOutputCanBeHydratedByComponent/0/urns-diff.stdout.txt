@@ -1,7 +1,13 @@
 <{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:Component1::component1: (create)
 <{%reset%}>    <{%fg 14%}>> urn:pulumi:test::test::pkgA:index:Component1$pkgA:index:Custom::custom: (read)
 <{%fg 14%}>        foo: <{%reset%}><{%fg 14%}>"bar"<{%reset%}><{%fg 14%}>
-<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:Component2::component2: (create)
+<{%reset%}><{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
+<{%fg 2%}>    custom: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>        URN: <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pkgA:index:Component1$pkgA:index:Custom::custom"
+<{%reset%}><{%fg 2%}>        ID : <{%reset%}><{%fg 2%}>"custom-id"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        PackageVersion: <{%reset%}><{%fg 2%}>""
+<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:Component2::component2: (create)
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 2 created<{%reset%}>
 
