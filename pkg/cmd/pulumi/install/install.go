@@ -219,7 +219,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd.Flags().IntVar(&parallel,
 		"parallel", 4, "The max number of concurrent installs to perform. "+
-			"Parallelism of less then 1 implies unbounded parallelism")
+			"Parallelism of less than 1 implies unbounded parallelism")
 	cmd.PersistentFlags().BoolVar(&reinstall,
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 	cmd.PersistentFlags().BoolVar(&noPlugins,
@@ -227,7 +227,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&noDependencies,
 		"no-dependencies", false, "Skip installing dependencies")
 	cmd.PersistentFlags().BoolVar(&useLanguageVersionTools,
-		"use-language-version-tools", false, "Use language version tools to setup and install the language runtime")
+		"use-language-version-tools", false, "Use language version tools to set up and install the language runtime")
 
 	return cmd
 }
