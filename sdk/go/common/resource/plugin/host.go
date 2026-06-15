@@ -76,6 +76,15 @@ type Host interface {
 	// plugins carried by ctx.
 	ResolvePlugin(ctx *Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
 
+	// ReleaseContext gracefully shuts down and releases every plugin the host booted on behalf of
+	// ctx: each provider booted for ctx, and each analyzer or language runtime that no other live
+	// context still references. It is synchronous -- when it returns, those plugins have been
+	// closed and any diagnostics they emit while shutting down have been delivered through ctx's
+	// sinks. [Context.Close] calls this so that a context's plugins, and their shutdown
+	// diagnostics, are fully reclaimed before the context is considered closed; a host shared
+	// across contexts uses it to reclaim a finished context's plugins without closing the host.
+	ReleaseContext(ctx *Context) error
+
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
 	// will either a creation error or an initialization error. SignalCancellation is advisory and

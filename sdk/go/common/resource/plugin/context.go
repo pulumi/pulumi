@@ -309,6 +309,13 @@ func (ctx *Context) Request() context.Context {
 // that constructed the host must close it separately.
 func (ctx *Context) Close() error {
 	defer ctx.cancel()
+
+	// Release the plugins this context booted before tearing down the context's own services and
+	// cancelling it. ReleaseContext is synchronous, so when it returns the providers have shut
+	// down and any diagnostics they emitted have been delivered through this context's sinks --
+	// before the caller that owns those sinks tears them down.
+	err := ctx.Host.ReleaseContext(ctx)
+
 	if ctx.tracingSpan != nil {
 		ctx.tracingSpan.Finish()
 	}
@@ -322,5 +329,5 @@ func (ctx *Context) Close() error {
 			logging.V(5).Infof("Error closing the context's mapper service; ignoring: %v", err)
 		}
 	}
-	return nil
+	return err
 }

@@ -102,8 +102,6 @@ func TestContextCloseReleasesProviders(t *testing.T) {
 	}
 	host.resourcePlugins[provA] = &resourcePlugin{Plugin: provA, Name: "a", ctx: ctxA}
 	host.resourcePlugins[provB] = &resourcePlugin{Plugin: provB, Name: "b", ctx: ctxB}
-	host.watchContext(ctxA)
-	host.watchContext(ctxB)
 
 	readPlugins := func() (hasA, hasB bool) {
 		_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
@@ -115,13 +113,11 @@ func TestContextCloseReleasesProviders(t *testing.T) {
 		return hasA, hasB
 	}
 
+	// ReleaseContext, driven synchronously by Context.Close, has released ctxB's provider by the
+	// time Close returns.
 	require.NoError(t, ctxB.Close())
-	require.Eventually(t, func() bool {
-		_, hasB := readPlugins()
-		return !hasB
-	}, 10*time.Second, 10*time.Millisecond)
-
-	hasA, _ := readPlugins()
+	hasA, hasB := readPlugins()
+	assert.False(t, hasB, "released context's provider must be closed")
 	assert.True(t, hasA, "provider booted for another context must survive")
 	mu.Lock()
 	defer mu.Unlock()
@@ -159,18 +155,15 @@ func TestContextCloseGracefulShutdownBudget(t *testing.T) {
 		CloseF: func() error { return nil },
 	}
 	host.resourcePlugins[prov] = &resourcePlugin{Plugin: prov, Name: "b", ctx: ctxB}
-	host.watchContext(ctxB)
 
 	require.NoError(t, ctxB.Close())
-	require.Eventually(t, func() bool {
-		var has bool
-		_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-			_, has = host.resourcePlugins[plugin.Provider(prov)]
-			return nil, nil
-		})
-		require.NoError(t, err)
-		return !has
-	}, 10*time.Second, 10*time.Millisecond)
+	var has bool
+	_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
+		_, has = host.resourcePlugins[plugin.Provider(prov)]
+		return nil, nil
+	})
+	require.NoError(t, err)
+	assert.False(t, has, "released context's provider must be closed")
 
 	mu.Lock()
 	defer mu.Unlock()
@@ -201,7 +194,7 @@ func (s *stubAnalyzer) Close() error                 { s.closed = true; return n
 // TestContextCloseRefcountsSharedPlugins locks in that cached plugins shared by several
 // contexts only close once the last context referencing them closes. The stubs' closed flags
 // are only read through the load channels that serialize plugin map access, which orders those
-// reads after the asynchronous release writes.
+// reads after the release writes.
 func TestContextCloseRefcountsSharedPlugins(t *testing.T) {
 	t.Parallel()
 
@@ -222,8 +215,6 @@ func TestContextCloseRefcountsSharedPlugins(t *testing.T) {
 	host.analyzerPlugins[analyzerKey] = &analyzerPlugin{
 		Plugin: analyzer, Name: "test-analyzer", refs: map[*plugin.Context]struct{}{ctxB: {}, ctxC: {}},
 	}
-	host.watchContext(ctxB)
-	host.watchContext(ctxC)
 
 	type pluginState struct {
 		langCached, langClosed, analyzerCached, analyzerClosed bool
@@ -255,11 +246,8 @@ func TestContextCloseRefcountsSharedPlugins(t *testing.T) {
 	}
 
 	// Closing the first context must not close the shared plugins, only drop its references.
+	// Release is synchronous, so the dropped reference is visible as soon as Close returns.
 	require.NoError(t, ctxB.Close())
-	require.Eventually(t, func() bool {
-		state := readState()
-		return state.langRefs == 1 && state.analyzerRefs == 1
-	}, 10*time.Second, 10*time.Millisecond)
 	state := readState()
 	assert.Equal(t, pluginState{
 		langCached:     true,
@@ -270,10 +258,6 @@ func TestContextCloseRefcountsSharedPlugins(t *testing.T) {
 
 	// Closing the last referencing context closes them.
 	require.NoError(t, ctxC.Close())
-	require.Eventually(t, func() bool {
-		state := readState()
-		return state.langClosed && state.analyzerClosed
-	}, 10*time.Second, 10*time.Millisecond)
 	state = readState()
 	assert.Equal(t, pluginState{
 		langClosed:     true,
