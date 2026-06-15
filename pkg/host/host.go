@@ -60,6 +60,7 @@ func New(
 		installLang:             installLang,
 		newLoader:               newLoader,
 		newMapper:               newMapper,
+		contextServers:          map[*plugin.Context][]*plugin.GrpcServer{},
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -124,32 +125,73 @@ type defaultHost struct {
 	// case the host serves no loader / no mapper.
 	newLoader plugin.NewLoaderFunc
 	newMapper plugin.NewMapperFunc
+
+	// contextServers holds the loader and mapper gRPC servers the host hosts on behalf of a
+	// context. The host creates them in Loader/Mapper and shuts them down in ReleaseContext --
+	// after that context's plugins, since the servers boot plugins through the host -- or in
+	// Close for any context never released.
+	contextServers   map[*plugin.Context][]*plugin.GrpcServer
+	contextServersMu sync.Mutex
 }
 
 var _ plugin.Host = (*defaultHost)(nil)
 
 // Loader returns a schema loader service bound to ctx's workspace view, built from the loader
 // factory the host was constructed with. It returns nil if the host has no loader factory. The
-// returned server is owned by ctx and shut down when ctx is closed.
+// server is hosted by the host and shut down when ctx is released.
 func (host *defaultHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) {
 	if host.newLoader == nil {
 		return nil, nil
 	}
-	return plugin.NewServer(ctx, func(srv *grpc.Server) {
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
 		codegenrpc.RegisterLoaderServer(srv, host.newLoader(ctx))
 	})
+	if err != nil {
+		return nil, err
+	}
+	host.trackContextServer(ctx, srv)
+	return srv, nil
 }
 
 // Mapper returns a conversion mapper service bound to ctx's workspace view, built from the
 // mapper factory the host was constructed with. It returns nil if the host has no mapper
-// factory. The returned server is owned by ctx and shut down when ctx is closed.
+// factory. The server is hosted by the host and shut down when ctx is released.
 func (host *defaultHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
 	if host.newMapper == nil {
 		return nil, nil
 	}
-	return plugin.NewServer(ctx, func(srv *grpc.Server) {
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
 		codegenrpc.RegisterMapperServer(srv, host.newMapper(ctx))
 	})
+	if err != nil {
+		return nil, err
+	}
+	host.trackContextServer(ctx, srv)
+	return srv, nil
+}
+
+// trackContextServer records a gRPC server the host hosts on behalf of ctx, so that releasing or
+// closing the context (or the host) shuts it down.
+func (host *defaultHost) trackContextServer(ctx *plugin.Context, srv *plugin.GrpcServer) {
+	host.contextServersMu.Lock()
+	defer host.contextServersMu.Unlock()
+	host.contextServers[ctx] = append(host.contextServers[ctx], srv)
+}
+
+// releaseContextServers shuts down and forgets the gRPC servers hosted on behalf of ctx.
+func (host *defaultHost) releaseContextServers(ctx *plugin.Context) error {
+	host.contextServersMu.Lock()
+	servers := host.contextServers[ctx]
+	delete(host.contextServers, ctx)
+	host.contextServersMu.Unlock()
+
+	var errs []error
+	for _, srv := range servers {
+		if err := srv.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // analyzerPluginKey identifies a booted analyzer plugin. Analyzers are spawned in the
@@ -538,6 +580,10 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 		return nil //nolint:nilerr
 	}
 
+	// Shut down the loader and mapper gRPC servers hosted for ctx, after the plugins they may have
+	// booted have been released.
+	errs = append(errs, host.releaseContextServers(ctx))
+
 	return errors.Join(errs...)
 }
 
@@ -643,6 +689,17 @@ func (host *defaultHost) Close() (err error) {
 		host.analyzerPlugins = map[analyzerPluginKey]*analyzerPlugin{}
 		host.languagePlugins = map[languagePluginKey]*languagePlugin{}
 		host.resourcePlugins = map[plugin.Provider]*resourcePlugin{}
+
+		// Shut down the loader/mapper gRPC servers hosted for any context never released, after
+		// the plugins they may have booted.
+		host.contextServersMu.Lock()
+		for _, servers := range host.contextServers {
+			for _, srv := range servers {
+				contract.IgnoreClose(srv)
+			}
+		}
+		host.contextServers = map[*plugin.Context][]*plugin.GrpcServer{}
+		host.contextServersMu.Unlock()
 
 		// Shut down the plugin loader.
 		close(host.languageLoadRequests)
