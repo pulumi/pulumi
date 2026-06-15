@@ -1,0 +1,8 @@
+component: cli/auth
+kind: feat
+body: When `credentials.json` carries an OAuth refresh token, the CLI now auto-refreshes
+    the access token on 401 and retries the request once, instead of returning a
+    "login required" error
+time: 2026-06-05T14:30:00+00:00
+custom:
+  PR: 23430
