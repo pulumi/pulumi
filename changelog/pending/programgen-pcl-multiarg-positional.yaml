@@ -1,0 +1,6 @@
+component: programgen/pcl
+kind: feat
+body: Invoke functions declared with multi-argument inputs using positional arguments in PCL
+time: 2026-06-15T00:00:00+00:00
+custom:
+    PR: ""
