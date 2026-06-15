@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -105,7 +106,10 @@ func TestLoader(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostFWithServices(
+		nil, nil, programF,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -125,7 +129,9 @@ func TestMapperAddressIsPassed(t *testing.T) {
 		observedMapperAddress = info.MapperAddress
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+	hostF := deploytest.NewPluginHostFWithServices(
+		nil, nil, programF,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},

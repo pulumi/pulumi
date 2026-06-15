@@ -173,11 +173,12 @@ func TestProviderFromSource(t *testing.T) {
 		t.Helper()
 		installCtx.t = t
 
-		pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), nil, nil, nil, nil)
+		pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), nil, nil, nil, nil,
+			schema.NewLoaderServerFromContext, nil)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, pluginHost.Close()) }()
 		pctx, err := plugin.NewContext(
-			t.Context(), nil, nil, pluginHost, nil, t.TempDir(), nil, false, nil, schema.NewLoaderServerFromContext, nil)
+			t.Context(), nil, nil, pluginHost, nil, t.TempDir(), nil, false, nil)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, pctx.Close()) }()
 

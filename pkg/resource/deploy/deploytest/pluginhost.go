@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 var ErrHostIsClosed = errors.New("plugin host is shutting down")
@@ -297,6 +298,13 @@ type pluginHost struct {
 	sink            diag.Sink
 	statusSink      diag.Sink
 
+	// loaderFactory and mapperFactory build the schema loader and conversion mapper this host
+	// serves to its contexts. They are injected (rather than imported) because deploytest cannot
+	// import the codegen packages that define them without creating an import cycle; both are nil
+	// unless a caller needs the host to serve those services.
+	loaderFactory plugin.NewLoaderFunc
+	mapperFactory plugin.NewMapperFunc
+
 	engine *hostEngine
 
 	providers []plugin.Provider
@@ -319,9 +327,37 @@ func NewPluginHostF(sink, statusSink diag.Sink, languageRuntimeF LanguageRuntime
 	}
 }
 
+// NewPluginHostFWithServices is like [NewPluginHostF] but the produced host also serves a schema
+// loader and conversion mapper built from the given factories. deploytest cannot import the
+// codegen packages that define [schema.NewLoaderServerFromContext] and
+// [convert.NewMapperServerFromContext] (it would create an import cycle), so callers that need a
+// host serving those services inject the factories here.
+func NewPluginHostFWithServices(
+	sink, statusSink diag.Sink, languageRuntimeF LanguageRuntimeFactory,
+	newLoader plugin.NewLoaderFunc, newMapper plugin.NewMapperFunc,
+	pluginLoaders ...*ProviderLoader,
+) PluginHostFactory {
+	return func() plugin.Host {
+		var lr plugin.LanguageRuntime
+		if languageRuntimeF != nil {
+			lr = languageRuntimeF()
+		}
+		host := newPluginHost(sink, statusSink, lr, pluginLoaders...)
+		host.loaderFactory = newLoader
+		host.mapperFactory = newMapper
+		return host
+	}
+}
+
 func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRuntime,
 	pluginLoaders ...*ProviderLoader,
 ) plugin.Host {
+	return newPluginHost(sink, statusSink, languageRuntime, pluginLoaders...)
+}
+
+func newPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRuntime,
+	pluginLoaders ...*ProviderLoader,
+) *pluginHost {
 	engine := &hostEngine{
 		sink:       sink,
 		statusSink: statusSink,
@@ -546,6 +582,24 @@ func (host *pluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
 
 func (host *pluginHost) Analyzer(ctx *plugin.Context, nm tokens.QName) (plugin.Analyzer, error) {
 	return host.PolicyAnalyzer(ctx, nm, "", nil)
+}
+
+func (host *pluginHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	if host.loaderFactory == nil {
+		return nil, nil
+	}
+	return plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterLoaderServer(srv, host.loaderFactory(ctx))
+	})
+}
+
+func (host *pluginHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	if host.mapperFactory == nil {
+		return nil, nil
+	}
+	return plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterMapperServer(srv, host.mapperFactory(ctx))
+	})
 }
 
 func (host *pluginHost) ResolvePlugin(

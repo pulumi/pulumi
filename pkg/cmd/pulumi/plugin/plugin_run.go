@@ -137,14 +137,14 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			pluginArgs := args[1:]
 
-			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled)
+			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 			if err != nil {
 				return fmt.Errorf("could not create plugin host: %w", err)
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
-			pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil,
-				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+			pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil)
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}

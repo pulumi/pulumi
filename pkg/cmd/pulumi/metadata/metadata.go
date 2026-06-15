@@ -32,6 +32,8 @@ import (
 	git "github.com/go-git/go-git/v6"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -80,7 +82,8 @@ func GetLanguageRuntimeMetadata(
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		pluginHost, err := pkghost.New(
-			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled)
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 		if err != nil {
 			return nil, err
 		}
