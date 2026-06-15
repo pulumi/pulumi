@@ -308,7 +308,7 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/, false /*includeStackContext*/)
 	}()
 
 	select {
@@ -394,7 +394,7 @@ func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/, false /*includeStackContext*/)
 	}()
 
 	select {
@@ -422,7 +422,7 @@ func TestRunNeoIntegration_NonInteractiveRequiresPrompt(t *testing.T) {
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "" /*prompt*/, "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/, false /*includeStackContext*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt argument is required")
 
@@ -448,7 +448,7 @@ func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
 	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/, false /*includeStackContext*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Pulumi Cloud backend",
 		"non-cloud backends must surface a clear error rather than panic on the type assertion")
@@ -479,7 +479,7 @@ func TestRunNeoIntegration_ResolvesCwdWhenEmpty(t *testing.T) {
 		// directory is always a real, readable path, so the tools constructors
 		// accept it and runNeo proceeds.
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", "", /*cwd*/
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/, false /*includeStackContext*/)
 	}()
 
 	select {
@@ -503,7 +503,7 @@ func TestRunNeoIntegration_RejectsNonexistentCwd(t *testing.T) {
 
 	missing := t.TempDir() + "/does-not-exist"
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", missing,
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/, false /*includeStackContext*/)
 	require.Error(t, err)
 	// The exact wrapping is internal to tools.NewFilesystem, but the missing
 	// path should be referenced so the user can see what went wrong.
@@ -532,7 +532,7 @@ func TestRunNeoIntegration_PropagatesReadProjectError(t *testing.T) {
 	}
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/, false /*includeStackContext*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "synthetic ReadProject failure")
 	assert.Empty(t, srv.recordedPosts(),
@@ -577,7 +577,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	t.Cleanup(func() { isInteractive = prevInteractive })
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/, false /*includeStackContext*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "creating Neo task")
 }
@@ -650,7 +650,7 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/, false /*includeStackContext*/)
 	}()
 
 	select {

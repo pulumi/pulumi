@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -148,7 +149,7 @@ func NewNeoCmd() *cobra.Command {
 				ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(),
 				prompt, flags.stackName, flags.orgFlag, flags.cwdFlag,
 				approvalMode, permissionMode, flags.printMode,
-				flags.disableIntegrations)
+				flags.disableIntegrations, false)
 		},
 	}
 
@@ -247,6 +248,7 @@ func runNeo(
 	permissionMode client.NeoPermissionMode,
 	printMode bool,
 	disableIntegrations bool,
+	includeStackContext bool,
 ) error {
 	// nil lets the server inherit the org's enabled integrations; the empty slice opts out.
 	var enabledIntegrations *[]string
@@ -284,9 +286,17 @@ func runNeo(
 		return result.FprintBailf(stderr, "%s", msg)
 	}
 
-	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)
+	orgName, projectName, stackRefName, stackRef, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)
 	if err != nil {
 		return err
+	}
+
+	// `pulumi neo debug` seeds Neo with the current identity/target and the most recent
+	// operation so it starts with the failure already in context instead of rediscovering
+	// it. We append after the trigger line so debugSeedPrompt stays first and Neo's skill
+	// evaluator still matches the debug skill.
+	if includeStackContext && prompt != "" {
+		prompt += "\n\n" + debugStackContext(ctx, cloudBe, stackRef, orgName, projectName, stackRefName)
 	}
 
 	// Allow tools to read/write under temp directories in addition to cwd: the agent
@@ -622,7 +632,7 @@ func resolveTaskTarget(
 	be httpstate.Backend,
 	project *workspace.Project,
 	stackName, orgFlag string,
-) (org, projectName, stack string, err error) {
+) (org, projectName, stack string, stackRef backend.StackReference, err error) {
 	if project != nil {
 		projectName = string(project.Name)
 	}
@@ -631,8 +641,9 @@ func resolveTaskTarget(
 	if stackName != "" {
 		ref, err := be.ParseStackReference(stackName)
 		if err != nil {
-			return "", "", "", err
+			return "", "", "", nil, err
 		}
+		stackRef = ref
 		stack = ref.Name().String()
 		if owned, ok := ref.(stackRefWithOrg); ok {
 			if o, has := owned.Organization(); has {
@@ -642,6 +653,7 @@ func resolveTaskTarget(
 	} else {
 		s, err := state.CurrentStack(ctx, ws, be)
 		if err == nil && s != nil {
+			stackRef = s.Ref()
 			stack = s.Ref().Name().String()
 			if owned, ok := s.Ref().(stackRefWithOrg); ok {
 				if o, has := owned.Organization(); has {
@@ -659,13 +671,13 @@ func resolveTaskTarget(
 	default:
 		org, err = be.GetDefaultOrg(ctx)
 		if err != nil {
-			return "", "", "", fmt.Errorf("determining default organization: %w", err)
+			return "", "", "", nil, fmt.Errorf("determining default organization: %w", err)
 		}
 	}
 	if org == "" {
-		return "", "", "", errors.New("could not determine an organization for the Neo task; pass --org")
+		return "", "", "", nil, errors.New("could not determine an organization for the Neo task; pass --org")
 	}
-	return org, projectName, stack, nil
+	return org, projectName, stack, stackRef, nil
 }
 
 // dedupeExistingRoots returns candidates with duplicates removed by canonical path,

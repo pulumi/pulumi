@@ -51,11 +51,23 @@ type fakeHTTPBackend struct {
 	// ClientV is returned from Client(); leave nil for tests that don't need a
 	// live client (the integration test wires a real *client.Client here).
 	ClientV *client.Client
+	// GetLatestStackPreviewF backs the stackPreviewLister capability used by
+	// `pulumi neo debug`; leave nil to report no previews.
+	GetLatestStackPreviewF func(context.Context, backend.StackReference) (*apitype.StackPreview, error)
 }
 
 func (f *fakeHTTPBackend) CloudURL() string                                       { return "" }
 func (f *fakeHTTPBackend) StackConsoleURL(backend.StackReference) (string, error) { return "", nil }
 func (f *fakeHTTPBackend) Client() *client.Client                                 { return f.ClientV }
+
+func (f *fakeHTTPBackend) GetLatestStackPreview(
+	ctx context.Context, stackRef backend.StackReference,
+) (*apitype.StackPreview, error) {
+	if f.GetLatestStackPreviewF != nil {
+		return f.GetLatestStackPreviewF(ctx, stackRef)
+	}
+	return nil, nil
+}
 
 func (f *fakeHTTPBackend) RunDeployment(
 	context.Context, backend.StackReference, apitype.CreateDeploymentRequest,
@@ -120,7 +132,7 @@ func TestResolveTaskTarget_UsesStackFlag(t *testing.T) {
 	ws := &pkgWorkspace.MockContext{}
 	project := &workspace.Project{Name: tokens.PackageName("my-proj")}
 
-	org, proj, stack, err := resolveTaskTarget(t.Context(), ws, be, project, "prod", "")
+	org, proj, stack, _, err := resolveTaskTarget(t.Context(), ws, be, project, "prod", "")
 	require.NoError(t, err)
 	assert.Equal(t, "default-org", org)
 	assert.Equal(t, "my-proj", proj)
@@ -140,7 +152,7 @@ func TestResolveTaskTarget_OrgFlagOverridesDefault(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{}
-	org, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "explicit")
+	org, _, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "explicit")
 	require.NoError(t, err)
 	assert.Equal(t, "explicit", org)
 }
@@ -153,7 +165,7 @@ func TestResolveTaskTarget_FallsBackToBackendDefaultOrg(t *testing.T) {
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "backend-default", nil }
 
 	ws := &pkgWorkspace.MockContext{}
-	org, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
+	org, _, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
 	require.NoError(t, err)
 	assert.Equal(t, "backend-default", org)
 }
@@ -169,7 +181,7 @@ func TestResolveTaskTarget_ErrorsWhenOrgUnresolvable(t *testing.T) {
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "", nil }
 
 	ws := &pkgWorkspace.MockContext{}
-	_, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
+	_, _, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pass --org")
 }
@@ -184,7 +196,7 @@ func TestResolveTaskTarget_DefaultOrgLookupErrorIsWrapped(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{}
-	_, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
+	_, _, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "determining default organization")
 	assert.Contains(t, err.Error(), "boom")
@@ -200,7 +212,7 @@ func TestResolveTaskTarget_InvalidStackReferenceErrors(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{}
-	_, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "bad/stack/name/here", "")
+	_, _, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "bad/stack/name/here", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid stack")
 }
@@ -212,7 +224,7 @@ func TestResolveTaskTarget_OmitsProjectNameWhenProjectNil(t *testing.T) {
 	// `pulumi neo` can be run outside a project — resolveTaskTarget must tolerate
 	// a nil project and return an empty projectName rather than panicking.
 	be := newFakeBackend()
-	org, proj, _, err := resolveTaskTarget(t.Context(), ws(), be, nil, "", "explicit")
+	org, proj, _, _, err := resolveTaskTarget(t.Context(), ws(), be, nil, "", "explicit")
 	require.NoError(t, err)
 	assert.Equal(t, "explicit", org)
 	assert.Empty(t, proj)
@@ -253,7 +265,7 @@ func TestResolveTaskTarget_StackFlagOwnerWinsOverDefaultOrg(t *testing.T) {
 		return "", nil
 	}
 
-	org, _, stack, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "")
+	org, _, stack, _, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "")
 	require.NoError(t, err)
 	assert.Equal(t, "otherorg", org)
 	assert.Equal(t, "dev", stack)
@@ -292,7 +304,7 @@ func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
 		},
 	}
 
-	org, _, stack, err := resolveTaskTarget(t.Context(), wsCtx, be, nil, "", "")
+	org, _, stack, _, err := resolveTaskTarget(t.Context(), wsCtx, be, nil, "", "")
 	require.NoError(t, err)
 	assert.Equal(t, "otherorg", org)
 	assert.Equal(t, "dev", stack)
@@ -309,7 +321,7 @@ func TestResolveTaskTarget_OrgFlagOverridesStackOwner(t *testing.T) {
 	be := newFakeBackend()
 	be.ParseStackReferenceF = parseQualifiedStackRefF
 
-	org, _, stack, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "explicit")
+	org, _, stack, _, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "explicit")
 	require.NoError(t, err)
 	assert.Equal(t, "explicit", org)
 	assert.Equal(t, "dev", stack)

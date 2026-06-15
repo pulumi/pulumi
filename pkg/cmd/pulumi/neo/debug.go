@@ -15,9 +15,15 @@
 package neo
 
 import (
+	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // newNeoDebugCmd creates the `pulumi neo debug [id]` subcommand: a structured entry to the same
@@ -52,7 +58,7 @@ func newNeoDebugCmd() *cobra.Command {
 				ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(),
 				debugSeedPrompt(id), flags.stackName, flags.orgFlag, flags.cwdFlag,
 				approvalMode, permissionMode, flags.printMode,
-				flags.disableIntegrations)
+				flags.disableIntegrations, true)
 		},
 	}
 
@@ -77,6 +83,73 @@ func debugSeedPrompt(id string) string {
 	return fmt.Sprintf(
 		"Debug the failed %s %s of this stack and fix it directly in this working directory.\n",
 		operation, id)
+}
+
+// stackPreviewLister is the subset of the cloud backend that can fetch a stack's most recent
+// preview. It is kept separate from httpstate.Backend — which must stay backwards-compatible, so
+// we can't add methods to it — and detected via a type assertion, degrading gracefully (skipping
+// the preview lookup) on backends that don't implement it.
+type stackPreviewLister interface {
+	GetLatestStackPreview(ctx context.Context, stackRef backend.StackReference) (*apitype.StackPreview, error)
+}
+
+// debugStackContext builds a short, human-readable block describing where the debug session is
+// running — the organization, user, project, and stack — plus the stack's most recent operation
+// (its kind, version/id, and result). `pulumi neo debug` appends this to the seed prompt so Neo
+// starts with the failure already in context instead of rediscovering it. Every lookup is
+// best-effort: anything that errors or is unavailable is simply omitted so debug still works when,
+// for example, the backend can't return history or no stack is selected.
+func debugStackContext(
+	ctx context.Context,
+	be httpstate.Backend,
+	stackRef backend.StackReference,
+	org, project, stack string,
+) string {
+	var b strings.Builder
+	b.WriteString("Context for this debug session:\n")
+	if org != "" {
+		fmt.Fprintf(&b, "- Organization: %s\n", org)
+	}
+	if user, _, _, err := be.CurrentUser(); err == nil && user != "" {
+		fmt.Fprintf(&b, "- User: %s\n", user)
+	}
+	if project != "" {
+		fmt.Fprintf(&b, "- Project: %s\n", project)
+	}
+	if stack != "" {
+		fmt.Fprintf(&b, "- Stack: %s\n", stack)
+	}
+	if stackRef != nil {
+		if op := mostRecentOperation(ctx, be, stackRef); op != "" {
+			fmt.Fprintf(&b, "- Most recent operation: %s\n", op)
+		}
+	}
+	return b.String()
+}
+
+// mostRecentOperation describes the stack's most recent operation across both updates and
+// previews, or "" if neither is available. Updates and previews are tracked separately — previews
+// never appear in GetHistory — so we look at both and report whichever ran most recently (by start
+// time). This is what lets `pulumi neo debug` target a failed preview that is newer than the last
+// deployment, rather than always reporting the latest update. Both lookups are best-effort.
+func mostRecentOperation(ctx context.Context, be httpstate.Backend, stackRef backend.StackReference) string {
+	var (
+		bestStart int64 = -1
+		best      string
+	)
+	// Most recent entry from update history (updates/refreshes/destroys/imports — never previews).
+	if updates, err := be.GetHistory(ctx, stackRef, 1, 1); err == nil && len(updates) > 0 {
+		u := updates[0]
+		bestStart = u.StartTime
+		best = fmt.Sprintf("%s (version %d, result: %s)", u.Kind, u.Version, u.Result)
+	}
+	// Most recent preview, which is tracked separately from history.
+	if pl, ok := be.(stackPreviewLister); ok {
+		if p, err := pl.GetLatestStackPreview(ctx, stackRef); err == nil && p != nil && p.Info.StartTime > bestStart {
+			best = fmt.Sprintf("preview %s (result: %s)", p.UpdateID, p.Info.Result)
+		}
+	}
+	return best
 }
 
 // isUpdateID reports whether id looks like an update version rather than a preview id. Update
