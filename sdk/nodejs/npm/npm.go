@@ -98,6 +98,19 @@ func (node *npmManager) Link(ctx context.Context, dir, packageName, path string)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("error executing npm command %s: %w, output: %s", cmd.String(), err, out)
 	}
+
+	// Local SDKs have a postinstall script that needs to run to compile the SDK from TypeScript. Starting with
+	// npm 11.16.0, npm warns about packages whose install scripts are not covered by the `allowScripts` field in
+	// package.json, and npm 12 will skip those scripts unless they are allowlisted. Add the local SDK to
+	// `allowScripts` so its postinstall script keeps running.
+	// https://docs.npmjs.com/cli/configuring-npm/package-json#allowscripts
+	allowScripts := fmt.Sprintf("allowScripts[file:%s]=true", path)
+	//nolint:gosec
+	cmd = exec.CommandContext(ctx, "npm", "pkg", "set", allowScripts, "--json")
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error executing npm command %s: %w, output: %s", cmd.String(), err, out)
+	}
 	return nil
 }
 
