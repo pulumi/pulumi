@@ -457,18 +457,48 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		typeParameter := deferredOutputCastTypeParameter(outputType)
 		g.Fgenf(w, "pulumix.Cast[%s](%v)", typeParameter, expr.Args[0])
 	case pcl.Invoke:
-		if expr.Signature.MultiArgumentInputs {
-			panic(fmt.Errorf("go program-gen does not implement MultiArgumentInputs for function '%v'",
-				expr.Args[0]))
-		}
-
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "We don't allow problems getting the function name")
 		if module == "" || module == "index" {
 			module = pkg
 		}
 		isOut, outArgs, outArgsType := pcl.RecognizeOutputVersionedInvoke(expr)
-		if isOut {
+		if expr.Signature.MultiArgumentInputs {
+			name := fn
+			if pcl.IsOutputVersionInvokeCall(expr) {
+				name += "Output"
+			}
+			g.Fgenf(w, "%s.%s(ctx", module, name)
+
+			var invokeArgs *model.ObjectConsExpression
+			if len(expr.Args) >= 2 {
+				// extract invoke args in case we have the form invoke("token", __convert(args))
+				if converted, objectArgs, _ := pcl.RecognizeTypedObjectCons(expr.Args[1]); converted {
+					invokeArgs = objectArgs
+				} else {
+					// otherwise, we have the form invoke("token", args)
+					invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
+				}
+			}
+
+			arguments := map[string]model.Expression{}
+			if invokeArgs != nil {
+				for _, item := range invokeArgs.Items {
+					arguments[pcl.LiteralValueString(item.Key)] = item.Value
+				}
+			}
+
+			// Unlike other languages, Go cannot leave out trailing optional parameters, so
+			// every parameter is emitted, passing nil for absent optional ones.
+			for _, param := range pcl.SortedFunctionParameters(expr) {
+				g.Fgen(w, ", ")
+				if value, ok := arguments[param.Name]; ok {
+					g.Fgenf(w, "%.v", value)
+				} else {
+					g.Fgen(w, "nil")
+				}
+			}
+		} else if isOut {
 			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType, g.externalCache)
 			if err != nil {
 				// We create a diag instead of panicking since panics are caught in go
@@ -524,7 +554,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					}
 				}
 			}
-		} else {
+		} else if !expr.Signature.MultiArgumentInputs {
+			// A multi-argument invoke passes its inputs positionally and takes invokeOptions as a
+			// trailing variadic parameter, so when there are no options nothing is emitted. Other
+			// invokes pass a single options argument positionally, defaulting to nil.
 			g.Fgenf(&buf, ", nil")
 		}
 		optionsBag = buf.String()
