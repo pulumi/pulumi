@@ -109,10 +109,10 @@ func (ctx *Context) MapperAddr() string {
 	return ctx.mapperServer.Addr()
 }
 
-// StartMapper starts a conversion mapper service bound to this context's workspace view. The
+// startMapper starts a conversion mapper service bound to this context's workspace view. The
 // service is shut down when the context is closed. A context may have at most one mapper;
 // contexts constructed with a non-nil NewMapperFunc already have one.
-func (ctx *Context) StartMapper(newMapper NewMapperFunc) error {
+func (ctx *Context) startMapper(newMapper NewMapperFunc) error {
 	contract.Assertf(ctx.mapperServer == nil, "context already has a mapper")
 	server, err := NewServer(ctx, func(srv *grpc.Server) {
 		codegenrpc.RegisterMapperServer(srv, newMapper(ctx))
@@ -233,7 +233,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	}
 
 	if newMapper != nil {
-		if err := pctx.StartMapper(newMapper); err != nil {
+		if err := pctx.startMapper(newMapper); err != nil {
 			contract.IgnoreClose(pctx)
 			return nil, err
 		}
