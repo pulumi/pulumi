@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plugin
+package host
 
 import (
 	"context"
@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -31,6 +32,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func testHost(t *testing.T) plugin.Host {
+	return New(t.Context(), diagtest.LogSink(t), diagtest.LogSink(t), nil, nil)
+}
 
 // TestHostManagedProviderCloseSignalsCancellation locks in the contract that hostManagedProvider.Close sends
 // SignalCancellation before tearing the underlying provider down. Without this, Plugin.Close treats the subsequent
@@ -41,14 +46,14 @@ func TestHostManagedProviderCloseSignalsCancellation(t *testing.T) {
 	t.Parallel()
 
 	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, nil)
+	ctx, err := plugin.NewContext(t.Context(), sink, sink, testHost(t), nil, "", nil, false, nil, nil, nil, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
 	t.Cleanup(func() { require.NoError(t, host.Close()) })
 
 	var calls []string
-	mockProv := &MockProvider{
+	mockProv := &plugin.MockProvider{
 		SignalCancellationF: func(context.Context) error {
 			calls = append(calls, "SignalCancellation")
 			return nil
@@ -65,7 +70,7 @@ func TestHostManagedProviderCloseSignalsCancellation(t *testing.T) {
 	require.NoError(t, managed.Close())
 
 	require.Equal(t, []string{"SignalCancellation", "Close"}, calls)
-	require.NotContains(t, host.resourcePlugins, Provider(mockProv))
+	require.NotContains(t, host.resourcePlugins, plugin.Provider(mockProv))
 }
 
 // TestContextCloseReleasesProviders locks in that closing a context releases the providers

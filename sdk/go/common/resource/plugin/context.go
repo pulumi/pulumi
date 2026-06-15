@@ -65,11 +65,6 @@ type Context struct {
 	projectName            tokens.PackageName
 	projectPlugins         []workspace.ProjectPlugin
 
-	// ownsHost is true when this context constructed its own (default) host. Context.Close
-	// only closes the host it owns; hosts passed in by the caller are caller-owned and must
-	// be closed by the caller.
-	ownsHost bool
-
 	// loaderServer serves the schema loader bound to this context's workspace view, if any.
 	// The loader is a workspace service, not a host service: it boots plugins to load
 	// schemas, and which plugins resolve depends on the workspace. It dies with the context.
@@ -157,13 +152,12 @@ func (ctx *Context) ProjectPlugins() []workspace.ProjectPlugin {
 	return ctx.projectPlugins
 }
 
-// NewContext allocates a new context with a given sink and host. If host is nil a default host
-// is constructed and owned by the returned context: closing the context closes the host. A
-// non-nil host is owned by the caller and is not closed with the context.
+// NewContext allocates a new context with a given sink and host. The host is required and is
+// owned by the caller: closing the context does not close the host, since a single host may be
+// shared by several contexts.
 func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span, newLoader NewLoaderFunc, newMapper NewMapperFunc,
-	installLang LanguageInstaller,
 ) (*Context, error) {
 	// TODO: really this ought to just take plugins *workspace.Plugins and packages map[string]workspace.PackageSpec
 	// as args, but yaml depends on this function so *sigh*. For now just see if there's a project we should be using,
@@ -180,16 +174,16 @@ func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSo
 	}
 
 	return NewContextWithRoot(ctx, d, statusD, host, pwd, pwd, runtimeOptions,
-		disableProviderPreview, parentSpan, plugins, packages, nil, nil, newLoader, newMapper, installLang)
+		disableProviderPreview, parentSpan, plugins, packages, nil, newLoader, newMapper)
 }
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
 func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugContext, newLoader NewLoaderFunc,
-	newMapper NewMapperFunc, installLang LanguageInstaller,
+	config map[config.Key]string, newLoader NewLoaderFunc, newMapper NewMapperFunc,
 ) (*Context, error) {
+	contract.Assertf(host != nil, "host cannot be nil")
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	}
@@ -230,16 +224,6 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		return nil, err
 	}
 	pctx.projectPlugins = projectPlugins
-
-	if host == nil {
-		h, err := NewDefaultHost(pctx, debugging, installLang)
-		if err != nil {
-			cancel()
-			return nil, err
-		}
-		pctx.Host = h
-		pctx.ownsHost = true
-	}
 
 	if newLoader != nil {
 		if err := pctx.StartLoader(newLoader); err != nil {
@@ -320,10 +304,9 @@ func (ctx *Context) Request() context.Context {
 	return opentracing.ContextWithSpan(ctx.baseContext, ctx.tracingSpan)
 }
 
-// Close reclaims all resources associated with this context. The host itself is only closed if
-// this context constructed it (a default host built because no host was passed in); a host
-// supplied by the caller is caller-owned and must be closed separately, since a single host may
-// be shared by several contexts.
+// Close reclaims all resources associated with this context. The host is owned by the caller
+// and is not closed here, since a single host may be shared by several contexts; the caller
+// that constructed the host must close it separately.
 func (ctx *Context) Close() error {
 	defer ctx.cancel()
 	if ctx.tracingSpan != nil {
@@ -338,13 +321,6 @@ func (ctx *Context) Close() error {
 		if err := ctx.mapperServer.Close(); err != nil && !rpcutil.IsBenignCloseErr(err) {
 			logging.V(5).Infof("Error closing the context's mapper service; ignoring: %v", err)
 		}
-	}
-	if !ctx.ownsHost {
-		return nil
-	}
-	err := ctx.Host.Close()
-	if err != nil && !rpcutil.IsBenignCloseErr(err) {
-		return err
 	}
 	return nil
 }
