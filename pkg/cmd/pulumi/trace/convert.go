@@ -669,7 +669,7 @@ func exportTraceToOtel(w io.Writer, querier appdash.Queryer, ignoreLogSpans bool
 		return err
 	}
 
-	// Conver the trace roots.
+	// Convert the trace roots.
 	for _, r := range roots {
 		if err = t.newSpan(r, nil); err != nil {
 			return err

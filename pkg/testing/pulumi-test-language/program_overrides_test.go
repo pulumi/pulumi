@@ -134,7 +134,7 @@ func (h *ProgramOverridesLanguageHost) Run(
 }
 
 // Tests that a conformance test which specifies program overrides does not ask the language host to generate a project,
-// but otherwise behaves as expected (validating snaphots, checking assertions, etc.).
+// but otherwise behaves as expected (validating snapshots, checking assertions, etc.).
 func TestProgramOverrides_DontGenerateProgram(t *testing.T) {
 	t.Parallel()
 
