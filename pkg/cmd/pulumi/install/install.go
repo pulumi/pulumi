@@ -38,6 +38,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
@@ -128,7 +130,8 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			span := opentracing.SpanFromContext(ctx)
 			projinfo := &engine.Projinfo{Proj: proj, Root: root}
 			pluginHost, err := pkghost.New(
-				context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled)
+				context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 			if err != nil {
 				return err
 			}

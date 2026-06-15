@@ -128,15 +128,14 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	}
 
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil,
-		pkgWorkspace.EnsureLanguageInstalled)
+		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 	if err != nil {
 		return err
 	}
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
 	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), pluginHost, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, schema.NewLoaderServerFromContext,
-		convert.NewMapperServerFromContext)
+		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil)
 	if err != nil {
 		return err
 	}

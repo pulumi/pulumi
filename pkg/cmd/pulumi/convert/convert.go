@@ -504,7 +504,8 @@ func runConvert(
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		pluginHost, err := pkghost.New(
-			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled)
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 		if err != nil {
 			return err
 		}

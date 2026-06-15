@@ -110,6 +110,9 @@ func (host *testPluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
 	return false
 }
 
+func (host *testPluginHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) { return nil, nil }
+func (host *testPluginHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) { return nil, nil }
+
 type testProvider struct {
 	plugin.UnimplementedProvider
 

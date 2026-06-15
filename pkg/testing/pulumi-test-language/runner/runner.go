@@ -41,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/host"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -61,7 +60,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/require"
@@ -549,13 +547,13 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	})
 
 	// Start up a plugin host and context. The host is owned here and closed after the context.
-	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), snk, snk, nil, pkgWorkspace.EnsureLanguageInstalled)
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), snk, snk, nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin host: %w", err)
 	}
 	defer contract.IgnoreClose(pluginHost)
-	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, pluginHost, "", "", nil, false, nil, nil, nil, nil,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, pluginHost, "", "", nil, false, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -751,32 +749,22 @@ func (eng *languageTestServer) RunLanguageTest(
 		token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	host := &testHost{
-		engine:      eng,
-		runtime:     languageClient,
-		runtimeName: token.LanguagePluginName,
-		providers:   make(map[string]func() (plugin.Provider, error)),
-		connections: make(map[plugin.Provider]io.Closer),
-	}
-
-	var loader *providerLoader
-	loaderServer := func(pctx *plugin.Context) codegenrpc.LoaderServer {
-		loader = &providerLoader{
-			language:     token.LanguagePluginName,
-			languageInfo: token.LanguageInfo,
-			pctx:         pctx,
-			host:         host,
-		}
-		return schema.NewLoaderServer(loader)
+		engine:       eng,
+		runtime:      languageClient,
+		runtimeName:  token.LanguagePluginName,
+		languageInfo: token.LanguageInfo,
+		providers:    make(map[string]func() (plugin.Provider, error)),
+		connections:  make(map[plugin.Provider]io.Closer),
 	}
 
 	pctx, err := plugin.NewContextWithRoot(
-		ctx, snk, snk, host, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil,
-		loaderServer, convert.NewMapperServerFromContext)
+		ctx, snk, snk, host, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
 	defer contract.IgnoreClose(pctx)
-	contract.Assertf(pctx.LoaderAddr() != "" && loader != nil, "NewContextWithRoot must invoke the loader")
+	contract.Assertf(pctx.LoaderAddr() != "" && host.loader != nil, "NewContextWithRoot must invoke the host's loader")
+	loader := host.loader
 
 	// And fill that host with our test providers
 	for _, provider := range test.Providers {

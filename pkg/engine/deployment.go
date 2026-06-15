@@ -71,8 +71,7 @@ func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Hos
 
 	pctx, err := plugin.NewContextWithRoot(pluginCtx, diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
-		projinfo.Proj.GetPackageSpecs(), config,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		projinfo.Proj.GetPackageSpecs(), config)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -206,7 +205,8 @@ func ensureHost(ctx context.Context, opts *deploymentOptions, span opentracing.S
 	debugging := newDebugContext(opts.Events, opts.AttachDebugger)
 	h, err := pkghost.New(
 		opentracing.ContextWithSpan(context.WithoutCancel(ctx), span),
-		opts.Diag, opts.StatusDiag, debugging, pkgWorkspace.EnsureLanguageInstalled)
+		opts.Diag, opts.StatusDiag, debugging, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 	if err != nil {
 		return err
 	}

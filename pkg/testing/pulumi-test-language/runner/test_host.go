@@ -26,6 +26,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -37,13 +39,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 type testHost struct {
-	engine      *languageTestServer
-	runtime     plugin.LanguageRuntime
-	runtimeName string
-	providers   map[string]func() (plugin.Provider, error)
+	engine       *languageTestServer
+	runtime      plugin.LanguageRuntime
+	runtimeName  string
+	languageInfo string
+	providers    map[string]func() (plugin.Provider, error)
+
+	// loader is the provider-backed schema loader this host binds onto a context. It is captured
+	// here when Loader runs so the conformance runner can reuse it to bind PCL programs.
+	loader *providerLoader
 
 	connectionsMutex sync.Mutex
 	connections      map[plugin.Provider]io.Closer
@@ -215,6 +223,28 @@ func (h *testHost) ResolvePlugin(
 // rather than scoping them to a context.
 func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
 	return nil
+}
+
+// Loader serves the conformance runner's provider-backed schema loader, bound to ctx. The loader
+// resolves schemas from the test's own providers via this host.
+func (h *testHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	h.loader = &providerLoader{
+		language:     h.runtimeName,
+		languageInfo: h.languageInfo,
+		pctx:         ctx,
+		host:         h,
+	}
+	return plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterLoaderServer(srv, schema.NewLoaderServer(h.loader))
+	})
+}
+
+// Mapper serves the standard conversion mapper bound to ctx, sourcing mappings from the plugins
+// installed in the global plugin storage.
+func (h *testHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	return plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterMapperServer(srv, convert.NewMapperServerFromContext(ctx))
+	})
 }
 
 func (h *testHost) SignalCancellation() error {
