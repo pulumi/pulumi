@@ -110,7 +110,6 @@ var expectedFailures = map[string]string{
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-component-nested":                "syntax error",
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
-	"l2-invoke-multi-argument":           "Python SDK-gen does not implement MultiArgumentInputs for functions",
 }
 
 type languageTestConfig struct {

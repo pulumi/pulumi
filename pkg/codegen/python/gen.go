@@ -720,11 +720,6 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			continue
 		}
 
-		if f.MultiArgumentInputs {
-			return fmt.Errorf("python SDK-gen does not implement MultiArgumentInputs for function '%s'",
-				f.Token)
-		}
-
 		fun, err := mod.genFunction(f)
 		if err != nil {
 			return err

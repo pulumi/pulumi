@@ -463,12 +463,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fprint(w, ")")
 	case pcl.Invoke:
-		if expr.Signature.MultiArgumentInputs {
-			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for function '%v'",
-				expr.Args[0])
-			panic(err)
-		}
-
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 		if module != "" {
@@ -533,14 +527,26 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			})
 		}
 
-		switch arg := expr.Args[1].(type) {
-		case *model.FunctionCallExpression:
-			if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
-				genFuncArgs(argsObject)
+		if expr.Signature.MultiArgumentInputs {
+			// A multi-argument invoke spreads its inputs into positional arguments, ordered by the
+			// schema's multiArgumentInputs list, with None standing in for omitted optional inputs.
+			var invokeArgs *model.ObjectConsExpression
+			if converted, objectArgs, _ := pcl.RecognizeTypedObjectCons(expr.Args[1]); converted {
+				invokeArgs = objectArgs
+			} else {
+				invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
 			}
+			pcl.GenerateMultiArguments(g.Formatter, w, "None", invokeArgs, pcl.SortedFunctionParameters(expr))
+		} else {
+			switch arg := expr.Args[1].(type) {
+			case *model.FunctionCallExpression:
+				if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
+					genFuncArgs(argsObject)
+				}
 
-		case *model.ObjectConsExpression:
-			genFuncArgs(arg)
+			case *model.ObjectConsExpression:
+				genFuncArgs(arg)
+			}
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
