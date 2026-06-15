@@ -20,8 +20,8 @@ import (
 	"os"
 	"path/filepath"
 
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -127,7 +127,7 @@ func newRepoLookup(wd string) (repoLookup, error) {
 	// Resolve symlinks so that filepath.Rel works correctly when the caller-provided
 	// paths and the worktree root go through different symlink chains (e.g. on macOS
 	// where /var is a symlink to /private/var).
-	repoRoot, err := filepath.EvalSymlinks(worktree.Filesystem.Root())
+	repoRoot, err := filepath.EvalSymlinks(worktree.Filesystem().Root())
 	if err != nil {
 		return nil, err
 	}
