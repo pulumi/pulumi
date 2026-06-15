@@ -615,6 +615,9 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				packageRef = n.Schema.PackageReference
+				// Extension-parameterized resources keep the base provider's token
+				// namespace but belong to the extension's SDK package; import that.
+				pkg = packageRef.Name()
 			}
 			visitPkg(pkg, packageRef)
 		case *pcl.ReadResource:
@@ -622,6 +625,9 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				packageRef = n.Schema.PackageReference
+				// Extension-parameterized resources keep the base provider's token
+				// namespace but belong to the extension's SDK package; import that.
+				pkg = packageRef.Name()
 			}
 			visitPkg(pkg, packageRef)
 		case *pcl.Component:
@@ -1108,6 +1114,9 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.PackageReference)
+		if r.Schema.PackageReference != nil {
+			pkg = r.Schema.PackageReference.Name()
+		}
 	}
 
 	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
@@ -1118,6 +1127,9 @@ func readResourceTypeName(r *pcl.ReadResource) (string, string, string, hcl.Diag
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.PackageReference)
+		if r.Schema.PackageReference != nil {
+			pkg = r.Schema.PackageReference.Name()
+		}
 	}
 
 	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
