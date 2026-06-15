@@ -939,6 +939,90 @@ func TestEmptyStackRm(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates environment and may call service backend
+func TestStackImportExportSnippetsAcrossBackends(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	integration.CreateBasicPulumiRepo(e)
+
+	runCase := func(backendURL string) {
+		e.Backend = backendURL
+
+		stackName := addRandomSuffix("snippets-import-export")
+		e.RunCommand("pulumi", "stack", "init", stackName)
+
+		stackFile := path.Join(e.RootPath, "stack.json")
+		e.RunCommand("pulumi", "stack", "export", "--file", stackFile)
+
+		stackJSON, err := os.ReadFile(stackFile)
+		require.NoError(t, err)
+
+		var deployment apitype.UntypedDeployment
+		err = json.Unmarshal(stackJSON, &deployment)
+		require.NoError(t, err)
+
+		var typed apitype.DeploymentV3
+		err = json.Unmarshal(deployment.Deployment, &typed)
+		require.NoError(t, err)
+
+		typed.Snippets = []apitype.SnippetV1{
+			{
+				Name: "fromSnippet",
+				Type: "pulumi:pulumi:Stack",
+				Code: "name = \"fromSnippet\"",
+				Descriptor: apitype.PackageDescriptorV1{
+					Name: "pulumi",
+				},
+			},
+		}
+
+		snap, err := stack.DeserializeDeploymentV3(t.Context(), typed, secrets.DefaultProvider)
+		require.NoError(t, err)
+		untyped, err := stack.SerializeUntypedDeployment(t.Context(), snap, nil)
+		require.NoError(t, err)
+
+		deployment = *untyped
+		assert.Equal(t, apitype.DeploymentSchemaVersionLatest, deployment.Version)
+		assert.Contains(t, deployment.Features, "snippets-prototype")
+
+		bytes, err := json.Marshal(&deployment)
+		require.NoError(t, err)
+		err = os.WriteFile(stackFile, bytes, 0o600)
+		require.NoError(t, err)
+
+		e.RunCommand("pulumi", "stack", "import", "--file", stackFile)
+
+		e.RunCommand("pulumi", "stack", "export", "--file", stackFile)
+		stackJSON, err = os.ReadFile(stackFile)
+		require.NoError(t, err)
+
+		err = json.Unmarshal(stackJSON, &deployment)
+		require.NoError(t, err)
+		err = json.Unmarshal(deployment.Deployment, &typed)
+		require.NoError(t, err)
+
+		require.Len(t, typed.Snippets, 1)
+		assert.Equal(t, "fromSnippet", typed.Snippets[0].Name)
+		assert.Equal(t, "pulumi:pulumi:Stack", typed.Snippets[0].Type)
+		assert.Equal(t, "name = \"fromSnippet\"", typed.Snippets[0].Code)
+		assert.Nil(t, typed.Snippets[0].References)
+		assert.Contains(t, deployment.Features, "snippets-prototype")
+
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
+	}
+
+	t.Run("service", func(t *testing.T) {
+		t.Skip("Skipping service backend until snippets-prototype import is supported")
+		runCase("")
+	})
+
+	t.Run("diy", func(t *testing.T) {
+		e.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+		runCase(e.LocalURL())
+	})
+}
+
 // TestStackExportDoesNotEscapeHTML tests that the exported stack JSON does not escape HTML characters
 // for the diy backend.
 //
