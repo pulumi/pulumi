@@ -4220,9 +4220,9 @@ tinyglobby@^0.2.12:
     picomatch "^4.0.3"
 
 tmp@^0.2.4:
-  version "0.2.6"
-  resolved "https://registry.yarnpkg.com/tmp/-/tmp-0.2.6.tgz#0dfac10fd09a9319288eb0e8f0ed524604e183b4"
-  integrity sha512-5sJPdPjfI5Kx+qbrDesxkglRBxW//g7hCsqspEjwkewGvBMGIKMOTKzLt1hFVJzyadba3lDUN20O9qhvbQUSTA==
+  version "0.2.7"
+  resolved "https://registry.yarnpkg.com/tmp/-/tmp-0.2.7.tgz#26f4db11d1601ce8012dcb8a798ece1c06a99059"
+  integrity sha512-e0votIpp4Uo2AJYSzVHV6xCcawuiez3DzqDAbrTc3YxBkplN6e+dM13ZeIcZnDg/QpSuU2zfZ3rzwY8ukEnaXw==
 
 to-fast-properties@^2.0.0:
   version "2.0.0"
