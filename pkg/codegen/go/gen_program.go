@@ -2289,6 +2289,20 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
 		case pcl.Invoke:
+			// Nested plain invokes return (T, error) so they cannot be used as inline
+			// expressions; spill them to temporary variables first.
+			if len(expr.Args) >= 2 {
+				args, invokeTemps := g.rewriteInlineInvokes(expr.Args[1])
+				expr.Args[1] = args
+				if len(invokeTemps) > 0 {
+					temps := slice.Prealloc[any](len(invokeTemps))
+					for _, t := range invokeTemps {
+						temps = append(temps, t)
+					}
+					g.genTemps(w, temps)
+				}
+			}
+
 			// OutputVersionedInvoke does not return an error
 			noError, _, _ := pcl.RecognizeOutputVersionedInvoke(expr)
 			if noError {
