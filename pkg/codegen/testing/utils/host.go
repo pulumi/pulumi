@@ -95,6 +95,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"tls", "4.10.0"},
 		SchemaProvider{"random", "4.11.2"},
 		SchemaProvider{"std", "1.0.0"},
+		SchemaProvider{"multiarg", "1.0.0"},
 		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
 		SchemaProvider{"aws", "5.4.0"},
 
