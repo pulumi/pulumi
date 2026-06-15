@@ -2658,11 +2658,12 @@ func debugProvidersHelperContext(t *testing.T) *plugin.Context {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), sink, sink, nil, nil)
+	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), sink, sink, nil, nil,
+		NewLoaderServerFromContext, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, pluginHost.Close()) })
 	pluginCtx, err := plugin.NewContext(
-		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil, NewLoaderServerFromContext, nil)
+		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
 	require.NoError(t, err)
 	return pluginCtx
 }

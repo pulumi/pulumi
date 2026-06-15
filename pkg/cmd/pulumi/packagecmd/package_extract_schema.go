@@ -53,7 +53,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			}
 			sink := cmdutil.Diag()
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
-				pkgWorkspace.EnsureLanguageInstalled)
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 			if err != nil {
 				return err
 			}
@@ -61,7 +61,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(
 				cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				nil)
 			if err != nil {
 				return err
 			}

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -34,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // the host is independent of any workspace, and ctx is its lifetime context — cancelling it is the hard stop that
@@ -41,6 +43,7 @@ import (
 // RPC server parents its tracing interceptors on the span carried by ctx, if any.
 func New(
 	ctx context.Context, d, statusD diag.Sink, debugging plugin.DebugContext, installLang plugin.LanguageInstaller,
+	newLoader plugin.NewLoaderFunc, newMapper plugin.NewMapperFunc,
 ) (plugin.Host, error) {
 	// d and statusD may be nil; default them to a discarding sink so that logging through the host
 	// (e.g. from a plugin download-progress callback) never dereferences a nil sink.
@@ -66,6 +69,8 @@ func New(
 		closer:                  new(sync.Once),
 		debugContext:            debugging,
 		installLang:             installLang,
+		newLoader:               newLoader,
+		newMapper:               newMapper,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -123,9 +128,40 @@ type defaultHost struct {
 	closer *sync.Once
 
 	installLang plugin.LanguageInstaller // installs unbundled language runtimes on demand; may be nil.
+
+	// newLoader and newMapper build the schema loader and conversion mapper services bound to a
+	// given context's workspace view. They live on the host so callers no longer thread them
+	// through every context constructor; each is workspace-independent and may be nil, in which
+	// case the host serves no loader / no mapper.
+	newLoader plugin.NewLoaderFunc
+	newMapper plugin.NewMapperFunc
 }
 
 var _ plugin.Host = (*defaultHost)(nil)
+
+// Loader returns a schema loader service bound to ctx's workspace view, built from the loader
+// factory the host was constructed with. It returns nil if the host has no loader factory. The
+// returned server is owned by ctx and shut down when ctx is closed.
+func (host *defaultHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	if host.newLoader == nil {
+		return nil, nil
+	}
+	return plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterLoaderServer(srv, host.newLoader(ctx))
+	})
+}
+
+// Mapper returns a conversion mapper service bound to ctx's workspace view, built from the
+// mapper factory the host was constructed with. It returns nil if the host has no mapper
+// factory. The returned server is owned by ctx and shut down when ctx is closed.
+func (host *defaultHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	if host.newMapper == nil {
+		return nil, nil
+	}
+	return plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterMapperServer(srv, host.newMapper(ctx))
+	})
+}
 
 // analyzerPluginKey identifies a booted analyzer plugin. Analyzers are spawned in the
 // workspace's working directory and resolved against its project plugins; policy analyzers are

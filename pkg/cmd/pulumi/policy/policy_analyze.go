@@ -89,13 +89,13 @@ func newPolicyAnalyzeCmd(
 						return nil, nil, fmt.Errorf("getting working directory: %w", err)
 					}
 					pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(),
-						nil, pkgWorkspace.EnsureLanguageInstalled)
+						nil, pkgWorkspace.EnsureLanguageInstalled,
+						schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 					if err != nil {
 						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
 					}
 					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						pluginHost, nil, cwd, nil, true, nil, schema.NewLoaderServerFromContext,
-						convert.NewMapperServerFromContext)
+						pluginHost, nil, cwd, nil, true, nil)
 					if err != nil {
 						contract.IgnoreClose(pluginHost)
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)

@@ -460,14 +460,14 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 			return nil, nil, err
 		}
 		pluginHost, err := pkghost.New(
-			context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled)
+			context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 		if err != nil {
 			return nil, nil, err
 		}
 		// The host is owned here, not by the context; the deferred closes run host-last.
 		defer contract.IgnoreClose(pluginHost)
-		ctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, cwd, nil, false, nil,
-			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		ctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, cwd, nil, false, nil)
 		if err != nil {
 			return nil, nil, err
 		}

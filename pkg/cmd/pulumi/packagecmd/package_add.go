@@ -129,15 +129,14 @@ from the parameters, as in:
 
 			sink := cmdutil.Diag()
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
-				pkgWorkspace.EnsureLanguageInstalled)
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 			if err != nil {
 				return err
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(cmd.Context(),
-				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromContext,
-				convert.NewMapperServerFromContext)
+				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil)
 			if err != nil {
 				return err
 			}

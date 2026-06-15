@@ -36,8 +36,6 @@ func TestContextRequest_race(t *testing.T) {
 		nil,                 // runtimeOptions
 		false,               // disableProviderPreview
 		mocktracer.New().StartSpan("root"),
-		nil,
-		nil,
 	)
 	require.NoError(t, err)
 
