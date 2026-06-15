@@ -45,7 +45,7 @@ func (p *MultiArgumentInvokeProvider) Configure(
 }
 
 func (p *MultiArgumentInvokeProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.MustParse("1.0.0")
+	ver := semver.MustParse("44.0.0")
 	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
@@ -65,7 +65,7 @@ func (p *MultiArgumentInvokeProvider) GetSchema(
 
 	pkg := schema.PackageSpec{
 		Name:    "multi-argument-invoke",
-		Version: "1.0.0",
+		Version: "44.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			// A small resource that just has a single string property.
 			"multi-argument-invoke:index:StringResource": {
@@ -135,9 +135,9 @@ func (p *MultiArgumentInvokeProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "1.0.0" {
+	if version.StringValue() != "44.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 1.0.0"),
+			Failures: makeCheckFailure("version", "version is not 44.0.0"),
 		}, nil
 	}
 

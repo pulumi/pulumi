@@ -1,4 +1,4 @@
 package "multi-argument-invoke" {
   baseProviderName    = "multi-argument-invoke"
-  baseProviderVersion = "1.0.0"
+  baseProviderVersion = "44.0.0"
 }

@@ -6,6 +6,6 @@
 	"dependencies": {
 		"typescript": "^4.7.0",
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
-		"@pulumi/multi-argument-invoke": "ROOT/artifacts/pulumi-multi-argument-invoke-1.0.0.tgz"
+		"@pulumi/multi-argument-invoke": "ROOT/artifacts/pulumi-multi-argument-invoke-44.0.0.tgz"
 	}
 }
