@@ -28,8 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 )
@@ -324,24 +322,15 @@ func (ctx *Context) Request() context.Context {
 func (ctx *Context) Close() error {
 	defer ctx.cancel()
 
-	// Release the plugins this context booted before tearing down the context's own services and
-	// cancelling it. ReleaseContext is synchronous, so when it returns the providers have shut
-	// down and any diagnostics they emitted have been delivered through this context's sinks --
-	// before the caller that owns those sinks tears them down.
+	// Release everything the host booted on behalf of this context: its plugins and the loader and
+	// mapper gRPC servers the host hosts for it (those are shut down after the plugins, since they
+	// boot plugins through the host). ReleaseContext is synchronous, so when it returns those have
+	// shut down and any diagnostics they emitted have been delivered through this context's sinks
+	// -- before the caller that owns those sinks tears them down.
 	err := ctx.Host.ReleaseContext(ctx)
 
 	if ctx.tracingSpan != nil {
 		ctx.tracingSpan.Finish()
-	}
-	if ctx.loaderServer != nil {
-		if err := ctx.loaderServer.Close(); err != nil && !rpcutil.IsBenignCloseErr(err) {
-			logging.V(5).Infof("Error closing the context's loader service; ignoring: %v", err)
-		}
-	}
-	if ctx.mapperServer != nil {
-		if err := ctx.mapperServer.Close(); err != nil && !rpcutil.IsBenignCloseErr(err) {
-			logging.V(5).Infof("Error closing the context's mapper service; ignoring: %v", err)
-		}
 	}
 	return err
 }
