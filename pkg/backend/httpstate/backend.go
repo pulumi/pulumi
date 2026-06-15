@@ -2642,17 +2642,6 @@ func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 	return b.client.UpdateStackTags(ctx, stackID, tags)
 }
 
-func (b *cloudBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
-	stack backend.Stack, secret string,
-) (*apitype.SecretValue, error) {
-	stackID, err := b.getCloudStackIdentifier(stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-
-	return b.client.EncryptStackDeploymentSettingsSecret(ctx, stackID, secret)
-}
-
 func (b *cloudBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
 	deployment apitype.DeploymentSettings,
 ) error {

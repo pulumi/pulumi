@@ -294,15 +294,6 @@ func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
 	return stack.Save(path)
 }
 
-func SaveProjectStackDeployment(stackName tokens.QName, deployment *ProjectStackDeployment) error {
-	path, err := DetectProjectStackDeploymentPath(stackName)
-	if err != nil {
-		return err
-	}
-
-	return deployment.Save(path)
-}
-
 // Given a directory path search for files that appear to be a valid project that is satisfy [isProject].
 func findProjectInDir(dir string) (string, bool) {
 	// Check all supported extensions.

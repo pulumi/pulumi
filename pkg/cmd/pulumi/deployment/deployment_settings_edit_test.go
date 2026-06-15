@@ -33,11 +33,10 @@ type capturedEditPatch struct {
 }
 
 type mockDeploymentSettingsEditClient struct {
-	patchErr   error
-	getResp    *apitype.DeploymentSettings
-	getErr     error
-	captured   *capturedEditPatch
-	encryptErr error
+	patchErr error
+	getResp  *apitype.DeploymentSettings
+	getErr   error
+	captured *capturedEditPatch
 }
 
 func (m *mockDeploymentSettingsEditClient) PatchStackDeploymentSettings(
@@ -57,15 +56,6 @@ func (m *mockDeploymentSettingsEditClient) GetStackDeploymentSettings(
 		return nil, m.getErr
 	}
 	return m.getResp, nil
-}
-
-func (m *mockDeploymentSettingsEditClient) EncryptStackDeploymentSettingsSecret(
-	_ context.Context, _ client.StackIdentifier, secret string,
-) (*apitype.SecretValue, error) {
-	if m.encryptErr != nil {
-		return nil, m.encryptErr
-	}
-	return &apitype.SecretValue{Ciphertext: "cipher:" + secret, Secret: true}, nil
 }
 
 func stubSettingsEditFactory(c deploymentSettingsEditClient) deploymentSettingsEditClientFactory {
@@ -313,7 +303,7 @@ func TestDeploymentSettingsEdit_EnvVarsAndRemove(t *testing.T) {
 			"environmentVariables": {
 				"FOO": "bar",
 				"BAZ": "qux",
-				"API_KEY": {"ciphertext": "cipher:s3cret"},
+				"API_KEY": {"secret": "s3cret"},
 				"STALE": null
 			}
 		}
@@ -516,21 +506,19 @@ func TestDeploymentSettingsEdit_AdvancedToggles(t *testing.T) {
 	}`, string(got))
 }
 
-func TestDeploymentSettingsEdit_EncryptError(t *testing.T) {
+func TestDeploymentSettingsEdit_SecretEnvWireForm(t *testing.T) {
 	t.Parallel()
-	c := &mockDeploymentSettingsEditClient{
-		getResp:    &apitype.DeploymentSettings{},
-		encryptErr: errors.New("encrypt failed"),
-	}
-	var buf bytes.Buffer
-	err := runDeploymentSettingsEdit(t.Context(), &buf,
-		stubSettingsEditFactory(c),
-		deploymentSettingsEditArgs{
-			secretEnvVars: []string{"API=foo"},
-			flagsChanged:  flagsSet(flagSecretEnv),
-			outputFormat:  defaultDeploymentSettingsGetOutputFormat(),
-		})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "encrypting")
-	assert.Contains(t, err.Error(), "encrypt failed")
+	// Secret env vars are sent in plaintext-secret wire form ({"secret": ...}); the server
+	// encrypts them on PATCH, so the CLI no longer calls the /settings/encrypt endpoint.
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		secretEnvVars: []string{"API=foo"},
+		flagsChanged:  flagsSet(flagSecretEnv),
+	}, &mockDeploymentSettingsEditClient{})
+	assert.JSONEq(t, `{
+		"operationContext": {
+			"environmentVariables": {
+				"API": {"secret": "foo"}
+			}
+		}
+	}`, string(got))
 }

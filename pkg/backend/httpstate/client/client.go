@@ -2392,19 +2392,6 @@ func (pc *Client) PatchStackDeploymentSettings(ctx context.Context, stack StackI
 	return pc.restCall(ctx, http.MethodPost, getStackPath(stack, "deployments", "settings"), nil, patch, nil)
 }
 
-func (pc *Client) EncryptStackDeploymentSettingsSecret(ctx context.Context,
-	stack StackIdentifier, secret string,
-) (*apitype.SecretValue, error) {
-	request := apitype.SecretValue{Value: secret}
-	response := apitype.SecretValue{}
-	err := pc.restCall(ctx, "POST", getStackPath(stack, "deployments", "settings", "encrypt"), nil, &request, &response)
-	if err != nil {
-		return nil, err
-	}
-
-	return &response, nil
-}
-
 func (pc *Client) DestroyStackDeploymentSettings(ctx context.Context, stack StackIdentifier) error {
 	return pc.restCall(ctx, "DELETE", getStackPath(stack, "deployments", "settings"), nil, nil, nil)
 }
