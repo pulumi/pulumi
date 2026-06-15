@@ -87,12 +87,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "ReadFile function translation works",
 	},
 	{
-		Directory:   "simplified-invokes",
-		Description: "Simplified invokes",
-		Skip:        codegen.NewStringSet(TestPython, TestGo),
-		SkipCompile: codegen.NewStringSet(TestDotnet, TestNodeJS),
-	},
-	{
 		Directory:   "aws-optionals",
 		Description: "AWS get invoke with nested object constructor that takes an optional string",
 		// Testing Go behavior exclusively:

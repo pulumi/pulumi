@@ -112,11 +112,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Nested module",
 	},
 	{
-		Directory:   "simplified-invokes",
-		Description: "Simplified invokes",
-		Skip:        codegen.NewStringSet("python/any", "go/any"),
-	},
-	{
 		Directory:   "nested-module-thirdparty",
 		Description: "Third-party nested module",
 	},
