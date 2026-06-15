@@ -733,6 +733,12 @@ func DeleteAgentAccount(key string) error {
 	return result
 }
 
+// DeleteAgentClaim removes the singleton shared temporary agent claim file when the stored claim
+// belongs to the given cloud URL. No-op when the claim file is missing or points elsewhere.
+func DeleteAgentClaim(key string) error {
+	return deleteAgentClaim(key)
+}
+
 // deleteAgentClaim removes the singleton shared temporary agent claim file when
 // the stored claim belongs to the given cloud URL.
 func deleteAgentClaim(key string) error {
