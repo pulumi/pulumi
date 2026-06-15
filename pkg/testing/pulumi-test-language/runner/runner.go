@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -546,9 +547,14 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		Color: colors.Never,
 	})
 
-	// Start up a plugin context
-	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, nil, "", "", nil, false, nil, nil, nil, nil,
-		nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+	// Start up a plugin host and context. The host is owned here and closed after the context.
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), snk, snk, nil, pkgWorkspace.EnsureLanguageInstalled)
+	if err != nil {
+		return nil, fmt.Errorf("setup plugin host: %w", err)
+	}
+	defer contract.IgnoreClose(pluginHost)
+	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, pluginHost, "", "", nil, false, nil, nil, nil, nil,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -735,16 +741,17 @@ func (eng *languageTestServer) RunLanguageTest(
 	})
 
 	// Start up a plugin context. No loader factory is passed here: the test host's own loader is
-	// started on this context below, once the host exists.
+	// started on this context below, once the host exists. NewContextWithRoot requires a host, but
+	// the conformance runner installs its own test host below, so we pass a placeholder that is
+	// never used and clear it immediately.
 	pctx, err := plugin.NewContextWithRoot(
-		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil,
-		nil, nil, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+		ctx, snk, snk, &plugin.MockHost{}, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil,
+		nil, convert.NewMapperServerFromContext)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
 	defer contract.IgnoreClose(pctx)
 
-	// NewContextWithRoot will make a default plugin host, but we want to make sure we never actually use that
 	pctx.Host = nil
 
 	// Connect to the language host

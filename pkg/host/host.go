@@ -292,7 +292,9 @@ func (host *defaultHost) PolicyAnalyzer(
 	return hostedPlugin.(plugin.Analyzer), nil
 }
 
-func (host *defaultHost) Provider(ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+func (host *defaultHost) Provider(
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
 	host.watchContext(ctx)
 	hostedPlugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		pkg := descriptor.Name
@@ -429,7 +431,9 @@ func (host *defaultHost) LanguageRuntime(ctx *plugin.Context, runtime string,
 	return hostedPlugin.(plugin.LanguageRuntime), nil
 }
 
-func (host *defaultHost) ResolvePlugin(ctx *plugin.Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+func (host *defaultHost) ResolvePlugin(
+	ctx *plugin.Context, spec workspace.PluginDescriptor,
+) (*workspace.PluginInfo, error) {
 	return workspace.GetPluginInfo(ctx.Base(), ctx.Diag, spec, ctx.ProjectPlugins())
 }
 

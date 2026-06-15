@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -70,7 +71,10 @@ func NewDoCmd(
 	}
 	if newHost == nil {
 		newHost = func() (plugin.Host, error) {
-			return nil, nil
+			// The host is owned by the do command (closed via cleanup), so its lifetime context is
+			// uncancellable; plugin logs route through the global diagnostics sink.
+			return pkghost.New(
+				context.Background(), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled)
 		}
 	}
 	if loadConverterPlugin == nil {
@@ -150,8 +154,9 @@ func NewDoCmd(
 
 		pctx, err := plugin.NewContext(
 			ctx, sink, sink, host, nil, wd, nil, false,
-			nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+			nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 		if err != nil {
+			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}
 
@@ -159,11 +164,14 @@ func NewDoCmd(
 		if err != nil {
 			// Close the plugin context we opened above since we're not returning it to the caller.
 			contract.IgnoreClose(pctx)
+			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("load provider: %w", err)
 		}
 		cleanup := func() {
 			contract.IgnoreClose(p)
 			contract.IgnoreClose(pctx)
+			// host is owned here, closed after the context
+			contract.IgnoreClose(host)
 		}
 
 		// Parse "name@version" out of pkgargs[0] so we can also describe the package to downstream consumers
