@@ -1655,6 +1655,7 @@ class RegisterPackageRequest(google.protobuf.message.Message):
     DOWNLOAD_URL_FIELD_NUMBER: builtins.int
     CHECKSUMS_FIELD_NUMBER: builtins.int
     PARAMETERIZATION_FIELD_NUMBER: builtins.int
+    EXTENSION_FIELD_NUMBER: builtins.int
     name: builtins.str
     """the plugin name."""
     version: builtins.str
@@ -1669,6 +1670,10 @@ class RegisterPackageRequest(google.protobuf.message.Message):
     def parameterization(self) -> global___Parameterization:
         """the optional parameterization for this package."""
 
+    @property
+    def extension(self) -> global___Parameterization:
+        """the optional extension parameterization for this package."""
+
     def __init__(
         self,
         *,
@@ -1677,9 +1682,10 @@ class RegisterPackageRequest(google.protobuf.message.Message):
         download_url: builtins.str = ...,
         checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         parameterization: global___Parameterization | None = ...,
+        extension: global___Parameterization | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["checksums", b"checksums", "download_url", b"download_url", "name", b"name", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["extension", b"extension", "parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["checksums", b"checksums", "download_url", b"download_url", "extension", b"extension", "name", b"name", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
 
 global___RegisterPackageRequest = RegisterPackageRequest
 
