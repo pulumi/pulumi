@@ -201,7 +201,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				}
 
 				ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance,
-					pctx, cmd.OutOrStderr(), cmd.ErrOrStderr(), nil,
+					pctx.Host, cmd.OutOrStderr(), cmd.ErrOrStderr(), nil,
 					packageworkspace.Options{
 						UseLanguageVersionTools: useLanguageVersionTools,
 					})

@@ -338,7 +338,7 @@ func runConvert(
 	}
 
 	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
-	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx, stderr, stderr,
+	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx.Host, stderr, stderr,
 		nil, packageworkspace.Options{})
 
 	installPlugin := func(pluginName string) *semver.Version {

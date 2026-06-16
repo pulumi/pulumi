@@ -59,7 +59,7 @@ type Options struct {
 func New(
 	packageresolution pluginstorage.Context,
 	pkgworkspace pkgWorkspace.Context,
-	pctx *plugin.Context, stdout, stderr io.Writer,
+	pctx plugin.Host, stdout, stderr io.Writer,
 	parentSpan opentracing.Span, options Options,
 ) Workspace {
 	return Workspace{
@@ -80,7 +80,7 @@ type (
 type Workspace struct {
 	pluginStorageContext
 	pkgWorkspaceContext
-	pctx           *plugin.Context
+	host           plugin.Host
 	stdout, stderr io.Writer
 	options        Options
 	parentSpan     opentracing.Span
@@ -98,12 +98,24 @@ func (Workspace) GetPluginPath(ctx context.Context, spec workspace.PluginDescrip
 	return filepath.Join(path, spec.SubDir()), nil
 }
 
+func (w Workspace) pluginContext(ctx context.Context, dirPath string) (*plugin.Context, error) {
+	sink := diag.DefaultSink(w.stdout, w.stderr, diag.FormatOptions{
+		Color: diagutils.GetGlobalColorization(),
+	})
+	return plugin.NewContextWithHost(ctx, sink, sink, w.host, dirPath, dirPath, w.parentSpan)
+}
+
 // Install an already downloaded plugin at a specific path.
 //
 // InstallPlugin should assume that all dependencies of the plugin are already
 // installed.
 func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project *workspace.PluginProject) error {
-	lang, err := w.pctx.Host.LanguageRuntime(w.pctx, project.Runtime.Name())
+	pctx, err := w.pluginContext(ctx, dirPath)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(pctx)
+	lang, err := w.host.LanguageRuntime(pctx, project.Runtime.Name())
 	if err != nil {
 		return err
 	}
@@ -127,7 +139,12 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 func (w Workspace) GetRequiredPackages(
 	ctx context.Context, dirPath string, project *workspace.PluginProject,
 ) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
-	lang, err := w.pctx.Host.LanguageRuntime(w.pctx, project.Runtime.Name())
+	pctx, err := w.pluginContext(ctx, dirPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer contract.IgnoreClose(pctx)
+	lang, err := w.host.LanguageRuntime(pctx, project.Runtime.Name())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -240,7 +257,13 @@ func (w Workspace) GenerateLocalSDK(
 		return workspace.LinkablePackageDescriptor{}, err
 	}
 
-	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.pctx))
+	pctx, err := w.pluginContext(ctx, projectDir)
+	if err != nil {
+		return workspace.LinkablePackageDescriptor{}, err
+	}
+	defer contract.IgnoreClose(pctx)
+
+	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(pctx))
 	if err != nil {
 		return workspace.LinkablePackageDescriptor{}, fmt.Errorf("failed to bind schema: %w", err)
 	}
@@ -365,26 +388,28 @@ func (w Workspace) servers(
 	tracer := otel.Tracer("pulumi-cli")
 	_, langSpan := diagutils.StartSpan(ctx, tracer, "load-language-host",
 		trace.WithAttributes(attribute.String("language", language)))
-	languageRuntime, err := w.pctx.Host.LanguageRuntime(w.pctx, language)
-	langSpan.End()
-	if err != nil {
-		return servers{}, err
-	}
-
-	d := diag.DefaultSink(w.stdout, w.stderr, diag.FormatOptions{
-		Color: diagutils.GetGlobalColorization(),
-	})
 
 	refs := make(map[string]schema.PackageReference, len(packageRefs))
 	for _, v := range packageRefs {
 		refs[v.Identity()] = v
 	}
 
-	host := cachedLoaderHost{Host: w.pctx.Host, refs: refs}
-	pctx, err := plugin.NewContextWithHost(ctx, d, d, host, dir, dir, w.parentSpan)
+	host := cachedLoaderHost{Host: w.host, refs: refs}
+	sink := diag.DefaultSink(w.stdout, w.stderr, diag.FormatOptions{
+		Color: diagutils.GetGlobalColorization(),
+	})
+	pctx, err := plugin.NewContextWithHost(ctx, sink, sink, host, dir, dir, w.parentSpan)
 	if err != nil {
 		return servers{}, err
 	}
+
+	languageRuntime, err := w.host.LanguageRuntime(pctx, language)
+	langSpan.End()
+	if err != nil {
+		contract.IgnoreClose(pctx)
+		return servers{}, err
+	}
+
 	return servers{
 		pctx: pctx,
 		lang: languageRuntime,
@@ -457,11 +482,11 @@ func (w Workspace) RunPackage(
 		Color: diagutils.GetGlobalColorization(),
 	})
 
-	pctx, err := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
+	pctx, err := plugin.NewContextWithHost(ctx, d, d, w.host, rootDir, rootDir, w.parentSpan)
 	if err != nil {
 		return nil, fmt.Errorf("could not start context for plugin at %q: %w", pluginPath, err)
 	}
-	p, err := plugin.NewProviderFromPath(w.pctx.Host, pctx, pluginPath)
+	p, err := plugin.NewProviderFromPath(w.host, pctx, pluginPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
 	}

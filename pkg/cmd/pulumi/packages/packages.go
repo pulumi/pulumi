@@ -458,7 +458,7 @@ func ProviderFromSource(
 ) (plugin.Provider, workspace.PackageSpec, error) {
 	// Helper without a *cobra.Command writer; plumbing the writer into
 	// packageworkspace.New would require a much larger API change.
-	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pctx, os.Stderr, os.Stderr, //nolint:forbidigo
+	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pctx.Host, os.Stderr, os.Stderr, //nolint:forbidigo
 		nil, packageworkspace.Options{})
 	return providerFromSource(pctx, packageSource, reg, e, concurrency, installCtx)
 }

@@ -86,7 +86,7 @@ func InstallPackagesFromProject(
 	if err != nil {
 		return packageinstallation.State{}, errors.Join(err, pluginHost.Close())
 	}
-	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx, stdout, stderr, nil,
+	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, stdout, stderr, nil,
 		packageworkspace.Options{
 			UseLanguageVersionTools: useLanguageVersionTools,
 		})
