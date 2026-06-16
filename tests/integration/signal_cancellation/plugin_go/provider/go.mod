@@ -1,6 +1,6 @@
 module signal-cancellation-plugin-go/provider
 
-go 1.25.8
+go 1.25.11
 
 require (
 	github.com/blang/semver v3.5.1+incompatible

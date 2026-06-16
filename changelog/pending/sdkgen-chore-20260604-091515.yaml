@@ -1,0 +1,6 @@
+component: sdkgen
+kind: chore
+body: Modules can no longer be nested under the index module, this was never well supported and is now a strict bind error
+time: 2026-06-04T09:15:15.406712+01:00
+custom:
+    PR: "23436"

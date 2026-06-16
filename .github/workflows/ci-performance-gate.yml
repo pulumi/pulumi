@@ -123,9 +123,11 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Set outputs"
-          ./.github/scripts/set-output performance-test-matrix "${PERFORMANCE_TEST_MATRIX}"
-          ./.github/scripts/set-output version-set "${VERSION_SET}"
-          ./.github/scripts/set-output build-targets "${BUILD_TARGETS}"
+          # Pipe matrix values via stdin: they can exceed the 128 KiB per-argument limit
+          # (MAX_ARG_STRLEN), which would otherwise fail the exec with "Argument list too long".
+          printf '%s' "${PERFORMANCE_TEST_MATRIX}" | ./.github/scripts/set-output performance-test-matrix
+          printf '%s' "${VERSION_SET}" | ./.github/scripts/set-output version-set
+          printf '%s' "${BUILD_TARGETS}" | ./.github/scripts/set-output build-targets
           echo "::endgroup::"
     outputs:
       performance-test-matrix: "${{ fromJson(steps.matrix.outputs.performance-test-matrix) }}"

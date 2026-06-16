@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/tests
 
-go 1.25.8
+go 1.25.11
 
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.8.3
@@ -51,6 +51,10 @@ require (
 	github.com/moby/go-archive v0.2.0 // indirect
 	github.com/moby/moby/api v1.54.1 // indirect
 	github.com/moby/moby/client v0.4.0 // indirect
+	go.opentelemetry.io/contrib/bridges/otelslog v0.18.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.19.0 // indirect
+	go.opentelemetry.io/otel/log v0.19.0 // indirect
+	go.opentelemetry.io/otel/sdk/log v0.19.0 // indirect
 )
 
 require (

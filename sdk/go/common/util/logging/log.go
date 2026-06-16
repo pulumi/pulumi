@@ -58,11 +58,12 @@ var (
 )
 
 var (
-	handlerMu   sync.RWMutex
-	primary     slog.Handler = discardHandler{} // regular log output (stderr / file)
-	sinkHandler slog.Handler                    // encrypted log handler, nil when inactive
-	logFilePath string
-	logFile     *os.File
+	handlerMu     sync.RWMutex
+	primary       slog.Handler = discardHandler{} // regular log output (stderr / file)
+	sinkHandler   slog.Handler                    // encrypted log handler, nil when inactive
+	exportHandler slog.Handler                    // OTLP export handler, nil when inactive
+	logFilePath   string
+	logFile       *os.File
 )
 
 func init() {
@@ -74,11 +75,23 @@ func init() {
 // handlerMu held for writing. slog.SetDefault is safe for concurrent use
 // with readers, so no additional synchronisation is needed.
 func rebuildLogger() {
-	var h slog.Handler = formattingHandler{inner: filteringHandler{inner: primary}}
-	if sinkHandler != nil {
-		h = &teeHandler{primary: h, sink: sinkHandler}
-	}
+	var p slog.Handler = formattingHandler{inner: primary}
+	var h slog.Handler = filteringHandler{inner: &teeHandler{
+		primary:  p,
+		sink:     sinkHandler,
+		exporter: exportHandler,
+	}}
 	slog.SetDefault(slog.New(h))
+}
+
+// SetExportHandler installs an slog.Handler for OTLP log export.
+// The handler receives a copy of every log record.  Pass nil to
+// remove the export handler.
+func SetExportHandler(h slog.Handler) {
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
+	exportHandler = h
+	rebuildLogger()
 }
 
 // SetSinkHandler installs an additional slog.Handler that receives a
@@ -204,7 +217,6 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	}
 
 	handlerMu.Lock()
-	defer handlerMu.Unlock()
 
 	if LogToStderr {
 		primary = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
@@ -221,6 +233,9 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 		}
 	}
 	rebuildLogger()
+	handlerMu.Unlock()
+
+	initExportHandler(filepath.Base(os.Args[0]))
 }
 
 // logFileName returns a log file path matching the glog naming convention:
@@ -245,8 +260,9 @@ func logFileName() string {
 	return filepath.Join(os.TempDir(), name)
 }
 
-// Flush flushes any pending log I/O.
+// Flush flushes any pending log I/O and shuts down the export handler.
 func Flush() {
+	shutdownExportHandler()
 	if logFile != nil {
 		logFile.Sync() //nolint:errcheck
 	}
@@ -259,34 +275,60 @@ func GetLogfilePath() (string, error) {
 	return "", errors.New("no log files found")
 }
 
-// teeHandler fans out slog records to two handlers.
+// teeHandler fans out slog records to a primary handler and optional
+// sink/export handlers.
 type teeHandler struct {
-	primary slog.Handler
-	sink    slog.Handler
+	primary  slog.Handler
+	sink     slog.Handler // encrypted log, nil when inactive
+	exporter slog.Handler // OTLP export, nil when inactive
 }
 
 func (t *teeHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return t.primary.Enabled(ctx, level) || t.sink.Enabled(ctx, level)
+	if t.primary.Enabled(ctx, level) {
+		return true
+	}
+	if t.sink != nil && t.sink.Enabled(ctx, level) {
+		return true
+	}
+	if t.exporter != nil && t.exporter.Enabled(ctx, level) {
+		return true
+	}
+	return false
 }
 
 func (t *teeHandler) Handle(ctx context.Context, r slog.Record) error {
 	if t.primary.Enabled(ctx, r.Level) {
 		_ = t.primary.Handle(ctx, r)
 	}
-	if t.sink.Enabled(ctx, r.Level) {
+	if t.sink != nil && t.sink.Enabled(ctx, r.Level) {
 		_ = t.sink.Handle(ctx, r)
+	}
+	if t.exporter != nil && t.exporter.Enabled(ctx, r.Level) {
+		_ = t.exporter.Handle(ctx, r)
 	}
 	return nil
 }
 
 func (t *teeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	p := t.primary.WithAttrs(attrs)
-	s := t.sink.WithAttrs(attrs)
-	return &teeHandler{primary: p, sink: s}
+	result := &teeHandler{primary: t.primary.WithAttrs(attrs)}
+	if t.sink != nil {
+		result.sink = t.sink.WithAttrs(attrs)
+	}
+	if t.exporter != nil {
+		result.exporter = t.exporter.WithAttrs(attrs)
+	}
+	return result
 }
 
 func (t *teeHandler) WithGroup(name string) slog.Handler {
-	return &teeHandler{primary: t.primary.WithGroup(name), sink: t.sink.WithGroup(name)}
+	result := &teeHandler{primary: t.primary.WithGroup(name)}
+	if t.sink != nil {
+		result.sink = t.sink.WithGroup(name)
+	}
+	if t.exporter != nil {
+		result.exporter = t.exporter.WithGroup(name)
+	}
+	return result
 }
 
 // formattingHandler reconstructs the formatted message from
