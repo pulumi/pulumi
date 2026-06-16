@@ -147,7 +147,7 @@ func TestUnaryOpExrepssion(t *testing.T) {
 func TestArgumentTypeName(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 	noneTypeName := g.argumentTypeName(model.NoneType, false /*isInput*/)
 	assert.Equal(t, "", noneTypeName)
 
@@ -234,7 +234,7 @@ func TestArgumentTypeName(t *testing.T) {
 func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 
 	notYetImplementedFunctions := []string{
 		"entries",
@@ -255,7 +255,7 @@ func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 func TestGeneratingGoOptionalFunctions(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 
 	testCases := []struct {
 		expr      *model.FunctionCallExpression
@@ -376,7 +376,7 @@ func TestObjectConsExpression(t *testing.T) {
 func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 	var index bytes.Buffer
 
 	expr := pcl.NewConvertCall(
@@ -392,7 +392,7 @@ func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
 func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 	var index bytes.Buffer
 
 	// Resource argument Input<T> binds as union(T, Output<T>) annotated with
@@ -455,7 +455,7 @@ func testGenerateExpression(
 		t.Parallel()
 
 		// test program is only for schema info
-		g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+		g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 		var index bytes.Buffer
 		expr, _ := model.BindExpressionText(hcl2Expr, scope, hcl.Pos{})
 		if gen != nil {
