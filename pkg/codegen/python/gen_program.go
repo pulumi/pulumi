@@ -1265,6 +1265,42 @@ func isMapRange(rangeExpr model.Expression) bool {
 	return isMap
 }
 
+// programHasMapRange reports whether any resource in the program iterates a map
+// in a `range` option.
+func (g *generator) programHasMapRange() bool {
+	for _, n := range g.program.Nodes {
+		var options *pcl.ResourceOptions
+		switch n := n.(type) {
+		case *pcl.Resource:
+			options = n.Options
+		case *pcl.ReadResource:
+			options = n.Options
+		case *pcl.Component:
+			options = n.Options
+		}
+		if options != nil && options.Range != nil && isMapRange(options.Range) {
+			return true
+		}
+	}
+	return false
+}
+
+// genNumericRangeHeader emits the `for range in ...` header for a numeric range.
+// When the program also iterates a map range, the entries are bound through a
+// typed local so the loop variable is dict[str, Any]. Without the annotation it
+// would be inferred as dict[str, int], which leaks into the map range that
+// indexes a collection by `range['key']`. The annotation is omitted otherwise to
+// keep the output minimal.
+func (g *generator) genNumericRangeHeader(w io.Writer, nameVar string, rangeExpr model.Expression) {
+	if g.programHasMapRange() {
+		g.Fgenf(w, "%s%s_range: list[dict[str, Any]] = [{\"value\": i} for i in range(0, %.v)]\n",
+			g.Indent, nameVar, rangeExpr)
+		g.Fgenf(w, "%sfor range in %s_range:\n", g.Indent, nameVar)
+	} else {
+		g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+	}
+}
+
 // genResourceDeclaration handles the generation of instantiations resources.
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
 	qualifiedMemberName, diagnostics := g.resourceTypeName(r)
@@ -1472,13 +1508,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				// Bind the range entries through a typed local so the loop
-				// variable is dict[str, Any]. Without the annotation it would be
-				// inferred as dict[str, int], which leaks into a later map range
-				// that indexes a collection by `range['key']`.
-				g.Fgenf(w, "%s%s_range: list[dict[str, Any]] = [{\"value\": i} for i in range(0, %.v)]\n",
-					g.Indent, nameVar, rangeExpr)
-				g.Fgenf(w, "%sfor range in %s_range:\n", g.Indent, nameVar)
+				g.genNumericRangeHeader(w, nameVar, rangeExpr)
 				resKey = "value"
 			} else {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
@@ -1669,13 +1699,7 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 			}
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				// Bind the range entries through a typed local so the loop
-				// variable is dict[str, Any]. Without the annotation it would be
-				// inferred as dict[str, int], which leaks into a later map range
-				// that indexes a collection by `range['key']`.
-				g.Fgenf(w, "%s%s_range: list[dict[str, Any]] = [{\"value\": i} for i in range(0, %.v)]\n",
-					g.Indent, nameVar, rangeExpr)
-				g.Fgenf(w, "%sfor range in %s_range:\n", g.Indent, nameVar)
+				g.genNumericRangeHeader(w, nameVar, rangeExpr)
 				resKey = "value"
 			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
 				g.Fgenf(w,
@@ -1819,13 +1843,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				// Bind the range entries through a typed local so the loop
-				// variable is dict[str, Any]. Without the annotation it would be
-				// inferred as dict[str, int], which leaks into a later map range
-				// that indexes a collection by `range['key']`.
-				g.Fgenf(w, "%s%s_range: list[dict[str, Any]] = [{\"value\": i} for i in range(0, %.v)]\n",
-					g.Indent, nameVar, rangeExpr)
-				g.Fgenf(w, "%sfor range in %s_range:\n", g.Indent, nameVar)
+				g.genNumericRangeHeader(w, nameVar, rangeExpr)
 				resKey = "value"
 			} else {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
