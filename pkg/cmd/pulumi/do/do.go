@@ -54,7 +54,7 @@ import (
 func NewDoCmd(
 	lm cmdBackend.LoginManager, ws pkgWorkspace.Context,
 	pluginFromSource func(context.Context, *plugin.Context, string, string) (plugin.Provider, error),
-	newHost func() (plugin.Host, error),
+	newHost func(d, statusD diag.Sink) (plugin.Host, error),
 	loadConverterPlugin func(
 		*plugin.Context, string, func(sev diag.Severity, msg string),
 	) (plugin.Converter, error),
@@ -70,11 +70,13 @@ func NewDoCmd(
 		}
 	}
 	if newHost == nil {
-		newHost = func() (plugin.Host, error) {
+		newHost = func(d, statusD diag.Sink) (plugin.Host, error) {
 			// The host is owned by the do command (closed via cleanup), so its lifetime context is
-			// uncancellable; plugin logs route through the global diagnostics sink.
+			// uncancellable. Plugin logs route through the command's diagnostics sinks, so a
+			// provider's output reaches the command's stdout/stderr the same way it does without a
+			// pre-constructed host.
 			return pkghost.New(
-				context.Background(), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled)
+				context.Background(), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled)
 		}
 	}
 	if loadConverterPlugin == nil {
@@ -147,7 +149,7 @@ func NewDoCmd(
 
 		ctx := cmd.Context()
 
-		host, err := newHost()
+		host, err := newHost(sink, sink)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
 		}
