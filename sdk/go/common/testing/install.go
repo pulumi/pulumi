@@ -129,6 +129,14 @@ func configureNodejsCoreSDK(t *testing.T, dir string) {
 	if data, err := os.ReadFile(pkgPath); err == nil {
 		require.NoError(t, json.Unmarshal(data, &pkg))
 	}
+	// Drop any @pulumi/pulumi peerDependency: we add it as a direct dependency below, and npm rejects an
+	// `override` for a package also declared as a peer dependency with a different spec.
+	if peers, ok := pkg["peerDependencies"].(map[string]any); ok {
+		delete(peers, "@pulumi/pulumi")
+		if len(peers) == 0 {
+			delete(pkg, "peerDependencies")
+		}
+	}
 	setStringMapEntry(pkg, "dependencies", "@pulumi/pulumi", spec)
 	setStringMapEntry(pkg, "overrides", "@pulumi/pulumi", spec)
 	data, err := json.MarshalIndent(pkg, "", "  ")
