@@ -109,11 +109,11 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		// Guard against symlinks that point outside the extraction directory.
 		target := header.Linkname
 		if !filepath.IsAbs(target) {
-			//nolint:gosec // This is only for checking for symlinks outside of the extraction directory.
+			//nolint:gosec // The resolved target is checked against the destination directory below.
 			target = filepath.Join(filepath.Dir(path), target)
 		}
-		rel, err := filepath.Rel(dir, target)
-		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		target = filepath.Clean(target)
+		if target != cleanDir && !strings.HasPrefix(target, cleanDir+string(os.PathSeparator)) {
 			return fmt.Errorf("symlink %s points outside the extraction directory", header.Name)
 		}
 
