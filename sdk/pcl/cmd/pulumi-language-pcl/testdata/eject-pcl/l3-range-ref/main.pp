@@ -21,6 +21,11 @@ resource "listTarget" "nestedobject:index:Target" {
   name = "${listResource[1].name}+"
 }
 
+resource "listDynTarget" "nestedobject:index:Target" {
+  options { range = itemList }
+  name = "${listResource[range.key].name}!"
+}
+
 resource "mapResource" "nestedobject:index:Target" {
   options { range = itemMap }
   name = "${range.key}=${range.value}"

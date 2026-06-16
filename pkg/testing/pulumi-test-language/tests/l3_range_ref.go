@@ -38,8 +38,8 @@ func init() {
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 
-					// stack + nestedobject provider + 4 targets + 7 sources
-					require.Len(l, res.Snap.Resources, 13)
+					// stack + nestedobject provider + 4 targets + 2 listDynTarget + 7 sources
+					require.Len(l, res.Snap.Resources, 15)
 
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:nestedobject")
@@ -49,6 +49,12 @@ func init() {
 
 					listTarget := RequireSingleNamedResource(l, res.Snap.Resources, "listTarget")
 					AssertPropertyMapMember(l, listTarget.Inputs, "name", resource.NewProperty("1:b+"))
+
+					listDynTarget0 := RequireSingleNamedResource(l, res.Snap.Resources, "listDynTarget-0")
+					AssertPropertyMapMember(l, listDynTarget0.Inputs, "name", resource.NewProperty("0:a!"))
+
+					listDynTarget1 := RequireSingleNamedResource(l, res.Snap.Resources, "listDynTarget-1")
+					AssertPropertyMapMember(l, listDynTarget1.Inputs, "name", resource.NewProperty("1:b!"))
 
 					mapTarget := RequireSingleNamedResource(l, res.Snap.Resources, "mapTarget")
 					AssertPropertyMapMember(l, mapTarget.Inputs, "name", resource.NewProperty("k1=v1+"))
