@@ -116,6 +116,14 @@ func newStackRmCmd() *cobra.Command {
 						if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
 							return err
 						}
+						// Drop any service-backed config working copy and clear its checkout marker so a
+						// later stack with the same name does not inherit stale checked-out state.
+						if wc, werr := WorkingCopyPath(s.Ref().Name().Q()); werr == nil {
+							if err = os.Remove(wc); err != nil && !os.IsNotExist(err) {
+								return err
+							}
+						}
+						contract.IgnoreError(state.ClearCheckout(ws, s.Ref().FullyQualifiedName().String()))
 					}
 				}
 			}
