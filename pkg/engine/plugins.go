@@ -123,7 +123,7 @@ func (defaultPluginManager) InstallPlugin(
 	content pluginstorage.Content,
 	reinstall bool,
 ) error {
-	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromHost)
+	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromContext)
 }
 
 // PluginSet represents a set of plugins.
@@ -282,7 +282,7 @@ func (p PackageSet) UpdatesTo(old PackageSet) []PackageUpdate {
 // GetRequiredPlugins lists a full set of plugins that will be required by the given program.
 func GetRequiredPlugins(
 	ctx context.Context,
-	host plugin.Host,
+	plugctx *plugin.Context,
 	runtime string,
 	info plugin.ProgramInfo,
 ) ([]workspace.PluginDescriptor, error) {
@@ -290,10 +290,11 @@ func GetRequiredPlugins(
 	if runtime == "" {
 		return plugins, nil
 	}
+	host := plugctx.Host
 
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := host.LanguageRuntime(runtime)
+	lang, err := host.LanguageRuntime(plugctx, runtime)
 	if lang == nil || err != nil {
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
@@ -337,7 +338,7 @@ func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plu
 		return NewPackageSet(), nil
 	}
 
-	lang, err := plugctx.Host.LanguageRuntime(runtime)
+	lang, err := plugctx.Host.LanguageRuntime(plugctx, runtime)
 	if lang == nil || err != nil {
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
@@ -541,21 +542,21 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins PluginSet, kinds pl
 		switch p.Kind {
 		case apitype.AnalyzerPlugin:
 			if kinds&plugin.AnalyzerPlugins != 0 {
-				if _, err := host.Analyzer(tokens.QName(p.Name)); err != nil {
+				if _, err := host.Analyzer(plugctx, tokens.QName(p.Name)); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load analyzer plugin %s: %w", p.Name, err))
 				}
 			}
 		case apitype.LanguagePlugin:
 			if kinds&plugin.LanguagePlugins != 0 {
-				if _, err := host.LanguageRuntime(p.Name); err != nil {
+				if _, err := host.LanguageRuntime(plugctx, p.Name); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load language plugin %s: %w", p.Name, err))
 				}
 			}
 		case apitype.ResourcePlugin:
 			if kinds&plugin.ResourcePlugins != 0 {
-				if _, err := host.Provider(p, env.Global()); err != nil {
+				if _, err := host.Provider(plugctx, p, env.Global()); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load resource plugin %s: %w", p.Name, err))
 				}

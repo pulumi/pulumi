@@ -27,8 +27,11 @@ import (
 	"github.com/segmentio/encoding/json"
 )
 
-func NewLoaderServerFromHost(host plugin.Host) codegenrpc.LoaderServer {
-	return NewLoaderServer(NewPluginLoader(host))
+// NewLoaderServerFromContext constructs the loader service bound to a plugin context. It
+// matches [plugin.NewLoaderFunc]: the loader resolves and boots plugins through the given
+// context's workspace view.
+func NewLoaderServerFromContext(pctx *plugin.Context) codegenrpc.LoaderServer {
+	return NewLoaderServer(NewPluginLoader(pctx))
 }
 
 type loaderServer struct {

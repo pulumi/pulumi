@@ -58,7 +58,7 @@ type ProgramTest struct {
 	SkipCompile        codegen.StringSet
 	BindOptions        []pcl.BindOption
 	MockPluginVersions map[string]string
-	PluginHost         plugin.Host
+	PluginContext      *plugin.Context
 }
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -361,14 +361,12 @@ func TestProgramCodegen(
 			hclFiles := map[string]*hcl.File{
 				tt.Directory + ".pp": {Body: parser.Files[0].Body, Bytes: parser.Files[0].Bytes},
 			}
-			var pluginHost plugin.Host
-			if tt.PluginHost != nil {
-				pluginHost = tt.PluginHost
-			} else {
-				pluginHost = utils.NewHost(testcase.inputDirectory())
+			pluginCtx := tt.PluginContext
+			if pluginCtx == nil {
+				pluginCtx = utils.NewContext(testcase.inputDirectory())
 			}
 
-			opts := append(tt.BindOptions, pcl.PluginHost(pluginHost))
+			opts := append(tt.BindOptions, pcl.PluginHost(pluginCtx))
 			absoluteProgramPath, err := filepath.Abs(testInputDir)
 			if err != nil {
 				t.Fatalf("failed to bind program: unable to find the absolute path of %v", testInputDir)

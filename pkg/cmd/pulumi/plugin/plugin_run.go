@@ -120,7 +120,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 						d.Logf(sev, diag.RawMessage("", msg))
 					}
 
-					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromHost)
+					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext)
 					if err != nil {
 						return err
 					}
@@ -135,7 +135,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			pluginArgs := args[1:]
 
 			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil,
-				schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}

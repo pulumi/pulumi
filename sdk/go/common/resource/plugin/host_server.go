@@ -22,12 +22,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/opentracing/opentracing-go"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // hostServer is the server side of the host RPC machinery.
@@ -35,7 +36,6 @@ type hostServer struct {
 	pulumirpc.UnsafeEngineServer // opt out of forward compat
 
 	host   Host         // the host for this RPC server.
-	ctx    *Context     // the associated plugin context.
 	addr   string       // the address the host is listening on.
 	cancel chan bool    // a channel that can cancel the server.
 	done   <-chan error // a channel that resolves when the server completes.
@@ -44,12 +44,12 @@ type hostServer struct {
 	rootUrn atomic.Value // a root resource URN that has been saved via SetRootResource
 }
 
-// newHostServer creates a new host server wired up to the given host and context.
-func newHostServer(host Host, ctx *Context, newLoader NewLoaderFunc, newMapper NewMapperFunc) (*hostServer, error) {
+// newHostServer creates a new host server wired up to the given host. The given span, which may
+// be nil, parents the server's tracing interceptors.
+func newHostServer(host Host, span opentracing.Span) (*hostServer, error) {
 	// New up an engine RPC server.
 	engine := &hostServer{
 		host:   host,
-		ctx:    ctx,
 		cancel: make(chan bool),
 	}
 
@@ -58,15 +58,9 @@ func newHostServer(host Host, ctx *Context, newLoader NewLoaderFunc, newMapper N
 		Cancel: engine.cancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterEngineServer(srv, engine)
-			if newLoader != nil {
-				codegenrpc.RegisterLoaderServer(srv, newLoader(host))
-			}
-			if newMapper != nil {
-				codegenrpc.RegisterMapperServer(srv, newMapper(ctx.Base(), host))
-			}
 			return nil
 		},
-		Options: rpcutil.TracingServerInterceptorOptions(ctx.tracingSpan),
+		Options: rpcutil.TracingServerInterceptorOptions(span),
 	})
 	if err != nil {
 		return nil, err

@@ -147,7 +147,7 @@ func TestParseAndRenderDocs(t *testing.T) {
 		t.Fatalf("could not read test data: %v", err)
 	}
 
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	for _, f := range files {
 		if filepath.Ext(f.Name()) != ".json" {

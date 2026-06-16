@@ -439,7 +439,9 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 	return plug, nil
 }
 
-func (host *pluginHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+func (host *pluginHost) Provider(
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
@@ -457,7 +459,7 @@ func (host *pluginHost) Provider(descriptor workspace.PluginDescriptor, e env.En
 	return plug.(plugin.Provider), nil
 }
 
-func (host *pluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime, error) {
+func (host *pluginHost) LanguageRuntime(ctx *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
@@ -516,14 +518,6 @@ func (host *pluginHost) ServerAddr() string {
 	return host.engine.address
 }
 
-func (host *pluginHost) LoaderAddr() string {
-	return host.engine.address
-}
-
-func (host *pluginHost) MapperAddr() string {
-	return ""
-}
-
 func (host *pluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	if !host.isClosed() {
 		host.sink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
@@ -544,12 +538,12 @@ func (host *pluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
 	return false
 }
 
-func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
-	return host.PolicyAnalyzer(nm, "", nil)
+func (host *pluginHost) Analyzer(ctx *plugin.Context, nm tokens.QName) (plugin.Analyzer, error) {
+	return host.PolicyAnalyzer(ctx, nm, "", nil)
 }
 
 func (host *pluginHost) ResolvePlugin(
-	spec workspace.PluginDescriptor,
+	ctx *plugin.Context, spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	plugins := slice.Prealloc[workspace.PluginInfo](len(host.pluginLoaders))
 
@@ -585,11 +579,7 @@ func (host *pluginHost) GetRequiredPackages(
 	return host.languageRuntime.GetRequiredPackages(context.TODO(), info)
 }
 
-func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	return nil
-}
-
-func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
+func (host *pluginHost) PolicyAnalyzer(ctx *plugin.Context, name tokens.QName, path string,
 	opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
 	if host.isClosed() {

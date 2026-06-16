@@ -59,7 +59,7 @@ func generatePackageFilesFromSchema(
 		return nil, err
 	}
 
-	loader := schema.NewPluginLoader(utils.NewHost(loaderDir))
+	loader := schema.NewPluginLoader(utils.NewContext(loaderDir))
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})

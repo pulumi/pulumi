@@ -3061,8 +3061,9 @@ func (pkg *pkgContext) genGenericVariantFunctionCodeFile(f *schema.Function) (st
 func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTypes bool) error {
 	name := pkg.functionName(f)
 
-	if f.MultiArgumentInputs {
-		return fmt.Errorf("go SDK-gen does not implement MultiArgumentInputs for function '%s'", f.Token)
+	if f.MultiArgumentInputs && useGenericTypes {
+		return fmt.Errorf("go SDK-gen does not implement MultiArgumentInputs for function '%s' with generics enabled",
+			f.Token)
 	}
 
 	returnType := f.ReturnType
@@ -3076,7 +3077,13 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 		// Now, emit the function signature.
 		argsig := "ctx *pulumi.Context"
 		if f.Inputs != nil {
-			argsig = fmt.Sprintf("%s, args *%sArgs", argsig, name)
+			if f.MultiArgumentInputs {
+				for _, p := range f.Inputs.Properties {
+					argsig = fmt.Sprintf("%s, %s %s", argsig, functionParamName(p.Name), pkg.typeString(p.Type))
+				}
+			} else {
+				argsig = fmt.Sprintf("%s, args *%sArgs", argsig, name)
+			}
 		}
 		var retty string
 		if objectReturnType != nil {
@@ -3087,6 +3094,16 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 			retty = "error"
 		}
 		fmt.Fprintf(w, "func %s(%s, opts ...pulumi.InvokeOption) %s {\n", name, argsig, retty)
+
+		// Multi-argument functions take their inputs positionally; pack them into the args
+		// struct that carries them over the wire.
+		if f.MultiArgumentInputs {
+			fmt.Fprintf(w, "\targs := %s{\n", pkg.functionArgsTypeName(f))
+			for _, p := range f.Inputs.Properties {
+				fmt.Fprintf(w, "\t\t%s: %s,\n", pkg.fieldName(nil, p), functionParamName(p.Name))
+			}
+			fmt.Fprintf(w, "\t}\n")
+		}
 
 		// Make a map of inputs to pass to the runtime function.
 		var inputsVar string
@@ -3214,12 +3231,37 @@ func (pkg *pkgContext) functionOutputName(f *schema.Function) string {
 
 func (pkg *pkgContext) functionArgsTypeName(f *schema.Function) string {
 	name := pkg.functionName(f)
+	if f.MultiArgumentInputs {
+		// Functions with multi-argument inputs take their inputs positionally, so the
+		// args struct is an implementation detail and stays unexported.
+		return cgstrings.Camel(name) + "Args"
+	}
 	return name + "Args"
+}
+
+func (pkg *pkgContext) functionOutputVersionArgsTypeName(f *schema.Function) string {
+	if f.MultiArgumentInputs {
+		// Functions with multi-argument inputs take their inputs positionally, so the
+		// args struct is an implementation detail and stays unexported.
+		return cgstrings.Camel(pkg.functionName(f)) + "OutputArgs"
+	}
+	return pkg.functionOutputName(f) + "Args"
 }
 
 func (pkg *pkgContext) functionResultTypeName(f *schema.Function) string {
 	name := pkg.functionName(f)
 	return name + "Result"
+}
+
+// functionParamName returns the parameter name for a positional input of a function with
+// multi-argument inputs. The generated signatures also bind ctx, args and opts, so input
+// properties with those names must be renamed to avoid shadowing.
+func functionParamName(name string) string {
+	switch name {
+	case "ctx", "args", "opts":
+		return name + "Arg"
+	}
+	return makeValidIdentifier(name)
 }
 
 func genericTypeNeedsExplicitCasting(outputType string) bool {
@@ -3363,7 +3405,6 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 	objectReturnType, _ := returnType.(*schema.ObjectType)
 
 	originalName := pkg.functionName(f)
-	name := originalName + "Output"
 	var resultTypeName string
 	if objectReturnType != nil {
 		originalResultTypeName := pkg.functionResultTypeName(f)
@@ -3387,11 +3428,25 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 	}
 
 	if f.Inputs != nil {
-		fmt.Fprintf(w, "func %[1]sOutput(ctx *pulumi.Context, args %[1]sOutputArgs, opts ...pulumi.InvokeOption) %[2]s {\n",
-			originalName, resultTypeName)
+		if f.MultiArgumentInputs {
+			argsig := "ctx *pulumi.Context"
+			for _, p := range f.Inputs.InputShape.Properties {
+				argsig = fmt.Sprintf("%s, %s %s", argsig, functionParamName(p.Name), pkg.typeString(p.Type))
+			}
+			fmt.Fprintf(w, "func %sOutput(%s, opts ...pulumi.InvokeOption) %s {\n",
+				originalName, argsig, resultTypeName)
+			fmt.Fprintf(w, "\targs := %s{\n", pkg.functionOutputVersionArgsTypeName(f))
+			for _, p := range f.Inputs.InputShape.Properties {
+				fmt.Fprintf(w, "\t\t%s: %s,\n", pkg.fieldName(nil, p), functionParamName(p.Name))
+			}
+			fmt.Fprintf(w, "\t}\n")
+		} else {
+			fmt.Fprintf(w, "func %[1]sOutput(ctx *pulumi.Context, args %[1]sOutputArgs, opts ...pulumi.InvokeOption) %[2]s {\n",
+				originalName, resultTypeName)
+		}
 		fmt.Fprint(w, "	return pulumi.ToOutputWithContext(ctx.Context(), args).\n")
 		fmt.Fprintf(w, "		ApplyT(func(v interface{}) (%s, error) {\n", resultTypeName)
-		fmt.Fprintf(w, "			args := v.(%sArgs)\n", originalName)
+		fmt.Fprintf(w, "			args := v.(%s)\n", pkg.functionArgsTypeName(f))
 		fmt.Fprintf(w, "			options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
 
 		if def.Parameterization != nil {
@@ -3458,13 +3513,14 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 	}
 
 	if f.Inputs != nil {
-		if err := pkg.genInputArgsStruct(w, name+"Args", f.Inputs.InputShape, false /*emitGenericVariant*/); err != nil {
+		outputArgsTypeName := pkg.functionOutputVersionArgsTypeName(f)
+		if err := pkg.genInputArgsStruct(w, outputArgsTypeName, f.Inputs.InputShape, false /*emitGenericVariant*/); err != nil {
 			return err
 		}
 
 		genInputImplementationWithArgs(w, genInputImplementationArgs{
-			name:              name + "Args",
-			receiverType:      name + "Args",
+			name:              outputArgsTypeName,
+			receiverType:      outputArgsTypeName,
 			elementType:       pkg.functionArgsTypeName(f),
 			usingGenericTypes: useGenericTypes,
 		})
@@ -4820,6 +4876,12 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 				}
 				if f.ReturnType != nil {
 					populateDetailsForTypes(seenMap, f.ReturnType, optional, false, true)
+					if _, isObject := f.ReturnType.(*schema.ObjectType); !isObject {
+						// The output version of a function with a non-object return type reads the
+						// single return value out of a map[string]T response, so the map's output
+						// type is needed as well.
+						populateDetailsForTypes(seenMap, &schema.MapType{ElementType: f.ReturnType}, optional, false, true)
+					}
 				}
 			}
 		}
@@ -5188,11 +5250,13 @@ func GeneratePackage(tool string,
 			}
 			setFile(fileName, code)
 
-			genericCodeVariant, err := pkg.genGenericVariantFunctionCodeFile(f)
-			if err != nil {
-				return nil, err
+			if !emitOnlyLegacyVariant {
+				genericCodeVariant, err := pkg.genGenericVariantFunctionCodeFile(f)
+				if err != nil {
+					return nil, err
+				}
+				setGenericVariantFile(fileName, genericCodeVariant)
 			}
-			setGenericVariantFile(fileName, genericCodeVariant)
 		}
 
 		knownTypes := make(map[schema.Type]struct{}, len(pkg.typeDetails))

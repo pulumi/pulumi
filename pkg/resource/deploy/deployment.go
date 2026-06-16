@@ -641,7 +641,7 @@ func NewDeployment(
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
 	// so we just pass all of the old resources.
-	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
+	reg := providers.NewRegistry(ctx, opts.DryRun, builtins)
 
 	deployment := &Deployment{
 		ctx:                             ctx,

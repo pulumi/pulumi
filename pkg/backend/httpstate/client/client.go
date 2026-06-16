@@ -150,6 +150,7 @@ type AgentSignupChallenge struct {
 type AgentSignupResponse struct {
 	AccessToken           string    `json:"accessToken"`
 	AccessTokenValidUntil time.Time `json:"accessTokenValidUntil"`
+	RefreshToken          string    `json:"refreshToken,omitempty"`
 	ClaimToken            string    `json:"claimToken"`
 	ClaimTokenValidUntil  time.Time `json:"claimTokenValidUntil"`
 }
@@ -219,7 +220,7 @@ type PublishTemplateVersionCompleteResponse struct{}
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL     string
-	apiToken   apiAccessToken
+	apiToken   accessToken
 	apiUser    string
 	apiOrgs    []string
 	tokenInfo  *workspace.TokenInformation // might be nil if running against old services
@@ -274,6 +275,39 @@ func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 		client: &defaultHTTPClient{
 			client: httpClient,
 		},
+	}
+	return pc
+}
+
+// WithRefresh wires an OAuth refresh token + a credentials-writeback callback into this client.
+// Once configured, the client transparently exchanges the refresh token at /api/oauth/token for a
+// fresh access token whenever the service rejects the current one with 401, retrying the original
+// request before falling through to LoginRequiredError. Passing an empty refresh token is a no-op
+// so callers can guard on workspace.Account.RefreshToken without a separate branch.
+func (pc *Client) WithRefresh(
+	refreshToken string,
+	writeback func(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) error,
+) *Client {
+	if refreshToken == "" {
+		return pc
+	}
+	contract.Requiref(writeback != nil, "writeback", "must not be nil when refreshToken is non-empty")
+	initial, _ := pc.apiToken.Get(context.Background())
+	pc.apiToken = &refreshableAPIAccessToken{
+		accessToken:  initial,
+		refreshToken: refreshToken,
+		refresh: func(ctx context.Context, rt string) (string, time.Time, string, error) {
+			resp, err := pc.RefreshAccessToken(ctx, rt)
+			if err != nil {
+				return "", time.Time{}, "", err
+			}
+			var expiresAt time.Time
+			if resp.ExpiresIn > 0 {
+				expiresAt = time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second)
+			}
+			return resp.AccessToken, expiresAt, resp.RefreshToken, nil
+		},
+		writeback: writeback,
 	}
 	return pc
 }
@@ -606,6 +640,56 @@ func (pc *Client) ExchangeOidcToken(
 	err = json.Unmarshal(body, &unmarshalledResp)
 	if err != nil {
 		return nil, err
+	}
+	return &unmarshalledResp, nil
+}
+
+// RefreshAccessToken exchanges a Pulumi-issued refresh token for a fresh access token via
+// /api/oauth/token (grant_type=refresh_token, RFC 6749 §6). Returns the parsed token response;
+// the response's RefreshToken is the value to use on subsequent calls (the server may or may
+// not rotate it). The caller is responsible for writing the response's AccessToken back into
+// credentials.json when the exchange succeeds.
+func (pc *Client) RefreshAccessToken(
+	ctx context.Context,
+	refreshToken string,
+) (*apitype.TokenExchangeGrantResponse, error) {
+	if refreshToken == "" {
+		return nil, errors.New("refresh token is required")
+	}
+	tokenURL := pc.apiURL + "/api/oauth/token"
+	data := url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {refreshToken},
+	}
+	bodyReader := strings.NewReader(data.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("creating HTTP request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := pc.restClient.HTTPClient().Do(req, retryAllMethods)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		// Forward the server's RFC 6749 §5.2 error payload as the error message so callers can
+		// distinguish invalid_grant (token gone / revoked / wrong type) from unsupported_grant_type
+		// (LD kill switch flipped) and react accordingly.
+		return nil, fmt.Errorf("refresh_token grant failed: %s: %s", resp.Status, string(body))
+	}
+	var unmarshalledResp apitype.TokenExchangeGrantResponse
+	if err := json.Unmarshal(body, &unmarshalledResp); err != nil {
+		return nil, err
+	}
+	if unmarshalledResp.AccessToken == "" {
+		return nil, errors.New("refresh_token grant returned empty access_token")
 	}
 	return &unmarshalledResp, nil
 }
@@ -2765,7 +2849,11 @@ func (pc *Client) StreamNeoTaskEvents(
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
-	req.Header.Set("Authorization", "token "+string(pc.apiToken))
+	apiToken, err := pc.apiToken.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetching credentials: %w", err)
+	}
+	req.Header.Set("Authorization", "token "+apiToken)
 	if lastEventID != "" {
 		req.Header.Set("Last-Event-ID", lastEventID)
 	}
@@ -2872,7 +2960,10 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, err
 	defer cancel()
 
 	url := pc.apiURL + "/api/ai/chat/preview"
-	apiToken := string(pc.apiToken)
+	apiToken, err := pc.apiToken.Get(ctx)
+	if err != nil {
+		return "", fmt.Errorf("fetching credentials: %w", err)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {

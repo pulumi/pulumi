@@ -54,7 +54,7 @@ func TestResolvingPackageReferences(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("testing", "test", "testdata")
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("remoteref-1.0.0.json")
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,

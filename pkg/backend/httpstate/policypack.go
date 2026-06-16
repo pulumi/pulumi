@@ -408,7 +408,7 @@ func (pack *cloudPolicyPack) Publish(
 		return err
 	}
 
-	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
+	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(op.PlugCtx, tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
 	if err != nil {
 		return err
 	}
@@ -558,7 +558,7 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		}
 	}
 
-	language, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
+	language, err := ctx.Host.LanguageRuntime(ctx, proj.Runtime.Name())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}

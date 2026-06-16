@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -65,6 +66,226 @@ func TestHostManagedProviderCloseSignalsCancellation(t *testing.T) {
 
 	require.Equal(t, []string{"SignalCancellation", "Close"}, calls)
 	require.NotContains(t, host.resourcePlugins, Provider(mockProv))
+}
+
+// TestContextCloseReleasesProviders locks in that closing a context releases the providers
+// booted on its behalf without touching providers booted for other contexts sharing the same
+// host. Release happens asynchronously once the context's base context is cancelled, so the
+// test polls through the host's load channel, which serializes access to the plugin maps.
+func TestContextCloseReleasesProviders(t *testing.T) {
+	t.Parallel()
+
+	sink := diagtest.LogSink(t)
+	ctxA, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, nil)
+	require.NoError(t, err)
+	host, ok := ctxA.Host.(*defaultHost)
+	require.True(t, ok)
+	t.Cleanup(func() { require.NoError(t, ctxA.Close()) })
+
+	ctxB := NewContextWithHost(t.Context(), sink, sink, ctxA.Host, "", "", nil)
+
+	var mu sync.Mutex
+	var aCalls, bCalls []string
+	record := func(calls *[]string, call string) {
+		mu.Lock()
+		defer mu.Unlock()
+		*calls = append(*calls, call)
+	}
+	provA := &MockProvider{
+		SignalCancellationF: func(context.Context) error { record(&aCalls, "SignalCancellation"); return nil },
+		CloseF:              func() error { record(&aCalls, "Close"); return nil },
+	}
+	provB := &MockProvider{
+		SignalCancellationF: func(context.Context) error { record(&bCalls, "SignalCancellation"); return nil },
+		CloseF:              func() error { record(&bCalls, "Close"); return nil },
+	}
+	host.resourcePlugins[provA] = &resourcePlugin{Plugin: provA, Name: "a", ctx: ctxA}
+	host.resourcePlugins[provB] = &resourcePlugin{Plugin: provB, Name: "b", ctx: ctxB}
+	host.watchContext(ctxA)
+	host.watchContext(ctxB)
+
+	readPlugins := func() (hasA, hasB bool) {
+		_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
+			_, hasA = host.resourcePlugins[Provider(provA)]
+			_, hasB = host.resourcePlugins[Provider(provB)]
+			return nil, nil
+		})
+		require.NoError(t, err)
+		return hasA, hasB
+	}
+
+	require.NoError(t, ctxB.Close())
+	require.Eventually(t, func() bool {
+		_, hasB := readPlugins()
+		return !hasB
+	}, 10*time.Second, 10*time.Millisecond)
+
+	hasA, _ := readPlugins()
+	assert.True(t, hasA, "provider booted for another context must survive")
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, []string{"SignalCancellation", "Close"}, bCalls)
+	assert.Empty(t, aCalls)
+}
+
+// TestContextCloseGracefulShutdownBudget locks in that plugins released because their context
+// was closed still get the full graceful-shutdown budget: the Cancel RPC runs under the host's
+// lifetime context, not the (already cancelled) workspace context. Closing a workspace context
+// is graceful; only the host's own lifetime context is a hard stop.
+func TestContextCloseGracefulShutdownBudget(t *testing.T) {
+	t.Parallel()
+
+	sink := diagtest.LogSink(t)
+	ctxA, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, nil)
+	require.NoError(t, err)
+	host, ok := ctxA.Host.(*defaultHost)
+	require.True(t, ok)
+	t.Cleanup(func() { require.NoError(t, ctxA.Close()) })
+
+	ctxB := NewContextWithHost(t.Context(), sink, sink, ctxA.Host, "", "", nil)
+
+	var mu sync.Mutex
+	var gotErr error
+	var hasDeadline bool
+	var gotBudget time.Duration
+	prov := &MockProvider{
+		SignalCancellationF: func(cancelCtx context.Context) error {
+			mu.Lock()
+			defer mu.Unlock()
+			gotErr = cancelCtx.Err()
+			var deadline time.Time
+			if deadline, hasDeadline = cancelCtx.Deadline(); hasDeadline {
+				gotBudget = time.Until(deadline)
+			}
+			return nil
+		},
+		CloseF: func() error { return nil },
+	}
+	host.resourcePlugins[prov] = &resourcePlugin{Plugin: prov, Name: "b", ctx: ctxB}
+	host.watchContext(ctxB)
+
+	require.NoError(t, ctxB.Close())
+	require.Eventually(t, func() bool {
+		var has bool
+		_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
+			_, has = host.resourcePlugins[Provider(prov)]
+			return nil, nil
+		})
+		require.NoError(t, err)
+		return !has
+	}, 10*time.Second, 10*time.Millisecond)
+
+	mu.Lock()
+	defer mu.Unlock()
+	// The workspace context was already cancelled when the shutdown RPC ran, yet the RPC's
+	// context must be alive with (roughly) the full 5 second budget remaining.
+	require.NoError(t, gotErr)
+	require.True(t, hasDeadline)
+	assert.Greater(t, gotBudget, 2*time.Second)
+	assert.LessOrEqual(t, gotBudget, 5*time.Second)
+}
+
+type stubLanguageRuntime struct {
+	LanguageRuntime
+	closed bool
+}
+
+func (s *stubLanguageRuntime) Cancel(context.Context) error { return nil }
+func (s *stubLanguageRuntime) Close() error                 { s.closed = true; return nil }
+
+type stubAnalyzer struct {
+	Analyzer
+	closed bool
+}
+
+func (s *stubAnalyzer) Cancel(context.Context) error { return nil }
+func (s *stubAnalyzer) Close() error                 { s.closed = true; return nil }
+
+// TestContextCloseRefcountsSharedPlugins locks in that cached plugins shared by several
+// contexts only close once the last context referencing them closes. The stubs' closed flags
+// are only read through the load channels that serialize plugin map access, which orders those
+// reads after the asynchronous release writes.
+func TestContextCloseRefcountsSharedPlugins(t *testing.T) {
+	t.Parallel()
+
+	sink := diagtest.LogSink(t)
+	ctxA, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, nil)
+	require.NoError(t, err)
+	host, ok := ctxA.Host.(*defaultHost)
+	require.True(t, ok)
+	t.Cleanup(func() { require.NoError(t, ctxA.Close()) })
+
+	ctxB := NewContextWithHost(t.Context(), sink, sink, ctxA.Host, "", "", nil)
+	ctxC := NewContextWithHost(t.Context(), sink, sink, ctxA.Host, "", "", nil)
+
+	runtime := &stubLanguageRuntime{}
+	langKey := languagePluginKey{runtime: "test", workingDirectory: ""}
+	host.languagePlugins[langKey] = &languagePlugin{
+		Plugin: runtime, Name: "test", refs: map[*Context]struct{}{ctxB: {}, ctxC: {}},
+	}
+
+	analyzer := &stubAnalyzer{}
+	analyzerKey := analyzerPluginKey{name: "test-analyzer"}
+	host.analyzerPlugins[analyzerKey] = &analyzerPlugin{
+		Plugin: analyzer, Name: "test-analyzer", refs: map[*Context]struct{}{ctxB: {}, ctxC: {}},
+	}
+	host.watchContext(ctxB)
+	host.watchContext(ctxC)
+
+	type pluginState struct {
+		langCached, langClosed, analyzerCached, analyzerClosed bool
+		langRefs, analyzerRefs                                 int
+	}
+	readState := func() pluginState {
+		var state pluginState
+		_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
+			plug, has := host.analyzerPlugins[analyzerKey]
+			state.analyzerCached = has
+			state.analyzerClosed = analyzer.closed
+			if has {
+				state.analyzerRefs = len(plug.refs)
+			}
+			return nil, nil
+		})
+		require.NoError(t, err)
+		_, err = host.loadPlugin(host.languageLoadRequests, func() (any, error) {
+			plug, has := host.languagePlugins[langKey]
+			state.langCached = has
+			state.langClosed = runtime.closed
+			if has {
+				state.langRefs = len(plug.refs)
+			}
+			return nil, nil
+		})
+		require.NoError(t, err)
+		return state
+	}
+
+	// Closing the first context must not close the shared plugins, only drop its references.
+	require.NoError(t, ctxB.Close())
+	require.Eventually(t, func() bool {
+		state := readState()
+		return state.langRefs == 1 && state.analyzerRefs == 1
+	}, 10*time.Second, 10*time.Millisecond)
+	state := readState()
+	assert.Equal(t, pluginState{
+		langCached:     true,
+		analyzerCached: true,
+		langRefs:       1,
+		analyzerRefs:   1,
+	}, state)
+
+	// Closing the last referencing context closes them.
+	require.NoError(t, ctxC.Close())
+	require.Eventually(t, func() bool {
+		state := readState()
+		return state.langClosed && state.analyzerClosed
+	}, 10*time.Second, 10*time.Millisecond)
+	state = readState()
+	assert.Equal(t, pluginState{
+		langClosed:     true,
+		analyzerClosed: true,
+	}, state)
 }
 
 func TestClosePanic(t *testing.T) {
@@ -197,7 +418,7 @@ func TestIsLocalPluginPath(t *testing.T) {
 	}
 }
 
-func TestNewDefaultHost_PackagesResolution(t *testing.T) {
+func TestProjectPluginsFromProject_PackagesResolution(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for our test
@@ -231,13 +452,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 		"git-plugin":      {Source: "git://github.com/pulumi/pulumi-aws"}, // This should be skipped
 	}
 
-	// Create the host with our packages
-	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil, nil, nil)
+	projectPlugins, err := projectPluginsFromProject(ctx, nil, packages)
 	require.NoError(t, err)
-	defer host.Close()
-
-	// Get the project plugins
-	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (local-plugin and relative-plugin)
 	require.Len(t, projectPlugins, 2)
@@ -260,8 +476,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	assert.NotContains(t, pluginMap, "git-plugin")
 }
 
-// TestNewDefaultHost_BothPluginsAndPackages tests the combined resolution of plugins and packages
-func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
+// TestProjectPluginsFromProject_BothPluginsAndPackages tests the combined resolution of plugins and packages
+func TestProjectPluginsFromProject_BothPluginsAndPackages(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for our test
@@ -298,11 +514,8 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 		"azure":        {Source: "azure"}, // This should be skipped as it's not a local path
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil, nil, nil)
+	projectPlugins, err := projectPluginsFromProject(ctx, plugins, packages)
 	require.NoError(t, err)
-	defer host.Close()
-
-	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (1 from plugins, 1 from packages)
 	require.Len(t, projectPlugins, 2)
@@ -318,62 +531,48 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 	assert.False(t, pluginNames["azure"])
 }
 
-func TestNewDefaultHost_LoaderAddress(t *testing.T) {
+// TestContextLoaderAddr locks in that a context constructed with a NewLoaderFunc serves the
+// loader for the lifetime of the context, bound to that context's workspace view.
+func TestContextLoaderAddr(t *testing.T) {
 	t.Parallel()
 
-	ctx := &Context{
-		baseContext: t.Context(),
-		Root:        t.TempDir(),
-		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-			Color: colors.Never,
-		}),
-	}
+	sink := diagtest.LogSink(t)
 
-	var captureHost Host
-	mockLoader := func(h Host) codegenrpc.LoaderServer {
-		captureHost = h
+	var captureCtx *Context
+	mockLoader := func(ctx *Context) codegenrpc.LoaderServer {
+		captureCtx = ctx
 		return codegenrpc.UnimplementedLoaderServer{}
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader, nil, nil)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, mockLoader, nil, nil)
 	require.NoError(t, err)
-	defer host.Close()
 
-	assert.Equal(t, host, captureHost, "loader function should be called during host creation")
+	assert.Equal(t, ctx, captureCtx, "the loader is bound to the context it was constructed with")
+	assert.NotEmpty(t, ctx.LoaderAddr())
+	assert.Equal(t, "", ctx.MapperAddr(), "a context built without a mapper should have no mapper address")
 
-	loaderAddr := host.LoaderAddr()
-	assert.NotEmpty(t, loaderAddr)
-	assert.Equal(t, host.ServerAddr(), loaderAddr)
-
-	assert.Equal(t, "", host.MapperAddr(), "a host built without a mapper should have no mapper address")
+	require.NoError(t, ctx.Close())
 }
 
-func TestNewDefaultHost_MapperAddress(t *testing.T) {
+func TestContextMapperAddr(t *testing.T) {
 	t.Parallel()
 
-	ctx := &Context{
-		baseContext: t.Context(),
-		Root:        t.TempDir(),
-		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-			Color: colors.Never,
-		}),
-	}
+	sink := diagtest.LogSink(t)
 
-	var captureHost Host
-	mockMapper := func(_ context.Context, h Host) codegenrpc.MapperServer {
-		captureHost = h
+	var captureCtx *Context
+	mockMapper := func(ctx *Context) codegenrpc.MapperServer {
+		captureCtx = ctx
 		return codegenrpc.UnimplementedMapperServer{}
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", nil, mockMapper, nil)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, mockMapper, nil)
 	require.NoError(t, err)
-	defer host.Close()
 
-	assert.Equal(t, host, captureHost, "mapper function should be called during host creation")
+	assert.Equal(t, ctx, captureCtx, "the mapper is bound to the context it was constructed with")
+	assert.NotEmpty(t, ctx.MapperAddr())
+	assert.Equal(t, "", ctx.LoaderAddr(), "a context built without a loader should have no loader address")
 
-	mapperAddr := host.MapperAddr()
-	assert.NotEmpty(t, mapperAddr)
-	assert.Equal(t, host.ServerAddr(), mapperAddr)
+	require.NoError(t, ctx.Close())
 }
 
 func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
@@ -381,37 +580,24 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 
 	sink := diagtest.LogSink(t)
 
-	var loaderCalls int
-	mockLoader := func(Host) codegenrpc.LoaderServer {
-		loaderCalls++
-		return codegenrpc.UnimplementedLoaderServer{}
-	}
-
 	errInstall := errors.New("install boom")
 	var (
-		installCalls   int
-		gotRuntime     string
-		gotLoaderIsNil bool
+		installCalls int
+		gotRuntime   string
 	)
-	installLang := func(_ context.Context, runtime string, newLoader NewLoaderFunc) error {
+	installLang := func(_ context.Context, runtime string) error {
 		installCalls++
 		gotRuntime = runtime
-		gotLoaderIsNil = newLoader == nil
-		// Invoke the loader we were handed to prove it is the host's loader, not nil.
-		if newLoader != nil {
-			newLoader(nil)
-		}
 		return errInstall
 	}
 
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, mockLoader, nil, installLang)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, installLang)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
 	t.Cleanup(func() { require.NoError(t, host.Close()) })
 
-	loaderCallsBeforeLoad := loaderCalls
-	lang, err := host.LanguageRuntime("test-lang")
+	lang, err := host.LanguageRuntime(ctx, "test-lang")
 
 	// The installer ran exactly once, for the requested runtime, and its error gated the load so we never
 	// got a runtime back.
@@ -419,8 +605,4 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 	assert.Nil(t, lang)
 	assert.Equal(t, 1, installCalls)
 	assert.Equal(t, "test-lang", gotRuntime)
-
-	// The installer received the host's loader, not nil, and was able to invoke it.
-	assert.False(t, gotLoaderIsNil, "host should thread its loader to the installer")
-	assert.Greater(t, loaderCalls, loaderCallsBeforeLoad, "installer should have invoked the host's loader")
 }

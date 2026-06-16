@@ -46,7 +46,7 @@ func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := ctx.Host.LanguageRuntime(runtime.Name())
+	lang, err := ctx.Host.LanguageRuntime(ctx, runtime.Name())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}
@@ -77,11 +77,11 @@ func InstallPackagesFromProject(
 		Color: utilCmdutil.GetGlobalColorization(),
 	})
 	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil,
-		schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return packageinstallation.State{}, err
 	}
-	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, stdout, stderr, nil,
+	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx, stdout, stderr, nil,
 		packageworkspace.Options{
 			UseLanguageVersionTools: useLanguageVersionTools,
 		})

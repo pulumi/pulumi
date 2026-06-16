@@ -91,7 +91,7 @@ func TestBindProgram(t *testing.T) {
 
 				var bindError error
 				var diags hcl.Diagnostics
-				loader := pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath)))
+				loader := pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath)))
 				absoluteFolderPath, err := filepath.Abs(folderPath)
 				if err != nil {
 					t.Fatalf("failed to bind program: unable to find the absolute path of %v", folderPath)
@@ -146,7 +146,7 @@ func TestWritingProgramSource(t *testing.T) {
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath))),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1134,7 +1134,7 @@ func TestBindingSelfReferencingComponentFailsWithCircularReferenceError(t *testi
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath))),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1175,7 +1175,7 @@ func TestBindingMutuallyDependantComponentsSucceeds(t *testing.T) {
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath))),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1306,7 +1306,7 @@ component myComp "./myComponent" {
 	require.NoError(t, err)
 
 	_, diags, _ := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath))),
 		pcl.DirPath(absDir),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1341,7 +1341,7 @@ component myComp "./myComponent" {
 	require.NoError(t, err)
 
 	program, diags, bindErr := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath))),
 		pcl.DirPath(absDir),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 	require.NoError(t, bindErr)

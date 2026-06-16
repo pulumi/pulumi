@@ -65,10 +65,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, nil, tokens.PackageName("test"), nil, nil, nil)
-		if err != nil {
-			return err
-		}
+		host := pCtx.Host
 
 		err = testProvider(ctx.Context(), host, pCtx, "provider-nodejs")
 		if err != nil {

@@ -155,7 +155,7 @@ func getSummaryAbout(
 			}
 
 			if proj.Runtime.Name() != "" {
-				lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
+				lang, err := pluginContext.Host.LanguageRuntime(pluginContext, proj.Runtime.Name())
 				if err != nil {
 					addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 				} else {
@@ -634,5 +634,5 @@ func getProjectPluginsSilently(
 
 	programInfo := plugin.NewProgramInfo(ctx.Root, pwd, main, proj.Runtime.Options())
 	runtimeName := proj.Runtime.Name()
-	return engine.GetRequiredPlugins(ctx.Request(), ctx.Host, runtimeName, programInfo)
+	return engine.GetRequiredPlugins(ctx.Request(), ctx, runtimeName, programInfo)
 }

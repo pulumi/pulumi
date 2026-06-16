@@ -380,7 +380,7 @@ func TestPublishPackage(t *testing.T) {
 			// Create client pointing to our test server
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: httpClient,

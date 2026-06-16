@@ -34,6 +34,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newMockRegistryContext wraps a mock host in a plugin context for constructing a Registry.
+func newMockRegistryContext(host plugin.Host) *plugin.Context {
+	return &plugin.Context{Diag: &deploytest.NoopSink{}, Host: host}
+}
+
 func TestImportDeployment(t *testing.T) {
 	t.Parallel()
 	t.Run("NewImportDeployment", func(t *testing.T) {
@@ -103,13 +108,13 @@ func TestImporter(t *testing.T) {
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							assert.Equal(t, "foo", descriptor.Name)
 							assert.Equal(t, "1.0.0", descriptor.Version.String())
 							return nil, expectedErr
 						},
-					}, true, nil),
+					}), true, nil),
 					imports: []Import{
 						{
 							Version:           &version,
@@ -144,8 +149,8 @@ func TestImporter(t *testing.T) {
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							return &deploytest.Provider{
 								CheckConfigF: func(
 									_ context.Context, req plugin.CheckConfigRequest,
@@ -154,7 +159,7 @@ func TestImporter(t *testing.T) {
 								},
 							}, nil
 						},
-					}, true, nil),
+					}), true, nil),
 					imports: []Import{
 						{
 							Type:              "foo:bar:Bar",
@@ -185,8 +190,8 @@ func TestImporter(t *testing.T) {
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							return &deploytest.Provider{
 								CheckConfigF: func(
 									_ context.Context, req plugin.CheckConfigRequest,
@@ -201,7 +206,7 @@ func TestImporter(t *testing.T) {
 								},
 							}, nil
 						},
-					}, true, nil),
+					}), true, nil),
 					imports: []Import{
 						{
 							Type:     "foo:bar:Bar",
@@ -238,12 +243,12 @@ func TestImporter(t *testing.T) {
 							Type: "pulumi:providers:foo",
 						},
 					},
-					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							t.Fatal("ProviderF should not be called for provider already in state")
 							return nil, nil
 						},
-					}, true, nil),
+					}), true, nil),
 					imports: []Import{
 						{
 							Type:     "foo:bar:Bar",
@@ -274,8 +279,8 @@ func TestImporter(t *testing.T) {
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							return &deploytest.Provider{
 								CheckConfigF: func(
 									_ context.Context, req plugin.CheckConfigRequest,
@@ -284,7 +289,7 @@ func TestImporter(t *testing.T) {
 								},
 							}, nil
 						},
-					}, true, nil),
+					}), true, nil),
 					imports: []Import{
 						{
 							Type:     "foo:bar:Bar",
@@ -435,13 +440,13 @@ func TestImporterParameterizedProvider(t *testing.T) {
 				Name: tokens.MustParseStackName("stack-name"),
 			},
 			source: &nullSource{},
-			providers: providers.NewRegistry(&plugin.MockHost{
-				ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+			providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+				ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 					assert.Equal(t, "foo", descriptor.Name)
 					assert.Equal(t, "1.0.0", descriptor.Version.String())
 					return &mockProvider, nil
 				},
-			}, true, nil),
+			}), true, nil),
 			imports: []Import{
 				{
 					Version:           &version,

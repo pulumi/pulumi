@@ -239,7 +239,7 @@ func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
 	return plugin.NewContext(t.Context(), sink, statusSink, host, nil, "", nil, false,
-		nil, schema.NewLoaderServerFromHost, nil, nil)
+		nil, schema.NewLoaderServerFromContext, nil, nil)
 }
 
 type testProviderSource struct {
