@@ -63,12 +63,12 @@ func main() {
 		}
 
 		sink := cmdutil.Diag()
-		pluginHost, err := pkghost.New(context.WithoutCancel(ctx.Context()), sink, sink, nil, nil)
+		pluginHost, err := pkghost.New(context.WithoutCancel(ctx.Context()), sink, sink, nil, nil, nil, nil)
 		if err != nil {
 			return err
 		}
 		defer contract.IgnoreClose(pluginHost)
-		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil, nil, nil)
+		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil)
 		if err != nil {
 			return err
 		}
