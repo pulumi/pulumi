@@ -1816,7 +1816,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFile(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func(d, statusD diag.Sink) (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -1940,7 +1940,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func(d, statusD diag.Sink) (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	subVersion := semver.MustParse("1.2.3")
@@ -2079,7 +2079,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func(d, statusD diag.Sink) (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2164,7 +2164,7 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func(d, statusD diag.Sink) (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2222,7 +2222,7 @@ func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func(d, statusD diag.Sink) (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2281,7 +2281,7 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func(d, statusD diag.Sink) (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2348,7 +2348,7 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func(d, statusD diag.Sink) (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2487,7 +2487,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func(d, statusD diag.Sink) (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
