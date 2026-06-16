@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -76,6 +77,9 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string, configFile *stri
 	cmd.AddCommand(newConfigEnvPinCmd(&impl))
 	cmd.AddCommand(newConfigEnvRollbackCmd(&impl))
 	cmd.AddCommand(newConfigEnvConsoleCmd(ws, stackRef, configFile))
+	cmd.AddCommand(newConfigEnvCheckoutCmd(&impl))
+	cmd.AddCommand(newConfigEnvCommitCmd(&impl))
+	cmd.AddCommand(newConfigEnvDiscardCmd(&impl))
 
 	return cmd
 }
@@ -169,6 +173,13 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
+	// Route import reads and edits to the local working copy when the stack is checked out, so
+	// `config env add`/`rm`/`ls` operate on the working copy rather than mutating the shared environment.
+	*cmd.configFile, err = cmdStack.ResolveWorkingCopy(ctx, cmd.ws, cmd.diags, stack, *cmd.configFile, false)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	projectStack, err := cmd.loadProjectStack(ctx, cmd.diags, project, stack, *cmd.configFile)
 	if err != nil {
 		return nil, nil, nil, err
@@ -177,20 +188,61 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 	return projectStack, project, &stack, nil
 }
 
+// checkoutMarker returns the stack's checkout marker, or nil if it is not checked out.
+func (cmd *configEnvCmd) checkoutMarker(stack backend.Stack) (*pkgWorkspace.Checkout, error) {
+	if !stack.ConfigLocation().IsRemote {
+		return nil, nil
+	}
+	return state.GetCheckout(cmd.ws, stack.Ref().FullyQualifiedName().String())
+}
+
+// workingCopyImports returns the import names in a checked-out stack's working copy (omitting the
+// synthetic "yaml" marker a local Environment carries when it has values).
+func (cmd *configEnvCmd) workingCopyImports(
+	ctx context.Context, project *workspace.Project, stack backend.Stack, marker *pkgWorkspace.Checkout,
+) ([]string, error) {
+	ps, err := cmd.loadProjectStack(ctx, cmd.diags, project, stack, marker.FilePath)
+	if err != nil {
+		return nil, err
+	}
+	if ps == nil || ps.Environment == nil {
+		return nil, nil
+	}
+	var imports []string
+	for _, name := range ps.Environment.Imports() {
+		if name != "yaml" {
+			imports = append(imports, name)
+		}
+	}
+	return imports, nil
+}
+
 func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool) error {
-	projectStack, _, stack, err := cmd.loadEnvPreamble(ctx)
+	projectStack, project, stack, err := cmd.loadEnvPreamble(ctx)
+	if err != nil {
+		return err
+	}
+
+	marker, err := cmd.checkoutMarker(*stack)
 	if err != nil {
 		return err
 	}
 
 	var imports []string
-	if (*stack).ConfigLocation().IsRemote {
+	switch {
+	case marker != nil:
+		// Checked out: the working copy, not the remote environment, is the source of truth.
+		imports, err = cmd.workingCopyImports(ctx, project, *stack, marker)
+		if err != nil {
+			return err
+		}
+	case (*stack).ConfigLocation().IsRemote:
 		editor, err := newESCConfigEditor(ctx, *stack)
 		if err != nil {
 			return err
 		}
 		imports = editor.Imports()
-	} else {
+	default:
 		imports = projectStack.Environment.Imports()
 	}
 
@@ -364,10 +416,55 @@ func (cmd *configEnvCmd) runStatus(cobraCmd *cobra.Command, jsonOut bool) error 
 		return cobraCmd.Help()
 	}
 
+	marker, err := cmd.checkoutMarker(stack)
+	if err != nil {
+		return err
+	}
+	if marker != nil {
+		return cmd.runCheckedOutStatus(ctx, project, stack, marker, jsonOut)
+	}
+
 	if stack.ConfigLocation().IsRemote {
 		return cmd.runRemoteStatus(ctx, stack, jsonOut)
 	}
 	return cmd.runLocalStatus(ctx, project, stack, jsonOut)
+}
+
+// runCheckedOutStatus reports that the stack is checked out, naming the source environment and revision
+// and listing the working copy's imports.
+func (cmd *configEnvCmd) runCheckedOutStatus(
+	ctx context.Context, project *workspace.Project, stack backend.Stack, marker *pkgWorkspace.Checkout,
+	jsonOut bool,
+) error {
+	imports, err := cmd.workingCopyImports(ctx, project, stack, marker)
+	if err != nil {
+		return err
+	}
+
+	if jsonOut {
+		return ui.FprintJSON(cmd.stdout, struct {
+			Source      string   `json:"source"`
+			Environment string   `json:"environment"`
+			Revision    int      `json:"revision"`
+			WorkingCopy string   `json:"workingCopy"`
+			Imports     []string `json:"imports"`
+		}{
+			Source: "checked-out", Environment: marker.EnvRef, Revision: marker.Revision,
+			WorkingCopy: marker.FilePath, Imports: imports,
+		})
+	}
+
+	ui.Fprintf(cmd.stdout,
+		"This stack is checked out: its configuration is in the local working copy %s\n"+
+			"  (materialized from environment %q at revision %d).\n"+
+			"Run `pulumi config env commit` to save changes or `pulumi config env discard` to drop them.\n",
+		marker.FilePath, marker.EnvRef, marker.Revision)
+	if len(imports) == 0 {
+		ui.Fprintf(cmd.stdout, "It imports no environments.\n")
+	} else {
+		printImportsTable(cmd.stdout, imports)
+	}
+	return nil
 }
 
 func (cmd *configEnvCmd) runRemoteStatus(ctx context.Context, stack backend.Stack, jsonOut bool) error {
