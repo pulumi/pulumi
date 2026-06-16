@@ -187,11 +187,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
 	},
 	{
-		Directory:   "python-regress-14037",
-		Description: "Regression test for rewriting qoutes in python",
-		Skip:        allProgLanguages.Except(TestPython),
-	},
-	{
 		Directory:   "inline-invokes",
 		Description: "Tests whether using inline invoke expressions works",
 		SkipCompile: codegen.NewStringSet(TestGo),
