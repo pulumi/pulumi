@@ -54,7 +54,8 @@ func TestPackageBindsMarshalsAndRoundTrips(t *testing.T) {
 		pkg := Package().Draw(t, "pkg")
 		spec, err := pkg.MarshalSpec()
 		require.NoError(t, err)
-		pkg2, diags, err := schema.BindSpec(*spec, schema.Loader(nil), schema.ValidationOptions{})
+		var poisonLoader schema.Loader = struct{ schema.Loader }{}
+		pkg2, diags, err := schema.BindSpec(*spec, poisonLoader, schema.ValidationOptions{})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 		// interpretPulumiRefs is a closure so never equal, just reset it for this test. It would be nicer

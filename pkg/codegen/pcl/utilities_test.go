@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
@@ -38,7 +39,5 @@ func ParseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewContext(testdataPath)))
-
-	return pcl.BindProgram(parser.Files, options...)
+	return pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
 }

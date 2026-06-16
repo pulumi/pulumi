@@ -84,9 +84,9 @@ func (b *binder) resolveSchemaResourceForBind(
 	// simply fail. We can't give a populated version field since we have not processed
 	// the body, and thus the version yet.
 	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
-		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.loader, packageDescriptor)
 	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.loader, pkg, "", "")
 	}
 	if err != nil {
 		e := unknownPackage(pkg, tokenRange)

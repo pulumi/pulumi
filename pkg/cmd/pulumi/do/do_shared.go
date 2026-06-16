@@ -368,12 +368,12 @@ func evaluateFile(
 
 func evaluateFunctionFile(
 	ctx context.Context, path, fileType, inputFormat string, fn *schema.Function, evalContext functionEvalContext,
-	loadConverter func(string) (plugin.Converter, error), loaderTarget string,
+	loadConverter func(string) (plugin.Converter, error), loader schema.ReferenceLoader, loaderTarget string,
 	packageDescriptor *codegenrpc.GetSchemaRequest,
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindFunction(file, fn)
+		attrs, inputType, diags := pcl.BindFunction(file, loader, fn)
 		var properties []*schema.Property
 		if fn.Inputs != nil {
 			properties = fn.Inputs.Properties
@@ -388,13 +388,13 @@ func evaluateFunctionFile(
 
 func evaluateResourceFile(
 	ctx context.Context, path, fileType, inputFormat string, res *schema.Resource, evalContext functionEvalContext,
-	loadConverter func(string) (plugin.Converter, error), loaderTarget string,
+	loadConverter func(string) (plugin.Converter, error), loader schema.ReferenceLoader, loaderTarget string,
 	packageDescriptor *codegenrpc.GetSchemaRequest,
 	inputFlags map[string]inputFlagValue,
 	bindOpts ...pcl.BindOption,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindResource(file, res, bindOpts...)
+		attrs, inputType, diags := pcl.BindResource(file, loader, res, bindOpts...)
 		return attrs, inputType, res.InputProperties, diags
 	}
 	return evaluateFile(
@@ -619,7 +619,7 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 
 	config, err := evaluateResourceFile(
 		ctx, pc.providerFile, "provider", pc.format,
-		pc.spec.Provider, ec, pc.converter, pc.loaderTarget, pc.packageDescriptor,
+		pc.spec.Provider, ec, pc.converter, pc.schemaLoader, pc.loaderTarget, pc.packageDescriptor,
 		collectInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties))
 	if err != nil {
 		return fmt.Errorf("parse provider file: %w", err)

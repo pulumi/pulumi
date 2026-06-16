@@ -85,7 +85,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			if err != nil {
 				return err
 			}
-			pkg, err := packages.BindSpec(*spec)
+			pkg, err := packages.BindSpec(*spec, schema.NewPluginLoader(pctx))
 			if err != nil {
 				return err
 			}

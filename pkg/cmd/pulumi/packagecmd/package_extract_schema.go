@@ -89,7 +89,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			}
 
 			// Also try to bind the schema to warn about any diagnostics:
-			_, err = packages.BindSpec(*spec)
+			_, err = packages.BindSpec(*spec, schema.NewPluginLoader(pctx))
 			if err != nil {
 				return fmt.Errorf("failed to bind schema: %w", err)
 			}

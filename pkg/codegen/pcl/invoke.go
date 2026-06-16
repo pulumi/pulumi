@@ -125,9 +125,9 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	var pkgSchema *packageSchema
 	var err error
 	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
-		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.loader, packageDescriptor)
 	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(context.TODO(), b.options.loader, pkg, "", "")
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(context.TODO(), b.loader, pkg, "", "")
 	}
 	if err != nil {
 		if b.options.skipInvokeTypecheck {

@@ -139,7 +139,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 			urn := resourceURN(res)
 			inputs, err := evaluateResourceFile(
 				ctx, inputFile, "input", pc.format, res, pc.evalContext(),
-				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				pc.converter, pc.schemaLoader, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", res.InputProperties))
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
@@ -252,7 +252,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			// would otherwise reject any partial patch that omits a required input.
 			patch, err := evaluateResourceFile(
 				ctx, inputFile, "input", inputFormat, res, pc.evalContext(),
-				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				pc.converter, pc.schemaLoader, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", res.InputProperties), pcl.AllowMissingProperties)
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
@@ -370,7 +370,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 
 			query, err := evaluateResourceListFile(
 				ctx, inputFile, "input", inputFormat, res, pc.evalContext(),
-				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				pc.converter, pc.schemaLoader, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", res.ListInputs.Properties))
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
@@ -432,14 +432,14 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 
 func evaluateResourceListFile(
 	ctx context.Context, path, fileType, inputFormat string, res *schema.Resource, evalContext functionEvalContext,
-	loadConverter func(string) (plugin.Converter, error), loaderTarget string,
+	loadConverter func(string) (plugin.Converter, error), loader schema.ReferenceLoader, loaderTarget string,
 	packageDescriptor *codegenrpc.GetSchemaRequest,
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
 	contract.Assertf(res.ListInputs != nil, "should not call evaluateResourceListFile for resources without list inputs")
 
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindResourceList(file, res)
+		attrs, inputType, diags := pcl.BindResourceList(file, loader, res)
 		return attrs, inputType, res.ListInputs.Properties, diags
 	}
 	return evaluateFile(

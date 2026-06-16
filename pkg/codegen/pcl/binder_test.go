@@ -91,18 +91,17 @@ func TestBindProgram(t *testing.T) {
 
 				var bindError error
 				var diags hcl.Diagnostics
-				loader := pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath)))
 				absoluteFolderPath, err := filepath.Abs(folderPath)
 				if err != nil {
 					t.Fatalf("failed to bind program: unable to find the absolute path of %v", folderPath)
 				}
 				options := append(
 					bindOptions[v.Name()],
-					loader,
 					pcl.DirPath(absoluteFolderPath),
 					pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 				// PCL binder options are taken from program_driver.go
-				program, diags, bindError := pcl.BindProgram(parser.Files, options...)
+				program, diags, bindError := pcl.BindProgram(
+					parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
 
 				require.NoError(t, bindError)
 				if diags.HasErrors() || program == nil {
@@ -146,7 +145,7 @@ func TestWritingProgramSource(t *testing.T) {
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1134,7 +1133,7 @@ func TestBindingSelfReferencingComponentFailsWithCircularReferenceError(t *testi
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1175,7 +1174,7 @@ func TestBindingMutuallyDependantComponentsSucceeds(t *testing.T) {
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1306,7 +1305,7 @@ component myComp "./myComponent" {
 	require.NoError(t, err)
 
 	_, diags, _ := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absDir),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1341,7 +1340,7 @@ component myComp "./myComponent" {
 	require.NoError(t, err)
 
 	program, diags, bindErr := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewContext(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absDir),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 	require.NoError(t, bindErr)

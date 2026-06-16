@@ -53,8 +53,8 @@ import (
 )
 
 // BindSpec binds a PackageSpec into a Package, returning any error or error diagnostics encountered.
-func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
-	pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
+func BindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, error) {
+	pkg, diags, err := schema.BindSpec(spec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	if err != nil {
@@ -81,7 +81,7 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 		return nil, nil, nil, fmt.Errorf("failed to get schema: %w", err)
 	}
 
-	pkg, err := BindSpec(*pkgSpec)
+	pkg, err := BindSpec(*pkgSpec, schema.NewPluginLoader(pctx))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to bind schema: %w", err)
 	}

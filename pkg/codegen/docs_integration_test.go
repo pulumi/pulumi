@@ -576,7 +576,8 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 		},
 	}
 
-	pkg, err := schema.ImportSpec(schemaSpec, nil, schema.ValidationOptions{
+	var poisonLoader schema.Loader = struct{ schema.Loader }{}
+	pkg, err := schema.ImportSpec(schemaSpec, nil, poisonLoader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
@@ -763,9 +764,10 @@ func BenchmarkGetPropertyNames(b *testing.B) {
 		for range b.N {
 			var spec schema.PackageSpec
 			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
+			var poisonLoader schema.Loader = struct{ schema.Loader }{}
 			partial, err := schema.ImportSpec(spec, map[string]schema.Language{
 				"nodejs": nodejs_codegen.Importer,
-			}, schema.ValidationOptions{AllowDanglingReferences: true})
+			}, poisonLoader, schema.ValidationOptions{AllowDanglingReferences: true})
 			require.NoError(b, err)
 
 			res, ok := partial.GetResource("aws:ec2/instance:Instance")
@@ -782,9 +784,10 @@ func BenchmarkGetPropertyNames(b *testing.B) {
 		for range b.N {
 			var spec schema.PartialPackageSpec
 			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
+			var partialPoisonLoader schema.Loader = struct{ schema.Loader }{}
 			partial, err := schema.ImportPartialSpec(spec, map[string]schema.Language{
 				"nodejs": nodejs_codegen.Importer,
-			}, nil)
+			}, partialPoisonLoader)
 			require.NoError(b, err)
 
 			res, ok, err := partial.Resources().Get("aws:ec2/instance:Instance")
@@ -800,11 +803,12 @@ func BenchmarkGetPropertyNames(b *testing.B) {
 }
 
 func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {
+	var poisonLoader schema.Loader = struct{ schema.Loader }{}
 	pkg, err := schema.ImportSpec(spec, map[string]schema.Language{
 		"go":     golang_codegen.Importer,
 		"nodejs": nodejs_codegen.Importer,
 		"python": python_codegen.Importer,
-	}, schema.ValidationOptions{
+	}, poisonLoader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)

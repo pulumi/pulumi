@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
 // Regress a problem of non-deterministic codegen (due to reordering).
@@ -57,7 +58,8 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 	}
 
 	generateInitHash := func() string {
-		pkg, err := schema.ImportSpec(pkgSpec, nil, schema.ValidationOptions{
+		loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
+		pkg, err := schema.ImportSpec(pkgSpec, nil, loader, schema.ValidationOptions{
 			AllowDanglingReferences: true,
 		})
 		if err != nil {

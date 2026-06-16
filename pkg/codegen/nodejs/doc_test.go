@@ -19,9 +19,11 @@
 package nodejs
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +67,8 @@ var testPackageSpec = schema.PackageSpec{
 func getTestPackage(t *testing.T) *schema.Package {
 	t.Helper()
 
-	pkg, err := schema.ImportSpec(testPackageSpec, nil, schema.ValidationOptions{
+	loader := schema.NewPluginLoader(utils.NewContext(filepath.Join("..", "testing", "test", "testdata")))
+	pkg, err := schema.ImportSpec(testPackageSpec, nil, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err, "could not import the test package spec")

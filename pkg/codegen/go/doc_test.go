@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,7 +67,7 @@ var testPackageSpec = schema.PackageSpec{
 func getTestPackage(t *testing.T) *schema.Package {
 	t.Helper()
 
-	pkg, err := schema.ImportSpec(testPackageSpec, nil, schema.ValidationOptions{
+	pkg, err := schema.ImportSpec(testPackageSpec, nil, schema.NewPluginLoader(utils.NewContext(testdataPath)), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err, "could not import the test package spec")
@@ -132,7 +133,7 @@ func TestGetFunctionName(t *testing.T) {
 			"pkg:index:getSomeFunction": {},
 			"pkg:conflict:newResource":  {},
 		},
-	}, nil, schema.ValidationOptions{
+	}, nil, schema.NewPluginLoader(utils.NewContext(testdataPath)), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
@@ -167,7 +168,7 @@ func TestGetFunctionNameWithoutPackageMapDoesNotPanic(t *testing.T) {
 		Functions: map[string]schema.FunctionSpec{
 			"pkg:index:getSomeFunction": {},
 		},
-	}, nil, schema.ValidationOptions{
+	}, nil, schema.NewPluginLoader(utils.NewContext(testdataPath)), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)

@@ -227,7 +227,7 @@ func NewDoCmd(
 			packageDescriptor.Parameterization.Value = spec.Parameterization.Parameter
 		}
 
-		boundpkg, err := packages.BindSpec(spec)
+		boundpkg, err := packages.BindSpec(spec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("bind schema: %w", err)
@@ -244,6 +244,7 @@ func NewDoCmd(
 			pkg:               pkg,
 			args:              pargs,
 			converter:         loadConverter,
+			schemaLoader:      schema.NewPluginLoader(pctx),
 			loaderTarget:      pctx.LoaderAddr(),
 			packageDescriptor: packageDescriptor,
 			provider:          p,
@@ -469,6 +470,7 @@ type packageCommand struct {
 	args              []string
 	converter         func(string) (plugin.Converter, error)
 	loaderTarget      string
+	schemaLoader      schema.ReferenceLoader
 	packageDescriptor *codegenrpc.GetSchemaRequest
 	provider          plugin.Provider
 	providerFile      string

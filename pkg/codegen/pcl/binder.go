@@ -29,13 +29,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
@@ -69,7 +65,6 @@ type bindOptions struct {
 	skipInvokeTypecheck          bool
 	skipRangeTypecheck           bool
 	preferOutputVersionedInvokes bool
-	loader                       schema.Loader
 	packageCache                 *PackageCache
 	// the directory path of the PCL program being bound
 	// we use this to locate the source of the component blocks
@@ -91,6 +86,8 @@ func (opts bindOptions) modelOptions() []model.BindOption {
 
 type binder struct {
 	options bindOptions
+
+	loader schema.Loader
 
 	packageDescriptors map[string]*schema.PackageDescriptor
 	referencedPackages map[string]schema.PackageReference
@@ -127,16 +124,6 @@ func SkipInvokeTypechecking(options *bindOptions) {
 	options.skipInvokeTypecheck = true
 }
 
-func PluginHost(pctx *plugin.Context) BindOption {
-	return Loader(schema.NewPluginLoader(pctx))
-}
-
-func Loader(loader schema.Loader) BindOption {
-	return func(options *bindOptions) {
-		options.loader = loader
-	}
-}
-
 func Cache(cache *PackageCache) BindOption {
 	return func(options *bindOptions) {
 		options.packageCache = cache
@@ -170,7 +157,7 @@ func NonStrictBindOptions() []BindOption {
 // bindInputFile is the binder setup shared by BindFunction and BindResource: it constructs a binder, registers the
 // standard PCL builtins, walks the file's top-level attributes, and returns the bound arguments along with each
 // input's name range (for diagnostic Subjects).
-func bindInputFile(file *syntax.File, opts ...BindOption) (
+func bindInputFile(file *syntax.File, loader schema.Loader, opts ...BindOption) (
 	*binder, []*model.Attribute, map[string]hcl.Range, hcl.Diagnostics,
 ) {
 	var options bindOptions
@@ -180,6 +167,7 @@ func bindInputFile(file *syntax.File, opts ...BindOption) (
 
 	b := &binder{
 		options:            options,
+		loader:             loader,
 		tokens:             syntax.NewTokenMapForFiles([]*syntax.File{file}),
 		packageDescriptors: map[string]*schema.PackageDescriptor{},
 		referencedPackages: map[string]schema.PackageReference{},
@@ -227,10 +215,10 @@ func bindInputFile(file *syntax.File, opts ...BindOption) (
 // type the inputs were typechecked against. The model type is used downstream (e.g. by RewriteConversions during
 // evaluation) so that conversions reference the same type instances the binder built.
 func BindFunction(
-	file *syntax.File, fn *schema.Function,
+	file *syntax.File, loader schema.Loader, fn *schema.Function,
 	opts ...BindOption,
 ) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
-	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+	b, args, inputRanges, diagnostics := bindInputFile(file, loader, opts...)
 
 	argProperties := make(map[string]model.Type, len(args))
 	for _, item := range args {
@@ -265,10 +253,10 @@ func BindFunction(
 // inputs were typechecked against. The model type is used downstream (e.g. by RewriteConversions during evaluation)
 // so that conversions reference the same type instances the binder built.
 func BindResource(
-	file *syntax.File, res *schema.Resource,
+	file *syntax.File, loader schema.Loader, res *schema.Resource,
 	opts ...BindOption,
 ) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
-	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+	b, args, inputRanges, diagnostics := bindInputFile(file, loader, opts...)
 
 	// resolveInputUnions expects a name → expression map; rebuild it from args rather than tracking the same thing
 	// twice during attribute binding.
@@ -292,10 +280,10 @@ func BindResource(
 // BindResourceList binds a PCL file as a resource list input and returns the bound arguments. This is used for `do` to
 // type check and evaluate resource list inputs.
 func BindResourceList(
-	file *syntax.File, res *schema.Resource,
+	file *syntax.File, loader schema.Loader, res *schema.Resource,
 	opts ...BindOption,
 ) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
-	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+	b, args, inputRanges, diagnostics := bindInputFile(file, loader, opts...)
 
 	if res.ListInputs == nil {
 		diagnostics = append(diagnostics, &hcl.Diagnostic{
@@ -378,33 +366,11 @@ func typecheckObjectArgs(
 
 // BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
 // host, if any, is used for loading any resource plugins necessary to extract schema information.
-func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
+func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
 	ctx := context.TODO()
 	var options bindOptions
 	for _, o := range opts {
 		o(&options)
-	}
-
-	if options.loader == nil {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, nil, err
-		}
-		pluginHost, err := pkghost.New(
-			context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
-			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
-		if err != nil {
-			return nil, nil, err
-		}
-		// The host is owned here, not by the context; the deferred closes run host-last.
-		defer contract.IgnoreClose(pluginHost)
-		ctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, cwd, nil, false, nil)
-		if err != nil {
-			return nil, nil, err
-		}
-		options.loader = schema.NewPluginLoader(ctx)
-
-		defer contract.IgnoreClose(ctx)
 	}
 
 	if options.packageCache == nil {
@@ -413,6 +379,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 
 	b := &binder{
 		options:            options,
+		loader:             loader,
 		tokens:             syntax.NewTokenMapForFiles(files),
 		packageDescriptors: map[string]*schema.PackageDescriptor{},
 		referencedPackages: map[string]schema.PackageReference{},
@@ -488,14 +455,13 @@ func BindDirectory(
 
 	opts := make([]BindOption, 0, 3+len(extraOptions))
 	opts = append(opts,
-		Loader(loader),
 		DirPath(directory),
 		ComponentBinder(ComponentProgramBinderFromFileSystem()),
 	)
 
 	opts = append(opts, extraOptions...)
 
-	program, bindDiagnostics, err := BindProgram(parser.Files, opts...)
+	program, bindDiagnostics, err := BindProgram(parser.Files, loader, opts...)
 
 	// err will be the same as bindDiagnostics if there are errors, but we don't want to return that here.
 	// err _could_ also be a context setup error in which case bindDiagnotics will be nil and that we do want to return.

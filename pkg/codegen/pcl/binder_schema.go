@@ -383,10 +383,10 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 		var pkg *packageSchema
 		var err error
 		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
-			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.loader, packageDescriptor)
 		} else {
 			pkg, err = b.options.packageCache.loadPackageSchema(
-				ctx, b.options.loader,
+				ctx, b.loader,
 				name, pkgOpts.version, pkgOpts.pluginDownloadURL,
 			)
 		}

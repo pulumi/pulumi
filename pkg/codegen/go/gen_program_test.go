@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -433,7 +434,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewContext(testdataPath)))
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)))
 	if err != nil {
 		t.Fatalf("could not bind program: %v", err)
 	}
@@ -471,9 +472,7 @@ func parseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewContext(testdataPath)))
-
-	return pcl.BindProgram(parser.Files, options...)
+	return pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
 }
 
 func TestGenerateProjectDoesNotPanicWhenMissingVersion(t *testing.T) {
