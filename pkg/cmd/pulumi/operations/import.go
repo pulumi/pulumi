@@ -931,6 +931,12 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
+			// Route config to the local working copy if this stack is checked out (service-backed config).
+			configFile, err = cmdStack.ResolveWorkingCopy(ctx, ws, sink, s, configFile, true)
+			if err != nil {
+				return err
+			}
+
 			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)

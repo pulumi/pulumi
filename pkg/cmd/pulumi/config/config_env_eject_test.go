@@ -110,6 +110,9 @@ func newEjectCmdForTest(
 				}
 				return p, "", nil
 			},
+			NewF: func() (pkgWorkspace.W, error) {
+				return &pkgWorkspace.MockW{}, nil
+			},
 		},
 		requireStack: func(
 			_ context.Context, _ diag.Sink, _ pkgWorkspace.Context, _ cmdBackend.LoginManager,

@@ -20,7 +20,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -43,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -89,6 +92,145 @@ func SaveProjectStack(
 		return stack.SaveRemoteConfig(ctx, ps)
 	}
 	return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
+}
+
+// WorkingCopyPath returns the path of a stack's service-backed config working copy,
+// Pulumi.<stack>.local.yaml. The `.local` infix distinguishes it from the standard Pulumi.<stack>.yaml
+// so it does not collide with the local+remote conflict detection on that path.
+func WorkingCopyPath(stackName tokens.QName) (string, error) {
+	_, configFilePath, err := workspace.DetectProjectStackPath(stackName)
+	if err != nil {
+		return "", fmt.Errorf("could not detect project stack path: %w", err)
+	}
+	ext := filepath.Ext(configFilePath)
+	return strings.TrimSuffix(configFilePath, ext) + ".local" + ext, nil
+}
+
+// ResolveWorkingCopy computes the effective config file for a command, routing a checked-out
+// remote-config stack to its local working copy. It implements the working-copy/marker state matrix:
+//
+//	file present, marker present -> route to the working copy (warn)
+//	file present, marker absent  -> hard error (file not created by a checkout on this machine)
+//	file absent,  marker present -> dangling marker: warn, clear it, use remote
+//	file absent,  marker absent  -> normal remote operation
+//
+// An explicit --config-file always wins and never touches markers. Callers shadow their configFile
+// variable with the returned value before loading, saving, or editing config, so every consumer
+// (LoadProjectStack, SaveProjectStack, the config editor) routes consistently. deploying makes the
+// checked-out warning more prominent, since a deploy against an uncommitted working copy is higher-stakes
+// than a config read.
+func ResolveWorkingCopy(
+	ctx context.Context,
+	ws pkgWorkspace.Context,
+	sink diag.Sink,
+	stack backend.Stack,
+	configFile string,
+	deploying bool,
+) (string, error) {
+	if configFile != "" {
+		return configFile, nil
+	}
+	if !stack.ConfigLocation().IsRemote {
+		return "", nil
+	}
+
+	fqn := stack.Ref().FullyQualifiedName().String()
+	marker, err := state.GetCheckout(ws, fqn)
+	if err != nil {
+		return "", err
+	}
+
+	if marker != nil {
+		// Trust the path recorded at checkout rather than recomputing, so a moved cwd or changed stack
+		// config dir cannot point at a different same-named file.
+		path := marker.FilePath
+		if path == "" {
+			if path, err = WorkingCopyPath(stack.Ref().Name().Q()); err != nil {
+				return "", err
+			}
+		}
+		_, statErr := os.Stat(path)
+		if statErr != nil && !os.IsNotExist(statErr) {
+			return "", fmt.Errorf("checking working copy %s: %w", path, statErr)
+		}
+		if os.IsNotExist(statErr) {
+			// Dangling marker: the working copy was deleted externally. Clear it and use remote config.
+			sink.Warningf(diag.Message("",
+				"stack %s working copy %s is missing; clearing the checkout marker and using remote configuration"),
+				stack.Ref().Name(), path)
+			if err := state.ClearCheckout(ws, fqn); err != nil {
+				return "", err
+			}
+			return "", nil
+		}
+
+		// Warn early if the stack was relinked since checkout so the working copy is no longer a faithful
+		// snapshot; commit re-checks pin/relink authoritatively.
+		if loc := stack.ConfigLocation(); loc.EscEnv != nil && stripRefVersion(*loc.EscEnv) != marker.EnvRef {
+			sink.Warningf(diag.Message("",
+				"stack %s is now linked to %s but its working copy was checked out from %s; "+
+					"`pulumi config env commit` will refuse until you discard and check out again"),
+				stack.Ref().Name(), stripRefVersion(*loc.EscEnv), marker.EnvRef)
+		}
+		const hint = "Run `pulumi config env commit` to save changes or " +
+			"`pulumi config env discard` to drop them"
+		if deploying {
+			sink.Warningf(diag.Message("",
+				"remote-config for stack %s is checked out; this operation uses the uncommitted local stack "+
+					"config %s, not the remote environment. "+hint),
+				stack.Ref().Name(), filepath.Base(path))
+		} else {
+			sink.Warningf(diag.Message("",
+				"remote-config for stack %s is checked out; using local stack config %s. "+hint),
+				stack.Ref().Name(), filepath.Base(path))
+		}
+		// Routing to a non-empty configFile bypasses LoadProjectStack's stray-Pulumi.<stack>.yaml warning,
+		// so re-emit it here to preserve the signal.
+		warnIfStrayConfigFile(sink, stack)
+		return path, nil
+	}
+
+	// No marker: detect a stray working-copy file. If the path cannot be computed (no project on disk),
+	// there can be no stray file, so use remote.
+	path, err := WorkingCopyPath(stack.Ref().Name().Q())
+	if err != nil {
+		//nolint:nilerr // no project means no working copy; fall back to remote config
+		return "", nil
+	}
+	if _, statErr := os.Stat(path); statErr == nil {
+		return "", fmt.Errorf(
+			"found %s but this stack is not checked out on this machine; it was likely committed to "+
+				"source control or its checkout marker was lost. Delete %s to use remote configuration, "+
+				"or run `pulumi config env checkout` for a fresh working copy",
+			path, path)
+	} else if !os.IsNotExist(statErr) {
+		return "", fmt.Errorf("checking working copy %s: %w", path, statErr)
+	}
+	return "", nil
+}
+
+// stripRefVersion removes an "@version" or ":version" suffix from an environment reference, returning the
+// bare project/name. It mirrors the config package's stripEnvVersion, duplicated here to avoid an import.
+func stripRefVersion(ref string) string {
+	if base, _, found := strings.Cut(ref, "@"); found {
+		return base
+	}
+	base, _, _ := strings.Cut(ref, ":")
+	return base
+}
+
+// warnIfStrayConfigFile warns when a remote-config stack also has a standard Pulumi.<stack>.yaml on disk,
+// mirroring the warning LoadProjectStack emits when it is not routed to an explicit config file.
+func warnIfStrayConfigFile(sink diag.Sink, stack backend.Stack) {
+	_, configFilePath, err := workspace.DetectProjectStackPath(stack.Ref().Name().Q())
+	if err != nil {
+		return
+	}
+	if _, err := os.Stat(configFilePath); err == nil {
+		sink.Warningf(
+			diag.Message("", "config file %s exists but will be ignored because this stack uses remote config"),
+			configFilePath)
+	}
 }
 
 type LoadOption int

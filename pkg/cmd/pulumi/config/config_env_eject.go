@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -104,6 +105,15 @@ func (cmd *configEnvEjectCmd) run(ctx context.Context) error {
 		return errors.New("this stack does not use remote configuration; there is nothing to eject")
 	}
 
+	// Ejecting a checked-out stack would silently drop the working copy's uncommitted edits and leave a
+	// dangling marker; require the user to resolve the checkout first.
+	if marker, err := state.GetCheckout(cmd.parent.ws, stack.Ref().FullyQualifiedName().String()); err != nil {
+		return err
+	} else if marker != nil {
+		return errors.New("this stack is checked out; run `pulumi config env commit` or " +
+			"`pulumi config env discard` before ejecting")
+	}
+
 	// Eject's local write, unlink, and default delete are irreversible; require --yes when no TTY can confirm.
 	if !cmd.yes && !cmd.parent.interactive {
 		return backenderr.ErrNonInteractiveRequiresYes
@@ -141,52 +151,18 @@ func (cmd *configEnvEjectCmd) run(ctx context.Context) error {
 	}
 
 	ps := &workspace.ProjectStack{}
-	hasSecret := false
 	if !envMissing {
-		pulumiConfig, imports, structured, otherValues, err := parseEjectedEnvironment(def)
+		var structured []string
+		ps, _, structured, err = materializeProjectStack(
+			ctx, cmd.parent.ssml, stack, def, envProject, envName, cmd.secretsProvider,
+			!cmd.yes && cmd.parent.interactive, opts)
 		if err != nil {
 			return err
-		}
-		// A local stack file holds only config and imports. If the env carries other values
-		// (environmentVariables, files, ...), refuse before mutating: ejecting drops them and the default
-		// delete would destroy the only copy.
-		if len(otherValues) > 0 {
-			return fmt.Errorf(
-				"environment %s/%s defines values eject cannot preserve in a local stack file (values.%s); "+
-					"eject supports environments whose values contain only pulumiConfig. Inspect them with "+
-					"`pulumi config edit` or keep the stack on remote configuration",
-				envProject, envName, strings.Join(otherValues, ", values."))
 		}
 		if len(structured) > 0 {
 			fmt.Fprintf(cmd.parent.stdout,
 				"Warning: import(s) %s had merge options that are not preserved in the local stack "+
 					"file; only the environment name is kept\n", strings.Join(structured, ", "))
-		}
-
-		plaintextMap, err := buildPlaintextMap(pulumiConfig)
-		if err != nil {
-			return err
-		}
-		for _, pt := range plaintextMap {
-			if pt.Secure() {
-				hasSecret = true
-				break
-			}
-		}
-
-		encrypter, err := cmd.resolveEncrypter(ctx, stack, ps, hasSecret, opts)
-		if err != nil {
-			return err
-		}
-
-		cfg, err := config.EncryptMap(ctx, plaintextMap, encrypter)
-		if err != nil {
-			return fmt.Errorf("re-encrypting configuration: %w", err)
-		}
-
-		ps.Config = config.Map(cfg)
-		if len(imports) > 0 {
-			ps.Environment = workspace.NewEnvironment(imports)
 		}
 	}
 
@@ -243,50 +219,6 @@ func (cmd *configEnvEjectCmd) run(ctx context.Context) error {
 		fmt.Fprintf(cmd.parent.stdout, "Kept environment %s/%s\n", envProject, envName)
 	}
 	return nil
-}
-
-// resolveEncrypter builds an Encrypter for local re-encryption: NopEncrypter when there are no
-// secrets, otherwise --secrets-provider or "default".
-func (cmd *configEnvEjectCmd) resolveEncrypter(
-	ctx context.Context,
-	stack backend.Stack,
-	ps *workspace.ProjectStack,
-	hasSecret bool,
-	opts display.Options,
-) (config.Encrypter, error) {
-	if !hasSecret {
-		return config.NopEncrypter, nil
-	}
-
-	provider := cmd.secretsProvider
-	if provider == "" {
-		if !cmd.yes && cmd.parent.interactive {
-			value, err := ui.PromptForValue(
-				false, "secrets provider", "default", false,
-				func(string) error { return nil }, opts)
-			if err != nil {
-				return nil, err
-			}
-			provider = value
-		}
-		// Fall back to "default" when non-interactive or the prompt is empty.
-		if provider == "" {
-			provider = "default"
-		}
-	}
-
-	if err := cmdStack.ValidateSecretsProvider(provider); err != nil {
-		return nil, err
-	}
-	if provider != "default" {
-		ps.SecretsProvider = provider
-	}
-
-	encrypter, _, err := cmd.parent.ssml.GetEncrypter(ctx, stack, ps)
-	if err != nil {
-		return nil, fmt.Errorf("setting up secrets provider %q: %w", provider, err)
-	}
-	return encrypter, nil
 }
 
 // deleteEnvironment removes the backing environment unless --keep-env is set; an already-deleted env
@@ -459,21 +391,35 @@ func secretInnerString(v any) (string, error) {
 // atomicWriteProjectStack writes ps to path atomically (temp file in the same dir, then rename) so a
 // failed write never leaves a half-written (plaintext) file.
 func atomicWriteProjectStack(ps *workspace.ProjectStack, path string) error {
+	b, err := marshalProjectStack(ps, path)
+	if err != nil {
+		return err
+	}
+	return atomicWriteBytes(path, b)
+}
+
+// marshalProjectStack serializes ps using the marshaler for path's file extension.
+func marshalProjectStack(ps *workspace.ProjectStack, path string) ([]byte, error) {
 	ext := filepath.Ext(path)
 	marshaler, ok := encoding.Marshalers[ext]
 	if !ok {
-		return fmt.Errorf("no marshaler found for file format %q", ext)
+		return nil, fmt.Errorf("no marshaler found for file format %q", ext)
 	}
 	b, err := marshaler.Marshal(ps)
 	if err != nil {
-		return fmt.Errorf("serializing stack configuration: %w", err)
+		return nil, fmt.Errorf("serializing stack configuration: %w", err)
 	}
+	return b, nil
+}
 
+// atomicWriteBytes writes b to path atomically (temp file in the same dir, then rename).
+func atomicWriteBytes(path string, b []byte) error {
+	ext := filepath.Ext(path)
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, ".pulumi-eject-*"+ext)
+	tmp, err := os.CreateTemp(dir, ".pulumi-stack-*"+ext)
 	if err != nil {
 		return fmt.Errorf("creating temporary stack configuration file: %w", err)
 	}
