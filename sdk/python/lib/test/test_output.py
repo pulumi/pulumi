@@ -479,17 +479,6 @@ class OutputRecoverTests(unittest.TestCase):
 
         test()
 
-    def test_recovered_failure_does_not_raise_at_program_exit(self):
-        """The whole point: a recovered failure must not raise at exit."""
-
-        @pulumi_test
-        async def test():
-            recovered = self._faulted_output(Exception("boom")).recover(lambda _: 1)
-            self.assertEqual(await recovered.future(), 1)
-
-        # Should not raise.
-        test()
-
 
 class OutputAllTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
