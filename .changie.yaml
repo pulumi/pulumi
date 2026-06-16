@@ -93,11 +93,6 @@ kinds:
     key: chore
     auto: patch
 
-custom:
-  - key: PR
-    label: "GitHub Pull Request or Issue Number"
-    type: string
-
 body:
   minLength: 1
 
