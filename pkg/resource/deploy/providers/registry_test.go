@@ -16,7 +16,6 @@ package providers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -39,79 +38,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type testPluginHost struct {
-	t             *testing.T
-	provider      func(descriptor workspace.PluginDescriptor) (plugin.Provider, error)
-	closeProvider func(provider plugin.Provider) error
+// testLogF routes a host's log lines to the test's log, matching the behavior the registry tests
+// relied on before they used plugin.MockHost.
+func testLogF(t *testing.T) func(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+	return func(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+		t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
+	}
 }
-
-func (host *testPluginHost) ReleaseContext(ctx *plugin.Context) error {
-	return nil
-}
-
-func (host *testPluginHost) SignalCancellation() error {
-	return nil
-}
-
-func (host *testPluginHost) Close() error {
-	return nil
-}
-
-func (host *testPluginHost) ServerAddr() string {
-	host.t.Fatalf("Host RPC address not available")
-	return ""
-}
-
-func (host *testPluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	host.t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
-}
-
-func (host *testPluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	host.t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
-}
-
-func (host *testPluginHost) Analyzer(ctx *plugin.Context, nm tokens.QName) (plugin.Analyzer, error) {
-	return nil, errors.New("unsupported")
-}
-
-func (host *testPluginHost) PolicyAnalyzer(ctx *plugin.Context, name tokens.QName, path string,
-	opts *plugin.PolicyAnalyzerOptions,
-) (plugin.Analyzer, error) {
-	return nil, errors.New("unsupported")
-}
-
-func (host *testPluginHost) Provider(
-	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
-) (plugin.Provider, error) {
-	return host.provider(descriptor)
-}
-
-func (host *testPluginHost) LanguageRuntime(ctx *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
-	return nil, errors.New("unsupported")
-}
-
-func (host *testPluginHost) ResolvePlugin(
-	ctx *plugin.Context, spec workspace.PluginDescriptor,
-) (*workspace.PluginInfo, error) {
-	return nil, nil
-}
-
-func (host *testPluginHost) GetRequiredPlugins(project string, info plugin.ProgramInfo,
-	kinds plugin.Flags,
-) ([]workspace.PluginInfo, error) {
-	return nil, nil
-}
-
-func (host *testPluginHost) StartDebugging(info plugin.DebuggingInfo) error {
-	return nil
-}
-
-func (host *testPluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
-	return false
-}
-
-func (host *testPluginHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) { return nil, nil }
-func (host *testPluginHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) { return nil, nil }
 
 type testProvider struct {
 	plugin.UnimplementedProvider
@@ -184,9 +117,10 @@ func newTestContext(host plugin.Host) *plugin.Context {
 }
 
 func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
-	return &testPluginHost{
-		t: t,
-		provider: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+	return &plugin.MockHost{
+		LogF:       testLogF(t),
+		LogStatusF: testLogF(t),
+		ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
 			var best *providerLoader
 			for _, l := range loaders {
 				if string(l.pkg) != descriptor.Name {
@@ -204,9 +138,6 @@ func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
 				return nil, nil
 			}
 			return best.load()
-		},
-		closeProvider: func(provider plugin.Provider) error {
-			return nil
 		},
 	}
 }
@@ -273,10 +204,10 @@ func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMa
 func TestNewRegistryNoOldState(t *testing.T) {
 	t.Parallel()
 
-	r := NewRegistry(newTestContext(&testPluginHost{}), false, nil)
+	r := NewRegistry(newTestContext(&plugin.MockHost{}), false, nil)
 	require.NotNil(t, r)
 
-	r = NewRegistry(newTestContext(&testPluginHost{}), true, nil)
+	r = NewRegistry(newTestContext(&plugin.MockHost{}), true, nil)
 	require.NotNil(t, r)
 }
 
@@ -1184,45 +1115,33 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 	})
 }
 
-// testPluginHostWithEnvCapture is a test host that captures the env passed to Provider()
-type testPluginHostWithEnvCapture struct {
-	testPluginHost
-	capturedEnv env.Env
-}
-
-//nolint:lll
-func (host *testPluginHostWithEnvCapture) Provider(
-	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
-) (plugin.Provider, error) {
-	host.capturedEnv = e
-	return host.provider(descriptor)
-}
-
 func TestEnvMappingsPassedToHost(t *testing.T) {
 	// Set SOURCE_VAR in the environment so the mapping can be tested
 	t.Setenv("CUSTOM_VAR", "use-this-value")
 
 	// Create a host that captures the environment passed to Provider()
-	customHost := &testPluginHostWithEnvCapture{
-		testPluginHost: testPluginHost{
-			t: t,
-			provider: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
-				return &testProvider{
-					pkg:     tokens.Package(descriptor.Name),
-					version: semver.MustParse("1.0.0"),
-					//nolint:lll
-					checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
-						return news, nil, nil
-					},
-					//nolint:lll
-					diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
-						return plugin.DiffResult{}, nil
-					},
-					config: func(inputs resource.PropertyMap) error {
-						return nil
-					},
-				}, nil
-			},
+	var capturedEnv env.Env
+	customHost := &plugin.MockHost{
+		LogF:       testLogF(t),
+		LogStatusF: testLogF(t),
+		//nolint:lll
+		ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+			capturedEnv = e
+			return &testProvider{
+				pkg:     tokens.Package(descriptor.Name),
+				version: semver.MustParse("1.0.0"),
+				//nolint:lll
+				checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return news, nil, nil
+				},
+				//nolint:lll
+				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+				config: func(inputs resource.PropertyMap) error {
+					return nil
+				},
+			}, nil
 		},
 	}
 
@@ -1244,9 +1163,9 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify that an env was passed to the host
-	require.NotNil(t, customHost.capturedEnv, "Environment should be passed to host.Provider()")
+	require.NotNil(t, capturedEnv, "Environment should be passed to host.Provider()")
 
-	store := customHost.capturedEnv.GetStore()
+	store := capturedEnv.GetStore()
 	require.NotNil(t, store, "Environment should have a store")
 
 	targetValue, ok := store.Raw("PROVIDER_VAR")
