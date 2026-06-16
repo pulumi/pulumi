@@ -95,6 +95,13 @@ const pclSnippetSchemaPropA = `{
   }
 }`
 
+func newPclSnippetUUID(t *testing.T) string {
+	t.Helper()
+	id, err := uuid.NewV4()
+	require.NoError(t, err)
+	return id.String()
+}
+
 // TestPclSnippet checks that we can run a PCL snippet via an engine update.
 func TestPclSnippet(t *testing.T) {
 	t.Parallel()
@@ -136,6 +143,7 @@ func TestPclSnippet(t *testing.T) {
 
 	snippets := []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code:       `propA = true`,
@@ -222,6 +230,7 @@ func TestPclInvalidSnippet(t *testing.T) {
 	snippets := []resource.Snippet{
 		// Only set one property.
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code:       `propA = true`,
@@ -281,6 +290,7 @@ func TestPclSnippetUpdate(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code:       `propA = true`,
@@ -329,6 +339,7 @@ func TestPclSnippetDelete(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code:       `propA = true`,
@@ -377,11 +388,13 @@ func TestPclMultipleSnippets(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "r1", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code:       `propA = true`,
 		},
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "r2", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code:       `propA = false`,
@@ -489,6 +502,7 @@ func TestPclSnippetBuiltins(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code: `projectName = project()
@@ -582,6 +596,7 @@ func TestPclSnippetDirectories(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code: `workingDir = cwd()
@@ -690,6 +705,7 @@ func TestPclSnippetInvoke(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code:       `message = invoke("pkgA:index:echo", { input = "hi" }).result`,
@@ -791,6 +807,7 @@ func TestPclSnippetResourceReference(t *testing.T) {
 	const producerURN = "urn:pulumi:test::test::pkgA:index:producer::producer"
 	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			References: map[string]string{
@@ -915,6 +932,7 @@ func TestPclSnippetReferenceLocalComponent(t *testing.T) {
 	const compURN = "urn:pulumi:test::test::pkgA:index:Comp::comp"
 	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			References: map[string]string{
@@ -1028,6 +1046,7 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 	const producerURN = "urn:pulumi:test::test::pkgA:index:producer::producer"
 	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			References: map[string]string{
@@ -1132,17 +1151,20 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 	const producerURN = "urn:pulumi:test::test::pkgA:index:producer::producer"
 	const middleURN = "urn:pulumi:test::test::pkgA:index:producer::middle"
 	producerSnippet := resource.Snippet{
+		UUID: newPclSnippetUUID(t),
 		Name: "producer", Type: "pkgA:index:producer",
 		Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 		Code:       `seed = "abc"`,
 	}
 	middleSnippet := resource.Snippet{
+		UUID: newPclSnippetUUID(t),
 		Name: "middle", Type: "pkgA:index:producer",
 		Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 		References: map[string]string{"producer": producerURN},
 		Code:       `seed = producer.value`,
 	}
 	consumerSnippet := resource.Snippet{
+		UUID: newPclSnippetUUID(t),
 		Name: "consumer", Type: "pkgA:index:res",
 		Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 		References: map[string]string{"middle": middleURN},
@@ -1269,6 +1291,7 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "consumer", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			References: map[string]string{"comp": aURN},
@@ -1338,6 +1361,7 @@ func TestPclSnippetResourceOptions(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code: `propA = true
@@ -1416,6 +1440,7 @@ func TestPclSnippetResourceOptionsResourceRefs(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "snippet-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			References: map[string]string{
@@ -1481,6 +1506,7 @@ func TestPclSnippetResourceOptionsParent(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "child", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			References: map[string]string{
@@ -1533,9 +1559,12 @@ func TestPclSnippetResourceOptionsAlias(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
+	snippetUUID := newPclSnippetUUID(t)
+
 	// First update creates a resource at "old-name".
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: snippetUUID,
 			Name: "old-name", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code:       `propA = true`,
@@ -1552,6 +1581,7 @@ func TestPclSnippetResourceOptionsAlias(t *testing.T) {
 	// Second update renames to "new-name" but declares the old URN as an alias, so no delete should occur.
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: snippetUUID,
 			Name: "new-name", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code: fmt.Sprintf(`propA = true
@@ -1592,6 +1622,7 @@ func TestPclSnippetResourceOptionsRange(t *testing.T) {
 
 	snap.Snippets = []resource.Snippet{
 		{
+			UUID: newPclSnippetUUID(t),
 			Name: "fan", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code: `propA = true

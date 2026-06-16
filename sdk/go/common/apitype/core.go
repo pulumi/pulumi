@@ -290,6 +290,8 @@ type SnapshotMetadataV1 struct {
 // SnippetV1 is the serialized form of a PCL snippet stored alongside a snapshot. Snippets are evaluated by the
 // engine on every update to produce additional resource registrations.
 type SnippetV1 struct {
+	// UUID is the stable identity of this snippet within the snapshot.
+	UUID string `json:"uuid" yaml:"uuid"`
 	// Name is the logical name of the resource this snippet registers.
 	Name string `json:"name" yaml:"name"`
 	// Type is the type token of the resource this snippet registers.

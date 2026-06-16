@@ -962,6 +962,7 @@ func TestStackImportExportSnippetsAcrossBackends(t *testing.T) {
 
 		typed.Snippets = []apitype.SnippetV1{
 			{
+				UUID: "b2b3b67c-1c46-487a-924b-b181d19d2e48",
 				Name: "fromSnippet",
 				Type: "pulumi:pulumi:Stack",
 				Code: "name = \"fromSnippet\"",
