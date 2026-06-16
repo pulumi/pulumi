@@ -749,12 +749,13 @@ func (eng *languageTestServer) RunLanguageTest(
 		token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	host := &testHost{
-		engine:       eng,
-		runtime:      languageClient,
-		runtimeName:  token.LanguagePluginName,
-		languageInfo: token.LanguageInfo,
-		providers:    make(map[string]func() (plugin.Provider, error)),
-		connections:  make(map[plugin.Provider]io.Closer),
+		engine:          eng,
+		runtime:         languageClient,
+		runtimeName:     token.LanguagePluginName,
+		languageInfo:    token.LanguageInfo,
+		providers:       make(map[string]func() (plugin.Provider, error)),
+		connections:     make(map[plugin.Provider]io.Closer),
+		contextServices: make(map[*plugin.Context][]*plugin.GrpcServer),
 	}
 
 	pctx, err := plugin.NewContextWithRoot(
