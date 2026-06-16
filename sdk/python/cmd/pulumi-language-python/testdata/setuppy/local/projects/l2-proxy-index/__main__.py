@@ -27,8 +27,19 @@ res = ref_ref.Resource("res", data={
         "x": "100",
         "y": "200",
     },
+    "inner_data_list": [{
+        "boolean": False,
+        "float": 3.14,
+        "integer": 42,
+        "string": "Partridge",
+        "bool_array": [True],
+        "string_map": {
+            "one": "in a pear tree",
+        },
+    }],
 })
 pulumi.export("bool", res.data.boolean)
 pulumi.export("array", res.data.bool_array[0])
 pulumi.export("map", res.data.string_map["x"])
 pulumi.export("nested", res.data.inner_data.string_map["three"])
+pulumi.export("listIndex", res.data.inner_data_list[0].string)
