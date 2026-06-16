@@ -341,6 +341,34 @@ class Output(Generic[T_co]):
 
         return Output._from_data(run())
 
+    def recover(self, func: Callable[[Exception], Input[T_co]]) -> "Output[T_co]":
+        """
+        Returns an Output that yields this Output's value, or — if this Output
+        faulted with an exception — the value produced by calling ``func``.
+
+        When recovery happens, the original faulted Output is removed from the
+        runtime's tracking set so it no longer causes the program to error at
+        exit. ``func`` is only invoked if this Output failed.
+
+        :param Callable[[Exception],Input[T_co]] func: A thunk producing a replacement value
+               (which may itself be an Input/Output) when this Output has faulted.
+        :return: An Output that never propagates the original failure.
+        :rtype: Output[T_co]
+        """
+
+        original = self._data
+
+        async def run() -> "_OutputData[T_co]":
+            try:
+                return await original
+            except Exception as exc:
+                with SETTINGS.lock:
+                    SETTINGS.outputs.discard(original)
+                recovered = Output.from_input(func(exc))
+                return await recovered._data
+
+        return Output._from_data(run())
+
     def __getattr__(self, item: str) -> "Output[Any]":  # type: ignore
         """
         Syntactic sugar for retrieving attributes off of outputs.
