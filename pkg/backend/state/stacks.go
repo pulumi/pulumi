@@ -92,3 +92,49 @@ func SetCurrentStack(ws pkgWorkspace.Context, name string) error {
 	w.Settings().Stack = name
 	return w.Save()
 }
+
+// GetCheckout returns the service-backed config checkout marker for the given fully-qualified stack name,
+// or nil if the stack is not checked out.
+func GetCheckout(ws pkgWorkspace.Context, stackName string) (*pkgWorkspace.Checkout, error) {
+	w, err := ws.New()
+	if err != nil {
+		return nil, err
+	}
+
+	c, ok := w.Settings().Checkouts[stackName]
+	if !ok {
+		return nil, nil
+	}
+	return &c, nil
+}
+
+// SetCheckout records the checkout marker for the given fully-qualified stack name.
+func SetCheckout(ws pkgWorkspace.Context, stackName string, c pkgWorkspace.Checkout) error {
+	w, err := ws.New()
+	if err != nil {
+		return err
+	}
+
+	settings := w.Settings()
+	if settings.Checkouts == nil {
+		settings.Checkouts = map[string]pkgWorkspace.Checkout{}
+	}
+	settings.Checkouts[stackName] = c
+	return w.Save()
+}
+
+// ClearCheckout removes the checkout marker for the given fully-qualified stack name. It is a no-op if no
+// marker is present.
+func ClearCheckout(ws pkgWorkspace.Context, stackName string) error {
+	w, err := ws.New()
+	if err != nil {
+		return err
+	}
+
+	settings := w.Settings()
+	if _, ok := settings.Checkouts[stackName]; !ok {
+		return nil
+	}
+	delete(settings.Checkouts, stackName)
+	return w.Save()
+}
