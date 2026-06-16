@@ -1014,17 +1014,57 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 	return packageDescriptors, diagnostics
 }
 
-// findExtensionDescriptorForBase returns the parameterized descriptor that
-// extends the given base provider, if any. Extension resources are tokenized
-// under the base provider's name (e.g. "extbase:index:Greeting"), so a token in
-// the base namespace is resolved by loading the schema of whatever extends it.
-func (b *binder) findExtensionDescriptorForBase(base string) (*schema.PackageDescriptor, bool) {
+// extensionDescriptorsForBase returns the parameterized descriptors that extend
+// the given base provider. Extension resources are tokenized under the base
+// provider's name (e.g. "extbase:index:Greeting"), so a token in the base
+// namespace may be owned by any extension that parameterizes that base.
+func (b *binder) extensionDescriptorsForBase(base string) []*schema.PackageDescriptor {
+	var descriptors []*schema.PackageDescriptor
 	for _, descriptor := range b.packageDescriptors {
 		if descriptor.Parameterization != nil && descriptor.Name == base {
-			return descriptor, true
+			descriptors = append(descriptors, descriptor)
 		}
 	}
-	return nil, false
+	// Sort for determinism; the owns() predicate selects the real owner.
+	sort.Slice(descriptors, func(i, j int) bool {
+		return descriptors[i].PackageName() < descriptors[j].PackageName()
+	})
+	return descriptors
+}
+
+// loadExtensionSchemaForToken resolves a base-namespaced token to the schema of
+// the extension that actually defines it. When several extensions parameterize
+// the same base provider, owns selects the one whose schema contains the token
+// rather than matching on the base name alone. found reports whether any
+// extension parameterizes base, so callers can fall back to loading the bare
+// package when it doesn't.
+func (b *binder) loadExtensionSchemaForToken(
+	base string,
+	owns func(*packageSchema) bool,
+) (s *packageSchema, found bool, err error) {
+	var fallback *packageSchema
+	for _, descriptor := range b.extensionDescriptorsForBase(base) {
+		found = true
+		candidate, loadErr := b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, descriptor)
+		if loadErr != nil {
+			if err == nil {
+				err = loadErr
+			}
+			continue
+		}
+		if owns(candidate) {
+			return candidate, true, nil
+		}
+		if fallback == nil {
+			fallback = candidate
+		}
+	}
+	// No extension owns the token: return any loaded schema so the caller's
+	// lookup emits the usual "unknown" diagnostic against the token.
+	if fallback != nil {
+		return fallback, true, nil
+	}
+	return nil, found, err
 }
 
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an

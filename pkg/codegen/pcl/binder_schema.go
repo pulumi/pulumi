@@ -378,16 +378,23 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 
 		var pkg *packageSchema
 		var err error
-		resolvedName := name
 		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
 			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
-		} else if extDescriptor, ok := b.findExtensionDescriptorForBase(name); ok {
-			// Extension: load via the extension descriptor and record under its name,
-			// not the base provider's, so dependency checks see the user-facing package.
-			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, extDescriptor)
-			if err == nil {
-				resolvedName = pkg.schema.Name()
+		} else if extDescriptors := b.extensionDescriptorsForBase(name); len(extDescriptors) > 0 {
+			// name is a base provider parameterized by one or more extensions. Load
+			// each and record it under its own (user-facing) name, not the base's, so
+			// dependency checks see every extension rather than just the first match.
+			for _, extDescriptor := range extDescriptors {
+				extPkg, extErr := b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, extDescriptor)
+				if extErr != nil {
+					if b.options.skipResourceTypecheck || b.options.skipInvokeTypecheck {
+						continue
+					}
+					return extErr
+				}
+				b.referencedPackages[extPkg.schema.Name()] = extPkg.schema
 			}
+			continue
 		} else {
 			pkg, err = b.options.packageCache.loadPackageSchema(
 				ctx, b.options.loader,
@@ -400,7 +407,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 			}
 			return err
 		}
-		b.referencedPackages[resolvedName] = pkg.schema
+		b.referencedPackages[name] = pkg.schema
 	}
 	return nil
 }
