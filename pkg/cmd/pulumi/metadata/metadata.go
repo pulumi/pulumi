@@ -29,7 +29,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/spf13/pflag"
 
-	git "github.com/go-git/go-git/v5"
+	git "github.com/go-git/go-git/v6"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -84,7 +84,7 @@ func GetLanguageRuntimeMetadata(
 		defer pctx.Close()
 
 		programInfo := plugin.NewProgramInfo(root, pwd, main, proj.Runtime.Options())
-		lang, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
+		lang, err := pctx.Host.LanguageRuntime(pctx, proj.Runtime.Name())
 		if err != nil {
 			return nil, err
 		}
@@ -394,7 +394,7 @@ func addGitRemoteMetadataToMap(repo *git.Repository, projectRoot string, env map
 		// Resolve symlinks on both paths so filepath.Rel works correctly when
 		// they go through different symlink chains (e.g. on macOS where /var
 		// is a symlink to /private/var).
-		repoRoot, err := filepath.EvalSymlinks(tree.Filesystem.Root())
+		repoRoot, err := filepath.EvalSymlinks(tree.Filesystem().Root())
 		if err != nil {
 			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
 		} else {

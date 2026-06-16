@@ -47,7 +47,7 @@ func newInstallPluginFunc(pctx *plugin.Context) func(string) *semver.Version {
 			Name: pluginName,
 			Kind: apitype.ResourcePlugin,
 		}
-		version, err := pkgWorkspace.InstallPlugin(pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromHost)
+		version, err := pkgWorkspace.InstallPlugin(pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromContext)
 		if err != nil {
 			log(diag.Warning, fmt.Sprintf("failed to install provider %s: %v", pluginName, err))
 			return nil
@@ -69,7 +69,7 @@ func createPluginRPCServer(
 	baseMapper, err := pconvert.NewBasePluginMapper(
 		pluginstorage.Instance,
 		"terraform",
-		pconvert.ProviderFactoryFromHost(ctx, pctx.Host),
+		pconvert.ProviderFactoryFromHost(ctx, pctx),
 		installPlugin,
 		nil,
 	)
@@ -80,7 +80,7 @@ func createPluginRPCServer(
 	// Wrap in a caching mapper for better performance
 	mapper := pconvert.NewCachingMapper(baseMapper)
 
-	loader := schema.NewPluginLoader(pctx.Host)
+	loader := schema.NewPluginLoader(pctx)
 
 	mapperServer := pconvert.NewMapperServer(mapper)
 	loaderServer := schema.NewLoaderServer(loader)

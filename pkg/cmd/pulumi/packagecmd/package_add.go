@@ -128,8 +128,8 @@ from the parameters, as in:
 
 			sink := cmdutil.Diag()
 			pctx, err := plugin.NewContext(cmd.Context(),
-				sink, sink, nil, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromHost,
-				convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				sink, sink, nil, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromContext,
+				convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return err
 			}
@@ -190,8 +190,8 @@ from the parameters, as in:
 							packageSpec.Version = pkg.Version.String()
 						}
 					} else {
-						packageSpec.Source = pkg.Parameterization.BaseProvider.Name
-						packageSpec.Version = pkg.Parameterization.BaseProvider.Version.String()
+						packageSpec.Source = pkg.Parameterization.BasePlugin.Name
+						packageSpec.Version = pkg.Parameterization.BasePlugin.Version.String()
 					}
 				}
 			}

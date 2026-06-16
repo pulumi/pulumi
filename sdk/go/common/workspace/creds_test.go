@@ -26,6 +26,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 )
 
 //nolint:paralleltest // mutates environment
@@ -96,6 +98,154 @@ func TestExplicitCredentialsPathDoesNotFallbackToTemp(t *testing.T) {
 
 	err := StoreAccount("https://api.example.com", Account{AccessToken: "token-value"}, true)
 	require.Error(t, err)
+}
+
+func TestAccountHasCredential(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		acct Account
+		want bool
+	}{
+		{"empty", Account{}, false},
+		{"access token only", Account{AccessToken: "a"}, true},
+		{"refresh token only", Account{RefreshToken: "r"}, true},
+		{"both tokens", Account{AccessToken: "a", RefreshToken: "r"}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.want, tc.acct.HasCredential())
+		})
+	}
+}
+
+func TestAccountSaveErrorsOnEmptySource(t *testing.T) {
+	t.Parallel()
+	// A literal Account has no source (it wasn't loaded from a file). Save must refuse rather
+	// than silently writing somewhere a caller didn't ask for.
+	err := Account{AccessToken: "x"}.Save("https://api.example.com", false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not loaded")
+}
+
+//nolint:paralleltest // mutates environment and package global
+func TestAccountSaveWritesToSourceFile(t *testing.T) {
+	// File-as-a-unit invariant: an account loaded from a file must Save back to that same file.
+	// Loaded-from-default must not bleed into agent, and loaded-from-agent must not bleed into
+	// default (the bug the source field exists to prevent).
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	const cloudURL = "https://api.example.com"
+
+	t.Run("loaded from default writes back to default", func(t *testing.T) {
+		require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "orig-default"}, false))
+		require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "orig-agent"}, false))
+
+		loaded, err := GetAccount(cloudURL)
+		require.NoError(t, err)
+		loaded.AccessToken = "updated-default"
+		require.NoError(t, loaded.Save(cloudURL, false))
+
+		fromDefault, err := GetAccount(cloudURL)
+		require.NoError(t, err)
+		assert.Equal(t, "updated-default", fromDefault.AccessToken)
+
+		fromAgent, err := GetAgentAccount(cloudURL)
+		require.NoError(t, err)
+		assert.Equal(t, "orig-agent", fromAgent.AccessToken,
+			"saving a default-sourced account must not touch the agent file")
+	})
+
+	t.Run("loaded from agent writes back to agent", func(t *testing.T) {
+		require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "orig-default"}, false))
+		require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "orig-agent"}, false))
+
+		loaded, err := GetAgentAccount(cloudURL)
+		require.NoError(t, err)
+		loaded.AccessToken = "updated-agent"
+		require.NoError(t, loaded.Save(cloudURL, false))
+
+		fromAgent, err := GetAgentAccount(cloudURL)
+		require.NoError(t, err)
+		assert.Equal(t, "updated-agent", fromAgent.AccessToken)
+
+		fromDefault, err := GetAccount(cloudURL)
+		require.NoError(t, err)
+		assert.Equal(t, "orig-default", fromDefault.AccessToken,
+			"saving an agent-sourced account must not touch the default file")
+	})
+}
+
+//nolint:paralleltest // mutates environment and package global
+func TestGetAccountWithAgentFallbackUsesRefreshOnlyDefaultAccount(t *testing.T) {
+	// An account with only a refresh token (no access token) must be treated as usable rather
+	// than skipped in favour of the agent fallback — the wrapper will mint the first access
+	// token on the initial 401.
+	oldCreds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		require.NoError(t, StoreCredentials(oldCreds))
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	setAgentEnv(t)
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv("PULUMI_HOME", "")
+
+	cloudURL := "https://api.refresh-only.example.com"
+	require.NoError(t, StoreAccount(cloudURL, Account{RefreshToken: "refresh-only"}, true))
+	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
+
+	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
+	require.NoError(t, err)
+	assert.False(t, fromAgent, "refresh-only default account must not fall through to agent")
+	assert.Equal(t, "refresh-only", account.RefreshToken)
+	assert.Empty(t, account.AccessToken)
+}
+
+//nolint:paralleltest // mutates environment
+func TestAccountRefreshTokenRoundTrip(t *testing.T) {
+	// The refresh token is held off-the-wire and exchanged at /api/oauth/token for short-lived
+	// access tokens. It needs to survive credentials.json read/write so the CLI can use it across
+	// process invocations.
+	t.Setenv("PULUMI_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "credentials.json"))
+
+	const cloudURL = "https://api.example.com"
+	original := Account{
+		AccessToken:  "current-access-token",
+		RefreshToken: "long-lived-refresh-token",
+		Username:     "jane",
+	}
+	require.NoError(t, StoreAccount(cloudURL, original, true))
+
+	loaded, err := GetAccount(cloudURL)
+	require.NoError(t, err)
+	assert.Equal(t, original.AccessToken, loaded.AccessToken)
+	assert.Equal(t, original.RefreshToken, loaded.RefreshToken)
+	assert.Equal(t, original.Username, loaded.Username)
+
+	// An Account with no refresh token must still round-trip cleanly — the field is optional and
+	// must serialize as omitted, not as an empty string anyone could mistake for "no refresh".
+	plain := Account{AccessToken: "another-token"}
+	require.NoError(t, StoreAccount(cloudURL, plain, true))
+	loadedPlain, err := GetAccount(cloudURL)
+	require.NoError(t, err)
+	assert.Equal(t, "another-token", loadedPlain.AccessToken)
+	assert.Empty(t, loadedPlain.RefreshToken)
 }
 
 //nolint:paralleltest // mutates package global
@@ -266,6 +416,40 @@ func TestGetAccountWithAgentFallbackUsesAgentCredentials(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, fromAgent)
 	assert.Equal(t, "agent-token", account.AccessToken)
+}
+
+//nolint:paralleltest // mutates environment and package global
+func TestGetAccountWithAgentFallbackDoesNotMergeFieldsAcrossFiles(t *testing.T) {
+	// File-as-a-unit invariant on the read side: a default account with an access token but no
+	// refresh token must not silently acquire a refresh token from the agent file. The loaded
+	// account is wholly from the source file, never a merge across the two.
+	oldCreds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		require.NoError(t, StoreCredentials(oldCreds))
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	setAgentEnv(t)
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv("PULUMI_HOME", "")
+
+	cloudURL := "https://api.no-cross-file-merge.example.com"
+	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "default-access"}, true))
+	require.NoError(t, StoreAgentAccount(cloudURL, Account{
+		AccessToken:  "agent-access",
+		RefreshToken: "agent-refresh",
+	}, true))
+
+	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
+	require.NoError(t, err)
+	assert.False(t, fromAgent, "default has a credential — must not fall through to agent")
+	assert.Equal(t, "default-access", account.AccessToken)
+	assert.Empty(t, account.RefreshToken,
+		"fields from the agent file must not leak into a default-sourced account")
 }
 
 //nolint:paralleltest // mutates environment and package global
@@ -898,28 +1082,7 @@ func setAgentEnv(t *testing.T) {
 
 func clearAgentEnv(t *testing.T) {
 	t.Helper()
-	for _, name := range []string{
-		"AI_AGENT",
-		"CURSOR_TRACE_ID",
-		"CURSOR_AGENT",
-		"GEMINI_CLI",
-		"CODEX_SANDBOX",
-		"CODEX_CI",
-		"CODEX_THREAD_ID",
-		"ANTIGRAVITY_AGENT",
-		"AUGMENT_AGENT",
-		"OPENCODE",
-		"OPENCODE_CALLER",
-		"OPENCODE_CLIENT",
-		"CLAUDE_CODE_IS_COWORK",
-		"CLAUDECODE",
-		"CLAUDE_CODE",
-		"REPL_ID",
-		"COPILOT_MODEL",
-		"COPILOT_ALLOW_ALL",
-		"COPILOT_GITHUB_TOKEN",
-		"GOOSE_PROVIDER",
-	} {
+	for _, name := range agentdetect.DetectionEnvVars() {
 		t.Setenv(name, "")
 	}
 }

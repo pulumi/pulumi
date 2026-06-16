@@ -150,7 +150,7 @@ func NewDoCmd(
 
 		pctx, err := plugin.NewContext(
 			ctx, sink, sink, host, nil, wd, nil, false,
-			nil, schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}
@@ -233,7 +233,7 @@ func NewDoCmd(
 			pkg:               pkg,
 			args:              pargs,
 			converter:         loadConverter,
-			loaderTarget:      pctx.Host.LoaderAddr(),
+			loaderTarget:      pctx.LoaderAddr(),
 			packageDescriptor: packageDescriptor,
 			provider:          p,
 			spec:              boundpkg,

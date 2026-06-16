@@ -19,9 +19,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/config"
+	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,6 +41,16 @@ func TestGitClone(t *testing.T) {
 
 	origin, err := git.PlainInit(originDir, false)
 	require.NoError(t, err)
+
+	// go-git v6 honors commit.gpgSign / tag.gpgSign from the user's git config.
+	// Disable it on this scratch repo so committing here doesn't
+	// depend on the environment's signing configuration.
+	cfg, err := origin.Config()
+	require.NoError(t, err)
+	cfg.Commit.GpgSign = config.OptBoolFalse
+	cfg.Tag.GpgSign = config.OptBoolFalse
+	require.NoError(t, origin.SetConfig(cfg))
+
 	w, err := origin.Worktree()
 	require.NoError(t, err)
 	nondefaultHead, err := w.Commit("nondefault branch", &git.CommitOptions{

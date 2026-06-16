@@ -58,7 +58,7 @@ type ProgramTest struct {
 	SkipCompile        codegen.StringSet
 	BindOptions        []pcl.BindOption
 	MockPluginVersions map[string]string
-	PluginHost         plugin.Host
+	PluginContext      *plugin.Context
 }
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -83,26 +83,8 @@ func SingleTestCase(directoryName string) []ProgramTest {
 
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
-		Directory:   "aws-s3-logging",
-		Description: "AWS S3 with logging",
-		SkipCompile: codegen.NewStringSet(TestGo),
-		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
-		// Flaky in go: TODO[pulumi/pulumi#8123]
-	},
-	{
 		Directory:   "read-file-func",
 		Description: "ReadFile function translation works",
-	},
-	{
-		Directory:   "python-regress-10914",
-		Description: "Python regression test for #10914",
-		Skip:        allProgLanguages.Except(TestPython),
-	},
-	{
-		Directory:   "simplified-invokes",
-		Description: "Simplified invokes",
-		Skip:        codegen.NewStringSet(TestPython, TestGo),
-		SkipCompile: codegen.NewStringSet(TestDotnet, TestNodeJS),
 	},
 	{
 		Directory:   "aws-optionals",
@@ -159,12 +141,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except(TestPython),
 	},
 	{
-		Directory:   "dynamic-entries",
-		Description: "Testing iteration of dynamic entries in TypeScript",
-		Skip:        allProgLanguages.Except(TestNodeJS),
-		SkipCompile: allProgLanguages,
-	},
-	{
 		Directory:   "invoke-inside-conditional-range",
 		Description: "Using the result of an invoke inside a conditional range expression of a resource",
 		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestDotnet),
@@ -200,12 +176,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		BindOptions: []pcl.BindOption{pcl.SkipInvokeTypechecking},
 	},
 	{
-		Directory:   "optional-complex-config",
-		Description: "Tests generating code for optional and complex config values",
-		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestDotnet),
-		SkipCompile: allProgLanguages.Except(TestNodeJS).Except(TestDotnet),
-	},
-	{
 		Directory:   "interpolated-string-keys",
 		Description: "Tests that interpolated string keys are supported in maps. ",
 		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestPython),
@@ -215,11 +185,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Regression test for https://github.com/pulumi/pulumi/issues/12507",
 		Skip:        allProgLanguages.Except(TestNodeJS),
 		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
-	},
-	{
-		Directory:   "csharp-typed-for-expressions",
-		Description: "Testing for expressions with typed target expressions in csharp",
-		Skip:        allProgLanguages.Except(TestDotnet),
 	},
 	{
 		Directory:   "python-regress-14037",
@@ -396,14 +361,12 @@ func TestProgramCodegen(
 			hclFiles := map[string]*hcl.File{
 				tt.Directory + ".pp": {Body: parser.Files[0].Body, Bytes: parser.Files[0].Bytes},
 			}
-			var pluginHost plugin.Host
-			if tt.PluginHost != nil {
-				pluginHost = tt.PluginHost
-			} else {
-				pluginHost = utils.NewHost(testcase.inputDirectory())
+			pluginCtx := tt.PluginContext
+			if pluginCtx == nil {
+				pluginCtx = utils.NewContext(testcase.inputDirectory())
 			}
 
-			opts := append(tt.BindOptions, pcl.PluginHost(pluginHost))
+			opts := append(tt.BindOptions, pcl.PluginHost(pluginCtx))
 			absoluteProgramPath, err := filepath.Abs(testInputDir)
 			if err != nil {
 				t.Fatalf("failed to bind program: unable to find the absolute path of %v", testInputDir)

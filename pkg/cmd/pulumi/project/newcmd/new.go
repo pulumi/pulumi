@@ -417,7 +417,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// If we're creating an empty project we won't have a runtime name
 	if proj.Runtime.Name() != "" {
-		lang, err := pluginCtx.Host.LanguageRuntime(proj.Runtime.Name())
+		lang, err := pluginCtx.Host.LanguageRuntime(pluginCtx, proj.Runtime.Name())
 		if err != nil {
 			return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 		}

@@ -80,9 +80,13 @@ func memberPath(section, token string, rest ...string) string {
 }
 
 func errorf(path, message string, args ...any) *hcl.Diagnostic {
-	contract.Requiref(path != "", "path", "must not be empty")
-
-	summary := path + ": " + fmt.Sprintf(message, args...)
+	msg := fmt.Sprintf(message, args...)
+	var summary string
+	if path != "" {
+		summary = path + ": " + msg
+	} else {
+		summary = msg
+	}
 	return &hcl.Diagnostic{
 		Severity: hcl.DiagError,
 		Summary:  summary,
@@ -215,10 +219,21 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 
 	diags = diags.Extend(validateNoRequiredObjectCycles(typeList))
 
+	if spec.Parameterization != nil && spec.ExtensionParameterization != nil {
+		diags = diags.Append(errorf("#/parameterization",
+			"a package may declare parameterization or extensionParameterization, not both"))
+	}
+
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
 
+	extensionParameterization, extDiags := bindExtensionParameterization(spec.ExtensionParameterization)
+	diags = diags.Extend(extDiags)
+
 	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions, types.pkg.TokenToModule))
+
+	// Now we've bound everything we can do a pass over the Descriptions and Comments to check they have valid doc refs.
+	diags = diags.Extend(checkDocRefs(types, spec, options))
 
 	pkg := types.pkg
 	pkg.Config = config
@@ -227,6 +242,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	pkg.Resources = resources
 	pkg.Functions = functions
 	pkg.Parameterization = parameterization
+	pkg.ExtensionParameterization = extensionParameterization
 	pkg.Dependencies = spec.Dependencies
 	pkg.resourceTable = types.resourceDefs
 	pkg.functionTable = types.functionDefs
@@ -234,6 +250,15 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	pkg.resourceTypeTable = types.resources
 	if err := pkg.ImportLanguages(languages); err != nil {
 		return nil, nil, err
+	}
+	pkg.interpretPulumiRefs = func(description string, resolver PulumiRefResolver) (string, error) {
+		source := []byte(description)
+		parsed := ParseDocs(source)
+		err := interpretPulumiRefs("", types, ValidationOptions{}, parsed, resolver)
+		if err != nil {
+			return "", err
+		}
+		return RenderDocsToString(source, parsed), nil
 	}
 	return pkg, diags, nil
 }
@@ -285,33 +310,52 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		supportPack = info.Meta.SupportPack
 	}
 	// Parameterized packages must always be built in SupportPack mode.
-	if info.Parameterization != nil {
+	if info.Parameterization != nil || info.ExtensionParameterization != nil {
 		supportPack = true
+	}
+
+	if info.Parameterization != nil && info.ExtensionParameterization != nil {
+		diags = diags.Append(errorf("#/parameterization",
+			"a package may declare parameterization or extensionParameterization, not both"))
+	}
+
+	// An extension parameterization rides on the base provider, so it must not
+	// declare a provider of its own. GetResourceSpec reports the provider present
+	// only when an explicit block is set.
+	if info.ExtensionParameterization != nil {
+		if _, hasProvider, provErr := spec.GetResourceSpec("pulumi:providers:" + info.Name); provErr == nil && hasProvider {
+			diags = diags.Append(errorf("#/provider",
+				"a package with an extensionParameterization may not declare a provider"))
+		}
 	}
 
 	parameterization, parameterizationDiagnostics := bindParameterization(info.Parameterization)
 	diags = diags.Extend(parameterizationDiagnostics)
 
+	extensionParameterization, extDiags := bindExtensionParameterization(info.ExtensionParameterization)
+	diags = diags.Extend(extDiags)
+
 	pkg := &Package{
-		SupportPack:         supportPack,
-		moduleFormat:        moduleFormatRegexp,
-		Name:                info.Name,
-		DisplayName:         info.DisplayName,
-		Version:             version,
-		Description:         info.Description,
-		Keywords:            info.Keywords,
-		Homepage:            info.Homepage,
-		License:             info.License,
-		Attribution:         info.Attribution,
-		Repository:          info.Repository,
-		PluginDownloadURL:   info.PluginDownloadURL,
-		Publisher:           info.Publisher,
-		Namespace:           info.Namespace,
-		Dependencies:        info.Dependencies,
-		AllowedPackageNames: info.AllowedPackageNames,
-		LogoURL:             info.LogoURL,
-		Language:            language,
-		Parameterization:    parameterization,
+		SupportPack:               supportPack,
+		moduleFormat:              moduleFormatRegexp,
+		Name:                      info.Name,
+		DisplayName:               info.DisplayName,
+		Version:                   version,
+		Description:               info.Description,
+		Keywords:                  info.Keywords,
+		Homepage:                  info.Homepage,
+		License:                   info.License,
+		Attribution:               info.Attribution,
+		Repository:                info.Repository,
+		PluginDownloadURL:         info.PluginDownloadURL,
+		Publisher:                 info.Publisher,
+		Namespace:                 info.Namespace,
+		Dependencies:              info.Dependencies,
+		AllowedPackageNames:       info.AllowedPackageNames,
+		LogoURL:                   info.LogoURL,
+		Language:                  language,
+		Parameterization:          parameterization,
+		ExtensionParameterization: extensionParameterization,
 	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
@@ -323,12 +367,12 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 			return nil, nil, err
 		}
 		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil,
-			NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		loader, loadCtx = NewPluginLoader(ctx.Host), ctx
+		loader, loadCtx = NewPluginLoader(ctx), ctx
 	}
 
 	// Create a type binder.
@@ -424,7 +468,14 @@ func (s packageSpecSource) GetFunctionSpec(token string) (FunctionSpec, bool, er
 
 func (s packageSpecSource) GetResourceSpec(token string) (ResourceSpec, bool, error) {
 	if token == "pulumi:providers:"+s.spec.Name {
-		return s.spec.Provider, true, nil
+		if s.spec.Provider != nil {
+			return *s.spec.Provider, true, nil
+		}
+		// Extension parameterizations have no provider.
+		if s.spec.ExtensionParameterization != nil {
+			return ResourceSpec{}, false, nil
+		}
+		return ResourceSpec{}, true, nil
 	}
 	spec, ok := s.spec.Resources[token]
 	return spec, ok, nil
@@ -463,6 +514,13 @@ func (s partialPackageSpecSource) GetFunctionSpec(token string) (FunctionSpec, b
 func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, bool, error) {
 	var rawSpec json.RawMessage
 	if token == "pulumi:providers:"+s.spec.Name {
+		if len(s.spec.Provider) == 0 {
+			// Extension parameterizations have no provider.
+			if s.spec.ExtensionParameterization != nil {
+				return ResourceSpec{}, false, nil
+			}
+			return ResourceSpec{}, true, nil
+		}
 		rawSpec = s.spec.Provider
 	} else {
 		raw, ok := s.spec.Resources[token]
@@ -616,6 +674,13 @@ func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	allowedNameSpecs := map[string][]string{spec.Name: nil}
 	for _, prefix := range spec.AllowedPackageNames {
 		allowedNameSpecs[prefix] = nil
+	}
+	// An extension parameterization's resource tokens may use either the
+	// extension's own name (already allowed above) or the base provider's
+	// namespace (the SDK is renamed, but the tokens need not be), so allow the
+	// base provider's name too.
+	if spec.ExtensionParameterization != nil {
+		allowedNameSpecs[spec.ExtensionParameterization.BaseProvider.Name] = nil
 	}
 	for t := range spec.Resources {
 		diags = diags.Extend(spec.validateTypeToken(allowedNameSpecs, "resources", t))
@@ -1647,6 +1712,92 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 	return typeList, diags, nil
 }
 
+func checkDocRefs(types *types, spec PackageSpec, options ValidationOptions) hcl.Diagnostics {
+	var diags hcl.Diagnostics
+	resolver := func(ref DocRef) (string, bool) { return "", false }
+
+	check := func(path, text string) {
+		if text == "" {
+			return
+		}
+		parsed := ParseDocs([]byte(text))
+		diags = diags.Extend(interpretPulumiRefs(path, types, options, parsed, resolver))
+	}
+
+	checkProperties := func(basePath string, props map[string]PropertySpec) {
+		for _, name := range sortedKeys(props) {
+			prop := props[name]
+			propPath := basePath + "/" + url.PathEscape(name)
+			check(propPath+"/description", prop.Description)
+			check(propPath+"/deprecationMessage", prop.DeprecationMessage)
+		}
+	}
+
+	checkResourceSpec := func(basePath string, res ResourceSpec) {
+		check(basePath+"/description", res.Description)
+		check(basePath+"/deprecationMessage", res.DeprecationMessage)
+		checkProperties(basePath+"/inputProperties", res.InputProperties)
+		checkProperties(basePath+"/properties", res.Properties)
+		if res.StateInputs != nil {
+			siPath := basePath + "/stateInputs"
+			check(siPath+"/description", res.StateInputs.Description)
+			checkProperties(siPath+"/properties", res.StateInputs.Properties)
+		}
+	}
+
+	// Package description
+	check("#/description", spec.Description)
+
+	// Config variables
+	for _, name := range sortedKeys(spec.Config.Variables) {
+		v := spec.Config.Variables[name]
+		vPath := memberPath("config/variables", name)
+		check(vPath+"/description", v.Description)
+		check(vPath+"/deprecationMessage", v.DeprecationMessage)
+	}
+
+	// Functions
+	for _, token := range sortedKeys(spec.Functions) {
+		f := spec.Functions[token]
+		fPath := memberPath("functions", token)
+		check(fPath+"/description", f.Description)
+		check(fPath+"/deprecationMessage", f.DeprecationMessage)
+		if f.Inputs != nil {
+			check(fPath+"/inputs/description", f.Inputs.Description)
+			checkProperties(fPath+"/inputs/properties", f.Inputs.Properties)
+		}
+		if f.Outputs != nil {
+			check(fPath+"/outputs/description", f.Outputs.Description)
+			checkProperties(fPath+"/outputs/properties", f.Outputs.Properties)
+		}
+	}
+
+	// Provider
+	if spec.Provider != nil {
+		checkResourceSpec("#/provider", *spec.Provider)
+	}
+
+	// Resources
+	for _, token := range sortedKeys(spec.Resources) {
+		checkResourceSpec(memberPath("resources", token), spec.Resources[token])
+	}
+
+	// Types
+	for _, token := range sortedKeys(spec.Types) {
+		t := spec.Types[token]
+		tPath := memberPath("types", token)
+		check(tPath+"/description", t.Description)
+		for i, e := range t.Enum {
+			ePath := fmt.Sprintf("%s/enum/%d", tPath, i)
+			check(ePath+"/description", e.Description)
+			check(ePath+"/deprecationMessage", e.DeprecationMessage)
+		}
+		checkProperties(tPath+"/properties", t.Properties)
+	}
+
+	return diags
+}
+
 // compareTypes is a total order on Type values used to sort the package's
 // type list deterministically.
 func compareTypes(a, b Type) int {
@@ -1951,12 +2102,50 @@ func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Di
 	}
 
 	return &Parameterization{
-		BaseProvider: BaseProvider{
+		BasePlugin: BasePlugin{
 			Name:    spec.BaseProvider.Name,
 			Version: ver,
 		},
 		Parameter: spec.Parameter,
 	}, nil
+}
+
+// bindExtensionParameterization binds an extension parameterization spec to the
+// ExtensionParameterization type.
+func bindExtensionParameterization(spec *ExtensionParameterizationSpec) (*ExtensionParameterization, hcl.Diagnostics) {
+	if spec == nil {
+		return nil, nil
+	}
+	if spec.BaseProvider.Name == "" {
+		return nil, hcl.Diagnostics{errorf(
+			"#/extensionParameterization/baseProvider/name",
+			"provider name must be specified")}
+	}
+	ver, err := semver.Parse(spec.BaseProvider.Version)
+	if err != nil {
+		return nil, hcl.Diagnostics{errorf(
+			"#/extensionParameterization/baseProvider/version",
+			"invalid version %q: %v", spec.BaseProvider.Version, err)}
+	}
+	base := BaseProvider{Name: spec.BaseProvider.Name, Version: ver}
+	if p := spec.BaseProvider.Parameterization; p != nil {
+		if p.BasePlugin.Name == "" {
+			return nil, hcl.Diagnostics{errorf(
+				"#/extensionParameterization/baseProvider/parameterization/basePlugin/name",
+				"provider name must be specified")}
+		}
+		pver, err := semver.Parse(p.BasePlugin.Version)
+		if err != nil {
+			return nil, hcl.Diagnostics{errorf(
+				"#/extensionParameterization/baseProvider/parameterization/basePlugin/version",
+				"invalid version %q: %v", p.BasePlugin.Version, err)}
+		}
+		base.Parameterization = &Parameterization{
+			BasePlugin: BasePlugin{Name: p.BasePlugin.Name, Version: pver},
+			Parameter:  p.Parameter,
+		}
+	}
+	return &ExtensionParameterization{BaseProvider: base, Parameter: spec.Parameter}, nil
 }
 
 func bindConfig(spec ConfigSpec, types *types, options ValidationOptions) ([]*Property, hcl.Diagnostics, error) {
@@ -2175,10 +2364,18 @@ func (t *types) finishResources(
 ) (*Resource, []*Resource, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	provider, provDiags, err := t.bindResourceTypeDef("pulumi:providers:"+t.pkg.Name, options)
-	diags = diags.Extend(provDiags)
-	if err != nil {
-		return nil, nil, diags, fmt.Errorf("error binding provider: %w", err)
+	// Bind the package's provider, if it has one. Extension parameterizations have
+	// none, so GetResourceSpec reports it absent.
+	var provider *ResourceType
+	if _, ok, err := t.spec.GetResourceSpec("pulumi:providers:" + t.pkg.Name); err != nil {
+		return nil, nil, diags, err
+	} else if ok {
+		bound, provDiags, err := t.bindResourceTypeDef("pulumi:providers:"+t.pkg.Name, options)
+		diags = diags.Extend(provDiags)
+		if err != nil {
+			return nil, nil, diags, fmt.Errorf("error binding provider: %w", err)
+		}
+		provider = bound
 	}
 
 	resources := slice.Prealloc[*Resource](len(tokens))
@@ -2195,7 +2392,11 @@ func (t *types) finishResources(
 		return resources[i].Token < resources[j].Token
 	})
 
-	return provider.Resource, resources, diags, nil
+	var providerResource *Resource
+	if provider != nil {
+		providerResource = provider.Resource
+	}
+	return providerResource, resources, diags, nil
 }
 
 func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Function, hcl.Diagnostics, error) {

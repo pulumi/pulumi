@@ -82,21 +82,22 @@ resource "app" "scaleway:iam/application:Application" {}
 	parser := syntax.NewParser()
 	err = parser.ParseFile(bytes.NewReader([]byte(hcl)), "infra.tf")
 	require.NoError(t, err, "parse failed")
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(&plugin.MockHost{
-		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
-			return &workspace.PluginInfo{Name: spec.Name}, nil
-		},
-		ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
-			return &plugin.MockProvider{
-				GetSchemaF: func(
-					ctx context.Context,
-					gsr plugin.GetSchemaRequest,
-				) (plugin.GetSchemaResponse, error) {
-					return plugin.GetSchemaResponse{Schema: scalewaySchemaBytes}, nil
-				},
-			}, nil
-		},
-	}))
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(plugin.NewContextWithHost(
+		t.Context(), nil, nil, &plugin.MockHost{
+			ResolvePluginF: func(_ *plugin.Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+				return &workspace.PluginInfo{Name: spec.Name}, nil
+			},
+			ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+				return &plugin.MockProvider{
+					GetSchemaF: func(
+						ctx context.Context,
+						gsr plugin.GetSchemaRequest,
+					) (plugin.GetSchemaResponse, error) {
+						return plugin.GetSchemaResponse{Schema: scalewaySchemaBytes}, nil
+					},
+				}, nil
+			},
+		}, "", "", nil)))
 	if err != nil || diags.HasErrors() {
 		for _, d := range diags {
 			t.Logf("%s: %s", d.Summary, d.Detail)
@@ -134,7 +135,7 @@ func parseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+	options = append(options, pcl.PluginHost(utils.NewContext(testdataPath)))
 	return pcl.BindProgram(parser.Files, options...)
 }
 

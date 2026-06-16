@@ -15,7 +15,9 @@
 package rapidschema
 
 import (
+	"reflect"
 	"testing"
+	"unsafe"
 
 	"pgregory.net/rapid"
 
@@ -41,6 +43,13 @@ func TestVersionRoundTrips(t *testing.T) {
 // marshaling valid schemas.
 func TestPackageBindsMarshalsAndRoundTrips(t *testing.T) {
 	t.Parallel()
+	clearInterpretPulumiRefs := func(pkg *schema.Package) {
+		v := reflect.ValueOf(pkg).Elem().FieldByName("interpretPulumiRefs")
+		reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).
+			Elem().
+			Set(reflect.Zero(v.Type()))
+	}
+
 	rapid.Check(t, func(t *rapid.T) {
 		pkg := Package().Draw(t, "pkg")
 		spec, err := pkg.MarshalSpec()
@@ -48,6 +57,10 @@ func TestPackageBindsMarshalsAndRoundTrips(t *testing.T) {
 		pkg2, diags, err := schema.BindSpec(*spec, schema.Loader(nil), schema.ValidationOptions{})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
+		// interpretPulumiRefs is a closure so never equal, just reset it for this test. It would be nicer
+		// to use EqualExportedValues but that stack crashes on schemas.
+		clearInterpretPulumiRefs(pkg)
+		clearInterpretPulumiRefs(pkg2)
 		assert.Equal(t, pkg, pkg2)
 	})
 }
@@ -70,56 +83,60 @@ func TestPackageCoversAllShapes(t *testing.T) {
 // shapes tracks which schema features have been observed at least once
 // across a rapid run.
 type shapes struct {
-	primitiveBoolean bool
-	primitiveInteger bool
-	primitiveNumber  bool
-	primitiveString  bool
-	array            bool
-	mapType          bool
-	objectRef        bool
-	enumRef          bool
-	archive          bool
-	asset            bool
-	jsonType         bool
-	anyType          bool
-	union            bool
-	unionDisc        bool
-	unionDiscMapping bool
-	plain            bool
-	secret           bool
-	replaceOnChanges bool
-	requiredProperty bool
-	resource         bool
-	stateInputs      bool
-	complexEnum      bool
-	complexObject    bool
+	primitiveBoolean            bool
+	primitiveInteger            bool
+	primitiveNumber             bool
+	primitiveString             bool
+	array                       bool
+	mapType                     bool
+	objectRef                   bool
+	enumRef                     bool
+	archive                     bool
+	asset                       bool
+	jsonType                    bool
+	anyType                     bool
+	union                       bool
+	unionDisc                   bool
+	unionDiscMapping            bool
+	plain                       bool
+	secret                      bool
+	replaceOnChanges            bool
+	requiredProperty            bool
+	resource                    bool
+	stateInputs                 bool
+	complexEnum                 bool
+	complexObject               bool
+	replacementParameterization bool
+	extensionParameterization   bool
 }
 
 func (s *shapes) missing() []string {
 	checks := map[string]bool{
-		"primitive:boolean":   s.primitiveBoolean,
-		"primitive:integer":   s.primitiveInteger,
-		"primitive:number":    s.primitiveNumber,
-		"primitive:string":    s.primitiveString,
-		"array":               s.array,
-		"map":                 s.mapType,
-		"objectRef":           s.objectRef,
-		"enumRef":             s.enumRef,
-		"archive":             s.archive,
-		"asset":               s.asset,
-		"json":                s.jsonType,
-		"any":                 s.anyType,
-		"union":               s.union,
-		"union:discriminator": s.unionDisc,
-		"union:mapping":       s.unionDiscMapping,
-		"plain":               s.plain,
-		"secret":              s.secret,
-		"replaceOnChanges":    s.replaceOnChanges,
-		"requiredProperty":    s.requiredProperty,
-		"resource":            s.resource,
-		"stateInputs":         s.stateInputs,
-		"enumType":            s.complexEnum,
-		"objectType":          s.complexObject,
+		"primitive:boolean":           s.primitiveBoolean,
+		"primitive:integer":           s.primitiveInteger,
+		"primitive:number":            s.primitiveNumber,
+		"primitive:string":            s.primitiveString,
+		"array":                       s.array,
+		"map":                         s.mapType,
+		"objectRef":                   s.objectRef,
+		"enumRef":                     s.enumRef,
+		"archive":                     s.archive,
+		"asset":                       s.asset,
+		"json":                        s.jsonType,
+		"any":                         s.anyType,
+		"union":                       s.union,
+		"union:discriminator":         s.unionDisc,
+		"union:mapping":               s.unionDiscMapping,
+		"plain":                       s.plain,
+		"secret":                      s.secret,
+		"replaceOnChanges":            s.replaceOnChanges,
+		"requiredProperty":            s.requiredProperty,
+		"resource":                    s.resource,
+		"stateInputs":                 s.stateInputs,
+		"enumType":                    s.complexEnum,
+		"objectType":                  s.complexObject,
+		"replacementParameterization": s.replacementParameterization,
+		"extensionParameterization":   s.extensionParameterization,
 	}
 	var missing []string
 	for name, ok := range checks {
@@ -131,6 +148,12 @@ func (s *shapes) missing() []string {
 }
 
 func (s *shapes) observePackage(pkg *schema.Package) {
+	if pkg.Parameterization != nil {
+		s.replacementParameterization = true
+	}
+	if pkg.ExtensionParameterization != nil {
+		s.extensionParameterization = true
+	}
 	for _, t := range pkg.Types {
 		switch t := t.(type) {
 		case *schema.ObjectType:

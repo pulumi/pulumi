@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -76,6 +77,13 @@ func TestReadCachedSpec_ReportsAge(t *testing.T) {
 	assert.False(t, missingOK)
 }
 
+func clearAgentEnv(t *testing.T) {
+	t.Helper()
+	for _, name := range agentdetect.DetectionEnvVars() {
+		t.Setenv(name, "")
+	}
+}
+
 // seedSpecCache writes data to the cache path that ensureSpec would use for
 // cloudURL, sets its mtime to now-age, and returns the resolved path. Assumes
 // PULUMI_HOME is already pointing at an isolated tempdir.
@@ -109,6 +117,7 @@ func newSpecServer(t *testing.T, serveBody []byte) (*httptest.Server, *atomic.In
 //
 //nolint:paralleltest // mutates PULUMI_HOME / PULUMI_API
 func TestEnsureSpec_CacheHitUnderTTL(t *testing.T) {
+	clearAgentEnv(t)
 	t.Setenv("PULUMI_HOME", t.TempDir())
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 	cached := []byte(`{"cached":true}`)
@@ -129,6 +138,7 @@ func TestEnsureSpec_CacheHitUnderTTL(t *testing.T) {
 //
 //nolint:paralleltest // mutates PULUMI_HOME / PULUMI_API / specCacheTTL
 func TestEnsureSpec_TTLExpiryTriggersFetch(t *testing.T) {
+	clearAgentEnv(t)
 	t.Setenv("PULUMI_HOME", t.TempDir())
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 	origTTL := specCacheTTL
@@ -156,6 +166,7 @@ func TestEnsureSpec_TTLExpiryTriggersFetch(t *testing.T) {
 //
 //nolint:paralleltest // mutates PULUMI_HOME / PULUMI_API
 func TestEnsureSpec_RefreshForcesFetch(t *testing.T) {
+	clearAgentEnv(t)
 	t.Setenv("PULUMI_HOME", t.TempDir())
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 	srv, hits := newSpecServer(t, []byte(`{"fresh":true}`))
@@ -174,6 +185,7 @@ func TestEnsureSpec_RefreshForcesFetch(t *testing.T) {
 //
 //nolint:paralleltest // mutates PULUMI_HOME / PULUMI_API / specCacheTTL
 func TestEnsureSpec_StaleFallbackOnFetchFailure(t *testing.T) {
+	clearAgentEnv(t)
 	t.Setenv("PULUMI_HOME", t.TempDir())
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 	origTTL := specCacheTTL
@@ -201,6 +213,7 @@ func TestEnsureSpec_StaleFallbackOnFetchFailure(t *testing.T) {
 //
 //nolint:paralleltest // mutates PULUMI_HOME / PULUMI_API
 func TestEnsureSpec_RefreshFlagFailsHardOnFetchError(t *testing.T) {
+	clearAgentEnv(t)
 	t.Setenv("PULUMI_HOME", t.TempDir())
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 

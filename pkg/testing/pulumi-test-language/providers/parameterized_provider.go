@@ -95,7 +95,7 @@ func (p *ParameterizedProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    subpackage,
 		Version: version,
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			InputProperties: map[string]schema.PropertySpec{
 				"text": {
 					TypeSpec: schema.TypeSpec{

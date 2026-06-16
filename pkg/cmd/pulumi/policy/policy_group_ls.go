@@ -144,7 +144,7 @@ func formatPolicyGroupsConsole(w io.Writer, policyGroups []apitype.PolicyGroupSu
 		// Number of enabled Policy Packs column
 		numPolicyPacks := strconv.Itoa(group.NumEnabledPolicyPacks)
 
-		// Number of stacks colum
+		// Number of stacks column
 		numStacks := strconv.Itoa(group.NumStacks)
 
 		// Render the columns.

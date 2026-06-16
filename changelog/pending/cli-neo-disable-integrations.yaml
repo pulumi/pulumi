@@ -1,0 +1,6 @@
+component: cli/neo
+kind: feat
+body: Add a `--disable-integrations` flag to `pulumi neo` that runs the task with no integration credentials
+time: 2026-06-11T13:15:08.000000+00:00
+custom:
+    PR: "23531"

@@ -45,10 +45,10 @@ func minimalSchemaJSON(name, version string) []byte {
 // newCachingHost returns a mock host backed by the given provider and pluginInfo.
 func newCachingHost(provider plugin.Provider, pluginInfo *workspace.PluginInfo) *plugin.MockHost {
 	return &plugin.MockHost{
-		ProviderF: func(workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
+		ProviderF: func(*plugin.Context, workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
 			return provider, nil
 		},
-		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(*plugin.Context, workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return pluginInfo, nil
 		},
 	}
@@ -57,7 +57,8 @@ func newCachingHost(provider plugin.Provider, pluginInfo *workspace.PluginInfo) 
 // fileCacheLoader creates a loader with the in-memory caches disabled so that
 // only the file-based cache is exercised.
 func fileCacheLoader(host plugin.Host) ReferenceLoader {
-	return newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{
+	pctx := plugin.NewContextWithHost(context.Background(), nil, nil, host, "", "", nil)
+	return newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,
 		disableMmap:       true,
 	})

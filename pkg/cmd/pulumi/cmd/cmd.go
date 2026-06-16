@@ -167,7 +167,7 @@ We would appreciate a report: https://github.com/pulumi/pulumi/issues/
 
 	if sie.Op == snapshot.SnapshotIntegrityRead && sie.Metadata == nil {
 		message.WriteString(`
-NOTE: This error occurred while reading a snaphot. This error was introduced by
+NOTE: This error occurred while reading a snapshot. This error was introduced by
 a previous operation when it wrote the snapshot. If you have details about that
 operation, please include them in your report as well.
 `)

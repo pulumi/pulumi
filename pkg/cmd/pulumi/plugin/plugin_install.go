@@ -341,7 +341,7 @@ func installPluginSpec(
 	}
 	logging.V(1).Infof("%s installing tarball ...", label)
 	if err = pkgWorkspace.InstallPluginContent(
-		ctx, install, payload, reinstall, schema.NewLoaderServerFromHost,
+		ctx, install, payload, reinstall, schema.NewLoaderServerFromContext,
 	); err != nil {
 		return fmt.Errorf("installing %s from %s: %w", label, source, err)
 	}

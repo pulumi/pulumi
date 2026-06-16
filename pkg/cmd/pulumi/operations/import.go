@@ -576,7 +576,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		return false, nil
 	}
 
-	loader := schema.NewPluginLoader(ctx.Host)
+	loader := schema.NewPluginLoader(ctx)
 	err := importer.GenerateLanguageDefinitions(
 		out,
 		loader,
@@ -664,7 +664,7 @@ func NewImportCmd() *cobra.Command {
 			"The type token and property used for resource lookup are available in the Import section of\n" +
 			"the resource's API documentation in the Pulumi Registry (https://www.pulumi.com/registry/)." +
 			"\n" +
-			"To fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
+			"To fully specify parent and/or provider, substitute the <urn> for each into the following:\n" +
 			"\n" +
 			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
 			"\n" +
@@ -731,7 +731,7 @@ func NewImportCmd() *cobra.Command {
 			}
 			sink := cmdutil.Diag()
 			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
-				schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -776,7 +776,7 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
 					}
-					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromHost)
+					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 						return nil
@@ -787,7 +787,7 @@ func NewImportCmd() *cobra.Command {
 				baseMapper, err := convert.NewBasePluginMapper(
 					pluginstorage.Instance,
 					from, /*conversionKey*/
-					convert.ProviderFactoryFromHost(ctx, pCtx.Host),
+					convert.ProviderFactoryFromHost(ctx, pCtx),
 					installPlugin,
 					nil, /*mappings*/
 				)
@@ -955,12 +955,12 @@ func NewImportCmd() *cobra.Command {
 				sink := cmdutil.Diag()
 
 				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
-					schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+					schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 				if err != nil {
 					return nil, nil, err
 				}
 				defer contract.IgnoreClose(pCtx.Host)
-				languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
+				languagePlugin, err := ctx.Host.LanguageRuntime(ctx, proj.Runtime.Name())
 				if err != nil {
 					return nil, nil, err
 				}

@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -231,7 +231,7 @@ func setUpGitWorkspace(ctx context.Context, t *testing.T) string {
 		ReferenceName: plumbing.ReferenceName("master"),
 	}
 
-	_, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
+	_, err := git.PlainCloneContext(ctx, workDir, cloneOptions)
 	require.NoError(t, err)
 
 	return workDir

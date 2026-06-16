@@ -1380,7 +1380,7 @@ func TestDoCmdFunctionInvokeWithConfiguration(t *testing.T) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"opt1": {
 						TypeSpec: schema.TypeSpec{
@@ -1817,11 +1817,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFile(t *testing.T) {
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
 	yamlHost := func() (plugin.Host, error) {
-		return &plugin.MockHost{
-			LoaderAddrF: func() string {
-				return "loader-address"
-			},
-		}, nil
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		pctx *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -1945,11 +1941,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
 	yamlHost := func() (plugin.Host, error) {
-		return &plugin.MockHost{
-			LoaderAddrF: func() string {
-				return "loader-address"
-			},
-		}, nil
+		return &plugin.MockHost{}, nil
 	}
 	subVersion := semver.MustParse("1.2.3")
 	parameterValue := []byte("opaque-parameter-blob")
@@ -2088,9 +2080,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
 	yamlHost := func() (plugin.Host, error) {
-		return &plugin.MockHost{
-			LoaderAddrF: func() string { return "loader-address" },
-		}, nil
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2119,7 +2109,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"opt1": {TypeSpec: schema.TypeSpec{Type: "string"}},
 				},
@@ -2175,7 +2165,7 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
 	host := func() (plugin.Host, error) {
-		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2233,7 +2223,7 @@ func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
 	host := func() (plugin.Host, error) {
-		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2292,7 +2282,7 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
 	host := func() (plugin.Host, error) {
-		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2359,7 +2349,7 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
 	host := func() (plugin.Host, error) {
-		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2427,7 +2417,7 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"opt1":   {TypeSpec: schema.TypeSpec{Type: "string"}},
 					"optTwo": {TypeSpec: schema.TypeSpec{Type: "string"}},
@@ -2498,9 +2488,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
 	yamlHost := func() (plugin.Host, error) {
-		return &plugin.MockHost{
-			LoaderAddrF: func() string { return "loader-address" },
-		}, nil
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2559,7 +2547,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"opt1":   {TypeSpec: schema.TypeSpec{Type: "string"}},
 					"optTwo": {TypeSpec: schema.TypeSpec{Type: "string"}},

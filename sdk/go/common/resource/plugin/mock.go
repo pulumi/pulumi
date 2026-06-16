@@ -29,16 +29,13 @@ import (
 
 type MockHost struct {
 	ServerAddrF         func() string
-	LoaderAddrF         func() string
-	MapperAddrF         func() string
 	LogF                func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
 	LogStatusF          func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
-	AnalyzerF           func(nm tokens.QName) (Analyzer, error)
-	PolicyAnalyzerF     func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
-	ProviderF           func(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
-	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
-	ResolvePluginF      func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
-	GetProjectPluginsF  func() []workspace.ProjectPlugin
+	AnalyzerF           func(ctx *Context, nm tokens.QName) (Analyzer, error)
+	PolicyAnalyzerF     func(ctx *Context, name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
+	ProviderF           func(ctx *Context, descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
+	LanguageRuntimeF    func(ctx *Context, runtime string) (LanguageRuntime, error)
+	ResolvePluginF      func(ctx *Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
 	SignalCancellationF func() error
 	CloseF              func() error
 	StartDebuggingF     func(info DebuggingInfo) error
@@ -50,20 +47,6 @@ var _ Host = (*MockHost)(nil)
 func (m *MockHost) ServerAddr() string {
 	if m.ServerAddrF != nil {
 		return m.ServerAddrF()
-	}
-	return ""
-}
-
-func (m *MockHost) LoaderAddr() string {
-	if m.LoaderAddrF != nil {
-		return m.LoaderAddrF()
-	}
-	return ""
-}
-
-func (m *MockHost) MapperAddr() string {
-	if m.MapperAddrF != nil {
-		return m.MapperAddrF()
 	}
 	return ""
 }
@@ -80,48 +63,43 @@ func (m *MockHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, st
 	}
 }
 
-func (m *MockHost) Analyzer(nm tokens.QName) (Analyzer, error) {
+func (m *MockHost) Analyzer(ctx *Context, nm tokens.QName) (Analyzer, error) {
 	if m.AnalyzerF != nil {
-		return m.AnalyzerF(nm)
+		return m.AnalyzerF(ctx, nm)
 	}
 	return nil, status.Error(codes.Unimplemented, "Analyzer not implemented")
 }
 
-func (m *MockHost) PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
+func (m *MockHost) PolicyAnalyzer(
+	ctx *Context, name tokens.QName, path string, opts *PolicyAnalyzerOptions,
+) (Analyzer, error) {
 	if m.PolicyAnalyzerF != nil {
-		return m.PolicyAnalyzerF(name, path, opts)
+		return m.PolicyAnalyzerF(ctx, name, path, opts)
 	}
 	return nil, status.Error(codes.Unimplemented, "PolicyAnalyzer not implemented")
 }
 
-func (m *MockHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {
+func (m *MockHost) Provider(ctx *Context, descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {
 	if m.ProviderF != nil {
-		return m.ProviderF(descriptor, e)
+		return m.ProviderF(ctx, descriptor, e)
 	}
 	return nil, status.Error(codes.Unimplemented, "Provider not implemented")
 }
 
-func (m *MockHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
+func (m *MockHost) LanguageRuntime(ctx *Context, runtime string) (LanguageRuntime, error) {
 	if m.LanguageRuntimeF != nil {
-		return m.LanguageRuntimeF(runtime)
+		return m.LanguageRuntimeF(ctx, runtime)
 	}
 	return nil, status.Error(codes.Unimplemented, "LanguageRuntime not implemented")
 }
 
 func (m *MockHost) ResolvePlugin(
-	spec workspace.PluginDescriptor,
+	ctx *Context, spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if m.ResolvePluginF != nil {
-		return m.ResolvePluginF(spec)
+		return m.ResolvePluginF(ctx, spec)
 	}
 	return nil, status.Error(codes.Unimplemented, "ResolvePlugin not implemented")
-}
-
-func (m *MockHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	if m.GetProjectPluginsF != nil {
-		return m.GetProjectPluginsF()
-	}
-	return nil
 }
 
 func (m *MockHost) SignalCancellation() error {

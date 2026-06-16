@@ -71,9 +71,8 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
-		Use:    "run",
-		Hidden: !env.Dev.Value(),
-		Short:  "Run a command on a plugin binary",
+		Use:   "run",
+		Short: "Run a command on a plugin binary",
 		Long: "[EXPERIMENTAL] Run a command on a plugin binary.\n" +
 			"\n" +
 			"Directly executes a plugin binary, if VERSION is not specified " +
@@ -121,7 +120,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 						d.Logf(sev, diag.RawMessage("", msg))
 					}
 
-					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromHost)
+					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext)
 					if err != nil {
 						return err
 					}
@@ -136,7 +135,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			pluginArgs := args[1:]
 
 			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil,
-				schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}

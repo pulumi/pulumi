@@ -80,8 +80,11 @@ type PulumiPluginJSON struct {
 	Version string `json:"version,omitempty"`
 	// Optional plugin server. If not set, the default server is used when installing the plugin.
 	Server string `json:"server,omitempty"`
-	// Parameterization information for the package.
+	// Replacement parameterization for the package.
 	Parameterization *PulumiParameterizationJSON `json:"parameterization,omitempty"`
+	// Extension parameterization for the package. The package extends the base
+	// plugin in place rather than replacing it.
+	ExtensionParameterization *PulumiParameterizationJSON `json:"extensionParameterization,omitempty"`
 }
 
 func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
@@ -534,7 +537,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
 		}
 
-		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name())
+		runtime, err := ctx.Host.LanguageRuntime(ctx, runtimeInfo.Name())
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
@@ -549,7 +552,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			Env:              environment,
 			Kind:             string(kind),
 			AttachDebugger:   attachDebugger,
-			LoaderAddress:    ctx.Host.LoaderAddr(),
+			LoaderAddress:    ctx.LoaderAddr(),
 		})
 		if err != nil {
 			return nil, err //nolint:govet // lostcancel

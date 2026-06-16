@@ -114,7 +114,7 @@ if not dryrun:
         if json_file is not None and os.path.isfile(json_file):
             try:
                 build_errors = []
-                with open(json_file, 'r') as f:
+                with open(json_file, 'r', encoding='utf-8') as f:
                     for line in f:
                         line = line.strip()
                         if not line:
@@ -128,9 +128,8 @@ if not dryrun:
                     for msg in build_errors:
                         print(msg, end='', file=sys.stderr)
                     print("=== End build errors ===", file=sys.stderr)
-            except Exception as e:
-                print(e, file=sys.stderr)
-                pass  # Don't mask the original error
+            except Exception as json_err:
+                print(json_err, file=sys.stderr)
         raise e
 else:
     print("Would have run: " + ' '.join(args))

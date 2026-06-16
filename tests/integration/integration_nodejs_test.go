@@ -2543,6 +2543,27 @@ func TestPackageAddNode(t *testing.T) {
 
 			require.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
 
+			// The local SDK has a postinstall script that compiles it from TypeScript. Each package manager requires
+			// the package to be allowlisted so the script runs (npm 12 and pnpm/bun skip install scripts by default).
+			switch packageManager {
+			case "npm":
+				allowScripts, ok := packagesJSON["allowScripts"].(map[string]any)
+				require.True(t, ok, "expected allowScripts in package.json")
+				normalized := make(map[string]any, len(allowScripts))
+				for k, v := range allowScripts {
+					normalized[filepath.ToSlash(k)] = v
+				}
+				assert.Equal(t, true, normalized["file:sdks/random"])
+			case "bun":
+				trusted, ok := packagesJSON["trustedDependencies"].([]any)
+				require.True(t, ok, "expected trustedDependencies in package.json")
+				assert.Contains(t, trusted, "@pulumi/random")
+			case "pnpm":
+				b, err := os.ReadFile(filepath.Join(e.CWD, "pnpm-workspace.yaml"))
+				require.NoError(t, err, "expected pnpm-workspace.yaml")
+				assert.Contains(t, string(b), "@pulumi/random")
+			}
+
 			require.FileExists(t, filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
 			b, err := os.ReadFile(filepath.Join(e.CWD, "sdks", "random", ".gitignore"))
 			require.NoError(t, err)

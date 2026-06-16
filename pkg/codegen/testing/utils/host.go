@@ -37,10 +37,10 @@ func NewSchemaProvider(name, version string) SchemaProvider {
 	return SchemaProvider{name, version}
 }
 
-// NewHost creates a schema-only plugin host, supporting multiple package versions in tests. This
-// enables running tests offline. If this host is used to load a plugin, that is, to run a Pulumi
-// program, it will panic.
-func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvider) plugin.Host {
+// NewContextWithProviders creates a plugin context with a schema-only plugin host, supporting
+// multiple package versions in tests. This enables running tests offline. If this host is used
+// to load a plugin, that is, to run a Pulumi program, it will panic.
+func NewContextWithProviders(schemaDirectoryPath string, providers ...SchemaProvider) *plugin.Context {
 	mockProvider := func(name tokens.Package, version string) *deploytest.PluginLoader {
 		return deploytest.NewProviderLoader(name, semver.MustParse(version), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -79,19 +79,20 @@ func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvide
 	// For the pulumi/pulumi repository, this must be kept in sync with the makefile and/or committed
 	// schema files in the given schema directory. This is the minimal set of schemas that must be
 	// supplied.
-	return deploytest.NewPluginHost(nil, nil, nil,
+	host := deploytest.NewPluginHost(nil, nil, nil,
 		pluginLoaders...,
 	)
+	return plugin.NewContextWithHost(context.Background(), nil, nil, host, "", "", nil)
 }
 
-// NewHost creates a schema-only plugin host, supporting multiple package versions in tests. This
-// enables running tests offline. If this host is used to load a plugin, that is, to run a Pulumi
-// program, it will panic.
-func NewHost(schemaDirectoryPath string) plugin.Host {
+// NewContext creates a plugin context with a schema-only plugin host, supporting multiple package
+// versions in tests. This enables running tests offline. If this host is used to load a plugin,
+// that is, to run a Pulumi program, it will panic.
+func NewContext(schemaDirectoryPath string) *plugin.Context {
 	// For the pulumi/pulumi repository, this must be kept in sync with the makefile and/or committed
 	// schema files in the given schema directory. This is the minimal set of schemas that must be
 	// supplied.
-	return NewHostWithProviders(schemaDirectoryPath,
+	return NewContextWithProviders(schemaDirectoryPath,
 		SchemaProvider{"tls", "4.10.0"},
 		SchemaProvider{"random", "4.11.2"},
 		SchemaProvider{"std", "1.0.0"},
