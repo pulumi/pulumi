@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -26,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -42,6 +44,58 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+func TestNeoDebugFlags(t *testing.T) {
+	t.Parallel()
+
+	// The flags live on `pulumi neo` itself and carry the optional-value sentinel, so a bare
+	// `--debug-update` is legal (pflag otherwise requires `--debug-update=<v>`).
+	root := NewNeoCmd()
+	for _, name := range []string{"debug-update", "debug-preview"} {
+		fl := root.Flags().Lookup(name)
+		require.NotNilf(t, fl, "flag %q", name)
+		assert.Equalf(t, debugLatestSentinel, fl.NoOptDefVal, "flag %q NoOptDefVal", name)
+	}
+
+	// debugRequest maps a bare flag to an infer-latest request (empty id) and `=value` to the
+	// explicit id; with neither flag it reports no debug request.
+	parse := func(args ...string) (debugKind, string) {
+		f := &neoFlags{}
+		cmd := &cobra.Command{Use: "neo", RunE: func(*cobra.Command, []string) error { return nil }}
+		f.register(cmd)
+		require.NoError(t, cmd.ParseFlags(args))
+		return f.debugRequest(cmd)
+	}
+
+	cases := []struct {
+		args []string
+		kind debugKind
+		want string
+	}{
+		{nil, debugNone, ""},
+		{[]string{"--debug-update"}, debugUpdate, ""},
+		{[]string{"--debug-update=42"}, debugUpdate, "42"},
+		{[]string{"--debug-preview"}, debugPreview, ""},
+		{
+			[]string{"--debug-preview=2e07637b-d20b-4d4f-9d29-a7bcb1631cf7"},
+			debugPreview, "2e07637b-d20b-4d4f-9d29-a7bcb1631cf7",
+		},
+	}
+	for _, c := range cases {
+		kind, id := parse(c.args...)
+		assert.Equalf(t, c.kind, kind, "kind for %v", c.args)
+		assert.Equalf(t, c.want, id, "id for %v", c.args)
+	}
+
+	// The two debug flags are mutually exclusive; cobra rejects them before RunE.
+	f := &neoFlags{}
+	cmd := &cobra.Command{Use: "neo", RunE: func(*cobra.Command, []string) error { return nil }}
+	f.register(cmd)
+	cmd.SetArgs([]string{"--debug-update", "--debug-preview"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	assert.Error(t, cmd.Execute())
+}
+
 // fakeHTTPBackend embeds a generic MockBackend and adds the few extra methods the
 // httpstate.Backend interface requires. resolveTaskTarget only dips into the base
 // backend.Backend surface (ParseStackReference, GetDefaultOrg, CurrentUser), so the
@@ -52,7 +106,7 @@ type fakeHTTPBackend struct {
 	// live client (the integration test wires a real *client.Client here).
 	ClientV *client.Client
 	// GetLatestStackPreviewF backs the stackPreviewLister capability used by
-	// `pulumi neo debug`; leave nil to report no previews.
+	// `pulumi neo --debug-preview`; leave nil to report no previews.
 	GetLatestStackPreviewF func(context.Context, backend.StackReference) (*apitype.StackPreview, error)
 }
 

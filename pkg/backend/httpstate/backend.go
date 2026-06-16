@@ -1766,7 +1766,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 			summary, err := b.summarizeErrorWithNeo(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
 			// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 			// if we can't generate a summary.
-			display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink)
+			display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink, dryRun)
 		}
 	}
 }

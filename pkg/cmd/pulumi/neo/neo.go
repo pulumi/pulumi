@@ -145,6 +145,9 @@ func NewNeoCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// --debug-update/--debug-preview seed Neo to investigate a failed operation. The
+			// positional prompt (if any) is still honored as extra guidance appended to the seed.
+			debugKind, debugID := flags.debugRequest(cmd)
 			return runNeo(ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), neoRunOptions{
 				prompt:              prompt,
 				stackName:           flags.stackName,
@@ -153,20 +156,26 @@ func NewNeoCmd() *cobra.Command {
 				approvalMode:        approvalMode,
 				permissionMode:      permissionMode,
 				printMode:           flags.printMode,
+				debugKind:           debugKind,
+				debugID:             debugID,
 				disableIntegrations: flags.disableIntegrations,
 			})
 		},
 	}
 
 	flags.register(cmd)
-	cmd.AddCommand(newNeoDebugCmd())
 
 	return cmd
 }
 
-// neoFlags holds the options shared by `pulumi neo` and its `debug` subcommand. Both start the
-// same Neo experience and differ only in how the initial prompt is produced, so they register
-// and resolve the same flags.
+// debugLatestSentinel is the NoOptDefVal for --debug-update/--debug-preview: pflag requires a
+// non-empty NoOptDefVal to make a flag's value optional, so a bare `--debug-update` records this
+// sentinel (meaning "infer the latest"). It is deliberately untypeable as a real id so it can't
+// collide with a value the user passes via `--debug-update=<id>`.
+const debugLatestSentinel = "\x00latest"
+
+// neoFlags holds the options for `pulumi neo`, including the --debug-update/--debug-preview flags
+// that seed Neo to investigate a failed operation.
 type neoFlags struct {
 	stackName           string
 	orgFlag             string
@@ -174,6 +183,8 @@ type neoFlags struct {
 	approvalModeFlag    string
 	permissionModeFlag  string
 	printMode           bool
+	debugUpdate         string
+	debugPreview        string
 	disableIntegrations bool
 }
 
@@ -196,6 +207,39 @@ func (f *neoFlags) register(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&f.disableIntegrations, "disable-integrations", false,
 		"Run the Neo task with no integration credentials, ignoring any org-enabled "+
 			"integrations.")
+	cmd.Flags().StringVar(&f.debugUpdate, "debug-update", "",
+		"Debug a failed update. With no value, targets the stack's latest update; "+
+			"pass =<version> (e.g. --debug-update=42) to target a specific one")
+	cmd.Flags().StringVar(&f.debugPreview, "debug-preview", "",
+		"Debug a failed preview. With no value, targets the stack's latest preview; "+
+			"pass =<preview-id> to target a specific one")
+	// A non-empty NoOptDefVal makes the flag's value optional: bare `--debug-update` records the
+	// sentinel ("infer latest"), while `--debug-update=42` records the explicit id.
+	cmd.Flags().Lookup("debug-update").NoOptDefVal = debugLatestSentinel
+	cmd.Flags().Lookup("debug-preview").NoOptDefVal = debugLatestSentinel
+	cmd.MarkFlagsMutuallyExclusive("debug-update", "debug-preview")
+}
+
+// debugRequest reports which debug flag (if any) was set and the explicit id the user passed. kind
+// is debugNone when neither flag is present; id is "" when the flag was given bare (meaning "infer
+// the latest"), so runNeo resolves it against the backend. --debug-update and --debug-preview are
+// mutually exclusive, so at most one is ever Changed.
+func (f *neoFlags) debugRequest(cmd *cobra.Command) (kind debugKind, id string) {
+	switch {
+	case cmd.Flags().Changed("debug-update"):
+		return debugUpdate, valueOrEmpty(f.debugUpdate)
+	case cmd.Flags().Changed("debug-preview"):
+		return debugPreview, valueOrEmpty(f.debugPreview)
+	}
+	return debugNone, ""
+}
+
+// valueOrEmpty maps the bare-flag sentinel back to "" so callers see an explicit id or nothing.
+func valueOrEmpty(v string) string {
+	if v == debugLatestSentinel {
+		return ""
+	}
+	return v
 }
 
 // resolveModes validates the approval/permission flags and applies the --print adjustments:
@@ -247,7 +291,7 @@ func parsePermissionMode(s string) (client.NeoPermissionMode, error) {
 
 // neoRunOptions carries everything runNeo needs to start a Neo session. It is a struct rather
 // than a positional argument list because the set has grown past the point where positional
-// bools (printMode, includeStackContext) are safe to read or extend at the call site.
+// bools (printMode, disableIntegrations) are safe to read or extend at the call site.
 type neoRunOptions struct {
 	prompt         string
 	stackName      string
@@ -256,9 +300,13 @@ type neoRunOptions struct {
 	approvalMode   client.NeoApprovalMode
 	permissionMode client.NeoPermissionMode
 	printMode      bool
-	// includeStackContext seeds the prompt with the current target and most recent operation;
-	// `pulumi neo debug` sets this so Neo starts with the failure already in context.
-	includeStackContext bool
+	// debugKind, when debugUpdate or debugPreview, makes this a debug session: runNeo builds a
+	// seed prompt targeting a failed operation of that kind and appends the stack context so Neo
+	// starts with the failure already in scope. debugNone for a normal `pulumi neo` session.
+	debugKind debugKind
+	// debugID is the explicit update version / preview id to debug, or "" to infer the latest of
+	// debugKind. Ignored unless debugKind is set.
+	debugID string
 	// disableIntegrations runs the Neo task with no integration credentials, ignoring any
 	// org-enabled integrations.
 	disableIntegrations bool
@@ -307,12 +355,21 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 	}
 	orgName, projectName, stackRefName := target.org, target.project, target.stackName()
 
-	// `pulumi neo debug` seeds Neo with the current identity/target and the most recent
-	// operation so it starts with the failure already in context instead of rediscovering
-	// it. We append after the trigger line so debugSeedPrompt stays first and Neo's skill
-	// evaluator still matches the debug skill.
-	if opts.includeStackContext && opts.prompt != "" {
-		opts.prompt += "\n\n" + debugStackContext(ctx, cloudBe, target.ref, orgName, projectName)
+	// --debug-update/--debug-preview seed Neo with a trigger line targeting a failed operation
+	// plus the current identity/target, so it starts with the failure already in context instead
+	// of rediscovering it. With no explicit id we infer the latest operation of the requested
+	// kind. The seed trigger line stays first so Neo's skill evaluator still matches the debug
+	// skill; any positional prompt follows it as extra guidance, then the context block.
+	if opts.debugKind != debugNone {
+		id := opts.debugID
+		if id == "" {
+			id = opts.debugKind.latestID(ctx, cloudBe, target.ref)
+		}
+		seed := debugSeedPrompt(opts.debugKind, id)
+		if opts.prompt != "" {
+			seed += "\n\n" + opts.prompt
+		}
+		opts.prompt = seed + "\n\n" + debugStackContext(cloudBe, target, opts.debugKind, id)
 	}
 
 	// Allow tools to read/write under temp directories in addition to cwd: the agent

@@ -1,5 +1,5 @@
 kind: chore
-body: Add a `pulumi neo debug` command to investigate a failed update or preview, suggested in the failure output
+body: Add `pulumi neo --debug-update` and `pulumi neo --debug-preview` flags to investigate a failed update or preview, suggested in the failure output
 component: cli
 custom:
     PR: "23499"

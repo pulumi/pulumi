@@ -45,8 +45,11 @@ func neoDelimiterEmoji() string {
 	return cmdutil.EmojiOr(" ✨", ":")
 }
 
-// RenderNeoErrorSummary renders a Neo error summary to the console.
-func RenderNeoErrorSummary(summary *NeoErrorSummaryMetadata, err error, opts Options, permalink string) {
+// RenderNeoErrorSummary renders a Neo error summary to the console. isPreview selects which debug
+// command the link suggestion offers (`pulumi neo --debug-preview` vs `--debug-update`).
+func RenderNeoErrorSummary(
+	summary *NeoErrorSummaryMetadata, err error, opts Options, permalink string, isPreview bool,
+) {
 	out := opts.Stdout
 	if out == nil {
 		out = os.Stdout
@@ -77,15 +80,26 @@ func RenderNeoErrorSummary(summary *NeoErrorSummaryMetadata, err error, opts Opt
 
 	fmt.Fprintln(out)
 
-	PrintNeoLink(out, opts, permalink)
+	PrintNeoLink(out, opts, permalink, isPreview)
 }
 
-func PrintNeoLink(out io.Writer, opts Options, permalink string) {
+// PrintNeoLink prints the "would you like help" link plus the terminal command to debug the
+// failure. isPreview picks `pulumi neo --debug-preview` for a failed preview and
+// `pulumi neo --debug-update` otherwise.
+func PrintNeoLink(out io.Writer, opts Options, permalink string, isPreview bool) {
 	fmt.Fprintln(out, "  "+"Would you like additional help with this update?")
 	fmt.Fprintln(out, "  "+
 		opts.Color.Colorize(colors.Underline+colors.BrightBlue+ExplainFailureLink(permalink)+colors.Reset))
-	fmt.Fprintln(out, "  "+"Or run `pulumi neo debug` in your terminal.")
+	fmt.Fprintln(out, "  "+"Or run `"+neoDebugCommand(isPreview)+"` in your terminal.")
 	fmt.Fprintln(out)
+}
+
+// neoDebugCommand returns the `pulumi neo` debug invocation that targets the failed operation kind.
+func neoDebugCommand(isPreview bool) string {
+	if isPreview {
+		return "pulumi neo --debug-preview"
+	}
+	return "pulumi neo --debug-update"
 }
 
 // RenderNeoThinking displays a "Thinking..." message.

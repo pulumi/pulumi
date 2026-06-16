@@ -17,130 +17,90 @@ package neo
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
-
-	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 )
 
-// newNeoDebugCmd creates the `pulumi neo debug [id]` subcommand: a structured entry to the same
-// interactive Neo experience as `pulumi neo`, seeded to investigate a failed update or preview.
-// The CLI suggests this command in failed `up`/`preview` output (see display.PrintNeoLink), so the
-// user can drop straight into Neo with the failure in context. It carries its own copy of the
-// shared flags so it honors the same --stack/--org/--cwd/--approval-mode/--permission-mode/--print
-// options as the parent command.
-func newNeoDebugCmd() *cobra.Command {
-	flags := &neoFlags{}
+// debugKind identifies which kind of failed operation `pulumi neo --debug-update`/`--debug-preview`
+// targets. The constant values double as the noun used in Neo's seed prompt and the debug context,
+// so callers can format a debugKind directly instead of mapping it.
+type debugKind string
 
-	cmd := &cobra.Command{
-		Use:   "debug [update-or-preview-id]",
-		Short: "Start a Pulumi Neo agent task to debug a failed update or preview",
-		Long: "Starts the interactive Pulumi Neo experience seeded to investigate a failed update " +
-			"or preview and propose a fix. With no argument, Neo debugs your most recent operation on " +
-			"the stack and confirms which one before acting; pass an update version or preview id to " +
-			"target a specific one. Neo runs against the current stack, so run this from the same " +
-			"project directory as the failed operation.",
-		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			approvalMode, permissionMode, err := flags.resolveModes(cmd)
-			if err != nil {
-				return err
-			}
-			id := ""
-			if len(args) == 1 {
-				id = args[0]
-			}
-			return runNeo(ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), neoRunOptions{
-				prompt:              debugSeedPrompt(id),
-				stackName:           flags.stackName,
-				orgFlag:             flags.orgFlag,
-				cwdFlag:             flags.cwdFlag,
-				approvalMode:        approvalMode,
-				permissionMode:      permissionMode,
-				printMode:           flags.printMode,
-				includeStackContext: true,
-				disableIntegrations: flags.disableIntegrations,
-			})
-		},
+const (
+	debugNone    debugKind = ""
+	debugUpdate  debugKind = "update"
+	debugPreview debugKind = "preview"
+)
+
+// latestID returns the id of the stack's most recent operation of this kind, or "" when none is
+// available. Updates and previews are tracked separately — previews never appear in GetHistory — so
+// each kind has its own lookup: an update resolves to its history version (an integer), a preview to
+// its opaque UpdateID (a UUID). Both lookups are best-effort.
+func (k debugKind) latestID(ctx context.Context, be httpstate.Backend, stackRef backend.StackReference) string {
+	if stackRef == nil {
+		return ""
 	}
-
-	flags.register(cmd)
-
-	return cmd
+	switch k {
+	case debugUpdate:
+		if updates, err := be.GetHistory(ctx, stackRef, 1, 1); err == nil && len(updates) > 0 {
+			return strconv.Itoa(updates[0].Version)
+		}
+	case debugPreview:
+		if p, err := be.GetLatestStackPreview(ctx, stackRef); err == nil && p != nil {
+			return p.UpdateID
+		}
+	case debugNone:
+		// Not a debug session; nothing to look up.
+	}
+	return ""
 }
 
-// debugSeedPrompt builds the initial Neo prompt for `pulumi neo debug`. It is deliberately a short
-// trigger line, not a procedure: Neo's skill evaluator matches "debug ... failed operation" and
-// loads the pulumi-debug-failed-operation skill, which carries the actual debugging steps. With no id
-// the seed targets the user's most recent operation (the skill confirms which one); with an id it
-// targets that specific run. The id itself tells Neo whether it is an update version (a sequential
-// integer) or a preview (a UUID), so the seed doesn't classify it. Either way the fix should land
-// locally in the working directory.
-func debugSeedPrompt(id string) string {
+// debugSeedPrompt builds the initial Neo prompt for `pulumi neo --debug-update`/`--debug-preview`.
+// It is deliberately a short trigger line, not a procedure: Neo's skill evaluator matches
+// "debug ... failed update/preview" and loads the pulumi-debug-failed-operation skill, which
+// carries the actual debugging steps. With no id the seed targets the user's most recent operation
+// of that kind (the skill confirms which one); with an id it targets that specific run. Either way
+// the fix should land locally in the working directory.
+func debugSeedPrompt(kind debugKind, id string) string {
 	if id == "" {
-		return "Debug my most recent Pulumi operation on this stack and fix it directly in this working directory.\n"
+		return fmt.Sprintf(
+			"Debug my most recent Pulumi %s on this stack and fix it directly in this working directory.\n",
+			kind)
 	}
 	return fmt.Sprintf(
-		"Debug the failed Pulumi operation %s of this stack and fix it directly in this working directory.\n",
-		id)
+		"Debug the failed Pulumi %s %s of this stack and fix it directly in this working directory.\n",
+		kind, id)
 }
 
 // debugStackContext builds a short, human-readable block describing where the debug session is
-// running — the organization, user, project, and stack — plus the stack's most recent operation
-// (its kind, version/id, and result). `pulumi neo debug` appends this to the seed prompt so Neo
-// starts with the failure already in context instead of rediscovering it. Every lookup is
-// best-effort: anything that errors or is unavailable is simply omitted so debug still works when,
-// for example, the backend can't return history or no stack is selected.
-func debugStackContext(
-	ctx context.Context,
-	be httpstate.Backend,
-	stackRef backend.StackReference,
-	org, project string,
-) string {
+// running — the organization, user, project, and stack — plus the specific operation being
+// debugged. `pulumi neo --debug-update`/`--debug-preview` append this to the seed prompt so Neo
+// starts with the failure already in context instead of rediscovering it. kind/id describe the
+// resolved target (id is "" when none could be inferred). Every field is best-effort: anything that
+// is empty or unavailable is simply omitted so debug still works when, for example, the user isn't
+// logged in or no stack is selected.
+func debugStackContext(be httpstate.Backend, target taskTarget, kind debugKind, id string) string {
 	var b strings.Builder
 	b.WriteString("Context for this debug session:\n")
-	if org != "" {
-		fmt.Fprintf(&b, "- Organization: %s\n", org)
+	if target.org != "" {
+		fmt.Fprintf(&b, "- Organization: %s\n", target.org)
 	}
 	if user, _, _, err := be.CurrentUser(); err == nil && user != "" {
 		fmt.Fprintf(&b, "- User: %s\n", user)
 	}
-	if project != "" {
-		fmt.Fprintf(&b, "- Project: %s\n", project)
+	if target.project != "" {
+		fmt.Fprintf(&b, "- Project: %s\n", target.project)
 	}
-	// The stack name and most recent operation both come from the resolved reference, so they
-	// share the same nil guard: with no stack selected we emit neither.
-	if stackRef != nil {
-		fmt.Fprintf(&b, "- Stack: %s\n", stackRef.Name())
-		if op := mostRecentOperation(ctx, be, stackRef); op != "" {
-			fmt.Fprintf(&b, "- Most recent operation: %s\n", op)
-		}
+	if name := target.stackName(); name != "" {
+		fmt.Fprintf(&b, "- Stack: %s\n", name)
+	}
+	// The id was resolved (explicitly or inferred) before this call, so we just report it; the
+	// phrasing matches the seed prompt's "<kind> <id>".
+	if id != "" {
+		fmt.Fprintf(&b, "- Debugging: %s %s\n", kind, id)
 	}
 	return b.String()
-}
-
-// mostRecentOperation describes the stack's most recent operation across both updates and
-// previews, or "" if neither is available. Updates and previews are tracked separately — previews
-// never appear in GetHistory — so we look at both and report whichever ran most recently (by start
-// time). This is what lets `pulumi neo debug` target a failed preview that is newer than the last
-// deployment, rather than always reporting the latest update. Both lookups are best-effort.
-func mostRecentOperation(ctx context.Context, be httpstate.Backend, stackRef backend.StackReference) string {
-	var (
-		bestStart int64 = -1
-		best      string
-	)
-	// Most recent entry from update history (updates/refreshes/destroys/imports — never previews).
-	if updates, err := be.GetHistory(ctx, stackRef, 1, 1); err == nil && len(updates) > 0 {
-		u := updates[0]
-		bestStart = u.StartTime
-		best = fmt.Sprintf("%s (version %d, result: %s)", u.Kind, u.Version, u.Result)
-	}
-	// Most recent preview, which is tracked separately from history.
-	if p, err := be.GetLatestStackPreview(ctx, stackRef); err == nil && p != nil && p.Info.StartTime > bestStart {
-		best = fmt.Sprintf("preview %s (result: %s)", p.UpdateID, p.Info.Result)
-	}
-	return best
 }

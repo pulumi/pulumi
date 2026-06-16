@@ -846,7 +846,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
-		display.println("    " + "Or run `pulumi neo debug` in your terminal.")
+		display.println("    " + "Or run `" + neoDebugCommand(display.isPreview) + "` in your terminal.")
 		display.println("")
 	}
 }

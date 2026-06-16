@@ -36,20 +36,38 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 		ShowLinkToNeo: true,
 	}
 
-	// Render to buffer
+	// Render to buffer. isPreview=false, so the suggestion targets a failed update.
 	RenderNeoErrorSummary(&NeoErrorSummaryMetadata{
 		Summary: summary,
-	}, nil, opts, "http://foo.bar/baz")
+	}, nil, opts, "http://foo.bar/baz", false)
 
 	expectedCopilotSummary := fmt.Sprintf(`Neo Diagnostics%s
   This is a test summary
 
   Would you like additional help with this update?
   http://foo.bar/baz?explainFailure
-  Or run `+"`pulumi neo debug`"+` in your terminal.
+  Or run `+"`pulumi neo --debug-update`"+` in your terminal.
 
 `, neoDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummary, buf.String())
+}
+
+func TestRenderCopilotErrorSummaryPreview(t *testing.T) {
+	t.Parallel()
+
+	// For a failed preview the suggestion targets --debug-preview instead of --debug-update.
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stdout:        buf,
+		Color:         colors.Never,
+		ShowLinkToNeo: true,
+	}
+
+	RenderNeoErrorSummary(&NeoErrorSummaryMetadata{
+		Summary: "This is a test summary",
+	}, nil, opts, "http://foo.bar/baz", true)
+
+	assert.Contains(t, buf.String(), "Or run `pulumi neo --debug-preview` in your terminal.")
 }
 
 func TestRenderCopilotErrorSummaryError(t *testing.T) {
@@ -61,7 +79,7 @@ func TestRenderCopilotErrorSummaryError(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	RenderNeoErrorSummary(nil, errors.New("test error"), opts, "http://foo.bar/baz")
+	RenderNeoErrorSummary(nil, errors.New("test error"), opts, "http://foo.bar/baz", false)
 
 	expectedCopilotSummaryWithError := fmt.Sprintf(`Neo Diagnostics%s
   error summarizing update output: test error
@@ -79,7 +97,7 @@ func TestRenderCopilotErrorSummaryNoSummaryOrError(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	RenderNeoErrorSummary(nil, nil, opts, "http://foo.bar/baz")
+	RenderNeoErrorSummary(nil, nil, opts, "http://foo.bar/baz", false)
 
 	assert.Equal(t, "", buf.String())
 }
@@ -97,7 +115,7 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 
 	RenderNeoErrorSummary(&NeoErrorSummaryMetadata{
 		Summary: summary,
-	}, errors.New("test error"), opts, "http://foo.bar/baz")
+	}, errors.New("test error"), opts, "http://foo.bar/baz", false)
 
 	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`Neo Diagnostics%s
   error summarizing update output: test error
