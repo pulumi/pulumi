@@ -106,7 +106,7 @@ func TestLoader(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostFWithServices(
+	hostF := deploytest.NewPluginHostF(
 		nil, nil, programF,
 		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 		loaders...)
@@ -129,7 +129,7 @@ func TestMapperAddressIsPassed(t *testing.T) {
 		observedMapperAddress = info.MapperAddress
 		return nil
 	})
-	hostF := deploytest.NewPluginHostFWithServices(
+	hostF := deploytest.NewPluginHostF(
 		nil, nil, programF,
 		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 

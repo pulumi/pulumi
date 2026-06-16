@@ -190,7 +190,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		}),
 	}
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options.T = t
 	p.Steps = []lt.TestStep{{
 		Op:            Update,
@@ -270,7 +270,7 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []lt.TestStep{{Op: Update}},
@@ -354,7 +354,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		return nil
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options.T = t
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
@@ -564,7 +564,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 		return nil
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options.T = t
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
@@ -586,7 +586,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 		return nil
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Steps = []lt.TestStep{
 		{
 			Op: Update,
@@ -677,7 +677,7 @@ func TestDBRProtect(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	options := lt.TestUpdateOptions{T: t, HostF: hostF}
 	p := &lt.TestPlan{}
 
@@ -754,7 +754,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	options := lt.TestUpdateOptions{T: t, HostF: hostF}
 	p := &lt.TestPlan{}
 
@@ -876,7 +876,7 @@ func TestDBRParallel(t *testing.T) {
 				return program(monitor)
 			})
 
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 			options := lt.TestUpdateOptions{
 				UpdateOptions: UpdateOptions{
 					ParallelDiff: true,
@@ -1062,7 +1062,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 		_, err := resAPromise.Result(t.Context())
 		return err
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{

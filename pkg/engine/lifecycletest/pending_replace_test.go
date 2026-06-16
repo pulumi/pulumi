@@ -129,7 +129,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 		return nil
 	})
 
-	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, upLoaders...)
 	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
 	upSnap, err := lt.TestOp(Update).
@@ -152,7 +152,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 		}),
 	}
 
-	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, replaceLoaders...)
 	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
 
 	replaceSnap, err := lt.TestOp(Update).
@@ -189,7 +189,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 		}),
 	}
 
-	retryHostF := deploytest.NewPluginHostF(nil, nil, programF, retryLoaders...)
+	retryHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, retryLoaders...)
 	retryOptions := lt.TestUpdateOptions{T: t, HostF: retryHostF}
 
 	retrySnap, err := lt.TestOp(Update).
@@ -294,7 +294,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		return nil
 	})
 
-	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, upLoaders...)
 	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
 	upSnap, err := lt.TestOp(Update).
@@ -318,7 +318,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		}),
 	}
 
-	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, replaceLoaders...)
 	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
 
 	replaceSnap, err := lt.TestOp(Update).
@@ -346,7 +346,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		}),
 	}
 
-	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, removeLoaders...)
+	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, removeLoaders...)
 	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
 
 	removeSnap, err := lt.TestOp(Update).
@@ -444,7 +444,7 @@ func TestPendingReplaceResumeWithSameGoalsRefreshRunProgram(t *testing.T) {
 		return nil
 	})
 
-	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, upLoaders...)
 	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
 	upSnap, err := lt.TestOp(Update).
@@ -468,7 +468,7 @@ func TestPendingReplaceResumeWithSameGoalsRefreshRunProgram(t *testing.T) {
 		}),
 	}
 
-	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, replaceLoaders...)
 	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
 
 	replaceSnap, err := lt.TestOp(Update).
@@ -496,7 +496,7 @@ func TestPendingReplaceResumeWithSameGoalsRefreshRunProgram(t *testing.T) {
 		}),
 	}
 
-	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, removeLoaders...)
+	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, removeLoaders...)
 	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
 
 	removeOptions.Refresh = true
@@ -599,7 +599,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 		return nil
 	})
 
-	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, upLoaders...)
 	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
 	upSnap, err := lt.TestOp(Update).
@@ -623,7 +623,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 		}),
 	}
 
-	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, replaceLoaders...)
 	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
 
 	replaceSnap, err := lt.TestOp(Update).
@@ -658,7 +658,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 		return nil
 	})
 
-	removeHostF := deploytest.NewPluginHostF(nil, nil, removeProgramF, removeLoaders...)
+	removeHostF := deploytest.NewPluginHostF(nil, nil, removeProgramF, nil, nil, removeLoaders...)
 	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
 
 	removeSnap, err := lt.TestOp(Update).
@@ -775,7 +775,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 		return nil
 	})
 
-	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, upLoaders...)
 	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
 	upSnap, err := lt.TestOp(Update).
@@ -799,7 +799,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 		}),
 	}
 
-	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, replaceLoaders...)
 	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
 
 	replaceSnap, err := lt.TestOp(Update).
@@ -830,7 +830,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 		}),
 	}
 
-	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, removeLoaders...)
+	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, removeLoaders...)
 	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
 
 	removeSnap, err := lt.TestOp(Update).
@@ -882,7 +882,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		return nil
 	})
 
-	upHostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
 
 	upSnap, err := lt.TestOp(Update).
