@@ -63,7 +63,7 @@ func init() {
 					require.NotNil(l, greeting, "expected an extbase:index:Greeting resource")
 					require.NotEmpty(l, greeting.ExtensionRef,
 						"extension resource state must carry an ExtensionRef")
-					require.Contains(l, string(greeting.Provider), "pulumi:providers:extbase::",
+					require.Contains(l, greeting.Provider, "pulumi:providers:extbase::",
 						"greeting must be served by the base provider, not the extension")
 
 					// The base plugin should also be present and unrenamed.

@@ -597,9 +597,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fprint(w, ")")
 		}
 	case pcl.Invoke:
-		pkg, module, fn, diags := functionName(expr.Args[0])
+		_, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
-		pkg = g.functionPackage(expr.Args[0])
+		pkg := g.functionPackage(expr.Args[0])
 		if module != "" {
 			module = "." + module
 		}

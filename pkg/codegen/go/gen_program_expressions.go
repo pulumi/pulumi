@@ -1853,9 +1853,11 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
 
-	// Compute the resource type from the Pulumi type token.
-	pkg, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
-	pkg = g.functionPackage(token)
+	// Compute the resource type from the Pulumi type token. The package that
+	// defines the function may differ from the token's namespace (e.g. an invoke
+	// that resolves through an extension), so prefer functionPackage.
+	_, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkg := g.functionPackage(token)
 	module := g.resolveModule(token)
 	if strings.HasPrefix(member, "get") {
 		if g.useLookupInvokeForm(token) {
