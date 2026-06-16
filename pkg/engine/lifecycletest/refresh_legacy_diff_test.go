@@ -141,7 +141,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		}),
 	}
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...)
 	p.Options.T = t
 
 	p.Steps = []lt.TestStep{{

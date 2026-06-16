@@ -64,7 +64,7 @@ func TestAutonaming(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 			T:     t,
 			UpdateOptions: UpdateOptions{
 				GeneratePlan: true,

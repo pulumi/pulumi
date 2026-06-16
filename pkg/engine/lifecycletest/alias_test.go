@@ -184,7 +184,7 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 			err := registerResources(t, monitor, resources)
 			return err
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 			Steps: []lt.TestStep{
@@ -1293,7 +1293,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1396,7 +1396,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1471,7 +1471,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		createA(monitor)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1583,7 +1583,7 @@ func TestParentAlias(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1659,7 +1659,7 @@ func TestEmptyParentAlias(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1781,7 +1781,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1913,7 +1913,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1999,7 +1999,7 @@ func TestAliasesInProvidersAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, loaders...)
 	setupOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: setupHostF,
@@ -2057,7 +2057,7 @@ func TestAliasesInProvidersAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, loaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: reproHostF,
@@ -2114,7 +2114,7 @@ func TestAliasesInDependenciesAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, loaders...)
 	setupOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: setupHostF,
@@ -2170,7 +2170,7 @@ func TestAliasesInDependenciesAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, loaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: reproHostF,
@@ -2227,7 +2227,7 @@ func TestAliasesInPropertyDependenciesAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, loaders...)
 	setupOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: setupHostF,
@@ -2283,7 +2283,7 @@ func TestAliasesInPropertyDependenciesAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, loaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: reproHostF,
@@ -2340,7 +2340,7 @@ func TestAliasesInDeletedWithAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, loaders...)
 	setupOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: setupHostF,
@@ -2396,7 +2396,7 @@ func TestAliasesInDeletedWithAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, loaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: reproHostF,
