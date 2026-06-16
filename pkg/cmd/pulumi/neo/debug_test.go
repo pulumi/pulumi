@@ -28,48 +28,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func TestIsUpdateID(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		id   string
-		want bool
-	}{
-		{"5", true},
-		{"123", true},
-		{"0", true},
-		{"", false},
-		{"7f3a2b9c-1d4e-4f6a-8b2c-9e0d1a2b3c4d", false}, // preview UUID
-		{"v5", false},
-		{"5a", false},
-	}
-	for _, tt := range tests {
-		assert.Equalf(t, tt.want, isUpdateID(tt.id), "isUpdateID(%q)", tt.id)
-	}
-}
-
-func TestDebugSeedPromptUpdate(t *testing.T) {
+func TestDebugSeedPromptWithID(t *testing.T) {
 	t.Parallel()
 
 	// The seed is a short trigger line; the debugging procedure lives in the
-	// pulumi-debug-failed-operation skill, which Neo's evaluator loads from this text.
-	want := "Debug the failed update 5 of this stack and fix it directly in this working directory.\n"
-	got := debugSeedPrompt("5")
-	assert.Equal(t, want, got)
+	// pulumi-debug-failed-operation skill, which Neo's evaluator loads from this text. The id
+	// itself tells Neo whether it is an update version or a preview UUID, so the seed is the
+	// same generic line for both — only the id varies.
+	for _, id := range []string{"5", "7f3a2b9c-1d4e-4f6a-8b2c-9e0d1a2b3c4d"} {
+		got := debugSeedPrompt(id)
+		assert.Equal(t,
+			"Debug the failed Pulumi operation "+id+
+				" of this stack and fix it directly in this working directory.\n",
+			got)
 
-	// The procedure moved to the skill, so the seed stays a one-liner with no embedded steps.
-	assert.NotContains(t, got, "<details>")
-	assert.NotContains(t, got, "/api/console")
-}
-
-func TestDebugSeedPromptPreview(t *testing.T) {
-	t.Parallel()
-
-	prompt := debugSeedPrompt("7f3a2b9c-1d4e-4f6a-8b2c-9e0d1a2b3c4d")
-	assert.Equal(t,
-		"Debug the failed preview 7f3a2b9c-1d4e-4f6a-8b2c-9e0d1a2b3c4d of this stack "+
-			"and fix it directly in this working directory.\n",
-		prompt)
+		// The procedure moved to the skill, so the seed stays a one-liner with no embedded steps.
+		assert.NotContains(t, got, "<details>")
+		assert.NotContains(t, got, "/api/console")
+	}
 }
 
 func TestDebugSeedPromptNoID(t *testing.T) {
@@ -98,7 +74,7 @@ func TestDebugStackContext_FullContext(t *testing.T) {
 	}
 	ref := &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
 
-	got := debugStackContext(t.Context(), be, ref, "acme", "my-proj", "dev")
+	got := debugStackContext(t.Context(), be, ref, "acme", "my-proj")
 
 	assert.Contains(t, got, "- Organization: acme\n")
 	assert.Contains(t, got, "- User: alice\n")
@@ -136,7 +112,7 @@ func TestDebugStackContext_NewerPreviewWins(t *testing.T) {
 	}
 	ref := &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
 
-	got := debugStackContext(t.Context(), be, ref, "acme", "my-proj", "dev")
+	got := debugStackContext(t.Context(), be, ref, "acme", "my-proj")
 
 	assert.Contains(t, got,
 		"- Most recent operation: preview 2e07637b-d20b-4d4f-9d29-a7bcb1631cf7 (result: failed)\n")
@@ -168,7 +144,7 @@ func TestDebugStackContext_OlderPreviewLosesToUpdate(t *testing.T) {
 	}
 	ref := &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
 
-	got := debugStackContext(t.Context(), be, ref, "acme", "my-proj", "dev")
+	got := debugStackContext(t.Context(), be, ref, "acme", "my-proj")
 
 	assert.Contains(t, got, "- Most recent operation: update (version 42, result: failed)\n")
 	assert.NotContains(t, got, "preview")
@@ -190,7 +166,7 @@ func TestDebugStackContext_GracefulOmission(t *testing.T) {
 		return nil, nil
 	}
 
-	got := debugStackContext(t.Context(), be, nil, "acme", "", "")
+	got := debugStackContext(t.Context(), be, nil, "acme", "")
 
 	assert.Contains(t, got, "- Organization: acme\n")
 	assert.NotContains(t, got, "- User:")
@@ -213,7 +189,7 @@ func TestDebugStackContext_EmptyHistory(t *testing.T) {
 	}
 	ref := &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
 
-	got := debugStackContext(t.Context(), be, ref, "acme", "my-proj", "dev")
+	got := debugStackContext(t.Context(), be, ref, "acme", "my-proj")
 
 	// A stack with no operation history shouldn't produce a dangling operation line.
 	assert.NotContains(t, got, "Most recent operation")

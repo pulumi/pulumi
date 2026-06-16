@@ -241,6 +241,10 @@ type Backend interface {
 	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
 	// Capabilities returns the capabilities of the backend indicating what features are available.
 	Capabilities(ctx context.Context) apitype.Capabilities
+
+	// GetLatestStackPreview returns the stack's most recent preview operation, or nil if the
+	// stack has no previews. Previews are tracked separately from update history (GetHistory).
+	GetLatestStackPreview(ctx context.Context, stackRef backend.StackReference) (*apitype.StackPreview, error)
 }
 
 // userInfo holds the user account details fetched from the backend.

@@ -145,11 +145,16 @@ func NewNeoCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return runNeo(
-				ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(),
-				prompt, flags.stackName, flags.orgFlag, flags.cwdFlag,
-				approvalMode, permissionMode, flags.printMode,
-				flags.disableIntegrations, false)
+			return runNeo(ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), neoRunOptions{
+				prompt:              prompt,
+				stackName:           flags.stackName,
+				orgFlag:             flags.orgFlag,
+				cwdFlag:             flags.cwdFlag,
+				approvalMode:        approvalMode,
+				permissionMode:      permissionMode,
+				printMode:           flags.printMode,
+				disableIntegrations: flags.disableIntegrations,
+			})
 		},
 	}
 
@@ -240,39 +245,49 @@ func parsePermissionMode(s string) (client.NeoPermissionMode, error) {
 	return "", fmt.Errorf("invalid --permission-mode %q: expected one of default, read-only", s)
 }
 
-func runNeo(
-	ctx context.Context,
-	stdout, stderr io.Writer,
-	prompt, stackName, orgFlag, cwdFlag string,
-	approvalMode client.NeoApprovalMode,
-	permissionMode client.NeoPermissionMode,
-	printMode bool,
-	disableIntegrations bool,
-	includeStackContext bool,
-) error {
+// neoRunOptions carries everything runNeo needs to start a Neo session. It is a struct rather
+// than a positional argument list because the set has grown past the point where positional
+// bools (printMode, includeStackContext) are safe to read or extend at the call site.
+type neoRunOptions struct {
+	prompt         string
+	stackName      string
+	orgFlag        string
+	cwdFlag        string
+	approvalMode   client.NeoApprovalMode
+	permissionMode client.NeoPermissionMode
+	printMode      bool
+	// includeStackContext seeds the prompt with the current target and most recent operation;
+	// `pulumi neo debug` sets this so Neo starts with the failure already in context.
+	includeStackContext bool
+	// disableIntegrations runs the Neo task with no integration credentials, ignoring any
+	// org-enabled integrations.
+	disableIntegrations bool
+}
+
+func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) error {
 	// nil lets the server inherit the org's enabled integrations; the empty slice opts out.
 	var enabledIntegrations *[]string
-	if disableIntegrations {
+	if opts.disableIntegrations {
 		enabledIntegrations = &[]string{}
 	}
 
-	if cwdFlag == "" {
+	if opts.cwdFlag == "" {
 		var err error
-		cwdFlag, err = os.Getwd()
+		opts.cwdFlag, err = os.Getwd()
 		if err != nil {
 			return fmt.Errorf("resolving working directory: %w", err)
 		}
 	}
 
 	ws := pkgWorkspace.Instance
-	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
 	if err != nil {
 		return err
 	}
@@ -286,28 +301,29 @@ func runNeo(
 		return result.FprintBailf(stderr, "%s", msg)
 	}
 
-	orgName, projectName, stackRefName, stackRef, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)
+	target, err := resolveTaskTarget(ctx, ws, cloudBe, project, opts.stackName, opts.orgFlag)
 	if err != nil {
 		return err
 	}
+	orgName, projectName, stackRefName := target.org, target.project, target.stackName()
 
 	// `pulumi neo debug` seeds Neo with the current identity/target and the most recent
 	// operation so it starts with the failure already in context instead of rediscovering
 	// it. We append after the trigger line so debugSeedPrompt stays first and Neo's skill
 	// evaluator still matches the debug skill.
-	if includeStackContext && prompt != "" {
-		prompt += "\n\n" + debugStackContext(ctx, cloudBe, stackRef, orgName, projectName, stackRefName)
+	if opts.includeStackContext && opts.prompt != "" {
+		opts.prompt += "\n\n" + debugStackContext(ctx, cloudBe, target.ref, orgName, projectName)
 	}
 
 	// Allow tools to read/write under temp directories in addition to cwd: the agent
 	// stages scratch files there (downloads, intermediate state) and the CLI sandbox
 	// would otherwise reject those paths. See pulumi/pulumi-service#42027.
 	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
-	fs, err := tools.NewFilesystem(cwdFlag, extraRoots...)
+	fs, err := tools.NewFilesystem(opts.cwdFlag, extraRoots...)
 	if err != nil {
 		return err
 	}
-	sh, err := tools.NewShell(cwdFlag, extraRoots...)
+	sh, err := tools.NewShell(opts.cwdFlag, extraRoots...)
 	if err != nil {
 		return err
 	}
@@ -318,28 +334,28 @@ func runNeo(
 
 	// In non-interactive mode the sink stays nil and live events are dropped; the
 	// interactive path below sets pu.Sink to push UIEvents onto uiCh.
-	pu, err := tools.NewPulumi(cwdFlag, ws, nil)
+	pu, err := tools.NewPulumi(opts.cwdFlag, ws, nil)
 	if err != nil {
 		return err
 	}
 	handlers["pulumi"] = pu
 
-	if printMode || !isInteractive() {
-		if prompt == "" {
+	if opts.printMode || !isInteractive() {
+		if opts.prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
-		taskPrompt := nonInteractivePromptPreamble + "\n\n" + prompt
+		taskPrompt := nonInteractivePromptPreamble + "\n\n" + opts.prompt
 		resp, err := createNeoTaskWithEntityRetry(
 			ctx, pc, orgName, taskPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 				ToolExecutionMode:   "cli",
-				ApprovalMode:        approvalMode,
-				PermissionMode:      permissionMode,
+				ApprovalMode:        opts.approvalMode,
+				PermissionMode:      opts.permissionMode,
 				EnabledIntegrations: enabledIntegrations,
 			}, nil)
 		if err != nil {
 			return err
 		}
-		if !printMode {
+		if !opts.printMode {
 			consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
 			if consoleURL != "" {
 				fmt.Fprintln(stderr, consoleURL)
@@ -354,7 +370,7 @@ func runNeo(
 			TaskID:   resp.TaskID,
 			Log:      stderr,
 		}
-		if printMode {
+		if opts.printMode {
 			session.Output = stdout
 		}
 		return session.Run(ctx)
@@ -379,15 +395,15 @@ func runNeo(
 
 	model := NewModel(ModelConfig{
 		Org:                   orgName,
-		WorkDir:               cwdFlag,
+		WorkDir:               opts.cwdFlag,
 		Username:              username,
 		Version:               version.Version,
 		EventCh:               uiCh,
 		OutCh:                 outCh,
-		Busy:                  prompt != "",
-		InitialPrompt:         prompt,
-		InitialApprovalMode:   approvalMode,
-		InitialPermissionMode: permissionMode,
+		Busy:                  opts.prompt != "",
+		InitialPrompt:         opts.prompt,
+		InitialApprovalMode:   opts.approvalMode,
+		InitialPermissionMode: opts.permissionMode,
 		HasDarkBackground:     hasDarkBackground,
 	})
 
@@ -458,12 +474,12 @@ func runNeo(
 				return session.Run(gctx)
 			}
 
-			if prompt != "" {
+			if opts.prompt != "" {
 				// The command-line prompt path always passes false for planMode and
 				// uses the modes parsed from the CLI flags (which the TUI also seeds
 				// into its model). A subsequent toggle still routes through the TUI.
 				g.Go(func() error {
-					return createTask(prompt, approvalMode, permissionMode, false)
+					return createTask(opts.prompt, opts.approvalMode, opts.permissionMode, false)
 				})
 			}
 
@@ -485,7 +501,7 @@ func runNeo(
 			g.Go(func() error {
 				return dispatchUserEvents(
 					gctx, outCh, uiCh,
-					prompt != "",
+					opts.prompt != "",
 					func() string {
 						ts.mu.Lock()
 						defer ts.mu.Unlock()
@@ -617,9 +633,26 @@ type stackRefWithOrg interface {
 	Organization() (string, bool)
 }
 
-// resolveTaskTarget figures out the org, project, and stack name to attach to the new Neo
-// task. The stack flag is optional — if it's empty we try the currently selected stack and
-// fall back to a project-only attachment if there isn't one.
+// taskTarget is the resolved org, project, and stack a Neo task attaches to. The stack name is
+// carried by ref (ref.Name()), so it isn't stored separately; ref is nil when no stack could be
+// resolved, in which case the task runs without stack context.
+type taskTarget struct {
+	org     string
+	project string
+	ref     backend.StackReference
+}
+
+// stackName returns the resolved stack's name, or "" when no stack was resolved.
+func (t taskTarget) stackName() string {
+	if t.ref == nil {
+		return ""
+	}
+	return t.ref.Name().String()
+}
+
+// resolveTaskTarget figures out the org, project, and stack to attach to the new Neo task. The
+// stack flag is optional — if it's empty we try the currently selected stack and fall back to a
+// project-only attachment if there isn't one.
 //
 // Org resolution: --org wins if provided; otherwise we use the owner carried
 // by the stack reference (so a workspace-selected `otherorg/proj/dev` keeps
@@ -632,19 +665,19 @@ func resolveTaskTarget(
 	be httpstate.Backend,
 	project *workspace.Project,
 	stackName, orgFlag string,
-) (org, projectName, stack string, stackRef backend.StackReference, err error) {
+) (taskTarget, error) {
+	var t taskTarget
 	if project != nil {
-		projectName = string(project.Name)
+		t.project = string(project.Name)
 	}
 
 	var stackOwner string
 	if stackName != "" {
 		ref, err := be.ParseStackReference(stackName)
 		if err != nil {
-			return "", "", "", nil, err
+			return taskTarget{}, err
 		}
-		stackRef = ref
-		stack = ref.Name().String()
+		t.ref = ref
 		if owned, ok := ref.(stackRefWithOrg); ok {
 			if o, has := owned.Organization(); has {
 				stackOwner = o
@@ -653,8 +686,7 @@ func resolveTaskTarget(
 	} else {
 		s, err := state.CurrentStack(ctx, ws, be)
 		if err == nil && s != nil {
-			stackRef = s.Ref()
-			stack = s.Ref().Name().String()
+			t.ref = s.Ref()
 			if owned, ok := s.Ref().(stackRefWithOrg); ok {
 				if o, has := owned.Organization(); has {
 					stackOwner = o
@@ -665,19 +697,20 @@ func resolveTaskTarget(
 
 	switch {
 	case orgFlag != "":
-		org = orgFlag
+		t.org = orgFlag
 	case stackOwner != "":
-		org = stackOwner
+		t.org = stackOwner
 	default:
-		org, err = be.GetDefaultOrg(ctx)
+		org, err := be.GetDefaultOrg(ctx)
 		if err != nil {
-			return "", "", "", nil, fmt.Errorf("determining default organization: %w", err)
+			return taskTarget{}, fmt.Errorf("determining default organization: %w", err)
 		}
+		t.org = org
 	}
-	if org == "" {
-		return "", "", "", nil, errors.New("could not determine an organization for the Neo task; pass --org")
+	if t.org == "" {
+		return taskTarget{}, errors.New("could not determine an organization for the Neo task; pass --org")
 	}
-	return org, projectName, stack, stackRef, nil
+	return t, nil
 }
 
 // dedupeExistingRoots returns candidates with duplicates removed by canonical path,

@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // newNeoDebugCmd creates the `pulumi neo debug [id]` subcommand: a structured entry to the same
@@ -54,11 +53,17 @@ func newNeoDebugCmd() *cobra.Command {
 			if len(args) == 1 {
 				id = args[0]
 			}
-			return runNeo(
-				ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(),
-				debugSeedPrompt(id), flags.stackName, flags.orgFlag, flags.cwdFlag,
-				approvalMode, permissionMode, flags.printMode,
-				flags.disableIntegrations, true)
+			return runNeo(ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), neoRunOptions{
+				prompt:              debugSeedPrompt(id),
+				stackName:           flags.stackName,
+				orgFlag:             flags.orgFlag,
+				cwdFlag:             flags.cwdFlag,
+				approvalMode:        approvalMode,
+				permissionMode:      permissionMode,
+				printMode:           flags.printMode,
+				includeStackContext: true,
+				disableIntegrations: flags.disableIntegrations,
+			})
 		},
 	}
 
@@ -68,29 +73,19 @@ func newNeoDebugCmd() *cobra.Command {
 }
 
 // debugSeedPrompt builds the initial Neo prompt for `pulumi neo debug`. It is deliberately a short
-// trigger line, not a procedure: Neo's skill evaluator matches "debug ... failed update/preview" and
+// trigger line, not a procedure: Neo's skill evaluator matches "debug ... failed operation" and
 // loads the pulumi-debug-failed-operation skill, which carries the actual debugging steps. With no id
 // the seed targets the user's most recent operation (the skill confirms which one); with an id it
-// targets that specific run. Either way the fix should land locally in the working directory.
+// targets that specific run. The id itself tells Neo whether it is an update version (a sequential
+// integer) or a preview (a UUID), so the seed doesn't classify it. Either way the fix should land
+// locally in the working directory.
 func debugSeedPrompt(id string) string {
 	if id == "" {
 		return "Debug my most recent Pulumi operation on this stack and fix it directly in this working directory.\n"
 	}
-	operation := "update"
-	if !isUpdateID(id) {
-		operation = "preview"
-	}
 	return fmt.Sprintf(
-		"Debug the failed %s %s of this stack and fix it directly in this working directory.\n",
-		operation, id)
-}
-
-// stackPreviewLister is the subset of the cloud backend that can fetch a stack's most recent
-// preview. It is kept separate from httpstate.Backend — which must stay backwards-compatible, so
-// we can't add methods to it — and detected via a type assertion, degrading gracefully (skipping
-// the preview lookup) on backends that don't implement it.
-type stackPreviewLister interface {
-	GetLatestStackPreview(ctx context.Context, stackRef backend.StackReference) (*apitype.StackPreview, error)
+		"Debug the failed Pulumi operation %s of this stack and fix it directly in this working directory.\n",
+		id)
 }
 
 // debugStackContext builds a short, human-readable block describing where the debug session is
@@ -103,7 +98,7 @@ func debugStackContext(
 	ctx context.Context,
 	be httpstate.Backend,
 	stackRef backend.StackReference,
-	org, project, stack string,
+	org, project string,
 ) string {
 	var b strings.Builder
 	b.WriteString("Context for this debug session:\n")
@@ -116,10 +111,10 @@ func debugStackContext(
 	if project != "" {
 		fmt.Fprintf(&b, "- Project: %s\n", project)
 	}
-	if stack != "" {
-		fmt.Fprintf(&b, "- Stack: %s\n", stack)
-	}
+	// The stack name and most recent operation both come from the resolved reference, so they
+	// share the same nil guard: with no stack selected we emit neither.
 	if stackRef != nil {
+		fmt.Fprintf(&b, "- Stack: %s\n", stackRef.Name())
 		if op := mostRecentOperation(ctx, be, stackRef); op != "" {
 			fmt.Fprintf(&b, "- Most recent operation: %s\n", op)
 		}
@@ -144,24 +139,8 @@ func mostRecentOperation(ctx context.Context, be httpstate.Backend, stackRef bac
 		best = fmt.Sprintf("%s (version %d, result: %s)", u.Kind, u.Version, u.Result)
 	}
 	// Most recent preview, which is tracked separately from history.
-	if pl, ok := be.(stackPreviewLister); ok {
-		if p, err := pl.GetLatestStackPreview(ctx, stackRef); err == nil && p != nil && p.Info.StartTime > bestStart {
-			best = fmt.Sprintf("preview %s (result: %s)", p.UpdateID, p.Info.Result)
-		}
+	if p, err := be.GetLatestStackPreview(ctx, stackRef); err == nil && p != nil && p.Info.StartTime > bestStart {
+		best = fmt.Sprintf("preview %s (result: %s)", p.UpdateID, p.Info.Result)
 	}
 	return best
-}
-
-// isUpdateID reports whether id looks like an update version rather than a preview id. Update
-// versions are sequential integers; preview ids are UUIDs, so a digits-only id is an update.
-func isUpdateID(id string) bool {
-	if id == "" {
-		return false
-	}
-	for _, r := range id {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
 }
