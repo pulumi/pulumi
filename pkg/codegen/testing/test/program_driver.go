@@ -101,12 +101,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet(TestNodeJS, TestDotnet, TestGo),
 	},
 	{
-		Directory: "this-keyword-resource-attr",
-		Description: "ensure that the this keyword is rewritten when it is a variable but kept as is" +
-			"when it is a reference to this pointer in nodejs",
-		Skip: codegen.NewStringSet(TestDotnet, TestPython, TestGo),
-	},
-	{
 		Directory:   "traverse-union-repro",
 		Description: `Handling the error "cannot traverse value of type union(...)"`,
 		BindOptions: []pcl.BindOption{

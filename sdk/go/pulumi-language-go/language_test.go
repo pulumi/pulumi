@@ -126,6 +126,7 @@ var expectedFailures = map[string]string{
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
 	"l3-component-nested":                 "./main.go:10:11: cannot use true (constant of type bool) as pulumi.BoolInput",
+	"l3-resource-keyword-overlap":         "same component-input/output type bugs as l3-component-nested; does not compile", //nolint:lll
 	"l3-deferred-outputs":                 "does not compile && for expressions are not supported",
 
 	"l3-rewrite-conversions": "does not compile; missing necessary casts for pulumi inputs",
