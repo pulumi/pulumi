@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -89,18 +90,23 @@ func TestNonZeroExitcode(t *testing.T) {
 	`), 0o600)
 	require.NoError(t, err)
 
-	// Build and run the program
-	cmd := exec.Command("go", "build", "-o", "test-plugin-exit", ".")
+	// Build and run the program. On Windows an executable must carry the .exe extension or it
+	// cannot be launched, so name the output accordingly.
+	bin := "test-plugin-exit"
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+	cmd := exec.Command("go", "build", "-o", bin, ".")
 	cmd.Dir = tmp
 	stdout, err := cmd.CombinedOutput()
 	t.Log(string(stdout))
 	require.NoError(t, err)
 
-	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, filepath.Join(tmp, "test-plugin-exit"))
+	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, filepath.Join(tmp, bin))
 	// the prefix of the error message is unstable because it's in a temp dir but we can check the start and end
 	// separately.
 	require.ErrorContains(t, err, "could not read plugin [")
-	require.ErrorContains(t, err, "test-plugin-exit]: exit status 1")
+	require.ErrorContains(t, err, bin+"]: exit status 1")
 }
 
 // Similar to TestNonZeroExitcode but with a zero exit code, but no port written so it's still an error.
@@ -144,18 +150,23 @@ func TestZeroExitcode(t *testing.T) {
 	`), 0o600)
 	require.NoError(t, err)
 
-	// Build and run the program
-	cmd := exec.Command("go", "build", "-o", "test-plugin-exit", ".")
+	// Build and run the program. On Windows an executable must carry the .exe extension or it
+	// cannot be launched, so name the output accordingly.
+	bin := "test-plugin-exit"
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+	cmd := exec.Command("go", "build", "-o", bin, ".")
 	cmd.Dir = tmp
 	stdout, err := cmd.CombinedOutput()
 	t.Log(string(stdout))
 	require.NoError(t, err)
 
-	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, filepath.Join(tmp, "test-plugin-exit"))
+	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, filepath.Join(tmp, bin))
 	// the prefix of the error message is unstable because it's in a temp dir but we can check the start and end
 	// separately.
 	require.ErrorContains(t, err, "could not read plugin [")
-	require.ErrorContains(t, err, "test-plugin-exit]: EOF")
+	require.ErrorContains(t, err, bin+"]: EOF")
 }
 
 // Test a provider that has an incompatible version range in its `PulumiPlugin.yaml`.
