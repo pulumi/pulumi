@@ -40,7 +40,7 @@ func TestStashImportError(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
@@ -69,7 +69,7 @@ func TestStash(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}

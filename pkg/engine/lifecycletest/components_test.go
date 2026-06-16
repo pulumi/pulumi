@@ -82,7 +82,7 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		}, resp.Outputs)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -125,7 +125,7 @@ func TestRemoteComponentConstructInfoIncludesOrganization(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Project: "project-name",
@@ -240,7 +240,7 @@ func TestComponentDeleteDependencies(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	p.Steps = []lt.TestStep{
@@ -373,7 +373,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -509,7 +509,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -663,7 +663,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -827,7 +827,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -997,7 +997,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1087,7 +1087,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -1186,7 +1186,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -1298,7 +1298,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1431,7 +1431,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1555,7 +1555,7 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1700,7 +1700,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1778,7 +1778,7 @@ func TestCallSelfProvider(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},

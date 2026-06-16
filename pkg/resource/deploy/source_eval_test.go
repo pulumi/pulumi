@@ -2708,7 +2708,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 
 	plugctx, err := plugin.NewContext(t.Context(),
 		&deploytest.NoopSink{}, &deploytest.NoopSink{},
-		deploytest.NewPluginHostF(nil, nil, nil)(),
+		deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
 		nil, "", nil, false, nil)
 	require.NoError(t, err)
 
@@ -2935,7 +2935,7 @@ func TestInvoke(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
 			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
@@ -2995,7 +2995,7 @@ func TestInvoke(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
 			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
@@ -3076,7 +3076,7 @@ func TestCall(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
 			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
@@ -3150,7 +3150,7 @@ func TestCall(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
 			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
@@ -3255,7 +3255,7 @@ func TestCall(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
 			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
@@ -3323,7 +3323,7 @@ func TestCall(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
 			nil, "", nil, false, nil)
 		require.NoError(t, err)
 

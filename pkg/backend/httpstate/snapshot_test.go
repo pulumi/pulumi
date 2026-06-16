@@ -903,7 +903,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 			return nil
 		})
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil)
 
 	var journalEntries engine.JournalEntries
 	p := &lt.TestPlan{

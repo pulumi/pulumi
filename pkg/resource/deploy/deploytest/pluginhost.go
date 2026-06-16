@@ -317,26 +317,13 @@ type pluginHost struct {
 	m              sync.Mutex
 }
 
-// NewPluginHostF returns a factory that produces a plugin host for an operation.
+// NewPluginHostF returns a factory that produces a plugin host for an operation. The produced
+// host serves a schema loader and conversion mapper built from newLoader and newMapper; callers
+// that do not need those services pass nil for both. deploytest cannot import the codegen packages
+// that define [schema.NewLoaderServerFromContext] and [convert.NewMapperServerFromContext] (it
+// would create an import cycle), so callers that need a host serving those services inject the
+// factories here.
 func NewPluginHostF(sink, statusSink diag.Sink, languageRuntimeF LanguageRuntimeFactory,
-	pluginLoaders ...*ProviderLoader,
-) PluginHostFactory {
-	return func() plugin.Host {
-		var lr plugin.LanguageRuntime
-		if languageRuntimeF != nil {
-			lr = languageRuntimeF()
-		}
-		return NewPluginHost(sink, statusSink, lr, pluginLoaders...)
-	}
-}
-
-// NewPluginHostFWithServices is like [NewPluginHostF] but the produced host also serves a schema
-// loader and conversion mapper built from the given factories. deploytest cannot import the
-// codegen packages that define [schema.NewLoaderServerFromContext] and
-// [convert.NewMapperServerFromContext] (it would create an import cycle), so callers that need a
-// host serving those services inject the factories here.
-func NewPluginHostFWithServices(
-	sink, statusSink diag.Sink, languageRuntimeF LanguageRuntimeFactory,
 	newLoader plugin.NewLoaderFunc, newMapper plugin.NewMapperFunc,
 	pluginLoaders ...*ProviderLoader,
 ) PluginHostFactory {
