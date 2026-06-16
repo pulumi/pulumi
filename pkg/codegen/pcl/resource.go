@@ -382,14 +382,9 @@ func NeedsVersionResourceOption(version model.Expression, schema *schema.Resourc
 	}
 
 	optVStr := optV.Value.AsString()
-	// PCL version literals must not include a "v" prefix.
-	// The engine does not understand "v"-prefixed versions and no language SDK normalizes them.
-	if len(optVStr) > 0 && optVStr[0] == 'v' {
-		return true
-	}
 	optVersion, err := semver.Parse(optVStr)
 	if err != nil {
-		// If the literal isn't valid semver, treat it as a mismatch.
+		// If the literal isn't valid semver (including "v"-prefixed versions), treat it as a mismatch.
 		return true
 	}
 	return !v.Equals(optVersion)
