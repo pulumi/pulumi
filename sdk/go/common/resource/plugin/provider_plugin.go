@@ -187,6 +187,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 
 	prefix := fmt.Sprintf("%v (resource)", pkg)
 	mapperAddr := mapperTarget(ctx)
+	loaderAddr := loaderTarget(ctx)
 
 	if attachPort != nil {
 		port := *attachPort
@@ -204,6 +205,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
 				MapperTarget:                mapperAddr,
+				LoaderTarget:                loaderAddr,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -268,6 +270,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
 				MapperTarget:                mapperAddr,
+				LoaderTarget:                loaderAddr,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -330,6 +333,13 @@ func mapperTarget(ctx *Context) *string {
 	return nil
 }
 
+func loaderTarget(ctx *Context) *string {
+	if addr := ctx.LoaderAddr(); addr != "" {
+		return &addr
+	}
+	return nil
+}
+
 func handshake(
 	ctx context.Context,
 	bin string,
@@ -347,6 +357,7 @@ func handshake(
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
 		MapperTarget:                req.MapperTarget,
+		LoaderTarget:                req.LoaderTarget,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -394,6 +405,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	mapperAddr := mapperTarget(ctx)
+	loaderAddr := loaderTarget(ctx)
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*ProviderHandshakeResponse, error) {
@@ -407,6 +419,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			InvokeWithPreview:           true,
 			MapperTarget:                mapperAddr,
+			LoaderTarget:                loaderAddr,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -534,6 +547,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
 		MapperTarget:                req.MapperTarget,
+		LoaderTarget:                req.LoaderTarget,
 	})
 	if err != nil {
 		return nil, err
