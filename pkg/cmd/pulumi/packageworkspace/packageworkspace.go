@@ -177,7 +177,8 @@ func (w Workspace) DownloadPlugin(
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
 		// Renders a progress bar to stderr in interactive terminals and prints a plain message otherwise.
 		return workspace.ReadCloserProgressBar(
-			stream, w.stderr, size, "Downloading provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
+			stream, w.stderr, size, "Downloading provider "+pluginSpec.Name, diagutils.GetGlobalColorization(),
+		)
 	}
 
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
@@ -199,7 +200,8 @@ func (w Workspace) DownloadPlugin(
 	if fi, statErr := downloadedFile.Stat(); statErr == nil {
 		unpackStream = workspace.ReadCloserProgressBar(
 			downloadedFile, w.stderr, fi.Size(),
-			"Unpacking provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
+			"Unpacking provider "+pluginSpec.Name, diagutils.GetGlobalColorization(),
+		)
 	}
 	cleanup, err := pluginstorage.UnpackContents(
 		ctx, pluginSpec, pluginstorage.TarPlugin(unpackStream), true, /* reinstall */
@@ -222,7 +224,8 @@ func (w Workspace) GenerateLocalSDK(
 ) (workspace.LinkablePackageDescriptor, error) {
 	if runtimeInfo.Name() == "" {
 		return workspace.LinkablePackageDescriptor{}, errors.New(
-			"cannot generate an SDK for a project without a runtime")
+			"cannot generate an SDK for a project without a runtime",
+		)
 	}
 
 	tracer := otel.Tracer("pulumi-cli")
@@ -444,6 +447,7 @@ func (w Workspace) RunPackage(
 	})
 
 	pctx := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
+	pctx.ResourceProviderEnv = w.pctx.ResourceProviderEnv
 	if err := pctx.StartLoader(schema.NewLoaderServerFromContext); err != nil {
 		return nil, fmt.Errorf("could not start loader for plugin at %q: %w", pluginPath, err)
 	}

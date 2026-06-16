@@ -26,18 +26,19 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 )
 
 type registryClient struct{ c *client.Client }
 
-func New(sink diag.Sink, store env.Env) registry.Registry {
-	url := "https://api.pulumi.com"
-	if override := store.GetString(env.APIURL); override != "" {
-		url = override
+// New builds an unauthenticated registry client for the given API URL, defaulting to the public
+// cloud when it is empty. It takes the URL rather than the process environment so it cannot reach
+// the rest of the global env (which carries the access token).
+func New(sink diag.Sink, apiURL string) registry.Registry {
+	if apiURL == "" {
+		apiURL = "https://api.pulumi.com"
 	}
-	return registryClient{client.NewClient(url, "", false /* insecure */, sink)}
+	return registryClient{client.NewClient(apiURL, "", false /* insecure */, sink)}
 }
 
 func (r registryClient) ListPackages(

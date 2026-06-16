@@ -427,7 +427,8 @@ func newPlugin[T any](
 		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, nil, fmt.Errorf(
-			"%v plugin [%v] wrote an invalid port to stdout: %w", prefix, bin, err)
+			"%v plugin [%v] wrote an invalid port to stdout: %w", prefix, bin, err,
+		)
 	}
 
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
@@ -472,6 +473,20 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
+// resourceProviderEnvVars returns the KEY=value environment entries the context injects into
+// resource provider plugins. It is empty for every other plugin kind: language hosts run user
+// program code, so handing them the access token would leak it to that code and anything it spawns.
+func resourceProviderEnvVars(ctx *Context, kind apitype.PluginKind) []string {
+	if kind != apitype.ResourcePlugin || ctx == nil {
+		return nil
+	}
+	vars := make([]string, 0, len(ctx.ResourceProviderEnv))
+	for k, v := range ctx.ResourceProviderEnv {
+		vars = append(vars, k+"="+v)
+	}
+	return vars
+}
+
 // ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
 func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	pluginArgs []string, pwd string, e env.Env, attachDebugger bool,
@@ -494,6 +509,9 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	if otelEndpoint := cmdutil.OTelEndpoint(); otelEndpoint != "" {
 		environment = append(environment, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+otelEndpoint)
 	}
+
+	// Appended last to win over ambient values.
+	environment = append(environment, resourceProviderEnvVars(ctx, kind)...)
 
 	// Check to see if we have a binary we can invoke directly
 	stat, err := os.Stat(bin)
@@ -693,7 +711,8 @@ func ValidatePulumiVersionRange(pulumiVersionRange, cliVersion string) error {
 		}
 		if !rg(cliVersion) {
 			return fmt.Errorf(
-				"Pulumi CLI version %s does not satisfy the version range %q", cliVersion, pulumiVersionRange)
+				"Pulumi CLI version %s does not satisfy the version range %q", cliVersion, pulumiVersionRange,
+			)
 		}
 	}
 	return nil

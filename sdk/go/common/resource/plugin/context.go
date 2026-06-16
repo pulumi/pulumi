@@ -49,6 +49,9 @@ type Context struct {
 	// metadata describing the plugin.
 	DialOptions func(pluginInfo any) []grpc.DialOption
 
+	// Injected only into resource provider plugins; see resourceProviderEnvVars for why.
+	ResourceProviderEnv map[string]string
+
 	DebugTraceMutex *sync.Mutex // used internally to syncronize debug tracing
 
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.

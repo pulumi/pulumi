@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -387,4 +388,30 @@ func TestPulumiVersionRangeYaml(t *testing.T) {
 	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-cli-version"))
 	require.ErrorContains(t, err,
 		"test-plugin-cli-version: Pulumi CLI version 3.1.2 does not satisfy the version range \">=100.0.0\"")
+}
+
+func TestResourceProviderEnvVars(t *testing.T) {
+	t.Parallel()
+
+	ctx := &Context{ResourceProviderEnv: map[string]string{"PULUMI_ACCESS_TOKEN": "secret"}}
+
+	t.Run("resource providers receive the env", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, []string{"PULUMI_ACCESS_TOKEN=secret"}, resourceProviderEnvVars(ctx, apitype.ResourcePlugin))
+	})
+
+	t.Run("language hosts do not", func(t *testing.T) {
+		t.Parallel()
+		assert.Empty(t, resourceProviderEnvVars(ctx, apitype.LanguagePlugin))
+	})
+
+	t.Run("analyzers do not", func(t *testing.T) {
+		t.Parallel()
+		assert.Empty(t, resourceProviderEnvVars(ctx, apitype.AnalyzerPlugin))
+	})
+
+	t.Run("nil context is safe", func(t *testing.T) {
+		t.Parallel()
+		assert.Empty(t, resourceProviderEnvVars(nil, apitype.ResourcePlugin))
+	})
 }

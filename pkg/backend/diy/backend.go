@@ -339,7 +339,8 @@ func newDIYBackend(
 	default:
 		return nil, fmt.Errorf(
 			"state store unsupported: 'meta.yaml' version (%d) is not supported "+
-				"by this version of the Pulumi CLI", meta.Version)
+				"by this version of the Pulumi CLI", meta.Version,
+		)
 	}
 
 	// If we're not in project mode and the user hasn't disabled the warning, warn that legacy mode is deprecated and
@@ -1157,7 +1158,8 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil, /*events*/
+		)
 		return changes, err
 	}
 
@@ -1182,7 +1184,8 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.RefreshUpdate, stack, op, opts, nil, /*events*/
+		)
 		return changes, err
 	}
 
@@ -1207,7 +1210,8 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.DestroyUpdate, stack, op, opts, nil, /*events*/
+		)
 		return changes, err
 	}
 
@@ -1257,7 +1261,8 @@ func (b *diyBackend) apply(
 		}
 		// Print a banner so it's clear this is a diy deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
+			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n",
+		), actionLabel, stackRef)
 	}
 
 	// Start the update.
@@ -1271,7 +1276,8 @@ func (b *diyBackend) apply(
 	displayDone := make(chan bool)
 	go display.ShowEvents(
 		strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, "",
-		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
+		displayEvents, displayDone, op.Opts.Display, opts.DryRun,
+	)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)
@@ -1428,7 +1434,8 @@ func (b *diyBackend) apply(
 		if link != "" {
 			fmt.Printf(op.Opts.Display.Color.Colorize(
 				colors.SpecHeadline+"Permalink: "+
-					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n",
+			), link)
 		}
 	}
 
@@ -1691,5 +1698,5 @@ func (b *diyBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
 }
 
 func (b *diyBackend) GetReadOnlyCloudRegistry() registry.Registry {
-	return unauthenticatedregistry.New(b.d, b.Env)
+	return unauthenticatedregistry.New(b.d, b.Env.GetString(env.APIURL))
 }
