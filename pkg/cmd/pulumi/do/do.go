@@ -129,24 +129,16 @@ func NewDoCmd(
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return nil, nil, fmt.Errorf("read project: %w", err)
 		}
-		evalContext := functionEvalContext{
-			WorkingDir: wd,
-		}
+		// If we're inside a Pulumi project, the working directory the plugin host runs in should be
+		// the project's pwd, not whatever the user happened to invoke `pulumi` from. Snapshot that
+		// here so plugin.NewContext / pluginFromSource see the project-relative path; the rest of
+		// the PCL evaluation state (project name, stack identity, ...) is derived lazily by
+		// packageCommand.evalContext().
 		if proj != nil {
 			wd, _, err = (&engine.Projinfo{Proj: proj, Root: root}).GetPwdMain()
 			if err != nil {
 				return nil, nil, fmt.Errorf("get project working directory: %w", err)
 			}
-			evalContext = functionEvalContext{
-				WorkingDir:    wd,
-				ProjectName:   string(proj.Name),
-				RootDirectory: root,
-			}
-			// When a stack is selected in the workspace, expose its organization and short name to the PCL
-			// runtime so input files can reference pulumi.organization / pulumi.stack the same way a program
-			// would. We deliberately read just the local selection rather than contacting a backend — `do`
-			// is meant to stay usable without a login.
-			evalContext.Organization, evalContext.Stack = currentStackIdentity(ws)
 		}
 
 		ctx := cmd.Context()
@@ -240,7 +232,6 @@ func NewDoCmd(
 		subcmd, err := (&packageCommand{
 			pkg:               pkg,
 			args:              pargs,
-			evalContext:       evalContext,
 			converter:         loadConverter,
 			loaderTarget:      pctx.LoaderAddr(),
 			packageDescriptor: packageDescriptor,
@@ -249,6 +240,12 @@ func NewDoCmd(
 			dryrun:            dryrun,
 			showSecrets:       showSecrets,
 			stateless:         stateless,
+			wd:                wd,
+			proj:              proj,
+			root:              root,
+			ws:                ws,
+			lm:                lm,
+			sink:              sink,
 		}).newCommand()
 		if err != nil {
 			cleanup()
@@ -459,17 +456,47 @@ func currentStackIdentity(ws pkgWorkspace.Context) (organization, stack string) 
 type packageCommand struct {
 	pkg               string
 	args              []string
-	evalContext       functionEvalContext
 	converter         func(string) (plugin.Converter, error)
 	loaderTarget      string
 	packageDescriptor *codegenrpc.GetSchemaRequest
 	provider          plugin.Provider
 	providerFile      string
+	providerURN       string
 	format            string
 	spec              *schema.Package
 	dryrun            bool
 	showSecrets       bool
 	stateless         bool
+
+	// wd / proj / root capture the working-directory and project-loading state from buildSubcommand
+	// — kept here rather than baked into a snapshot of functionEvalContext so the evalContext()
+	// method can re-read the workspace's currently-selected stack each time a subcommand runs
+	// (test fixtures that mutate the workspace between Execute() calls otherwise see stale data).
+	wd   string
+	proj *workspace.Project
+	root string
+
+	// ws / lm let configureProvider open the current stack's backend when --provider is set so it
+	// can read the referenced provider resource's Inputs. Plumbed from NewDoCmd.
+	ws   pkgWorkspace.Context
+	lm   cmdBackend.LoginManager
+	sink diag.Sink
+}
+
+// evalContext builds the PCL evaluation context from the workspace state we captured at construction
+// time. Computed on demand so the stack selection follows ws (helpful in tests, and matches the
+// "best-effort, no login required" intent — currentStackIdentity reads only the local workspace).
+func (pc *packageCommand) evalContext() functionEvalContext {
+	ec := functionEvalContext{WorkingDir: pc.wd}
+	if pc.proj != nil {
+		ec.ProjectName = string(pc.proj.Name)
+		ec.RootDirectory = pc.root
+		// When a stack is selected in the workspace, expose its organization and short name to the
+		// PCL runtime so input files can reference pulumi.organization / pulumi.stack the same way
+		// a program would.
+		ec.Organization, ec.Stack = currentStackIdentity(pc.ws)
+	}
+	return ec
 }
 
 func (pc *packageCommand) newCommand() (*cobra.Command, error) {

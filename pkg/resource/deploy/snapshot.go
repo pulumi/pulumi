@@ -618,7 +618,7 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 
 	// Rewrite References on every snippet. Each value is a URN that may have been an alias for a resource that
 	// is now stored under its canonical URN; updating in place keeps future updates resolving cleanly through
-	// the broker.
+	// the registration observer.
 	if len(newSnap.Snippets) > 0 {
 		snippets := make([]resource.Snippet, len(newSnap.Snippets))
 		edited := false
@@ -825,20 +825,6 @@ func (snap *Snapshot) VerifyIntegrity() error {
 
 			if deletes != len(states)-1 && deletes != len(states) {
 				return snapshot.SnapshotIntegrityErrorf("duplicate resource %s (not marked for deletion)", urn)
-			}
-		}
-
-		// Snippets may declare References to resources outside the snippet itself; each referenced
-		// URN must exist in the snapshot. We check this after the resource loop so all URNs
-		// (including ones referenced "forward" from a snippet) have been recorded.
-		for i, snippet := range snap.Snippets {
-			for ident, ref := range snippet.References {
-				if _, has := urns[resource.URN(ref)]; !has {
-					return snapshot.SnapshotIntegrityErrorf(
-						"snippet %d (type=%q, name=%q) refers to unknown URN %s via identifier %q",
-						i, snippet.Type, snippet.Name, ref, ident,
-					)
-				}
 			}
 		}
 	}

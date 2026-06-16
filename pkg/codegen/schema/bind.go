@@ -656,9 +656,7 @@ func (spec *PackageSpec) validateTypeToken(
 	}
 
 	if strings.HasPrefix(moduleName, "index/") {
-		// TODO: We want this to be an error really, but for now warn about it to see if any users comment about it. We
-		// know at least aws-native needs to be updated to handle it.
-		err := warningf(path, "invalid token '%s' (nested modules under index are not allowed)", token)
+		err := errorf(path, "invalid token '%s' (nested modules under index are not allowed)", token)
 		diags = diags.Append(err)
 	}
 	if modules != nil && !slices.Contains(modules, parts[1]) {
