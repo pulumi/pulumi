@@ -286,24 +286,20 @@ func (m *muxSource) run(input string) *promise.Promise[struct{}] {
 		// before fulfilling so callers don't observe a partial completion.
 		errs := make([]error, len(sourceP)+1)
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if m.mainObserverSource != nil {
 				defer m.mainObserverSource.Done()
 			}
 			if _, err := mainP.Result(m.ctx); err != nil {
 				errs[0] = err
 			}
-		}()
+		})
 		for i, p := range sourceP {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				if _, err := p.Result(m.ctx); err != nil {
 					errs[i+1] = err
 				}
-			}()
+			})
 		}
 		wg.Wait()
 

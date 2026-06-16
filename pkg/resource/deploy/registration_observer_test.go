@@ -178,9 +178,8 @@ func TestRegistrationObserver_RunnableSourceProtectsWaiter(t *testing.T) {
 	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
 	p := consumer.Wait(urn)
 
-	if _, _, ok := p.TryResult(); ok {
-		t.Fatal("a runnable producer should keep the reference pending")
-	}
+	_, _, ok := p.TryResult()
+	require.False(t, ok, "a runnable producer should keep the reference pending")
 
 	outputs := resource.PropertyMap{"k": resource.NewProperty("v")}
 	b.Resolve(urn, "", outputs)
@@ -208,9 +207,8 @@ func TestRegistrationObserver_WaitResolvedURNKeepsSourceRunnable(t *testing.T) {
 
 	producer.Done()
 	pending := observeRegistration(b, pendingURN)
-	if _, _, ok := pending.TryResult(); ok {
-		t.Fatal("waiting on an already-resolved URN must leave the source runnable")
-	}
+	_, _, ok := pending.TryResult()
+	require.False(t, ok, "waiting on a pending URN should leave the source blocked")
 
 	b.Resolve(pendingURN, "", resource.PropertyMap{})
 	_, err = pending.Result(t.Context())
@@ -268,9 +266,8 @@ func TestRegistrationObserver_ResolvedWaiterBecomesRunnableProducer(t *testing.T
 	_, err := middleP.Result(t.Context())
 	require.NoError(t, err)
 
-	if _, _, ok := consumerP.TryResult(); ok {
-		t.Fatal("the newly runnable middle source should keep its consumer pending")
-	}
+	_, _, ok := consumerP.TryResult()
+	require.False(t, ok, "the newly runnable middle source should keep its consumer pending")
 
 	b.Resolve(consumerDependency, "", resource.PropertyMap{})
 	_, err = consumerP.Result(t.Context())
