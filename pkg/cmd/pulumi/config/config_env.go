@@ -111,11 +111,7 @@ type configEnvCmd struct {
 func (cmd *configEnvCmd) initArgs() {
 	cmd.interactive = cmdutil.Interactive()
 	cmd.color = cmdutil.GetGlobalColorization()
-
-	cmd.prompt = func(msg string, options []string, defaultOption string, colorization colors.Colorization) string {
-		return ui.PromptUser(msg, options, defaultOption, colorization)
-	}
-
+	cmd.prompt = ui.PromptUser
 	cmd.ssml = cmdStack.NewStackSecretsManagerLoaderFromEnv()
 }
 
