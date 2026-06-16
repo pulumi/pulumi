@@ -1651,3 +1651,116 @@ options {
 	}
 	require.Len(t, created, 3, "range = 3 should have produced three Create calls")
 }
+
+func TestPclSnippetAddUpdateDeleteViaOption(t *testing.T) {
+	t.Parallel()
+
+	var created, updated, deleted []resource.URN
+	loaders := pclSnippetTestProvider(pclSnippetSchemaPropA, &created, &updated, &deleted)
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			SkipDisplayTests: true,
+			T:                t,
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+		},
+	}
+
+	snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+	p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
+		snippetID: {
+			Name: "test-resource", Type: "pkgA:index:res",
+			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+			Code:       `propA = true`,
+		},
+	}
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "add")
+	require.NoError(t, err)
+	require.Len(t, snap.Snippets, 1)
+	require.Equal(t, snippetID.String(), snap.Snippets[0].UUID)
+	require.Equal(t, `propA = true`, snap.Snippets[0].Code)
+	require.Len(t, created, 1)
+	require.Empty(t, updated)
+	require.Empty(t, deleted)
+
+	p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
+		snippetID: {
+			Name: "test-resource", Type: "pkgA:index:res",
+			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+			Code:       `propA = false`,
+		},
+	}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "update")
+	require.NoError(t, err)
+	require.Len(t, snap.Snippets, 1)
+	require.Equal(t, snippetID.String(), snap.Snippets[0].UUID)
+	require.Equal(t, `propA = false`, snap.Snippets[0].Code)
+	require.Len(t, created, 1, "snippet update should not recreate the resource")
+	require.Len(t, updated, 1, "snippet update should update the resource")
+	require.Empty(t, deleted)
+
+	p.Options.Snippets = map[uuid.UUID]*resource.Snippet{snippetID: nil}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "delete")
+	require.NoError(t, err)
+	require.Empty(t, snap.Snippets)
+	require.Len(t, created, 1)
+	require.Len(t, updated, 1)
+	require.Len(t, deleted, 1, "snippet delete should delete the resource")
+}
+
+func TestPclSnippetOptionValidation(t *testing.T) {
+	t.Parallel()
+
+	loaders := pclSnippetTestProvider(pclSnippetSchemaPropA, nil, nil, nil)
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	newPlan := func(t *testing.T) *lt.TestPlan {
+		return &lt.TestPlan{
+			Options: lt.TestUpdateOptions{
+				SkipDisplayTests: true,
+				T:                t,
+				HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			},
+		}
+	}
+
+	t.Run("mismatched UUID", func(t *testing.T) {
+		t.Parallel()
+
+		p := newPlan(t)
+		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		otherID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
+			snippetID: {
+				UUID: otherID.String(),
+				Name: "test-resource", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       `propA = true`,
+			},
+		}
+
+		_, err := lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "mismatched")
+		require.ErrorContains(t, err, fmt.Sprintf("snippet %q has mismatched uuid %q", snippetID, otherID))
+	})
+
+	t.Run("delete missing", func(t *testing.T) {
+		t.Parallel()
+
+		p := newPlan(t)
+		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = map[uuid.UUID]*resource.Snippet{snippetID: nil}
+
+		_, err := lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "delete-missing")
+		require.ErrorContains(t, err, fmt.Sprintf("cannot delete snippet %q: no such snippet in snapshot", snippetID))
+	})
+}

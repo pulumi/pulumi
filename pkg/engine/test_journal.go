@@ -31,15 +31,17 @@ var _ = SnapshotManager((*TestJournal)(nil))
 type TestJournalEntryKind int
 
 const (
-	TestJournalEntryBegin   TestJournalEntryKind = 0
-	TestJournalEntrySuccess TestJournalEntryKind = 1
-	TestJournalEntryFailure TestJournalEntryKind = 2
-	TestJournalEntryOutputs TestJournalEntryKind = 4
+	TestJournalEntryBegin    TestJournalEntryKind = 0
+	TestJournalEntrySuccess  TestJournalEntryKind = 1
+	TestJournalEntryFailure  TestJournalEntryKind = 2
+	TestJournalEntryOutputs  TestJournalEntryKind = 4
+	TestJournalEntrySnippets TestJournalEntryKind = 8
 )
 
 type TestJournalEntry struct {
-	Kind TestJournalEntryKind
-	Step deploy.Step
+	Kind     TestJournalEntryKind
+	Step     deploy.Step
+	Snippets []resource.Snippet
 }
 
 type JournalEntries []TestJournalEntry
@@ -52,6 +54,10 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	// Collect extension blobs from ExtensionParameterizeStep entries seen during this plan.
 	liveExtensions := map[apitype.ExtensionRef]apitype.Extension{}
 	for _, e := range entries {
+		if e.Kind == TestJournalEntrySnippets {
+			logging.V(7).Infof("snippets (%v)", len(e.Snippets))
+			continue
+		}
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
 
 		if e.Kind == TestJournalEntrySuccess && e.Step.Op() == deploy.OpExtendParameterize {
@@ -63,6 +69,8 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		// Begin journal entries add pending operations to the snapshot. As we see success or failure
 		// entries, we'll record them in doneOps.
 		switch e.Kind {
+		case TestJournalEntrySnippets:
+			contract.Failf("snippet entries should be handled before step replay")
 		case TestJournalEntryBegin:
 			switch e.Step.Op() {
 			case deploy.OpCreate, deploy.OpCreateReplacement:
@@ -189,6 +197,11 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		metadata = base.Metadata
 		snippets = base.Snippets
 	}
+	for _, e := range entries {
+		if e.Kind == TestJournalEntrySnippets {
+			snippets = e.Snippets
+		}
+	}
 
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
@@ -271,6 +284,15 @@ func (j *TestJournal) Write(base *deploy.Snapshot) error {
 
 func (j *TestJournal) RebuiltBaseState() error {
 	return nil
+}
+
+func (j *TestJournal) SetSnippets(snippets []resource.Snippet) error {
+	select {
+	case j.events <- TestJournalEntry{Kind: TestJournalEntrySnippets, Snippets: snippets}:
+		return nil
+	case <-j.cancel:
+		return errors.New("journal closed")
+	}
 }
 
 // NewTestJournal creates a new TestJournal that is used in tests to record journal entries for

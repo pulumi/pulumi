@@ -216,6 +216,7 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 								assert.Fail(t, "unexpected failure in journal")
 							case TestJournalEntryBegin:
 							case TestJournalEntryOutputs:
+							case TestJournalEntrySnippets:
 							}
 						}
 

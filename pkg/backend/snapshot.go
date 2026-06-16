@@ -77,6 +77,8 @@ type SnapshotManager struct {
 	secretsManager secrets.Manager      // The default secrets manager to use
 	resources      []*resource.State    // The list of resources operated upon by this plan
 	operations     []resource.Operation // The set of operations known to be outstanding in this plan
+	snippets       []resource.Snippet   // The snippet list to persist with the next snapshot
+	hasSnippets    bool                 // Whether snippets has been set by the engine
 
 	// The set of resources that have been operated upon already by this plan. These resources could also have
 	// been added to `resources` by other operations but need to be filtered out before writing the snapshot.
@@ -220,6 +222,14 @@ func (sm *SnapshotManager) RebuiltBaseState() error {
 	// Similar to Write() we don't need to do anything here, as the snapshot manager uses the
 	// same in-memory snapshot as the engine, that is already mutated.
 	return nil
+}
+
+func (sm *SnapshotManager) SetSnippets(snippets []resource.Snippet) error {
+	return sm.mutate(func() bool {
+		sm.snippets = slices.Clone(snippets)
+		sm.hasSnippets = true
+		return true
+	})
 }
 
 // All SnapshotMutation implementations in this file follow the same basic formula:
@@ -771,6 +781,9 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	if sm.baseSnapshot != nil {
 		metadata = sm.baseSnapshot.Metadata
 		snippets = sm.baseSnapshot.Snippets
+	}
+	if sm.hasSnippets {
+		snippets = sm.snippets
 	}
 
 	manifest.Magic = manifest.NewMagic()
