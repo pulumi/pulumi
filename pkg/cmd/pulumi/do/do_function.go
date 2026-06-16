@@ -106,7 +106,7 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 				inputProperties = fn.Inputs.Properties
 			}
 			inputs, err := evaluateFunctionFile(
-				ctx, inputFile, "input", pc.format, fn, pc.evalContext,
+				ctx, inputFile, "input", pc.format, fn, pc.evalContext(),
 				pc.converter, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", inputProperties))
 			if err != nil {
@@ -152,6 +152,9 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 		"Path to a file containing provider configuration")
 	cmd.Flags().StringVar(&pc.format, "input", "pcl",
 		"Format of the configuration files")
+	cmd.Flags().StringVar(&pc.providerURN, "provider", "",
+		"The URN of a provider resource in the current stack whose inputs to use as the "+
+			"base of the provider configuration (requires a stack context)")
 
 	addInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties)
 	if fn.Inputs != nil {
