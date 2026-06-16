@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -96,6 +97,12 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 
+			// Route config to the local working copy if this stack is checked out (service-backed config).
+			configFile, err = cmdStack.ResolveWorkingCopy(ctx, ws, cmdutil.Diag(), stack, configFile, false)
+			if err != nil {
+				return err
+			}
+
 			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, stack, configFile)
 			if err != nil {
 				return err
@@ -104,6 +111,17 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// still surface environment-derived values, so treat it as empty rather than panicking.
 			if ps == nil {
 				ps = &workspace.ProjectStack{}
+			}
+
+			// Surface that a checked-out stack's listed values come from the local working copy.
+			if !jsonOut {
+				if marker, err := state.GetCheckout(ws, stack.Ref().FullyQualifiedName().String()); err == nil &&
+					marker != nil {
+					fmt.Fprintf(cmd.OutOrStdout(),
+						"Stack %s is checked out; showing the local working copy %s "+
+							"(run `pulumi config env commit` to save or `discard` to drop).\n",
+						stack.Ref().Name(), marker.FilePath)
+				}
 			}
 
 			// If --open is explicitly set, use that value. Otherwise, default to true if --show-secrets is set.
@@ -345,6 +363,12 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 				return err
 			}
 
+			// Route config to the local working copy if this stack is checked out (service-backed config).
+			*configFile, err = cmdStack.ResolveWorkingCopy(ctx, ws, cmdutil.Diag(), s, *configFile, false)
+			if err != nil {
+				return err
+			}
+
 			key, err := ParseConfigKey(ws, args[0], path)
 			if err != nil {
 				return fmt.Errorf("invalid configuration key: %w", err)
@@ -407,6 +431,12 @@ func newConfigRmCmd(ws pkgWorkspace.Context, stack *string, configFile *string) 
 				opts,
 				*configFile,
 			)
+			if err != nil {
+				return err
+			}
+
+			// Route config to the local working copy if this stack is checked out (service-backed config).
+			*configFile, err = cmdStack.ResolveWorkingCopy(ctx, ws, cmdutil.Diag(), stack, *configFile, false)
 			if err != nil {
 				return err
 			}
@@ -489,6 +519,12 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string, configFile *strin
 				return err
 			}
 
+			// Route config to the local working copy if this stack is checked out (service-backed config).
+			*configFile, err = cmdStack.ResolveWorkingCopy(ctx, ws, cmdutil.Diag(), stack, *configFile, false)
+			if err != nil {
+				return err
+			}
+
 			if err := rejectIfPinned(stack, *configFile); err != nil {
 				return err
 			}
@@ -563,6 +599,12 @@ func newConfigRefreshCmd(
 				opts,
 				*configFile,
 			)
+			if err != nil {
+				return err
+			}
+
+			// Route config to the local working copy if this stack is checked out (service-backed config).
+			*configFile, err = cmdStack.ResolveWorkingCopy(ctx, ws, cmdutil.Diag(), s, *configFile, false)
 			if err != nil {
 				return err
 			}
@@ -725,6 +767,12 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 				opts,
 				*configFile,
 			)
+			if err != nil {
+				return err
+			}
+
+			// Route config to the local working copy if this stack is checked out (service-backed config).
+			*configFile, err = cmdStack.ResolveWorkingCopy(ctx, ws, cmdutil.Diag(), s, *configFile, false)
 			if err != nil {
 				return err
 			}
@@ -915,6 +963,12 @@ func newConfigSetAllCmd(
 				opts,
 				*configFile,
 			)
+			if err != nil {
+				return err
+			}
+
+			// Route config to the local working copy if this stack is checked out (service-backed config).
+			*configFile, err = cmdStack.ResolveWorkingCopy(ctx, ws, cmdutil.Diag(), stack, *configFile, false)
 			if err != nil {
 				return err
 			}

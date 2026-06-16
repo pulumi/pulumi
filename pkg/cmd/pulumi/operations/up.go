@@ -162,6 +162,12 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
+		// Route config to the local working copy if this stack is checked out (service-backed config).
+		configFile, err = cmdStack.ResolveWorkingCopy(ctx, ws, cmdutil.Diag(), s, configFile, true)
+		if err != nil {
+			return err
+		}
+
 		// Save any config values passed via flags.
 		if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path, configFile); err != nil {
 			return err
