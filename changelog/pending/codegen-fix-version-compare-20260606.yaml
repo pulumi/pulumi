@@ -1,0 +1,6 @@
+component: codegen/pcl
+kind: fix
+body: Fix version comparison in NeedsVersionResourceOption to use semver.Version.Equals and reject "v"-prefixed versions
+time: 2026-06-08T05:40:00.000000+00:00
+custom:
+    PR: https://github.com/pulumi/pulumi/pull/23441
