@@ -275,6 +275,28 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	return pkg, module, member, diagnostics
 }
 
+// functionPackage resolves the schema package that defines the given function
+// token. Extension-parameterized function tokens live in the base provider's
+// namespace, so the token prefix is the base name while the owning package is
+// the extension; fall back to the token prefix otherwise.
+func (g *generator) functionPackage(tokenArg model.Expression) string {
+	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+	pkg, _, _, _ := pcl.DecomposeToken(token, tokenArg.SyntaxNode().Range())
+	for _, ref := range g.program.PackageReferences() {
+		if ref.Name() == pkg {
+			return pkg
+		}
+	}
+	for _, ref := range g.program.PackageReferences() {
+		if def, err := ref.Definition(); err == nil {
+			if _, ok := def.GetFunction(token); ok {
+				return ref.Name()
+			}
+		}
+	}
+	return pkg
+}
+
 func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {
 	var from, to model.Expression
 	switch len(call.Args) {
@@ -350,9 +372,9 @@ func (g *generator) visitFunctionImports(
 		return
 	}
 
-	pkg, _, _, diags := functionName(x.Args[0])
+	_, _, _, diags := functionName(x.Args[0])
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
-	visitPackageImport(pkg)
+	visitPackageImport(g.functionPackage(x.Args[0]))
 }
 
 func enumName(enum *model.EnumType) (string, error) {
@@ -577,6 +599,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
+		pkg = g.functionPackage(expr.Args[0])
 		if module != "" {
 			module = "." + module
 		}

@@ -1517,13 +1517,22 @@ func runLanguageTests(
 					versionsMatch(&expected.Version, &actual.Version) &&
 					slices.Equal(expected.Value, actual.Value)
 			}
+			// Replacement and extension parameterization both carry base+name+value.
+			// SDK language hosts report an extension in the extension slot while the
+			// PCL host reports it in the parameterization slot, so compare whichever
+			// slot holds the parameterization.
+			effectiveParam := func(d workspace.PackageDescriptor) *workspace.Parameterization {
+				if d.ExtensionParameterization != nil {
+					return d.ExtensionParameterization
+				}
+				return d.Parameterization
+			}
 			for _, expectedPackage := range expectedPackages {
 				var found bool
 				for _, actual := range packages {
 					if actual.Name == expectedPackage.Name &&
 						versionsMatch(expectedPackage.Version, actual.Version) &&
-						parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) &&
-						parameterizationsMatch(expectedPackage.ExtensionParameterization, actual.ExtensionParameterization) {
+						parameterizationsMatch(effectiveParam(expectedPackage), effectiveParam(actual)) {
 						found = true
 						break
 					}
@@ -1539,8 +1548,7 @@ func runLanguageTests(
 				for _, expectedPackage := range expectedPackages {
 					if actual.Name == expectedPackage.Name &&
 						versionsMatch(expectedPackage.Version, actual.Version) &&
-						parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) &&
-						parameterizationsMatch(expectedPackage.ExtensionParameterization, actual.ExtensionParameterization) {
+						parameterizationsMatch(effectiveParam(expectedPackage), effectiveParam(actual)) {
 						found = true
 						break
 					}

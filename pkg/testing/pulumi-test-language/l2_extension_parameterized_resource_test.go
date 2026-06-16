@@ -103,7 +103,7 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) GetRequiredPackages(
 			{
 				Name:    "extbase",
 				Kind:    string(apitype.ResourcePlugin),
-				Version: "43.0.0",
+				Version: "45.0.0",
 				Extension: &pulumirpc.PackageParameterization{
 					Name:    "myext",
 					Version: "2.0.0",
@@ -159,7 +159,7 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) Run(
 	myextRef := promise.Run(func() (string, error) {
 		resp, err := monitor.RegisterPackage(ctx, &pulumirpc.RegisterPackageRequest{
 			Name:    "extbase",
-			Version: "43.0.0",
+			Version: "45.0.0",
 			Extension: &pulumirpc.Parameterization{
 				Name:    "myext",
 				Version: "2.0.0",
@@ -217,12 +217,32 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) Run(
 		return nil, fmt.Errorf("could not get greeting component result: %w", err)
 	}
 
+	// Invoke a function that also lives in the base provider's namespace; it must
+	// route through the extension parameterization just like the resources do.
+	ref, err := myextRef.Result(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not get package reference: %w", err)
+	}
+	invokeResp, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
+		Tok:        "extbase:index:greet",
+		PackageRef: ref,
+		Args: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"name": structpb.NewStringValue("Pulumi"),
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not invoke greet: %w", err)
+	}
+
 	if _, err := monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn: stack.Urn,
 		Outputs: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"parameterValue":              g,
 				"parameterValueFromComponent": gc,
+				"invokeGreeting":              invokeResp.Return.Fields["greeting"],
 			},
 		},
 	}); err != nil {

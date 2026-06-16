@@ -126,6 +126,10 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	var err error
 	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
 		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+	} else if extDescriptor, ok := b.findExtensionDescriptorForBase(pkg); ok {
+		// The function token names a base provider that an extension
+		// parameterizes; the function is defined by the extension's schema.
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, extDescriptor)
 	} else {
 		pkgSchema, err = b.options.packageCache.loadPackageSchema(context.TODO(), b.options.loader, pkg, "", "")
 	}

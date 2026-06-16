@@ -1,9 +1,8 @@
 // Extension parameterization: the SDK is published as "myext" but the resource
-// tokens live in the base provider's namespace ("extbase"). This is the kind of
-// schema crd2pulumi emits.
+// tokens live in the base provider's namespace ("extbase").
 package {
     baseProviderName = "extbase"
-    baseProviderVersion = "43.0.0"
+    baseProviderVersion = "45.0.0"
     parameterization {
         name = "myext"
         version = "2.0.0"
@@ -21,4 +20,8 @@ output "parameterValue" {
 
 output "parameterValueFromComponent" {
     value = greetingComp.parameterValue
+}
+
+output "invokeGreeting" {
+    value = invoke("extbase:index:greet", { name = "Pulumi" }).greeting
 }

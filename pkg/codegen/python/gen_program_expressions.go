@@ -248,6 +248,28 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), title(member), diagnostics
 }
 
+// functionPackage resolves the schema package that defines the given function
+// token. Extension-parameterized function tokens live in the base provider's
+// namespace, so the token prefix is the base name while the owning package is
+// the extension. Returns nil if no loaded package defines the token.
+func (g *generator) functionPackage(tokenArg model.Expression) *schema.Package {
+	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+	pkg, _, _, _ := pcl.DecomposeToken(token, tokenArg.SyntaxNode().Range())
+	for _, ref := range g.program.PackageReferences() {
+		def, err := ref.Definition()
+		if err != nil {
+			continue
+		}
+		if ref.Name() == pkg {
+			return def
+		}
+		if _, ok := def.GetFunction(token); ok {
+			return def
+		}
+	}
+	return nil
+}
+
 var functionImports = map[string][]string{
 	"fileArchive":      {"pulumi"},
 	"remoteArchive":    {"pulumi"},

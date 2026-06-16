@@ -25,7 +25,7 @@ import (
 func init() {
 	LanguageTests["l2-extension-parameterized-resource"] = LanguageTest{
 		Providers: []func() plugin.Provider{
-			func() plugin.Provider { return &providers.ExtensionParameterizedProvider{} },
+			func() plugin.Provider { return providers.SharedExtensionParameterizedProvider },
 		},
 		Runs: []TestRun{
 			{
@@ -44,6 +44,10 @@ func init() {
 						resource.NewProperty("HelloComponent"),
 						stack.Outputs["parameterValueFromComponent"],
 						"component parameter value should be the extension's parameter + Component")
+					require.Equal(l,
+						resource.NewProperty("Hello, Pulumi"),
+						stack.Outputs["invokeGreeting"],
+						"invoke should resolve through the extension and combine the parameter with the argument")
 
 					// The Greeting custom resource lives under the BASE provider's
 					// namespace, not the extension's. Its state must carry an
@@ -59,6 +63,8 @@ func init() {
 					require.NotNil(l, greeting, "expected an extbase:index:Greeting resource")
 					require.NotEmpty(l, greeting.ExtensionRef,
 						"extension resource state must carry an ExtensionRef")
+					require.Contains(l, string(greeting.Provider), "pulumi:providers:extbase::",
+						"greeting must be served by the base provider, not the extension")
 
 					// The base plugin should also be present and unrenamed.
 					require.Contains(l, snap.Extensions, apitype.ExtensionRef(greeting.ExtensionRef),

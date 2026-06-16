@@ -33,9 +33,11 @@ import (
 // identity, leaves Provider nil, and keeps every resource token in the base
 // provider's namespace (matching kubernetes/crd2pulumi semantics).
 //
-// Parameterize and the readers below run concurrently because both the
-// custom-resource step path and the remote-component path can target the
-// same provider instance; the mutex guards the shared parameter fields.
+// A real parameterized plugin holds its parameter for the lifetime of the
+// process and serves it to every resource and invoke. The conformance harness
+// can ask for the provider more than once, so SharedExtensionParameterizedProvider
+// hands back a single instance to mirror that; the mutex guards concurrent
+// access from the resource, component, and invoke paths.
 type ExtensionParameterizedProvider struct {
 	plugin.UnimplementedProvider
 	mu               sync.Mutex
@@ -43,6 +45,11 @@ type ExtensionParameterizedProvider struct {
 	extensionVersion string
 	extensionValue   []byte
 }
+
+// SharedExtensionParameterizedProvider is the single instance the conformance
+// test registers, so the parameter set by Parameterize is visible to every
+// resource and invoke regardless of how many times the provider is requested.
+var SharedExtensionParameterizedProvider = &ExtensionParameterizedProvider{}
 
 func (p *ExtensionParameterizedProvider) snapshot() (string, string, []byte) {
 	p.mu.Lock()
@@ -52,7 +59,7 @@ func (p *ExtensionParameterizedProvider) snapshot() (string, string, []byte) {
 
 const (
 	extensionBaseName    = "extbase"
-	extensionBaseVersion = "43.0.0"
+	extensionBaseVersion = "45.0.0"
 )
 
 var _ plugin.Provider = (*ExtensionParameterizedProvider)(nil)
@@ -90,20 +97,29 @@ func (p *ExtensionParameterizedProvider) Parameterize(
 }
 
 func (p *ExtensionParameterizedProvider) GetSchema(
-	_ context.Context, _ plugin.GetSchemaRequest,
+	_ context.Context, req plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
-	name, version, value := p.snapshot()
-	if name == "" {
-		// Base-provider schema before parameterization.
+	// A bare schema request is an identity query. An extension provider *is* the
+	// base plugin, so it must keep reporting the base name even after it has been
+	// parameterized — otherwise the host can no longer resolve it as the base.
+	if req.SubpackageName == "" {
 		return plugin.GetSchemaResponse{Schema: []byte(
 			`{ "name": "` + extensionBaseName + `", "version": "` + extensionBaseVersion + `" }`,
 		)}, nil
 	}
 
-	// Resource lives in the base provider's namespace; this is the defining
-	// trait of extension parameterization vs replacement.
+	_, _, value := p.snapshot()
+	name := req.SubpackageName
+	version := extensionBaseVersion
+	if req.SubpackageVersion != nil {
+		version = req.SubpackageVersion.String()
+	}
+
+	// Resource and function live in the base provider's namespace; this is the
+	// defining trait of extension parameterization vs replacement.
 	token := extensionBaseName + ":index:Greeting"
 	componentToken := token + "Component"
+	greetToken := extensionBaseName + ":index:greet"
 
 	greetingSpec := schema.ObjectTypeSpec{
 		Type: "object",
@@ -122,6 +138,24 @@ func (p *ExtensionParameterizedProvider) GetSchema(
 		Resources: map[string]schema.ResourceSpec{
 			token:          {ObjectTypeSpec: greetingSpec},
 			componentToken: {IsComponent: true, ObjectTypeSpec: greetingSpec},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			greetToken: {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+					Required: []string{"name"},
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"greeting": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+					Required: []string{"greeting"},
+				},
+			},
 		},
 		ExtensionParameterization: &schema.ExtensionParameterizationSpec{
 			BaseProvider: schema.BaseProviderRefSpec{
@@ -187,6 +221,21 @@ func (p *ExtensionParameterizedProvider) Construct(
 		Outputs: resource.PropertyMap{
 			"parameterValue": resource.NewProperty(string(value) + "Component"),
 		},
+	}, nil
+}
+
+func (p *ExtensionParameterizedProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	expected := extensionBaseName + ":index:greet"
+	if string(req.Tok) != expected {
+		return plugin.InvokeResponse{}, fmt.Errorf("invalid invoke token %s, expected %s", req.Tok, expected)
+	}
+	_, _, value := p.snapshot()
+	return plugin.InvokeResponse{
+		Properties: resource.NewPropertyMapFromMap(map[string]any{
+			"greeting": string(value) + ", " + req.Args["name"].StringValue(),
+		}),
 	}, nil
 }
 
