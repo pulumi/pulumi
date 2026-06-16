@@ -11,11 +11,12 @@ resource "this" "simple:index:Resource" {
 }
 
 # Referencing `this` exercises that the rename is applied to references too, not
-# just the declaration.
-resource "dependent" "simple:index:Resource" {
+# just the declaration. The name `parent` also overlaps with the `parent`
+# resource-option key, which must not be confused with this resource variable.
+resource "parent" "simple:index:Resource" {
     value = this.value
 }
 
 output "result" {
-    value = dependent.value
+    value = parent.value
 }

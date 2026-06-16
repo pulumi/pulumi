@@ -21,14 +21,15 @@ export class KeywordComponent extends pulumi.ComponentResource {
         });
 
         // Referencing `this` exercises that the rename is applied to references too, not
-        // just the declaration.
-        const dependent = new simple.Resource(`${name}-dependent`, {value: _this.value}, {
+        // just the declaration. The name `parent` also overlaps with the `parent`
+        // resource-option key, which must not be confused with this resource variable.
+        const parent = new simple.Resource(`${name}-parent`, {value: _this.value}, {
             parent: this,
         });
 
-        this.result = dependent.value;
+        this.result = parent.value;
         this.registerOutputs({
-            result: dependent.value,
+            result: parent.value,
         });
     }
 }

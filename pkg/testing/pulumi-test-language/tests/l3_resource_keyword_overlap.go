@@ -57,14 +57,15 @@ func init() {
 					assert.Equal(l, component.URN, thisRes.Parent, "expected `this` resource to have the component as parent")
 					assert.Equal(l, want, thisRes.Inputs, "expected `this` resource inputs to be %v", want)
 
-					// `dependent.value = this.value` exercises that the rename is applied to references as
-					// well as the declaration: it must read the renamed resource variable, not the class
-					// receiver.
-					dependent := RequireSingleNamedResource(l, snap.Resources, "comp-dependent")
-					assert.Equal(l, "simple:index:Resource", dependent.Type.String())
-					assert.Equal(l, component.URN, dependent.Parent,
-						"expected `dependent` resource to have the component as parent")
-					assert.Equal(l, want, dependent.Inputs, "expected `dependent` resource inputs to be %v", want)
+					// `parent.value = this.value` exercises that the rename is applied to references as well
+					// as the declaration: it must read the renamed resource variable, not the class
+					// receiver. The resource is also named `parent`, which overlaps with the `parent`
+					// resource-option key and must not be confused with it.
+					parent := RequireSingleNamedResource(l, snap.Resources, "comp-parent")
+					assert.Equal(l, "simple:index:Resource", parent.Type.String())
+					assert.Equal(l, component.URN, parent.Parent,
+						"expected `parent` resource to have the component as parent")
+					assert.Equal(l, want, parent.Inputs, "expected `parent` resource inputs to be %v", want)
 				},
 			},
 		},

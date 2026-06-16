@@ -18,11 +18,12 @@ class KeywordComponent(pulumi.ComponentResource):
         opts = pulumi.ResourceOptions(parent=self))
 
         # Referencing `this` exercises that the rename is applied to references too, not
-        # just the declaration.
-        dependent = simple.Resource(f"{name}-dependent", value=this.value,
+        # just the declaration. The name `parent` also overlaps with the `parent`
+        # resource-option key, which must not be confused with this resource variable.
+        parent = simple.Resource(f"{name}-parent", value=this.value,
         opts = pulumi.ResourceOptions(parent=self))
 
-        self.result = dependent.value
+        self.result = parent.value
         self.register_outputs({
-            'result': dependent.value
+            'result': parent.value
         })
