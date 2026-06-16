@@ -1,0 +1,6 @@
+component: sdk/python
+kind: improvement
+body: Add register_package helper to cache package references per deployment
+time: 2026-06-17T08:43:20.836147+02:00
+custom:
+    PR: "22459"
