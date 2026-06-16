@@ -660,6 +660,7 @@ type configSetCmd struct {
 	Plaintext bool
 	Secret    bool
 	Path      bool
+	Raw       bool
 	Type      string
 }
 
@@ -671,7 +672,8 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 		Short: "Set configuration value",
 		Long: "Configuration values can be accessed when a stack is being deployed and used to configure behavior. \n" +
 			"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
-			"may be set by piping a file to standard in.\n\n" +
+			"may be set by piping a file to standard in. Note that in that case, trailing newlines are stripped,\n" +
+			"unless `--raw` is passed.\n\n" +
 			"The `--path` flag can be used to set a value inside a map or list:\n\n" +
 			"  - `pulumi config set --path 'names[0]' a` " +
 			"will set the value to a list with the first item `a`.\n" +
@@ -734,6 +736,9 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 	setCmd.PersistentFlags().StringVar(
 		&configSetCmd.Type, "type", "", "Save the value as the given type.  Allowed values are string, bool, int, and float")
 	setCmd.MarkFlagsMutuallyExclusive("secret", "plaintext", "type")
+	setCmd.PersistentFlags().BoolVar(
+		&configSetCmd.Raw, "raw", false,
+		"When setting the value through stdin, do not trim trailing newlines from the value")
 	setCmd.DisableFlagsInUseLine = true
 
 	return setCmd
@@ -762,7 +767,11 @@ func (c *configSetCmd) Run(
 		if readerr != nil {
 			return readerr
 		}
-		value = cmdutil.RemoveTrailingNewline(string(b))
+		if !c.Raw {
+			value = cmdutil.RemoveTrailingNewline(string(b))
+		} else {
+			value = string(b)
+		}
 	case !cmdutil.Interactive():
 		return backenderr.NonInteractiveInputRequiredError{Detail: "config value must be specified in non-interactive mode"}
 	case c.Secret:
