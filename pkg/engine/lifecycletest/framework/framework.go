@@ -295,11 +295,18 @@ func (op TestOp) runWithContext(
 	// We want to always run with plan generation to ensure that plans _can_ be generated.
 	// This is to prevent regressions such as https://github.com/pulumi/pulumi/pull/19750.
 	updateOpts.GeneratePlan = true
-	defer func() {
-		if updateOpts.Host != nil {
-			contract.IgnoreClose(updateOpts.Host)
+	// The engine builds the host from HostFactory and closes it when its cancel source terminates.
+	// This harness roots that source at context.Background() (it never terminates), so the engine's
+	// close never fires here -- build the host up front and close it ourselves.
+	if opts.HostF != nil {
+		host := opts.HostF()
+		defer contract.IgnoreClose(host)
+		updateOpts.HostFactory = func(
+			context.Context, diag.Sink, diag.Sink, plugin.DebugContext,
+		) (plugin.Host, error) {
+			return host, nil
 		}
-	}()
+	}
 
 	// Begin draining events.
 	firedEventsPromise := promise.Run(func() ([]engine.Event, error) {
@@ -789,9 +796,6 @@ type TestUpdateOptions struct {
 // Options produces UpdateOptions for an update operation.
 func (o TestUpdateOptions) Options() engine.UpdateOptions {
 	opts := o.UpdateOptions
-	if o.HostF != nil {
-		opts.Host = o.HostF()
-	}
 	// Set a sensible parallel count because most tests leave this zero.
 	if opts.Parallel == 0 {
 		opts.Parallel = int32(runtime.NumCPU()) //nolint:gosec // NumCPU isn't going to overflow int32

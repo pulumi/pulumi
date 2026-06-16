@@ -137,14 +137,13 @@ func TestSourceFuncCancellation(t *testing.T) {
 	defer host.Close()
 
 	opts := &deploymentOptions{
-		UpdateOptions: UpdateOptions{
-			Host: host,
-		},
-		SourceFunc: sourceF,
-		Events:     ctx.makeEventEmitter(t),
-		Diag:       diagtest.LogSink(t),
-		StatusDiag: diagtest.LogSink(t),
-		DryRun:     false,
+		UpdateOptions: UpdateOptions{},
+		host:          host,
+		SourceFunc:    sourceF,
+		Events:        ctx.makeEventEmitter(t),
+		Diag:          diagtest.LogSink(t),
+		StatusDiag:    diagtest.LogSink(t),
+		DryRun:        false,
 	}
 
 	_, err = newDeployment(&ctx.Context, info, nil, opts)
