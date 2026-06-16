@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plugin
+package host
 
 import (
 	"context"
@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -35,7 +36,7 @@ import (
 type hostServer struct {
 	pulumirpc.UnsafeEngineServer // opt out of forward compat
 
-	host   Host         // the host for this RPC server.
+	host   plugin.Host  // the host for this RPC server.
 	addr   string       // the address the host is listening on.
 	cancel chan bool    // a channel that can cancel the server.
 	done   <-chan error // a channel that resolves when the server completes.
@@ -46,7 +47,7 @@ type hostServer struct {
 
 // newHostServer creates a new host server wired up to the given host. The given span, which may
 // be nil, parents the server's tracing interceptors.
-func newHostServer(host Host, span opentracing.Span) (*hostServer, error) {
+func newHostServer(host plugin.Host, span opentracing.Span) (*hostServer, error) {
 	// New up an engine RPC server.
 	engine := &hostServer{
 		host:   host,
@@ -135,7 +136,7 @@ func (eng *hostServer) StartDebugging(ctx context.Context,
 	req *pulumirpc.StartDebuggingRequest,
 ) (*emptypb.Empty, error) {
 	// fire an engine event to start the debugger
-	info := DebuggingInfo{
+	info := plugin.DebuggingInfo{
 		Config: req.Config.AsMap(),
 	}
 	// log a status message
@@ -155,5 +156,5 @@ func (eng *hostServer) RequirePulumiVersion(ctx context.Context,
 	req *pulumirpc.RequirePulumiVersionRequest,
 ) (*pulumirpc.RequirePulumiVersionResponse, error) {
 	return &pulumirpc.RequirePulumiVersionResponse{},
-		ValidatePulumiVersionRange(req.PulumiVersionRange, version.Version)
+		plugin.ValidatePulumiVersionRange(req.PulumiVersionRange, version.Version)
 }

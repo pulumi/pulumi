@@ -42,7 +42,10 @@ func newPackagePackSdkCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
+			// The context owns its loader/mapper servers; the host is caller-owned. Close the
+			// context first, then the host.
 			defer contract.IgnoreClose(pCtx.Host)
+			defer contract.IgnoreClose(pCtx)
 
 			language := args[0]
 			path := args[1]

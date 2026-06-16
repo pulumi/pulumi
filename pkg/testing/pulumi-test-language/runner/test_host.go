@@ -213,6 +213,12 @@ func (h *testHost) ResolvePlugin(
 	}, nil
 }
 
+// ReleaseContext is a no-op: the conformance test host tears its providers down when it closes
+// rather than scoping them to a context.
+func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
+	return nil
+}
+
 func (h *testHost) SignalCancellation() error {
 	panic("not implemented")
 }

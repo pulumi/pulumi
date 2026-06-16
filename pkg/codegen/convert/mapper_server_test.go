@@ -15,6 +15,7 @@
 package convert
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -60,8 +62,11 @@ func TestMapperServerFromHost_RealProvider(t *testing.T) {
 	t.Setenv("PULUMI_HOME", home)
 
 	sink := diagtest.LogSink(t)
-	pctx, err := plugin.NewContext(t.Context(), sink, sink, nil, nil, t.TempDir(), nil, false, nil,
-		nil, NewMapperServerFromContext, nil)
+	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), sink, sink, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, pluginHost.Close()) }()
+	pctx, err := plugin.NewContext(t.Context(), sink, sink, pluginHost, nil, t.TempDir(), nil, false, nil,
+		nil, NewMapperServerFromContext)
 	require.NoError(t, err)
 	defer pctx.Close()
 

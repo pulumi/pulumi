@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -37,8 +38,11 @@ func testSetup(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServ
 	t.Helper()
 
 	ctx := t.Context()
-	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil,
-		schema.NewLoaderServerFromContext, nil, nil)
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), nil, nil, nil, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { pluginHost.Close() })
+	pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil,
+		schema.NewLoaderServerFromContext, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { pctx.Close() })
 
@@ -244,8 +248,11 @@ func TestNewInstallPluginFunc_DisabledAcquisition(t *testing.T) {
 	// Set environment to disable automatic plugin acquisition
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
-	pctx, err := plugin.NewContext(t.Context(), nil, nil, nil, nil, ".", nil, false, nil,
-		schema.NewLoaderServerFromContext, nil, nil)
+	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), nil, nil, nil, nil)
+	require.NoError(t, err)
+	defer pluginHost.Close()
+	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil,
+		schema.NewLoaderServerFromContext, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 
@@ -261,8 +268,11 @@ func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 	// Clear the environment variable to enable automatic acquisition
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
-	pctx, err := plugin.NewContext(t.Context(), nil, nil, nil, nil, ".", nil, false, nil,
-		schema.NewLoaderServerFromContext, nil, nil)
+	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), nil, nil, nil, nil)
+	require.NoError(t, err)
+	defer pluginHost.Close()
+	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil,
+		schema.NewLoaderServerFromContext, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 

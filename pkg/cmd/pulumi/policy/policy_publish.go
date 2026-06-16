@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -126,9 +127,16 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		return err
 	}
 
-	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, nil, schema.NewLoaderServerFromContext,
-		convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil,
+		pkgWorkspace.EnsureLanguageInstalled)
+	if err != nil {
+		return err
+	}
+	// host is owned here, closed after the context
+	defer contract.IgnoreClose(pluginHost)
+	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), pluginHost, pwd, projinfo.Root,
+		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, schema.NewLoaderServerFromContext,
+		convert.NewMapperServerFromContext)
 	if err != nil {
 		return err
 	}

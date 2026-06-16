@@ -48,7 +48,7 @@ func panicLoader(context.Context, *plugin.Context, string, string) (plugin.Provi
 	panic("not implemented")
 }
 
-func testHost() (plugin.Host, error) {
+func testHost(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 	return &plugin.MockHost{}, nil
 }
 

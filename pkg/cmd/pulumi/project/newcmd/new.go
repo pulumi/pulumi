@@ -41,6 +41,7 @@ import (
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -399,13 +400,18 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	pluginHost, err := pkghost.New(
+		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
 		ctx,
 		projinfo,
-		nil, /* host */
+		pluginHost,
 		cmdutil.Diag(),
 		cmdutil.Diag(),
-		nil,   /* debugging */
 		false, /* disableProviderPreview */
 		nil,   /* tracingSpan */
 		nil,   /* config */
