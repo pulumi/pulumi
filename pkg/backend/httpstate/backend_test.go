@@ -2944,9 +2944,7 @@ func newRunEngineActionFixture(
 			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		},
 		Opts: backend.UpdateOptions{Display: display.Options{
-			Color: colors.Never,
-			// Keep the event renderer and its progress spinner off the real stdout:
-			// raw writes corrupt the `go test -json` stream that gotestsum parses.
+			Color:            colors.Never,
 			Stdout:           io.Discard,
 			Stderr:           io.Discard,
 			SuppressProgress: true,

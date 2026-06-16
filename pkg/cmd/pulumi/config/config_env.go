@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -101,7 +102,8 @@ type configEnvCmd struct {
 	saveProjectStack func(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack, configFile string) error
 
 	// prompt asks the user to pick one of options.
-	prompt func(msg string, options []string, defaultOption string, colorization colors.Colorization) string
+	prompt func(msg string, options []string, defaultOption string, colorization colors.Colorization,
+		surveyAskOpts ...survey.AskOpt) string
 
 	stackRef   *string
 	configFile *string

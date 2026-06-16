@@ -20,6 +20,7 @@ import (
 	"io"
 	"strings"
 
+	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/acarl005/stripansi"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/eval"
@@ -91,7 +92,9 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		stdout:      stdout,
 		interactive: true,
 
-		prompt: func(msg string, options []string, defaultOption string, colorization colors.Colorization) string {
+		prompt: func(msg string, options []string, defaultOption string, colorization colors.Colorization,
+			surveyAskOpts ...survey.AskOpt,
+		) string {
 			return defaultOption
 		},
 
