@@ -870,14 +870,23 @@ func (p *propertyPrinter) printHiddenPaths(paths []resource.PropertyPath) {
 	}
 }
 
-// appendReplaceAnnotation inserts " # forces replacement" before the trailing
-// newline+reset sequence in the given output string.
+// appendReplaceAnnotation inserts " # forces replacement" on the property change line.
+// Single-line diffs are annotated at the end of the line; multiline object/array diffs are
+// annotated on the opening line so the tag is not stranded on a closing brace.
 func appendReplaceAnnotation(s string) string {
 	suffix := "\n" + colors.Reset
-	if strings.HasSuffix(s, suffix) {
-		return s[:len(s)-len(suffix)] + colors.Reset + colors.SpecReplace + " # forces replacement" + suffix
+	first := strings.Index(s, suffix)
+	if first == -1 {
+		return s
 	}
-	return s
+
+	annotation := colors.Reset + colors.SpecReplace + " # forces replacement"
+	last := strings.LastIndex(s, suffix)
+	if first != last {
+		return s[:first] + annotation + s[first:]
+	}
+
+	return s[:last] + annotation + s[last:]
 }
 
 func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxkey int, diff resource.ObjectDiff) {

@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -535,6 +536,75 @@ func TestPrintObjectDiff_ForcesReplacementAnnotation(t *testing.T) {
 		// Exactly one annotation for region
 		count := strings.Count(output, "# forces replacement")
 		assert.Equal(t, 1, count)
+	})
+
+	t.Run("multiline object replacement annotates opening line and renders cleanly", func(t *testing.T) {
+		t.Parallel()
+		innerDiff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"foo": {
+					Old: resource.NewProperty("a"),
+					New: resource.NewProperty("b"),
+				},
+				"bar": {
+					Old: resource.NewProperty("c"),
+					New: resource.NewProperty("d"),
+				},
+			},
+		}
+		diff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"config": {
+					Object: &innerDiff,
+				},
+			},
+		}
+		replacePaths := []resource.PropertyPath{{"config"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		// Assert the full rendered string: the annotation belongs on the opening "{"
+		// line, never on the closing "}", and the nested diff is left untouched.
+		expected := "" +
+			"  ~ config: { # forces replacement\n" +
+			"      ~ bar: \"c\" => \"d\"\n" +
+			"      ~ foo: \"a\" => \"b\"\n" +
+			"    }\n"
+		assert.Equal(t, expected, colors.Never.Colorize(buf.String()))
+	})
+
+	t.Run("multiline array replacement annotates opening line and renders cleanly", func(t *testing.T) {
+		t.Parallel()
+		diff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"zones": {
+					Array: &resource.ArrayDiff{
+						Updates: map[int]resource.ValueDiff{
+							0: {
+								Old: resource.NewProperty("a"),
+								New: resource.NewProperty("b"),
+							},
+						},
+					},
+				},
+			},
+		}
+		replacePaths := []resource.PropertyPath{{"zones"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		expected := "" +
+			"  ~ zones: [ # forces replacement\n" +
+			"      ~ [0]: \"a\" => \"b\"\n" +
+			"    ]\n"
+		assert.Equal(t, expected, colors.Never.Colorize(buf.String()))
 	})
 
 	t.Run("nested object replacement annotation at nested path", func(t *testing.T) {

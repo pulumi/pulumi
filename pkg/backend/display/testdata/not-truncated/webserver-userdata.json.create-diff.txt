@@ -13,7 +13,7 @@ Configuration:
         [id=i-0207dc7a2d8c5135a]
         [urn=urn:pulumi:dev::aws-ts-webserver::aws:ec2/instance:Instance::web-server-www]
         [provider=urn:pulumi:dev::aws-ts-webserver::pulumi:providers:aws::default_3_38_1::57baf899-740a-486a-908e-43cf27cce182]
-      ~ userData: 
+      ~ userData:  # forces replacement
             #!/bin/bash
           - echo "Hello, World!" > index.html
           + echo "Hello, Pulumi!" > index.html
@@ -22,7 +22,7 @@ Configuration:
         [id=i-0207dc7a2d8c5135a]
         [urn=urn:pulumi:dev::aws-ts-webserver::aws:ec2/instance:Instance::web-server-www]
         [provider=urn:pulumi:dev::aws-ts-webserver::pulumi:providers:aws::default_3_38_1::57baf899-740a-486a-908e-43cf27cce182]
-      ~ userData: 
+      ~ userData:  # forces replacement
             #!/bin/bash
           - echo "Hello, World!" > index.html
           + echo "Hello, Pulumi!" > index.html
