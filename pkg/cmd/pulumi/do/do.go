@@ -347,11 +347,9 @@ func NewDoCmd(
 	}
 
 	cmd := &cobra.Command{
-		// Hidden for now while we iterate.
-		Hidden: true,
-		Use:    "do <pkg:mod:typ> [command]",
-		Short:  "Interact directly with cloud resources",
-		Long: `Interact with any cloud
+		Use:   "do <pkg:mod:typ> [command]",
+		Short: "[EXPERIMENTAL] Interact directly with cloud resources",
+		Long: `[EXPERIMENTAL] Interact with any cloud
 
 pulumi do dynamically builds a CLI from any Pulumi provider's schema, giving you
 direct CRUD access to cloud resources without a Pulumi program or state file.
