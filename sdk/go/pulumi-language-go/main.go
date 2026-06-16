@@ -1407,7 +1407,9 @@ func (host *goLanguageHost) GenerateProject(
 	}
 	defer loader.Close()
 
-	extraOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
+	extraOptions := []pcl.BindOption{
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
@@ -1464,7 +1466,8 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(schema.NewCachedLoader(loader)))
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(schema.NewCachedLoader(loader)),
+		pcl.PreferOutputVersionedInvokes)
 	if err != nil {
 		return nil, err
 	}
