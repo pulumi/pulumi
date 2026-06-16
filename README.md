@@ -43,8 +43,7 @@ const sg = new aws.ec2.SecurityGroup("web-sg", {
 
 for (const i of [0, 1, 2]) {
     new aws.ec2.Instance(`web-${i}`, {
-        ami: "ami-7172b611",
-        instanceType: "t2.micro",
+        instanceType: "t3.micro",
         vpcSecurityGroupIds: [sg.id],
         userData: `#!/bin/bash
             echo "Hello, World!" > index.html
