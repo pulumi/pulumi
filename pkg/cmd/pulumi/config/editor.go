@@ -144,35 +144,59 @@ type escConfigEditor struct {
 	version string
 }
 
-func newESCConfigEditor(ctx context.Context, stack backend.Stack) (*escConfigEditor, error) {
-	envBackend, ok := stack.Backend().(backend.EnvironmentsBackend)
+// escEnvCoordinates resolves the environment backend and the org/project/name/version addressing the
+// stack's linked ESC environment. version is the pinned revision/tag carried by the ref (empty for
+// latest).
+func escEnvCoordinates(stack backend.Stack) (
+	envBackend backend.EnvironmentsBackend, orgName, envProject, envName, version string, err error,
+) {
+	eb, ok := stack.Backend().(backend.EnvironmentsBackend)
 	if !ok {
-		return nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
+		return nil, "", "", "", "", fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
 	orgNamer, ok := stack.(interface{ OrgName() string })
 	if !ok {
-		return nil, errors.New("internal error: stack does not provide an organization name")
+		return nil, "", "", "", "", errors.New("internal error: stack does not provide an organization name")
 	}
-	orgName := orgNamer.OrgName()
 
 	ref := stack.ConfigLocation().EscEnv
 	if ref == nil {
-		return nil, errors.New("stack is configured for remote config but has no linked environment")
+		return nil, "", "", "", "", errors.New("stack is configured for remote config but has no linked environment")
 	}
-	envProject, envName, err := splitEnvRef(*ref)
+	project, name, err := splitEnvRef(*ref)
+	if err != nil {
+		return nil, "", "", "", "", err
+	}
+	return eb, orgNamer.OrgName(), project, name, envRefVersion(*ref), nil
+}
+
+func newESCConfigEditor(ctx context.Context, stack backend.Stack) (*escConfigEditor, error) {
+	envBackend, orgName, envProject, envName, version, err := escEnvCoordinates(stack)
 	if err != nil {
 		return nil, err
 	}
+
 	// Read at the pinned revision/tag when the ref carries one, else latest. Save still guards against
 	// writing to a pinned version regardless.
-	version := envRefVersion(*ref)
-
 	def, etag, _, err := envBackend.GetEnvironment(ctx, orgName, envProject, envName, version, false)
 	if err != nil {
 		return nil, fmt.Errorf("getting environment definition: %w", err)
 	}
 
+	return newESCConfigEditorFromDef(envBackend, orgName, envProject, envName, version, def, etag)
+}
+
+// newESCConfigEditorFromDef builds an editor from an already-read environment definition and its etag,
+// rather than reading inside the constructor. Commit uses this so its drift-check read and its write
+// share one etag (force-with-lease with no read-modify-write gap). version must be empty for a writable
+// (unpinned) editor; a non-empty version makes Save refuse.
+func newESCConfigEditorFromDef(
+	envBackend backend.EnvironmentsBackend,
+	orgName, envProject, envName, version string,
+	def []byte,
+	etag string,
+) (*escConfigEditor, error) {
 	var doc yaml.Node
 	if len(def) != 0 {
 		if err := yaml.Unmarshal(def, &doc); err != nil {
@@ -258,6 +282,60 @@ func (e *escConfigEditor) Save(ctx context.Context) error {
 	return nil
 }
 
+// ConfigKeys returns the keys currently under values.pulumiConfig (empty if absent). Used by
+// ReplaceConfig to find keys to delete.
+func (e *escConfigEditor) ConfigKeys() ([]config.Key, error) {
+	node, ok := escEncoding.YAMLSyntax{Node: &e.doc}.Get(resource.PropertyPath{"values", "pulumiConfig"})
+	if !ok || node.Kind != yaml.MappingNode {
+		return nil, nil
+	}
+	keys := make([]config.Key, 0, len(node.Content)/2)
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		k, err := config.ParseKey(node.Content[i].Value)
+		if err != nil {
+			return nil, fmt.Errorf("parsing config key %q: %w", node.Content[i].Value, err)
+		}
+		keys = append(keys, k)
+	}
+	return keys, nil
+}
+
+// ReplaceConfig makes values.pulumiConfig exactly match c: keys present in the environment but absent
+// from c are removed, and keys in c are set (added or overwritten). Imports and any other values are
+// left untouched. Unlike SaveRemoteConfigValues, which only overwrites, this applies deletions — the
+// exact-replacement semantics `config env commit` needs. It buffers edits without saving so the caller
+// can reconcile imports on the same editor before a single Save.
+func (e *escConfigEditor) ReplaceConfig(ctx context.Context, c config.Map) error {
+	current, err := e.ConfigKeys()
+	if err != nil {
+		return err
+	}
+
+	target := make(map[string]bool, len(c))
+	for k := range c {
+		target[k.String()] = true
+	}
+	for _, k := range current {
+		if !target[k.String()] {
+			if err := e.Remove(ctx, k, false /*path*/); err != nil {
+				return err
+			}
+		}
+	}
+
+	keys := make(config.KeyArray, 0, len(c))
+	for k := range c {
+		keys = append(keys, k)
+	}
+	sort.Sort(keys)
+	for _, k := range keys {
+		if err := e.Set(ctx, k, c[k], false /*path*/); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Imports returns the names of the top-level `imports` entries (empty if absent). Unlike
 // workspace.Environment.Imports it omits the synthetic "yaml" marker, a local-Environment artifact
 // meaningless for the backing env's real imports.
@@ -323,6 +401,18 @@ func (e *escConfigEditor) RemoveImport(env string) error {
 		}
 	}
 	return nil
+}
+
+// ReplaceImports rewrites the `imports` sequence to exactly envs, in order, as plain scalar entries.
+// Used by commit to propagate an edited import list (including reordering); any structured/merge options
+// on the previous entries are dropped, so callers should only invoke it when the list actually changed.
+func (e *escConfigEditor) ReplaceImports(envs []string) error {
+	seq, err := e.ensureImportsNode()
+	if err != nil {
+		return err
+	}
+	seq.Content = nil
+	return e.AddImports(envs...)
 }
 
 func (e *escConfigEditor) ensureImportsNode() (*yaml.Node, error) {

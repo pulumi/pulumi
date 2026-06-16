@@ -524,6 +524,92 @@ func pulumiConfigScalar(t *testing.T, doc []byte, key string) *yaml.Node {
 	return n
 }
 
+func TestESCConfigEditorConfigKeys(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	const initial = `values:
+  pulumiConfig:
+    testProject:a: 1
+    testProject:b: 2
+`
+	s := remoteStackForEditor(t, []byte(initial), "etag", nil)
+	editor, err := newConfigEditor(ctx, s, &workspace.ProjectStack{}, config.NopEncrypter, "")
+	require.NoError(t, err)
+	esc, ok := editor.(*escConfigEditor)
+	require.True(t, ok)
+
+	keys, err := esc.ConfigKeys()
+	require.NoError(t, err)
+	got := map[string]bool{}
+	for _, k := range keys {
+		got[k.String()] = true
+	}
+	require.Equal(t, map[string]bool{"testProject:a": true, "testProject:b": true}, got)
+}
+
+// TestESCConfigEditorReplaceConfig verifies exact replacement: keys absent from the new set are removed
+// (not merely left in place as SaveRemoteConfigValues does), surviving keys are overwritten, and new
+// keys are added.
+func TestESCConfigEditorReplaceConfig(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	const initial = `values:
+  pulumiConfig:
+    testProject:a: 1
+    testProject:b: 2
+    testProject:c: 3
+`
+	uploaded := editForRemote(t, initial, func(t *testing.T, e *escConfigEditor) {
+		c := config.Map{
+			config.MustMakeKey("testProject", "a"): config.NewValue("updated"),
+			config.MustMakeKey("testProject", "d"): config.NewValue("new"),
+		}
+		require.NoError(t, e.ReplaceConfig(ctx, c))
+	})
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(uploaded, &doc))
+	pc := doc["values"].(map[string]any)["pulumiConfig"].(map[string]any)
+	require.Equal(t, "updated", pc["testProject:a"], "surviving key overwritten")
+	require.Equal(t, "new", pc["testProject:d"], "new key added")
+	_, hasB := pc["testProject:b"]
+	_, hasC := pc["testProject:c"]
+	require.False(t, hasB, "key absent from the new set is removed")
+	require.False(t, hasC, "key absent from the new set is removed")
+}
+
+// TestNewESCConfigEditorFromDefUsesSeededEtag verifies the seeded constructor writes with the supplied
+// etag and never re-reads the environment, giving commit a no-gap force-with-lease write.
+func TestNewESCConfigEditorFromDefUsesSeededEtag(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	var gotEtag string
+	be := &backend.MockEnvironmentsBackend{
+		GetEnvironmentF: func(
+			_ context.Context, _, _, _, _ string, _ bool,
+		) ([]byte, string, int, error) {
+			t.Fatal("a seeded editor must not read the environment")
+			return nil, "", 0, nil
+		},
+		UpdateEnvironmentWithProjectF: func(
+			_ context.Context, _, _, _ string, _ []byte, etag string,
+		) (apitype.EnvironmentDiagnostics, error) {
+			gotEtag = etag
+			return nil, nil
+		},
+	}
+
+	editor, err := newESCConfigEditorFromDef(
+		be, "org", "testProject", "testStack", "", []byte("values:\n  pulumiConfig: {}\n"), "lease-etag")
+	require.NoError(t, err)
+	require.NoError(t, editor.Set(ctx, config.MustMakeKey("testProject", "k"), config.NewValue("v"), false))
+	require.NoError(t, editor.Save(ctx))
+	require.Equal(t, "lease-etag", gotEtag)
+}
+
 // TestConfigSetSecretRemoteCommand exercises the full `config set --secret` command path against a
 // remote stack, verifying the plaintext is passed through to the editor (not encrypted locally) and
 // uploaded as fn::secret.
