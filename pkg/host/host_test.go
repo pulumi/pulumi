@@ -50,7 +50,7 @@ func newHost(t *testing.T, installLang plugin.LanguageInstaller) *defaultHost {
 func TestLogWithNilSink(t *testing.T) {
 	t.Parallel()
 
-	h, err := New(t.Context(), nil, nil, nil, nil)
+	h, err := New(t.Context(), nil, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	host, ok := h.(*defaultHost)
 	require.True(t, ok)

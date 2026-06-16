@@ -154,7 +154,7 @@ func TestPclSnippet(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
@@ -241,7 +241,7 @@ func TestPclInvalidSnippet(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
@@ -280,7 +280,7 @@ func TestPclSnippetUpdate(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -329,7 +329,7 @@ func TestPclSnippetDelete(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -378,7 +378,7 @@ func TestPclMultipleSnippets(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -492,7 +492,7 @@ func TestPclSnippetBuiltins(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -586,7 +586,7 @@ func TestPclSnippetDirectories(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -695,7 +695,7 @@ func TestPclSnippetInvoke(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -800,7 +800,7 @@ func TestPclSnippetResourceReference(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -925,7 +925,7 @@ func TestPclSnippetReferenceLocalComponent(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -1039,7 +1039,7 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -1144,7 +1144,7 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -1281,7 +1281,7 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -1351,7 +1351,7 @@ func TestPclSnippetResourceOptions(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -1429,7 +1429,7 @@ func TestPclSnippetResourceOptionsResourceRefs(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -1495,7 +1495,7 @@ func TestPclSnippetResourceOptionsParent(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -1551,7 +1551,7 @@ func TestPclSnippetResourceOptionsAlias(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -1612,7 +1612,7 @@ func TestPclSnippetResourceOptionsRange(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 

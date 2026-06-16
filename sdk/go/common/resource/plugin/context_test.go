@@ -65,8 +65,6 @@ func TestWithoutProviderDebugging(t *testing.T) {
 		nil,
 		false,
 		mocktracer.New().StartSpan("root"),
-		nil,
-		nil,
 	)
 	require.NoError(t, err)
 
