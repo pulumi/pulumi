@@ -100,8 +100,7 @@ type configEnvCmd struct {
 
 	saveProjectStack func(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack, configFile string) error
 
-	// prompt asks the user to pick one of options. It is indirected so tests can answer
-	// the question without an interactive prompt being rendered to the process's stdout.
+	// prompt asks the user to pick one of options.
 	prompt func(msg string, options []string, defaultOption string, colorization colors.Colorization) string
 
 	stackRef   *string
