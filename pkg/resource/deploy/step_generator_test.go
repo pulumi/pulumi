@@ -1008,11 +1008,11 @@ func TestStepGenerator(t *testing.T) {
 		// registry holding the fake.
 		fakeProvider := &deploytest.Provider{}
 		host := &plugin.MockHost{
-			ProviderF: func(workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
+			ProviderF: func(_ *plugin.Context, _ workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
 				return fakeProvider, nil
 			},
 		}
-		registry := providers.NewRegistry(host, false, nil)
+		registry := providers.NewRegistry(newMockRegistryContext(host), false, nil)
 
 		providerURN := resource.URN("urn:pulumi:stack::project::pulumi:providers:k8s::default")
 		err := registry.Same(t.Context(), &resource.State{
