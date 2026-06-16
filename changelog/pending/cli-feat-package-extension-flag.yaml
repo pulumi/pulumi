@@ -1,0 +1,6 @@
+component: cli
+kind: feat
+body: Add an `--extension` flag to package commands for adding a package as an extension of its base provider
+time: 2026-06-16T00:00:00+00:00
+custom:
+  PR: ""

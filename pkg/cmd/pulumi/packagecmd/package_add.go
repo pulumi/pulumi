@@ -93,6 +93,12 @@ that begin with dashes, you may need to use '--' to separate the provider name
 from the parameters, as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value
+
+Use '--extension' to add the package as an extension of its base provider
+instead of a replacement. The extension's parameters are the flag's value,
+quoted as a single shell-style string:
+
+  pulumi package add <provider> --extension "<extension-parameter>..."
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			agent := agentdetect.Detect(os.Getenv)
@@ -124,7 +130,8 @@ from the parameters, as in:
 						Runtime: workspace.NewProjectRuntimeInfo(cmdCmd.NormalizeRuntimeName(language), nil),
 					},
 					reg: cmdCmd.NewDefaultRegistry(
-						cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+						cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global(),
+					),
 				}
 			}
 
@@ -149,7 +156,12 @@ from the parameters, as in:
 			}
 
 			pluginSource := args[0]
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+
+			parameterArgs, asExtension, err := constrictor.ExtensionArgs(cmd, args)
+			if err != nil {
+				return err
+			}
+			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
 
 			pkg, packageSpec, diags, err := packages.InstallPackage(
 				cmd.OutOrStdout(),
@@ -162,7 +174,8 @@ from the parameters, as in:
 				parameters,
 				target.reg,
 				env.Global(),
-				0, /* unbounded concurrency */
+				0,           /* unbounded concurrency */
+				asExtension, /* asExtension */
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
@@ -170,6 +183,30 @@ from the parameters, as in:
 					return fmt.Errorf("%w\nSearch: pulumi api '/api/registry/packages?search=<term>'", err)
 				}
 				return err
+			}
+
+			if asExtension {
+				// Schema extraction already verified the source is extension-parameterized.
+				// File-based schemas have no underlying provider to record.
+				source := strings.Split(pluginSource, "@")[0]
+				if ext := filepath.Ext(source); ext == ".yaml" || ext == ".yml" || ext == ".json" {
+					return nil
+				}
+
+				if target.projectFilePath != nil {
+					target.proj.AddPackage(pkg.Name, workspace.PackageSpec{
+						Source:     pkg.ExtensionParameterization.BaseProvider.Name,
+						Version:    pkg.ExtensionParameterization.BaseProvider.Version.String(),
+						Extensions: parameterArgs,
+					})
+					fileName := filepath.Base(*target.projectFilePath)
+					if err := target.proj.Save(*target.projectFilePath); err != nil {
+						return fmt.Errorf("failed to update %s: %w", fileName, err)
+					}
+				}
+
+				fmt.Fprintf(cmd.ErrOrStderr(), "Extended package %s\n", schemaDisplayName(pkg))
+				return nil
 			}
 
 			// Build and add the package spec to the project
@@ -239,6 +276,7 @@ from the parameters, as in:
 
 	cmd.Flags().StringVar(&language, "language", "",
 		"Run outside a Pulumi project or plugin: [nodejs|python|go|dotnet|java]")
+	constrictor.AddExtensionFlag(cmd)
 
 	return cmd
 }
@@ -298,7 +336,8 @@ func loadEnclosingTarget(ctx context.Context, wd string) (addTarget, error) {
 			installRoot:     filepath.Dir(filePath),
 			projectFilePath: &filePath,
 			reg: cmdCmd.NewDefaultRegistry(
-				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global()),
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global(),
+			),
 			proj: baseProject,
 		}, nil
 	case *workspace.PluginProject:

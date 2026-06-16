@@ -82,9 +82,13 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				return errors.New("only one of --function or --resource can be specified")
 			}
 
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+			parameterArgs, asExtension, err := constrictor.ExtensionArgs(cmd, args)
+			if err != nil {
+				return err
+			}
+			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, args[0], parameters,
-				registry, env.Global(), 0 /* unbounded concurrency */)
+				registry, env.Global(), 0 /* unbounded concurrency */, asExtension)
 			if err != nil {
 				return err
 			}
@@ -118,6 +122,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 	cmd.Flags().StringVarP(&module, "module", "m", "", "Module name")
 	cmd.Flags().StringVarP(&resource, "resource", "r", "", "Resource name")
 	cmd.Flags().StringVarP(&function, "function", "f", "", "Function name")
+	constrictor.AddExtensionFlag(cmd)
 
 	return cmd
 }
