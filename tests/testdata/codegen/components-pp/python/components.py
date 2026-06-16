@@ -6,7 +6,8 @@ from typing import Any
 
 simple_component = SimpleComponent("simpleComponent")
 multiple_simple_components: list[Any] = []
-for range in [{"value": i} for i in range(0, 10)]:
+multiple_simple_components_range: list[dict[str, Any]] = [{"value": i} for i in range(0, 10)]
+for range in multiple_simple_components_range:
     multiple_simple_components.append(SimpleComponent(f"multipleSimpleComponents-{range['value']}"))
 another_component = AnotherComponent("anotherComponent")
 example_component = ExampleComponent("exampleComponent", {

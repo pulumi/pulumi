@@ -1461,10 +1461,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 			resName := g.makeResourceName(name, "range['key']")
 			g.Indented(func() {
-				// The map key is always a string, but the shared `range` loop
-				// variable may be typed as an int-valued dict elsewhere in the
-				// program, so coerce the key to keep the dict[str, Any] well-typed.
-				g.Fgenf(w, "%s%s[str(range['key'])] = ", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s[range['key']] = ", g.Indent, nameVar)
 				instantiate(resName)
 				g.Fprint(w, "\n")
 			})
@@ -1475,7 +1472,13 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+				// Bind the range entries through a typed local so the loop
+				// variable is dict[str, Any]. Without the annotation it would be
+				// inferred as dict[str, int], which leaks into a later map range
+				// that indexes a collection by `range['key']`.
+				g.Fgenf(w, "%s%s_range: list[dict[str, Any]] = [{\"value\": i} for i in range(0, %.v)]\n",
+					g.Indent, nameVar, rangeExpr)
+				g.Fgenf(w, "%sfor range in %s_range:\n", g.Indent, nameVar)
 				resKey = "value"
 			} else {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
@@ -1666,7 +1669,13 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 			}
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+				// Bind the range entries through a typed local so the loop
+				// variable is dict[str, Any]. Without the annotation it would be
+				// inferred as dict[str, int], which leaks into a later map range
+				// that indexes a collection by `range['key']`.
+				g.Fgenf(w, "%s%s_range: list[dict[str, Any]] = [{\"value\": i} for i in range(0, %.v)]\n",
+					g.Indent, nameVar, rangeExpr)
+				g.Fgenf(w, "%sfor range in %s_range:\n", g.Indent, nameVar)
 				resKey = "value"
 			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
 				g.Fgenf(w,
@@ -1801,10 +1810,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			resName := g.makeResourceName(name, "range['key']")
 			g.Indented(func() {
 				declareDeferredOutputVariables()
-				// The map key is always a string, but the shared `range` loop
-				// variable may be typed as an int-valued dict elsewhere in the
-				// program, so coerce the key to keep the dict[str, Any] well-typed.
-				g.Fgenf(w, "%s%s[str(range['key'])] = ", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s[range['key']] = ", g.Indent, nameVar)
 				instantiate(resName)
 				g.Fprint(w, "\n")
 			})
@@ -1813,7 +1819,13 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+				// Bind the range entries through a typed local so the loop
+				// variable is dict[str, Any]. Without the annotation it would be
+				// inferred as dict[str, int], which leaks into a later map range
+				// that indexes a collection by `range['key']`.
+				g.Fgenf(w, "%s%s_range: list[dict[str, Any]] = [{\"value\": i} for i in range(0, %.v)]\n",
+					g.Indent, nameVar, rangeExpr)
+				g.Fgenf(w, "%sfor range in %s_range:\n", g.Indent, nameVar)
 				resKey = "value"
 			} else {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
