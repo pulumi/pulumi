@@ -1,0 +1,6 @@
+component: programgen/python
+kind: fix
+body: Fix Python program generation for map `range` options and references to conditionally-created resources
+time: 2026-06-16T18:55:42.000000+00:00
+custom:
+    PR: ""

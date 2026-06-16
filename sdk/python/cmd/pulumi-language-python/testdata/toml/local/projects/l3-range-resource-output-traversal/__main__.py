@@ -18,9 +18,9 @@ def create_list_output(range_body):
 
 container.details.apply(create_list_output)
 # A resource that ranges over a computed map
-map_output: list[Any] = []
+map_output: dict[str, Any] = {}
 def create_map_output(range_body):
     for range in [{"key": k, "value": v} for [k, v] in sorted((range_body).items())]:
-        map_output.append(nestedobject.Target(f"mapOutput-{range['key']}", name=f"{range['key']}=>{range['value']}"))
+        map_output[str(range['key'])] = nestedobject.Target(f"mapOutput-{range['key']}", name=f"{range['key']}=>{range['value']}")
 
 map_container.tags.apply(create_map_output)

@@ -212,8 +212,20 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	defer func() { g.insideApplyLambda = prev }()
 
 	if len(applyArgs) == 1 {
+		// If the single output dereferences an optional (conditionally-created)
+		// resource, guard the whole apply so the result is None when the resource
+		// was not created, rather than calling `.apply` on None.
+		optRoots := g.optionalResourcesIn(applyArgs[0])
+
+		prevSuppress := g.suppressOptionalGuard
+		g.suppressOptionalGuard = true
 		// If we only have a single output, just generate a normal `.apply`.
-		g.Fgenf(w, "%.16v.apply(%.v)", applyArgs[0], then)
+		if len(optRoots) > 0 {
+			g.Fgenf(w, "(%.16v.apply(%.v) if %s else None)", applyArgs[0], then, optionalGuardCondition(optRoots))
+		} else {
+			g.Fgenf(w, "%.16v.apply(%.v)", applyArgs[0], then)
+		}
+		g.suppressOptionalGuard = prevSuppress
 	} else {
 		// Otherwise, generate a call to `pulumi.all([]).apply()`.
 		g.Fgen(w, "pulumi.Output.all(\n")
@@ -933,8 +945,56 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		rootName = "__item"
 	}
 
+	// When a traversal dereferences an optional (conditionally-created) resource,
+	// guard the access so the value is None if the resource was not created. This
+	// keeps the generated code well-typed: `root.attr` on a `T | None` is rejected
+	// by type checkers. genApply handles the case where the traversal is an apply
+	// argument, so skip the guard there to avoid wrapping inside the apply call.
+	guardOptional := !g.suppressOptionalGuard && g.traversalDerefsOptional(rootName, expr)
+	if guardOptional {
+		g.Fgen(w, "(")
+	}
 	g.Fgen(w, rootName)
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts)
+	if guardOptional {
+		g.Fgenf(w, " if %s is not None else None)", rootName)
+	}
+}
+
+// traversalDerefsOptional reports whether expr accesses an attribute through a
+// conditionally-created (bool-ranged) resource, whose Python variable is typed
+// `T | None`. rootName is the generated name of the root variable.
+func (g *generator) traversalDerefsOptional(rootName string, expr *model.ScopeTraversalExpression) bool {
+	return len(expr.Traversal) >= 2 && g.optionalResources.Has(rootName)
+}
+
+// optionalResourcesIn returns the generated names of the conditionally-created
+// resources that expr dereferences, in order of first appearance. Such accesses
+// must be guarded since the resource variable is typed `T | None`.
+func (g *generator) optionalResourcesIn(expr model.Expression) []string {
+	var roots []string
+	seen := map[string]bool{}
+	_, _ = model.VisitExpression(expr, nil, func(e model.Expression) (model.Expression, hcl.Diagnostics) {
+		if st, ok := e.(*model.ScopeTraversalExpression); ok {
+			root := g.nodeName(st.RootName)
+			if g.traversalDerefsOptional(root, st) && !seen[root] {
+				seen[root] = true
+				roots = append(roots, root)
+			}
+		}
+		return e, nil
+	})
+	return roots
+}
+
+// optionalGuardCondition builds the `a is not None and b is not None` predicate
+// that guards a dereference of the given optional resources.
+func optionalGuardCondition(roots []string) string {
+	conditions := make([]string, len(roots))
+	for i, root := range roots {
+		conditions[i] = root + " is not None"
+	}
+	return strings.Join(conditions, " and ")
 }
 
 func isHookArgsTraversal(expr *model.ScopeTraversalExpression) bool {

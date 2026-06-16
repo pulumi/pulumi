@@ -70,6 +70,17 @@ type generator struct {
 	// dict literals (which pyright cannot infer as TypedDicts inside lambda
 	// return expressions).
 	applyLambdaType model.Type
+	// optionalResources holds the Python variable names of resources that are
+	// conditionally created (a boolean `range`), and are therefore typed `T |
+	// None`. Dereferencing such a resource must be guarded so the access is
+	// well-typed.
+	optionalResources codegen.StringSet
+	// suppressOptionalGuard disables wrapping a traversal that dereferences an
+	// optional (conditionally-created) resource in `... if root is not None else
+	// None`. It is set while genApply emits the dereferenced traversal as an
+	// apply argument so that genApply can place the guard around the whole apply
+	// call instead of inside it.
+	suppressOptionalGuard bool
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -468,8 +479,9 @@ func newGenerator(program *pcl.Program) (*generator, error) {
 	}
 
 	g := &generator{
-		program: program,
-		quotes:  map[model.Expression]string{},
+		program:           program,
+		quotes:            map[model.Expression]string{},
+		optionalResources: codegen.NewStringSet(),
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -1244,6 +1256,15 @@ func (g *generator) genHookDeclarations(r *pcl.Resource) map[string][]string {
 	return hookVars
 }
 
+// isMapRange reports whether the given resource `range` expression iterates a
+// map. Map ranges collect their resources into a dict keyed by the map key,
+// rather than a list. The range type may be wrapped in an output (when ranging
+// over a computed value), so outputs are resolved first.
+func isMapRange(rangeExpr model.Expression) bool {
+	_, isMap := pcl.UnwrapOption(model.ResolveOutputs(rangeExpr.Type())).(*model.MapType)
+	return isMap
+}
+
 // genResourceDeclaration handles the generation of instantiations resources.
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
 	qualifiedMemberName, diagnostics := g.resourceTypeName(r)
@@ -1257,6 +1278,10 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 	optionsBag, temps := g.lowerResourceOptions(r.Options, r.Schema)
 	name := r.LogicalName()
 	nameVar := g.nodeName(r.Name())
+	if r.Options != nil && r.Options.Range != nil &&
+		model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
+		g.optionalResources.Add(nameVar)
+	}
 
 	if needsDefinition {
 		g.genTrivia(w, r.Definition.Tokens.GetType(""))
@@ -1321,6 +1346,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			loweredRangeExpr, rangeExprTemps := g.lowerExpression(rangeExpr, rangeType)
 			if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
+			} else if isMapRange(rangeExpr) {
+				g.Fgenf(w, "%s%s: dict[str, Any] = {}\n", g.Indent, nameVar)
 			} else {
 				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 			}
@@ -1423,6 +1450,24 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
 			})
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			if needsDefinition {
+				g.Fgenf(w, "%s%s: dict[str, Any] = {}\n", g.Indent, nameVar)
+			}
+
+			g.Fgenf(w,
+				"%sfor range in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
+				g.Indent, rangeExpr)
+
+			resName := g.makeResourceName(name, "range['key']")
+			g.Indented(func() {
+				// The map key is always a string, but the shared `range` loop
+				// variable may be typed as an int-valued dict elsewhere in the
+				// program, so coerce the key to keep the dict[str, Any] well-typed.
+				g.Fgenf(w, "%s%s[str(range['key'])] = ", g.Indent, nameVar)
+				instantiate(resName)
+				g.Fprint(w, "\n")
+			})
 		} else {
 			if needsDefinition {
 				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
@@ -1432,10 +1477,6 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
 				resKey = "value"
-			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
-				g.Fgenf(w,
-					"%sfor range in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
-					g.Indent, rangeExpr)
 			} else {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
 			}
@@ -1468,6 +1509,10 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 	optionsBag, temps := g.lowerResourceOptions(r.Options, r.Schema)
 	name := r.LogicalName()
 	nameVar := g.nodeName(r.Name())
+	if r.Options != nil && r.Options.Range != nil &&
+		model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
+		g.optionalResources.Add(nameVar)
+	}
 
 	var idInput model.Expression
 	stateInputs := slice.Prealloc[*model.Attribute](len(r.Inputs))
@@ -1657,6 +1702,10 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
 	name := r.LogicalName()
 	nameVar := g.nodeName(r.Name())
+	if r.Options != nil && r.Options.Range != nil &&
+		model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
+		g.optionalResources.Add(nameVar)
+	}
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.Labels {
@@ -1742,6 +1791,23 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
 			})
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.Fgenf(w, "%s%s: dict[str, Any] = {}\n", g.Indent, nameVar)
+
+			g.Fgenf(w,
+				"%sfor range in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
+				g.Indent, rangeExpr)
+
+			resName := g.makeResourceName(name, "range['key']")
+			g.Indented(func() {
+				declareDeferredOutputVariables()
+				// The map key is always a string, but the shared `range` loop
+				// variable may be typed as an int-valued dict elsewhere in the
+				// program, so coerce the key to keep the dict[str, Any] well-typed.
+				g.Fgenf(w, "%s%s[str(range['key'])] = ", g.Indent, nameVar)
+				instantiate(resName)
+				g.Fprint(w, "\n")
+			})
 		} else {
 			g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 
@@ -1749,10 +1815,6 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
 				resKey = "value"
-			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
-				g.Fgenf(w,
-					"%sfor range in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
-					g.Indent, rangeExpr)
 			} else {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
 			}
