@@ -1537,7 +1537,11 @@ func runLanguageTests(
 		}
 
 		updateOptions := run.UpdateOptions
-		updateOptions.Host = pctx.Host
+		updateOptions.HostFactory = func(
+			ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext,
+		) (plugin.Host, error) {
+			return pctx.Host, nil
+		}
 
 		// Translate the policy pack option on the test to point to the paths given by the testdata
 		if len(run.PolicyPacks) > 0 && token.PolicyPackDirectory == "" {

@@ -328,6 +328,11 @@ func LoadLocalPolicyPackAnalyzers(
 	return analyzers, nil
 }
 
+// HostFactory constructs the plugin host for a deployment.
+type HostFactory func(
+	ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext,
+) (plugin.Host, error)
+
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 //
 // This structure is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
@@ -395,8 +400,8 @@ type UpdateOptions struct {
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
 
-	// the plugin host to use for this update
-	Host plugin.Host
+	// HostFactory builds the plugin host for this operation.
+	HostFactory HostFactory
 
 	// The plan to use for the update, if any.
 	Plan *deploy.Plan
