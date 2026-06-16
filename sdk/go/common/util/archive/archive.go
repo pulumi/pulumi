@@ -105,6 +105,33 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		if _, err = io.Copy(dst, r); err != nil {
 			return fmt.Errorf("untarring file %s: %w", path, err)
 		}
+	case tar.TypeSymlink:
+		// Guard against symlinks that point outside the extraction directory.
+		target := header.Linkname
+		if !filepath.IsAbs(target) {
+			//nolint:gosec // This is only for checking for symlinks outside of the extraction directory.
+			target = filepath.Join(filepath.Dir(path), target)
+		}
+		rel, err := filepath.Rel(dir, target)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			return fmt.Errorf("symlink %s points outside the extraction directory", header.Name)
+		}
+
+		linkDir := filepath.Dir(path)
+		if _, err := os.Stat(linkDir); err != nil {
+			if err = os.MkdirAll(linkDir, 0o0700); err != nil {
+				return fmt.Errorf("extracting dir %s: %w", linkDir, err)
+			}
+		}
+
+		if _, err := os.Lstat(path); err == nil {
+			if err = os.Remove(path); err != nil {
+				return fmt.Errorf("removing existing file %s before creating symlink: %w", path, err)
+			}
+		}
+		if err := os.Symlink(header.Linkname, path); err != nil {
+			return fmt.Errorf("extracting symlink %s: %w", path, err)
+		}
 	default:
 		return fmt.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
 	}
