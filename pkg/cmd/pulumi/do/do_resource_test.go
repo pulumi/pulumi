@@ -860,7 +860,7 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 	// The persistent --<pkg>:<input> flags are driven by spec.Provider.InputProperties; the regular
 	// doResourceSpec helper doesn't populate that, so add region/tenant here for this test only.
 	spec := doResourceSpec(false)
-	spec.Provider = schema.ResourceSpec{
+	spec.Provider = &schema.ResourceSpec{
 		InputProperties: map[string]schema.PropertySpec{
 			"region": {TypeSpec: schema.TypeSpec{Type: "string"}},
 			"tenant": {TypeSpec: schema.TypeSpec{Type: "string"}},
