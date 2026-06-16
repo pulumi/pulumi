@@ -19,6 +19,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
+	pkglogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -55,6 +57,9 @@ func MainContext(
 	flag.Parse()
 
 	// Initialize loggers before going any further.
+	logging.RegisterExportHandlerWrapper(func(h slog.Handler) slog.Handler {
+		return pkglogging.NewPropertyExportHandler(h)
+	})
 	logging.InitLogging(false, 0, false)
 
 	// When the CLI provides an OTel endpoint, we use OTel as the primary tracing backend and bridge legacy OpenTracing
