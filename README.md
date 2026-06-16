@@ -37,12 +37,19 @@ For example, create three web servers:
 ```typescript
 import * as aws from "@pulumi/aws";
 
+const ami = aws.ec2.getAmiOutput({
+    mostRecent: true,
+    owners: ["amazon"],
+    filters: [{ name: "name", values: ["al2023-ami-*-x86_64"] }],
+});
+
 const sg = new aws.ec2.SecurityGroup("web-sg", {
     ingress: [{ protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"] }],
 });
 
 for (const i of [0, 1, 2]) {
     new aws.ec2.Instance(`web-${i}`, {
+        ami: ami.id,
         instanceType: "t3.micro",
         vpcSecurityGroupIds: [sg.id],
         userData: `#!/bin/bash
