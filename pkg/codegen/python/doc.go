@@ -122,6 +122,24 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 	return title(tokenToName(f.Token)) + "Result"
 }
 
+// ResolveDocRef renders a single doc ref as a Python name. It honours per-package
+// ModuleNameOverrides and resource→args class naming (including the `InitArgs` fallback used when
+// an object type collides with a resource token).
+func (d DocLanguageHelper) ResolveDocRef(pkg schema.PackageReference, selfRef, ref schema.DocRef) (string, bool, error) {
+	var info PackageInfo
+	if a, err := pkg.Language("python"); err == nil {
+		info, _ = a.(PackageInfo)
+	}
+	mod := &modContext{
+		pkg:              pkg,
+		mod:              "\x00docrefresolver",
+		modNameOverrides: info.ModuleNameOverrides,
+		typeDetails:      map[*schema.ObjectType]*typeDetails{},
+	}
+	name, ok := mod.docRefResolver(selfRef)(ref)
+	return name, ok, nil
+}
+
 func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return PyName(m.Name)
 }

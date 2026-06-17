@@ -2571,14 +2571,10 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	return nil
 }
 
-func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterExamples bool) (string, error) {
-	if comment == "" {
-		return "", nil
-	}
-	if filterExamples {
-		comment = codegen.FilterExamples(comment, "python")
-	}
-	comment, err := mod.pkg.InterpretPulumiRefs(comment, func(ref schema.DocRef) (string, bool) {
+// docRefResolver returns a resolver for `{{% ref %}}` shortcodes that produces Python names. If
+// selfRef is set, refs within the same scope are returned unqualified.
+func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef) (string, bool) {
+	return func(ref schema.DocRef) (string, bool) {
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
@@ -2623,7 +2619,17 @@ func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterE
 		}
 
 		return fmt.Sprintf("%s.%s", base, property), true
-	})
+	}
+}
+
+func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterExamples bool) (string, error) {
+	if comment == "" {
+		return "", nil
+	}
+	if filterExamples {
+		comment = codegen.FilterExamples(comment, "python")
+	}
+	comment, err := mod.pkg.InterpretPulumiRefs(comment, mod.docRefResolver(selfRef))
 	if err != nil {
 		return "", fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
 	}
