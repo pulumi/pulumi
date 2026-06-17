@@ -427,8 +427,7 @@ func newPlugin[T any](
 		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, nil, fmt.Errorf(
-			"%v plugin [%v] wrote an invalid port to stdout: %w", prefix, bin, err,
-		)
+			"%v plugin [%v] wrote an invalid port to stdout: %w", prefix, bin, err)
 	}
 
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
@@ -711,8 +710,7 @@ func ValidatePulumiVersionRange(pulumiVersionRange, cliVersion string) error {
 		}
 		if !rg(cliVersion) {
 			return fmt.Errorf(
-				"Pulumi CLI version %s does not satisfy the version range %q", cliVersion, pulumiVersionRange,
-			)
+				"Pulumi CLI version %s does not satisfy the version range %q", cliVersion, pulumiVersionRange)
 		}
 	}
 	return nil

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -38,12 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-// preparePluginEnv prepares the plugin's RPC target. The cloud URL and access token reach the plugin
-// via the context's ResourceProviderEnv, injected by ExecPlugin.
-func preparePluginEnv(grpcServer *plugin.GrpcServer) []string {
-	return append(os.Environ(), "PULUMI_RPC_TARGET="+grpcServer.Addr())
-}
 
 func newPluginRunCmd() *cobra.Command {
 	var kind string
@@ -126,17 +119,7 @@ func newPluginRunCmd() *cobra.Command {
 			}
 			defer grpcServer.Close()
 
-			// Prepare environment variables for the plugin
-			pluginEnvStrings := preparePluginEnv(grpcServer)
-			// Convert []string to env.Env
-			pluginEnvMap := make(env.MapStore)
-			for _, envVar := range pluginEnvStrings {
-				parts := strings.SplitN(envVar, "=", 2)
-				if len(parts) == 2 {
-					pluginEnvMap[parts[0]] = parts[1]
-				}
-			}
-			pluginEnv := env.NewEnv(pluginEnvMap)
+			pluginEnv := env.NewEnv(env.MapStore{"PULUMI_RPC_TARGET": grpcServer.Addr()})
 
 			plugin, err := plugin.ExecPlugin(pctx, pluginPath, source, kind, pluginArgs, "", pluginEnv, false)
 			if err != nil {

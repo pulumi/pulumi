@@ -19,7 +19,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -48,21 +47,6 @@ func testSetup(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServ
 	return ctx, pctx, server
 }
 
-// findEnvVar searches for an environment variable with the given prefix
-// Returns the value after the prefix and whether it was found
-// If the variable appears multiple times, returns the last value (which takes precedence)
-func findEnvVar(env []string, prefix string) (string, bool) {
-	var lastValue string
-	var found bool
-	for _, e := range env {
-		if value, ok := strings.CutPrefix(e, prefix); ok {
-			lastValue = value
-			found = true
-		}
-	}
-	return lastValue, found
-}
-
 func TestCreatePluginRPCServer(t *testing.T) {
 	t.Parallel()
 
@@ -82,37 +66,6 @@ func TestCreatePluginRPCServer(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, server2)
 	defer server2.Close()
-}
-
-func TestPreparePluginEnv_SetsRPCTarget(t *testing.T) {
-	t.Parallel()
-
-	_, _, server := testSetup(t)
-
-	env := preparePluginEnv(server)
-
-	// Verify PULUMI_RPC_TARGET is set
-	addr, found := findEnvVar(env, "PULUMI_RPC_TARGET=")
-	assert.True(t, found, "environment should contain PULUMI_RPC_TARGET")
-	assert.NotEmpty(t, addr, "RPC target address should not be empty")
-	assert.Contains(t, addr, ":", "RPC target should contain a port")
-}
-
-// Note: Cannot use t.Parallel() because this test uses t.Setenv()
-func TestPreparePluginEnv_IncludesExistingEnvironment(t *testing.T) {
-	_, _, server := testSetup(t)
-
-	// Set a test environment variable
-	testEnvKey := "TEST_PLUGIN_ENV_VAR"
-	testEnvValue := "test-value-123"
-	t.Setenv(testEnvKey, testEnvValue)
-
-	env := preparePluginEnv(server)
-
-	// Verify existing environment variable is included
-	value, found := findEnvVar(env, testEnvKey+"=")
-	assert.True(t, found, "existing environment variables should be included")
-	assert.Equal(t, testEnvValue, value)
 }
 
 //nolint:paralleltest // Cannot use t.Parallel() because this test uses t.Setenv
