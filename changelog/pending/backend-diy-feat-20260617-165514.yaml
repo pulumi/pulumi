@@ -1,0 +1,6 @@
+component: backend/diy
+kind: feat
+body: support alicloud oss backend
+time: 2026-06-17T16:55:14.885238182-05:00
+custom:
+    PR: ""

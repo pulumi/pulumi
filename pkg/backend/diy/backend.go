@@ -36,13 +36,14 @@ import (
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
 	"gocloud.dev/blob/gcsblob"     // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	"gocloud.dev/blob/s3blob"      // driver for s3://
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	_ "github.com/pulumi/pulumi/pkg/v3/backend/diy/oss"      // driver for oss://
 	_ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // driver for postgres://
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
@@ -246,6 +247,8 @@ func newDIYBackend(
 	if err != nil {
 		return nil, err
 	}
+
+	u = massageS3CompatibleURL(u)
 
 	p, err := url.Parse(u)
 	if err != nil {
@@ -618,6 +621,29 @@ func massageBlobPath(path string) (string, error) {
 	}
 
 	return FilePathPrefix + path + queryString, nil
+}
+
+// massageS3CompatibleURL smooths over a sharp edge of S3-compatible object stores
+// (Alibaba Cloud OSS, MinIO, Ceph, R2, Spaces, ...). When an s3:// URL targets a
+// custom endpoint, default the request checksum calculation to "when required":
+// recent AWS SDK versions add aws-chunked/trailing-checksum content-encoding to
+// uploads by default, which many S3-compatible stores reject with 403
+// SignatureDoesNotMatch. Plain AWS S3 (no custom endpoint) and any user-provided
+// value are left untouched.
+func massageS3CompatibleURL(path string) string {
+	u, err := url.Parse(path)
+	if err != nil || u.Scheme != s3blob.Scheme {
+		return path
+	}
+
+	q := u.Query()
+	if q.Get("endpoint") == "" || q.Get("request_checksum_calculation") != "" {
+		return path
+	}
+
+	q.Set("request_checksum_calculation", "when_required")
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Project) (Backend, error) {

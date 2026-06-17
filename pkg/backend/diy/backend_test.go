@@ -209,6 +209,45 @@ func TestMassageBlobPath(t *testing.T) {
 	})
 }
 
+func TestMassageS3CompatibleURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		give string
+		want string
+	}{
+		{
+			name: "custom endpoint defaults checksum to when_required",
+			give: "s3://bucket?endpoint=https://s3.oss-cn-hangzhou.aliyuncs.com&region=cn-hangzhou",
+			want: "s3://bucket?endpoint=https%3A%2F%2Fs3.oss-cn-hangzhou.aliyuncs.com" +
+				"&region=cn-hangzhou&request_checksum_calculation=when_required",
+		},
+		{
+			name: "plain AWS S3 is left untouched",
+			give: "s3://bucket?region=us-east-1",
+			want: "s3://bucket?region=us-east-1",
+		},
+		{
+			name: "user-provided checksum value is preserved",
+			give: "s3://bucket?endpoint=https://example.com&request_checksum_calculation=when_supported",
+			want: "s3://bucket?endpoint=https://example.com&request_checksum_calculation=when_supported",
+		},
+		{
+			name: "non-s3 schemes are left untouched",
+			give: "gs://bucket?endpoint=https://example.com",
+			want: "gs://bucket?endpoint=https://example.com",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, massageS3CompatibleURL(tt.give))
+		})
+	}
+}
+
 func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 	t.Parallel()
 

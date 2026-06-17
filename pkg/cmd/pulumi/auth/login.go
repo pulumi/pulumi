@@ -104,6 +104,10 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Comman
 			"\n" +
 			"    $ pulumi login azblob://my-pulumi-state-bucket\n" +
 			"\n" +
+			"Alibaba Cloud OSS:\n" +
+			"\n" +
+			"    $ pulumi login oss://my-pulumi-state-bucket?region=cn-hangzhou\n" +
+			"\n" +
 			"PostgreSQL:\n" +
 			"\n" +
 			"    $ pulumi login postgres://username:password@hostname:5432/database\n",
@@ -265,14 +269,14 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Comman
 
 func validateCloudBackendType(typ string) error {
 	kind := strings.SplitN(typ, ":", 2)[0]
-	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http", "postgres"}
+	supportedKinds := []string{"azblob", "gs", "s3", "oss", "file", "https", "http", "postgres"}
 	for _, supportedKind := range supportedKinds {
 		if kind == supportedKind {
 			return nil
 		}
 	}
 	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
-		"azblob://, gs://, s3://, file://, https://, http:// and postgres://)",
+		"azblob://, gs://, s3://, oss://, file://, https://, http:// and postgres://)",
 		kind)
 }
 
