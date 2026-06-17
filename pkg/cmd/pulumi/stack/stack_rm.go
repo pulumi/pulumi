@@ -20,7 +20,6 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -35,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -84,14 +82,12 @@ func newStackRmCmd() *cobra.Command {
 				return err
 			}
 
-			if !cmdutil.Interactive() && !yes {
-				return backenderr.ErrNonInteractiveRequiresYes
-			}
-
 			// Ensure the user really wants to do this.
 			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
-			if !yes && !ui.ConfirmPrompt(prompt, s.Ref().String(), opts) {
-				return result.FprintBailf(cmd.OutOrStdout(), "confirmation declined")
+			if err := ui.ConfirmDeletion(
+				yes, cmdutil.Interactive(), prompt, s.Ref().String(), cmd.OutOrStdout(), opts,
+			); err != nil {
+				return err
 			}
 
 			hasResources, err := backend.RemoveStack(ctx, s, force, removeBackups)

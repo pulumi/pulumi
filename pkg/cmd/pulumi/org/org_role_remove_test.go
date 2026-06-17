@@ -21,19 +21,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-)
 
-func acceptAllConfirm(_ string, _ string) (bool, error) { return true, nil }
-func denyAllConfirm(_ string, _ string) (bool, error)   { return false, nil }
-func nonInteractiveConfirm(_ string, _ string) (bool, error) {
-	return false, errors.New("--yes is required when not running in a terminal (non-interactive)")
-}
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+)
 
 func TestOrgRoleRemove_Yes_NoConfirm(t *testing.T) {
 	t.Parallel()
 
 	c := &mockOrgRoleClient{}
-	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"), denyAllConfirm)
+	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"))
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -50,7 +46,7 @@ func TestOrgRoleRemove_ForceFlagPassesThrough(t *testing.T) {
 	t.Parallel()
 
 	c := &mockOrgRoleClient{}
-	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"), denyAllConfirm)
+	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"))
 	cmd.SetArgs([]string{"role-1", "--yes", "--force"})
 
 	err := cmd.ExecuteContext(t.Context())
@@ -58,48 +54,24 @@ func TestOrgRoleRemove_ForceFlagPassesThrough(t *testing.T) {
 	assert.True(t, c.deleteForce)
 }
 
-func TestOrgRoleRemove_ConfirmAccepted(t *testing.T) {
-	t.Parallel()
-
-	c := &mockOrgRoleClient{}
-	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"), acceptAllConfirm)
-	cmd.SetArgs([]string{"role-1"})
-
-	err := cmd.ExecuteContext(t.Context())
-	require.NoError(t, err)
-	assert.Equal(t, "role-1", c.deleteID)
-}
-
-func TestOrgRoleRemove_ConfirmDeclined(t *testing.T) {
-	t.Parallel()
-
-	c := &mockOrgRoleClient{}
-	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"), denyAllConfirm)
-	cmd.SetArgs([]string{"role-1"})
-
-	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "confirmation declined")
-	assert.Empty(t, c.deleteID)
-}
-
 func TestOrgRoleRemove_NonInteractiveWithoutYes(t *testing.T) {
 	t.Parallel()
 
 	c := &mockOrgRoleClient{}
-	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"), nonInteractiveConfirm)
+	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"))
 	cmd.SetArgs([]string{"role-1"})
 
 	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--yes is required")
+	assert.ErrorIs(t, err, backenderr.ErrNonInteractiveRequiresYes)
+	assert.Empty(t, c.deleteID, "client must not be called without confirmation")
 }
 
 func TestOrgRoleRemove_JSONOutput(t *testing.T) {
 	t.Parallel()
 
 	c := &mockOrgRoleClient{}
-	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"), denyAllConfirm)
+	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"))
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -116,7 +88,7 @@ func TestOrgRoleRemove_InvalidOutput(t *testing.T) {
 	t.Parallel()
 
 	c := &mockOrgRoleClient{}
-	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"), denyAllConfirm)
+	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"))
 	cmd.SetArgs([]string{"role-1", "--yes", "--output", "xml"})
 
 	err := cmd.ExecuteContext(t.Context())
@@ -128,7 +100,7 @@ func TestOrgRoleRemove_DeleteError(t *testing.T) {
 	t.Parallel()
 
 	c := &mockOrgRoleClient{deleteErr: errors.New("conflict")}
-	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"), denyAllConfirm)
+	cmd := newOrgRoleRemoveCmdWith(stubRoleFactory(c, "my-org"))
 	cmd.SetArgs([]string{"role-1", "--yes"})
 
 	err := cmd.ExecuteContext(t.Context())
@@ -139,7 +111,7 @@ func TestOrgRoleRemove_DeleteError(t *testing.T) {
 func TestOrgRoleRemove_FactoryError(t *testing.T) {
 	t.Parallel()
 
-	cmd := newOrgRoleRemoveCmdWith(failingRoleFactory(errors.New("not logged in")), denyAllConfirm)
+	cmd := newOrgRoleRemoveCmdWith(failingRoleFactory(errors.New("not logged in")))
 	cmd.SetArgs([]string{"role-1", "--yes"})
 	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)

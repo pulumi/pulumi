@@ -33,9 +33,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // orgMemberRemoveClient is the narrow subset of cloud-API operations the
@@ -92,6 +92,7 @@ func newOrgMemberRemoveCmdWith(factory orgMemberRemoveClientFactory) *cobra.Comm
 			"  # Remove without confirmation\n" +
 			"  pulumi org member remove alice --yes",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
+			args.yes = args.yes || env.SkipConfirmations.Value()
 			return runOrgMemberRemove(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
 	}
@@ -159,17 +160,11 @@ func runOrgMemberRemove(
 	ctx context.Context, w io.Writer,
 	factory orgMemberRemoveClientFactory, userLogin string, args orgMemberRemoveArgs,
 ) error {
-	if !args.yes {
-		if !cmdutil.Interactive() {
-			return errors.New(
-				"confirmation required; pass --yes (-y) to confirm in non-interactive mode")
-		}
-		opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-		prompt := fmt.Sprintf(
-			"This will permanently remove member '%s' from the organization!", userLogin)
-		if !ui.ConfirmPrompt(prompt, userLogin, opts) {
-			return result.FprintBailf(w, "confirmation declined")
-		}
+	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	prompt := fmt.Sprintf(
+		"This will permanently remove member '%s' from the organization!", userLogin)
+	if err := ui.ConfirmDeletion(args.yes, cmdutil.Interactive(), prompt, userLogin, w, opts); err != nil {
+		return err
 	}
 
 	c, org, err := factory(ctx, args.org)

@@ -18,14 +18,12 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
 )
 
@@ -56,13 +54,11 @@ func newPolicyRmCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			if !cmdutil.Interactive() && !yes {
-				return backenderr.ErrNonInteractiveRequiresYes
-			}
-
 			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])
-			if !yes && !ui.ConfirmPrompt(prompt, args[0], opts) {
-				return result.FprintBailf(cmd.OutOrStdout(), "confirmation declined")
+			if err := ui.ConfirmDeletion(
+				yes, cmdutil.Interactive(), prompt, args[0], cmd.OutOrStdout(), opts,
+			); err != nil {
+				return err
 			}
 
 			// Attempt to remove the Policy Pack.
