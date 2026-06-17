@@ -49,6 +49,9 @@ type Context struct {
 	// metadata describing the plugin.
 	DialOptions func(pluginInfo any) []grpc.DialOption
 
+	// Environment injected into every plugin launched with this context, appended by ExecPlugin.
+	CloudCredentialEnv map[string]string
+
 	DebugTraceMutex *sync.Mutex // used internally to syncronize debug tracing
 
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
@@ -192,11 +195,12 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	}
 
 	var projectName tokens.PackageName
+	var project *workspace.Project
 	projPath, err := workspace.DetectProjectPath()
 	if err == nil && projPath != "" {
-		project, err := workspace.LoadProject(projPath)
-		if err == nil {
-			projectName = project.Name
+		if p, loadErr := workspace.LoadProject(projPath); loadErr == nil {
+			project = p
+			projectName = p.Name
 		}
 	}
 
@@ -216,6 +220,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		disableProviderPreview: disableProviderPreview,
 		config:                 config,
 		projectName:            projectName,
+		CloudCredentialEnv:     pulumiCloudCredentialEnv(project),
 	}
 
 	projectPlugins, err := projectPluginsFromProject(pctx, plugins, packages)

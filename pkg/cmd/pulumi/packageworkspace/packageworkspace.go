@@ -444,6 +444,7 @@ func (w Workspace) RunPackage(
 	})
 
 	pctx := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
+	pctx.CloudCredentialEnv = w.pctx.CloudCredentialEnv
 	if err := pctx.StartLoader(schema.NewLoaderServerFromContext); err != nil {
 		return nil, fmt.Errorf("could not start loader for plugin at %q: %w", pluginPath, err)
 	}

@@ -472,6 +472,19 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
+// cloudCredentialEnvVars returns the KEY=value environment entries the context injects into a
+// plugin. They are passed to every plugin kind as part of `ExecPlugin`.
+func cloudCredentialEnvVars(ctx *Context) []string {
+	if ctx == nil {
+		return nil
+	}
+	vars := make([]string, 0, len(ctx.CloudCredentialEnv))
+	for k, v := range ctx.CloudCredentialEnv {
+		vars = append(vars, k+"="+v)
+	}
+	return vars
+}
+
 // ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
 func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	pluginArgs []string, pwd string, e env.Env, attachDebugger bool,
@@ -497,6 +510,9 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	if logEP := cmdutil.LogReceiverEndpoint(); logEP != "" {
 		environment = append(environment, "PULUMI_LOG_OTLP_ENDPOINT="+logEP)
 	}
+
+	// Appended last to win over ambient values.
+	environment = append(environment, cloudCredentialEnvVars(ctx)...)
 
 	// Check to see if we have a binary we can invoke directly
 	stat, err := os.Stat(bin)
