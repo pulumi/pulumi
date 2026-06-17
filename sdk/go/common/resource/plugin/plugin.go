@@ -473,11 +473,11 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
-// resourceProviderEnvVars returns the KEY=value environment entries the context injects into
-// resource provider plugins. It is empty for every other plugin kind: language hosts run user
-// program code, so handing them the access token would leak it to that code and anything it spawns.
-func resourceProviderEnvVars(ctx *Context, kind apitype.PluginKind) []string {
-	if kind != apitype.ResourcePlugin || ctx == nil {
+// resourceProviderEnvVars returns the KEY=value environment entries the context injects into a
+// plugin. They currently reach every plugin kind, language hosts included; whether language hosts
+// (which run user program code) should be excluded is a deferred decision.
+func resourceProviderEnvVars(ctx *Context) []string {
+	if ctx == nil {
 		return nil
 	}
 	vars := make([]string, 0, len(ctx.ResourceProviderEnv))
@@ -511,7 +511,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}
 
 	// Appended last to win over ambient values.
-	environment = append(environment, resourceProviderEnvVars(ctx, kind)...)
+	environment = append(environment, resourceProviderEnvVars(ctx)...)
 
 	// Check to see if we have a binary we can invoke directly
 	stat, err := os.Stat(bin)

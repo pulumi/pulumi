@@ -122,8 +122,7 @@ from the parameters, as in:
 						Runtime: workspace.NewProjectRuntimeInfo(cmdCmd.NormalizeRuntimeName(language), nil),
 					},
 					reg: cmdCmd.NewDefaultRegistry(
-						cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global(),
-					),
+						cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
 				}
 			}
 
@@ -135,7 +134,6 @@ from the parameters, as in:
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
-			pctx.ResourceProviderEnv = cmdBackend.ResolveResourceProviderEnv(pkgWorkspace.Instance)
 
 			if target.proj.RuntimeInfo().Name() == "" {
 				return errors.New("cannot add a package to a project without a runtime")
@@ -291,8 +289,7 @@ func loadEnclosingTarget(ctx context.Context, wd string) (addTarget, error) {
 			installRoot:     filepath.Dir(filePath),
 			projectFilePath: &filePath,
 			reg: cmdCmd.NewDefaultRegistry(
-				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global(),
-			),
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global()),
 			proj: baseProject,
 		}, nil
 	case *workspace.PluginProject:

@@ -24,10 +24,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,64 +46,6 @@ func testSetup(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServ
 	t.Cleanup(func() { server.Close() })
 
 	return ctx, pctx, server
-}
-
-// testSetupWithCleanEnv creates a plugin context and RPC server with clean environment
-// This clears PULUMI_ACCESS_TOKEN and PULUMI_API to avoid interference from CI/other tests
-// Tests using this cannot use t.Parallel()
-func testSetupWithCleanEnv(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServer) {
-	t.Helper()
-
-	// Clear environment variables that might interfere with tests
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
-	t.Setenv("PULUMI_API", "")
-
-	return testSetup(t)
-}
-
-// mockWorkspaceNoProject returns a mock workspace that returns ErrProjectNotFound
-func mockWorkspaceNoProject() *pkgWorkspace.MockContext {
-	return &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return nil, "", workspace.ErrProjectNotFound
-		},
-	}
-}
-
-// mockWorkspaceWithProject returns a mock workspace with project and credentials
-func mockWorkspaceWithProject(cloudURL, token string) *pkgWorkspace.MockContext {
-	return &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{
-				Name: "test-project",
-			}, "/test/path", nil
-		},
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{
-				Current: cloudURL,
-				AccessTokens: map[string]string{
-					cloudURL: token,
-				},
-			}, nil
-		},
-	}
-}
-
-// mockWorkspaceWithCredentialsOnly returns a mock workspace with credentials but no project
-func mockWorkspaceWithCredentialsOnly(cloudURL, token string) *pkgWorkspace.MockContext {
-	return &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return nil, "", nil
-		},
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{
-				Current: cloudURL,
-				AccessTokens: map[string]string{
-					cloudURL: token,
-				},
-			}, nil
-		},
-	}
 }
 
 // findEnvVar searches for an environment variable with the given prefix
@@ -149,7 +89,7 @@ func TestPreparePluginEnv_SetsRPCTarget(t *testing.T) {
 
 	_, _, server := testSetup(t)
 
-	env := preparePluginEnv(mockWorkspaceNoProject(), server)
+	env := preparePluginEnv(server)
 
 	// Verify PULUMI_RPC_TARGET is set
 	addr, found := findEnvVar(env, "PULUMI_RPC_TARGET=")
@@ -167,76 +107,12 @@ func TestPreparePluginEnv_IncludesExistingEnvironment(t *testing.T) {
 	testEnvValue := "test-value-123"
 	t.Setenv(testEnvKey, testEnvValue)
 
-	env := preparePluginEnv(mockWorkspaceNoProject(), server)
+	env := preparePluginEnv(server)
 
 	// Verify existing environment variable is included
 	value, found := findEnvVar(env, testEnvKey+"=")
 	assert.True(t, found, "existing environment variables should be included")
 	assert.Equal(t, testEnvValue, value)
-}
-
-//nolint:paralleltest // Cannot use t.Parallel() because this test uses t.Setenv via testSetupWithCleanEnv
-func TestPreparePluginEnv_WithMockWorkspace_NoProject(t *testing.T) {
-	_, _, server := testSetupWithCleanEnv(t)
-
-	env := preparePluginEnv(mockWorkspaceNoProject(), server)
-
-	// Verify PULUMI_RPC_TARGET is always set
-	rpcValue, foundRPCTarget := findEnvVar(env, "PULUMI_RPC_TARGET=")
-	apiValue, foundAPI := findEnvVar(env, "PULUMI_API=")
-	tokenValue, foundToken := findEnvVar(env, "PULUMI_ACCESS_TOKEN=")
-
-	assert.True(t, foundRPCTarget, "PULUMI_RPC_TARGET should always be set")
-	assert.NotEmpty(t, rpcValue, "PULUMI_RPC_TARGET should have a value")
-	// API and token should either not be found or be empty when ReadProject fails
-	if foundAPI {
-		assert.Empty(t, apiValue, "PULUMI_API should be empty when ReadProject fails")
-	}
-	if foundToken {
-		assert.Empty(t, tokenValue, "PULUMI_ACCESS_TOKEN should be empty when ReadProject fails")
-	}
-}
-
-//nolint:paralleltest // Cannot use t.Parallel() because this test uses t.Setenv via testSetupWithCleanEnv
-func TestPreparePluginEnv_WithMockWorkspace_WithProject(t *testing.T) {
-	_, _, server := testSetupWithCleanEnv(t)
-
-	cloudURL := "https://api.test-pulumi.com"
-	token := "test-token-123"
-
-	env := preparePluginEnv(mockWorkspaceWithProject(cloudURL, token), server)
-
-	// Verify all environment variables are set correctly
-	_, foundRPCTarget := findEnvVar(env, "PULUMI_RPC_TARGET=")
-	apiValue, foundAPI := findEnvVar(env, "PULUMI_API=")
-	tokenValue, foundToken := findEnvVar(env, "PULUMI_ACCESS_TOKEN=")
-
-	assert.True(t, foundRPCTarget, "PULUMI_RPC_TARGET should be set")
-	assert.True(t, foundAPI, "PULUMI_API should be set from workspace credentials")
-	assert.Equal(t, cloudURL, apiValue, "PULUMI_API should match mocked cloud URL")
-	assert.True(t, foundToken, "PULUMI_ACCESS_TOKEN should be set from workspace credentials")
-	assert.Equal(t, token, tokenValue, "PULUMI_ACCESS_TOKEN should match mocked token")
-}
-
-//nolint:paralleltest // Cannot use t.Parallel() because this test uses t.Setenv via testSetupWithCleanEnv
-func TestPreparePluginEnv_WithMockWorkspace_NoProject_WithCredentials(t *testing.T) {
-	_, _, server := testSetupWithCleanEnv(t)
-
-	cloudURL := "https://api.test-pulumi.com"
-	token := "test-token-123"
-
-	env := preparePluginEnv(mockWorkspaceWithCredentialsOnly(cloudURL, token), server)
-
-	// Verify all environment variables are set correctly even without a project
-	_, foundRPCTarget := findEnvVar(env, "PULUMI_RPC_TARGET=")
-	apiValue, foundAPI := findEnvVar(env, "PULUMI_API=")
-	tokenValue, foundToken := findEnvVar(env, "PULUMI_ACCESS_TOKEN=")
-
-	assert.True(t, foundRPCTarget, "PULUMI_RPC_TARGET should be set")
-	assert.True(t, foundAPI, "PULUMI_API should be set from stored credentials even without project")
-	assert.Equal(t, cloudURL, apiValue, "PULUMI_API should match cloud URL from credentials")
-	assert.True(t, foundToken, "PULUMI_ACCESS_TOKEN should be set from stored credentials")
-	assert.Equal(t, token, tokenValue, "PULUMI_ACCESS_TOKEN should match token from credentials")
 }
 
 //nolint:paralleltest // Cannot use t.Parallel() because this test uses t.Setenv
@@ -274,9 +150,8 @@ func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 	assert.Nil(t, version, "should return nil when plugin installation fails")
 }
 
+//nolint:paralleltest // Cannot use t.Parallel() because this test uses t.Setenv
 func TestPluginRunCommand(t *testing.T) {
-	t.Parallel()
-
 	// Skip on Windows - test uses bash script which is not cross-platform
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows - test requires bash")
@@ -302,13 +177,15 @@ exit 0
 	err := os.WriteFile(pluginPath, []byte(pluginScript), 0o755)
 	require.NoError(t, err)
 
-	// Create mock workspace with credentials
+	// The API address and token reach the plugin through the plugin context, resolved from the
+	// active login; drive that resolution from the environment here.
 	cloudURL := "https://api.test-pulumi.com"
 	token := "test-token-123"
-	mockWs := mockWorkspaceWithProject(cloudURL, token)
+	t.Setenv("PULUMI_BACKEND_URL", cloudURL)
+	t.Setenv("PULUMI_ACCESS_TOKEN", token)
 
 	// Create the command
-	cmd := newPluginRunCmd(mockWs)
+	cmd := newPluginRunCmd()
 	cmd.SetArgs([]string{pluginPath})
 
 	// Execute the command
@@ -348,13 +225,8 @@ exit 42
 	err := os.WriteFile(pluginPath, []byte(pluginScript), 0o755)
 	require.NoError(t, err)
 
-	// Create mock workspace with credentials
-	cloudURL := "https://api.test-pulumi.com"
-	token := "test-token-123"
-	mockWs := mockWorkspaceWithProject(cloudURL, token)
-
 	// Create the command
-	runCmd := newPluginRunCmd(mockWs)
+	runCmd := newPluginRunCmd()
 	runCmd.SetArgs([]string{pluginPath})
 
 	// Execute the command

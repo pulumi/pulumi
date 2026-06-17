@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -395,23 +394,13 @@ func TestResourceProviderEnvVars(t *testing.T) {
 
 	ctx := &Context{ResourceProviderEnv: map[string]string{"PULUMI_ACCESS_TOKEN": "secret"}}
 
-	t.Run("resource providers receive the env", func(t *testing.T) {
+	t.Run("env is injected", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, []string{"PULUMI_ACCESS_TOKEN=secret"}, resourceProviderEnvVars(ctx, apitype.ResourcePlugin))
-	})
-
-	t.Run("language hosts do not", func(t *testing.T) {
-		t.Parallel()
-		assert.Empty(t, resourceProviderEnvVars(ctx, apitype.LanguagePlugin))
-	})
-
-	t.Run("analyzers do not", func(t *testing.T) {
-		t.Parallel()
-		assert.Empty(t, resourceProviderEnvVars(ctx, apitype.AnalyzerPlugin))
+		assert.Equal(t, []string{"PULUMI_ACCESS_TOKEN=secret"}, resourceProviderEnvVars(ctx))
 	})
 
 	t.Run("nil context is safe", func(t *testing.T) {
 		t.Parallel()
-		assert.Empty(t, resourceProviderEnvVars(nil, apitype.ResourcePlugin))
+		assert.Empty(t, resourceProviderEnvVars(nil))
 	})
 }

@@ -309,8 +309,7 @@ func LoadLocalPolicyPackAnalyzers(
 				}
 			}
 			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
-				info.Policies, info.InitialConfig, configFromFile,
-			)
+				info.Policies, info.InitialConfig, configFromFile)
 			if err != nil {
 				return nil, fmt.Errorf("reconciling policy config for %q: %w", info.Name, err)
 			}
@@ -347,10 +346,6 @@ type UpdateOptions struct {
 	// PolicyEnvResolver resolves ESC environments for local policy packs.
 	// Nil when the backend does not support ESC (e.g. DIY backend).
 	PolicyEnvResolver PolicyEnvironmentResolver
-
-	// ResourceProviderEnv is injected into resource provider plugins; the cloud backend sets it to the
-	// API address and access token, and it is empty for DIY backends.
-	ResourceProviderEnv map[string]string
 
 	// the degree of parallelism for resource operations (<=1 for serial).
 	Parallel int32
@@ -670,8 +665,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			}
 
 			analyzer, err := loadPolicyAnalyzer(
-				plugctx.Base(), plugctx, tokens.QName(policy.Name()), policyPath, &policyOpts,
-			)
+				plugctx.Base(), plugctx, tokens.QName(policy.Name()), policyPath, &policyOpts)
 			if err != nil {
 				errs <- err
 				return
@@ -704,8 +698,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
-				analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromAPI,
-			)
+				analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromAPI)
 			if err != nil {
 				errs <- fmt.Errorf("reconciling config for %q: %w", analyzerInfo.Name, err)
 				return
@@ -751,8 +744,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				if resolver == nil {
 					errs <- fmt.Errorf(
 						"policy pack at %q specifies ESC environments but the current backend does not support them",
-						pack.Path,
-					)
+						pack.Path)
 					return
 				}
 				var resolveErr error
@@ -817,8 +809,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			}
 
 			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
-				analyzerInfo.Policies, initialConfig, configFromFile,
-			)
+				analyzerInfo.Policies, initialConfig, configFromFile)
 			if err != nil {
 				errs <- fmt.Errorf("reconciling policy config for %q at %q: %w", analyzerInfo.Name, pack.Path, err)
 				return
@@ -1036,8 +1027,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
-	acts.Opts.Events.resourcePreEvent(
-		step,
+	acts.Opts.Events.resourcePreEvent(step,
 		false, /*planning*/
 		acts.Opts.Debug,
 		isInternalStep(step),
@@ -1139,8 +1129,7 @@ func (acts *updateActions) OnResourceStepPost(
 	if status == resource.StatusPartialFailure && step.Op() == deploy.OpUpdate {
 		logging.V(7).Infof(
 			"OnResourceStepPost(%s): Step is partially-failed update, saving old inputs instead of new inputs",
-			step.URN(),
-		)
+			step.URN())
 		new := step.New()
 		old := step.Old()
 		contract.Assertf(new != nil, "new state should not be nil for partially-failed update")

@@ -216,7 +216,6 @@ func newDeployment(
 	if err != nil {
 		return nil, err
 	}
-	plugctx.ResourceProviderEnv = opts.ResourceProviderEnv
 
 	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
 	go func() { <-ctx.Cancel.Terminated(); contract.IgnoreClose(plugctx) }()
@@ -235,8 +234,7 @@ func newDeployment(
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(
-		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, resourceHooks, panicErrsChannel,
-	)
+		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, resourceHooks, panicErrsChannel)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -270,8 +268,7 @@ func newDeployment(
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
 			plugctx, deplOpts, actions, target, target.Snapshot, opts.Plan, source,
-			ctx.BackendClient, resourceHooks,
-		)
+			ctx.BackendClient, resourceHooks)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(
 			cancelCtx,
@@ -337,8 +334,7 @@ func newDeployment(
 		}
 
 		depl, err = deploy.NewImportDeployment(
-			plugctx, deplOpts, actions, target, proj.Name, opts.imports,
-		)
+			plugctx, deplOpts, actions, target, proj.Name, opts.imports)
 	}
 
 	if err != nil {
@@ -392,8 +388,7 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 
 	// Emit an appropriate prelude event.
 	deployment.Options.Events.preludeEvent(
-		deployment.Options.DryRun, deployment.Ctx.Update.Target.Config,
-	)
+		deployment.Options.DryRun, deployment.Ctx.Update.Target.Config)
 
 	// Execute the deployment.
 	start := time.Now()
@@ -447,8 +442,7 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 	// Emit a summary event.
 	deployment.Options.Events.summaryEvent(
 		deployment.Options.DryRun, deployment.Actions.MaybeCorrupt(), duration, changes, policies,
-		apitype.OperationResultFromError(err),
-	)
+		apitype.OperationResultFromError(err))
 
 	close(deployment.panicErrs)
 

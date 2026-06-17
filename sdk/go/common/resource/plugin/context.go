@@ -49,7 +49,7 @@ type Context struct {
 	// metadata describing the plugin.
 	DialOptions func(pluginInfo any) []grpc.DialOption
 
-	// Injected only into resource provider plugins; see resourceProviderEnvVars for why.
+	// Environment injected into every plugin launched with this context, appended by ExecPlugin.
 	ResourceProviderEnv map[string]string
 
 	DebugTraceMutex *sync.Mutex // used internally to syncronize debug tracing
@@ -201,11 +201,12 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	}
 
 	var projectName tokens.PackageName
+	var project *workspace.Project
 	projPath, err := workspace.DetectProjectPath()
 	if err == nil && projPath != "" {
-		project, err := workspace.LoadProject(projPath)
-		if err == nil {
-			projectName = project.Name
+		if p, loadErr := workspace.LoadProject(projPath); loadErr == nil {
+			project = p
+			projectName = p.Name
 		}
 	}
 
@@ -225,6 +226,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		disableProviderPreview: disableProviderPreview,
 		config:                 config,
 		projectName:            projectName,
+		ResourceProviderEnv:    pulumiCloudCredentialEnv(project),
 	}
 
 	projectPlugins, err := projectPluginsFromProject(pctx, plugins, packages)

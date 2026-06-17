@@ -51,28 +51,6 @@ func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 	return diy.IsDIYBackendURL(url), nil
 }
 
-// ResolveResourceProviderEnv resolves the API address and access token to inject into resource
-// provider plugins launched at parameterize time (package add, gen-sdk). The token prefers
-// PULUMI_ACCESS_TOKEN, falling back to stored credentials for the active cloud URL, to match the
-// cloud backend's runtime injection. Empty for DIY and logged-out logins.
-func ResolveResourceProviderEnv(ws pkgWorkspace.Context) map[string]string {
-	project, _, err := ws.ReadProject()
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		project = nil
-	}
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-	if err != nil || url == "" || diy.IsDIYBackendURL(url) {
-		return nil
-	}
-	token := env.AccessToken.Value()
-	if token == "" {
-		if creds, err := ws.GetStoredCredentials(); err == nil {
-			token = creds.AccessTokens[url]
-		}
-	}
-	return backend.ResourceProviderCredentialEnv(url, token)
-}
-
 func NonInteractiveCurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 ) (backend.Backend, error) {

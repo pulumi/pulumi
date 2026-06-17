@@ -24,7 +24,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
@@ -40,34 +39,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// preparePluginEnv prepares environment variables for the plugin including
-// RPC target, cloud URL, and access token from the workspace.
-func preparePluginEnv(ws pkgWorkspace.Context, grpcServer *plugin.GrpcServer) []string {
-	pluginEnv := os.Environ()
-	pluginEnv = append(pluginEnv, "PULUMI_RPC_TARGET="+grpcServer.Addr())
-
-	// Get current cloud URL from workspace
-	project, _, err := ws.ReadProject()
-	if err == nil {
-		cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-		if err == nil {
-			cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
-			pluginEnv = append(pluginEnv, "PULUMI_API="+cloudURL)
-
-			// Get account credentials for this cloud URL
-			creds, err := ws.GetStoredCredentials()
-			if err == nil {
-				if token, ok := creds.AccessTokens[cloudURL]; ok && token != "" {
-					pluginEnv = append(pluginEnv, "PULUMI_ACCESS_TOKEN="+token)
-				}
-			}
-		}
-	}
-
-	return pluginEnv
+// preparePluginEnv prepares the plugin's RPC target. The cloud URL and access token reach the plugin
+// via the context's ResourceProviderEnv, injected by ExecPlugin.
+func preparePluginEnv(grpcServer *plugin.GrpcServer) []string {
+	return append(os.Environ(), "PULUMI_RPC_TARGET="+grpcServer.Addr())
 }
 
-func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
+func newPluginRunCmd() *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
@@ -149,7 +127,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			defer grpcServer.Close()
 
 			// Prepare environment variables for the plugin
-			pluginEnvStrings := preparePluginEnv(ws, grpcServer)
+			pluginEnvStrings := preparePluginEnv(grpcServer)
 			// Convert []string to env.Env
 			pluginEnvMap := make(env.MapStore)
 			for _, envVar := range pluginEnvStrings {
