@@ -120,7 +120,7 @@ func StartLogging(
 		Level: slog.LevelDebug,
 	})
 
-	logging.SetSinkHandler(l.handler)
+	logging.SetSinkHandler(NewPropertySinkHandler(l.handler))
 	currentLogger = l
 	return l, nil
 }

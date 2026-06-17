@@ -52,6 +52,7 @@ type Snippet struct {
 	// The package descriptor for the resource
 	Descriptor PackageDescriptor `json:"descriptor" yaml:"descriptor"`
 	// References declares the external resources that this snippet's Code may refer to by HCL identifier. The map key
-	// is the identifier used inside Code; the value identifies the target resource by its URN.
+	// is the identifier used inside Code; the value identifies the target resource by its URN. The target need not be
+	// present in the snapshot, but it must be registered during an update before the snippet can run.
 	References map[string]string `json:"references,omitempty" yaml:"references,omitempty"`
 }

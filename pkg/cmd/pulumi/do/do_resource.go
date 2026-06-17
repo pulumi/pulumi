@@ -104,6 +104,9 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		"Path to a file containing provider configuration")
 	cmd.PersistentFlags().StringVar(&pc.format, "input", "pcl",
 		"Format of the provider configuration file")
+	cmd.PersistentFlags().StringVar(&pc.providerURN, "provider", "",
+		"The URN of a provider resource in the current stack whose inputs to use as the "+
+			"base of the provider configuration (requires a stack context)")
 	addPersistentInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties)
 	cmd.AddCommand(pc.newResourceCreateCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
@@ -135,7 +138,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 			}
 			urn := resourceURN(res)
 			inputs, err := evaluateResourceFile(
-				ctx, inputFile, "input", pc.format, res, pc.evalContext,
+				ctx, inputFile, "input", pc.format, res, pc.evalContext(),
 				pc.converter, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", res.InputProperties))
 			if err != nil {
@@ -248,7 +251,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			// AllowMissingProperties because a patch typically only specifies the fields being changed; the binder
 			// would otherwise reject any partial patch that omits a required input.
 			patch, err := evaluateResourceFile(
-				ctx, inputFile, "input", inputFormat, res, pc.evalContext,
+				ctx, inputFile, "input", inputFormat, res, pc.evalContext(),
 				pc.converter, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", res.InputProperties), pcl.AllowMissingProperties)
 			if err != nil {
@@ -366,7 +369,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 			}
 
 			query, err := evaluateResourceListFile(
-				ctx, inputFile, "input", inputFormat, res, pc.evalContext,
+				ctx, inputFile, "input", inputFormat, res, pc.evalContext(),
 				pc.converter, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", res.ListInputs.Properties))
 			if err != nil {

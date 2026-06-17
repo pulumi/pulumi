@@ -136,8 +136,7 @@ func TestPackageRefResolutionAcrossExtensionsOnSameBase(t *testing.T) {
 				"extb": descriptor("extb"),
 			},
 		},
-		packageRefs:       map[string]string{},
-		packageRefByToken: map[string]string{},
+		packageRefs: map[string]string{},
 	}
 
 	require.NoError(t, i.registerPackages(context.Background()))

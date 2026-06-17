@@ -36,6 +36,20 @@ func main() {
 					"x": pulumi.String("100"),
 					"y": pulumi.String("200"),
 				},
+				InnerDataList: refref.InnerDataArray{
+					&refref.InnerDataArgs{
+						Boolean: pulumi.Bool(false),
+						Float:   pulumi.Float64(3.14),
+						Integer: pulumi.Int(42),
+						String:  pulumi.String("Partridge"),
+						BoolArray: pulumi.BoolArray{
+							pulumi.Bool(true),
+						},
+						StringMap: pulumi.StringMap{
+							"one": pulumi.String("in a pear tree"),
+						},
+					},
+				},
 			},
 		})
 		if err != nil {
@@ -53,6 +67,9 @@ func main() {
 		ctx.Export("nested", res.Data.ApplyT(func(data refref.Data) (string, error) {
 			return data.InnerData.StringMap["three"], nil
 		}).(pulumi.StringOutput))
+		ctx.Export("listIndex", res.Data.ApplyT(func(data refref.Data) (*string, error) {
+			return &data.InnerDataList[0].String, nil
+		}).(pulumi.StringPtrOutput))
 		return nil
 	})
 }

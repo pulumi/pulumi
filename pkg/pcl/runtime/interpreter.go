@@ -80,14 +80,13 @@ type Interpreter struct {
 	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
 	namePrefix string
 
-	// packageRefs are package references returned by RegisterPackage keyed by package name.
+	// packageRefs maps a fully-qualified token (resource, function, or
+	// pulumi:providers:<pkg>) to the package reference RegisterPackage returned.
+	// Extension resources keep the base provider's namespace, so multiple
+	// extensions can share a token's package portion; indexing by the exact token
+	// disambiguates them. Tokens of plain, unregistered packages are absent, which
+	// resolves to the empty ref and so to the default provider.
 	packageRefs map[string]string
-
-	// packageRefByToken maps a fully-qualified resource or function token to the
-	// package reference that defines it. Extension resources keep the base
-	// provider's namespace, so multiple extensions can share a token's package
-	// portion; indexing by the exact token disambiguates them.
-	packageRefByToken map[string]string
 
 	// callbacks is the server that handles resource hook callbacks.
 	callbacks     *pclCallbackServer
@@ -97,10 +96,9 @@ type Interpreter struct {
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
 	return &Interpreter{
-		program:           program,
-		info:              info,
-		packageRefs:       map[string]string{},
-		packageRefByToken: map[string]string{},
+		program:     program,
+		info:        info,
+		packageRefs: map[string]string{},
 	}
 }
 
@@ -670,17 +668,10 @@ func PackageNameFromToken(token string) (string, error) {
 }
 
 func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
-	// Prefer an exact token match: extension tokens live in the base provider's
-	// namespace, so resolving by the token's package portion alone can't tell two
-	// extensions on the same base apart.
-	if ref, ok := i.packageRefByToken[token]; ok {
-		return ref, nil
-	}
-	tokenPackage, err := PackageNameFromToken(token)
-	if err != nil {
-		return "", err
-	}
-	return i.packageRefs[tokenPackage], nil
+	// Every registered package indexes its tokens here (resources, functions, and
+	// its pulumi:providers:<pkg> reference). A miss means a plain, unregistered
+	// package, whose empty ref tells the engine to use the default provider.
+	return i.packageRefs[token], nil
 }
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {
@@ -740,17 +731,18 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 			return fmt.Errorf("register package %q returned empty reference", key)
 		}
 
-		i.packageRefs[key] = resp.GetRef()
-		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
 		// Extension resources keep the base provider's namespace, so multiple
-		// extensions can share the base name and a single base-keyed entry would
-		// collide. Index every token the package defines instead, so each resource
-		// resolves to its own package's ref.
+		// extensions can share the base name; a single name-keyed entry would
+		// collide. Index every token the package defines by its full token instead,
+		// plus the pulumi:providers:<pkg> reference so explicit provider references
+		// resolve too.
+		ref := resp.GetRef()
+		i.packageRefs["pulumi:providers:"+descriptor.PackageName()] = ref
 		for _, r := range def.Resources {
-			i.packageRefByToken[r.Token] = resp.GetRef()
+			i.packageRefs[r.Token] = ref
 		}
 		for _, f := range def.Functions {
-			i.packageRefByToken[f.Token] = resp.GetRef()
+			i.packageRefs[f.Token] = ref
 		}
 	}
 
@@ -1975,16 +1967,15 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		i.call,
 	)
 	componentInterpreter := &Interpreter{
-		program:           component.Program,
-		info:              i.info,
-		monitor:           i.monitor,
-		engine:            i.engine,
-		loader:            i.loader,
-		evalContext:       componentEval,
-		stackURN:          resp.GetUrn(),
-		namePrefix:        componentName,
-		packageRefs:       i.packageRefs,
-		packageRefByToken: i.packageRefByToken,
+		program:     component.Program,
+		info:        i.info,
+		monitor:     i.monitor,
+		engine:      i.engine,
+		loader:      i.loader,
+		evalContext: componentEval,
+		stackURN:    resp.GetUrn(),
+		namePrefix:  componentName,
+		packageRefs: i.packageRefs,
 	}
 
 	for k, v := range inputs {

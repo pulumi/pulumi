@@ -160,7 +160,14 @@ func (c *PackageCache) loadPackageSchema(
 	}
 
 	var versionSemver *semver.Version
-	if v, err := semver.Make(version); err == nil {
+	if version != "" {
+		v, err := semver.Parse(version)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"package %q version %q is not valid semver: %w",
+				name, version, err,
+			)
+		}
 		versionSemver = &v
 	}
 
