@@ -23,8 +23,10 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	env_core "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -57,7 +59,9 @@ func TestGetPackageSpecifiedVersion(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client := New(diagtest.LogSink(t), server.URL)
+	client := New(diagtest.LogSink(t), env.NewEnv(env_core.MapStore{
+		"PULUMI_API": server.URL,
+	}))
 
 	pkg, err := client.GetPackage(ctx, "pulumi", "pulumi", "random", &semver.Version{Major: 4, Minor: 18})
 	require.NoError(t, err)
@@ -110,7 +114,9 @@ func TestGetPackageUnspecifiedVersion(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client := New(diagtest.LogSink(t), server.URL)
+	client := New(diagtest.LogSink(t), env.NewEnv(env_core.MapStore{
+		"PULUMI_API": server.URL,
+	}))
 
 	pkg, err := client.GetPackage(ctx, "pulumi", "pulumi", "random", nil /* latest version */)
 	require.NoError(t, err)
@@ -152,7 +158,9 @@ func TestGetPackageNonExistantPackage(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client := New(diagtest.LogSink(t), server.URL)
+	client := New(diagtest.LogSink(t), env.NewEnv(env_core.MapStore{
+		"PULUMI_API": server.URL,
+	}))
 
 	_, err := client.GetPackage(ctx, "pulumi", "pulumi", "does-not-exist", nil /* latest version */)
 	assert.ErrorIs(t, err, backenderr.ErrNotFound)
@@ -175,7 +183,9 @@ func TestGetPackagePrivatePackage(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client := New(diagtest.LogSink(t), server.URL)
+	client := New(diagtest.LogSink(t), env.NewEnv(env_core.MapStore{
+		"PULUMI_API": server.URL,
+	}))
 
 	_, err := client.GetPackage(ctx, "pulumi", "private", "missing-credentials", nil /* latest version */)
 	assert.ErrorIs(t, err, registry.ErrNotFound)
@@ -235,7 +245,9 @@ func TestListPackages(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client := New(diagtest.LogSink(t), server.URL)
+	client := New(diagtest.LogSink(t), env.NewEnv(env_core.MapStore{
+		"PULUMI_API": server.URL,
+	}))
 
 	//nolint:prealloc // capacity unknown ahead of time
 	results := []apitype.PackageMetadata{}
@@ -292,7 +304,9 @@ func TestListPackagesNoMatches(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client := New(diagtest.LogSink(t), server.URL)
+	client := New(diagtest.LogSink(t), env.NewEnv(env_core.MapStore{
+		"PULUMI_API": server.URL,
+	}))
 
 	//nolint:prealloc // capacity unknown ahead of time
 	results := []apitype.PackageMetadata{}

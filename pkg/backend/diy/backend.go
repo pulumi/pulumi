@@ -1691,5 +1691,5 @@ func (b *diyBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
 }
 
 func (b *diyBackend) GetReadOnlyCloudRegistry() registry.Registry {
-	return unauthenticatedregistry.New(b.d, b.Env.GetString(env.APIURL))
+	return unauthenticatedregistry.New(b.d, b.Env)
 }
