@@ -1,0 +1,3 @@
+kind: fix
+body: Use backend-provided Console URLs for Neo explain-failure links
+component: cli/neo

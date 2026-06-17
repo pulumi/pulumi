@@ -1747,7 +1747,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 		}
 
 		if op.Opts.Display.ShowNeoFeatures {
-			permalink := b.getPermalink(update, updateMeta.version, dryRun)
+			permalink := b.getPermalink(ctx, update, updateMeta.version, dryRun)
 			summary, err := b.summarizeErrorWithNeo(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
 			// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 			// if we can't generate a summary.
@@ -1981,19 +1981,39 @@ func (b *cloudBackend) apply(
 	// Display messages from the backend if present.
 	displayBackendMessages(updateMeta.messages)
 
-	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
+	permalink := b.getPermalink(ctx, update, updateMeta.version, opts.DryRun)
 	return b.runEngineAction(
 		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
 		permalink, events, opts.DryRun, updateMeta.journalVersion)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
-func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int, preview bool) string {
-	base := b.cloudConsoleStackPath(update.StackIdentifier)
+func (b *cloudBackend) getPermalink(
+	ctx context.Context, update client.UpdateIdentifier, version int, preview bool,
+) string {
+	paths := []string{b.cloudConsoleStackPath(update.StackIdentifier)}
 	if !preview {
-		return b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
+		paths = append(paths, "updates", strconv.Itoa(version))
+	} else {
+		paths = append(paths, "previews", update.UpdateID)
 	}
-	return b.CloudConsoleURL(base, "previews", update.UpdateID)
+
+	if consoleURL := consoleURLWithPath(b.Capabilities(ctx).CopilotSummarizeErrorConsoleURL, paths...); consoleURL != "" {
+		return consoleURL
+	}
+	return b.CloudConsoleURL(paths...)
+}
+
+func consoleURLWithPath(consoleURL string, paths ...string) string {
+	if strings.TrimSpace(consoleURL) == "" {
+		return ""
+	}
+	u, err := url.Parse(consoleURL)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return ""
+	}
+	u.Path = path.Join(append([]string{u.Path}, paths...)...)
+	return u.String()
 }
 
 func (b *cloudBackend) runEngineAction(
@@ -2805,7 +2825,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	// Timings do not display correctly when rendering remote events, so suppress showing them.
 	opts.SuppressTimings = true
 
-	permalink := b.getPermalink(update, version, dryRun)
+	permalink := b.getPermalink(ctx, update, version, dryRun)
 	go display.ShowEvents(
 		backend.ActionLabel(kind, dryRun), kind, stackID.Stack, tokens.PackageName(stackID.Project),
 		permalink, events, done, opts, dryRun)

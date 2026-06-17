@@ -129,6 +129,25 @@ func TestCapabilities(t *testing.T) {
 		}, actual)
 	})
 
+	t.Run("parse copilot summarize error v1 with console url", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    CopilotSummarizeError,
+					Version:       1,
+					Configuration: json.RawMessage(`{"consoleUrl":"https://app.example.com"}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			CopilotSummarizeErrorV1:         true,
+			CopilotSummarizeErrorConsoleURL: "https://app.example.com",
+		}, actual)
+	})
+
 	t.Run("parse copilot summarize error with newer version", func(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{

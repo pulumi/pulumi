@@ -63,6 +63,12 @@ type DeltaCheckpointUploadsConfigV2 struct {
 	CheckpointCutoffSizeBytes int `json:"checkpointCutoffSizeBytes"`
 }
 
+// CopilotSummarizeErrorConfig is the configuration for the copilot-summarize-error capability.
+type CopilotSummarizeErrorConfig struct {
+	// ConsoleURL is the base Pulumi Console URL for this backend.
+	ConsoleURL string `json:"consoleUrl,omitempty"`
+}
+
 // DeploymentSchemaVersionConfig is the configuration for the deployment-schema-version capability.
 type DeploymentSchemaVersionConfig struct {
 	// Version is the maximum version of the deployment schema that the service supports.
@@ -135,6 +141,9 @@ type Capabilities struct {
 	// Indicates whether the service supports summarizing errors via Copilot.
 	CopilotSummarizeErrorV1 bool
 
+	// The backend-provided base Pulumi Console URL for Copilot summarize error links.
+	CopilotSummarizeErrorConsoleURL string
+
 	// Indicates whether the service supports the Copilot explainer.
 	CopilotExplainPreviewV1 bool
 
@@ -177,6 +186,13 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 		case CopilotSummarizeError:
 			if entry.Version == 1 {
 				parsed.CopilotSummarizeErrorV1 = true
+				if len(entry.Configuration) > 0 {
+					var cfg CopilotSummarizeErrorConfig
+					if err := json.Unmarshal(entry.Configuration, &cfg); err != nil {
+						return Capabilities{}, fmt.Errorf("decoding CopilotSummarizeErrorConfig returned %w", err)
+					}
+					parsed.CopilotSummarizeErrorConsoleURL = cfg.ConsoleURL
+				}
 			}
 		case CopilotExplainPreview:
 			if entry.Version == 1 {

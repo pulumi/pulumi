@@ -919,6 +919,63 @@ func TestCloudBackend_GetCloudRegistry(t *testing.T) {
 	assert.True(t, ok, "expected registry to be a cloudRegistry")
 }
 
+func TestCloudBackendGetPermalinkUsesCapabilityConsoleURL(t *testing.T) {
+	t.Parallel()
+
+	capabilities := &promise.CompletionSource[apitype.Capabilities]{}
+	capabilities.MustFulfill(apitype.Capabilities{
+		CopilotSummarizeErrorConsoleURL: "https://app-review.review-stacks.pulumi-dev.io",
+	})
+	b := &cloudBackend{
+		url:          "https://api-review.review-stacks.pulumi-dev.io",
+		capabilities: capabilities.Promise(),
+	}
+	update := client.UpdateIdentifier{
+		StackIdentifier: client.StackIdentifier{
+			Owner:   "pulumi",
+			Project: "project",
+			Stack:   tokens.MustParseStackName("dev"),
+		},
+		UpdateID: "preview-id",
+	}
+
+	assert.Equal(
+		t,
+		"https://app-review.review-stacks.pulumi-dev.io/pulumi/project/dev/previews/preview-id",
+		b.getPermalink(t.Context(), update, 42, true),
+	)
+	assert.Equal(
+		t,
+		"https://app-review.review-stacks.pulumi-dev.io/pulumi/project/dev/updates/42",
+		b.getPermalink(t.Context(), update, 42, false),
+	)
+}
+
+func TestCloudBackendGetPermalinkFallsBackWithoutCapabilityConsoleURL(t *testing.T) {
+	t.Parallel()
+
+	capabilities := &promise.CompletionSource[apitype.Capabilities]{}
+	capabilities.MustFulfill(apitype.Capabilities{})
+	b := &cloudBackend{
+		url:          client.PulumiCloudURL,
+		capabilities: capabilities.Promise(),
+	}
+	update := client.UpdateIdentifier{
+		StackIdentifier: client.StackIdentifier{
+			Owner:   "pulumi",
+			Project: "project",
+			Stack:   tokens.MustParseStackName("dev"),
+		},
+		UpdateID: "preview-id",
+	}
+
+	assert.Equal(
+		t,
+		"https://app.pulumi.com/pulumi/project/dev/previews/preview-id",
+		b.getPermalink(t.Context(), update, 42, true),
+	)
+}
+
 // Bit of an integration test.
 // That we can render engine events, send them to the backend, and get a summary back.
 func TestCopilotExplainer(t *testing.T) {
