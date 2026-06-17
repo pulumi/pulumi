@@ -596,11 +596,11 @@ func (p *propertyPrinter) indented(amt int) *propertyPrinter {
 	return &new
 }
 
-// forcesReplacement returns true if appending key to the current path matches any replace path.
-func (p *propertyPrinter) forcesReplacement(key resource.PropertyKey) bool {
-	checkPath := append(append(resource.PropertyPath{}, p.currentPath...), string(key))
+// forcesReplacement reports whether path is one of the provider's replace paths. Paths are
+// compared element-by-element so keys containing `.` or `[` don't collide.
+func (p *propertyPrinter) forcesReplacement(path resource.PropertyPath) bool {
 	for _, rp := range p.replacePaths {
-		if rp.String() == checkPath.String() {
+		if slices.Equal(rp, path) {
 			return true
 		}
 	}
@@ -803,7 +803,8 @@ func printOldNewDiffs(
 	}
 
 	if diff != nil {
-		// Convert top-level replaceKeys to PropertyPaths for the display layer.
+		// Legacy path: the engine only reports top-level replace keys here. Nested annotations
+		// need the detailed diff path (see engine.TranslateDetailedDiff).
 		replacePaths := make([]resource.PropertyPath, 0, len(replaceKeys))
 		for _, k := range replaceKeys {
 			replacePaths = append(replacePaths, resource.PropertyPath{string(k)})
@@ -870,9 +871,8 @@ func (p *propertyPrinter) printHiddenPaths(paths []resource.PropertyPath) {
 	}
 }
 
-// appendReplaceAnnotation inserts " # forces replacement" on the property change line.
-// Single-line diffs are annotated at the end of the line; multiline object/array diffs are
-// annotated on the opening line so the tag is not stranded on a closing brace.
+// appendReplaceAnnotation adds " # forces replacement" to the property's change line: the end
+// of a single-line diff, or the opening line of a multiline diff (not the closing brace).
 func appendReplaceAnnotation(s string) string {
 	suffix := "\n" + colors.Reset
 	first := strings.Index(s, suffix)
@@ -891,34 +891,32 @@ func appendReplaceAnnotation(s string) string {
 
 func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxkey int, diff resource.ObjectDiff) {
 	titleFunc := propertyTitlePrinter(string(key), maxkey)
-	forces := p.forcesReplacement(key)
 
-	// When the property forces replacement, capture output in a local buffer
-	// so we can append the annotation to the last line.
-	pp := p
-	var capture *bytes.Buffer
-	if forces {
-		capture = &bytes.Buffer{}
-		clone := *p
-		clone.dest = capture
-		pp = &clone
-	}
+	// Full path to this property, carried into nested diffs and used for replacement detection.
+	childPath := append(append(resource.PropertyPath{}, p.currentPath...), string(key))
+	forces := p.forcesReplacement(childPath)
+
+	// Capture output so we can append the annotation when this property forces replacement.
+	capture := &bytes.Buffer{}
+	pp := *p
+	pp.dest = capture
+	pp.currentPath = childPath
 
 	if add, isadd := diff.Adds[key]; isadd {
 		pp.printAdd(add, titleFunc)
 	} else if del, isdelete := diff.Deletes[key]; isdelete {
 		pp.printDelete(del, titleFunc)
 	} else if update, isupdate := diff.Updates[key]; isupdate {
-		subP := *pp
-		subP.currentPath = append(append(resource.PropertyPath{}, pp.currentPath...), string(key))
-		subP.printPropertyValueDiff(titleFunc, update)
+		pp.printPropertyValueDiff(titleFunc, update)
 	} else if same := diff.Sames[key]; !pp.summary && shouldPrintPropertyValue(same, pp.planning) {
 		pp.withOp(deploy.OpSame).withPrefix(false).printObjectProperty(key, same, maxkey)
 	}
 
-	if capture != nil {
-		writeString(p.dest, appendReplaceAnnotation(capture.String()))
+	out := capture.String()
+	if forces {
+		out = appendReplaceAnnotation(out)
 	}
+	writeString(p.dest, out)
 }
 
 func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter), diff resource.ValueDiff) {
@@ -932,6 +930,7 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 		a := diff.Array
 		for i := 0; i < a.Len(); i++ {
 			elemPrinter := p.indented(2)
+			elemPrinter.currentPath = append(append(resource.PropertyPath{}, p.currentPath...), i)
 			elemTitleFunc := func(p *propertyPrinter) {
 				p.indented(-1).writeIndentedf("[%d]: ", i)
 			}

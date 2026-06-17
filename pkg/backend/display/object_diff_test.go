@@ -609,7 +609,6 @@ func TestPrintObjectDiff_ForcesReplacementAnnotation(t *testing.T) {
 
 	t.Run("nested object replacement annotation at nested path", func(t *testing.T) {
 		t.Parallel()
-		// Nested object: tags.env forces replacement
 		innerDiff := resource.ObjectDiff{
 			Adds:    resource.PropertyMap{},
 			Deletes: resource.PropertyMap{},
@@ -636,5 +635,91 @@ func TestPrintObjectDiff_ForcesReplacementAnnotation(t *testing.T) {
 		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
 		output := buf.String()
 		assert.Contains(t, output, "# forces replacement")
+	})
+
+	t.Run("nested replacement annotates only the concrete child key", func(t *testing.T) {
+		t.Parallel()
+		// Only tags.env forces replacement; tags.team must stay unannotated.
+		innerDiff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"env":  {Old: resource.NewProperty("prod"), New: resource.NewProperty("staging")},
+				"team": {Old: resource.NewProperty("a"), New: resource.NewProperty("b")},
+			},
+		}
+		diff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"tags": {Object: &innerDiff},
+			},
+		}
+		replacePaths := []resource.PropertyPath{{"tags", "env"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		expected := "" +
+			"  ~ tags: {\n" +
+			"      ~ env : \"prod\" => \"staging\" # forces replacement\n" +
+			"      ~ team: \"a\" => \"b\"\n" +
+			"    }\n"
+		assert.Equal(t, expected, colors.Never.Colorize(buf.String()))
+	})
+
+	t.Run("nested object inside array resolves its path", func(t *testing.T) {
+		t.Parallel()
+		// rules[0].action forces replacement: the path descends through an array index.
+		elemDiff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"action": {Old: resource.NewProperty("allow"), New: resource.NewProperty("deny")},
+			},
+		}
+		diff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"rules": {
+					Array: &resource.ArrayDiff{
+						Updates: map[int]resource.ValueDiff{
+							0: {Object: &elemDiff},
+						},
+					},
+				},
+			},
+		}
+		replacePaths := []resource.PropertyPath{{"rules", 0, "action"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		output := colors.Never.Colorize(buf.String())
+		assert.Contains(t, output, "action: \"allow\" => \"deny\" # forces replacement")
+	})
+
+	t.Run("structural comparison handles keys containing a dot", func(t *testing.T) {
+		t.Parallel()
+		// A top-level key literally named "a.b" must not be confused with the nested path a -> b.
+		diff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"a.b": {Old: resource.NewProperty("x"), New: resource.NewProperty("y")},
+			},
+		}
+		replacePaths := []resource.PropertyPath{{"a.b"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		assert.Contains(t, colors.Never.Colorize(buf.String()), "# forces replacement")
+
+		// Conversely, the two-element path {"a", "b"} must NOT match the literal "a.b" key.
+		var buf2 bytes.Buffer
+		PrintObjectDiff(&buf2, diff, nil, false, 1, false, false, false, false, nil,
+			[]resource.PropertyPath{{"a", "b"}})
+		assert.NotContains(t, colors.Never.Colorize(buf2.String()), "# forces replacement")
 	})
 }
