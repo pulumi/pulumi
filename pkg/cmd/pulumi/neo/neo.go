@@ -325,18 +325,10 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 	}
 	orgName, projectName, stackRefName := target.org, target.project, target.stackName()
 
-	// In a debug session, prepend the seed trigger line (so Neo's skill evaluator matches) and
-	// append the stack context. Any positional prompt sits between them as extra guidance.
+	// In a debug session, replace the prompt with the seed that points Neo at the failed
+	// operation, folding any positional prompt in as extra guidance.
 	if opts.debugKind != debugNone {
-		id := opts.debugID
-		if id == "" {
-			id = opts.debugKind.latestID(ctx, cloudBe, target.ref)
-		}
-		seed := debugSeedPrompt(opts.debugKind, id)
-		if opts.prompt != "" {
-			seed += "\n\n" + opts.prompt
-		}
-		opts.prompt = seed + "\n\n" + debugStackContext(cloudBe, target, opts.debugKind, id)
+		opts.prompt = buildDebugPrompt(ctx, cloudBe, target, opts.debugKind, opts.debugID, opts.prompt)
 	}
 
 	// Allow tools to read/write under temp directories in addition to cwd: the agent

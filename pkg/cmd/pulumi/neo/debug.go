@@ -56,6 +56,24 @@ func (k debugKind) latestID(ctx context.Context, be httpstate.Backend, stackRef 
 	return ""
 }
 
+// buildDebugPrompt assembles the full initial prompt for a debug session: the seed trigger line
+// (so Neo's skill evaluator loads the debugging skill) followed by the stack context. An empty id
+// is resolved to the latest operation of kind; any userPrompt sits between the two as extra
+// guidance. Every lookup is best-effort, so the prompt is always well-formed.
+func buildDebugPrompt(
+	ctx context.Context, be httpstate.Backend,
+	target taskTarget, kind debugKind, id, userPrompt string,
+) string {
+	if id == "" {
+		id = kind.latestID(ctx, be, target.ref)
+	}
+	seed := debugSeedPrompt(kind, id)
+	if userPrompt != "" {
+		seed += "\n\n" + userPrompt
+	}
+	return seed + "\n\n" + debugStackContext(be, target, kind, id)
+}
+
 // debugSeedPrompt builds Neo's initial prompt for a debug session. It is a short trigger line, not
 // a procedure: Neo's skill evaluator matches it and loads the debugging skill. With no id it targets
 // the most recent operation of that kind; with an id, that specific run.
