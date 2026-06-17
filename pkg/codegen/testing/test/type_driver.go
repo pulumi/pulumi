@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -78,6 +79,7 @@ func TestTypeNameCodegen(
 	pkg, err := schema.ImportSpec(
 		pkgSpec,
 		map[string]schema.Language{"test": typeTestImporter(0)},
+		schema.NewPluginLoader(utils.NewContext(inputDir)),
 		schema.ValidationOptions{
 			AllowDanglingReferences: true,
 		},

@@ -683,7 +683,8 @@ func TestPythonResourceArgs(t *testing.T) {
 	require.NoError(t, err)
 	var spec schema.PackageSpec
 	require.NoError(t, json.Unmarshal(schemaBytes, &spec))
-	pkg, err := schema.ImportSpec(spec, nil, schema.ValidationOptions{
+	var poisonLoader schema.Loader = struct{ schema.Loader }{}
+	pkg, err := schema.ImportSpec(spec, nil, poisonLoader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)

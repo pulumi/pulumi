@@ -78,7 +78,8 @@ func InstallPackagesFromProject(
 		Color: utilCmdutil.GetGlobalColorization(),
 	})
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), d, d, nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(registry))
 	if err != nil {
 		return packageinstallation.State{}, err
 	}
@@ -86,7 +87,7 @@ func InstallPackagesFromProject(
 	if err != nil {
 		return packageinstallation.State{}, errors.Join(err, pluginHost.Close())
 	}
-	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx, stdout, stderr, nil,
+	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, stdout, stderr, nil,
 		packageworkspace.Options{
 			UseLanguageVersionTools: useLanguageVersionTools,
 		})

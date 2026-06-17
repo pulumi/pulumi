@@ -86,3 +86,14 @@ message PackageSpec {
     map<string, bytes> checksums = 4;
     string server = 5; // the URL of a server that can be used to download this plugin, if needed.
 }
+
+// `PackageResolver` resolves a [](pulumirpc.PackageSpec) -- a user-supplied package reference such as a name,
+// registry coordinate, git URL, or local path, optionally carrying a version and parameters -- into a concrete,
+// downloadable [](pulumirpc.PackageDependency). The engine exposes this service to resource providers as part of the
+// provider handshake so they can resolve packages the same way the CLI does.
+//
+// This is currently unstable and experimental.
+service PackageResolver {
+    // `ResolvePackage` resolves the given package specification to a concrete package dependency.
+    rpc ResolvePackage(PackageSpec) returns (PackageDependency) {}
+}

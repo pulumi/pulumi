@@ -129,7 +129,6 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		binderDirPath := args.BinderDirPath
 		componentSource := args.ComponentSource
 		nodeRange := args.ComponentNodeRange
-		loader := args.BinderLoader
 		// bind the component here as if it was a new program
 		// this becomes the DirPath for the new binder
 		componentSourceDir := filepath.Join(binderDirPath, componentSource)
@@ -176,7 +175,6 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		}
 
 		opts := []BindOption{
-			Loader(loader),
 			DirPath(componentSourceDir),
 			ComponentBinder(ComponentProgramBinderFromFileSystem()),
 			Cache(args.PackageCache),
@@ -201,7 +199,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 			opts = append(opts, SkipRangeTypechecking)
 		}
 
-		componentProgram, programDiags, err := BindProgram(parser.Files, opts...)
+		componentProgram, programDiags, err := BindProgram(parser.Files, args.BinderLoader, opts...)
 
 		includeSourceDirectoryInDiagnostics(programDiags, componentSourceDir)
 
@@ -329,7 +327,7 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 		SkipInvokeTypecheck:          b.options.skipInvokeTypecheck,
 		SkipRangeTypecheck:           b.options.skipRangeTypecheck,
 		PreferOutputVersionedInvokes: b.options.preferOutputVersionedInvokes,
-		BinderLoader:                 b.options.loader,
+		BinderLoader:                 b.loader,
 		BinderDirPath:                b.options.dirPath,
 		PackageCache:                 b.options.packageCache,
 		ComponentSource:              node.source,

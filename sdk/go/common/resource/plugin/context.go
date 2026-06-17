@@ -71,6 +71,11 @@ type Context struct {
 	// any. Like the loader, the mapper is a workspace service: it boots plugins to source
 	// mappings, and which plugins resolve depends on the workspace. It dies with the context.
 	mapperServer *GrpcServer
+
+	// resolverServer serves the package resolver bound to this context's workspace view, if any.
+	// Like the loader and mapper, the resolver is a workspace service: which packages resolve
+	// depends on the workspace. It dies with the context.
+	resolverServer *GrpcServer
 }
 
 // LoaderAddr returns the address of the schema loader service bound to this context, or the
@@ -91,10 +96,19 @@ func (ctx *Context) MapperAddr() string {
 	return ctx.mapperServer.Addr()
 }
 
-// startServices binds this context's loader and mapper services, sourced from host. Each
-// service is workspace-scoped: it boots plugins against this context's view and is shut down
-// when the context is closed. A host may serve no loader and/or no mapper, in which case the
-// corresponding service is left unset.
+// ResolverAddr returns the address of the package resolver service bound to this context, or the
+// empty string if the context has none.
+func (ctx *Context) ResolverAddr() string {
+	if ctx.resolverServer == nil {
+		return ""
+	}
+	return ctx.resolverServer.Addr()
+}
+
+// startServices binds this context's loader, mapper, and resolver services, sourced from host.
+// Each service is workspace-scoped: it boots plugins against this context's view and is shut down
+// when the context is closed. A host may serve any subset of these, in which case the
+// corresponding services are left unset.
 func (ctx *Context) startServices(host Host) error {
 	loader, err := host.Loader(ctx)
 	if err != nil {
@@ -107,6 +121,12 @@ func (ctx *Context) startServices(host Host) error {
 		return err
 	}
 	ctx.mapperServer = mapper
+
+	resolver, err := host.Resolver(ctx)
+	if err != nil {
+		return err
+	}
+	ctx.resolverServer = resolver
 	return nil
 }
 

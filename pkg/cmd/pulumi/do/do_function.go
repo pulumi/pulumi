@@ -107,7 +107,7 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 			}
 			inputs, err := evaluateFunctionFile(
 				ctx, inputFile, "input", pc.format, fn, pc.evalContext(),
-				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				pc.converter, pc.schemaLoader, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", inputProperties))
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)

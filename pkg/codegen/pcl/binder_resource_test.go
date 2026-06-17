@@ -139,9 +139,9 @@ func TestBindResourceOptions(t *testing.T) {
 				parser.ParseFile(strings.NewReader(src), "test.pcl"),
 				"parse failed")
 
-			prog, diag, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+			prog, diag, err := BindProgram(parser.Files, &stubSchemaLoader{
 				Package: &fooPkg,
-			}))
+			})
 			require.NoError(t, err, "bind failed")
 			require.Empty(t, diag, "bind failed")
 
@@ -243,9 +243,9 @@ func TestBindReadResourceOptions(t *testing.T) {
 				parser.ParseFile(strings.NewReader(src), "test.pcl"),
 				"parse failed")
 
-			prog, diag, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+			prog, diag, err := BindProgram(parser.Files, &stubSchemaLoader{
 				Package: &fooPkg,
-			}))
+			})
 			require.NoError(t, err, "bind failed")
 			require.Empty(t, diag, "bind failed")
 
@@ -295,7 +295,7 @@ func TestBindReadComponentResourceFails(t *testing.T) {
 			},
 		},
 	}
-	fooPkg, diags, err := schema.BindSpec(fooPkgSpec, nil, schema.ValidationOptions{})
+	fooPkg, diags, err := schema.BindSpec(fooPkgSpec, &stubSchemaLoader{}, schema.ValidationOptions{})
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors())
 
@@ -309,9 +309,9 @@ func TestBindReadComponentResourceFails(t *testing.T) {
 		parser.ParseFile(strings.NewReader(src), "test.pcl"),
 		"parse failed")
 
-	prog, diags, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+	prog, diags, err := BindProgram(parser.Files, &stubSchemaLoader{
 		Package: fooPkg,
-	}))
+	})
 	require.Error(t, err, "bind should fail")
 	require.True(t, diags.HasErrors(), "expected bind diagnostics")
 	require.Nil(t, prog)
@@ -359,7 +359,7 @@ func TestBindResourceIgnoreChangesNameCollision(t *testing.T) {
 			},
 		},
 	}
-	pkg, diags, err := schema.BindSpec(pkgSpec, nil, schema.ValidationOptions{})
+	pkg, diags, err := schema.BindSpec(pkgSpec, &stubSchemaLoader{}, schema.ValidationOptions{})
 	require.NoError(t, err, "BindSpec failed")
 	require.False(t, diags.HasErrors(), "BindSpec diagnostics: %v", diags.Error())
 
@@ -455,9 +455,9 @@ resource property "foo:index:Foo" {
 				parser.ParseFile(strings.NewReader(tt.src), "test.pp"),
 				"parse failed")
 
-			prog, bindDiags, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+			prog, bindDiags, err := BindProgram(parser.Files, &stubSchemaLoader{
 				Package: pkg,
-			}))
+			})
 			require.NoError(t, err, "bind returned error")
 			require.Falsef(t, bindDiags.HasErrors(), "bind diagnostics: %v", bindDiags.Error())
 			require.NotNil(t, prog)
@@ -525,7 +525,7 @@ func TestBindResourceQuotedPropertyKeys(t *testing.T) {
 			},
 		},
 	}
-	pkg, diags, err := schema.BindSpec(pkgSpec, nil, schema.ValidationOptions{})
+	pkg, diags, err := schema.BindSpec(pkgSpec, &stubSchemaLoader{}, schema.ValidationOptions{})
 	require.NoError(t, err, "BindSpec failed")
 	require.False(t, diags.HasErrors(), "BindSpec diagnostics: %v", diags.Error())
 
@@ -542,9 +542,9 @@ func TestBindResourceQuotedPropertyKeys(t *testing.T) {
 		parser.ParseFile(strings.NewReader(src), "test.pp"),
 		"parse failed")
 
-	prog, bindDiags, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+	prog, bindDiags, err := BindProgram(parser.Files, &stubSchemaLoader{
 		Package: pkg,
-	}))
+	})
 	require.NoError(t, err, "bind returned error")
 	require.Falsef(t, bindDiags.HasErrors(), "bind diagnostics: %v", bindDiags.Error())
 	require.Len(t, prog.Nodes, 1, "expected one node")

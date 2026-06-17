@@ -17,25 +17,27 @@ package backend
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-// DefaultHostFactory is the production engine.HostFactory: it builds the standard plugin host
-// with language installation and the schema-loader and conversion-mapper services. The engine
-// supplies the diagnostic sinks and debug context so plugin logs surface in the UI as events.
-func DefaultHostFactory(
-	ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext,
-) (plugin.Host, error) {
-	return pkghost.New(ctx, d, statusD, debug,
-		pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+// NewHostFactory builds the production engine.HostFactory: the standard plugin host with language
+// installation and the schema-loader, conversion-mapper, and package-resolver services. The engine
+// supplies the diagnostic sinks and debug context so plugin logs surface in the UI as events. The
+// package resolver resolves against reg, which the caller derives from the active backend so a
+// logged-in user resolves against their authenticated registry.
+func NewHostFactory(reg registry.Registry) engine.HostFactory {
+	resolver := packageworkspace.NewResolverServer(reg)
+	return func(ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext) (plugin.Host, error) {
+		return pkghost.New(ctx, d, statusD, debug,
+			pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, resolver)
+	}
 }
-
-// Assert DefaultHostFactory satisfies the engine's factory type.
-var _ engine.HostFactory = DefaultHostFactory

@@ -236,9 +236,15 @@ type ProviderHandshakeRequest struct {
 	InvokeWithPreview bool `protobuf:"varint,7,opt,name=invoke_with_preview,json=invokeWithPreview,proto3" json:"invoke_with_preview,omitempty"`
 	// The target of a [](codegen.Mapper) service the provider can use to retrieve mappings from other ecosystems to
 	// Pulumi. May be empty on older engines.
-	MapperTarget  *string `protobuf:"bytes,8,opt,name=mapper_target,json=mapperTarget,proto3,oneof" json:"mapper_target,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MapperTarget *string `protobuf:"bytes,8,opt,name=mapper_target,json=mapperTarget,proto3,oneof" json:"mapper_target,omitempty"`
+	// The target of a [](codegen.Loader) service the provider can use to load the schemas of other Pulumi packages.
+	// May be empty on older engines.
+	LoaderTarget *string `protobuf:"bytes,9,opt,name=loader_target,json=loaderTarget,proto3,oneof" json:"loader_target,omitempty"`
+	// The target of a [](pulumirpc.PackageResolver) service the provider can use to resolve package specifications to
+	// concrete package dependencies. May be empty on older engines.
+	ResolverTarget *string `protobuf:"bytes,10,opt,name=resolver_target,json=resolverTarget,proto3,oneof" json:"resolver_target,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeRequest) Reset() {
@@ -323,6 +329,20 @@ func (x *ProviderHandshakeRequest) GetInvokeWithPreview() bool {
 func (x *ProviderHandshakeRequest) GetMapperTarget() string {
 	if x != nil && x.MapperTarget != nil {
 		return *x.MapperTarget
+	}
+	return ""
+}
+
+func (x *ProviderHandshakeRequest) GetLoaderTarget() string {
+	if x != nil && x.LoaderTarget != nil {
+		return *x.LoaderTarget
+	}
+	return ""
+}
+
+func (x *ProviderHandshakeRequest) GetResolverTarget() string {
+	if x != nil && x.ResolverTarget != nil {
+		return *x.ResolverTarget
 	}
 	return ""
 }
@@ -4261,7 +4281,7 @@ var File_pulumi_provider_proto protoreflect.FileDescriptor
 
 const file_pulumi_provider_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x12pulumi/alias.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xce\x03\n" +
+	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x12pulumi/alias.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xcc\x04\n" +
 	"\x18ProviderHandshakeRequest\x12%\n" +
 	"\x0eengine_address\x18\x01 \x01(\tR\rengineAddress\x12*\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tH\x00R\rrootDirectory\x88\x01\x01\x120\n" +
@@ -4270,10 +4290,15 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x0esupports_views\x18\x05 \x01(\bR\rsupportsViews\x12C\n" +
 	"\x1esupports_refresh_before_update\x18\x06 \x01(\bR\x1bsupportsRefreshBeforeUpdate\x12.\n" +
 	"\x13invoke_with_preview\x18\a \x01(\bR\x11invokeWithPreview\x12(\n" +
-	"\rmapper_target\x18\b \x01(\tH\x02R\fmapperTarget\x88\x01\x01B\x11\n" +
+	"\rmapper_target\x18\b \x01(\tH\x02R\fmapperTarget\x88\x01\x01\x12(\n" +
+	"\rloader_target\x18\t \x01(\tH\x03R\floaderTarget\x88\x01\x01\x12,\n" +
+	"\x0fresolver_target\x18\n" +
+	" \x01(\tH\x04R\x0eresolverTarget\x88\x01\x01B\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
 	"\x12_program_directoryB\x10\n" +
-	"\x0e_mapper_target\"\xfc\x01\n" +
+	"\x0e_mapper_targetB\x10\n" +
+	"\x0e_loader_targetB\x12\n" +
+	"\x10_resolver_target\"\xfc\x01\n" +
 	"\x19ProviderHandshakeResponse\x12%\n" +
 	"\x0eaccept_secrets\x18\x01 \x01(\bR\racceptSecrets\x12)\n" +
 	"\x10accept_resources\x18\x02 \x01(\bR\x0facceptResources\x12%\n" +

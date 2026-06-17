@@ -30,6 +30,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
@@ -61,12 +62,33 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
-			spec, err := schemaFromSourceOrStdin(cmd, source, args[1:])
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			sink := cmdutil.Diag()
+			reg := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext,
+				convert.NewMapperServerFromContext, packageworkspace.NewResolverServer(reg))
+			if err != nil {
+				return err
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil)
+			if err != nil {
+				return err
+			}
+			defer contract.IgnoreClose(pctx)
+
+			spec, err := schemaFromSourceOrStdin(cmd, pctx, source, args[1:])
 			if err != nil {
 				return err
 			}
 
-			_, diags, err := schema.BindSpec(*spec, nil, schema.ValidationOptions{
+			_, diags, err := schema.BindSpec(*spec, schema.NewPluginLoader(pctx), schema.ValidationOptions{
 				AllowDanglingReferences: schemaCheckArgs.allowDanglingReferences,
 			})
 			diagWriter := hcl.NewDiagnosticTextWriter(cmd.ErrOrStderr(), nil, 0, true)
@@ -101,29 +123,12 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 // schemaFromSourceOrStdin loads a PackageSpec from the given source. If source is "-",
 // the schema is read as JSON from stdin. Otherwise it delegates to SchemaFromSchemaSource
 // which supports files, plugin names, and plugin paths.
-func schemaFromSourceOrStdin(cmd *cobra.Command, source string, extraArgs []string) (*schema.PackageSpec, error) {
+func schemaFromSourceOrStdin(
+	cmd *cobra.Command, pctx *plugin.Context, source string, extraArgs []string,
+) (*schema.PackageSpec, error) {
 	if source == "-" {
 		return schemaFromStdin(cmd)
 	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	sink := cmdutil.Diag()
-	pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
-		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
-	if err != nil {
-		return nil, err
-	}
-	// host is owned here, closed after the context
-	defer contract.IgnoreClose(pluginHost)
-	pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
-		nil)
-	if err != nil {
-		return nil, err
-	}
-	defer contract.IgnoreClose(pctx)
 
 	parameters := &plugin.ParameterizeArgs{Args: extraArgs}
 	registry := cmdCmd.NewDefaultRegistry(

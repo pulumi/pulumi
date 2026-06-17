@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -41,7 +42,7 @@ import (
 // RPC server parents its tracing interceptors on the span carried by ctx, if any.
 func New(
 	ctx context.Context, d, statusD diag.Sink, debugging plugin.DebugContext, installLang plugin.LanguageInstaller,
-	newLoader plugin.NewLoaderFunc, newMapper plugin.NewMapperFunc,
+	newLoader plugin.NewLoaderFunc, newMapper plugin.NewMapperFunc, newResolver plugin.NewResolverFunc,
 ) (plugin.Host, error) {
 	hostCtx, hostCancel := context.WithCancel(ctx)
 	host := &defaultHost{
@@ -60,6 +61,7 @@ func New(
 		installLang:             installLang,
 		newLoader:               newLoader,
 		newMapper:               newMapper,
+		newResolver:             newResolver,
 		contextServers:          map[*plugin.Context][]*plugin.GrpcServer{},
 	}
 
@@ -119,12 +121,13 @@ type defaultHost struct {
 
 	installLang plugin.LanguageInstaller // installs unbundled language runtimes on demand; may be nil.
 
-	// newLoader and newMapper build the schema loader and conversion mapper services bound to a
-	// given context's workspace view. They live on the host so callers no longer thread them
-	// through every context constructor; each is workspace-independent and may be nil, in which
-	// case the host serves no loader / no mapper.
-	newLoader plugin.NewLoaderFunc
-	newMapper plugin.NewMapperFunc
+	// newLoader, newMapper, and newResolver build the schema loader, conversion mapper, and package
+	// resolver services bound to a given context's workspace view. They live on the host so callers
+	// no longer thread them through every context constructor; each is workspace-independent and may
+	// be nil, in which case the host serves no loader / no mapper / no resolver.
+	newLoader   plugin.NewLoaderFunc
+	newMapper   plugin.NewMapperFunc
+	newResolver plugin.NewResolverFunc
 
 	// contextServers holds the loader and mapper gRPC servers the host hosts on behalf of a
 	// context. The host creates them in Loader/Mapper and shuts them down in ReleaseContext --
@@ -162,6 +165,23 @@ func (host *defaultHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error)
 	}
 	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
 		codegenrpc.RegisterMapperServer(srv, host.newMapper(ctx))
+	})
+	if err != nil {
+		return nil, err
+	}
+	host.trackContextServer(ctx, srv)
+	return srv, nil
+}
+
+// Resolver returns a package resolver service bound to ctx's workspace view, built from the
+// resolver factory the host was constructed with. It returns nil if the host has no resolver
+// factory. The server is hosted by the host and shut down when ctx is released.
+func (host *defaultHost) Resolver(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	if host.newResolver == nil {
+		return nil, nil
+	}
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		pulumirpc.RegisterPackageResolverServer(srv, host.newResolver(ctx))
 	})
 	if err != nil {
 		return nil, err

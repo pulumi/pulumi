@@ -32,7 +32,7 @@ import (
 // internals. The host is closed when the test finishes.
 func newHost(t *testing.T, installLang plugin.LanguageInstaller) *defaultHost {
 	sink := diagtest.LogSink(t)
-	h, err := New(t.Context(), sink, sink, nil, installLang, nil, nil)
+	h, err := New(t.Context(), sink, sink, nil, installLang, nil, nil, nil)
 	require.NoError(t, err)
 	host, ok := h.(*defaultHost)
 	require.True(t, ok)
@@ -307,7 +307,7 @@ func TestContextLoaderAddr(t *testing.T) {
 		return codegenrpc.UnimplementedLoaderServer{}
 	}
 
-	host, err := New(t.Context(), sink, sink, nil, nil, mockLoader, nil)
+	host, err := New(t.Context(), sink, sink, nil, nil, mockLoader, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, host.Close()) })
 
@@ -332,7 +332,7 @@ func TestContextMapperAddr(t *testing.T) {
 		return codegenrpc.UnimplementedMapperServer{}
 	}
 
-	host, err := New(t.Context(), sink, sink, nil, nil, nil, mockMapper)
+	host, err := New(t.Context(), sink, sink, nil, nil, nil, mockMapper, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, host.Close()) })
 
