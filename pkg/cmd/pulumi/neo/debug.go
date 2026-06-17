@@ -24,9 +24,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 )
 
-// debugKind identifies which kind of failed operation `pulumi neo --debug-update`/`--debug-preview`
-// targets. The constant values double as the noun used in Neo's seed prompt and the debug context,
-// so callers can format a debugKind directly instead of mapping it.
+// debugKind identifies which failed operation a debug session targets. The values double as the
+// noun used in the seed prompt, so callers can format a debugKind directly.
 type debugKind string
 
 const (
@@ -36,9 +35,8 @@ const (
 )
 
 // latestID returns the id of the stack's most recent operation of this kind, or "" when none is
-// available. Updates and previews are tracked separately — previews never appear in GetHistory — so
-// each kind has its own lookup: an update resolves to its history version (an integer), a preview to
-// its opaque UpdateID (a UUID). Both lookups are best-effort.
+// available. Updates and previews are looked up separately (previews never appear in GetHistory):
+// an update resolves to its history version, a preview to its opaque UpdateID. Best-effort.
 func (k debugKind) latestID(ctx context.Context, be httpstate.Backend, stackRef backend.StackReference) string {
 	if stackRef == nil {
 		return ""
@@ -58,12 +56,9 @@ func (k debugKind) latestID(ctx context.Context, be httpstate.Backend, stackRef 
 	return ""
 }
 
-// debugSeedPrompt builds the initial Neo prompt for `pulumi neo --debug-update`/`--debug-preview`.
-// It is deliberately a short trigger line, not a procedure: Neo's skill evaluator matches
-// "debug ... failed update/preview" and loads the pulumi-debug-failed-operation skill, which
-// carries the actual debugging steps. With no id the seed targets the user's most recent operation
-// of that kind (the skill confirms which one); with an id it targets that specific run. Either way
-// the fix should land locally in the working directory.
+// debugSeedPrompt builds Neo's initial prompt for a debug session. It is a short trigger line, not
+// a procedure: Neo's skill evaluator matches it and loads the debugging skill. With no id it targets
+// the most recent operation of that kind; with an id, that specific run.
 func debugSeedPrompt(kind debugKind, id string) string {
 	if id == "" {
 		return fmt.Sprintf(
@@ -75,13 +70,9 @@ func debugSeedPrompt(kind debugKind, id string) string {
 		kind, id)
 }
 
-// debugStackContext builds a short, human-readable block describing where the debug session is
-// running — the organization, user, project, and stack — plus the specific operation being
-// debugged. `pulumi neo --debug-update`/`--debug-preview` append this to the seed prompt so Neo
-// starts with the failure already in context instead of rediscovering it. kind/id describe the
-// resolved target (id is "" when none could be inferred). Every field is best-effort: anything that
-// is empty or unavailable is simply omitted so debug still works when, for example, the user isn't
-// logged in or no stack is selected.
+// debugStackContext builds a block describing the debug session's org, user, project, stack, and
+// resolved operation, appended to the seed prompt so Neo starts with the failure in context. Every
+// field is best-effort: anything empty or unavailable is omitted.
 func debugStackContext(be httpstate.Backend, target taskTarget, kind debugKind, id string) string {
 	var b strings.Builder
 	b.WriteString("Context for this debug session:\n")
@@ -97,8 +88,6 @@ func debugStackContext(be httpstate.Backend, target taskTarget, kind debugKind, 
 	if name := target.stackName(); name != "" {
 		fmt.Fprintf(&b, "- Stack: %s\n", name)
 	}
-	// The id was resolved (explicitly or inferred) before this call, so we just report it; the
-	// phrasing matches the seed prompt's "<kind> <id>".
 	if id != "" {
 		fmt.Fprintf(&b, "- Debugging: %s %s\n", kind, id)
 	}

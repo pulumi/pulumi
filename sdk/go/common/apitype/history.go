@@ -123,21 +123,13 @@ type GetHistoryResponse struct {
 	Updates []UpdateInfo `json:"updates"`
 }
 
-// StackPreview describes a single preview operation on a stack. Unlike the entries in
-// GetHistoryResponse, previews are not part of the stack's update history and carry their own
-// opaque UpdateID — the UUID that appears in the console preview URL
-// (https://app.pulumi.com/{org}/{project}/{stack}/previews/{updateID}).
+// StackPreview describes a single preview operation on a stack. Previews are tracked separately
+// from update history and carry their own opaque UpdateID — the UUID in the console preview URL.
 type StackPreview struct {
-	// Info carries the preview's timing and result (e.g. whether it failed).
-	Info UpdateInfo `json:"info"`
-	// UpdateID is the opaque id of the preview (the UUID in its console URL).
 	UpdateID string `json:"updateID"`
-	// Version is the stack version the preview was run against.
-	Version int `json:"version"`
 }
 
-// GetLatestStackPreviewsResponse is the response from the Pulumi Service when requesting a
-// stack's most recent previews. Previews are returned newest-first.
+// GetLatestStackPreviewsResponse is the Pulumi Service response for a stack's most recent previews.
 type GetLatestStackPreviewsResponse struct {
 	Updates []StackPreview `json:"updates"`
 }

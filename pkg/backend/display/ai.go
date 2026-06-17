@@ -45,8 +45,8 @@ func neoDelimiterEmoji() string {
 	return cmdutil.EmojiOr(" ✨", ":")
 }
 
-// RenderNeoErrorSummary renders a Neo error summary to the console. isPreview selects which debug
-// command the link suggestion offers (`pulumi neo --debug-preview` vs `--debug-update`).
+// RenderNeoErrorSummary renders a Neo error summary to the console. isPreview selects the debug
+// command suggested in the link (`--debug-preview` vs `--debug-update`).
 func RenderNeoErrorSummary(
 	summary *NeoErrorSummaryMetadata, err error, opts Options, permalink string, isPreview bool,
 ) {
@@ -84,8 +84,7 @@ func RenderNeoErrorSummary(
 }
 
 // PrintNeoLink prints the "would you like help" link plus the terminal command to debug the
-// failure. isPreview picks `pulumi neo --debug-preview` for a failed preview and
-// `pulumi neo --debug-update` otherwise.
+// failure. isPreview picks `--debug-preview` for a failed preview, `--debug-update` otherwise.
 func PrintNeoLink(out io.Writer, opts Options, permalink string, isPreview bool) {
 	fmt.Fprintln(out, "  "+"Would you like additional help with this update?")
 	fmt.Fprintln(out, "  "+

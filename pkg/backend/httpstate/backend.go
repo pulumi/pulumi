@@ -2266,10 +2266,7 @@ func (b *cloudBackend) GetHistory(
 	return beUpdates, nil
 }
 
-// GetLatestStackPreview returns the stack's most recent preview operation, or nil if the stack
-// has no previews. Previews are tracked separately from update history (GetHistory), so this is
-// the only way to surface them; the returned UpdateID is the UUID that appears in the console
-// preview URL.
+// GetLatestStackPreview returns the stack's most recent preview operation, or nil if it has none.
 func (b *cloudBackend) GetLatestStackPreview(
 	ctx context.Context,
 	stackRef backend.StackReference,
@@ -2279,7 +2276,7 @@ func (b *cloudBackend) GetLatestStackPreview(
 		return nil, err
 	}
 
-	previews, err := b.client.GetLatestStackPreviews(ctx, stack, 1, 1)
+	previews, err := b.client.GetLatestStackPreviews(ctx, stack)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stack previews: %w", err)
 	}

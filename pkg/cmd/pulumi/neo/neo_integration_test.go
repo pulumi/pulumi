@@ -339,9 +339,8 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 		"SSE stream was never opened — test did not exercise Session.Run")
 }
 
-// runNeoTest invokes runNeo with the option defaults shared by these integration tests
-// (the test org, manual approval, default permissions, no stack context). Tests vary only
-// the prompt and working directory, so those are the parameters here.
+// runNeoTest invokes runNeo with the option defaults shared by these integration tests; tests
+// vary only the prompt and working directory.
 func runNeoTest(ctx context.Context, prompt, cwd string) error {
 	return runNeo(ctx, io.Discard, io.Discard, neoRunOptions{
 		prompt:         prompt,

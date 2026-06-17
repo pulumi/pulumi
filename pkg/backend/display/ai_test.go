@@ -36,7 +36,7 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 		ShowLinkToNeo: true,
 	}
 
-	// Render to buffer. isPreview=false, so the suggestion targets a failed update.
+	// isPreview=false, so the suggestion targets a failed update.
 	RenderNeoErrorSummary(&NeoErrorSummaryMetadata{
 		Summary: summary,
 	}, nil, opts, "http://foo.bar/baz", false)

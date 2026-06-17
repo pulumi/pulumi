@@ -30,9 +30,7 @@ import (
 func TestDebugSeedPromptWithID(t *testing.T) {
 	t.Parallel()
 
-	// The seed is a short trigger line; the debugging procedure lives in the
-	// pulumi-debug-failed-operation skill, which Neo's evaluator loads from this text. The kind
-	// selects the noun (update vs preview) and the id pins the specific run.
+	// The kind selects the noun (update vs preview) and the id pins the specific run.
 	assert.Equal(t,
 		"Debug the failed Pulumi update 42 of this stack and fix it directly in this working directory.\n",
 		debugSeedPrompt(debugUpdate, "42"))
@@ -40,18 +38,12 @@ func TestDebugSeedPromptWithID(t *testing.T) {
 		"Debug the failed Pulumi preview 7f3a2b9c-1d4e-4f6a-8b2c-9e0d1a2b3c4d "+
 			"of this stack and fix it directly in this working directory.\n",
 		debugSeedPrompt(debugPreview, "7f3a2b9c-1d4e-4f6a-8b2c-9e0d1a2b3c4d"))
-
-	// The procedure moved to the skill, so the seed stays a one-liner with no embedded steps.
-	got := debugSeedPrompt(debugUpdate, "42")
-	assert.NotContains(t, got, "<details>")
-	assert.NotContains(t, got, "/api/console")
 }
 
 func TestDebugSeedPromptNoID(t *testing.T) {
 	t.Parallel()
 
-	// With no id, the seed targets the user's most recent operation of the given kind; the skill
-	// confirms which one.
+	// With no id, the seed targets the user's most recent operation of the given kind.
 	assert.Equal(t,
 		"Debug my most recent Pulumi update on this stack and fix it directly in this working directory.\n",
 		debugSeedPrompt(debugUpdate, ""))
@@ -74,15 +66,11 @@ func TestLatestOperationID(t *testing.T) {
 	be.GetLatestStackPreviewF = func(
 		_ context.Context, _ backend.StackReference,
 	) (*apitype.StackPreview, error) {
-		return &apitype.StackPreview{
-			UpdateID: "2e07637b-d20b-4d4f-9d29-a7bcb1631cf7",
-			Info:     apitype.UpdateInfo{Result: apitype.FailedResult, StartTime: 200},
-		}, nil
+		return &apitype.StackPreview{UpdateID: "2e07637b-d20b-4d4f-9d29-a7bcb1631cf7"}, nil
 	}
 	ref := &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
 
-	// An update resolves to its history version; a preview to its opaque UpdateID. The two are
-	// looked up independently, so each kind ignores the other.
+	// An update resolves to its history version; a preview to its opaque UpdateID.
 	assert.Equal(t, "42", debugUpdate.latestID(t.Context(), be, ref))
 	assert.Equal(t, "2e07637b-d20b-4d4f-9d29-a7bcb1631cf7", debugPreview.latestID(t.Context(), be, ref))
 }
@@ -131,7 +119,6 @@ func TestDebugStackContext_FullContext(t *testing.T) {
 	assert.Contains(t, got, "- User: alice\n")
 	assert.Contains(t, got, "- Project: my-proj\n")
 	assert.Contains(t, got, "- Stack: dev\n")
-	// The context phrasing matches the seed prompt's "<kind> <id>".
 	assert.Contains(t, got, "- Debugging: update 42\n")
 }
 

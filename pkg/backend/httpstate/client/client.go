@@ -1423,26 +1423,15 @@ func (pc *Client) GetStackUpdates(
 	return response.Updates, nil
 }
 
-// GetLatestStackPreviews returns the indicated stack's most recent preview operations,
-// newest-first. Previews are tracked separately from update history (see GetStackUpdates),
-// so this is the only way to discover them; each carries the opaque UUID that appears in its
-// console preview URL.
+// GetLatestStackPreviews returns the stack's most recent preview operations, newest-first.
+// Previews are tracked separately from update history (see GetStackUpdates).
 func (pc *Client) GetLatestStackPreviews(
 	ctx context.Context,
 	stack StackIdentifier,
-	pageSize int,
-	page int,
 ) ([]apitype.StackPreview, error) {
 	var response apitype.GetLatestStackPreviewsResponse
-	// asc=false requests newest-first; the endpoint otherwise defaults to oldest-first, which
-	// would make response.Updates[0] the oldest preview rather than the most recent one.
-	path := getStackPath(stack, "updates", "latest", "previews") + "?asc=false"
-	if pageSize > 0 {
-		if page < 1 {
-			page = 1
-		}
-		path += fmt.Sprintf("&pageSize=%d&page=%d", pageSize, page)
-	}
+	// asc=false requests newest-first; the endpoint otherwise defaults to oldest-first.
+	path := getStackPath(stack, "updates", "latest", "previews") + "?asc=false&pageSize=1&page=1"
 	if err := pc.restCall(ctx, "GET", path, nil, nil, &response); err != nil {
 		return nil, err
 	}
