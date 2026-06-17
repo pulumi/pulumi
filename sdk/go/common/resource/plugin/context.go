@@ -50,7 +50,7 @@ type Context struct {
 	DialOptions func(pluginInfo any) []grpc.DialOption
 
 	// Environment injected into every plugin launched with this context, appended by ExecPlugin.
-	ResourceProviderEnv map[string]string
+	CloudCredentialEnv map[string]string
 
 	DebugTraceMutex *sync.Mutex // used internally to syncronize debug tracing
 
@@ -220,7 +220,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		disableProviderPreview: disableProviderPreview,
 		config:                 config,
 		projectName:            projectName,
-		ResourceProviderEnv:    pulumiCloudCredentialEnv(project),
+		CloudCredentialEnv:     pulumiCloudCredentialEnv(project),
 	}
 
 	projectPlugins, err := projectPluginsFromProject(pctx, plugins, packages)

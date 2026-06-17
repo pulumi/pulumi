@@ -31,9 +31,8 @@ import (
 
 type registryClient struct{ c *client.Client }
 
-// New builds an unauthenticated registry client for the given API URL, defaulting to the public
-// cloud when it is empty. It takes the URL rather than the process environment so it cannot reach
-// the rest of the global env (which carries the access token).
+// New returns an unauthenticated registry client for the given API URL, defaulting to the public
+// cloud when it is empty.
 func New(sink diag.Sink, apiURL string) registry.Registry {
 	if apiURL == "" {
 		apiURL = "https://api.pulumi.com"

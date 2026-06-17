@@ -472,15 +472,15 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
-// resourceProviderEnvVars returns the KEY=value environment entries the context injects into a
+// cloudCredentialEnvVars returns the KEY=value environment entries the context injects into a
 // plugin. They currently reach every plugin kind, language hosts included; whether language hosts
 // (which run user program code) should be excluded is a deferred decision.
-func resourceProviderEnvVars(ctx *Context) []string {
+func cloudCredentialEnvVars(ctx *Context) []string {
 	if ctx == nil {
 		return nil
 	}
-	vars := make([]string, 0, len(ctx.ResourceProviderEnv))
-	for k, v := range ctx.ResourceProviderEnv {
+	vars := make([]string, 0, len(ctx.CloudCredentialEnv))
+	for k, v := range ctx.CloudCredentialEnv {
 		vars = append(vars, k+"="+v)
 	}
 	return vars
@@ -513,7 +513,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}
 
 	// Appended last to win over ambient values.
-	environment = append(environment, resourceProviderEnvVars(ctx)...)
+	environment = append(environment, cloudCredentialEnvVars(ctx)...)
 
 	// Check to see if we have a binary we can invoke directly
 	stat, err := os.Stat(bin)

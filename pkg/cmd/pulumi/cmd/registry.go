@@ -35,7 +35,7 @@ func NewDefaultRegistry(
 	workspace pkgWorkspace.Context,
 	project *workspace.Project,
 	diag diag.Sink,
-	e env.Env,
+	globalEnv env.Env,
 ) registry.Registry {
 	return registry.NewOnDemandRegistry(func() (registry.Registry, error) {
 		b, err := cmdBackend.NonInteractiveCurrentBackend(
@@ -45,7 +45,7 @@ func NewDefaultRegistry(
 			return b.GetReadOnlyCloudRegistry(), nil
 		}
 		if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
-			return unauthenticatedregistry.New(diag, e.GetString(env.APIURL)), nil
+			return unauthenticatedregistry.New(diag, globalEnv.GetString(env.APIURL)), nil
 		}
 		return nil, fmt.Errorf("could not get Private Registry backend: %w", err)
 	})

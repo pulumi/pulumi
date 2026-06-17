@@ -243,18 +243,18 @@ func TestCheckVersionRange(t *testing.T) {
 	}
 }
 
-func TestResourceProviderEnvVars(t *testing.T) {
+func TestCloudCredentialEnvVars(t *testing.T) {
 	t.Parallel()
 
-	ctx := &Context{ResourceProviderEnv: map[string]string{"PULUMI_ACCESS_TOKEN": "secret"}}
+	ctx := &Context{CloudCredentialEnv: map[string]string{"PULUMI_ACCESS_TOKEN": "secret"}}
 
 	t.Run("env is injected", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, []string{"PULUMI_ACCESS_TOKEN=secret"}, resourceProviderEnvVars(ctx))
+		assert.Equal(t, []string{"PULUMI_ACCESS_TOKEN=secret"}, cloudCredentialEnvVars(ctx))
 	})
 
 	t.Run("nil context is safe", func(t *testing.T) {
 		t.Parallel()
-		assert.Empty(t, resourceProviderEnvVars(nil))
+		assert.Empty(t, cloudCredentialEnvVars(nil))
 	})
 }
