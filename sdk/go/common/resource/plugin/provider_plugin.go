@@ -275,7 +275,8 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, e,
 			handshake, providerPluginDialOptions(ctx, pkg, ""),
-			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
+			!ctx.DisableProviderDebugging() &&
+				host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
 		if err != nil {
 			return nil, err
 		}
@@ -414,7 +415,8 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env.Global(),
 		handshake, providerPluginDialOptions(ctx, "", path),
-		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
+		!ctx.DisableProviderDebugging() &&
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
 	if err != nil {
 		return nil, err
 	}

@@ -59,11 +59,13 @@ type Context struct {
 	// Per-workspace state used when booting plugins. A Host is stateless with respect to
 	// workspaces; each Host method takes a Context and reads this state from it, so a single
 	// host can serve plugins for many workspaces.
-	runtimeOptions         map[string]any
-	disableProviderPreview bool
-	config                 map[config.Key]string
-	projectName            tokens.PackageName
-	projectPlugins         []workspace.ProjectPlugin
+	runtimeOptions           map[string]any
+	disableProviderPreview   bool
+	disableProviderDebugging bool
+	lifetimeContext          *Context
+	config                   map[config.Key]string
+	projectName              tokens.PackageName
+	projectPlugins           []workspace.ProjectPlugin
 
 	// loaderServer serves the schema loader bound to this context's workspace view, if any.
 	// The loader is a workspace service, not a host service: it boots plugins to load
@@ -134,6 +136,27 @@ func (ctx *Context) RuntimeOptions() map[string]any {
 // previews disabled.
 func (ctx *Context) DisableProviderPreview() bool {
 	return ctx.disableProviderPreview
+}
+
+func (ctx *Context) DisableProviderDebugging() bool {
+	return ctx.disableProviderDebugging
+}
+
+func (ctx *Context) WithoutProviderDebugging() *Context {
+	if ctx.disableProviderDebugging {
+		return ctx
+	}
+	c := *ctx
+	c.disableProviderDebugging = true
+	c.lifetimeContext = ctx
+	return &c
+}
+
+func (ctx *Context) LifetimeContext() *Context {
+	if ctx.lifetimeContext != nil {
+		return ctx.lifetimeContext
+	}
+	return ctx
 }
 
 // Config returns the stack configuration this context was built with, if any.

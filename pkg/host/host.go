@@ -338,7 +338,9 @@ func (host *defaultHost) Provider(
 			if !alreadyReported {
 				host.reportedResourcePlugins[key] = struct{}{}
 			}
-			host.resourcePlugins[plug] = &resourcePlugin{Plugin: plug, Info: info, Name: pkg, ctx: ctx}
+			host.resourcePlugins[plug] = &resourcePlugin{
+				Plugin: plug, Info: info, Name: pkg, ctx: ctx.LifetimeContext(),
+			}
 		}
 
 		return plug, err
