@@ -361,7 +361,7 @@ class Output(Generic[T_co]):
         async def run() -> "_OutputData[T_co]":
             try:
                 return await original
-            except Exception as exc: # noqa: BLE001 catch blind exception
+            except Exception as exc:  # noqa: BLE001 catch blind exception
                 with SETTINGS.lock:
                     SETTINGS.outputs.discard(original)
                 recovered = Output.from_input(func(exc))
