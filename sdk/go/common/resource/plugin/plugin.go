@@ -473,8 +473,7 @@ func parsePort(portString string) (int, error) {
 }
 
 // cloudCredentialEnvVars returns the KEY=value environment entries the context injects into a
-// plugin. They currently reach every plugin kind, language hosts included; whether language hosts
-// (which run user program code) should be excluded is a deferred decision.
+// plugin. They are passed to every plugin kind as part of `ExecPlugin`.
 func cloudCredentialEnvVars(ctx *Context) []string {
 	if ctx == nil {
 		return nil
