@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -126,8 +125,10 @@ You must have publish permissions for the package to delete it.`,
 			prompt := opts.Color.Colorize(fmt.Sprintf("This will permanently delete package version %s%s%s!",
 				colors.SpecAttention, formatPkg(pkg), colors.Reset,
 			))
-			if !yes && !ui.ConfirmPrompt(prompt, packageVersion.String(), opts) {
-				return result.FprintBailf(cmd.ErrOrStderr(), "confirmation declined")
+			if err := ui.ConfirmDeletion(
+				yes, cmdutil.Interactive(), prompt, packageVersion.String(), cmd.ErrOrStderr(), opts,
+			); err != nil {
+				return err
 			}
 
 			if err := r.DeletePackageVersion(ctx,

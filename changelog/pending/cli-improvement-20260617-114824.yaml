@@ -1,0 +1,6 @@
+component: cli
+kind: improvement
+body: Respect PULUMI_SKIP_CONFIRMATIONS whenever we ask for confirmation
+time: 2026-06-17T11:48:24.192746+02:00
+custom:
+  PR: "23607"

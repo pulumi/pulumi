@@ -25,7 +25,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -78,11 +77,8 @@ func newRmCmd() *cobra.Command {
 			}
 
 			out := cobraCmd.OutOrStdout()
-			if !yes {
-				if !cmdutil.Interactive() {
-					return backenderr.ErrNonInteractiveRequiresYes
-				}
-
+			// Show what will be removed before asking the user to confirm.
+			if !yes && cmdutil.Interactive() {
 				suffix := "s"
 				if len(targets) == 1 {
 					suffix = ""
@@ -91,10 +87,11 @@ func newRmCmd() *cobra.Command {
 					fmt.Sprintf("%sThis will permanently remove %d log file%s:%s",
 						colors.SpecAttention, len(targets), suffix, colors.Reset)))
 				printRemovalTable(out, targets)
-
-				if !ui.ConfirmPrompt("", confirmToken(targets), opts) {
-					return errors.New("confirmation declined")
-				}
+			}
+			if err := ui.ConfirmDeletion(
+				yes, cmdutil.Interactive(), "", confirmToken(targets), out, opts,
+			); err != nil {
+				return err
 			}
 
 			for _, t := range targets {
