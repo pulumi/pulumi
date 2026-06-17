@@ -83,6 +83,12 @@ type Interpreter struct {
 	// packageRefs are package references returned by RegisterPackage keyed by package name.
 	packageRefs map[string]string
 
+	// packageRefByToken maps a fully-qualified resource or function token to the
+	// package reference that defines it. Extension resources keep the base
+	// provider's namespace, so multiple extensions can share a token's package
+	// portion; indexing by the exact token disambiguates them.
+	packageRefByToken map[string]string
+
 	// callbacks is the server that handles resource hook callbacks.
 	callbacks     *pclCallbackServer
 	callbacksOnce sync.Once
@@ -91,9 +97,10 @@ type Interpreter struct {
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
 	return &Interpreter{
-		program:     program,
-		info:        info,
-		packageRefs: map[string]string{},
+		program:           program,
+		info:              info,
+		packageRefs:       map[string]string{},
+		packageRefByToken: map[string]string{},
 	}
 }
 
@@ -663,6 +670,12 @@ func PackageNameFromToken(token string) (string, error) {
 }
 
 func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
+	// Prefer an exact token match: extension tokens live in the base provider's
+	// namespace, so resolving by the token's package portion alone can't tell two
+	// extensions on the same base apart.
+	if ref, ok := i.packageRefByToken[token]; ok {
+		return ref, nil
+	}
 	tokenPackage, err := PackageNameFromToken(token)
 	if err != nil {
 		return "", err
@@ -729,10 +742,16 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 
 		i.packageRefs[key] = resp.GetRef()
 		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
-		// Extension parameterization keeps tokens in the base provider's namespace,
-		// so register the ref under the base name too — getPackageRefFromToken looks
-		// up by the token's package portion.
-		i.packageRefs[descriptor.Name] = resp.GetRef()
+		// Extension resources keep the base provider's namespace, so multiple
+		// extensions can share the base name and a single base-keyed entry would
+		// collide. Index every token the package defines instead, so each resource
+		// resolves to its own package's ref.
+		for _, r := range def.Resources {
+			i.packageRefByToken[r.Token] = resp.GetRef()
+		}
+		for _, f := range def.Functions {
+			i.packageRefByToken[f.Token] = resp.GetRef()
+		}
 	}
 
 	return nil
@@ -1956,15 +1975,16 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		i.call,
 	)
 	componentInterpreter := &Interpreter{
-		program:     component.Program,
-		info:        i.info,
-		monitor:     i.monitor,
-		engine:      i.engine,
-		loader:      i.loader,
-		evalContext: componentEval,
-		stackURN:    resp.GetUrn(),
-		namePrefix:  componentName,
-		packageRefs: i.packageRefs,
+		program:           component.Program,
+		info:              i.info,
+		monitor:           i.monitor,
+		engine:            i.engine,
+		loader:            i.loader,
+		evalContext:       componentEval,
+		stackURN:          resp.GetUrn(),
+		namePrefix:        componentName,
+		packageRefs:       i.packageRefs,
+		packageRefByToken: i.packageRefByToken,
 	}
 
 	for k, v := range inputs {

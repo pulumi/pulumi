@@ -124,19 +124,14 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 
 	var pkgSchema *packageSchema
 	var err error
-	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
-		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
-	} else if extSchema, found, extErr := b.loadExtensionSchemaForToken(pkg, func(s *packageSchema) bool {
+	// The function token's package portion may be a plain package or a base
+	// provider whose functions are supplied by an extension layered on it. Resolve
+	// against the package named pkg plus every extension over it, taking the one
+	// whose schema actually defines this function token.
+	pkgSchema, err = b.resolvePackageSchemaForToken(context.TODO(), pkg, func(s *packageSchema) bool {
 		_, _, ok, _ := s.LookupFunction(token)
 		return ok
-	}); found {
-		// The function token names a base provider that an extension
-		// parameterizes; the function is defined by whichever extension's schema
-		// contains the token.
-		pkgSchema, err = extSchema, extErr
-	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(context.TODO(), b.options.loader, pkg, "", "")
-	}
+	})
 	if err != nil {
 		if b.options.skipInvokeTypecheck {
 			return b.zeroSignature(), nil

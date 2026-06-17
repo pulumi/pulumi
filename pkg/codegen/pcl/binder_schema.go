@@ -376,14 +376,10 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 			continue
 		}
 
-		var pkg *packageSchema
-		var err error
-		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
-			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
-		} else if extDescriptors := b.extensionDescriptorsForBase(name); len(extDescriptors) > 0 {
-			// name is a base provider parameterized by one or more extensions. Load
-			// each and record it under its own (user-facing) name, not the base's, so
-			// dependency checks see every extension rather than just the first match.
+		_, declared := b.packageDescriptors[name]
+		if extDescriptors := b.extensionDescriptorsForBase(name); !declared && len(extDescriptors) > 0 {
+			// name is a base plugin; record each extension that layers on it under the
+			// extension's own name (what dependency checks expect), found via the base.
 			for _, extDescriptor := range extDescriptors {
 				extPkg, extErr := b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, extDescriptor)
 				if extErr != nil {
@@ -395,12 +391,9 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 				b.referencedPackages[extPkg.schema.Name()] = extPkg.schema
 			}
 			continue
-		} else {
-			pkg, err = b.options.packageCache.loadPackageSchema(
-				ctx, b.options.loader,
-				name, pkgOpts.version, pkgOpts.pluginDownloadURL,
-			)
 		}
+
+		pkg, err := b.loadDeclaredOrBarePackageSchema(ctx, name, pkgOpts.version, pkgOpts.pluginDownloadURL)
 		if err != nil {
 			if b.options.skipResourceTypecheck || b.options.skipInvokeTypecheck {
 				continue

@@ -1032,39 +1032,61 @@ func (b *binder) extensionDescriptorsForBase(base string) []*schema.PackageDescr
 	return descriptors
 }
 
-// loadExtensionSchemaForToken resolves a base-namespaced token to the schema of
-// the extension that actually defines it. When several extensions parameterize
-// the same base provider, owns selects the one whose schema contains the token
-// rather than matching on the base name alone. found reports whether any
-// extension parameterizes base, so callers can fall back to loading the bare
-// package when it doesn't.
-func (b *binder) loadExtensionSchemaForToken(
-	base string,
+// loadDeclaredOrBarePackageSchema loads the schema for name: the package declared
+// under that name when the program supplied a descriptor for it, otherwise a bare
+// load by name. It does not consider extensions layered on name as a base —
+// callers reach those through extensionDescriptorsForBase.
+func (b *binder) loadDeclaredOrBarePackageSchema(
+	ctx context.Context, name, version, pluginDownloadURL string,
+) (*packageSchema, error) {
+	if descriptor, ok := b.packageDescriptors[name]; ok {
+		return b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, descriptor)
+	}
+	return b.options.packageCache.loadPackageSchema(ctx, b.options.loader, name, version, pluginDownloadURL)
+}
+
+// resolvePackageSchemaForToken returns the schema that defines token's package, pkg.
+// Candidates are the package named pkg (a declared descriptor, else the bare
+// provider) plus every extension layered on it; owns picks the candidate whose
+// schema defines the token. If none does, the first that loaded is returned so
+// the caller surfaces the unknown token.
+func (b *binder) resolvePackageSchemaForToken(
+	ctx context.Context,
+	pkg string,
 	owns func(*packageSchema) bool,
-) (s *packageSchema, found bool, err error) {
+) (*packageSchema, error) {
+	load := make([]func() (*packageSchema, error), 0, 1+len(b.extensionDescriptorsForBase(pkg)))
+
+	load = append(load, func() (*packageSchema, error) {
+		return b.loadDeclaredOrBarePackageSchema(ctx, pkg, "", "")
+	})
+	for _, descriptor := range b.extensionDescriptorsForBase(pkg) {
+		load = append(load, func() (*packageSchema, error) {
+			return b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, descriptor)
+		})
+	}
+
+	var firstErr error
 	var fallback *packageSchema
-	for _, descriptor := range b.extensionDescriptorsForBase(base) {
-		found = true
-		candidate, loadErr := b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, descriptor)
-		if loadErr != nil {
-			if err == nil {
-				err = loadErr
+	for _, loadCandidate := range load {
+		candidate, err := loadCandidate()
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
 			}
 			continue
 		}
 		if owns(candidate) {
-			return candidate, true, nil
+			return candidate, nil
 		}
 		if fallback == nil {
 			fallback = candidate
 		}
 	}
-	// No extension owns the token: return any loaded schema so the caller's
-	// lookup emits the usual "unknown" diagnostic against the token.
 	if fallback != nil {
-		return fallback, true, nil
+		return fallback, nil
 	}
-	return nil, found, err
+	return nil, firstErr
 }
 
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an

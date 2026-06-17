@@ -83,19 +83,13 @@ func (b *binder) resolveSchemaResourceForBind(
 	// `loadPackageSchema` will load the default version while `getPackageSchema` will
 	// simply fail. We can't give a populated version field since we have not processed
 	// the body, and thus the version yet.
-	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
-		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
-	} else if extSchema, found, extErr := b.loadExtensionSchemaForToken(pkg, func(s *packageSchema) bool {
+	// The token's package portion may be a plain package or a base plugin whose
+	// resources are supplied by one or more extensions layered on it. Resolve
+	// against the one whose schema actually defines this resource token.
+	pkgSchema, err = b.resolvePackageSchemaForToken(ctx, pkg, func(s *packageSchema) bool {
 		_, _, ok, _ := s.LookupResource(token)
 		return ok
-	}); found {
-		// The token names a base provider that an extension parameterizes — the
-		// resource is defined by whichever extension's schema contains the token,
-		// not the bare base provider.
-		pkgSchema, err = extSchema, extErr
-	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
-	}
+	})
 	if err != nil {
 		e := unknownPackage(pkg, tokenRange)
 		e.Detail = err.Error()
