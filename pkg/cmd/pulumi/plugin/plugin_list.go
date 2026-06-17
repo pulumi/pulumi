@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPluginLsCmd(pluginContext pluginstorage.Context) *cobra.Command {
+func newPluginListCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var projectOnly bool
 	var jsonOut bool
 	cmd := &cobra.Command{

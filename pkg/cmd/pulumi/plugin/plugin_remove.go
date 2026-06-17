@@ -36,7 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
+func newPluginRemoveCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var all bool
 	var yes bool
 	cmd := &cobra.Command{

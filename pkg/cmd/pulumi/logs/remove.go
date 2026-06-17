@@ -36,14 +36,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newRmCmd() *cobra.Command {
+func newRemoveCmd() *cobra.Command {
 	var before string
 	var all bool
 	var yes bool
 
 	command := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove automatic log files",
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "Remove automatic log files",
 		Long: "Remove automatic log files.\n" +
 			"\n" +
 			"If no filters are given, a list of available log files is\n" +

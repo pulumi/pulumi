@@ -42,7 +42,7 @@ func newPolicyGroupCmd() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.AddCommand(newPolicyGroupLsCmd())
+	cmd.AddCommand(newPolicyGroupListCmd())
 	cmd.AddCommand(newPolicyGroupNewCmd())
 	cmd.AddCommand(newPolicyGroupGetCmd())
 	cmd.AddCommand(newPolicyGroupEditCmd())
@@ -50,12 +50,13 @@ func newPolicyGroupCmd() *cobra.Command {
 	return cmd
 }
 
-func newPolicyGroupLsCmd() *cobra.Command {
+func newPolicyGroupListCmd() *cobra.Command {
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List all Policy Groups for a Pulumi organization",
-		Long:  "List all Policy Groups for a Pulumi organization",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List all Policy Groups for a Pulumi organization",
+		Long:    "List all Policy Groups for a Pulumi organization",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 

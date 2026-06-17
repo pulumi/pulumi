@@ -34,13 +34,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPolicyLsCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
+func newPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var jsonOut bool
 
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List all Policy Packs for a Pulumi organization",
-		Long:  "List all Policy Packs for a Pulumi organization",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List all Policy Packs for a Pulumi organization",
+		Long:    "List all Policy Packs for a Pulumi organization",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 
