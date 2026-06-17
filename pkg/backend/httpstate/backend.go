@@ -2134,7 +2134,7 @@ func (b *cloudBackend) runEngineAction(
 	}
 
 	if op.Opts.Engine.HostFactory == nil {
-		op.Opts.Engine.HostFactory = backend.DefaultHostFactory
+		op.Opts.Engine.HostFactory = backend.NewHostFactory(b.GetReadOnlyCloudRegistry())
 	}
 
 	var plan *deploy.Plan

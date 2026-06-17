@@ -129,10 +129,12 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			span := opentracing.SpanFromContext(ctx)
 			projinfo := &engine.Projinfo{Proj: proj, Root: root}
+			reg := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 			pluginHost, err := pkghost.New(
 				context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-				packageworkspace.NewResolverServerFromContext)
+				packageworkspace.NewResolverServer(reg))
 			if err != nil {
 				return err
 			}

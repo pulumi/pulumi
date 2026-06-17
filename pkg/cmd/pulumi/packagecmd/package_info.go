@@ -61,9 +61,11 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				return err
 			}
 			sink := cmdutil.Diag()
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-				packageworkspace.NewResolverServerFromContext)
+				packageworkspace.NewResolverServer(registry))
 			if err != nil {
 				return err
 			}
@@ -81,8 +83,6 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, args[0], parameters,
 				registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {

@@ -53,9 +53,11 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return err
 			}
 			sink := cmdutil.Diag()
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-				packageworkspace.NewResolverServerFromContext)
+				packageworkspace.NewResolverServer(registry))
 			if err != nil {
 				return err
 			}
@@ -70,8 +72,6 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			defer contract.IgnoreClose(pctx)
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
 				registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {

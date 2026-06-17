@@ -168,7 +168,7 @@ func (cmd *packagePublishCmd) Run(
 	sink := cmdutil.Diag()
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled,
 		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-		packageworkspace.NewResolverServerFromContext)
+		packageworkspace.NewResolverServer(b.GetReadOnlyCloudRegistry()))
 	if err != nil {
 		return err
 	}

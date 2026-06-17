@@ -61,9 +61,11 @@ empty string.`,
 				return err
 			}
 			sink := cmdutil.Diag()
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-				packageworkspace.NewResolverServerFromContext)
+				packageworkspace.NewResolverServer(registry))
 			if err != nil {
 				return err
 			}
@@ -76,9 +78,6 @@ empty string.`,
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
-
-			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			p, _, err := packages.ProviderFromSource(
 				pkgWorkspace.Instance, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {

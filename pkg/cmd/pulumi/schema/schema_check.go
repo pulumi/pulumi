@@ -67,9 +67,11 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 				return err
 			}
 			sink := cmdutil.Diag()
+			reg := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext,
-				convert.NewMapperServerFromContext, packageworkspace.NewResolverServerFromContext)
+				convert.NewMapperServerFromContext, packageworkspace.NewResolverServer(reg))
 			if err != nil {
 				return err
 			}

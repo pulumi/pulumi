@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -67,8 +68,11 @@ func TestResolverServerFromContext_RealProvider(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
 	sink := diagtest.LogSink(t)
+	// The resolver resolves a local plugin path, so the registry is never consulted; an
+	// unauthenticated registry is sufficient for the test.
+	reg := unauthenticatedregistry.New(sink, env.Global())
 	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), sink, sink, nil, nil,
-		nil, nil, packageworkspace.NewResolverServerFromContext)
+		nil, nil, packageworkspace.NewResolverServer(reg))
 	require.NoError(t, err)
 	defer func() { require.NoError(t, pluginHost.Close()) }()
 	pctx, err := plugin.NewContext(t.Context(), sink, sink, pluginHost, nil, t.TempDir(), nil, false, nil)

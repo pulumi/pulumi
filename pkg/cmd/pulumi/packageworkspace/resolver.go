@@ -21,29 +21,34 @@ import (
 
 	"github.com/blang/semver"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// NewResolverServerFromContext constructs the package resolver service bound to pctx's workspace
-// view. It has the signature required by [plugin.NewResolverFunc]. The resolver runs a spec
-// through the standard package installation machinery, so the dependency it returns is the same
-// one the CLI would resolve and install.
-func NewResolverServerFromContext(pctx *plugin.Context) pulumirpc.PackageResolverServer {
-	return &resolverServer{pctx: pctx}
+// NewResolverServer returns a [plugin.NewResolverFunc] that builds a package resolver service bound
+// to a context's workspace view. The resolver runs a spec through the standard package installation
+// machinery, so the dependency it returns is the same one the CLI would resolve and install. The
+// registry is supplied by the caller rather than constructed here, so that a logged-in user resolves
+// against their authenticated registry.
+func NewResolverServer(reg registry.Registry) plugin.NewResolverFunc {
+	contract.Requiref(reg != nil, "reg", "must not be nil")
+	return func(pctx *plugin.Context) pulumirpc.PackageResolverServer {
+		return &resolverServer{pctx: pctx, reg: reg}
+	}
 }
 
 type resolverServer struct {
 	pulumirpc.UnimplementedPackageResolverServer
 	pctx *plugin.Context
+	reg  registry.Registry
 }
 
 func (s *resolverServer) ResolvePackage(
@@ -57,7 +62,6 @@ func (s *resolverServer) ResolvePackage(
 		PluginDownloadURL: req.Server,
 	}
 
-	reg := unauthenticatedregistry.New(s.pctx.Diag, env.Global())
 	installCtx := New(pluginstorage.Instance, pkgWorkspace.Instance, s.pctx.Host, os.Stderr, os.Stderr, //nolint:forbidigo
 		nil, Options{})
 
@@ -67,7 +71,7 @@ func (s *resolverServer) ResolvePackage(
 			ResolveVersionWithLocalWorkspace:           true,
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
-	}, reg, installCtx)
+	}, s.reg, installCtx)
 	if err != nil {
 		return nil, fmt.Errorf("resolving package %q: %w", spec.Source, err)
 	}

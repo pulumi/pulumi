@@ -131,7 +131,7 @@ from the parameters, as in:
 			sink := cmdutil.Diag()
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-				packageworkspace.NewResolverServerFromContext)
+				packageworkspace.NewResolverServer(target.reg))
 			if err != nil {
 				return err
 			}

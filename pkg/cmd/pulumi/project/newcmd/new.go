@@ -403,10 +403,12 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	hostReg := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-		packageworkspace.NewResolverServerFromContext)
+		packageworkspace.NewResolverServer(hostReg))
 	if err != nil {
 		return err
 	}

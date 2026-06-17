@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -45,6 +46,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	cmdEnv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -145,10 +147,11 @@ func getSummaryAbout(
 		addError(err, "Failed to read project")
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
+		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), cmdEnv.Global())
 		pluginHost, hostErr := pkghost.New(
 			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-			packageworkspace.NewResolverServerFromContext)
+			packageworkspace.NewResolverServer(reg))
 		if hostErr != nil {
 			addError(hostErr, "Failed to create plugin host")
 		} else if pwd, program, pluginContext, err := engine.ProjectInfoContext(

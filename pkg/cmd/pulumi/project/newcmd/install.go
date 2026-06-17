@@ -79,7 +79,7 @@ func InstallPackagesFromProject(
 	})
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), d, d, nil, pkgWorkspace.EnsureLanguageInstalled,
 		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-		packageworkspace.NewResolverServerFromContext)
+		packageworkspace.NewResolverServer(registry))
 	if err != nil {
 		return packageinstallation.State{}, err
 	}
