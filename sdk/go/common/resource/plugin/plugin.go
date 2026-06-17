@@ -508,6 +508,9 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	if otelEndpoint := cmdutil.OTelEndpoint(); otelEndpoint != "" {
 		environment = append(environment, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+otelEndpoint)
 	}
+	if logEP := cmdutil.LogReceiverEndpoint(); logEP != "" {
+		environment = append(environment, "PULUMI_LOG_OTLP_ENDPOINT="+logEP)
+	}
 
 	// Appended last to win over ambient values.
 	environment = append(environment, resourceProviderEnvVars(ctx)...)

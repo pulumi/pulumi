@@ -38,6 +38,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -366,13 +367,21 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil,
-			NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+		pluginHost, err := pkghost.New(context.TODO(), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled)
 		if err != nil {
 			return nil, nil, err
 		}
+		ctx, err := plugin.NewContext(context.TODO(), nil, nil, pluginHost, nil, cwd, nil, false, nil,
+			NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		if err != nil {
+			return nil, nil, errors.Join(err, pluginHost.Close())
+		}
 
-		loader, loadCtx = NewPluginLoader(ctx), ctx
+		// loadCtx closes the context and then the host it was built with, since the host is owned
+		// here and not by the context.
+		loader, loadCtx = NewPluginLoader(ctx), closerFunc(func() error {
+			return errors.Join(ctx.Close(), pluginHost.Close())
+		})
 	}
 
 	// Create a type binder.
@@ -537,6 +546,11 @@ func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, b
 	return spec, true, nil
 }
 
+// closerFunc adapts a function to io.Closer.
+type closerFunc func() error
+
+func (f closerFunc) Close() error { return f() }
+
 // types facilitates interning (only storing a single reference to an object) during schema processing. The fields
 // correspond to fields in the schema, and are populated during the binding process.
 type types struct {
@@ -656,9 +670,7 @@ func (spec *PackageSpec) validateTypeToken(
 	}
 
 	if strings.HasPrefix(moduleName, "index/") {
-		// TODO: We want this to be an error really, but for now warn about it to see if any users comment about it. We
-		// know at least aws-native needs to be updated to handle it.
-		err := warningf(path, "invalid token '%s' (nested modules under index are not allowed)", token)
+		err := errorf(path, "invalid token '%s' (nested modules under index are not allowed)", token)
 		diags = diags.Append(err)
 	}
 	if modules != nil && !slices.Contains(modules, parts[1]) {

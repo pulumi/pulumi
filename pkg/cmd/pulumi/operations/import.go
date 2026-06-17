@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -730,11 +731,19 @@ func NewImportCmd() *cobra.Command {
 				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
-			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
-				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled)
+			if err != nil {
+				return fmt.Errorf("create plugin host: %w", err)
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil,
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
+			defer contract.IgnoreClose(pCtx)
 
 			var importFile importFile
 			if importFilePath != "" {
@@ -954,12 +963,19 @@ func NewImportCmd() *cobra.Command {
 				}
 				sink := cmdutil.Diag()
 
-				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
-					schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+				innerHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
+					pkgWorkspace.EnsureLanguageInstalled)
 				if err != nil {
 					return nil, nil, err
 				}
-				defer contract.IgnoreClose(pCtx.Host)
+				// host is owned here, closed after the context
+				defer contract.IgnoreClose(innerHost)
+				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil,
+					schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				if err != nil {
+					return nil, nil, err
+				}
+				defer contract.IgnoreClose(ctx)
 				languagePlugin, err := ctx.Host.LanguageRuntime(ctx, proj.Runtime.Name())
 				if err != nil {
 					return nil, nil, err

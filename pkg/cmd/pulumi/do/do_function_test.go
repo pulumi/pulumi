@@ -135,6 +135,7 @@ Flags:
       --input-file string      Path to a file containing function inputs
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --param1 string          To set param1 things (alias for --input:param1)
+      --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
       --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
@@ -1815,7 +1816,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFile(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -1939,7 +1940,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	subVersion := semver.MustParse("1.2.3")
@@ -2078,7 +2079,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2163,7 +2164,7 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2221,7 +2222,7 @@ func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2280,7 +2281,7 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2347,7 +2348,7 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2486,7 +2487,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(

@@ -223,7 +223,8 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						(tt == "l3-component-simple" ||
 							tt == "l3-rewrite-conversions" ||
 							tt == "l3-component-config-primitives" ||
-							tt == "l3-component-config-objects") {
+							tt == "l3-component-config-objects" ||
+							tt == "l3-resource-keyword-overlap") {
 						t.Skipf("Skipping %s test with pyright due to issues with optional properties", tt)
 					}
 

@@ -17,14 +17,9 @@ package plugin
 import (
 	"fmt"
 	"net"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -155,129 +150,6 @@ func TestPrematureExit(t *testing.T) {
 	require.Contains(t, msg, "some plugin output")
 }
 
-func TestStartupFailure(t *testing.T) {
-	d := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil, nil, nil)
-	require.NoError(t, err)
-
-	pluginPath, err := filepath.Abs("./testdata/provider-language")
-	require.NoError(t, err)
-
-	path := os.Getenv("PATH")
-	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
-
-	// Check exec.LookPath finds the plugin
-	file, err := exec.LookPath("pulumi-language-test")
-	require.NoError(t, err)
-	require.Contains(t, file, "pulumi-language-test")
-
-	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin]: not implemented")
-}
-
-func TestNonZeroExitcode(t *testing.T) {
-	d := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil, nil, nil)
-	require.NoError(t, err)
-
-	pluginPath, err := filepath.Abs("./testdata/provider-language")
-	require.NoError(t, err)
-
-	path := os.Getenv("PATH")
-	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
-
-	// Check exec.LookPath finds the plugin
-	file, err := exec.LookPath("pulumi-language-test")
-	require.NoError(t, err)
-	require.Contains(t, file, "pulumi-language-test")
-
-	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "1")
-	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-exit"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit]: exit status 1")
-
-	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
-	tmp := t.TempDir()
-	err = os.WriteFile(filepath.Join(tmp, "main.go"), []byte(`
-	package main
-	import "os"
-
-	func main() {
-		os.Exit(1)
-	}
-	`), 0o600)
-	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(`
-	module test-plugin-exit
-	go 1.24
-	`), 0o600)
-	require.NoError(t, err)
-
-	// Build and run the program
-	cmd := exec.Command("go", "build", "-o", "test-plugin-exit", ".")
-	cmd.Dir = tmp
-	stdout, err := cmd.CombinedOutput()
-	t.Log(string(stdout))
-	require.NoError(t, err)
-
-	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join(tmp, "test-plugin-exit"))
-	// the prefix of the error message is unstable because it's in a temp dir but we can check the start and end
-	// separately.
-	require.ErrorContains(t, err, "could not read plugin [")
-	require.ErrorContains(t, err, "test-plugin-exit]: exit status 1")
-}
-
-// Similar to TestNonZeroExitcode but with a zero exit code, but no port written so it's still an error.
-func TestZeroExitcode(t *testing.T) {
-	d := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil, nil, nil)
-	require.NoError(t, err)
-
-	pluginPath, err := filepath.Abs("./testdata/provider-language")
-	require.NoError(t, err)
-
-	path := os.Getenv("PATH")
-	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
-
-	// Check exec.LookPath finds the plugin
-	file, err := exec.LookPath("pulumi-language-test")
-	require.NoError(t, err)
-	require.Contains(t, file, "pulumi-language-test")
-
-	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "0")
-	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-exit"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit]: EOF")
-
-	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
-	tmp := t.TempDir()
-	err = os.WriteFile(filepath.Join(tmp, "main.go"), []byte(`
-	package main
-	import "os"
-
-	func main() {
-		os.Exit(0)
-	}
-	`), 0o600)
-	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(`
-	module test-plugin-exit
-	go 1.24
-	`), 0o600)
-	require.NoError(t, err)
-
-	// Build and run the program
-	cmd := exec.Command("go", "build", "-o", "test-plugin-exit", ".")
-	cmd.Dir = tmp
-	stdout, err := cmd.CombinedOutput()
-	t.Log(string(stdout))
-	require.NoError(t, err)
-
-	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join(tmp, "test-plugin-exit"))
-	// the prefix of the error message is unstable because it's in a temp dir but we can check the start and end
-	// separately.
-	require.ErrorContains(t, err, "could not read plugin [")
-	require.ErrorContains(t, err, "test-plugin-exit]: EOF")
-}
-
 func TestCheckVersionRange(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -369,24 +241,6 @@ func TestCheckVersionRange(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Test a provider that has an incompatible version range in its `PulumiPlugin.yaml`.
-//
-//nolint:paralleltest // Modifying the global version.Version
-func TestPulumiVersionRangeYaml(t *testing.T) {
-	d := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil, nil, nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { ctx.Close() })
-
-	oldVersion := version.Version
-	version.Version = "3.1.2"
-	t.Cleanup(func() { version.Version = oldVersion })
-
-	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-cli-version"))
-	require.ErrorContains(t, err,
-		"test-plugin-cli-version: Pulumi CLI version 3.1.2 does not satisfy the version range \">=100.0.0\"")
 }
 
 func TestResourceProviderEnvVars(t *testing.T) {

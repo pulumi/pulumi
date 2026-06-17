@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -389,8 +390,15 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, cwd, nil, false, nil,
-			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+		pluginHost, err := pkghost.New(
+			context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled)
+		if err != nil {
+			return nil, nil, err
+		}
+		// The host is owned here, not by the context; the deferred closes run host-last.
+		defer contract.IgnoreClose(pluginHost)
+		ctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, cwd, nil, false, nil,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 		if err != nil {
 			return nil, nil, err
 		}

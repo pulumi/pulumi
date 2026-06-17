@@ -466,6 +466,12 @@ func (host *pluginHost) LanguageRuntime(ctx *plugin.Context, runtime string) (pl
 	return host.languageRuntime, nil
 }
 
+// ReleaseContext is a no-op: this test host does not scope plugins to a context, so the plugins
+// it booted are torn down when the host itself closes rather than per-context.
+func (host *pluginHost) ReleaseContext(ctx *plugin.Context) error {
+	return nil
+}
+
 func (host *pluginHost) SignalCancellation() error {
 	if host.isClosed() {
 		return ErrHostIsClosed

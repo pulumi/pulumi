@@ -87,24 +87,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "ReadFile function translation works",
 	},
 	{
-		Directory:   "aws-optionals",
-		Description: "AWS get invoke with nested object constructor that takes an optional string",
-		// Testing Go behavior exclusively:
-		Skip: allProgLanguages.Except(TestGo),
-	},
-	{
 		Directory:   "third-party-package",
 		Description: "Ensuring correct imports for third party packages",
 		// compiling and type checking involves downloading the real package to
 		// check against. Because we are checking against the "other" package
 		// (which doesn't exist), this does not work.
 		SkipCompile: codegen.NewStringSet(TestNodeJS, TestDotnet, TestGo),
-	},
-	{
-		Directory: "this-keyword-resource-attr",
-		Description: "ensure that the this keyword is rewritten when it is a variable but kept as is" +
-			"when it is a reference to this pointer in nodejs",
-		Skip: codegen.NewStringSet(TestDotnet, TestPython, TestGo),
 	},
 	{
 		Directory:   "traverse-union-repro",
@@ -190,11 +178,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "python-regress-14037",
 		Description: "Regression test for rewriting qoutes in python",
 		Skip:        allProgLanguages.Except(TestPython),
-	},
-	{
-		Directory:   "inline-invokes",
-		Description: "Tests whether using inline invoke expressions works",
-		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 }
 

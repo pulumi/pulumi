@@ -78,6 +78,34 @@ func TestLanguageNewSmoke(t *testing.T) {
 	}
 }
 
+// TestHCLLanguageDownloadSmoke checks that the engine can transparently download the unbundled
+// pulumi-language-hcl runtime and use it to run a program. HCL is the first language runtime that
+// is not shipped in the CLI tarball, so this exercises the on-demand language-plugin acquisition
+// path end to end: a clean PULUMI_HOME has no hcl runtime, so `pulumi up` must fetch it from the
+// pinned release and launch it to run the (resource-free) program.
+func TestHCLLanguageDownloadSmoke(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// The engine only downloads the language runtime when automatic acquisition is enabled.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	e.ImportDirectory("testdata/hcl_smoke")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "up", "--yes")
+
+	// The runtime should now be resolvable as an installed language plugin, proving it was fetched
+	// rather than already bundled.
+	plugins, _ := e.RunCommand("pulumi", "plugin", "ls")
+	assert.Regexp(t, `hcl\s+language`, plugins)
+
+	e.RunCommand("pulumi", "destroy", "--yes")
+}
+
 // Quick sanity test that `pulumi package new` can scaffold a package from a live template.
 func TestPackageNewSmoke(t *testing.T) {
 	t.Parallel()

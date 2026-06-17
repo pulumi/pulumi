@@ -1,0 +1,6 @@
+component: cli/plugin
+kind: fix
+body: Allow plugin tarballs containing symlinks
+time: 2026-06-16T11:48:40.178206401+02:00
+custom:
+    PR: "23587"

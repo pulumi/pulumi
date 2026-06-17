@@ -30,13 +30,12 @@ func TestContextRequest_race(t *testing.T) {
 		t.Context(),
 		diagtest.LogSink(t), // The diagnostics sink to use for messages.
 		diagtest.LogSink(t), // The diagnostics sink to use for status messages.
-		nil,                 // the host that can be used to fetch providers.
+		&MockHost{},         // the host that can be used to fetch providers; unused by this test.
 		nil,                 // configSource
 		t.TempDir(),         // the working directory to spawn all plugins in.
 		nil,                 // runtimeOptions
 		false,               // disableProviderPreview
 		mocktracer.New().StartSpan("root"),
-		nil,
 		nil,
 		nil,
 	)
