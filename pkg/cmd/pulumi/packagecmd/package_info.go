@@ -28,6 +28,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
@@ -61,7 +62,8 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 			sink := cmdutil.Diag()
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
-				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServerFromContext)
 			if err != nil {
 				return err
 			}

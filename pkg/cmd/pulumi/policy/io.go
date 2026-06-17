@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -66,7 +67,8 @@ func InstallPluginDependencies(
 	}, Root: root}
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServerFromContext)
 	if err != nil {
 		return err
 	}

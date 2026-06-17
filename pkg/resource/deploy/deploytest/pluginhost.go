@@ -620,6 +620,12 @@ func (host *pluginHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) 
 	return srv, nil
 }
 
+// Resolver returns nil: the deploytest host serves no package resolver, since tests resolve their
+// own plugins through pluginLoaders rather than the registry-backed resolution machinery.
+func (host *pluginHost) Resolver(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	return nil, nil
+}
+
 func (host *pluginHost) ResolvePlugin(
 	ctx *plugin.Context, spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {

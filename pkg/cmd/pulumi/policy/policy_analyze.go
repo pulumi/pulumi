@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -90,7 +91,8 @@ func newPolicyAnalyzeCmd(
 					}
 					pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(),
 						nil, pkgWorkspace.EnsureLanguageInstalled,
-						schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+						schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+						packageworkspace.NewResolverServerFromContext)
 					if err != nil {
 						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
 					}

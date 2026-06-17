@@ -42,6 +42,7 @@ import (
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -732,7 +733,8 @@ func NewImportCmd() *cobra.Command {
 			}
 			sink := cmdutil.Diag()
 			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
-				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext,
+				convert.NewMapperServerFromContext, packageworkspace.NewResolverServerFromContext)
 			if err != nil {
 				return fmt.Errorf("create plugin host: %w", err)
 			}
@@ -963,7 +965,8 @@ func NewImportCmd() *cobra.Command {
 				sink := cmdutil.Diag()
 
 				innerHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
-					pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+					pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext,
+					convert.NewMapperServerFromContext, packageworkspace.NewResolverServerFromContext)
 				if err != nil {
 					return nil, nil, err
 				}

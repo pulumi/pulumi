@@ -28,7 +28,7 @@ import (
 
 func TestAnalyzerSpawn(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
 	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
@@ -75,7 +75,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 
 func TestAnalyzerSpawnNoConfig(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
 	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
@@ -98,7 +98,7 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
 	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)

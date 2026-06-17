@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -26,15 +27,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-// DefaultHostFactory is the production engine.HostFactory: it builds the standard plugin host
-// with language installation and the schema-loader and conversion-mapper services. The engine
-// supplies the diagnostic sinks and debug context so plugin logs surface in the UI as events.
+// DefaultHostFactory is the production engine.HostFactory: it builds the standard plugin host with
+// language installation and the schema-loader, conversion-mapper, and package-resolver services. The
+// engine supplies the diagnostic sinks and debug context so plugin logs surface in the UI as events.
 func DefaultHostFactory(
 	ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext,
 ) (plugin.Host, error) {
 	return pkghost.New(ctx, d, statusD, debug,
 		pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServerFromContext)
 }
 
 // Assert DefaultHostFactory satisfies the engine's factory type.

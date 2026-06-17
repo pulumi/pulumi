@@ -35,6 +35,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -77,7 +78,8 @@ func NewDoCmd(
 			// pre-constructed host.
 			return pkghost.New(
 				context.WithoutCancel(ctx), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled,
-				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServerFromContext)
 		}
 	}
 	if loadConverterPlugin == nil {

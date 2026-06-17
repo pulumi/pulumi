@@ -25,6 +25,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -128,7 +129,8 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	}
 
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil,
-		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServerFromContext)
 	if err != nil {
 		return err
 	}

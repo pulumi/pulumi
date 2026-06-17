@@ -221,9 +221,12 @@ func installDependenciesForPluginSpec(
 		return nil
 	}
 
+	// This host exists only to boot the language runtime that installs a plugin's dependencies; it
+	// never boots a provider, so it serves no package resolver. The resolver factory also lives in a
+	// higher layer (cmd/pulumi/packageworkspace) that workspace cannot import.
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), diagutil.Diag(), diagutil.Diag(), nil, EnsureLanguageInstalled,
-		newLoader, convert.NewMapperServerFromContext)
+		newLoader, convert.NewMapperServerFromContext, nil)
 	if err != nil {
 		return err
 	}

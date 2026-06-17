@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -146,7 +147,8 @@ func getSummaryAbout(
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		pluginHost, hostErr := pkghost.New(
 			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServerFromContext)
 		if hostErr != nil {
 			addError(hostErr, "Failed to create plugin host")
 		} else if pwd, program, pluginContext, err := engine.ProjectInfoContext(

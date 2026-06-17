@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -72,7 +73,8 @@ func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServerFromContext)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +111,8 @@ func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) (
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), d, d, nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServerFromContext)
 	if err != nil {
 		return nil, err
 	}

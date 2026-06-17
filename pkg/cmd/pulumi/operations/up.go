@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -442,7 +443,8 @@ func NewUpCmd() *cobra.Command {
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		pluginHost, err := pkghost.New(
 			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServerFromContext)
 		if err != nil {
 			return fmt.Errorf("building plugin host: %w", err)
 		}

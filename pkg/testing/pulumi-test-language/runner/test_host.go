@@ -281,6 +281,12 @@ func (h *testHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
 	return srv, nil
 }
 
+// Resolver serves no package resolver: the conformance runner resolves the test's providers
+// directly and does not exercise spec-to-dependency resolution.
+func (h *testHost) Resolver(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	return nil, nil
+}
+
 func (h *testHost) SignalCancellation() error {
 	panic("not implemented")
 }

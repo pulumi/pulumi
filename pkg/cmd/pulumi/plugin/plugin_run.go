@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
@@ -138,7 +139,8 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			pluginArgs := args[1:]
 
 			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
-				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServerFromContext)
 			if err != nil {
 				return fmt.Errorf("could not create plugin host: %w", err)
 			}

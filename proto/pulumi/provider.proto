@@ -282,6 +282,10 @@ message ProviderHandshakeRequest {
     // The target of a [](codegen.Loader) service the provider can use to load the schemas of other Pulumi packages.
     // May be empty on older engines.
     optional string loader_target = 9;
+
+    // The target of a [](pulumirpc.PackageResolver) service the provider can use to resolve package specifications to
+    // concrete package dependencies. May be empty on older engines.
+    optional string resolver_target = 10;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
