@@ -1014,10 +1014,8 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 	return packageDescriptors, diagnostics
 }
 
-// extensionDescriptorsForBase returns the parameterized descriptors that extend
-// the given base provider. Extension resources are tokenized under the base
-// provider's name (e.g. "extbase:index:Greeting"), so a token in the base
-// namespace may be owned by any extension that parameterizes that base.
+// extensionDescriptorsForBase returns the descriptors that extend the given base
+// package name.
 func (b *binder) extensionDescriptorsForBase(base string) []*schema.PackageDescriptor {
 	var descriptors []*schema.PackageDescriptor
 	for _, descriptor := range b.packageDescriptors {
@@ -1025,12 +1023,6 @@ func (b *binder) extensionDescriptorsForBase(base string) []*schema.PackageDescr
 			descriptors = append(descriptors, descriptor)
 		}
 	}
-	// b.packageDescriptors is a map, so iteration order is random. Sort by package
-	// name so the fallback choice and any diagnostics are deterministic; owns()
-	// selects the real owner regardless of order.
-	sort.Slice(descriptors, func(i, j int) bool {
-		return descriptors[i].PackageName() < descriptors[j].PackageName()
-	})
 	return descriptors
 }
 
@@ -1047,50 +1039,27 @@ func (b *binder) loadDeclaredOrBarePackageSchema(
 	return b.options.packageCache.loadPackageSchema(ctx, b.options.loader, name, version, pluginDownloadURL)
 }
 
-// resolvePackageSchemaForToken finds the package schema that defines a token whose
-// package portion is pkg. Under extension parameterization pkg can be a base
-// provider name shared by several extensions, so it tries the package named pkg
-// and then every extension layered on it, returning the first whose schema owns
-// the token (reported by owns). If nothing owns it, it returns any schema that
-// loaded so the caller can emit its usual unknown-token diagnostic.
-func (b *binder) resolvePackageSchemaForToken(
-	ctx context.Context,
-	pkg string,
-	owns func(*packageSchema) bool,
-) (*packageSchema, error) {
-	var fallback *packageSchema
+// candidateSchemasForToken loads the schemas a token with package portion pkg
+// could live in: the package named pkg, plus every extension layered on it. The
+// caller looks the token up in each. The error is returned only when nothing
+// loaded, so the caller can tell an unknown package from an unknown member.
+func (b *binder) candidateSchemasForToken(ctx context.Context, pkg string) ([]*packageSchema, error) {
+	var schemas []*packageSchema
 	var firstErr error
-
-	// consider inspects one loaded candidate: it returns the schema when that
-	// candidate owns the token, and otherwise records the first load error and the
-	// first schema that loaded, for use as a fallback.
-	consider := func(s *packageSchema, err error) *packageSchema {
-		switch {
-		case err != nil:
+	add := func(s *packageSchema, err error) {
+		if err != nil {
 			if firstErr == nil {
 				firstErr = err
 			}
-		case owns(s):
-			return s
-		case fallback == nil:
-			fallback = s
+			return
 		}
-		return nil
+		schemas = append(schemas, s)
 	}
-
-	if s := consider(b.loadDeclaredOrBarePackageSchema(ctx, pkg, "", "")); s != nil {
-		return s, nil
+	add(b.loadDeclaredOrBarePackageSchema(ctx, pkg, "", ""))
+	for _, descriptor := range b.extensionDescriptorsForBase(pkg) {
+		add(b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, descriptor))
 	}
-	for _, ext := range b.extensionDescriptorsForBase(pkg) {
-		if s := consider(b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, ext)); s != nil {
-			return s, nil
-		}
-	}
-
-	if fallback != nil {
-		return fallback, nil
-	}
-	return nil, firstErr
+	return schemas, firstErr
 }
 
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an

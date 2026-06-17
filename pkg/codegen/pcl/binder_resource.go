@@ -76,21 +76,16 @@ func (b *binder) resolveSchemaResourceForBind(
 		pkg, isProvider = name, true
 	}
 
-	var pkgSchema *packageSchema
-	var err error
 	// It is important that we call `loadPackageSchema`/`loadPackageSchemaFromDescriptor`
 	// instead of `getPackageSchema` here  because the version may be wrong. When the version should not be empty,
 	// `loadPackageSchema` will load the default version while `getPackageSchema` will
 	// simply fail. We can't give a populated version field since we have not processed
 	// the body, and thus the version yet.
-	// The token's package portion may be a plain package or a base plugin whose
-	// resources are supplied by one or more extensions layered on it. Resolve
-	// against the one whose schema actually defines this resource token.
-	pkgSchema, err = b.resolvePackageSchemaForToken(ctx, pkg, func(s *packageSchema) bool {
-		_, _, ok, _ := s.LookupResource(token)
-		return ok
-	})
-	if err != nil {
+	// The token's package portion may be a plain package or a base provider whose
+	// resources are supplied by one or more extensions layered on it; the resource
+	// is defined by whichever candidate schema contains the token.
+	candidates, err := b.candidateSchemasForToken(ctx, pkg)
+	if len(candidates) == 0 {
 		e := unknownPackage(pkg, tokenRange)
 		e.Detail = err.Error()
 
@@ -104,7 +99,7 @@ func (b *binder) resolveSchemaResourceForBind(
 
 	var res *schema.Resource
 	if isProvider {
-		r, err := pkgSchema.schema.Provider()
+		provider, err := candidates[0].schema.Provider()
 		if err != nil {
 			if b.options.skipResourceTypecheck {
 				makeResourceDynamic()
@@ -112,32 +107,38 @@ func (b *binder) resolveSchemaResourceForBind(
 			}
 			return nil, token, hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
 		}
-		res = r
+		res = provider
 	} else {
-		r, tk, ok, err := pkgSchema.LookupResource(token)
-		if err != nil {
-			if b.options.skipResourceTypecheck {
-				makeResourceDynamic()
-				return nil, token, diagnostics
-			}
+		for _, candidate := range candidates {
+			resource, canonicalToken, found, err := candidate.LookupResource(token)
+			if err != nil {
+				if b.options.skipResourceTypecheck {
+					makeResourceDynamic()
+					return nil, token, diagnostics
+				}
 
-			return nil, token, hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
-		} else if !ok {
+				return nil, token, hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+			}
+			if found {
+				res = resource
+				// For pulumi built-in resources (e.g. pulumi:pulumi:StackReference), canonicalizeToken
+				// strips the module to produce "pulumi::StackReference" because TokenToModule returns ""
+				// for the pulumi:pulumi module. Reconstruct the full token from the decomposed parts.
+				if pkg == pulumiPackage {
+					token = fmt.Sprintf("%s:%s:%s", pkg, module, name)
+				} else {
+					token = canonicalToken
+				}
+				break
+			}
+		}
+		if res == nil {
 			if b.options.skipResourceTypecheck {
 				makeResourceDynamic()
 				return nil, token, diagnostics
 			}
 
 			return nil, token, hcl.Diagnostics{unknownResourceType(token, tokenRange)}
-		}
-		res = r
-		// For pulumi built-in resources (e.g. pulumi:pulumi:StackReference), canonicalizeToken
-		// strips the module to produce "pulumi::StackReference" because TokenToModule returns ""
-		// for the pulumi:pulumi module. Reconstruct the full token from the decomposed parts.
-		if pkg == pulumiPackage {
-			token = fmt.Sprintf("%s:%s:%s", pkg, module, name)
-		} else {
-			token = tk
 		}
 	}
 

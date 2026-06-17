@@ -122,17 +122,11 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), diagnostics
 	}
 
-	var pkgSchema *packageSchema
-	var err error
 	// The function token's package portion may be a plain package or a base
-	// provider whose functions are supplied by an extension layered on it. Resolve
-	// against the package named pkg plus every extension over it, taking the one
-	// whose schema actually defines this function token.
-	pkgSchema, err = b.resolvePackageSchemaForToken(context.TODO(), pkg, func(s *packageSchema) bool {
-		_, _, ok, _ := s.LookupFunction(token)
-		return ok
-	})
-	if err != nil {
+	// provider whose functions are supplied by an extension layered on it; the
+	// function is defined by whichever candidate schema contains the token.
+	candidates, err := b.candidateSchemasForToken(context.TODO(), pkg)
+	if len(candidates) == 0 {
 		if b.options.skipInvokeTypecheck {
 			return b.zeroSignature(), nil
 		}
@@ -142,14 +136,23 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{asWarningDiagnostic(e)}
 	}
 
-	fn, tk, ok, err := pkgSchema.LookupFunction(token)
-	if err != nil {
-		if b.options.skipInvokeTypecheck {
-			return b.zeroSignature(), nil
-		}
+	var fn *schema.Function
+	var canonicalToken string
+	for _, candidate := range candidates {
+		function, tk, found, err := candidate.LookupFunction(token)
+		if err != nil {
+			if b.options.skipInvokeTypecheck {
+				return b.zeroSignature(), nil
+			}
 
-		return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
-	} else if !ok {
+			return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
+		}
+		if found {
+			fn, canonicalToken = function, tk
+			break
+		}
+	}
+	if fn == nil {
 		if b.options.skipInvokeTypecheck {
 			return b.zeroSignature(), nil
 		}
@@ -157,7 +160,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
 	}
 
-	lit.Value = cty.StringVal(tk)
+	lit.Value = cty.StringVal(canonicalToken)
 
 	if len(args) < 2 {
 		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
