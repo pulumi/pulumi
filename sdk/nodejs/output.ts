@@ -366,6 +366,49 @@ To manipulate the value of this Output, use '.apply' instead.`);
     // callers to process fully- or partially-unknown values and return a known result. the output proxy takes
     // advantage of this to allow proxied property accesses to return known values even if other properties of
     // the containing object are unknown.
+    public recover(func: (err: any) => Input<T>): Output<T> {
+        // Attach no-op catch handlers so a rejection in any of the underlying
+        // promises is considered "handled" and does not surface as an
+        // unhandledRejection at the Node level. Awaiting them via Promise.all
+        // below still rethrows so we can run the recovery path.
+        const swallow = <X>(p: Promise<X>): Promise<X> => {
+            p.catch(() => undefined);
+            return p;
+        };
+
+        type Data = { value: T; isKnown: boolean; isSecret: boolean; allResources: Set<Resource> };
+
+        const data: Promise<Data> = (async () => {
+            try {
+                const [value, isKnown, isSecret, allResources] = await Promise.all([
+                    swallow(this.promise(/*withUnknowns*/ true)),
+                    swallow(this.isKnown),
+                    swallow(this.isSecret),
+                    swallow(this.allResources!()),
+                ]);
+                return { value, isKnown, isSecret, allResources };
+            } catch (err) {
+                const inner = <Output<T>>(<any>output(func(err)));
+                const [value, isKnown, isSecret, allResources] = await Promise.all([
+                    inner.promise(/*withUnknowns*/ true),
+                    inner.isKnown,
+                    inner.isSecret,
+                    inner.allResources!(),
+                ]);
+                return { value, isKnown, isSecret, allResources };
+            }
+        })();
+
+        const result = new OutputImpl<T>(
+            new Set<Resource>(),
+            data.then((d) => d.value),
+            data.then((d) => d.isKnown),
+            data.then((d) => d.isSecret),
+            data.then((d) => d.allResources),
+        );
+        return <Output<T>>(<any>result);
+    }
+
     public apply<U>(func: (t: T) => Input<U>, runWithUnknowns?: boolean): Output<U> {
         // we're inside the modern `output` code, so it's safe to call `.allResources!` here.
 
@@ -1055,6 +1098,17 @@ export interface OutputInstance<T> {
     apply<U>(func: (t: T) => Promise<U>): Output<U>;
     apply<U>(func: (t: T) => OutputInstance<U>): Output<U>;
     apply<U>(func: (t: T) => U): Output<U>;
+
+    /**
+     * Returns an {@link Output} that yields this Output's value, or — if this
+     * Output faulted with an error — the value produced by calling `func`
+     * with the error.
+     *
+     * Once recovered, the original failure is considered handled and will not
+     * be reported as an unhandled rejection at program exit. `func` is only
+     * invoked when this Output fails.
+     */
+    recover(func: (err: any) => Input<T>): Output<T>;
 
     /**
      * Retrieves the underlying value of this dependency.
