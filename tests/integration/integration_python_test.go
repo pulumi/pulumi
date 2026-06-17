@@ -1463,6 +1463,29 @@ func TestParameterizedPython(t *testing.T) {
 	})
 }
 
+// Regression test for https://github.com/pulumi/pulumi/issues/21950: when an inline program runs more than once in the
+// same Python process, each run must register the parameterized package against its own engine.
+func TestStaleParameterizedPackageRefPython(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("python", "stale-parameterized-packageref"))
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	ptesting.InstallDependencies(t, e.CWD)
+	e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "1.1.1")
+	e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random", "3.8.1")
+
+	venvBin := filepath.Join(e.CWD, ".venv", "bin")
+	if runtime.GOOS == "windows" {
+		venvBin = filepath.Join(e.CWD, ".venv", "Scripts")
+	}
+	stdout, _ := e.RunCommand(filepath.Join(venvBin, "python"), "__main__.py")
+
+	assert.Contains(t, stdout, "First preview succeeded")
+	assert.Contains(t, stdout, "Second preview succeeded")
+}
+
 //nolint:paralleltest // mutates environment
 func TestPackageAddPython(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
