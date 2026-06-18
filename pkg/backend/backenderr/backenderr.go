@@ -215,6 +215,31 @@ func (err LoginRequiredError) Error() string {
 	return "this command requires logging in; try running `pulumi login` first"
 }
 
+// NeoCapExhaustedError represents a 402 from the Pulumi Service indicating
+// the organization has reached its admin-configured monthly Neo usage cap.
+// The CLI renders a "raise the limit" pointer when this error surfaces; the
+// `pulumi/pulumi-service` decode in pkg/backend/httpstate/client/api.go
+// constructs it from an ErrorResponse carrying ErrorType
+// "neo_org_cap_exhausted".
+type NeoCapExhaustedError struct {
+	// OrgLogin is the organization whose cap was exhausted, if the
+	// service-side response carried it on RequestError.Attribute.
+	OrgLogin string
+	// Message is the human-readable text from ErrorResponse.Message —
+	// includes the consumed-vs-cap numbers and reset window when relevant.
+	Message string
+}
+
+func (e NeoCapExhaustedError) Error() string {
+	if e.Message != "" {
+		return e.Message
+	}
+	if e.OrgLogin != "" {
+		return fmt.Sprintf("Neo usage limit reached for %s; ask the org admin to raise the limit", e.OrgLogin)
+	}
+	return "Neo usage limit reached for this organization; ask the org admin to raise the limit"
+}
+
 // CancelledError represents a user-initiated cancellation of an operation
 // such as an update or destroy.
 type CancelledError struct {
