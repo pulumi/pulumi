@@ -1,6 +1,0 @@
-component: sdk/python
-kind: feat
-body: Add `Output.recover` to catch and recover from exceptions in outputs
-time: 2026-06-16T14:24:32.929399+01:00
-custom:
-    PR: 23591

@@ -1,6 +1,0 @@
-component: cli/config
-kind: feat
-body: Add --raw flag to `pulumi config set` to avoid stripping newlines when input is piped through stdin
-time: 2026-06-16T17:33:43.884914275+02:00
-custom:
-    PR: "23593"
