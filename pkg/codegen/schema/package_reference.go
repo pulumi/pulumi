@@ -835,17 +835,7 @@ func (p *PartialPackage) InterpretPulumiRefs(description string, resolver Pulumi
 		return p.def.InterpretPulumiRefs(description, resolver)
 	}
 
-	if description == "" {
-		return "", nil
-	}
-
-	source := []byte(description)
-	parsed := ParseDocs(source)
-	err := interpretPulumiRefs("", p.types, ValidationOptions{}, parsed, resolver)
-	if err != nil {
-		return "", err
-	}
-	return RenderDocsToString(source, parsed), nil
+	return interpretPulumiRefsInDescription(description, p.types, resolver)
 }
 
 type partialPackageTypes struct {

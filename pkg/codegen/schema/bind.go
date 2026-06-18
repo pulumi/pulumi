@@ -234,7 +234,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions, types.pkg.TokenToModule))
 
 	// Now we've bound everything we can do a pass over the Descriptions and Comments to check they have valid doc refs.
-	diags = diags.Extend(checkDocRefs(types, spec, options))
+	diags = diags.Extend(checkDocRefs(types, spec))
 
 	pkg := types.pkg
 	pkg.Config = config
@@ -253,13 +253,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		return nil, nil, err
 	}
 	pkg.interpretPulumiRefs = func(description string, resolver PulumiRefResolver) (string, error) {
-		source := []byte(description)
-		parsed := ParseDocs(source)
-		err := interpretPulumiRefs("", types, ValidationOptions{}, parsed, resolver)
-		if err != nil {
-			return "", err
-		}
-		return RenderDocsToString(source, parsed), nil
+		return interpretPulumiRefsInDescription(description, types, resolver)
 	}
 	return pkg, diags, nil
 }
@@ -407,7 +401,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	return types, diags, nil
 }
 
-// Options that affect the validation of the packgae schema.
+// Options that affect the validation of the package schema.
 type ValidationOptions struct {
 	// Internal flag set to allow the builtin pulumi package to bind.
 	AllowPulumiPackage      bool
@@ -1724,7 +1718,7 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 	return typeList, diags, nil
 }
 
-func checkDocRefs(types *types, spec PackageSpec, options ValidationOptions) hcl.Diagnostics {
+func checkDocRefs(types *types, spec PackageSpec) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 	resolver := func(ref DocRef) (string, bool) { return "", false }
 
@@ -1733,7 +1727,7 @@ func checkDocRefs(types *types, spec PackageSpec, options ValidationOptions) hcl
 			return
 		}
 		parsed := ParseDocs([]byte(text))
-		diags = diags.Extend(interpretPulumiRefs(path, types, options, parsed, resolver))
+		diags = diags.Extend(interpretPulumiRefs(path, types, parsed, resolver))
 	}
 
 	checkProperties := func(basePath string, props map[string]PropertySpec) {

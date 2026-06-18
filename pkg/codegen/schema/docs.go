@@ -31,17 +31,36 @@ import (
 // resolved; if false, the caller falls back to a default rendering of the ref.
 type PulumiRefResolver func(ref DocRef) (string, bool)
 
+// interpretPulumiRefsInDescription interprets Pulumi refs in a documentation string,
+// then renders the result back to text.
+func interpretPulumiRefsInDescription(
+	description string, types *types, resolver PulumiRefResolver,
+) (string, error) {
+	if description == "" {
+		return "", nil
+	}
+
+	source := []byte(description)
+	parsed := ParseDocs(source)
+	err := interpretPulumiRefs("", types, parsed, resolver)
+	if err != nil {
+		return "", err
+	}
+
+	return RenderDocsToString(source, parsed), nil
+}
+
 // interpretPulumiRefs parses all {{% ref %}} shortcodes that descend from the given node. Each ref is passed to the
 // `resolveRefToName` callback to replace the shortcode with literal text.
 func interpretPulumiRefs(
-	path string, types *types, options ValidationOptions,
+	path string, types *types,
 	node ast.Node, resolveRefToName PulumiRefResolver,
 ) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 
 	var c, next ast.Node
 	for c = node.FirstChild(); c != nil; c = next {
-		subdiags := interpretPulumiRefs(path, types, options, c, resolveRefToName)
+		subdiags := interpretPulumiRefs(path, types, c, resolveRefToName)
 		diags = append(diags, subdiags...)
 
 		next = c.NextSibling()
