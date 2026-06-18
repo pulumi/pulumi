@@ -36,6 +36,8 @@ The following query parameters are supported:
 ```bash
 export ALIBABA_CLOUD_ACCESS_KEY_ID=<your-access-key-id>
 export ALIBABA_CLOUD_ACCESS_KEY_SECRET=<your-access-key-secret>
+# Optional, for temporary RAM/STS credentials:
+export ALIBABA_CLOUD_SECURITY_TOKEN=<your-security-token>
 
 pulumi login "oss://my-pulumi-state-bucket?region=cn-hangzhou"
 ```
@@ -47,11 +49,14 @@ Credentials are resolved from the standard Alibaba Cloud environment variables:
 ```bash
 export ALIBABA_CLOUD_ACCESS_KEY_ID=<your-access-key-id>
 export ALIBABA_CLOUD_ACCESS_KEY_SECRET=<your-access-key-secret>
+# Optional, for temporary RAM/STS credentials:
+export ALIBABA_CLOUD_SECURITY_TOKEN=<your-security-token>
 ```
 
 These are OSS AccessKeys from the Alibaba Cloud console (or a RAM user) — they are
-a separate system from AWS IAM credentials. When the Alibaba Cloud variables are
-unset, the AWS SDK default credential chain (`AWS_ACCESS_KEY_ID`,
+a separate system from AWS IAM credentials. Temporary RAM/STS credentials also
+include `ALIBABA_CLOUD_SECURITY_TOKEN`. When the Alibaba Cloud access key and
+secret variables are unset, the AWS SDK default credential chain (`AWS_ACCESS_KEY_ID`,
 `AWS_SECRET_ACCESS_KEY`, shared config) is used instead.
 
 ## S3 Compatibility Notes

@@ -92,9 +92,9 @@ func configFromURL(ctx context.Context, u *url.URL) (aws.Config, error) {
 	loadOpts := []func(*awsconfig.LoadOptions) error{
 		awsconfig.WithRegion(region),
 	}
-	if id, secret, ok := ossCredentials(); ok {
+	if id, secret, token, ok := ossCredentials(); ok {
 		loadOpts = append(loadOpts, awsconfig.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(id, secret, "")))
+			credentials.NewStaticCredentialsProvider(id, secret, token)))
 	}
 
 	cfg, err := awsconfig.LoadDefaultConfig(ctx, loadOpts...)
@@ -118,11 +118,12 @@ func ossEndpoint(region string) string {
 // ossCredentials resolves OSS access keys from the standard Alibaba Cloud
 // environment variables. When unset, it returns ok=false so the AWS SDK default
 // credential chain (AWS_* variables, shared config) is used instead.
-func ossCredentials() (id, secret string, ok bool) {
+func ossCredentials() (id, secret, token string, ok bool) {
 	id = os.Getenv("ALIBABA_CLOUD_ACCESS_KEY_ID")
 	secret = os.Getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET")
+	token = os.Getenv("ALIBABA_CLOUD_SECURITY_TOKEN")
 	if id != "" && secret != "" {
-		return id, secret, true
+		return id, secret, token, true
 	}
-	return "", "", false
+	return "", "", "", false
 }

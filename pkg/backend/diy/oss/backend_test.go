@@ -56,6 +56,7 @@ func TestConfigFromURL(t *testing.T) {
 	// environment/metadata service.
 	t.Setenv("ALIBABA_CLOUD_ACCESS_KEY_ID", "test-id")
 	t.Setenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET", "test-secret")
+	t.Setenv("ALIBABA_CLOUD_SECURITY_TOKEN", "test-token")
 
 	t.Run("region derives endpoint", func(t *testing.T) {
 		u, err := url.Parse("oss://my-bucket?region=cn-hangzhou")
@@ -73,6 +74,7 @@ func TestConfigFromURL(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "test-id", creds.AccessKeyID)
 		assert.Equal(t, "test-secret", creds.SecretAccessKey)
+		assert.Equal(t, "test-token", creds.SessionToken)
 	})
 
 	t.Run("explicit endpoint overrides region-derived one", func(t *testing.T) {

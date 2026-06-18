@@ -29,8 +29,9 @@
 //	oss://my-pulumi-state-bucket?region=cn-hangzhou&endpoint=https://s3.oss-cn-hangzhou-internal.aliyuncs.com
 //
 // Credentials are read from the standard Alibaba Cloud environment variables
-// ALIBABA_CLOUD_ACCESS_KEY_ID and ALIBABA_CLOUD_ACCESS_KEY_SECRET, falling back
-// to the AWS SDK default credential chain when those are unset.
+// ALIBABA_CLOUD_ACCESS_KEY_ID, ALIBABA_CLOUD_ACCESS_KEY_SECRET, and optional
+// ALIBABA_CLOUD_SECURITY_TOKEN, falling back to the AWS SDK default credential
+// chain when the access key and secret are unset.
 //
 // Two OSS S3-compatibility quirks are handled for the user: virtual-hosted-style
 // addressing (the s3blob default — OSS rejects path-style) and the request
