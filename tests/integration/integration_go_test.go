@@ -1634,7 +1634,7 @@ func TestPluginDebuggerAttach(t *testing.T) {
 		// Therefore we expect a EOF error.
 		stdout, _ := e.RunCommandExpectError("pulumi", "preview", "--attach-debugger=plugins",
 			"--event-log", eventLogPath)
-		require.Regexp(t, "error: could not read plugin \\[.*/go-plugin/pulumi-resource-debugplugin\\]: EOF", stdout)
+		require.Regexp(t, "could not read plugin \\[.*/go-plugin/pulumi-resource-debugplugin\\]: EOF", stdout)
 	}()
 
 	wait := 20 * time.Millisecond
