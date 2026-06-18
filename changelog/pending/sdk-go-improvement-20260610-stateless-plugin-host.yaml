@@ -1,9 +1,0 @@
-component: sdk/go
-kind: improvement
-body: The `plugin.Host` interface is now stateless with respect to workspaces; host
-    methods that boot or resolve plugins take a `plugin.Context` carrying the workspace
-    state, and closing a `plugin.Context` no longer closes a host that was passed
-    in to its constructor
-time: 2026-06-10T00:00:00.000000-07:00
-custom:
-    PR: "23508"

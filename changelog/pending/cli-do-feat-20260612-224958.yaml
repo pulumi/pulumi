@@ -1,6 +1,0 @@
-component: cli/do
-kind: feat
-body: Add `--provider` flag to pull provider config to use from existing provider state
-time: 2026-06-12T22:49:58.735564+01:00
-custom:
-    PR: "23560"

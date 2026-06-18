@@ -1,6 +1,0 @@
-component: cli
-kind: improvement
-body: Use list and remove as the canonical names for list/remove commands, with ls and rm as aliases
-time: 2026-06-17T12:01:13.218435+02:00
-custom:
-  PR: "23608"

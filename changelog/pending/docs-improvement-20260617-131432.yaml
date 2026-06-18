@@ -1,6 +1,0 @@
-component: docs
-kind: improvement
-body: Generate redirects for command aliases
-time: 2026-06-17T13:14:32.111468+02:00
-custom:
-  PR: "23610"
