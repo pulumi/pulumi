@@ -3,4 +3,4 @@ kind: improvement
 body: Add options to `pulumi stack get` for parity with bare `pulumi stack`
 time: 2026-06-18T14:39:19.458512+02:00
 custom:
-    PR: ""
+  PR: "23623"
