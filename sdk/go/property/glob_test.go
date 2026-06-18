@@ -15,6 +15,7 @@
 package property
 
 import (
+	"encoding/json"
 	"math"
 	"slices"
 	"strconv"
@@ -136,6 +137,32 @@ func TestGlobEncoding(t *testing.T) {
 		assert.Equal(t, g, g2, "assert that we can round-trip the Glob")
 	})
 
+	t.Run("empty glob is marshalable", func(t *testing.T) {
+		t.Parallel()
+
+		// The empty (zero-value) glob is the root path. MarshalText must be
+		// total: it serializes to "" and "" round-trips back to it. A glob that
+		// refused to marshal made any struct embedding it un-marshalable, which
+		// is the root cause of https://github.com/pulumi/pulumi/issues/23403.
+		text, err := Glob{}.MarshalText()
+		require.NoError(t, err)
+		assert.Empty(t, text)
+
+		var g Glob
+		require.NoError(t, g.UnmarshalText([]byte("")))
+		assert.Equal(t, Glob{}, g)
+
+		// json.Marshal of a value embedding an empty glob (as the preview digest
+		// did) must not error.
+		b, err := json.Marshal(struct{ G Glob }{})
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"G":""}`, string(b))
+
+		var rt struct{ G Glob }
+		require.NoError(t, json.Unmarshal(b, &rt))
+		assert.Equal(t, Glob{}, rt.G)
+	})
+
 	t.Run("unmarshal", func(t *testing.T) {
 		t.Parallel()
 
@@ -143,6 +170,7 @@ func TestGlobEncoding(t *testing.T) {
 			text     string
 			expected Glob
 		}{
+			{"", Glob{}},
 			{"x.*", GlobFromSegments(KeySegment{"x"}, Splat)},
 			{"*", GlobFromSegments(Splat)},
 			{`["x"]`, GlobFromSegments(KeySegment{"x"})},
@@ -166,7 +194,6 @@ func TestGlobEncoding(t *testing.T) {
 		t.Parallel()
 
 		tests := []struct{ text, expectedError string }{
-			{"", "cannot unmarshal an empty property path"},
 			{".", "expected character"},
 			{"[", "unclosed '['"},
 			{"[1", "unclosed number [1"},

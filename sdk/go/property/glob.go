@@ -38,9 +38,6 @@ var (
 )
 
 func (g Glob) MarshalText() (text []byte, err error) {
-	if g.len() == 0 {
-		return nil, errors.New("cannot marshal an empty glob")
-	}
 	var b strings.Builder
 segment:
 	for i, p := range g.enumerate {
@@ -76,10 +73,6 @@ segment:
 
 func (g *Glob) UnmarshalText(text []byte) error {
 	*g = Glob{}
-	if len(text) == 0 {
-		return errors.New("cannot unmarshal an empty property path")
-	}
-
 	runes := []rune(string(text))
 	for len(runes) > 0 {
 		switch {

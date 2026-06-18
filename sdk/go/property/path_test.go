@@ -15,12 +15,52 @@
 package property_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestPathEncoding asserts that property.Path serialization is total, including
+// for the empty (root) path. A Path that refused to marshal made any struct
+// embedding it un-marshalable; see https://github.com/pulumi/pulumi/issues/23403.
+func TestPathEncoding(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty path round-trips", func(t *testing.T) {
+		t.Parallel()
+
+		text, err := property.Path{}.MarshalText()
+		require.NoError(t, err)
+		assert.Empty(t, text)
+
+		var p property.Path
+		require.NoError(t, p.UnmarshalText([]byte("")))
+		assert.Equal(t, property.Path{}, p)
+
+		b, err := json.Marshal(struct{ P property.Path }{})
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"P":""}`, string(b))
+
+		var rt struct{ P property.Path }
+		require.NoError(t, json.Unmarshal(b, &rt))
+		assert.Equal(t, property.Path{}, rt.P)
+	})
+
+	t.Run("non-empty path round-trips", func(t *testing.T) {
+		t.Parallel()
+
+		p := property.PathFromSegments(property.NewSegment("x"), property.NewSegment(0))
+		text, err := p.MarshalText()
+		require.NoError(t, err)
+
+		var p2 property.Path
+		require.NoError(t, p2.UnmarshalText(text))
+		assert.Equal(t, p, p2)
+	})
+}
 
 func TestGet(t *testing.T) {
 	t.Parallel()
