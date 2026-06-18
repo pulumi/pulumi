@@ -71,6 +71,10 @@ type ProviderHandshakeRequest struct {
 	// The target of a codegen.Mapper service the provider can use to retrieve mappings from other ecosystems to
 	// Pulumi. May be nil on older engines.
 	MapperTarget *string
+
+	// The target of a codegen.Loader service the provider can use to load the schemas of other Pulumi packages.
+	// May be nil on older engines.
+	LoaderTarget *string
 }
 
 // The type of responses sent as part of a Handshake call.
