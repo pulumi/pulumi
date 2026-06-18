@@ -867,7 +867,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			Dependencies:            res.Dependencies,
 			InitErrors:              res.InitErrors,
 			Provider:                res.Provider,
-			ExtensionRef:            string(res.ExtensionRef),
+			ExtensionRef:            res.ExtensionRef,
 			PropertyDependencies:    res.PropertyDependencies,
 			PendingReplacement:      res.PendingReplacement,
 			AdditionalSecretOutputs: res.AdditionalSecretOutputs,

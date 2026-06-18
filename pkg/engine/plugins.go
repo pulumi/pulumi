@@ -692,9 +692,9 @@ func installPlugin(
 }
 
 // samePackage reports whether two descriptors resolve to the same package: the
-// same plugin binary and the same replacement parameterization, if any. A bridge
+// same plugin binary and the same parameterization, if any. A bridge
 // parameterized as "scaleway" and a native "scaleway" provider are different
-// packages.
+// packages, and so are a plain "aws" plugin and an extension layered on it.
 func samePackage(a, b workspace.PackageDescriptor) bool {
 	replacementName := func(pd workspace.PackageDescriptor) string {
 		if pd.Parameterization == nil {
@@ -702,7 +702,15 @@ func samePackage(a, b workspace.PackageDescriptor) bool {
 		}
 		return pd.Parameterization.Name
 	}
-	return a.Name == b.Name && replacementName(a) == replacementName(b)
+	extensionName := func(pd workspace.PackageDescriptor) string {
+		if pd.ExtensionParameterization == nil {
+			return ""
+		}
+		return pd.ExtensionParameterization.Name
+	}
+	return a.Name == b.Name &&
+		replacementName(a) == replacementName(b) &&
+		extensionName(a) == extensionName(b)
 }
 
 // describePluginSource returns a human-readable description of a plugin that

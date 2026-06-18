@@ -41,8 +41,7 @@ type Snapshot struct {
 	PendingOperations []resource.Operation // all currently pending resource operations.
 	Metadata          SnapshotMetadata     // metadata associated with the snapshot.
 	Snippets          []resource.Snippet   // any PCL snippets associated with the snapshot.
-	// Extension-parameterization blobs keyed by content hash, persisted so destroy
-	// and refresh (which don't run the program) can re-parameterize from state alone.
+	// Extension-parameterization blobs keyed by content hash.
 	Extensions map[apitype.ExtensionRef]apitype.Extension
 }
 
@@ -92,7 +91,7 @@ func MapExtensions(
 		if res.ExtensionRef == "" {
 			continue
 		}
-		ref := apitype.ExtensionRef(res.ExtensionRef)
+		ref := res.ExtensionRef
 		if _, seen := extensions[ref]; seen {
 			continue
 		}

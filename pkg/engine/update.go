@@ -1023,12 +1023,6 @@ func (acts *updateActions) OnRebuiltBaseState() error {
 }
 
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
-	// ExtensionParameterizeStep doesn't correspond to a resource registration — it
-	// side-effects the provider plugin. Skip the resource-graph bookkeeping
-	// entirely.
-	if step.Op() == deploy.OpExtendParameterize {
-		return acts.Context.SnapshotManager.BeginMutation(step)
-	}
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
@@ -1048,16 +1042,6 @@ func (acts *updateActions) OnResourceStepPost(
 	ctx any, step deploy.Step,
 	status resource.Status, err error,
 ) error {
-	// ExtensionParameterizeStep doesn't appear in the resource graph; skip the post-hooks
-	// that touch step.Res().
-	if step.Op() == deploy.OpExtendParameterize {
-		if ctx != nil {
-			if mut, ok := ctx.(SnapshotMutation); ok && mut != nil {
-				return mut.End(step, err == nil)
-			}
-		}
-		return nil
-	}
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
@@ -1116,10 +1100,10 @@ func (acts *updateActions) OnResourceStepPost(
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		// Deletions emit the resourceOutputEvent so the display knows when to stop the time elapsed counter.
 		// Additionally, emit the event for views with outputs.
-		if step.Res().Custom ||
+		if res := step.Res(); res != nil && (res.Custom ||
 			acts.Opts.Refresh && step.Op() == deploy.OpRefresh ||
 			step.Op() == deploy.OpDelete ||
-			step.Res().ViewOf != "" {
+			res.ViewOf != "") {
 			acts.Opts.Events.resourceOutputsEvent(
 				op,
 				step,

@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"strconv"
 	"strings"
@@ -146,13 +147,10 @@ func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
 		operationIDToResourceIndex: make(map[int64]int64),
 		incompleteOps:              make(map[int64]apitype.JournalEntry),
 		newResources:               make([]*apitype.ResourceV3, 0),
-		extensions:                 make(map[apitype.ExtensionRef]apitype.Extension),
 		base:                       base,
 	}
 	if base != nil {
-		for ref, ext := range base.Extensions {
-			replayer.extensions[ref] = ext
-		}
+		replayer.extensions = maps.Clone(base.Extensions)
 	}
 	return &replayer
 }
@@ -249,14 +247,12 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {
 		r.operationIDToResourceIndex = make(map[int64]int64)
 		r.incompleteOps = make(map[int64]apitype.JournalEntry)
 		r.newResources = make([]*apitype.ResourceV3, 0)
-		r.extensions = make(map[apitype.ExtensionRef]apitype.Extension)
-		for ref, ext := range r.base.Extensions {
-			r.extensions[ref] = ext
-		}
+		r.extensions = maps.Clone(r.base.Extensions)
 	case apitype.JournalEntryKindExtensionParameterize:
-		if entry.ExtensionRef != nil && entry.Extension != nil {
-			r.extensions[*entry.ExtensionRef] = *entry.Extension
+		if r.extensions == nil {
+			r.extensions = make(map[apitype.ExtensionRef]apitype.Extension)
 		}
+		r.extensions[*entry.ExtensionRef] = *entry.Extension
 	}
 	return nil
 }
@@ -403,10 +399,7 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	deployment.Metadata = r.base.Metadata
 	deployment.Manifest = manifest.Serialize()
 	if len(r.extensions) > 0 {
-		deployment.Extensions = make(map[apitype.ExtensionRef]apitype.Extension, len(r.extensions))
-		for ref, ext := range r.extensions {
-			deployment.Extensions[ref] = ext
-		}
+		deployment.Extensions = maps.Clone(r.extensions)
 	}
 
 	version := apitype.DeploymentSchemaVersionCurrent

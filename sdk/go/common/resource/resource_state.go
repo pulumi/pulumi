@@ -23,6 +23,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// ExtensionRef identifies an extension parameterization within a deployment.
+type ExtensionRef string
+
 // State is a structure containing state associated with a resource. This resource may have been serialized and
 // deserialized, or snapshotted from a live graph of resource objects. The value's state is not, however, associated
 // with any runtime objects in memory that may be actively involved in ongoing computations.
@@ -50,7 +53,7 @@ type State struct {
 	Dependencies            []URN                 // the resource's dependencies.
 	InitErrors              []string              // the set of errors encountered in the process of initializing resource.
 	Provider                string                // the provider to use for this resource.
-	ExtensionRef            string                // the persisted reference to the extension parameterization that created this resource, if any. Empty otherwise.
+	ExtensionRef            ExtensionRef          // the persisted reference to the extension parameterization that created this resource, if any. Empty otherwise.
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
 	PendingReplacement      bool                  // true if this resource was deleted and is awaiting replacement.
 	AdditionalSecretOutputs []PropertyKey         // an additional set of outputs that should be treated as secrets.
@@ -185,7 +188,7 @@ type NewState struct {
 	Provider string // required
 
 	// the extension ref for this resource, if it was generated from an extension
-	ExtensionRef string
+	ExtensionRef ExtensionRef
 
 	// the set of dependencies that affect each property.
 	PropertyDependencies map[PropertyKey][]URN // required

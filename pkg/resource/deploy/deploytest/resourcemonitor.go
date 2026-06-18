@@ -849,7 +849,7 @@ func (rm *ResourceMonitor) RegisterStackInvokeTransform(callback *pulumirpc.Call
 }
 
 func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, checksums map[string][]byte,
-	parameterization *pulumirpc.Parameterization,
+	parameterization, extension *pulumirpc.Parameterization,
 ) (string, error) {
 	resp, err := rm.resmon.RegisterPackage(context.Background(), &pulumirpc.RegisterPackageRequest{
 		Name:             pkg,
@@ -857,23 +857,7 @@ func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, che
 		DownloadUrl:      downloadURL,
 		Checksums:        checksums,
 		Parameterization: parameterization,
-	})
-	if err != nil {
-		return "", err
-	}
-	return resp.Ref, nil
-}
-
-// RegisterExtensionPackage registers a package with an extension parameterization
-// (as opposed to a replacement parameterization). The returned ref is a content
-// hash of the extension blob, stable across runs.
-func (rm *ResourceMonitor) RegisterExtensionPackage(pkg, version string,
-	extension *pulumirpc.Parameterization,
-) (string, error) {
-	resp, err := rm.resmon.RegisterPackage(context.Background(), &pulumirpc.RegisterPackageRequest{
-		Name:      pkg,
-		Version:   version,
-		Extension: extension,
+		Extension:        extension,
 	})
 	if err != nil {
 		return "", err

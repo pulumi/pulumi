@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -143,45 +142,33 @@ func TestLookupOrRegisterExtension(t *testing.T) {
 	d := &Deployment{
 		extensions: map[sdkproviders.Reference][]inFlightExtension{},
 	}
-	provA := makeProviderRef(t, "k8s")
-	provB := makeProviderRef(t, "azure")
-	extensionA := apitype.ExtensionRef("extension-a")
-	extensionB := apitype.ExtensionRef("extension-b")
+	k8sProvider := makeProviderRef(t, "k8s")
+	azureProvider := makeProviderRef(t, "azure")
+	extA := apitype.ExtensionRef("extension-a")
+	extB := apitype.ExtensionRef("extension-b")
 
-	// makeStep captures the CompletionSource the first caller is handed.
-	var firstCTS *promise.CompletionSource[struct{}]
-	makeStep := func(cts *promise.CompletionSource[struct{}]) Step {
-		firstCTS = cts
-		return &ExtensionParameterizeStep{}
-	}
+	// Registering an unseen (provider, ref) makes this caller the owner: no promise to
+	// wait on, and a CompletionSource it is responsible for fulfilling.
+	ownerWait, ownerSource := d.LookupOrRegisterExtension(k8sProvider, extA)
+	require.Nil(t, ownerWait, "registering an unseen extension has no in-flight promise")
+	require.NotNil(t, ownerSource, "registering an unseen extension yields a CompletionSource to fulfill")
 
-	// First call: nothing registered yet -> makeStep runs and we get a step to emit.
-	step1, promise1 := d.LookupOrRegisterExtension(provA, extensionA, makeStep)
-	require.NotNil(t, step1, "first call should return a step to emit")
-	require.NotNil(t, promise1)
-	require.NotNil(t, firstCTS, "first call should hand makeStep a CompletionSource")
+	// Registering the same pair again makes this caller a waiter: the in-flight promise,
+	// and no CompletionSource of its own.
+	waiterWait, waiterSource := d.LookupOrRegisterExtension(k8sProvider, extA)
+	require.NotNil(t, waiterWait, "a duplicate registration returns the in-flight promise to wait on")
+	require.Nil(t, waiterSource, "a duplicate registration does not mint a second CompletionSource")
 
-	// Second call for the same (provider, ref): no step, and makeStep must not run.
-	calledAgain := false
-	step2, promise2 := d.LookupOrRegisterExtension(provA, extensionA,
-		func(*promise.CompletionSource[struct{}]) Step {
-			calledAgain = true
-			return nil
-		})
-	require.Nil(t, step2, "duplicate registration must not emit a second step")
-	require.False(t, calledAgain, "duplicate registration must not invoke makeStep")
-	require.NotNil(t, promise2, "duplicate registration must hand back the in-flight promise")
+	// The waiter's promise resolves once the owner fulfills its CompletionSource.
+	ownerSource.MustFulfill(struct{}{})
+	_, err := waiterWait.Result(t.Context())
+	require.NoError(t, err, "the waiter's promise resolves once the owner fulfills")
 
-	// Fulfilling the first caller's CompletionSource resolves the duplicate's promise.
-	firstCTS.MustFulfill(struct{}{})
-	_, err := promise2.Result(t.Context())
-	require.NoError(t, err, "duplicate's promise should resolve after the first caller fulfills")
+	otherRefWait, otherRefSource := d.LookupOrRegisterExtension(k8sProvider, extB)
+	require.Nil(t, otherRefWait)
+	require.NotNil(t, otherRefSource, "a different ref under the same provider registers independently")
 
-	// Different ref under the same provider -> separate entry, its own step.
-	stepY, _ := d.LookupOrRegisterExtension(provA, extensionB, makeStep)
-	require.NotNil(t, stepY, "different ref under same provider must be tracked independently")
-
-	// Same ref under a different provider -> separate entry, its own step.
-	stepB, _ := d.LookupOrRegisterExtension(provB, extensionA, makeStep)
-	require.NotNil(t, stepB, "same ref under a different provider must be tracked independently")
+	otherProviderWait, otherProviderSource := d.LookupOrRegisterExtension(azureProvider, extA)
+	require.Nil(t, otherProviderWait)
+	require.NotNil(t, otherProviderSource, "the same ref under a different provider registers independently")
 }

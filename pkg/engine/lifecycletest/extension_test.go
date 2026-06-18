@@ -25,6 +25,7 @@ import (
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -81,9 +82,29 @@ func TestExtensionParameterizedProvider(t *testing.T) {
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					paramLock.Lock()
+					witnessed := len(paramCalls)
+					paramLock.Unlock()
+					assert.NotZero(t, witnessed,
+						"Parameterize must be witnessed before Create on the extension plugin")
 					return plugin.CreateResponse{
 						ID:         resource.ID("id-" + req.URN.Name()),
 						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					paramLock.Lock()
+					witnessed := len(paramCalls)
+					paramLock.Unlock()
+					assert.NotZero(t, witnessed,
+						"Parameterize must be witnessed before Read on the extension plugin")
+					state := req.State
+					if state == nil {
+						state = resource.PropertyMap{}
+					}
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: state, Inputs: req.Inputs},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -91,97 +112,131 @@ func TestExtensionParameterizedProvider(t *testing.T) {
 		}),
 	}
 
-	// Run #1: program registers two extensions and one resource per extension.
-	var refA, refB string
-	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	// extProgram registers two extensions on the base provider with one resource each,
+	// then re-registers ext-a byte-for-byte (refADup) to exercise ref stability.
+	var refA, refB, refADup string
+	extProgram := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
-		refA, err = monitor.RegisterExtensionPackage("pkgA", "1.0.0", &pulumirpc.Parameterization{
-			Name:    "ext-a",
-			Version: "1.0.0",
-			Value:   []byte("blob-a"),
+		refA, err = monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, &pulumirpc.Parameterization{
+			Name: "ext-a", Version: "1.0.0", Value: []byte("blob-a"),
 		})
 		require.NoError(t, err)
-
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			PackageRef: refA,
-		})
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{PackageRef: refA})
 		require.NoError(t, err)
 
-		refB, err = monitor.RegisterExtensionPackage("pkgA", "1.0.0", &pulumirpc.Parameterization{
-			Name:    "ext-b",
-			Version: "1.0.0",
-			Value:   []byte("blob-b"),
+		refB, err = monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, &pulumirpc.Parameterization{
+			Name: "ext-b", Version: "1.0.0", Value: []byte("blob-b"),
 		})
 		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{PackageRef: refB})
+		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			PackageRef: refB,
+		refADup, err = monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, &pulumirpc.Parameterization{
+			Name: "ext-a", Version: "1.0.0", Value: []byte("blob-a"),
 		})
 		require.NoError(t, err)
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	// noopProgram registers nothing, forcing the engine to drive existing extension
+	// resources purely from state.
+	noopProgram := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
 
-	snap, err := lt.TestOp(Update).
-		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "")
-	require.NoError(t, err)
-	require.NotNil(t, snap)
-
-	// Two parameterize calls happened during run #1.
-	require.Len(t, paramCalls, 2, "expected two Parameterize calls in run #1")
-	assert.Equal(t, "ext-a", paramCalls[0].name)
-	assert.Equal(t, []byte("blob-a"), paramCalls[0].value)
-	assert.Equal(t, "ext-b", paramCalls[1].name)
-	assert.Equal(t, []byte("blob-b"), paramCalls[1].value)
-
-	// Refs are content-stable hashes; identical blob ⇒ identical ref.
-	assert.NotEqual(t, refA, refB, "different extensions must produce different refs")
-
-	// Snapshot persists both blobs and links each resource to its ref.
-	require.Len(t, snap.Extensions, 2, "snapshot should carry both extension blobs")
-	assert.Equal(t, []byte("blob-a"), snap.Extensions[apitype.ExtensionRef(refA)].Value)
-	assert.Equal(t, []byte("blob-b"), snap.Extensions[apitype.ExtensionRef(refB)].Value)
-
-	var resA, resB *resource.State
-	for _, r := range snap.Resources {
-		switch r.URN.Name() {
-		case "resA":
-			resA = r
-		case "resB":
-			resB = r
+	paramNames := func(calls []paramCall) []string {
+		out := make([]string, len(calls))
+		for i, c := range calls {
+			out[i] = c.name
 		}
+		return out
 	}
-	require.NotNil(t, resA, "resA missing from snapshot")
-	require.NotNil(t, resB, "resB missing from snapshot")
-	assert.Equal(t, refA, resA.ExtensionRef)
-	assert.Equal(t, refB, resB.ExtensionRef)
 
-	// Run #2: rehydration test. Use a program that does NOT register the
-	// extensions (no live RegisterPackage); the engine must pull blobs from
-	// state and re-Parameterize the fresh plugin before any resource op.
-	paramLock.Lock()
-	paramCalls = nil
-	paramLock.Unlock()
+	// Phases run in order against one evolving snapshot; each subtest name states the
+	// property under test. paramCalls is reset before each phase so its check sees only
+	// that phase's Parameterize calls.
+	phases := []struct {
+		name    string
+		op      lt.TestOp
+		program deploytest.LanguageRuntimeFactory
+		check   func(t *testing.T, snap *deploy.Snapshot, params []paramCall)
+	}{
+		{
+			name:    "create_parameterizes_provider_then_persists_blobs_and_refs",
+			op:      lt.TestOp(Update),
+			program: extProgram,
+			check: func(t *testing.T, snap *deploy.Snapshot, params []paramCall) {
+				require.Len(t, params, 2, "create should parameterize once per extension")
+				assert.Equal(t, "ext-a", params[0].name)
+				assert.Equal(t, []byte("blob-a"), params[0].value)
+				assert.Equal(t, "ext-b", params[1].name)
+				assert.Equal(t, []byte("blob-b"), params[1].value)
 
-	noopProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
-		// Program does nothing — engine processes existing resources from state.
-		return nil
-	})
-	hostF2 := deploytest.NewPluginHostF(nil, nil, noopProgramF, loaders...)
-	p2 := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF2, SkipDisplayTests: true}}
+				assert.Equal(t, refA, refADup, "a byte-identical extension must yield the same ref")
+				assert.NotEqual(t, refA, refB, "different extensions must produce different refs")
 
-	snap2, err := lt.TestOp(Refresh).
-		RunStep(p2.GetProject(), p2.GetTarget(t, snap), p2.Options, false, p2.BackendClient, nil, "")
-	require.NoError(t, err)
-	require.NotNil(t, snap2)
+				require.Len(t, snap.Extensions, 2, "snapshot should carry both extension blobs")
+				assert.Equal(t, []byte("blob-a"), snap.Extensions[apitype.ExtensionRef(refA)].Value)
+				assert.Equal(t, []byte("blob-b"), snap.Extensions[apitype.ExtensionRef(refB)].Value)
 
-	// Rehydration must have replayed both blobs onto the fresh plugin.
-	paramLock.Lock()
-	rehydrated := append([]paramCall(nil), paramCalls...)
-	paramLock.Unlock()
-	require.Len(t, rehydrated, 2, "rehydration must replay both extensions on the fresh plugin")
-	gotNames := []string{rehydrated[0].name, rehydrated[1].name}
-	assert.ElementsMatch(t, []string{"ext-a", "ext-b"}, gotNames)
+				var resA, resB *resource.State
+				for _, r := range snap.Resources {
+					switch r.URN.Name() {
+					case "resA":
+						resA = r
+					case "resB":
+						resB = r
+					}
+				}
+				require.NotNil(t, resA, "resA missing from snapshot")
+				require.NotNil(t, resB, "resB missing from snapshot")
+				assert.Equal(t, apitype.ExtensionRef(refA), resA.ExtensionRef)
+				assert.Equal(t, apitype.ExtensionRef(refB), resB.ExtensionRef)
+			},
+		},
+		{
+			name:    "refresh_rehydrates_extensions_from_state_without_the_program",
+			op:      lt.TestOp(Refresh),
+			program: noopProgram,
+			check: func(t *testing.T, _ *deploy.Snapshot, params []paramCall) {
+				require.Len(t, params, 2, "refresh must replay both extensions from state")
+				assert.ElementsMatch(t, []string{"ext-a", "ext-b"}, paramNames(params))
+			},
+		},
+		{
+			name:    "no_change_update_parameterizes_each_extension_once_not_per_source",
+			op:      lt.TestOp(Update),
+			program: extProgram,
+			check: func(t *testing.T, _ *deploy.Snapshot, params []paramCall) {
+				require.Len(t, params, 2,
+					"a no-change up must parameterize once per extension, not once per source")
+				assert.ElementsMatch(t, []string{"ext-a", "ext-b"}, paramNames(params))
+			},
+		},
+	}
+
+	var snap *deploy.Snapshot
+	for _, ph := range phases {
+		ok := t.Run(ph.name, func(t *testing.T) {
+			paramLock.Lock()
+			paramCalls = nil
+			paramLock.Unlock()
+
+			hostF := deploytest.NewPluginHostF(nil, nil, ph.program, loaders...)
+			p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+
+			next, err := ph.op.RunStep(
+				p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "")
+			require.NoError(t, err)
+			require.NotNil(t, next)
+
+			paramLock.Lock()
+			params := append([]paramCall(nil), paramCalls...)
+			paramLock.Unlock()
+
+			ph.check(t, next, params)
+			snap = next
+		})
+		require.True(t, ok, "phase %q failed; later phases build on its snapshot", ph.name)
+	}
 }

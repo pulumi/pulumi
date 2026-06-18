@@ -690,35 +690,34 @@ func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResour
 
 	if event.Extension() != nil {
 		providerName := goal.Provider
-		if providerName != "" {
-			providerRef, err := sdkproviders.ParseReference(providerName)
-			if err != nil {
-				return nil, false, fmt.Errorf("could not parse provider reference %s for extension: %w", providerName, err)
-			}
-			provider, ok := sg.deployment.providers.GetProvider(providerRef)
-			if !ok {
-				return nil, false, fmt.Errorf("provider %s not registered", providerRef)
-			}
-			step, parameterized := sg.deployment.LookupOrRegisterExtension(providerRef, event.ExtensionRef(),
-				func(cts *promise.CompletionSource[struct{}]) Step {
-					return NewExtensionParameterizeStep(
-						sg.deployment, provider, event.ExtensionRef(), *event.Extension(), cts)
-				})
-			// Continue the resource registration once the extension is parameterized.
-			go PanicRecovery(sg.deployment.panicErrs, func() {
-				_, err := parameterized.Result(context.Background())
-				sg.events <- &continueExtensionEvent{
-					RegisterResourceEvent: event,
-					urn:                   urn,
-					err:                   err,
-				}
-			})
-			// step is non-nil only for the first request of this (provider, ref) pair.
-			if step != nil {
-				return []Step{step}, true, nil
-			}
-			return nil, true, nil
+		providerRef, err := sdkproviders.ParseReference(providerName)
+		if err != nil {
+			return nil, false, fmt.Errorf("could not parse provider reference %s for extension: %w", providerName, err)
 		}
+		provider, ok := sg.deployment.providers.GetProvider(providerRef)
+		if !ok {
+			return nil, false, fmt.Errorf("provider %s not registered", providerRef)
+		}
+		existing, created := sg.deployment.LookupOrRegisterExtension(providerRef, event.ExtensionRef())
+		// The first caller for a (provider, ref) pair gets the CompletionSource and emits the
+		// parameterize step; later callers get the in-flight promise and emit nothing.
+		parameterized := existing
+		var steps []Step
+		if created != nil {
+			parameterized = created.Promise()
+			steps = []Step{NewExtensionParameterizeStep(
+				sg.deployment, provider, event.ExtensionRef(), *event.Extension(), created)}
+		}
+		// Continue the resource registration once the extension is parameterized.
+		go PanicRecovery(sg.deployment.panicErrs, func() {
+			_, err := parameterized.Result(context.Background())
+			sg.events <- &continueExtensionEvent{
+				RegisterResourceEvent: event,
+				urn:                   urn,
+				err:                   err,
+			}
+		})
+		return steps, true, nil
 	}
 	return sg.generateResourceSteps(ctx, event, urn)
 }
@@ -777,7 +776,7 @@ func (sg *stepGenerator) generateResourceSteps(
 		Dependencies:            goal.Dependencies,
 		InitErrors:              goal.InitErrors,
 		Provider:                goal.Provider,
-		ExtensionRef:            string(event.ExtensionRef()),
+		ExtensionRef:            event.ExtensionRef(),
 		PropertyDependencies:    goal.PropertyDependencies,
 		PendingReplacement:      false,
 		AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
