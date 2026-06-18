@@ -328,9 +328,11 @@ func LoadLocalPolicyPackAnalyzers(
 	return analyzers, nil
 }
 
-// HostFactory constructs the plugin host for a deployment.
+// HostFactory constructs the plugin host for a deployment. project is the deployment's project,
+// from which the factory derives the Pulumi Cloud API credentials the host injects into plugins; it
+// may be nil.
 type HostFactory func(
-	ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext,
+	ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext, project *workspace.Project,
 ) (plugin.Host, error)
 
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
@@ -967,7 +969,7 @@ func update(
 ) (*deploy.Plan, display.ResourceChanges, error) {
 	// Ensure we have a plugin host for the operation. Constructed here (when not test-injected)
 	// because the host's diag sinks are the engine's event sinks; newDeployment closes it.
-	if err := ensureHost(ctx.Cancel.Base(), opts, info.TracingSpan); err != nil {
+	if err := ensureHost(ctx.Cancel.Base(), opts, info.TracingSpan, info.Update.Project); err != nil {
 		return nil, nil, err
 	}
 

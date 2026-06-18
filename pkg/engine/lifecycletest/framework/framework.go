@@ -302,7 +302,7 @@ func (op TestOp) runWithContext(
 		host := opts.HostF()
 		defer contract.IgnoreClose(host)
 		updateOpts.HostFactory = func(
-			context.Context, diag.Sink, diag.Sink, plugin.DebugContext,
+			context.Context, diag.Sink, diag.Sink, plugin.DebugContext, *workspace.Project,
 		) (plugin.Host, error) {
 			return host, nil
 		}

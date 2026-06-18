@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"sync"
 
@@ -109,7 +110,8 @@ func newPluginRunCmd() *cobra.Command {
 			pluginArgs := args[1:]
 
 			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
-				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				pkgWorkspace.CloudCredentialEnv(nil))
 			if err != nil {
 				return fmt.Errorf("could not create plugin host: %w", err)
 			}
@@ -128,9 +130,9 @@ func newPluginRunCmd() *cobra.Command {
 			}
 			defer grpcServer.Close()
 
-			pluginEnv := env.NewEnv(env.MapStore{"PULUMI_RPC_TARGET": grpcServer.Addr()})
-
-			plugin, err := plugin.ExecPlugin(pctx, pluginPath, source, kind, pluginArgs, "", pluginEnv, false)
+			pluginEnv := env.MapStore{"PULUMI_RPC_TARGET": grpcServer.Addr()}
+			maps.Copy(pluginEnv, pkgWorkspace.CloudCredentialEnv(nil))
+			plugin, err := plugin.ExecPlugin(pctx, pluginPath, source, kind, pluginArgs, "", env.NewEnv(pluginEnv), false)
 			if err != nil {
 				return fmt.Errorf("could not execute plugin %s (%s): %w", source, pluginPath, err)
 			}

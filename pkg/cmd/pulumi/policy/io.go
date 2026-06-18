@@ -66,7 +66,8 @@ func InstallPluginDependencies(
 	}, Root: root}
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		pkgWorkspace.CloudCredentialEnv(nil))
 	if err != nil {
 		return err
 	}

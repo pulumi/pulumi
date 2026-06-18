@@ -146,7 +146,8 @@ func getSummaryAbout(
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		pluginHost, hostErr := pkghost.New(
 			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			pkgWorkspace.CloudCredentialEnv(proj))
 		if hostErr != nil {
 			addError(hostErr, "Failed to create plugin host")
 		} else if pwd, program, pluginContext, err := engine.ProjectInfoContext(

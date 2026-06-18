@@ -221,7 +221,9 @@ func update(
 			BackendClient:   snapshotBackendClient{},
 		},
 		engine.UpdateOptions{
-			HostFactory: func(context.Context, diag.Sink, diag.Sink, plugin.DebugContext) (plugin.Host, error) {
+			HostFactory: func(
+				context.Context, diag.Sink, diag.Sink, plugin.DebugContext, *workspace.Project,
+			) (plugin.Host, error) {
 				return host, nil
 			},
 		},
