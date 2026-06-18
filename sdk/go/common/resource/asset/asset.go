@@ -67,6 +67,14 @@ var contentStore cas.Store
 // intended to be set once during startup before any assets are created.
 func SetContentStore(s cas.Store) { contentStore = s }
 
+// statCache, when non-nil, lets EnsureHash reuse a previously computed digest for an
+// unchanged file instead of re-reading and re-hashing it. It is nil by default.
+var statCache cas.StatCache
+
+// SetStatCache configures the stat-cache used by the asset subsystem. Pass nil to
+// disable it (the default). Process-global; set once during startup.
+func SetStatCache(s cas.StatCache) { statCache = s }
+
 // FromText produces a new asset and its corresponding SHA256 hash from the given text.
 func FromText(text string) (*Asset, error) {
 	a := &Asset{Sig: AssetSig, Text: text}
@@ -374,21 +382,43 @@ func (a *Asset) EnsureHash() error {
 // EnsureHashWithWD computes the SHA256 hash of the asset's contents and stores it on the object.
 func (a *Asset) EnsureHashWithWD(wd string) error {
 	if a.Hash == "" {
-		blob, err := a.ReadWithWD(wd)
-		if err != nil {
-			return err
+		// A configured stat-cache lets an unchanged file reuse its previously computed
+		// digest instead of being re-read and re-hashed.
+		var statInfo os.FileInfo
+		var statPath string
+		if statCache != nil && a.IsPath() {
+			statPath = a.Path
+			if !filepath.IsAbs(statPath) {
+				statPath = filepath.Join(wd, statPath)
+			}
+			if info, err := os.Stat(statPath); err == nil {
+				statInfo = info
+				if digest, ok := statCache.Get(statPath, info); ok {
+					a.Hash = digest
+				}
+			}
 		}
-		defer contract.IgnoreClose(blob)
 
-		hash := sha256.New()
-		n, err := io.Copy(hash, blob)
-		if err != nil {
-			return err
+		if a.Hash == "" {
+			blob, err := a.ReadWithWD(wd)
+			if err != nil {
+				return err
+			}
+			defer contract.IgnoreClose(blob)
+
+			hash := sha256.New()
+			n, err := io.Copy(hash, blob)
+			if err != nil {
+				return err
+			}
+			if n != blob.Size() {
+				return fmt.Errorf("incorrect blob size: expected %v, got %v", blob.Size(), n)
+			}
+			a.Hash = hex.EncodeToString(hash.Sum(nil))
+			if statCache != nil && statInfo != nil {
+				_ = statCache.Put(statPath, statInfo, a.Hash)
+			}
 		}
-		if n != blob.Size() {
-			return fmt.Errorf("incorrect blob size: expected %v, got %v", blob.Size(), n)
-		}
-		a.Hash = hex.EncodeToString(hash.Sum(nil))
 	}
 	// When a content-addressed store is configured, persist the contents keyed by
 	// the hash so identical assets are stored once and a hash-only reference can be

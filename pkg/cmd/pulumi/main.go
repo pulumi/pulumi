@@ -21,7 +21,10 @@ import (
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/cas"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"go.uber.org/automaxprocs/maxprocs"
 )
@@ -60,6 +63,16 @@ func main() {
 	// Fix for https://github.com/pulumi/pulumi/issues/18814, set GOMAXPROCs to the number of CPUs available
 	// taking into account quotas and cgroup limits.
 	maxprocs.Set() //nolint:errcheck // we don't care if this fails
+
+	// Reuse previously computed digests for unchanged files via a persistent
+	// stat-cache, so the cost of hashing an asset tree scales with what changed
+	// rather than its total size. Best-effort: hashing falls back to reading the
+	// file if the cache cannot be initialized.
+	if dir, err := workspace.GetPulumiPath("cache", "stat"); err == nil {
+		if sc, scErr := cas.NewFSStatCache(dir); scErr == nil {
+			asset.SetStatCache(sc)
+		}
+	}
 
 	finished := new(bool)
 	defer panicHandler(finished)
