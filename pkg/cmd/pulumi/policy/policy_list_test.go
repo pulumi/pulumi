@@ -65,7 +65,7 @@ func TestPolicyLsCmd_QueriesPolicyPacksByOrgNameNotUserName(t *testing.T) {
 		},
 	}
 
-	cmd := newPolicyLsCmd(ws, lm)
+	cmd := newPolicyListCmd(ws, lm)
 	cmd.SilenceUsage = true
 	cmd.SetArgs([]string{"--json"})
 

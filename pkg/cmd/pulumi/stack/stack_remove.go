@@ -37,15 +37,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newStackRmCmd() *cobra.Command {
+func newStackRemoveCmd() *cobra.Command {
 	var stack string
 	var yes bool
 	var force bool
 	var preserveConfig bool
 	var removeBackups bool
 	cmd := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove a stack and its configuration",
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "Remove a stack and its configuration",
 		Long: "Remove a stack and its configuration\n" +
 			"\n" +
 			"This command removes a stack and its configuration state.  Please refer to the\n" +

@@ -148,8 +148,8 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newConfigGetCmd(ws, &stack, &configFile))
-	cmd.AddCommand(newConfigRmCmd(ws, &stack, &configFile))
-	cmd.AddCommand(newConfigRmAllCmd(ws, &stack, &configFile))
+	cmd.AddCommand(newConfigRemoveCmd(ws, &stack, &configFile))
+	cmd.AddCommand(newConfigRemoveAllCmd(ws, &stack, &configFile))
 	cmd.AddCommand(newConfigSetCmd(ws, &stack, &configFile))
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &ssml, &configFile))
@@ -164,9 +164,10 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 	var path bool
 	var destinationStackName string
 
-	cpCommand := &cobra.Command{
-		Use:   "cp",
-		Short: "Copy config to another stack",
+	copyCommand := &cobra.Command{
+		Use:     "copy",
+		Aliases: []string{"cp"},
+		Short:   "Copy config to another stack",
 		Long: "Copies the config from the current stack to the destination stack. If `key` is omitted,\n" +
 			"then all of the config from the current stack will be copied to the destination stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -274,21 +275,21 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 		},
 	}
 
-	constrictor.AttachArguments(cpCommand, &constrictor.Arguments{
+	constrictor.AttachArguments(copyCommand, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
 			{Name: "key"},
 		},
 		Required: 0,
 	})
 
-	cpCommand.PersistentFlags().BoolVar(
+	copyCommand.PersistentFlags().BoolVar(
 		&path, "path", false,
 		"The key contains a path to a property in a map or list to set")
-	cpCommand.PersistentFlags().StringVarP(
+	copyCommand.PersistentFlags().StringVarP(
 		&destinationStackName, "dest", "d", "",
 		"The name of the new stack to copy the config to")
 
-	return cpCommand
+	return copyCommand
 }
 
 func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
@@ -354,12 +355,13 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 	return getCmd
 }
 
-func newConfigRmCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
+func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
 	var path bool
 
 	rmCmd := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove configuration value",
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "Remove configuration value",
 		Long: "Remove configuration value.\n\n" +
 			"The `--path` flag can be used to remove a value inside a map or list:\n\n" +
 			"  - `pulumi config rm --path outer.inner` will remove the `inner` key, " +
@@ -432,12 +434,13 @@ func newConfigRmCmd(ws pkgWorkspace.Context, stack *string, configFile *string) 
 	return rmCmd
 }
 
-func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
+func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
 	var path bool
 
 	rmAllCmd := &cobra.Command{
-		Use:   "rm-all",
-		Short: "Remove multiple configuration values",
+		Use:     "remove-all",
+		Aliases: []string{"rm-all"},
+		Short:   "Remove multiple configuration values",
 		Long: "Remove multiple configuration values.\n\n" +
 			"The `--path` flag indicates that keys should be parsed within maps or lists:\n\n" +
 			"  - `pulumi config rm-all --path  outer.inner 'foo[0]' key1` will remove the \n" +

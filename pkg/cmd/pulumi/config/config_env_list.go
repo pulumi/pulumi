@@ -21,15 +21,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
+func newConfigEnvListCmd(parent *configEnvCmd) *cobra.Command {
 	var jsonOut bool
 
 	impl := configEnvLsCmd{parent: parent, jsonOut: &jsonOut}
 
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "Lists imported environments.",
-		Long:  "Lists the environments imported into a stack's configuration.",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "Lists imported environments.",
+		Long:    "Lists the environments imported into a stack's configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)

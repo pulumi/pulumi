@@ -43,13 +43,13 @@ type projectListResult struct {
 	StackCount   int    `json:"stackCount,omitempty"`
 }
 
-func newProjectLsCmd() *cobra.Command {
+func newProjectListCmd() *cobra.Command {
 	var orgName string
 	var jsonOut bool
 
 	cmd := &cobra.Command{
-		Use:     "ls",
-		Aliases: []string{"list"},
+		Use:     "list",
+		Aliases: []string{"ls"},
 		Short:   "List your Pulumi projects",
 		Long: "List your Pulumi projects.\n" +
 			"\n" +

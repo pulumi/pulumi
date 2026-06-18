@@ -30,10 +30,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// newLsCmd builds `pulumi api list` — a stable, agent-first listing of
+// newListCmd builds `pulumi api list` — a stable, agent-first listing of
 // every operation exposed by the embedded OpenAPI spec. api carries the
 // parent command's persistent flags (--refresh-spec).
-func newLsCmd(api *apiCommand) *cobra.Command {
+func newListCmd(api *apiCommand) *cobra.Command {
 	var output string
 	includePreview := true
 	includeDeprecated := false

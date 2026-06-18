@@ -53,8 +53,8 @@ func NewPluginCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newPluginInstallCmd())
-	cmd.AddCommand(newPluginLsCmd(pluginstorage.Instance))
-	cmd.AddCommand(newPluginRmCmd(pluginstorage.Instance))
+	cmd.AddCommand(newPluginListCmd(pluginstorage.Instance))
+	cmd.AddCommand(newPluginRemoveCmd(pluginstorage.Instance))
 	cmd.AddCommand(newPluginRunCmd())
 
 	return cmd

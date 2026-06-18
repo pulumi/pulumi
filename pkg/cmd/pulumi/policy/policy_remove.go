@@ -29,11 +29,12 @@ import (
 
 const allKeyword = "all"
 
-func newPolicyRmCmd() *cobra.Command {
+func newPolicyRemoveCmd() *cobra.Command {
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "rm",
-		Short: "Removes a Policy Pack from a Pulumi organization",
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
 		RunE: func(cmd *cobra.Command, args []string) error {

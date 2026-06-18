@@ -22,13 +22,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newConfigEnvRmCmd(parent *configEnvCmd) *cobra.Command {
+func newConfigEnvRemoveCmd(parent *configEnvCmd) *cobra.Command {
 	impl := configEnvRmCmd{parent: parent}
 
 	cmd := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove environment from a stack",
-		Long:  "Removes an environment from a stack's import list.",
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "Remove environment from a stack",
+		Long:    "Removes an environment from a stack's import list.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)

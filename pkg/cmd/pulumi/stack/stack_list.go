@@ -42,7 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newStackLsCmd() *cobra.Command {
+func newStackListCmd() *cobra.Command {
 	var jsonOut bool
 	var allStacks bool
 	var orgFilter string
@@ -50,8 +50,9 @@ func newStackLsCmd() *cobra.Command {
 	var tagFilter string
 
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List stacks",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List stacks",
 		Long: "List stacks\n" +
 			"\n" +
 			"This command lists stacks. By default only stacks with the same project name as the\n" +

@@ -46,7 +46,7 @@ type lsCmd struct {
 	output outputflag.OutputFlag[lsRender]
 }
 
-func newLsCmd() *cobra.Command {
+func newListCmd() *cobra.Command {
 	lc := &lsCmd{
 		output: outputflag.OutputFlag[lsRender]{
 			RenderForTerminal: (*lsCmd).renderTable,
@@ -55,8 +55,8 @@ func newLsCmd() *cobra.Command {
 	}
 
 	c := &cobra.Command{
-		Use:     "ls",
-		Aliases: []string{"list"},
+		Use:     "list",
+		Aliases: []string{"ls"},
 		Short:   "List automatic log files",
 		Long: "List automatic log files\n" +
 			"\n" +
