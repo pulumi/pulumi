@@ -104,7 +104,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	logging.InitLogging(false, 0, false)
+	logging.InitLogging(false, 0, false, p.engineAddress)
 	cmdutil.InitTracing("pulumi-language-pcl", "pulumi-language-pcl", p.tracing)
 
 	var cmd mainCmd

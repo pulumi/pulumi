@@ -195,7 +195,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	logging.InitLogging(false, 0, false)
+	logging.InitLogging(false, 0, false, p.engineAddress)
 
 	// Use OTel when the CLI provides an OTLP endpoint; fall back to
 	// OpenTracing otherwise.  Only one system should be active to avoid

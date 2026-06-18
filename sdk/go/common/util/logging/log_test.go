@@ -31,8 +31,8 @@ func TestInitLogging(t *testing.T) {
 	prevLog := LogToStderr
 	prevV := Verbose
 	prevFlow := LogFlow
-	InitLogging(true, 9, true)
-	InitLogging(prevLog, prevV, prevFlow)
+	InitLogging(true, 9, true, "")
+	InitLogging(prevLog, prevV, prevFlow, "")
 	assert.Equal(t, prevLog, LogToStderr)
 	assert.Equal(t, prevV, Verbose)
 	assert.Equal(t, prevFlow, LogFlow)

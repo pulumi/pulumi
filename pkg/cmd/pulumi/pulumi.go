@@ -307,7 +307,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}
 			}
 
-			logging.InitLogging(logToStderr, verbose, logFlow)
+			logging.InitLogging(logToStderr, verbose, logFlow, "")
 
 			// Start automatic logging. At this point we don't have a stack
 			// or secrets manager, so logs will be gzip-compressed (not
