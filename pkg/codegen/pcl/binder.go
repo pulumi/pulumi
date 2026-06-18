@@ -76,6 +76,14 @@ type bindOptions struct {
 	// which refer to a component resource in a relative directory
 	dirPath                string
 	componentProgramBinder ComponentProgramBinder
+	// extraScopeVariables, if non-empty, are additional variables to define in the binder's root scope before
+	// binding the input file. Used by snippet bindings to inject references to resources owned by another source.
+	extraScopeVariables map[string]*model.Variable
+	// extraPackageDescriptors, if non-empty, are package descriptors supplied by the caller rather than read from
+	// `package { ... }` blocks in the source. Used by snippet bindings, which carry the descriptor structurally on
+	// the Snippet record rather than as PCL syntax. Merged into the descriptor map read from files; same-key entries
+	// from this option take precedence.
+	extraPackageDescriptors map[string]*schema.PackageDescriptor
 }
 
 func (opts bindOptions) modelOptions() []model.BindOption {
@@ -152,6 +160,24 @@ func DirPath(path string) BindOption {
 func ComponentBinder(binder ComponentProgramBinder) BindOption {
 	return func(options *bindOptions) {
 		options.componentProgramBinder = binder
+	}
+}
+
+// ExtraScopeVariables returns a BindOption that defines additional variables in the binder's root scope before
+// the input file is bound. Used by snippet bindings to inject references to resources owned by another source so
+// expressions like `someResource.someProp` can typecheck without the binder seeing a `resource` block for them.
+func ExtraScopeVariables(extras map[string]*model.Variable) BindOption {
+	return func(options *bindOptions) {
+		options.extraScopeVariables = extras
+	}
+}
+
+// PackageDescriptors returns a BindOption that supplies pre-built package descriptors to BindProgram, as if they
+// were declared by `package { ... }` blocks in the source. Used by snippet bindings, which carry the descriptor
+// structurally on the Snippet record rather than as PCL syntax.
+func PackageDescriptors(descriptors map[string]*schema.PackageDescriptor) BindOption {
+	return func(options *bindOptions) {
+		options.extraPackageDescriptors = descriptors
 	}
 }
 
@@ -287,6 +313,49 @@ func BindResource(
 	}
 
 	return args, inputType, diagnostics
+}
+
+// BindResourceProgram binds a PCL file body as a single resource program. Unlike BindResource,
+// this binds the full resource shape, including options and range, so the resulting program can be
+// evaluated through the normal resource registration path.
+func BindResourceProgram(
+	file *syntax.File, name, token string,
+	opts ...BindOption,
+) (*Program, hcl.Diagnostics, error) {
+	bodyRange := file.Body.Range()
+	labelRange := hcl.Range{
+		Filename: bodyRange.Filename,
+		Start:    bodyRange.Start,
+		End:      bodyRange.Start,
+	}
+	block := &hclsyntax.Block{
+		Type:        "resource",
+		Labels:      []string{name, token},
+		Body:        file.Body,
+		TypeRange:   labelRange,
+		LabelRanges: []hcl.Range{labelRange, labelRange},
+		OpenBraceRange: hcl.Range{
+			Filename: bodyRange.Filename,
+			Start:    bodyRange.Start,
+			End:      bodyRange.Start,
+		},
+		CloseBraceRange: hcl.Range{
+			Filename: bodyRange.Filename,
+			Start:    bodyRange.End,
+			End:      bodyRange.End,
+		},
+	}
+	resourceFile := &syntax.File{
+		Name: file.Name,
+		Body: &hclsyntax.Body{
+			Blocks:   []*hclsyntax.Block{block},
+			SrcRange: bodyRange,
+			EndRange: bodyRange,
+		},
+		Bytes:  file.Bytes,
+		Tokens: file.Tokens,
+	}
+	return BindProgram([]*syntax.File{resourceFile}, opts...)
 }
 
 // BindResourceList binds a PCL file as a resource list input and returns the bound arguments. This is used for `do` to
@@ -433,6 +502,11 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(b.bindInvokeSignature)))
 	// Define the call function.
 	b.root.DefineFunction(Call, model.NewFunction(model.GenericFunctionSignature(b.bindCallSignature)))
+	// Define any external scope variables supplied by the caller (e.g. resources owned by another source that
+	// a snippet program references). The caller chooses each variable's VariableType.
+	for name, v := range options.extraScopeVariables {
+		b.root.Define(name, v)
+	}
 
 	var diagnostics hcl.Diagnostics
 
@@ -440,6 +514,11 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	descriptorMap, descriptorDiags := ReadAllPackageDescriptors(files)
 	diagnostics = append(diagnostics, descriptorDiags...)
 	for packageName, descriptor := range descriptorMap {
+		b.packageDescriptors[packageName] = descriptor
+	}
+	// Caller-supplied descriptors (snippet bindings carry these structurally rather than as PCL syntax)
+	// take precedence over any file-declared block for the same package.
+	for packageName, descriptor := range options.extraPackageDescriptors {
 		b.packageDescriptors[packageName] = descriptor
 	}
 
