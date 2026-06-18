@@ -930,7 +930,14 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 		}
 
 		var indexPrefix string
-		if model.IsOptionalType(model.GetTraversableType(parts[i])) {
+		if pcl.IsOptionalResource(parts[i]) {
+			// A conditionally-created (boolean `range`) resource is `undefined`
+			// when the condition is false. Dereferencing its property to feed a
+			// required input asserts the resource exists, so emit a non-null
+			// assertion rather than optional chaining (which would widen the value
+			// to `| undefined` and fail to type-check against the required input).
+			g.Fgen(w, "!")
+		} else if model.IsOptionalType(model.GetTraversableType(parts[i])) {
 			g.Fgen(w, "?")
 			// `expr?[expr]` is not valid typescript, since it looks like a ternary
 			// operator.
