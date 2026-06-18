@@ -1,0 +1,6 @@
+component: sdkgen
+kind: fix
+body: Fix extra trailing new lines in comments
+time: 2026-06-18T23:26:28.533711+01:00
+custom:
+    PR: "23619"
