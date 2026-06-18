@@ -1741,7 +1741,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 		// This is the bug - process hung trying to control terminal
 		if cmd.Process != nil {
 			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
+			<-processFinished
 		}
 
 		require.Failf(t, "up hung", "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
