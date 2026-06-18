@@ -73,7 +73,6 @@ def list_product_families(customer_subscription_details: Optional[Union['Custome
     The list of product families.
     API Version: 2020-12-01-preview.
 
-
     :param Union['CustomerSubscriptionDetails', 'CustomerSubscriptionDetailsDict'] customer_subscription_details: Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
     :param _builtins.str expand: $expand is supported on configurations parameter for product, which provides details on the configurations for the product.
     :param Mapping[str, Sequence[Union['FilterableProperty', 'FilterablePropertyDict']]] filterable_properties: Dictionary of filterable properties on product family.
@@ -98,7 +97,6 @@ def list_product_families_output(customer_subscription_details: pulumi.Input[Opt
     """
     The list of product families.
     API Version: 2020-12-01-preview.
-
 
     :param Union['CustomerSubscriptionDetails', 'CustomerSubscriptionDetailsDict'] customer_subscription_details: Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
     :param _builtins.str expand: $expand is supported on configurations parameter for product, which provides details on the configurations for the product.

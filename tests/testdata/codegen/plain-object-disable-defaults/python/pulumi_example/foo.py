@@ -100,7 +100,6 @@ class Foo(pulumi.CustomResource):
         """
         test new feature with resoruces
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
@@ -115,7 +114,6 @@ class Foo(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         test new feature with resoruces
-
 
         :param str resource_name: The name of the resource.
         :param FooArgs args: The arguments to use to populate this resource's properties.

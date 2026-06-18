@@ -2662,6 +2662,7 @@ func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties 
 	// If this type has documentation, write it at the top of the docstring.
 	if comment != "" {
 		fmt.Fprintln(b, comment)
+		fmt.Fprintln(b, "")
 	}
 
 	for _, prop := range properties {

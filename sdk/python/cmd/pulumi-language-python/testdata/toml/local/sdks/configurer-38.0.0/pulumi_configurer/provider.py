@@ -46,7 +46,6 @@ class Provider(pulumi.ProviderResource):
         """
         The configurer provider. Its `config` setting is echoed onto each Custom resource it creates.
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -58,7 +57,6 @@ class Provider(pulumi.ProviderResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         The configurer provider. Its `config` setting is echoed onto each Custom resource it creates.
-
 
         :param str resource_name: The name of the resource.
         :param ProviderArgs args: The arguments to use to populate this resource's properties.
