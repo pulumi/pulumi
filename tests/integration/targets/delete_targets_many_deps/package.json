@@ -1,9 +1,8 @@
 {
-    "name": "emptyjs",
+    "name": "delete_targets_many_deps",
     "license": "Apache-2.0",
-    "version": "0.0.9",
     "devDependencies": {
-        "@types/node": "17.0.45"
+        "typescript": "3.9.10"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"

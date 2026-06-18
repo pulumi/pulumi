@@ -44,7 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -148,7 +147,7 @@ func TestProjectMainNodejs(t *testing.T) {
 			return
 		}
 
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+		e.InstallDependencies()
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		e.RunCommand("pulumi", "preview")
@@ -162,8 +161,9 @@ func TestProjectMainNodejs(t *testing.T) {
 		defer e.DeleteIfNotFailed()
 		e.ImportDirectory("project_main_parent")
 
-		// yarn link first
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+		// The program and its package.json live in foo/; the Pulumi.yaml is nested in foo/bar with
+		// `main: ../../foo`. Install the SDK into the program directory so it resolves locally.
+		ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "foo"))
 		// then virtually change directory to the location of the nested Pulumi.yaml
 		e.CWD = filepath.Join(e.RootPath, "foo", "bar")
 
@@ -201,7 +201,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 
 	e.ImportDirectory("single_resource")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
 	assert.Contains(t, stderr, "--force")
@@ -330,7 +330,7 @@ func TestStackOutputsJSON(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
@@ -983,7 +983,7 @@ func TestConstructSlowNode(t *testing.T) {
 	var opts *integration.ProgramTestOptions
 
 	testDir := "construct_component_slow"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	opts = &integration.ProgramTestOptions{
 		Dir:            filepath.Join(testDir, "nodejs"),
@@ -1008,7 +1008,7 @@ func TestConstructPlainNode(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_plain"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -1066,7 +1066,7 @@ func TestConstructMethodsNode(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_methods"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -1125,7 +1125,7 @@ func TestConstructProviderNode(t *testing.T) {
 	t.Parallel()
 
 	const testDir = "construct_component_provider"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -1196,7 +1196,7 @@ func TestConstructNodeErrorApply(t *testing.T) {
 	dir := "construct_component_error_apply"
 	componentDir := "testcomponent"
 
-	runComponentSetup(t, dir)
+	integration.RunComponentSetup(t, dir)
 
 	stderr := &bytes.Buffer{}
 	expectedError := "intentional error from within an apply"
@@ -1311,14 +1311,7 @@ func TestESMTSX(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 	stackName := ptesting.RandomStackName()
-	// For this test we need to properly install the core SDK instead of yarn
-	// linkining, because yarn link breaks finding an alternative ts-node
-	// installation. This would cause the test to fallback to the vendored
-	// ts-node, which does not provide ts-node/esm.
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-	require.NoError(t, err)
-	e.RunCommandWithRetry("yarn", "install")
-	e.RunCommand("yarn", "add", coreSDK)
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1326,7 +1319,7 @@ func TestESMTSX(t *testing.T) {
 	// Validate the stack outputs
 	stdout, _ := e.RunCommand("pulumi", "stack", "export")
 	var stackExport map[string]any
-	err = json.Unmarshal([]byte(stdout), &stackExport)
+	err := json.Unmarshal([]byte(stdout), &stackExport)
 	require.NoError(t, err)
 	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
 	require.True(t, ok)
@@ -1349,14 +1342,7 @@ func TestESMTSAuto(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 	stackName := ptesting.RandomStackName()
-	// For this test we need to properly install the core SDK instead of yarn
-	// linkining, because yarn link breaks finding an alternative ts-node
-	// installation. This would cause the test to fallback to the vendored
-	// ts-node, which does not provide ts-node/esm.
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-	require.NoError(t, err)
-	e.RunCommandWithRetry("yarn", "install")
-	e.RunCommand("yarn", "add", coreSDK)
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1364,7 +1350,7 @@ func TestESMTSAuto(t *testing.T) {
 	// Validate the stack outputs
 	stdout, _ := e.RunCommand("pulumi", "stack", "export")
 	var stackExport map[string]any
-	err = json.Unmarshal([]byte(stdout), &stackExport)
+	err := json.Unmarshal([]byte(stdout), &stackExport)
 	require.NoError(t, err)
 	resources, ok := stackExport["deployment"].(map[string]any)["resources"].([]any)
 	require.True(t, ok)
@@ -1387,14 +1373,7 @@ func TestESMTSAutoTypeCheck(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 	stackName := ptesting.RandomStackName()
-	// For this test we need to properly install the core SDK instead of yarn
-	// linkining, because yarn link breaks finding an alternative ts-node
-	// installation. This would cause the test to fallback to the vendored
-	// ts-node, which does not provide ts-node/esm.
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-	require.NoError(t, err)
-	e.RunCommandWithRetry("yarn", "install")
-	e.RunCommand("yarn", "add", coreSDK)
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1815,14 +1794,7 @@ func TestTranspileOnly(t *testing.T) {
 
 			stackName := ptesting.RandomStackName()
 
-			// For this test we need to properly install the core SDK instead of yarn
-			// linkining, because yarn link breaks the typescript version detection, and
-			// causes us to use the vendored typescript 3.8.3, which does not support
-			// the `noCheck` option.
-			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-			require.NoError(t, err)
-			e.RunCommandWithRetry("yarn", "install")
-			e.RunCommand("yarn", "add", coreSDK)
+			e.InstallDependencies()
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "stack", "init", stackName)
 			e.RunCommand("pulumi", "stack", "select", stackName)
@@ -1893,9 +1865,6 @@ func TestCodePathsNoDependencies(t *testing.T) {
 
 // Test that the resource stopwatch doesn't contain a negative time.
 func TestNoNegativeTimingsOnRefresh(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Skip on windows because we lack yarn")
-	}
 	t.Parallel()
 
 	dir := filepath.Join("empty", "nodejs")
@@ -1903,8 +1872,7 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "negative-timings")
 	e.RunCommand("pulumi", "stack", "select", "negative-timings")
@@ -1919,9 +1887,6 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 // results of each runtime independently, we have an integration test in each
 // language.
 func TestAboutNodeJS(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Skip on windows because we lack yarn")
-	}
 	t.Parallel()
 
 	dir := filepath.Join("about", "nodejs")
@@ -1929,8 +1894,7 @@ func TestAboutNodeJS(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
 	e.RunCommand("pulumi", "stack", "select", "about-nodejs")
@@ -1941,7 +1905,7 @@ func TestAboutNodeJS(t *testing.T) {
 		"Did not contain expected output. stderr: \n%q", stderr)
 	// Assert we parsed the language plugin, we don't assert against the minor version number
 	assert.Regexp(t, regexp.MustCompile(`language\W+nodejs\W+3\.`), stdout)
-	assert.Contains(t, stdout, "packagemanager='yarn'")
+	assert.Contains(t, stdout, "packagemanager='npm'")
 	assert.Regexp(t, regexp.MustCompile(`packagemanagerVersion='\d+\.\d+.\d+'`), stdout)
 }
 
@@ -1973,17 +1937,13 @@ func TestConstructOutputValuesNode(t *testing.T) {
 }
 
 func TestTSConfigOption(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Skip on windows because we lack yarn")
-	}
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("tsconfig")
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
 	e.RunCommand("pulumi", "preview")
@@ -2756,10 +2716,7 @@ func TestNodejsSourcemapTest(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("nodejs/sourcemap-in-test")
-	e.RunCommandWithRetry("yarn", "install")
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-	require.NoError(t, err)
-	e.RunCommand("yarn", "add", coreSDK)
+	ptesting.InstallDependencies(t, e.CWD)
 
 	// TODO(https://github.com/jestjs/jest/issues/15888): Remove the need to specify --localstorage-file when jest works
 	// around the Node.js v25.2.0 breaking change that requires it to be set when localStorage is accessed.
@@ -2897,7 +2854,7 @@ func TestInstallLocalPlugin(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("packages-install-local")
-	installNodejsProviderDependencies(t, filepath.Join(e.RootPath, "provider"))
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider"))
 	e.CWD = filepath.Join(e.RootPath, "example")
 
 	// This command should generate the SDK for the local plugin
@@ -3057,7 +3014,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("component_provider", "nodejs", "component-provider-host", "provider"))
-	installNodejsProviderDependencies(t, e.RootPath)
+	ptesting.InstallDependencies(t, e.RootPath)
 
 	// Install the random plugin so we can use it in the component provider.
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "v4.18.0")
@@ -3190,7 +3147,7 @@ func TestNodejsComponentInjectNamespace(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("github_component", "nodejs"))
-	installNodejsProviderDependencies(t, e.RootPath)
+	ptesting.InstallDependencies(t, e.RootPath)
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "github_component", "--create")
@@ -3221,7 +3178,7 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					installNodejsProviderDependencies(t, providerPath)
+					ptesting.InstallDependencies(t, providerPath)
 
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
@@ -3284,21 +3241,6 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 	}
 }
 
-func installNodejsProviderDependencies(t *testing.T, dir string) {
-	t.Helper()
-
-	pm, err := npm.ResolvePackageManager(npm.YarnPackageManager, dir)
-	require.NoError(t, err)
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	err = pm.Install(t.Context(), dir, false /* production*/, stdout, stderr)
-	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
-	cmd := exec.Command("yarn", "link", "@pulumi/pulumi")
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "output: %s", out)
-}
-
 func TestNodeComponentNamespaceInference(t *testing.T) {
 	t.Parallel()
 
@@ -3306,7 +3248,7 @@ func TestNodeComponentNamespaceInference(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("namespaced_component")
-	installNodejsProviderDependencies(t, e.CWD)
+	e.InstallDependencies()
 	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", ".")
 	var packageSpec schema.PackageSpec
 	require.NoError(t, json.Unmarshal([]byte(stdout), &packageSpec))
@@ -3328,7 +3270,7 @@ func TestNodeInvalidComponentName(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("namespaced_component_invalid_name")
-	installNodejsProviderDependencies(t, e.CWD)
+	e.InstallDependencies()
 	_, stderr := e.RunCommandExpectError("pulumi", "package", "get-schema", ".")
 	require.Contains(t, stderr,
 		"Error: Invalid provider name '-namespaced-component' in package.json. Provider names must start with a letter")
@@ -3341,7 +3283,7 @@ func TestNodeCanConstructNamespacedComponent(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("namespaced_component")
-	installNodejsProviderDependencies(t, e.CWD)
+	e.InstallDependencies()
 	e.CWD = filepath.Join(e.CWD, "example")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
@@ -3363,7 +3305,7 @@ func TestNodePackageAddTSC(t *testing.T) {
 			program := filepath.Join(e.RootPath, "program-"+pm)
 			bin := filepath.Join(e.RootPath, "bin")
 			e.CWD = provider
-			installNodejsProviderDependencies(t, provider)
+			ptesting.InstallDependencies(t, provider)
 			e.CWD = program
 			// `bin` has a fake `tsc` executable that exits with an error code. If we
 			// execute this instead of the tsc that ships with the package, the
@@ -3393,7 +3335,7 @@ func TestNodePackageAddTypes(t *testing.T) {
 	provider := filepath.Join(e.RootPath, "provider")
 	program := filepath.Join(e.RootPath, "program")
 	e.CWD = provider
-	installNodejsProviderDependencies(t, provider)
+	ptesting.InstallDependencies(t, provider)
 	e.CWD = program
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "package", "add", provider)
