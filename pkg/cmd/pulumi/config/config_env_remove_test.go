@@ -46,7 +46,7 @@ runtime: yaml`
 
 `
 
-		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 
 		const expectedYAML = "{}\n"
 
@@ -66,7 +66,7 @@ runtime: yaml`
 
 		const expectedOut = "KEY  VALUE\n"
 
-		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 
 		const expectedYAML = "{}\n"
 
@@ -91,7 +91,7 @@ runtime: yaml`
 
 		const expectedOut = "KEY  VALUE\n"
 
-		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 
 		const expectedYAML = "{}\n"
 
@@ -130,7 +130,7 @@ aws:region    us-west-2
 
 `
 
-		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
@@ -171,7 +171,7 @@ aws:region    us-west-2
 
 `
 
-		assert.Equal(t, expectedOut, cleanStdoutIncludingPrompt(stdout.String()))
+		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
 
 		const expectedYAML = `environment:
   - env
