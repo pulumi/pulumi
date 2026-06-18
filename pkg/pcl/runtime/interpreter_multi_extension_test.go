@@ -139,7 +139,7 @@ func TestPackageRefResolutionAcrossExtensionsOnSameBase(t *testing.T) {
 		packageRefs: map[string]string{},
 	}
 
-	require.NoError(t, i.registerPackages(context.Background()))
+	require.NoError(t, i.registerPackages(t.Context()))
 
 	ayeRef, err := i.getPackageRefFromToken("extbase:index:Aye")
 	require.NoError(t, err)
