@@ -16,6 +16,7 @@ package asset
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -26,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/cas"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -53,6 +55,17 @@ const (
 	AssetPathProperty = "path" // the dynamic property for an asset's path.
 	AssetURIProperty  = "uri"  // the dynamic property for an asset's URI.
 )
+
+// contentStore, when non-nil, is a content-addressed store into which asset
+// contents are written as they are hashed and from which a hash-only asset can
+// be materialized. It is nil by default, in which case the asset subsystem
+// behaves exactly as it did before.
+var contentStore cas.Store
+
+// SetContentStore configures the content-addressed store used by the asset
+// subsystem. Pass nil to disable it (the default). It is process-global and
+// intended to be set once during startup before any assets are created.
+func SetContentStore(s cas.Store) { contentStore = s }
 
 // FromText produces a new asset and its corresponding SHA256 hash from the given text.
 func FromText(text string) (*Asset, error) {
@@ -262,6 +275,23 @@ func (a *Asset) ReadWithWD(wd string) (*Blob, error) {
 	} else if a.IsURI() {
 		return a.readURI()
 	}
+	// A hash-only "content reference" asset (no text/path/uri): materialize its
+	// bytes from the configured content store, if present there.
+	if a.Hash != "" && contentStore != nil {
+		ctx := context.Background()
+		if has, err := contentStore.Has(ctx, a.Hash); err == nil && has {
+			rc, err := contentStore.Get(ctx, a.Hash)
+			if err != nil {
+				return nil, err
+			}
+			defer contract.IgnoreClose(rc)
+			data, err := io.ReadAll(rc)
+			if err != nil {
+				return nil, err
+			}
+			return NewByteBlob(data), nil
+		}
+	}
 	return nil, errors.New("unrecognized asset type")
 }
 
@@ -334,27 +364,14 @@ func (a *Asset) readURI() (*Blob, error) {
 
 // EnsureHash computes the SHA256 hash of the asset's contents and stores it on the object.
 func (a *Asset) EnsureHash() error {
-	if a.Hash == "" {
-		blob, err := a.Read()
-		if err != nil {
-			return err
-		}
-		defer contract.IgnoreClose(blob)
-
-		hash := sha256.New()
-		n, err := io.Copy(hash, blob)
-		if err != nil {
-			return err
-		}
-		if n != blob.Size() {
-			return fmt.Errorf("incorrect blob size: expected %v, got %v", blob.Size(), n)
-		}
-		a.Hash = hex.EncodeToString(hash.Sum(nil))
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
 	}
-	return nil
+	return a.EnsureHashWithWD(wd)
 }
 
-// EnsureHash computes the SHA256 hash of the asset's contents and stores it on the object.
+// EnsureHashWithWD computes the SHA256 hash of the asset's contents and stores it on the object.
 func (a *Asset) EnsureHashWithWD(wd string) error {
 	if a.Hash == "" {
 		blob, err := a.ReadWithWD(wd)
@@ -373,7 +390,35 @@ func (a *Asset) EnsureHashWithWD(wd string) error {
 		}
 		a.Hash = hex.EncodeToString(hash.Sum(nil))
 	}
+	// When a content-addressed store is configured, persist the contents keyed by
+	// the hash so identical assets are stored once and a hash-only reference can be
+	// materialized later. Best-effort: a store failure must never break hashing.
+	a.storeContents(wd)
 	return nil
+}
+
+// storeContents writes the asset's contents into the configured content store,
+// keyed by its already-computed hash. It is a no-op when no store is configured,
+// the hash is unknown, the asset is URI-backed (we don't re-fetch the network),
+// or the blob is already present.
+//
+// TODO: this re-reads the source to store it; a single-pass tee through the
+// hasher in EnsureHashWithWD is the obvious optimization, deferred until the
+// hashing hot path is tuned.
+func (a *Asset) storeContents(wd string) {
+	if contentStore == nil || a.Hash == "" || a.IsURI() {
+		return
+	}
+	ctx := context.Background()
+	if has, err := contentStore.Has(ctx, a.Hash); err != nil || has {
+		return
+	}
+	blob, err := a.ReadWithWD(wd)
+	if err != nil {
+		return
+	}
+	defer contract.IgnoreClose(blob)
+	_ = contentStore.Put(ctx, a.Hash, blob)
 }
 
 // Blob is a blob that implements ReadCloser and offers Len functionality.
