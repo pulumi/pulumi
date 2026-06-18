@@ -98,6 +98,52 @@ func tryExpressions(
 	return cty.NilVal, errors.New(buf.String())
 }
 
+func recoverExpression(
+	args []cty.Value,
+	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
+) (cty.Value, error) {
+	if len(args) != 2 {
+		return cty.NilVal, errors.New("recover requires a value and recovery expression")
+	}
+
+	valueClosure := customdecode.ExpressionClosureFromVal(args[0])
+	value, diags := valueClosure.Value()
+	if diags.HasErrors() {
+		return cty.NilVal, errors.New(diags.Error())
+	}
+
+	pv, err := ctyToPropertyValue(value)
+	if err == nil {
+		return propertyValueToCty(context.TODO(), getResource, pv)
+	}
+
+	var poison *poisonError
+	if !errors.As(err, &poison) {
+		return cty.NilVal, err
+	}
+
+	recoveryClosure := customdecode.ExpressionClosureFromVal(args[1])
+	childContext := recoveryClosure.EvalContext.NewChild()
+	childContext.Variables = map[string]cty.Value{
+		"error": cty.StringVal(poison.Error()),
+	}
+	recoveryClosure = &customdecode.ExpressionClosure{
+		Expression:  recoveryClosure.Expression,
+		EvalContext: childContext,
+	}
+
+	recoveredValue, diags := recoveryClosure.Value()
+	if diags.HasErrors() {
+		return cty.NilVal, errors.New(diags.Error())
+	}
+
+	recoveredPV, err := ctyToPropertyValue(recoveredValue)
+	if err != nil {
+		return cty.NilVal, err
+	}
+	return propertyValueToCty(context.TODO(), getResource, recoveredPV)
+}
+
 func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 	// If errorName is set and value is empty, the function will return an error with the given name. This is used for
 	// functions that are only supported in some contexts, like rootDirectory not always being available in `pulumi do`.
@@ -173,6 +219,23 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			return tryExpressions(args, ectx.getResource)
+		},
+	})
+
+	recoverFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "value",
+				Type: customdecode.ExpressionClosureType,
+			},
+			{
+				Name: "recovery",
+				Type: customdecode.ExpressionClosureType,
+			},
+		},
+		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			return recoverExpression(args, ectx.getResource)
 		},
 	})
 
@@ -1031,6 +1094,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		"secret":             secretFn,
 		"unsecret":           unsecretFn,
 		"try":                tryFn,
+		"recover":            recoverFn,
 		"can":                canFn,
 		"getOutput":          getOutputFn,
 		"invoke":             invokeFn,

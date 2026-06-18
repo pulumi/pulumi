@@ -523,6 +523,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
+	case "recover":
+		g.Fgenf(w, "pulumi.recover(%.20v, err => ((error) => %.v)(err instanceof Error ? err.message : String(err)))",
+			expr.Args[0], expr.Args[1])
 	case intrinsicAwait:
 		g.Fgenf(w, "await %.17v", expr.Args[0])
 	case intrinsicInterpolate:

@@ -1207,11 +1207,18 @@ def register_resource(
 
             # If the engine reported that the resource failed or was skipped, synthesize an
             # exception so downstream outputs fault. This allows `Output.recover` to intercept
-            # the failure.
+            # the failure. `ResourceRegistrationFailed` is a marker class that `wait_for_rpcs`
+            # skips at program exit, so unrecovered outputs don't tear down continue-on-error
+            # updates.
             result_failed = resp.result != resource_pb2.Result.SUCCESS
             register_exn: Optional[Exception] = None
             if result_failed:
-                register_exn = Exception(f"resource {name} [{ty}] failed to register")
+                # Lazy import to avoid a circular import at module load.
+                from .stack import ResourceRegistrationFailed
+
+                register_exn = ResourceRegistrationFailed(
+                    f"resource {name} [{ty}] failed to register"
+                )
 
             resolve_urn(resp.urn, True, False, register_exn)
             resolve_urn_called = True
