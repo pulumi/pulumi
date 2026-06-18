@@ -68,7 +68,7 @@ func TestRedeliver_TextOutput(t *testing.T) {
 
 	c := &mockRedeliverClient{delivery: redeliverSample()}
 	var buf bytes.Buffer
-	err := runRedeliver(t.Context(), &buf, stubRedeliverFactory(c), "", "my-hook", "evt-1", "default")
+	err := runRedeliver(t.Context(), &buf, stubRedeliverFactory(c), "", "my-hook", "evt-1", renderRedeliverText)
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -87,7 +87,7 @@ func TestRedeliver_JSONOutput(t *testing.T) {
 
 	c := &mockRedeliverClient{delivery: redeliverSample()}
 	var buf bytes.Buffer
-	err := runRedeliver(t.Context(), &buf, stubRedeliverFactory(c), "", "hook", "evt-1", "json")
+	err := runRedeliver(t.Context(), &buf, stubRedeliverFactory(c), "", "hook", "evt-1", renderRedeliverJSON)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{

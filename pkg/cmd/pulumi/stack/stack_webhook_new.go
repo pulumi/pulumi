@@ -28,6 +28,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -71,8 +72,11 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 		active  bool
 		secret  string
 		yes     bool
-		output  string
 	)
+	output := outputflag.OutputFlag[webhookNewRenderFunc]{
+		RenderForTerminal: renderWebhookGetText,
+		RenderJSON:        renderWebhookGetJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "new",
@@ -120,7 +124,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 
 			return runStackWebhookNew(
 				cmd.Context(), cmd.OutOrStdout(), factory,
-				stack, webhookArgs, output,
+				stack, webhookArgs, output.Get(),
 			)
 		},
 	}
@@ -145,8 +149,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 		"The HMAC key for signature verification")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")
-	cmd.Flags().StringVar(&output, "output", "default",
-		"The output format: default (human-readable text) or json")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -366,13 +369,8 @@ func runStackWebhookNew(
 	factory stackWebhookNewClientFactory,
 	stackFlag string,
 	args stackWebhookNewArgs,
-	output string,
+	render webhookNewRenderFunc,
 ) error {
-	renderer, err := webhookNewRenderer(output)
-	if err != nil {
-		return err
-	}
-
 	c, stackID, err := factory(ctx, stackFlag)
 	if err != nil {
 		return err
@@ -405,20 +403,7 @@ func runStackWebhookNew(
 		return fmt.Errorf("creating stack webhook: %w", err)
 	}
 
-	return renderer(w, created)
+	return render(w, created)
 }
 
 type webhookNewRenderFunc func(w io.Writer, wh apitype.Webhook) error
-
-func webhookNewRenderer(output string) (webhookNewRenderFunc, error) {
-	switch output {
-	case "", "default":
-		return renderWebhookGetText, nil
-	case "json":
-		return renderWebhookGetJSON, nil
-	default:
-		return nil, fmt.Errorf(
-			"invalid --output value %q: expected \"default\" or \"json\"",
-			output)
-	}
-}

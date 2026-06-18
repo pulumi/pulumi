@@ -65,7 +65,7 @@ func TestStackWebhookPing_TextOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookPingClient{delivery: sampleDelivery()}
-	err := runStackWebhookPing(t.Context(), &buf, stubPingFactory(c), "", "deploy-hook", "default")
+	err := runStackWebhookPing(t.Context(), &buf, stubPingFactory(c), "", "deploy-hook", renderWebhookPingText)
 	require.NoError(t, err)
 
 	assert.Equal(t, `ID:                delivery-abc
@@ -90,7 +90,7 @@ func TestStackWebhookPing_TextOutput_NoBody(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookPingClient{delivery: d}
-	err := runStackWebhookPing(t.Context(), &buf, stubPingFactory(c), "", "hook", "default")
+	err := runStackWebhookPing(t.Context(), &buf, stubPingFactory(c), "", "hook", renderWebhookPingText)
 	require.NoError(t, err)
 
 	assert.Equal(t, `ID:                delivery-abc
@@ -110,7 +110,7 @@ func TestStackWebhookPing_JSONOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookPingClient{delivery: sampleDelivery()}
-	err := runStackWebhookPing(t.Context(), &buf, stubPingFactory(c), "", "deploy-hook", "json")
+	err := runStackWebhookPing(t.Context(), &buf, stubPingFactory(c), "", "deploy-hook", renderWebhookPingJSON)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -127,22 +127,12 @@ func TestStackWebhookPing_JSONOutput(t *testing.T) {
 	}`, buf.String())
 }
 
-func TestStackWebhookPing_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	c := &mockWebhookPingClient{delivery: sampleDelivery()}
-	err := runStackWebhookPing(t.Context(), &buf, stubPingFactory(c), "", "hook", "xml")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid --output value")
-}
-
 func TestStackWebhookPing_ClientError(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
 	c := &mockWebhookPingClient{err: errors.New("connection refused")}
-	err := runStackWebhookPing(t.Context(), &buf, stubPingFactory(c), "", "hook", "default")
+	err := runStackWebhookPing(t.Context(), &buf, stubPingFactory(c), "", "hook", renderWebhookPingText)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pinging stack webhook")
 	assert.Contains(t, err.Error(), "connection refused")

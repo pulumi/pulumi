@@ -32,6 +32,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -75,17 +76,19 @@ type searchClientFactory func(
 	ctx context.Context, orgOverride string,
 ) (insightsResourceSearchClient, string, error)
 
+type insightsResourceSearchRenderFunc func(w io.Writer, r apitype.InsightsResourceSearchResponse) error
+
 type insightsResourceSearchArgs struct {
-	org        string
-	query      string
-	sort       []string
-	asc        bool
-	page       int
-	size       int
-	cursor     string
-	properties bool
-	collapse   bool
-	output     string
+	org          string
+	query        string
+	sort         []string
+	asc          bool
+	page         int
+	size         int
+	cursor       string
+	properties   bool
+	collapse     bool
+	renderOutput insightsResourceSearchRenderFunc
 }
 
 type insightsResourceSearchCmd struct {
@@ -102,6 +105,10 @@ func newInsightsResourceSearchCmd(factory searchClientFactory) *cobra.Command {
 
 	search := &insightsResourceSearchCmd{clientFactory: factory}
 	var args insightsResourceSearchArgs
+	output := outputflag.OutputFlag[insightsResourceSearchRenderFunc]{
+		RenderForTerminal: renderSearchTable,
+		RenderJSON:        renderSearchJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "search",
@@ -127,6 +134,7 @@ func newInsightsResourceSearchCmd(factory searchClientFactory) *cobra.Command {
 			"  # JSON output for scripting.\n" +
 			"  pulumi insights resource search --query 'aws:s3' --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			args.renderOutput = output.Get()
 			return search.Run(cmd.Context(), cmd.OutOrStdout(), args)
 		},
 	}
@@ -152,8 +160,7 @@ func newInsightsResourceSearchCmd(factory searchClientFactory) *cobra.Command {
 		"Include resource input/output values (requires a supported subscription)")
 	cmd.Flags().BoolVar(&args.collapse, "collapse", false,
 		"Consolidate resources that exist in multiple sources into a single result")
-	cmd.Flags().StringVar(&args.output, "output", "default",
-		"Output format. One of: default, table, json")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -163,12 +170,8 @@ func newInsightsResourceSearchCmd(factory searchClientFactory) *cobra.Command {
 func (c *insightsResourceSearchCmd) Run(
 	ctx context.Context, out io.Writer, args insightsResourceSearchArgs,
 ) error {
-	// Validate --output and --sort before talking to the network so a typo
-	// doesn't burn an API call.
-	render, err := searchRenderer(args.output)
-	if err != nil {
-		return err
-	}
+	// --output is validated at flag-parse time by outputflag; validate --sort here
+	// before talking to the network so a typo doesn't burn an API call.
 	if err := validateSortFields(args.sort); err != nil {
 		return err
 	}
@@ -192,7 +195,7 @@ func (c *insightsResourceSearchCmd) Run(
 	if err != nil {
 		return fmt.Errorf("searching insights resources: %w", err)
 	}
-	return render(out, resp)
+	return args.renderOutput(out, resp)
 }
 
 // sortedSortFields returns the valid sort fields in deterministic order, so
@@ -216,24 +219,6 @@ func validateSortFields(sorts []string) error {
 		}
 	}
 	return nil
-}
-
-// searchRenderer maps --output to the corresponding render function.
-// `default` and `table` are aliases — they both render the box-drawn table
-// produced by go-pretty, matching other cli/cloud list/search commands such
-// as `pulumi stack webhook list` and `pulumi org search`.
-func searchRenderer(format string) (
-	func(io.Writer, apitype.InsightsResourceSearchResponse) error, error,
-) {
-	switch format {
-	case "", "default", "table":
-		return renderSearchTable, nil
-	case "json":
-		return renderSearchJSON, nil
-	default:
-		return nil, fmt.Errorf(
-			"invalid --output value %q (must be 'default', 'table', or 'json')", format)
-	}
 }
 
 // searchTableFallbackCols is the column count used when stdout isn't a TTY

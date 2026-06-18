@@ -28,6 +28,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -35,11 +36,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
+type templateListRenderFunc func(w io.Writer, templates []apitype.TemplateMetadata) error
+
 type templateListArgs struct {
-	name   string
-	org    string
-	search string
-	output string
+	name         string
+	org          string
+	search       string
+	renderOutput templateListRenderFunc
 }
 
 type templateListCmd struct {
@@ -58,6 +61,10 @@ func newTemplateListCmd(
 
 	listCmd := &templateListCmd{registryFactory: registryFactory}
 	var args templateListArgs
+	output := outputflag.OutputFlag[templateListRenderFunc]{
+		RenderForTerminal: renderTemplatesTable,
+		RenderJSON:        renderTemplatesJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -81,6 +88,7 @@ func newTemplateListCmd(
 			"  # Emit JSON for scripting.\n" +
 			"  pulumi template list --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			args.renderOutput = output.Get()
 			return listCmd.Run(cmd.Context(), cmd.OutOrStdout(), args)
 		},
 	}
@@ -93,8 +101,7 @@ func newTemplateListCmd(
 		"Filter to templates owned by the given organization")
 	cmd.Flags().StringVar(&args.search, "search", "",
 		"Free-text search across name, display name, description, metadata values, and runtime")
-	cmd.Flags().StringVar(&args.output, "output", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -118,14 +125,7 @@ func (c *templateListCmd) Run(ctx context.Context, out io.Writer, args templateL
 		templates = append(templates, tmpl)
 	}
 
-	switch args.output {
-	case "", "default":
-		return renderTemplatesTable(out, templates)
-	case "json":
-		return renderTemplatesJSON(out, templates)
-	default:
-		return fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", args.output)
-	}
+	return args.renderOutput(out, templates)
 }
 
 func renderTemplatesTable(w io.Writer, templates []apitype.TemplateMetadata) error {
