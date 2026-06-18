@@ -2,16 +2,31 @@
 
 ## 3.246.0 (2026-06-11)
 
-### Bug Fixes
-
-- [backend/diy] Fix backwards incompatible gocloud.dev changes [#23525](https://github.com/pulumi/pulumi/pull/23525)
-
 ### Features
 
 - [cli] Add `pulumi logs ls` to list automatic log files [#23449](https://github.com/pulumi/pulumi/pull/23449)
 - [cli] Add `pulumi logs rm` to remove automatic log files
 - [cli] Include the list of affected resources (urn, type, name, op, parent) in `--output json` for `preview`, `up`, `destroy`, and `refresh`
 - [cli] Support Pulumi projects without a runtime across CLI operations and Automation API project settings [#23489](https://github.com/pulumi/pulumi/pull/23489)
+- [cli/do] Add a `--stateless` flag to `pulumi do`. `create`, `patch`, and `delete` now require `--stateless` for the existing direct-provider behavior; the default will switch to a stateful (engine-driven) implementation in a future release
+- [cli/env] Support ephemeral agent auth instructions for ESC API unauthorized errors in detected agent sessions [#23402](https://github.com/pulumi/pulumi/pull/23402)
+- [sdk] Add a `read` field to `customTimeouts` so users can configure a timeout for resource read operations [#23459](https://github.com/pulumi/pulumi/pull/23459)
+
+### Bug Fixes
+
+- [backend/diy] Fix backwards incompatible gocloud.dev changes [#23525](https://github.com/pulumi/pulumi/pull/23525)
+- [cli/neo] The `pulumi neo` TUI now adapts its colors to the terminal background instead of hardcoding a dark scheme [#23333](https://github.com/pulumi/pulumi/pull/23333)
+- [cli/neo] Increase the `pulumi neo` task-creation timeout so backend cold starts no longer fail [#23444](https://github.com/pulumi/pulumi/pull/23444)
+- [cli/neo] Ensure pulumi neo resolves the same Pulumi access token as pulumi preview when running in-process preview and up operations [#23452](https://github.com/pulumi/pulumi/pull/23452)
+- [pcl] Recursively fill schema-declared output fields on resources, so PCL programs that traverse into an optional inner field of a nested output object no longer fail at runtime with an "unsupported attribute" error [#23458](https://github.com/pulumi/pulumi/pull/23458)
+- [pcl] Resolve config variables whose default value is derived from an invoke to the invoke's result instead of an unknown value [#23494](https://github.com/pulumi/pulumi/pull/23494)
+- [programgen/go] double-wrapping of plain values passed to input types when generating Go programs [#23418](https://github.com/pulumi/pulumi/pull/23418)
+- [programgen/go] Fix Go program generation to no longer produce `**T` when an output traversal lands on an optional struct field, and to emit the correct `pulumi.<T>ArrayOutput` cast for traversals to slice-typed fields [#23458](https://github.com/pulumi/pulumi/pull/23458)
+- [sdk] Reject tar entries with path traversal components when extracting archives [#23485](https://github.com/pulumi/pulumi/pull/23485)
+- [sdk/go] Applying a transformation to a resource no longer drops the resource's parent in the `RegisterResource` call [#14826](https://github.com/pulumi/pulumi/pull/14826)
+- [sdk/nodejs] Fix local SDKs added with `pulumi package add` not being built when using pnpm 10.34.2 or newer
+- [sdkgen] Validate schema names to not contain whitespace or control characters [#23460](https://github.com/pulumi/pulumi/pull/23460)
+- [cli/auth] BREAKING: Delete all backend config when logging out [#23358](https://github.com/pulumi/pulumi/pull/23358)
 
 ### Improvements
 
@@ -19,55 +34,19 @@
 - [cli] Remove the experimental `pulumi ai web` command [#23517](https://github.com/pulumi/pulumi/pull/23517)
 - [cli/cloud] Improve the interactive `pulumi login` prompt wording and coloring [#23417](https://github.com/pulumi/pulumi/pull/23417)
 - [cli/convert] Resolve provider plugins through the Pulumi Registry when converting from a third-party source [#23490](https://github.com/pulumi/pulumi/pull/23490)
-
-### Features
-
-- [cli/do] Add a `--stateless` flag to `pulumi do`. `create`, `patch`, and `delete` now require `--stateless` for the existing direct-provider behavior; the default will switch to a stateful (engine-driven) implementation in a future release
-- [cli/env] Support ephemeral agent auth instructions for ESC API unauthorized errors in detected agent sessions [#23402](https://github.com/pulumi/pulumi/pull/23402)
-
-### Bug Fixes
-
-- [cli/neo] The `pulumi neo` TUI now adapts its colors to the terminal background instead of hardcoding a dark scheme [#23333](https://github.com/pulumi/pulumi/pull/23333)
-- [cli/neo] Increase the `pulumi neo` task-creation timeout so backend cold starts no longer fail [#23444](https://github.com/pulumi/pulumi/pull/23444)
-- [cli/neo] Ensure pulumi neo resolves the same Pulumi access token as pulumi preview when running in-process preview and up operations [#23452](https://github.com/pulumi/pulumi/pull/23452)
-
-### Improvements
-
 - [cli/neo] Treat affirmative replies such as "ok", "approve" and "go ahead" to `pulumi neo` approval prompts as approvals [#23450](https://github.com/pulumi/pulumi/pull/23450)
-
-### Bug Fixes
-
-- [pcl] Recursively fill schema-declared output fields on resources, so PCL programs that traverse into an optional inner field of a nested output object no longer fail at runtime with an "unsupported attribute" error [#23458](https://github.com/pulumi/pulumi/pull/23458)
-- [pcl] Resolve config variables whose default value is derived from an invoke to the invoke's result instead of an unknown value [#23494](https://github.com/pulumi/pulumi/pull/23494)
-- [programgen/go] double-wrapping of plain values passed to input types when generating Go programs [#23418](https://github.com/pulumi/pulumi/pull/23418)
-- [programgen/go] Fix Go program generation to no longer produce `**T` when an output traversal lands on an optional struct field, and to emit the correct `pulumi.<T>ArrayOutput` cast for traversals to slice-typed fields [#23458](https://github.com/pulumi/pulumi/pull/23458)
-
-### Features
-
-- [sdk] Add a `read` field to `customTimeouts` so users can configure a timeout for resource read operations [#23459](https://github.com/pulumi/pulumi/pull/23459)
-
-### Bug Fixes
-
-- [sdk] Reject tar entries with path traversal components when extracting archives [#23485](https://github.com/pulumi/pulumi/pull/23485)
-- [sdk/go] Applying a transformation to a resource no longer drops the resource's parent in the `RegisterResource` call [#14826](https://github.com/pulumi/pulumi/pull/14826)
-- [sdk/nodejs] Fix local SDKs added with `pulumi package add` not being built when using pnpm 10.34.2 or newer
+- [sdkgen] Allow provider objects to have string enumerations on their outputs [#23461](https://github.com/pulumi/pulumi/pull/23461)
 
 ### Miscellaneous
 
 - [sdk/nodejs] Improve error logs when serialization fails [#21901](https://github.com/pulumi/pulumi/pull/21901)
-
-### Bug Fixes
-
-- [sdkgen] Validate schema names to not contain whitespace or control characters [#23460](https://github.com/pulumi/pulumi/pull/23460)
-
-### Improvements
-
-- [sdkgen] Allow provider objects to have string enumerations on their outputs [#23461](https://github.com/pulumi/pulumi/pull/23461)
-
-### Bug Fixes
-
-- [cli/auth] BREAKING: Delete all backend config when logging out [#23358](https://github.com/pulumi/pulumi/pull/23358)
 ## 3.245.0 (2026-06-04)
+
+### Bug Fixes
+
+- [engine] Download the HCL language runtime on demand instead of bundling it [#23356](https://github.com/pulumi/pulumi/pull/23356)
+- [sdk/nodejs] Fix mergeOptions dropping onError hooks from ResourceOptions in the Node.js SDK
+- [cli/auth] Delete shared temporary agent credentials when logging out
 
 ### Improvements
 
@@ -76,23 +55,11 @@
 - [cli/do] Expose the selected stack's organization and short name to PCL input files when running `pulumi do` inside a project
 - [cli/do] Suggest similar tokens when an unknown token is passed to `pulumi do` [#23341](https://github.com/pulumi/pulumi/pull/23341)
 - [cli/neo] Support up/down arrows to scroll through prompt history in `pulumi neo` [#23425](https://github.com/pulumi/pulumi/pull/23425)
-
-### Bug Fixes
-
-- [engine] Download the HCL language runtime on demand instead of bundling it [#23356](https://github.com/pulumi/pulumi/pull/23356)
+- [cli/stack] Remame `pulumi stack init` to `new` [#23422](https://github.com/pulumi/pulumi/pull/23422)
 
 ### Miscellaneous
 
 - [sdk/go] Remove "name" from plugin loading functions and require "Type" on Configure & DiffConfig calls [#23363](https://github.com/pulumi/pulumi/pull/23363)
-
-### Bug Fixes
-
-- [sdk/nodejs] Fix mergeOptions dropping onError hooks from ResourceOptions in the Node.js SDK
-- [cli/auth] Delete shared temporary agent credentials when logging out
-
-### Improvements
-
-- [cli/stack] Remame `pulumi stack init` to `new` [#23422](https://github.com/pulumi/pulumi/pull/23422)
 ## 3.244.0 (2026-05-28)
 
 ### Bug Fixes
@@ -9715,7 +9682,7 @@ Thank you very much to our wonderful community for your many contributions! ‚ù§Ô
 
 ## 3.40.0 (2022-09-14)
 
-### Bug fixes
+### Bug Fixes
 
 - [engine] Plugin resolution now automatically installs any missing plugins as they are encountered.
    [#10691](https://github.com/pulumi/pulumi/pull/10691)
@@ -14442,8 +14409,6 @@ Diagnostics:
 ```
 
 We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.com/pulumi/pulumi/issues/2414))
-
-### Improvements
 
 - Individual resources may now be explicitly marked as requiring delete-before-replace behavior. This can be used e.g. to handle explicitly-named resources that may not be able to be replaced in the usual manner.
 
