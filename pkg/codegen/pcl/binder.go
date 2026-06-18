@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/fs"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -439,9 +440,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	// Load package descriptors from the files
 	descriptorMap, descriptorDiags := ReadAllPackageDescriptors(files)
 	diagnostics = append(diagnostics, descriptorDiags...)
-	for packageName, descriptor := range descriptorMap {
-		b.packageDescriptors[packageName] = descriptor
-	}
+	maps.Copy(b.packageDescriptors, descriptorMap)
 
 	// Sort files in source order, then declare all top-level nodes in each.
 	sort.Slice(files, func(i, j int) bool {
@@ -463,6 +462,10 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	if diagnostics.HasErrors() {
 		return nil, diagnostics, diagnostics
 	}
+
+	// Normalize positional multi-argument invokes into their object-argument form so that downstream
+	// code only ever observes the object form. See invoke_positional.go.
+	diagnostics = diagnostics.Extend(b.rewritePositionalInvokes())
 
 	return &Program{
 		Nodes:  b.nodes,
