@@ -390,12 +390,20 @@ func formatLogRecords(r io.Reader, w io.Writer, redactSecrets bool) error {
 			sort.Strings(argKeys)
 			args := make([]any, len(argKeys))
 			for i, k := range argKeys {
-				args[i] = decodePropertyArg(rec[k])
+				v := decodePropertyArg(rec[k])
+				if redactSecrets {
+					redactSecretsInValue(v)
+				}
+				args[i] = v
 				delete(rec, k)
 			}
 			if msg, ok := rec["msg"].(string); ok {
 				rec["msg"] = fmt.Sprintf(msg, args...)
 			}
+		}
+
+		if redactSecrets {
+			redactSecretsInValue(rec)
 		}
 
 		if err := enc.Encode(rec); err != nil {
