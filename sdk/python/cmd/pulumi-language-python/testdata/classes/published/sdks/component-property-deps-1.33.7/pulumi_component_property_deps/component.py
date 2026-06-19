@@ -66,7 +66,6 @@ class Component(pulumi.ComponentResource):
         """
         A component resource that accepts a list of resources. The construct request's property dependencies are returned as an output.
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -78,7 +77,6 @@ class Component(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A component resource that accepts a list of resources. The construct request's property dependencies are returned as an output.
-
 
         :param str resource_name: The name of the resource.
         :param ComponentArgs args: The arguments to use to populate this resource's properties.
