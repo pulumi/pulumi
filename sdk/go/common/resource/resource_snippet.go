@@ -43,6 +43,8 @@ type PackageDescriptor struct {
 //
 //nolint:lll
 type Snippet struct {
+	// UUID is the stable identity of this snippet within the snapshot.
+	UUID string `json:"uuid" yaml:"uuid"`
 	// The logical name of the resource this snippet is for.
 	Name string `json:"name" yaml:"name"`
 	// The type of the resource this snippet is for.

@@ -1260,6 +1260,7 @@ func TestSnapshotVerifyIntegrity_SnippetReferencesNeedNotExist(t *testing.T) {
 	snap := &Snapshot{
 		Snippets: []resource.Snippet{
 			{
+				UUID: "e970a91d-4f4c-5793-8d27-dd27a0d96cf7",
 				Name: "consumer",
 				Type: "pkgA:index:res",
 				Code: `propA = missing.id`,
@@ -1271,4 +1272,48 @@ func TestSnapshotVerifyIntegrity_SnippetReferencesNeedNotExist(t *testing.T) {
 	}
 
 	require.NoError(t, snap.VerifyIntegrity())
+}
+
+func TestSnapshotVerifyIntegrity_SnippetUUID(t *testing.T) {
+	t.Parallel()
+
+	t.Run("missing", func(t *testing.T) {
+		t.Parallel()
+
+		snap := &Snapshot{
+			Snippets: []resource.Snippet{
+				{
+					Name: "consumer",
+					Type: "pkgA:index:res",
+					Code: `propA = true`,
+				},
+			},
+		}
+
+		require.ErrorContains(t, snap.VerifyIntegrity(), "snippet at index 0 missing required 'uuid' field")
+	})
+
+	t.Run("duplicate", func(t *testing.T) {
+		t.Parallel()
+
+		snap := &Snapshot{
+			Snippets: []resource.Snippet{
+				{
+					UUID: "e970a91d-4f4c-5793-8d27-dd27a0d96cf7",
+					Name: "consumer-a",
+					Type: "pkgA:index:res",
+					Code: `propA = true`,
+				},
+				{
+					UUID: "e970a91d-4f4c-5793-8d27-dd27a0d96cf7",
+					Name: "consumer-b",
+					Type: "pkgA:index:res",
+					Code: `propA = false`,
+				},
+			},
+		}
+
+		require.ErrorContains(t, snap.VerifyIntegrity(),
+			`duplicate snippet uuid "e970a91d-4f4c-5793-8d27-dd27a0d96cf7" at indexes 0 and 1`)
+	})
 }
