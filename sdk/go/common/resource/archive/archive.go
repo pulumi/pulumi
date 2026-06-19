@@ -19,6 +19,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -34,12 +35,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/cas"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 )
+
+// contentStore, when non-nil, is the content-addressed store that archives are written
+// to (keyed by their canonical-tar hash) and materialized from. It mirrors the asset
+// subsystem's store and is nil by default; set once during startup.
+var contentStore cas.Store
+
+// SetContentStore configures the content-addressed store used by the archive
+// subsystem. Pass nil to disable it (the default).
+func SetContentStore(s cas.Store) { contentStore = s }
 
 const (
 	// BookkeepingDir is the name of our bookkeeping folder, we store state here (like .git for git).
@@ -312,9 +323,11 @@ func Deserialize(obj map[string]any) (*Archive, bool, error) {
 	return &Archive{Sig: ArchiveSig, Assets: make(map[string]any), Hash: hash}, true, nil
 }
 
-// HasContents indicates whether or not an archive's contents can be read.
+// HasContents indicates whether or not an archive's contents can be read. A hash-only
+// "content reference" archive has readable contents when a content store is configured
+// to materialize it from.
 func (a *Archive) HasContents() bool {
-	return a.IsAssets() || a.IsPath() || a.IsURI()
+	return a.IsAssets() || a.IsPath() || a.IsURI() || (a.Hash != "" && contentStore != nil)
 }
 
 // Reader presents the contents of an archive as a stream of named blobs.
@@ -346,6 +359,19 @@ func (a *Archive) OpenWithWD(wd string) (Reader, error) {
 		return a.readPath(wd)
 	} else if a.IsURI() {
 		return a.readURI()
+	}
+	// A hash-only "content reference" archive: materialize its canonical tar from the
+	// configured content store. Archives that reach the store are always serialized as
+	// a canonical tar (see storeContents), so it is read back as one.
+	if a.Hash != "" && contentStore != nil {
+		ctx := context.Background()
+		if has, err := contentStore.Has(ctx, a.Hash); err == nil && has {
+			rc, err := contentStore.Get(ctx, a.Hash)
+			if err != nil {
+				return nil, err
+			}
+			return readTarArchive(rc)
+		}
 	}
 	return nil, errors.New("unrecognized archive type")
 }
@@ -832,7 +858,44 @@ func (a *Archive) EnsureHashWithWD(wd string) error {
 		// Finally, encode the resulting hash as a string and we're done.
 		a.Hash = hex.EncodeToString(hash.Sum(nil))
 	}
+	// When a content store is configured, persist the canonical tar keyed by the hash
+	// so identical trees are stored once and a hash-only reference can be materialized
+	// later. Best-effort: a store failure must never break hashing.
+	a.storeContents(wd)
 	return nil
+}
+
+// storeContents writes the archive's canonical tar into the configured content store,
+// keyed by its already-computed hash. It is a no-op when no store is configured, the
+// hash is unknown, the archive is URI-backed, or the blob is already present. Only
+// directory and assembled (assets) archives are stored -- their Hash is the
+// canonical-tar digest, so the stored tar round-trips on materialize; a source archive
+// file is re-read from its path and needs no store entry.
+//
+// TODO: this re-walks the source to store it; a single-pass tee through the hasher in
+// EnsureHashWithWD is the obvious optimization, deferred until the hashing hot path is
+// tuned (mirrors the asset subsystem's TODO).
+func (a *Archive) storeContents(wd string) {
+	if contentStore == nil || a.Hash == "" || a.IsURI() {
+		return
+	}
+	// Skip source archive files: their hash is over the source bytes, not a canonical
+	// tar, so a stored-then-materialized-as-tar round-trip would not match.
+	if f, r, err := a.ReadSourceArchiveWithWD(wd); err != nil || (f != NotArchive && r != nil) {
+		if r != nil {
+			contract.IgnoreClose(r)
+		}
+		return
+	}
+	ctx := context.Background()
+	if has, err := contentStore.Has(ctx, a.Hash); err != nil || has {
+		return
+	}
+	pr, pw := io.Pipe()
+	go func() {
+		pw.CloseWithError(a.ArchiveWithWD(TarArchive, pw, wd))
+	}()
+	_ = contentStore.Put(ctx, a.Hash, pr)
 }
 
 // Format indicates what archive and/or compression format an archive uses.
