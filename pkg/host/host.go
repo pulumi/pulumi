@@ -19,12 +19,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -40,6 +42,15 @@ import (
 func New(
 	ctx context.Context, d, statusD diag.Sink, debugging plugin.DebugContext, installLang plugin.LanguageInstaller,
 ) (plugin.Host, error) {
+	// d and statusD may be nil; default them to a discarding sink so that logging through the host
+	// (e.g. from a plugin download-progress callback) never dereferences a nil sink.
+	if d == nil {
+		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	}
+	if statusD == nil {
+		statusD = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	}
+
 	hostCtx, hostCancel := context.WithCancel(ctx)
 	host := &defaultHost{
 		diag:                    d,

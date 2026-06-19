@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -38,6 +39,27 @@ func newHost(t *testing.T, installLang plugin.LanguageInstaller) *defaultHost {
 	require.True(t, ok)
 	t.Cleanup(func() { require.NoError(t, host.Close()) })
 	return host
+}
+
+// TestLogWithNilSink is a regression test for https://github.com/pulumi/pulumi/issues/23646.
+//
+// Schema binding instantiates a throwaway host with nil diagnostic sinks (see newBinder in
+// pkg/codegen/schema/bind.go) when it needs to load a referenced package. If that reference is to
+// an uninstalled plugin, the plugin download-progress callback logs through the host. A host with a
+// nil diag sink must not panic when logged to.
+func TestLogWithNilSink(t *testing.T) {
+	t.Parallel()
+
+	h, err := New(t.Context(), nil, nil, nil, nil)
+	require.NoError(t, err)
+	host, ok := h.(*defaultHost)
+	require.True(t, ok)
+	t.Cleanup(func() { require.NoError(t, host.Close()) })
+
+	require.NotPanics(t, func() {
+		host.Log(diag.Info, "", "downloading plugin", 0)
+		host.LogStatus(diag.Info, "", "downloading plugin", 0)
+	})
 }
 
 // TestHostManagedProviderCloseSignalsCancellation locks in the contract that hostManagedProvider.Close sends
