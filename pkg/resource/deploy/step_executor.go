@@ -535,15 +535,20 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 	// `awaiting`. We deliberately do not reject sawError -- this is not a failure.
 	if aw, ok := step.(awaitableStep); ok {
 		if reason, awaiting := aw.Awaiting(); awaiting {
+			// Record the step as awaiting BEFORE resolving its registration. step.Skip()
+			// unblocks any dependents waiting on this step, and the scheduler only skips a
+			// dependent if this URN is already in the awaiting set when the dependent is
+			// handled. Recording after Skip() would race: a dependent could be scheduled and
+			// created against this not-yet-persisted resource, then fail snapshot integrity.
+			se.awaitingStepLock.Lock()
+			se.awaitingSteps = append(se.awaitingSteps, step)
+			se.awaitingStepLock.Unlock()
 			step.Skip()
 			if mut, ok := payload.(snapshotMutation); ok {
 				if endErr := mut.End(step, false /*successful*/); endErr != nil {
 					return endErr
 				}
 			}
-			se.awaitingStepLock.Lock()
-			se.awaitingSteps = append(se.awaitingSteps, step)
-			se.awaitingStepLock.Unlock()
 			msg := "awaiting"
 			if reason != "" {
 				msg = "awaiting: " + reason
