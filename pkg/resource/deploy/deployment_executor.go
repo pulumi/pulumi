@@ -609,6 +609,7 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 	}
 
 	if err != nil {
+		event.Reject(err)
 		return err
 	}
 	// Exclude the steps that depend on errored steps if ContinueOnError is set.
