@@ -1362,6 +1362,12 @@ func (b *diyBackend) apply(
 	backendUpdateResult := backend.SucceededResult
 	if updateErr != nil {
 		backendUpdateResult = backend.FailedResult
+		// A suspended (awaiting) update is in progress, not failed: it left completed
+		// resources behind and a later update resumes it.
+		var awaitingErr *deploy.AwaitingError
+		if errors.As(updateErr, &awaitingErr) {
+			backendUpdateResult = backend.InProgressResult
+		}
 	}
 	info := backend.UpdateInfo{
 		Kind:        kind,

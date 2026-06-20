@@ -214,7 +214,14 @@ type CreateStep struct {
 	replacing     bool                           // true if this is a create due to a replacement.
 	pendingDelete bool                           // true if this replacement should create a pending delete.
 	provider      plugin.Provider                // the optional provider to use.
+
+	awaiting       bool   // set during Apply if the provider signalled it is not yet ready.
+	awaitingReason string // a human-readable explanation, for display.
 }
+
+// Awaiting reports whether this step's Apply found the resource not yet ready (the
+// provider returned an awaiting create/update). The engine suspends rather than failing.
+func (s *CreateStep) Awaiting() (string, bool) { return s.awaitingReason, s.awaiting }
 
 var _ Step = (*CreateStep)(nil)
 
@@ -409,6 +416,15 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		if err != nil && resp.Status != resource.StatusPartialFailure {
 			return resp.Status, nil, err
+		}
+
+		// The provider signalled the resource is not yet ready. Record it and return
+		// without an ID or outputs: the executor leaves it uncreated, suspends the
+		// deployment, and a later update retries. This is the non-terminal `awaiting`
+		// disposition; it is neither a success nor a failure.
+		if resp.Awaiting {
+			s.awaiting, s.awaitingReason = true, resp.AwaitingReason
+			return resource.StatusOK, nil, nil
 		}
 
 		if err == nil || resourceStatus == resource.StatusPartialFailure {
@@ -870,7 +886,14 @@ type UpdateStep struct {
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
 	provider      plugin.Provider                // the optional provider to use.
 	oldViews      []plugin.View                  // the old views for this resource.
+
+	awaiting       bool   // set during Apply if the provider signalled it is not yet ready.
+	awaitingReason string // a human-readable explanation, for display.
 }
+
+// Awaiting reports whether this step's Apply found the resource not yet ready (the
+// provider returned an awaiting update). The engine suspends rather than failing.
+func (s *UpdateStep) Awaiting() (string, bool) { return s.awaitingReason, s.awaiting }
 
 var _ Step = (*UpdateStep)(nil)
 
@@ -1049,6 +1072,14 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		if err != nil && resp.Status != resource.StatusPartialFailure {
 			return resp.Status, nil, err
+		}
+
+		// The provider signalled the resource is not yet ready (the non-terminal `awaiting`
+		// disposition). Record it and return without applying outputs: the executor leaves
+		// the prior state in place, suspends, and a later update retries.
+		if resp.Awaiting {
+			s.awaiting, s.awaitingReason = true, resp.AwaitingReason
+			return resource.StatusOK, nil, nil
 		}
 
 		s.new.Lock.Lock()

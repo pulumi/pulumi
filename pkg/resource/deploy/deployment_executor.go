@@ -434,6 +434,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	} else if canceled {
 		ex.reportExecResult("canceled")
 		return nil, result.BailErrorf("canceled")
+	} else if awaiting := ex.stepExec.GetAwaitingSteps(); len(awaiting) > 0 {
+		// One or more resources suspended. This is not a failure: the completed resources
+		// are persisted and a later update resumes. We return an un-bailed AwaitingError so
+		// the CLI can map it to a distinct exit code rather than a generic failure.
+		ex.reportExecResult("awaiting")
+		return ex.deployment.newPlans.plan(), &AwaitingError{Steps: awaiting}
 	}
 
 	return ex.deployment.newPlans.plan(), err
@@ -611,10 +617,15 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 	if err != nil {
 		return err
 	}
-	// Exclude the steps that depend on errored steps if ContinueOnError is set.
+	// Exclude the steps that depend on errored steps if ContinueOnError is set, as well as
+	// those that depend on a suspended (awaiting) step -- the same skip machinery serves
+	// both, the difference being that awaiting is not a failure.
 	newSteps := slice.Prealloc[Step](len(steps))
 	for _, errored := range ex.stepExec.GetErroredSteps() {
 		ex.skipped.Add(errored.Res().URN)
+	}
+	for _, awaiting := range ex.stepExec.GetAwaitingSteps() {
+		ex.skipped.Add(awaiting.Res().URN)
 	}
 	for _, step := range steps {
 		if doesStepDependOn(step, ex.skipped) {

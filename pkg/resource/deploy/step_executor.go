@@ -122,6 +122,12 @@ type stepExecutor struct {
 	erroredStepLock sync.RWMutex
 	erroredSteps    []Step
 
+	// Steps whose resources are not yet ready (the provider returned `awaiting`). Unlike
+	// errored steps these are not failures: the deployment suspends rather than failing,
+	// their dependents are skipped (like erroredSteps), and a later update retries them.
+	awaitingStepLock sync.RWMutex
+	awaitingSteps    []Step
+
 	// Channel to collect panic errors from goroutines in this step executor
 	panicErrs chan error
 
@@ -168,6 +174,25 @@ func (se *stepExecutor) GetErroredSteps() []Step {
 	se.erroredStepLock.RLock()
 	defer se.erroredStepLock.RUnlock()
 	return se.erroredSteps
+}
+
+func (se *stepExecutor) GetAwaitingSteps() []Step {
+	se.awaitingStepLock.RLock()
+	defer se.awaitingStepLock.RUnlock()
+	return se.awaitingSteps
+}
+
+// awaitableStep is implemented by the steps that can suspend (create and update). After
+// Apply, the executor consults it to learn whether the provider asked to wait.
+type awaitableStep interface {
+	Awaiting() (reason string, awaiting bool)
+}
+
+// snapshotMutation is the slice of the snapshot mutation (returned by the step-pre event)
+// the executor needs to end a suspended step's mutation without persisting its resource.
+// It is satisfied structurally by the engine's SnapshotMutation.
+type snapshotMutation interface {
+	End(step Step, successful bool) error
 }
 
 // ExecuteParallel submits an antichain for parallel execution. All of the steps within the antichain are submitted for
@@ -501,6 +526,31 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 	// the system.
 	if _, isDiff := step.(*DiffStep); isDiff {
 		return nil
+	}
+
+	// If the provider signalled the resource is not yet ready, suspend rather than fail.
+	// We resolve the registration so the program can unwind (reusing the skip path), end
+	// the snapshot mutation without persisting the resource so a later update retries it,
+	// and record the step so the scheduler skips its dependents and the deployment reports
+	// `awaiting`. We deliberately do not reject sawError -- this is not a failure.
+	if aw, ok := step.(awaitableStep); ok {
+		if reason, awaiting := aw.Awaiting(); awaiting {
+			step.Skip()
+			if mut, ok := payload.(snapshotMutation); ok {
+				if endErr := mut.End(step, false /*successful*/); endErr != nil {
+					return endErr
+				}
+			}
+			se.awaitingStepLock.Lock()
+			se.awaitingSteps = append(se.awaitingSteps, step)
+			se.awaitingStepLock.Unlock()
+			msg := "awaiting"
+			if reason != "" {
+				msg = "awaiting: " + reason
+			}
+			se.deployment.Diag().Infof(diag.RawMessage(step.URN(), msg))
+			return nil
+		}
 	}
 
 	if err == nil {

@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -36,6 +37,7 @@ const (
 	ExitNoChanges           = 7
 	ExitCancelled           = 8
 	ExitTimeout             = 9
+	ExitAwaiting            = 10 // the update suspended at a gate/approval; re-run to resume
 	ExitInternalError       = 255
 )
 
@@ -106,6 +108,13 @@ func ExitCodeFor(err error) int {
 	// Expectation / invariant failures like --expect-no-changes.
 	if errors.As(err, &backenderr.NoChangesExpectedError{}) {
 		return ExitNoChanges
+	}
+
+	// The deployment suspended at a gate or approval (the `awaiting` disposition). This is
+	// not a failure: completed resources persisted and a later update resumes.
+	var awaitingErr *deploy.AwaitingError
+	if errors.As(err, &awaitingErr) {
+		return ExitAwaiting
 	}
 
 	// Non-interactive mode without confirmation flags.

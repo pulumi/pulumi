@@ -279,6 +279,12 @@ type CreateResponse struct {
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
+	// Awaiting indicates the resource is not yet ready: the create could not complete and
+	// the engine should suspend, leaving the resource uncreated, and resume on a later
+	// update. AwaitingReason is a human-readable explanation for display. This is the
+	// provider-facing half of the engine's `awaiting` disposition.
+	Awaiting       bool
+	AwaitingReason string
 }
 
 type ReadRequest struct {
@@ -325,6 +331,11 @@ type UpdateResponse struct {
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
+	// Awaiting indicates the resource is not yet ready: the update could not complete and
+	// the engine should suspend, leaving the resource at its prior state, and resume on a
+	// later update. AwaitingReason is a human-readable explanation for display.
+	Awaiting       bool
+	AwaitingReason string
 }
 
 type DeleteRequest struct {
