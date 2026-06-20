@@ -918,6 +918,10 @@ export class CreateResponse extends jspb.Message {
     setProperties(value?: google_protobuf_struct_pb.Struct): CreateResponse;
     getRefreshBeforeUpdate(): boolean;
     setRefreshBeforeUpdate(value: boolean): CreateResponse;
+    getAwaiting(): boolean;
+    setAwaiting(value: boolean): CreateResponse;
+    getAwaitingReason(): string;
+    setAwaitingReason(value: string): CreateResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CreateResponse.AsObject;
@@ -934,6 +938,8 @@ export namespace CreateResponse {
         id: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         refreshBeforeUpdate: boolean,
+        awaiting: boolean,
+        awaitingReason: string,
     }
 }
 
@@ -1246,6 +1252,10 @@ export class UpdateResponse extends jspb.Message {
     setProperties(value?: google_protobuf_struct_pb.Struct): UpdateResponse;
     getRefreshBeforeUpdate(): boolean;
     setRefreshBeforeUpdate(value: boolean): UpdateResponse;
+    getAwaiting(): boolean;
+    setAwaiting(value: boolean): UpdateResponse;
+    getAwaitingReason(): string;
+    setAwaitingReason(value: string): UpdateResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UpdateResponse.AsObject;
@@ -1261,6 +1271,8 @@ export namespace UpdateResponse {
     export type AsObject = {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         refreshBeforeUpdate: boolean,
+        awaiting: boolean,
+        awaitingReason: string,
     }
 }
 

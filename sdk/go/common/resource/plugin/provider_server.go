@@ -580,6 +580,8 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		Id:                  string(resp.ID),
 		Properties:          rpcState,
 		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+		Awaiting:            resp.Awaiting,
+		AwaitingReason:      resp.AwaitingReason,
 	}, nil
 }
 
@@ -769,6 +771,8 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	return &pulumirpc.UpdateResponse{
 		Properties:          rpcState,
 		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+		Awaiting:            resp.Awaiting,
+		AwaitingReason:      resp.AwaitingReason,
 	}, nil
 }
 

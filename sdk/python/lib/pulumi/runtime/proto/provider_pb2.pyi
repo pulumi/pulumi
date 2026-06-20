@@ -1281,10 +1281,18 @@ class CreateResponse(google.protobuf.message.Message):
     ID_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
+    AWAITING_FIELD_NUMBER: builtins.int
+    AWAITING_REASON_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the created resource."""
     refresh_before_update: builtins.bool
     """Indicates that this resource should always be refreshed prior to updates."""
+    awaiting: builtins.bool
+    """Indicates the resource is not yet ready: the create could not complete, and the engine should suspend
+    (leaving the resource uncreated) and resume on a later update. This is the provider-facing half of the
+    engine's non-terminal `awaiting` disposition. awaiting_reason is a human-readable explanation for display.
+    """
+    awaiting_reason: builtins.str
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """The resource's output properties. Typically this will be a union of the resource's input properties and any
@@ -1297,9 +1305,11 @@ class CreateResponse(google.protobuf.message.Message):
         id: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         refresh_before_update: builtins.bool = ...,
+        awaiting: builtins.bool = ...,
+        awaiting_reason: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "properties", b"properties", "refresh_before_update", b"refresh_before_update"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["awaiting", b"awaiting", "awaiting_reason", b"awaiting_reason", "id", b"id", "properties", b"properties", "refresh_before_update", b"refresh_before_update"]) -> None: ...
 
 global___CreateResponse = CreateResponse
 
@@ -1632,8 +1642,16 @@ class UpdateResponse(google.protobuf.message.Message):
 
     PROPERTIES_FIELD_NUMBER: builtins.int
     REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
+    AWAITING_FIELD_NUMBER: builtins.int
+    AWAITING_REASON_FIELD_NUMBER: builtins.int
     refresh_before_update: builtins.bool
     """Indicates that this resource should always be refreshed prior to updates."""
+    awaiting: builtins.bool
+    """Indicates the resource is not yet ready: the update could not complete, and the engine should suspend
+    (leaving the resource at its prior state) and resume on a later update. awaiting_reason is a human-readable
+    explanation for display.
+    """
+    awaiting_reason: builtins.str
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """An updated set of resource output properties. Typically this will be a union of the resource's inputs and any
@@ -1645,9 +1663,11 @@ class UpdateResponse(google.protobuf.message.Message):
         *,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         refresh_before_update: builtins.bool = ...,
+        awaiting: builtins.bool = ...,
+        awaiting_reason: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["properties", b"properties", "refresh_before_update", b"refresh_before_update"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["awaiting", b"awaiting", "awaiting_reason", b"awaiting_reason", "properties", b"properties", "refresh_before_update", b"refresh_before_update"]) -> None: ...
 
 global___UpdateResponse = UpdateResponse
 

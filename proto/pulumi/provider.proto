@@ -841,6 +841,12 @@ message CreateResponse {
 
     // Indicates that this resource should always be refreshed prior to updates.
     bool refresh_before_update = 3;
+
+    // Indicates the resource is not yet ready: the create could not complete, and the engine should suspend
+    // (leaving the resource uncreated) and resume on a later update. This is the provider-facing half of the
+    // engine's non-terminal `awaiting` disposition. awaiting_reason is a human-readable explanation for display.
+    bool awaiting = 4;
+    string awaiting_reason = 5;
 }
 
 // `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
@@ -1009,6 +1015,12 @@ message UpdateResponse {
 
     // Indicates that this resource should always be refreshed prior to updates.
     bool refresh_before_update = 2;
+
+    // Indicates the resource is not yet ready: the update could not complete, and the engine should suspend
+    // (leaving the resource at its prior state) and resume on a later update. awaiting_reason is a human-readable
+    // explanation for display.
+    bool awaiting = 3;
+    string awaiting_reason = 4;
 }
 
 // `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.

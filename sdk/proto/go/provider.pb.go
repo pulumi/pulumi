@@ -1974,8 +1974,13 @@ type CreateResponse struct {
 	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool `protobuf:"varint,3,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Indicates the resource is not yet ready: the create could not complete, and the engine should suspend
+	// (leaving the resource uncreated) and resume on a later update. This is the provider-facing half of the
+	// engine's non-terminal `awaiting` disposition. awaiting_reason is a human-readable explanation for display.
+	Awaiting       bool   `protobuf:"varint,4,opt,name=awaiting,proto3" json:"awaiting,omitempty"`
+	AwaitingReason string `protobuf:"bytes,5,opt,name=awaiting_reason,json=awaitingReason,proto3" json:"awaiting_reason,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateResponse) Reset() {
@@ -2027,6 +2032,20 @@ func (x *CreateResponse) GetRefreshBeforeUpdate() bool {
 		return x.RefreshBeforeUpdate
 	}
 	return false
+}
+
+func (x *CreateResponse) GetAwaiting() bool {
+	if x != nil {
+		return x.Awaiting
+	}
+	return false
+}
+
+func (x *CreateResponse) GetAwaitingReason() string {
+	if x != nil {
+		return x.AwaitingReason
+	}
+	return ""
 }
 
 // `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
@@ -2589,8 +2608,13 @@ type UpdateResponse struct {
 	Properties *structpb.Struct `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool `protobuf:"varint,2,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Indicates the resource is not yet ready: the update could not complete, and the engine should suspend
+	// (leaving the resource at its prior state) and resume on a later update. awaiting_reason is a human-readable
+	// explanation for display.
+	Awaiting       bool   `protobuf:"varint,3,opt,name=awaiting,proto3" json:"awaiting,omitempty"`
+	AwaitingReason string `protobuf:"bytes,4,opt,name=awaiting_reason,json=awaitingReason,proto3" json:"awaiting_reason,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *UpdateResponse) Reset() {
@@ -2635,6 +2659,20 @@ func (x *UpdateResponse) GetRefreshBeforeUpdate() bool {
 		return x.RefreshBeforeUpdate
 	}
 	return false
+}
+
+func (x *UpdateResponse) GetAwaiting() bool {
+	if x != nil {
+		return x.Awaiting
+	}
+	return false
+}
+
+func (x *UpdateResponse) GetAwaitingReason() string {
+	if x != nil {
+		return x.AwaitingReason
+	}
+	return ""
 }
 
 // `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.
@@ -4441,13 +4479,15 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x04name\x18\x05 \x01(\tR\x04name\x12\x12\n" +
 	"\x04type\x18\x06 \x01(\tR\x04type\x126\n" +
 	"\x17resource_status_address\x18\a \x01(\tR\x15resourceStatusAddress\x122\n" +
-	"\x15resource_status_token\x18\b \x01(\tR\x13resourceStatusToken\"\x8d\x01\n" +
+	"\x15resource_status_token\x18\b \x01(\tR\x13resourceStatusToken\"\xd2\x01\n" +
 	"\x0eCreateResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
 	"properties\x122\n" +
-	"\x15refresh_before_update\x18\x03 \x01(\bR\x13refreshBeforeUpdate\"\xf5\x02\n" +
+	"\x15refresh_before_update\x18\x03 \x01(\bR\x13refreshBeforeUpdate\x12\x1a\n" +
+	"\bawaiting\x18\x04 \x01(\bR\bawaiting\x12'\n" +
+	"\x0fawaiting_reason\x18\x05 \x01(\tR\x0eawaitingReason\"\xf5\x02\n" +
 	"\vReadRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03urn\x18\x02 \x01(\tR\x03urn\x127\n" +
@@ -4503,12 +4543,14 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	" \x01(\tR\x04type\x126\n" +
 	"\x17resource_status_address\x18\v \x01(\tR\x15resourceStatusAddress\x122\n" +
 	"\x15resource_status_token\x18\f \x01(\tR\x13resourceStatusToken\x12,\n" +
-	"\told_views\x18\r \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"}\n" +
+	"\told_views\x18\r \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\xc2\x01\n" +
 	"\x0eUpdateResponse\x127\n" +
 	"\n" +
 	"properties\x18\x01 \x01(\v2\x17.google.protobuf.StructR\n" +
 	"properties\x122\n" +
-	"\x15refresh_before_update\x18\x02 \x01(\bR\x13refreshBeforeUpdate\"\xfe\x02\n" +
+	"\x15refresh_before_update\x18\x02 \x01(\bR\x13refreshBeforeUpdate\x12\x1a\n" +
+	"\bawaiting\x18\x03 \x01(\bR\bawaiting\x12'\n" +
+	"\x0fawaiting_reason\x18\x04 \x01(\tR\x0eawaitingReason\"\xfe\x02\n" +
 	"\rDeleteRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03urn\x18\x02 \x01(\tR\x03urn\x127\n" +

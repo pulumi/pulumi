@@ -7709,7 +7709,9 @@ proto.pulumirpc.CreateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
 id: jspb.Message.getFieldWithDefault(msg, 1, ""),
 properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
+refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+awaiting: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+awaitingReason: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -7759,6 +7761,14 @@ proto.pulumirpc.CreateResponse.deserializeBinaryFromReader = function(msg, reade
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRefreshBeforeUpdate(value);
       break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAwaiting(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setAwaitingReason(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -7807,6 +7817,20 @@ proto.pulumirpc.CreateResponse.serializeBinaryToWriter = function(message, write
   if (f) {
     writer.writeBool(
       3,
+      f
+    );
+  }
+  f = message.getAwaiting();
+  if (f) {
+    writer.writeBool(
+      4,
+      f
+    );
+  }
+  f = message.getAwaitingReason();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
       f
     );
   }
@@ -7883,6 +7907,42 @@ proto.pulumirpc.CreateResponse.prototype.getRefreshBeforeUpdate = function() {
  */
 proto.pulumirpc.CreateResponse.prototype.setRefreshBeforeUpdate = function(value) {
   return jspb.Message.setProto3BooleanField(this, 3, value);
+};
+
+
+/**
+ * optional bool awaiting = 4;
+ * @return {boolean}
+ */
+proto.pulumirpc.CreateResponse.prototype.getAwaiting = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.CreateResponse} returns this
+ */
+proto.pulumirpc.CreateResponse.prototype.setAwaiting = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional string awaiting_reason = 5;
+ * @return {string}
+ */
+proto.pulumirpc.CreateResponse.prototype.getAwaitingReason = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.CreateResponse} returns this
+ */
+proto.pulumirpc.CreateResponse.prototype.setAwaitingReason = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
@@ -10197,7 +10257,9 @@ proto.pulumirpc.UpdateResponse.prototype.toObject = function(opt_includeInstance
 proto.pulumirpc.UpdateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
 properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
+refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
+awaiting: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+awaitingReason: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -10243,6 +10305,14 @@ proto.pulumirpc.UpdateResponse.deserializeBinaryFromReader = function(msg, reade
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRefreshBeforeUpdate(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAwaiting(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setAwaitingReason(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -10284,6 +10354,20 @@ proto.pulumirpc.UpdateResponse.serializeBinaryToWriter = function(message, write
   if (f) {
     writer.writeBool(
       2,
+      f
+    );
+  }
+  f = message.getAwaiting();
+  if (f) {
+    writer.writeBool(
+      3,
+      f
+    );
+  }
+  f = message.getAwaitingReason();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -10342,6 +10426,42 @@ proto.pulumirpc.UpdateResponse.prototype.getRefreshBeforeUpdate = function() {
  */
 proto.pulumirpc.UpdateResponse.prototype.setRefreshBeforeUpdate = function(value) {
   return jspb.Message.setProto3BooleanField(this, 2, value);
+};
+
+
+/**
+ * optional bool awaiting = 3;
+ * @return {boolean}
+ */
+proto.pulumirpc.UpdateResponse.prototype.getAwaiting = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.UpdateResponse} returns this
+ */
+proto.pulumirpc.UpdateResponse.prototype.setAwaiting = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
+};
+
+
+/**
+ * optional string awaiting_reason = 4;
+ * @return {string}
+ */
+proto.pulumirpc.UpdateResponse.prototype.getAwaitingReason = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.UpdateResponse} returns this
+ */
+proto.pulumirpc.UpdateResponse.prototype.setAwaitingReason = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

@@ -1412,6 +1412,17 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
 	}
 
+	// The provider signalled the resource is not yet ready. There is no ID or outputs to
+	// map -- the engine will suspend -- so return the awaiting disposition directly,
+	// before the empty-ID check below.
+	if resp.GetAwaiting() {
+		return CreateResponse{
+			Status:         resourceStatus,
+			Awaiting:       true,
+			AwaitingReason: resp.GetAwaitingReason(),
+		}, nil
+	}
+
 	if id == "" && !req.Preview {
 		return CreateResponse{Status: resource.StatusUnknown},
 			fmt.Errorf("plugin returned empty resource.ID from create '%v'", req.URN)
@@ -1715,6 +1726,15 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	} else {
 		liveObject = resp.GetProperties()
 		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
+	}
+
+	// The provider signalled the resource is not yet ready; the engine will suspend.
+	if resp.GetAwaiting() {
+		return UpdateResponse{
+			Status:         resourceStatus,
+			Awaiting:       true,
+			AwaitingReason: resp.GetAwaitingReason(),
+		}, nil
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
