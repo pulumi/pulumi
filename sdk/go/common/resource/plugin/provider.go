@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type GetSchemaRequest struct {
@@ -926,7 +927,7 @@ type ConstructOptions struct {
 
 	// ReplacementTrigger specifies that if set, the engine will diff this with
 	// the last recorded value, and trigger a replace if they are not equal.
-	ReplacementTrigger resource.PropertyValue
+	ReplacementTrigger property.Value
 
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.
