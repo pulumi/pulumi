@@ -15,23 +15,21 @@
 package whoami
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
-func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
+func NewWhoAmICmd(ctx needle.Context) *cobra.Command {
 	var jsonOut bool
 	var verbose bool
+	var b backend.Backend
 
 	cmd := &cobra.Command{
 		Use:   "whoami",
@@ -44,23 +42,7 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 			"the command will return the name of the organization with which the token is associated.",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
 			stdout := cmd.OutOrStdout()
-
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
-			// Try to read the current project
-			project, _, err := ws.ReadProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
-			if err != nil {
-				return err
-			}
 
 			name, orgs, tokenInfo, err := b.CurrentUser()
 			if err != nil {
@@ -99,6 +81,8 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 			return nil
 		},
 	}
+
+	needle.Inject(cmd, ctx, needle.NeedBackend(&b))
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 

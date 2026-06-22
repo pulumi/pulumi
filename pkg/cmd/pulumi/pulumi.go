@@ -66,6 +66,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
@@ -463,6 +464,12 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	cmd.PersistentFlags().StringVar(
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
+	nCtx := needle.Context{
+		WS:  pkgWorkspace.Instance,
+		Env: env.Global(),
+		LM:  cmdBackend.DefaultLoginManager,
+	}
+
 	setCommandGroups(cmd, []commandGroup{
 		// Common commands:
 		{
@@ -498,7 +505,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Commands: []*cobra.Command{
 				auth.NewLoginCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
-				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
+				whoami.NewWhoAmICmd(nCtx),
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
@@ -518,7 +525,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Commands: []*cobra.Command{
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
-				packagecmd.NewPackageCmd(),
+				packagecmd.NewPackageCmd(nCtx),
 			},
 		},
 		{

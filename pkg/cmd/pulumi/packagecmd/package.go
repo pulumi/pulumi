@@ -16,10 +16,11 @@ package packagecmd
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
 	"github.com/spf13/cobra"
 )
 
-func NewPackageCmd() *cobra.Command {
+func NewPackageCmd(nCtx needle.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package",
 		Short: "Work with Pulumi packages",
@@ -39,7 +40,7 @@ Install and configure Pulumi packages and their plugins and SDKs.`,
 		newPackageAddCmd(),
 		newPackagePublishCmd(),
 		newPackageDeleteCmd(),
-		newPackageInfoCmd(),
+		newPackageInfoCmd(nCtx),
 		newPackageNewCmd(),
 	)
 	return cmd

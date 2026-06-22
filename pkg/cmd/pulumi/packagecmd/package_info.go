@@ -24,16 +24,15 @@ import (
 	"slices"
 	"strings"
 
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -41,10 +40,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPackageInfoCmd() *cobra.Command {
+func newPackageInfoCmd(nCtx needle.Context) *cobra.Command {
 	var module string
 	var resource string
 	var function string
+	var registry registry.Registry
 	cmd := &cobra.Command{
 		Use:   "info",
 		Short: "Show information about a package",
@@ -79,10 +79,8 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
-			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, args[0], parameters,
-				registry, env.Global(), 0 /* unbounded concurrency */)
+			spec, _, err := packages.SchemaFromSchemaSource(nCtx.WS, pctx, args[0], parameters,
+				registry, nCtx.Env, 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}
@@ -99,6 +97,8 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			return showProviderInfo(spec, args, stdout)
 		},
 	}
+
+	needle.Inject(cmd, nCtx, needle.NeedRegistry(&registry))
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
