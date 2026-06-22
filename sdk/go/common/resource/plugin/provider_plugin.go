@@ -186,6 +186,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	}
 
 	prefix := fmt.Sprintf("%v (resource)", pkg)
+	mapperAddr := mapperTarget(ctx)
 
 	if attachPort != nil {
 		port := *attachPort
@@ -202,7 +203,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
-				MapperTarget:                hostMapperTarget(host),
+				MapperTarget:                mapperAddr,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -222,7 +223,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
-		path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, host.GetProjectPlugins())
+		path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, ctx.ProjectPlugins())
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +267,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
-				MapperTarget:                hostMapperTarget(host),
+				MapperTarget:                mapperAddr,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -274,7 +275,8 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, e,
 			handshake, providerPluginDialOptions(ctx, pkg, ""),
-			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
+			!ctx.DisableProviderDebugging() &&
+				host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
 		if err != nil {
 			return nil, err
 		}
@@ -320,10 +322,10 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	return p, nil
 }
 
-// hostMapperTarget returns the host's mapper address as an optional handshake field, nil when the host has no mapper
-// service.
-func hostMapperTarget(host Host) *string {
-	if addr := host.MapperAddr(); addr != "" {
+// mapperTarget returns the context's mapper address as an optional handshake field, nil when the context has no
+// mapper service.
+func mapperTarget(ctx *Context) *string {
+	if addr := ctx.MapperAddr(); addr != "" {
 		return &addr
 	}
 	return nil
@@ -392,6 +394,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
+	mapperAddr := mapperTarget(ctx)
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*ProviderHandshakeResponse, error) {
@@ -404,7 +407,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			InvokeWithPreview:           true,
-			MapperTarget:                hostMapperTarget(host),
+			MapperTarget:                mapperAddr,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -412,7 +415,8 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env.Global(),
 		handshake, providerPluginDialOptions(ctx, "", path),
-		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
+		!ctx.DisableProviderDebugging() &&
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
 	if err != nil {
 		return nil, err
 	}

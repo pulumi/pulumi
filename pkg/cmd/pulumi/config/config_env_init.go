@@ -33,7 +33,6 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -169,7 +168,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	fmt.Fprint(cmd.parent.stdout, preview)
 
 	if !cmd.yes {
-		response := ui.PromptUser("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
+		response := cmd.parent.prompt("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
 		switch response {
 		case "no":
 			return errors.New("canceled")

@@ -1,5 +1,98 @@
 # Changelog
 
+## 3.247.0 (2026-06-18)
+
+### Bug Fixes
+
+- [cli] Ensure `pulumi logout` clears the current tokenless backend in coding agent environments [#23540](https://github.com/pulumi/pulumi/pull/23540)
+- [cli] Read Git metadata correctly in repositories that enable the worktreeConfig extension, such as those hosted on Azure DevOps [#23535](https://github.com/pulumi/pulumi/pull/23535)
+
+### Improvements
+
+- [cli] Respect PULUMI_SKIP_CONFIRMATIONS whenever we ask for confirmation [#23607](https://github.com/pulumi/pulumi/pull/23607)
+- [cli] Use list and remove as the canonical names for list/remove commands, with ls and rm as aliases [#23608](https://github.com/pulumi/pulumi/pull/23608)
+
+### Features
+
+- [cli/config] Add --raw flag to `pulumi config set` to avoid stripping newlines when input is piped through stdin [#23593](https://github.com/pulumi/pulumi/pull/23593)
+
+### Bug Fixes
+
+- [cli/display] Show interrupted steps as interrupted instead of as finished [#23510](https://github.com/pulumi/pulumi/pull/23510)
+
+### Features
+
+- [cli/do] Add `--provider` flag to pull provider config to use from existing provider state [#23560](https://github.com/pulumi/pulumi/pull/23560)
+- [cli/engine] Resource providers now receive the active login's API address and access token through PULUMI_API and PULUMI_ACCESS_TOKEN [#23589](https://github.com/pulumi/pulumi/pull/23589)
+- [cli/neo] Add a `--disable-integrations` flag to `pulumi neo` that runs the task with no integration credentials [#23531](https://github.com/pulumi/pulumi/pull/23531)
+
+### Bug Fixes
+
+- [cli/plugin] Allow plugin tarballs containing symlinks [#23587](https://github.com/pulumi/pulumi/pull/23587)
+
+### Miscellaneous
+
+- [cli/plugin] Document the `pulumi plugin run` command by including it in the generated CLI docs [#23559](https://github.com/pulumi/pulumi/pull/23559)
+
+### Improvements
+
+- [docs] Generate redirects for command aliases [#23610](https://github.com/pulumi/pulumi/pull/23610)
+
+### Features
+
+- [engine] Send the address of a mapper service to resource providers as part of the provider handshake
+
+### Improvements
+
+- [engine] Serve raw schema bytes from the engine's schema loader service instead of binding and re-marshaling the full schema on every request [#23551](https://github.com/pulumi/pulumi/pull/23551)
+
+### Features
+
+- [programgen/go] Support functions with multiArgumentInputs [#23554](https://github.com/pulumi/pulumi/pull/23554)
+- [programgen/python] Support functions with multiArgumentInputs [#23574](https://github.com/pulumi/pulumi/pull/23574)
+
+### Improvements
+
+- [sdk/go] The `plugin.Host` interface is now stateless with respect to workspaces; host methods that boot or resolve plugins take a `plugin.Context` carrying the workspace state, and closing a `plugin.Context` no longer closes a host that was passed in to its constructor [#23508](https://github.com/pulumi/pulumi/pull/23508)
+
+### Features
+
+- [sdk/nodejs] Registered resources can now be retrieved from the mock monitor for test assertions [#20539](https://github.com/pulumi/pulumi/pull/20539)
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix `pulumi package add` failing with pnpm when the generated SDK has a scoped package name (`@`-prefix), caused by pnpm's `pkg set` rejecting `@` in dot-notation property paths [#23365](https://github.com/pulumi/pulumi/pull/23365)
+
+### Improvements
+
+- [sdk/nodejs] Allow running the postinstall script for local SDKs under npm 12 [#23568](https://github.com/pulumi/pulumi/pull/23568)
+
+### Features
+
+- [sdk/python] Add `Output.recover` to catch and recover from exceptions in outputs [#23591](https://github.com/pulumi/pulumi/pull/23591)
+
+### Improvements
+
+- [sdk/python] Add register_package helper to cache package references per deployment [#22459](https://github.com/pulumi/pulumi/pull/22459)
+
+### Features
+
+- [sdkgen] Adds support for language agnostic cross references in schemas. Use the form `{{% ref <target> %}}` to reference other schema components in markdown descriptions. Such as `{{% ref [#21369](https://github.com/pulumi/pulumi/pull/21369)
+- [sdkgen] Add extension parameterization to the package schema model [#23536](https://github.com/pulumi/pulumi/pull/23536)
+
+### Miscellaneous
+
+- [sdkgen] Modules can no longer be nested under the index module, this was never well supported and is now a strict bind error [#23436](https://github.com/pulumi/pulumi/pull/23436)
+
+### Features
+
+- [sdkgen/go] Support functions with multiArgumentInputs [#23554](https://github.com/pulumi/pulumi/pull/23554)
+- [sdkgen/python] Support functions with multiArgumentInputs [#23574](https://github.com/pulumi/pulumi/pull/23574)
+- [cli/auth] When `credentials.json` carries an OAuth refresh token, the CLI now auto-refreshes the access token on 401 and retries the request once, instead of returning a "login required" error [#23430](https://github.com/pulumi/pulumi/pull/23430)
+
+### Bug Fixes
+
+- [codegen/pcl] Fix version comparison in NeedsVersionResourceOption to use semver.Version.Equals and reject "v"-prefixed versions [#https://github.com/pulumi/pulumi/pull/23441](https://github.com/pulumi/pulumi/pull/https://github.com/pulumi/pulumi/pull/23441)
 ## 3.246.0 (2026-06-11)
 
 ### Bug Fixes

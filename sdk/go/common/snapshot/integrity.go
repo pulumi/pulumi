@@ -162,18 +162,15 @@ func VerifyIntegrity(snap *apitype.DeploymentV3) error {
 		}
 	}
 
-	// Snippets may declare References to resources outside the snippet itself; each referenced URN
-	// must exist in the snapshot. We check this after the resource loop so all URNs (including ones
-	// referenced "forward" from a snippet) have been recorded.
+	snippetUUIDs := make(map[string]int, len(snap.Snippets))
 	for i, snippet := range snap.Snippets {
-		for ident, ref := range snippet.References {
-			if _, has := urns[resource.URN(ref)]; !has {
-				return SnapshotIntegrityErrorf(
-					"snippet %d (type=%q, name=%q) refers to unknown URN %s via identifier %q",
-					i, snippet.Type, snippet.Name, ref, ident,
-				)
-			}
+		if snippet.UUID == "" {
+			return SnapshotIntegrityErrorf("snippet at index %d missing required 'uuid' field", i)
 		}
+		if other, has := snippetUUIDs[snippet.UUID]; has {
+			return SnapshotIntegrityErrorf("duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i)
+		}
+		snippetUUIDs[snippet.UUID] = i
 	}
 
 	return nil

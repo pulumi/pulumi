@@ -85,7 +85,6 @@ class Release(pulumi.CustomResource):
         """
         A non-overlay, non-component, non-Kubernetes resource.
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[_builtins.str] chart: Chart name to be installed. A path may be used.
@@ -100,7 +99,6 @@ class Release(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A non-overlay, non-component, non-Kubernetes resource.
-
 
         :param str resource_name: The name of the resource.
         :param ReleaseArgs args: The arguments to use to populate this resource's properties.

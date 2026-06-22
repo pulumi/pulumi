@@ -23,15 +23,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -64,6 +63,7 @@ func newOrgWebhookRemoveCmd() *cobra.Command {
 			"  # Remove without confirmation\n" +
 			"  pulumi org webhook remove 1a2b3c4d --yes",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			orcmd.yes = orcmd.yes || env.SkipConfirmations.Value()
 			orcmd.w = cmd.OutOrStdout()
 			return orcmd.run(cmd.Context(), args[0])
 		},
@@ -85,15 +85,9 @@ func newOrgWebhookRemoveCmd() *cobra.Command {
 func (c *orgWebhookRemoveCmd) run(ctx context.Context, webhookName string) error {
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	if !c.yes {
-		if !cmdutil.Interactive() {
-			return backenderr.ErrNonInteractiveRequiresYes
-		}
-		prompt := fmt.Sprintf(
-			"This will permanently remove the webhook '%s'!", webhookName)
-		if !ui.ConfirmPrompt(prompt, webhookName, opts) {
-			return result.FprintBailf(c.w, "confirmation declined")
-		}
+	prompt := fmt.Sprintf("This will permanently remove the webhook '%s'!", webhookName)
+	if err := ui.ConfirmDeletion(c.yes, cmdutil.Interactive(), prompt, webhookName, c.w, opts); err != nil {
+		return err
 	}
 
 	currentBackend := c.currentBackend

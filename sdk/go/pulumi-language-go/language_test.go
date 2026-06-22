@@ -114,7 +114,6 @@ var expectedFailures = map[string]string{
 	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
 	"l2-discriminated-union":        "pulumi#21829: does not compile",
 	"l2-resource-schema-secret":     "does not preserve schema-secret unknown outputs",
-	"l2-invoke-multi-argument":      "Go SDK-gen does not implement MultiArgumentInputs for functions",
 
 	"l2-plain": "map literals nested in plain list elements render without a type; generated code does not compile",
 
@@ -127,6 +126,7 @@ var expectedFailures = map[string]string{
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
 	"l3-component-nested":                 "./main.go:10:11: cannot use true (constant of type bool) as pulumi.BoolInput",
+	"l3-resource-keyword-overlap":         "same component-input/output type bugs as l3-component-nested; does not compile", //nolint:lll
 	"l3-deferred-outputs":                 "does not compile && for expressions are not supported",
 
 	"l3-rewrite-conversions": "does not compile; missing necessary casts for pulumi inputs",

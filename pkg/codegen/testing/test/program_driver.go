@@ -58,7 +58,7 @@ type ProgramTest struct {
 	SkipCompile        codegen.StringSet
 	BindOptions        []pcl.BindOption
 	MockPluginVersions map[string]string
-	PluginHost         plugin.Host
+	PluginContext      *plugin.Context
 }
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -87,24 +87,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "ReadFile function translation works",
 	},
 	{
-		Directory:   "aws-optionals",
-		Description: "AWS get invoke with nested object constructor that takes an optional string",
-		// Testing Go behavior exclusively:
-		Skip: allProgLanguages.Except(TestGo),
-	},
-	{
 		Directory:   "third-party-package",
 		Description: "Ensuring correct imports for third party packages",
 		// compiling and type checking involves downloading the real package to
 		// check against. Because we are checking against the "other" package
 		// (which doesn't exist), this does not work.
 		SkipCompile: codegen.NewStringSet(TestNodeJS, TestDotnet, TestGo),
-	},
-	{
-		Directory: "this-keyword-resource-attr",
-		Description: "ensure that the this keyword is rewritten when it is a variable but kept as is" +
-			"when it is a reference to this pointer in nodejs",
-		Skip: codegen.NewStringSet(TestDotnet, TestPython, TestGo),
 	},
 	{
 		Directory:   "traverse-union-repro",
@@ -190,11 +178,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "python-regress-14037",
 		Description: "Regression test for rewriting qoutes in python",
 		Skip:        allProgLanguages.Except(TestPython),
-	},
-	{
-		Directory:   "inline-invokes",
-		Description: "Tests whether using inline invoke expressions works",
-		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 }
 
@@ -361,14 +344,12 @@ func TestProgramCodegen(
 			hclFiles := map[string]*hcl.File{
 				tt.Directory + ".pp": {Body: parser.Files[0].Body, Bytes: parser.Files[0].Bytes},
 			}
-			var pluginHost plugin.Host
-			if tt.PluginHost != nil {
-				pluginHost = tt.PluginHost
-			} else {
-				pluginHost = utils.NewHost(testcase.inputDirectory())
+			pluginCtx := tt.PluginContext
+			if pluginCtx == nil {
+				pluginCtx = utils.NewContext(testcase.inputDirectory())
 			}
 
-			opts := append(tt.BindOptions, pcl.PluginHost(pluginHost))
+			opts := append(tt.BindOptions, pcl.PluginHost(pluginCtx))
 			absoluteProgramPath, err := filepath.Abs(testInputDir)
 			if err != nil {
 				t.Fatalf("failed to bind program: unable to find the absolute path of %v", testInputDir)

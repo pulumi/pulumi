@@ -121,7 +121,7 @@ type RawLoader interface {
 }
 
 type pluginLoader struct {
-	host plugin.Host
+	pctx *plugin.Context
 
 	cacheOptions pluginLoaderCacheOptions
 }
@@ -141,14 +141,16 @@ type pluginLoaderCacheOptions struct {
 	disableMmap bool
 }
 
-func NewPluginLoader(host plugin.Host) ReferenceLoader {
-	return newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{})
+// NewPluginLoader creates a loader that resolves and boots provider plugins through the given
+// plugin context's host to load package schemas.
+func NewPluginLoader(pctx *plugin.Context) ReferenceLoader {
+	return newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{})
 }
 
-func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
+func newPluginLoaderWithOptions(pctx *plugin.Context, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
 	var l ReferenceLoader
 	l = &pluginLoader{
-		host: host,
+		pctx: pctx,
 
 		cacheOptions: cacheOptions,
 	}
@@ -489,7 +491,7 @@ func (l *pluginLoader) loadSchemaBytes(
 		return schemaBytes, pluginVersion, nil
 	}
 
-	pluginInfo, err := l.host.ResolvePlugin(pluginSpecFromPackageDescriptor(descriptor))
+	pluginInfo, err := l.pctx.Host.ResolvePlugin(l.pctx, pluginSpecFromPackageDescriptor(descriptor))
 	if err != nil {
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
 		var missingError *workspace.MissingError
@@ -505,15 +507,15 @@ func (l *pluginLoader) loadSchemaBytes(
 		}
 
 		log := func(sev diag.Severity, msg string) {
-			l.host.Log(sev, "", msg, 0)
+			l.pctx.Host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log, NewLoaderServerFromHost)
+		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log, NewLoaderServerFromContext)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		pluginInfo, err = l.host.ResolvePlugin(pluginSpecFromPackageDescriptor(descriptor))
+		pluginInfo, err = l.pctx.Host.ResolvePlugin(l.pctx, pluginSpecFromPackageDescriptor(descriptor))
 		if err != nil {
 			return nil, descriptor.Version, err
 		}
@@ -585,7 +587,7 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 		Kind:              apitype.ResourcePlugin,
 	}
 
-	provider, err := l.host.Provider(wsDescriptor, env.Global())
+	provider, err := l.pctx.Host.Provider(l.pctx.WithoutProviderDebugging(), wsDescriptor, env.Global())
 	if err != nil {
 		return nil, nil, err
 	}

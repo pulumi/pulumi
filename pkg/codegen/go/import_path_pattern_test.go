@@ -134,7 +134,7 @@ func bindImportPathProgram(t *testing.T) *pcl.Program {
 	require.NoError(t, pclParser.ParseFile(strings.NewReader(importPathPatternProgram), "importpath.pp"))
 	require.False(t, pclParser.Diagnostics.HasErrors(), "parse diagnostics: %v", pclParser.Diagnostics)
 
-	host := utils.NewHostWithProviders(testdataPath, utils.NewSchemaProvider("importpath", "1.0.0"))
+	host := utils.NewContextWithProviders(testdataPath, utils.NewSchemaProvider("importpath", "1.0.0"))
 	program, diags, err := pcl.BindProgram(pclParser.Files, pcl.PluginHost(host))
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), "bind diagnostics: %v", diags)

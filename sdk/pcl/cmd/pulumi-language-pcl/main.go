@@ -701,8 +701,8 @@ func (host *pclLanguageHost) GeneratePackage(
 			baseProviderVersion = pkg.Version.String()
 		}
 	} else {
-		baseProviderName = pkg.Parameterization.BaseProvider.Name
-		baseProviderVersion = pkg.Parameterization.BaseProvider.Version.String()
+		baseProviderName = pkg.Parameterization.BasePlugin.Name
+		baseProviderVersion = pkg.Parameterization.BasePlugin.Version.String()
 		if pkg.Version == nil {
 			return nil, errors.New("parameterized package must have a version")
 		}

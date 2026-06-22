@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -188,13 +189,14 @@ func GenSDK(
 		if err != nil {
 			return nil, fmt.Errorf("create plugin context: %w", err)
 		}
+		defer contract.IgnoreClose(pCtx.Host)
 		defer contract.IgnoreClose(pCtx)
-		languagePlugin, err := pCtx.Host.LanguageRuntime(language)
+		languagePlugin, err := pCtx.Host.LanguageRuntime(pCtx, language)
 		if err != nil {
 			return nil, err
 		}
 
-		loader := schema.NewPluginLoader(pCtx.Host)
+		loader := schema.NewPluginLoader(pCtx)
 		loaderServer := schema.NewLoaderServer(loader)
 		grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
 		if err != nil {
@@ -274,7 +276,7 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 	if ctx.Project.RuntimeInfo().Name() == "" {
 		return errors.New("cannot link packages into a project without a runtime")
 	}
-	languagePlugin, err := ctx.PluginContext.Host.LanguageRuntime(ctx.Project.RuntimeInfo().Name())
+	languagePlugin, err := ctx.PluginContext.Host.LanguageRuntime(ctx.PluginContext, ctx.Project.RuntimeInfo().Name())
 	if err != nil {
 		return err
 	}
@@ -285,7 +287,7 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 	for _, pkg := range ctx.Packages {
 		entries[pkg.Pkg.Identity()] = pkg.Pkg.Reference()
 	}
-	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(ctx.PluginContext.Host), entries)
+	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(ctx.PluginContext), entries)
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(ctx.PluginContext, schema.LoaderRegistration(loaderServer))
 	if err != nil {
@@ -337,10 +339,15 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{ //nolint:forbidigo
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil,
-		schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+	pluginHost, err := pkghost.New(context.TODO(), sink, sink, nil,
+		pkgWorkspace.EnsureLanguageInstalled)
 	if err != nil {
 		return nil, err
+	}
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+	if err != nil {
+		return nil, errors.Join(err, pluginHost.Close())
 	}
 	return pluginCtx, nil
 }
@@ -452,7 +459,7 @@ func ProviderFromSource(
 ) (plugin.Provider, workspace.PackageSpec, error) {
 	// Helper without a *cobra.Command writer; plumbing the writer into
 	// packageworkspace.New would require a much larger API change.
-	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pctx.Host, os.Stderr, os.Stderr, //nolint:forbidigo
+	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pctx, os.Stderr, os.Stderr, //nolint:forbidigo
 		nil, packageworkspace.Options{})
 	return providerFromSource(pctx, packageSource, reg, e, concurrency, installCtx)
 }

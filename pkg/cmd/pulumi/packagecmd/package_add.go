@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -127,9 +128,16 @@ from the parameters, as in:
 			}
 
 			sink := cmdutil.Diag()
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled)
+			if err != nil {
+				return err
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(cmd.Context(),
-				sink, sink, nil, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromHost,
-				convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromContext,
+				convert.NewMapperServerFromContext)
 			if err != nil {
 				return err
 			}
@@ -190,8 +198,8 @@ from the parameters, as in:
 							packageSpec.Version = pkg.Version.String()
 						}
 					} else {
-						packageSpec.Source = pkg.Parameterization.BaseProvider.Name
-						packageSpec.Version = pkg.Parameterization.BaseProvider.Version.String()
+						packageSpec.Source = pkg.Parameterization.BasePlugin.Name
+						packageSpec.Version = pkg.Parameterization.BasePlugin.Version.String()
 					}
 				}
 			}

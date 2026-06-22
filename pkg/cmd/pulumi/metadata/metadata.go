@@ -33,6 +33,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -40,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/hgutil"
@@ -76,15 +79,21 @@ func GetLanguageRuntimeMetadata(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		pluginHost, err := pkghost.New(
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled)
+		if err != nil {
+			return nil, err
+		}
+		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		pwd, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 		if err != nil {
 			return nil, err
 		}
 		defer pctx.Close()
 
 		programInfo := plugin.NewProgramInfo(root, pwd, main, proj.Runtime.Options())
-		lang, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
+		lang, err := pctx.Host.LanguageRuntime(pctx, proj.Runtime.Name())
 		if err != nil {
 			return nil, err
 		}

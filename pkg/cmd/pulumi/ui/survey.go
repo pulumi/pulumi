@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // Make sure we set `surveycore.DisableColor` to true exactly once, to avoid data races.
@@ -264,4 +266,34 @@ func ConfirmPrompt(prompt string, name string, opts display.Options) bool {
 	reader := bufio.NewReader(in)
 	line, _ := reader.ReadString('\n')
 	return strings.TrimSpace(line) == name
+}
+
+// ConfirmDeletion runs the standard confirmation flow shared by destructive
+// commands (delete/remove/cancel). It returns nil when the caller should
+// proceed, and a non-nil error to return directly from RunE otherwise.
+//
+// The flow is:
+//   - if yes is true (the --yes flag), proceed without prompting;
+//   - if the session is non-interactive, return ErrNonInteractiveRequiresYes so
+//     callers must pass --yes in scripts and CI;
+//   - otherwise prompt and require the user to type confirmText, bailing (via
+//     result.FprintBailf) if they decline.
+//
+// confirmText is what the user must type to confirm. Pass the entity's name or
+// id so the user reaffirms exactly what they are deleting. For values that are
+// cumbersome to retype (for example UUIDs) pass a short word such as the command
+// verb ("remove", "cancel") instead.
+func ConfirmDeletion(
+	yes, interactive bool, prompt, confirmText string, w io.Writer, opts display.Options,
+) error {
+	if yes {
+		return nil
+	}
+	if !interactive {
+		return backenderr.ErrNonInteractiveRequiresYes
+	}
+	if !ConfirmPrompt(prompt, confirmText, opts) {
+		return result.FprintBailf(w, "confirmation declined")
+	}
+	return nil
 }

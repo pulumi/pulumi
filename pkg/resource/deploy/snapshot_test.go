@@ -20,7 +20,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1251,23 +1250,22 @@ func TestSnapshotToposort_DetectsCycles(t *testing.T) {
 	}
 }
 
-// TestSnapshotVerifyIntegrity_SnippetReferencesKnownURN is the positive case: a snippet whose
-// References map points at a URN that exists in snap.Resources passes integrity verification.
-func TestSnapshotVerifyIntegrity_SnippetReferencesKnownURN(t *testing.T) {
+// TestSnapshotVerifyIntegrity_SnippetReferencesNeedNotExist checks that snippet references are not
+// snapshot integrity constraints. A referenced resource may be absent after a targeted delete and
+// recreated by a later update.
+func TestSnapshotVerifyIntegrity_SnippetReferencesNeedNotExist(t *testing.T) {
 	t.Parallel()
 
-	target := resource.NewURN("stack", "project", "", "pkgA:index:res", "target")
+	missing := resource.NewURN("stack", "project", "", "pkgA:index:res", "missing")
 	snap := &Snapshot{
-		Resources: []*resource.State{
-			{URN: target, Type: "pkgA:index:res"},
-		},
 		Snippets: []resource.Snippet{
 			{
+				UUID: "e970a91d-4f4c-5793-8d27-dd27a0d96cf7",
 				Name: "consumer",
 				Type: "pkgA:index:res",
-				Code: `propA = target.id`,
+				Code: `propA = missing.id`,
 				References: map[string]string{
-					"target": string(target),
+					"missing": string(missing),
 				},
 			},
 		},
@@ -1276,32 +1274,46 @@ func TestSnapshotVerifyIntegrity_SnippetReferencesKnownURN(t *testing.T) {
 	require.NoError(t, snap.VerifyIntegrity())
 }
 
-// TestSnapshotVerifyIntegrity_SnippetReferencesUnknownURN is the negative case: a snippet that
-// references a URN absent from snap.Resources produces a snapshot integrity error naming the
-// snippet, the bad URN, and the identifier through which it was referenced.
-func TestSnapshotVerifyIntegrity_SnippetReferencesUnknownURN(t *testing.T) {
+func TestSnapshotVerifyIntegrity_SnippetUUID(t *testing.T) {
 	t.Parallel()
 
-	missing := resource.NewURN("stack", "project", "", "pkgA:index:res", "missing")
-	snap := &Snapshot{
-		// No resources at all — the snippet's reference is therefore dangling.
-		Snippets: []resource.Snippet{
-			{
-				Name: "consumer",
-				Type: "pkgA:index:res",
-				Code: `propA = ghost.id`,
-				References: map[string]string{
-					"ghost": string(missing),
+	t.Run("missing", func(t *testing.T) {
+		t.Parallel()
+
+		snap := &Snapshot{
+			Snippets: []resource.Snippet{
+				{
+					Name: "consumer",
+					Type: "pkgA:index:res",
+					Code: `propA = true`,
 				},
 			},
-		},
-	}
+		}
 
-	err := snap.VerifyIntegrity()
-	require.Error(t, err)
-	require.ErrorContains(t, err, "unknown URN")
-	require.ErrorContains(t, err, string(missing))
-	require.ErrorContains(t, err, `"ghost"`)
-	_, ok := snapshot.AsSnapshotIntegrityError(err)
-	require.True(t, ok, "should be a SnapshotIntegrityError")
+		require.ErrorContains(t, snap.VerifyIntegrity(), "snippet at index 0 missing required 'uuid' field")
+	})
+
+	t.Run("duplicate", func(t *testing.T) {
+		t.Parallel()
+
+		snap := &Snapshot{
+			Snippets: []resource.Snippet{
+				{
+					UUID: "e970a91d-4f4c-5793-8d27-dd27a0d96cf7",
+					Name: "consumer-a",
+					Type: "pkgA:index:res",
+					Code: `propA = true`,
+				},
+				{
+					UUID: "e970a91d-4f4c-5793-8d27-dd27a0d96cf7",
+					Name: "consumer-b",
+					Type: "pkgA:index:res",
+					Code: `propA = false`,
+				},
+			},
+		}
+
+		require.ErrorContains(t, snap.VerifyIntegrity(),
+			`duplicate snippet uuid "e970a91d-4f4c-5793-8d27-dd27a0d96cf7" at indexes 0 and 1`)
+	})
 }

@@ -803,7 +803,8 @@ func newTestContext(t testing.TB) *Context {
 	ctx, err := NewContext(
 		t.Context(),
 		sink, sink,
-		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */, nil, nil, nil)
+		// The tests using this context wire up in-process stub clients, so the host is never used.
+		&MockHost{}, nil /* source */, cwd, nil /* options */, false, nil /* span */, nil, nil)
 	require.NoError(t, err, "build context")
 
 	return ctx

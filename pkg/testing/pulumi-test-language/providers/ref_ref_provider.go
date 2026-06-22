@@ -96,6 +96,12 @@ func (p *RefRefProvider) GetSchema(
 			Ref:  "#/types/ref-ref:index:InnerData",
 		},
 	}
+	dataProperties["innerDataList"] = schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{
+			Type:  "array",
+			Items: &schema.TypeSpec{Type: "ref", Ref: "#/types/ref-ref:index:InnerData"},
+		},
+	}
 	dataRequired := slices.Concat(typeRequired, []string{"innerData"})
 
 	resourceProperties := map[string]schema.PropertySpec{
@@ -279,7 +285,34 @@ func (p *RefRefProvider) Check(
 		}, nil
 	}
 
-	if len(data) != 7 {
+	// innerDataList is an optional list of InnerData, so the property count is 7 without it and 8 with it.
+	expectedDataLen := 7
+	if list, ok := data["innerDataList"]; ok {
+		if !list.IsArray() {
+			return plugin.CheckResponse{
+				Failures: makeCheckFailure("innerDataList", "value is not an array"),
+			}, nil
+		}
+		for _, elem := range list.ArrayValue() {
+			if !elem.IsObject() {
+				return plugin.CheckResponse{
+					Failures: makeCheckFailure("innerDataList", "array element is not an object"),
+				}, nil
+			}
+			check = checkData(elem.ObjectValue())
+			if check != nil {
+				return *check, nil
+			}
+			if len(elem.ObjectValue()) != 6 {
+				return plugin.CheckResponse{
+					Failures: makeCheckFailure("innerDataList", fmt.Sprintf("too many properties: %v", elem)),
+				}, nil
+			}
+		}
+		expectedDataLen = 8
+	}
+
+	if len(data) != expectedDataLen {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", data)),
 		}, nil

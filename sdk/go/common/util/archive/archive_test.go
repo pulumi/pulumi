@@ -317,3 +317,106 @@ func TestExtractTGZRelativePathWithEscape(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, escaped, "file escaped destination directory using relative path")
 }
+
+func TestExtractTGZSymlink(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: symlink creation requires elevated privileges")
+	}
+
+	buffer := &bytes.Buffer{}
+	gw := gzip.NewWriter(buffer)
+	tw := tar.NewWriter(gw)
+
+	contents := []byte("hello")
+	require.NoError(t, tw.WriteHeader(&tar.Header{
+		Name:     "target.txt",
+		Typeflag: tar.TypeReg,
+		Mode:     0o600,
+		Size:     int64(len(contents)),
+	}))
+	_, err := tw.Write(contents)
+	require.NoError(t, err)
+
+	require.NoError(t, tw.WriteHeader(&tar.Header{
+		Name:     "link.txt",
+		Typeflag: tar.TypeSymlink,
+		Linkname: "target.txt",
+		Mode:     0o777,
+	}))
+
+	require.NoError(t, tw.Close())
+	require.NoError(t, gw.Close())
+
+	dir := t.TempDir()
+	require.NoError(t, ExtractTGZ(buffer, dir))
+
+	linkPath := filepath.Join(dir, "link.txt")
+	target, err := os.Readlink(linkPath)
+	require.NoError(t, err)
+	assert.Equal(t, "target.txt", target)
+
+	got, err := os.ReadFile(linkPath)
+	require.NoError(t, err)
+	assert.Equal(t, contents, got)
+}
+
+func TestExtractTGZSymlinkEscape(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: symlink creation requires elevated privileges")
+	}
+
+	tgzWithSymlink := func(t *testing.T, name, linkname string) io.Reader {
+		buffer := &bytes.Buffer{}
+		gw := gzip.NewWriter(buffer)
+		tw := tar.NewWriter(gw)
+		require.NoError(t, tw.WriteHeader(&tar.Header{
+			Name:     name,
+			Typeflag: tar.TypeSymlink,
+			Linkname: linkname,
+			Mode:     0o777,
+		}))
+		require.NoError(t, tw.Close())
+		require.NoError(t, gw.Close())
+		return buffer
+	}
+
+	cases := []struct {
+		name     string
+		linkname string
+		linkpath string
+	}{
+		{name: "relative parent escape", linkname: "../escape.txt", linkpath: "link.txt"},
+		{name: "nested relative escape", linkname: "../../escape.txt", linkpath: "sub/link.txt"},
+		{name: "absolute escape", linkname: "/etc/passwd", linkpath: "link.txt"},
+		{name: "relative within escape", linkname: "sub/../../../escape.txt", linkpath: "link.txt"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			err := ExtractTGZ(tgzWithSymlink(t, tc.linkpath, tc.linkname), dir)
+			require.ErrorContains(t, err, "points outside the extraction directory")
+
+			// Nothing should have been created.
+			_, statErr := os.Lstat(filepath.Join(dir, tc.linkpath))
+			assert.ErrorIs(t, statErr, os.ErrNotExist)
+		})
+	}
+
+	t.Run("relative within is allowed", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+		err := ExtractTGZ(tgzWithSymlink(t, "link.txt", "sub/../target.txt"), dir)
+		require.NoError(t, err)
+		target, err := os.Readlink(filepath.Join(dir, "link.txt"))
+		require.NoError(t, err)
+		assert.Equal(t, "sub/../target.txt", target)
+	})
+}

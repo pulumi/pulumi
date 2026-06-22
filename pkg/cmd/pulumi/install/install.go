@@ -15,6 +15,7 @@
 package install
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -38,9 +39,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -124,13 +127,18 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			span := opentracing.SpanFromContext(ctx)
 			projinfo := &engine.Projinfo{Proj: proj, Root: root}
+			pluginHost, err := pkghost.New(
+				context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled)
+			if err != nil {
+				return err
+			}
+			defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 			pwd, main, pctx, err := engine.ProjectInfoContext(
 				ctx,
 				projinfo,
-				nil,
+				pluginHost,
 				cmdutil.Diag(),
 				cmdutil.Diag(),
-				nil,
 				false,
 				span,
 				nil,
@@ -159,7 +167,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// First make sure the language plugin is present.  We need this to load the required resource plugins.
 			// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 			runtime := proj.Runtime
-			lang, err := pctx.Host.LanguageRuntime(runtime.Name())
+			lang, err := pctx.Host.LanguageRuntime(pctx, runtime.Name())
 			if err != nil {
 				return fmt.Errorf("load language plugin %s: %w", runtime.Name(), err)
 			}
@@ -190,7 +198,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				}
 
 				ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance,
-					pctx.Host, cmd.OutOrStderr(), cmd.ErrOrStderr(), nil,
+					pctx, cmd.OutOrStderr(), cmd.ErrOrStderr(), nil,
 					packageworkspace.Options{
 						UseLanguageVersionTools: useLanguageVersionTools,
 					})
@@ -219,7 +227,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd.Flags().IntVar(&parallel,
 		"parallel", 4, "The max number of concurrent installs to perform. "+
-			"Parallelism of less then 1 implies unbounded parallelism")
+			"Parallelism of less than 1 implies unbounded parallelism")
 	cmd.PersistentFlags().BoolVar(&reinstall,
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 	cmd.PersistentFlags().BoolVar(&noPlugins,
@@ -227,7 +235,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&noDependencies,
 		"no-dependencies", false, "Skip installing dependencies")
 	cmd.PersistentFlags().BoolVar(&useLanguageVersionTools,
-		"use-language-version-tools", false, "Use language version tools to setup and install the language runtime")
+		"use-language-version-tools", false, "Use language version tools to set up and install the language runtime")
 
 	return cmd
 }

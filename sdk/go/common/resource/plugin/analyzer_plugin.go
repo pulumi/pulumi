@@ -75,7 +75,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 			Name: strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
 			Kind: apitype.AnalyzerPlugin,
 		},
-		host.GetProjectPlugins())
+		ctx.ProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)
 	}
@@ -152,7 +152,7 @@ func NewPolicyAnalyzer(
 				ctx.baseContext,
 				ctx.Diag,
 				spec,
-				host.GetProjectPlugins())
+				ctx.ProjectPlugins())
 			return err == nil && path != ""
 		}
 	}
@@ -168,7 +168,7 @@ func NewPolicyAnalyzer(
 		var pluginPath string
 		pluginPath, err = workspace.GetPluginPath(
 			ctx.baseContext, ctx.Diag,
-			workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, host.GetProjectPlugins())
+			workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, ctx.ProjectPlugins())
 		if err != nil {
 			return nil, err
 		}

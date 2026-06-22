@@ -967,9 +967,14 @@ type PackageDescriptor struct {
 	// A specification for the plugin that provides the package.
 	PluginDescriptor
 
-	// An optional parameterization to apply to the providing plugin to produce
-	// the package.
+	// An optional replacement parameterization to apply to the providing plugin
+	// to produce the package.
 	Parameterization *Parameterization
+
+	// An optional extension parameterization to apply to the providing plugin to
+	// produce the package. Extension parameterizations share the base plugin's
+	// source and are not separate providers.
+	ExtensionParameterization *Parameterization
 }
 
 // A resolved plugin with parameterization arguments.
@@ -992,6 +997,10 @@ func NewPackageDescriptor(spec PluginDescriptor, parameterization *Parameterizat
 
 // PackageName returns the name of the package.
 func (pd PackageDescriptor) PackageName() string {
+	// Extension parameterization takes precedence over replacement parameterization.
+	if pd.ExtensionParameterization != nil {
+		return pd.ExtensionParameterization.Name
+	}
 	if pd.Parameterization != nil {
 		return pd.Parameterization.Name
 	}
@@ -1000,6 +1009,10 @@ func (pd PackageDescriptor) PackageName() string {
 
 // PackageVersion returns the version of the package.
 func (pd PackageDescriptor) PackageVersion() *semver.Version {
+	// Extension parameterization takes precedence over replacement parameterization.
+	if pd.ExtensionParameterization != nil {
+		return &pd.ExtensionParameterization.Version
+	}
 	if pd.Parameterization != nil {
 		return &pd.Parameterization.Version
 	}
@@ -1009,9 +1022,11 @@ func (pd PackageDescriptor) PackageVersion() *semver.Version {
 func (pd PackageDescriptor) String() string {
 	name := pd.Name
 	version := pd.Version
-	if pd.Parameterization != nil {
-		name = pd.Parameterization.Name
-		version = &pd.Parameterization.Version
+	// Extension parameterization takes precedence over replacement parameterization.
+	if pd.ExtensionParameterization != nil {
+		name, version = pd.ExtensionParameterization.Name, &pd.ExtensionParameterization.Version
+	} else if pd.Parameterization != nil {
+		name, version = pd.Parameterization.Name, &pd.Parameterization.Version
 	}
 
 	var v string

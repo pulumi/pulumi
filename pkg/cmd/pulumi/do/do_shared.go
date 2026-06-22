@@ -17,8 +17,10 @@ package do
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"sort"
 	"strconv"
@@ -34,6 +36,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -592,12 +596,41 @@ func resourceURN(res *schema.Resource) resource.URN {
 }
 
 func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Context) error {
+	// When --provider names an existing provider resource in the stack, start from that resource's
+	// Inputs as the base; --provider-file and --input:* flags overlay on top so the user can
+	// re-use a stack-stored provider's config and selectively override a property or two. The
+	// stack-context check mirrors what we do for pulumi.organization / pulumi.stack in PCL
+	// evaluation: it requires a project to be loaded and a stack to be selected in the workspace.
+	// Snapshot the eval context once so the two reads here (the stack-context guard below and the
+	// evaluateResourceFile call further down) see exactly the same view of the workspace.
+	ec := pc.evalContext()
+	var baseConfig resource.PropertyMap
+	if pc.providerURN != "" {
+		if ec.ProjectName == "" || ec.Stack == "" {
+			return errors.New("--provider requires a stack context (a Pulumi project must be " +
+				"present and a stack selected)")
+		}
+		base, err := pc.loadProviderInputsFromStack(ctx, resource.URN(pc.providerURN))
+		if err != nil {
+			return fmt.Errorf("--provider: %w", err)
+		}
+		baseConfig = base
+	}
+
 	config, err := evaluateResourceFile(
 		ctx, pc.providerFile, "provider", pc.format,
-		pc.spec.Provider, pc.evalContext, pc.converter, pc.loaderTarget, pc.packageDescriptor,
+		pc.spec.Provider, ec, pc.converter, pc.loaderTarget, pc.packageDescriptor,
 		collectInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties))
 	if err != nil {
 		return fmt.Errorf("parse provider file: %w", err)
+	}
+
+	// Merge: base from --provider gets overlaid by anything the user supplied via --provider-file
+	// or --input:* flags. A property absent from the overlay falls through to the base.
+	if baseConfig != nil {
+		merged := maps.Clone(baseConfig)
+		maps.Copy(merged, config)
+		config = merged
 	}
 
 	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+pc.spec.Name), "")
@@ -621,6 +654,55 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 	}
 
 	return nil
+}
+
+// loadProviderInputsFromStack opens the currently-selected stack via the workspace + login manager
+// and returns the Inputs of the resource matching providerURN. Returns errors with context if no
+// stack is selected, the stack can't be loaded, no resource matches the URN, or the matched
+// resource isn't a provider — better to fail loudly than silently configure with junk.
+func (pc *packageCommand) loadProviderInputsFromStack(
+	ctx context.Context, providerURN resource.URN,
+) (resource.PropertyMap, error) {
+	s, err := cmdStack.RequireStack(
+		ctx, pc.sink, pc.ws, pc.lm,
+		"", /*stackName — use whatever is currently selected*/
+		cmdStack.LoadOnly, display.Options{Color: cmdutil.GetGlobalColorization()},
+		"", /*configFile*/
+	)
+	if err != nil {
+		return nil, fmt.Errorf("load stack: %w", err)
+	}
+	snap, err := s.Snapshot(ctx, backendSecrets.DefaultProvider)
+	if err != nil {
+		return nil, fmt.Errorf("load stack snapshot: %w", err)
+	}
+	if snap == nil {
+		return nil, fmt.Errorf("stack has no snapshot yet; cannot resolve --provider %s", providerURN)
+	}
+	for _, res := range snap.Resources {
+		if res.URN != providerURN {
+			continue
+		}
+		// Sanity-check: the URN must refer to a provider resource. Providers have a type token of
+		// the form "pulumi:providers:<pkg>"; anything else is almost certainly a user error.
+		if !strings.HasPrefix(string(res.Type), "pulumi:providers:") {
+			return nil, fmt.Errorf(
+				"resource %s is not a provider (type=%s); --provider must name a provider resource",
+				providerURN, res.Type)
+		}
+		// The provider package must also match: AWS provider inputs handed to an Azure
+		// Configure call would either fail with a confusing schema mismatch or — worse — silently
+		// authenticate against the wrong cloud. Reject early with a clear message.
+		expectedType := tokens.Type("pulumi:providers:" + pc.spec.Name)
+		if res.Type != expectedType {
+			return nil, fmt.Errorf(
+				"resource %s is a provider for a different package (type=%s); --provider must name a %s resource",
+				providerURN, res.Type, expectedType)
+		}
+		// Clone so we don't hand callers an aliasing pointer into the snapshot's state.
+		return maps.Clone(res.Inputs), nil
+	}
+	return nil, fmt.Errorf("no resource named %s in the current stack", providerURN)
 }
 
 // requireYesIfNonInteractive returns ErrNonInteractiveRequiresYes when the user is not on a TTY (so a confirmation

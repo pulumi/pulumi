@@ -478,6 +478,59 @@ func (i *Interpreter) Run(ctx context.Context) error {
 	return nil
 }
 
+// RunEmbedded runs the interpreter against a pre-existing monitor and loader supplied by the
+// caller, skipping the steps that only make sense for a top-level program run (stack registration,
+// stack-output emission, and the SignalAndWaitForShutdown handshake). It is the entry point for
+// callers that drive the interpreter as a sub-source inside a larger update — for example, the
+// engine evaluating a PCL snippet alongside the main program.
+//
+// scopeVars, if non-nil, are converted and installed on the eval context as root-scope variables
+// after init so the program body can reference resources resolved elsewhere (e.g. snippet
+// References resolved via the engine's registration observer).
+func (i *Interpreter) RunEmbedded(
+	ctx context.Context,
+	monitor pulumirpc.ResourceMonitorClient,
+	loader schema.ReferenceLoader,
+	scopeVars map[string]resource.PropertyValue,
+) error {
+	i.monitor = monitor
+	i.loader = loader
+
+	i.evalContext = NewEvalContext(
+		i.info.WorkingDir,
+		i.info.RootDirectory,
+		i.info.Organization,
+		i.info.Project,
+		i.info.Stack,
+		i.lookupResource,
+		i.lookupFunction,
+		i.getResource,
+		i.invoke,
+		i.call,
+	)
+	for name, val := range scopeVars {
+		ctyVal, err := propertyValueToCty(ctx, i.getResource, val)
+		if err != nil {
+			return fmt.Errorf("converting scope variable %q: %w", name, err)
+		}
+		i.evalContext.SetVariable(name, ctyVal)
+	}
+
+	if err := i.registerPackages(ctx); err != nil {
+		return err
+	}
+
+	if _, err := i.executeProgramNodes(ctx); err != nil {
+		return err
+	}
+
+	if i.callbacks != nil {
+		close(i.callbacks.stop)
+	}
+
+	return nil
+}
+
 func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.PropertyMap, error) {
 	dag := pdag.New[pcl.Node]()
 	nodes := map[pcl.Node]pdag.Node{}

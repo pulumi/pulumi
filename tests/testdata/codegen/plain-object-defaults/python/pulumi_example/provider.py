@@ -53,7 +53,6 @@ class Provider(pulumi.ProviderResource):
         """
         The provider type for the kubernetes package.
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union['HelmReleaseSettingsArgs', 'HelmReleaseSettingsArgsDict']] helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
@@ -66,7 +65,6 @@ class Provider(pulumi.ProviderResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         The provider type for the kubernetes package.
-
 
         :param str resource_name: The name of the resource.
         :param ProviderArgs args: The arguments to use to populate this resource's properties.

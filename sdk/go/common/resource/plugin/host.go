@@ -16,14 +16,11 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/blang/semver"
 
@@ -33,23 +30,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // A Host hosts provider plugins and makes them easily accessible by package name.
+//
+// A host is stateless with respect to workspaces: methods that boot or resolve plugins take a
+// [Context] carrying the per-workspace state (working directory, project plugins, stack
+// configuration, and so on), so a single host may be shared by several contexts. The host is
+// not owned by any context it is used with; it must be closed by whoever constructed it.
 type Host interface {
 	// ServerAddr returns the address at which the host's RPC interface may be found.
 	ServerAddr() string
-
-	// LoaderAddr returns the address at which a plugin loader service may be found.
-	LoaderAddr() string
-
-	// MapperAddr returns the address at which a mapper service may be found, or an empty string if the host was not
-	// built with a mapper.
-	MapperAddr() string
 
 	// Log logs a message, including errors and warnings.  Messages can have a resource URN
 	// associated with them.  If no urn is provided, the message is global.
@@ -63,25 +56,34 @@ type Host interface {
 	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for
 	// it.  If an analyzer could not be found, or an error occurred while creating it, a non-nil
 	// error is returned.
-	Analyzer(nm tokens.QName) (Analyzer, error)
+	Analyzer(ctx *Context, nm tokens.QName) (Analyzer, error)
 
 	// PolicyAnalyzer boots the nodejs analyzer plugin located at a given path. This is useful
 	// because policy analyzers generally do not need to be "discovered" -- the engine is given a
 	// set of policies that are required to be run during an update, so they tend to be in a
 	// well-known place.
-	PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
+	PolicyAnalyzer(ctx *Context, name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
 
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
-	// found, or an error occurs while creating it, a non-nil error is returned.
-	Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
+	// found, or an error occurs while creating it, a non-nil error is returned. The provider is booted with the
+	// workspace state carried by ctx (stack configuration, runtime options, project name).
+	Provider(ctx *Context, descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
-	LanguageRuntime(runtime string) (LanguageRuntime, error)
+	LanguageRuntime(ctx *Context, runtime string) (LanguageRuntime, error)
 
-	// ResolvePlugin resolves a pluginspec to a candidate plugin to load.
-	ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
+	// ResolvePlugin resolves a pluginspec to a candidate plugin to load, consulting the project
+	// plugins carried by ctx.
+	ResolvePlugin(ctx *Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
 
-	GetProjectPlugins() []workspace.ProjectPlugin
+	// ReleaseContext gracefully shuts down and releases every plugin the host booted on behalf of
+	// ctx: each provider booted for ctx, and each analyzer or language runtime that no other live
+	// context still references. It is synchronous -- when it returns, those plugins have been
+	// closed and any diagnostics they emit while shutting down have been delivered through ctx's
+	// sinks. [Context.Close] calls this so that a context's plugins, and their shutdown
+	// diagnostics, are fully reclaimed before the context is considered closed; a host shared
+	// across contexts uses it to reclaim a finished context's plugins without closing the host.
+	ReleaseContext(ctx *Context) error
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -178,27 +180,31 @@ func collectPluginsFromPackages(
 	return result, nil
 }
 
-type NewLoaderFunc = func(h Host) codegenrpc.LoaderServer
+// NewLoaderFunc constructs the schema loader service bound to a context. The Context supplies
+// the workspace view the loader resolves and boots plugins against.
+type NewLoaderFunc = func(ctx *Context) codegenrpc.LoaderServer
 
-type NewMapperFunc = func(ctx context.Context, h Host) codegenrpc.MapperServer
+// NewMapperFunc constructs the conversion mapper service bound to a context. The Context
+// supplies the workspace view the mapper boots conversion plugins against.
+type NewMapperFunc = func(ctx *Context) codegenrpc.MapperServer
 
 // LanguageInstaller downloads and installs an unbundled language runtime on demand, so that
 // loading it via Host.LanguageRuntime works even when the runtime is not bundled with the CLI
 // or already cached. It is the language-runtime analogue of the engine's plugin install path.
 //
 // The install machinery lives in the pkg module, which the SDK cannot import, so a host is
-// given its installer at construction. newLoader is the same loader the host was built with;
-// installing a plugin may need it to install the plugin's dependencies. A nil LanguageInstaller
-// disables on-demand install (the host then relies on the runtime already being present).
-type LanguageInstaller = func(ctx context.Context, runtime string, newLoader NewLoaderFunc) error
+// given its installer at construction. Language hosts are self-contained executables — they
+// are shared across workspaces and are never run with the support of another language runtime
+// — so installation is a plain download-and-unpack and needs no workspace state. A nil
+// LanguageInstaller disables on-demand install (the host then relies on the runtime already
+// being present).
+type LanguageInstaller = func(ctx context.Context, runtime string) error
 
-// NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
-	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugContext, projectName tokens.PackageName,
-	newLoader NewLoaderFunc, newMapper NewMapperFunc, installLang LanguageInstaller,
-) (Host, error) {
-	// Create plugin info from providers
+// projectPluginsFromProject parses the plugins and packages declared by a project into the list
+// of project plugins that take precedence over installed plugins when resolving plugin binaries.
+func projectPluginsFromProject(
+	ctx *Context, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
+) ([]workspace.ProjectPlugin, error) {
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
 	if plugins != nil {
 		for _, providerOpts := range plugins.Providers {
@@ -228,53 +234,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 	if err != nil {
 		return nil, err
 	}
-	projectPlugins = append(projectPlugins, pluginsFromPackages...)
-
-	host := &defaultHost{
-		ctx:                     ctx,
-		runtimeOptions:          runtimeOptions,
-		analyzerPlugins:         make(map[tokens.QName]*analyzerPlugin),
-		languagePlugins:         make(map[string]*languagePlugin),
-		resourcePlugins:         make(map[Provider]*resourcePlugin),
-		reportedResourcePlugins: make(map[string]struct{}),
-		languageLoadRequests:    make(chan pluginLoadRequest),
-		loadRequests:            make(chan pluginLoadRequest),
-		disableProviderPreview:  disableProviderPreview,
-		config:                  config,
-		closer:                  new(sync.Once),
-		projectPlugins:          projectPlugins,
-		debugContext:            debugging,
-		projectName:             projectName,
-		hasLoaderServer:         newLoader != nil,
-		newLoader:               newLoader,
-		hasMapperServer:         newMapper != nil,
-		installLang:             installLang,
-	}
-
-	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
-	// to "phone home" in case there are things the host must do on behalf of the plugins (like log, etc).
-	svr, err := newHostServer(host, ctx, newLoader, newMapper)
-	if err != nil {
-		return nil, err
-	}
-	host.server = svr
-
-	// Start a goroutine we'll use to satisfy load requests serially and avoid race conditions.
-	go func() {
-		for req := range host.loadRequests {
-			req.result <- req.load()
-		}
-	}()
-
-	// Start another goroutine we'll use to satisfy load language plugin requests, this is so other plugins
-	// can be started up by a language plugin.
-	go func() {
-		for req := range host.languageLoadRequests {
-			req.result <- req.load()
-		}
-	}()
-
-	return host, nil
+	return append(projectPlugins, pluginsFromPackages...), nil
 }
 
 func resolvePluginPath(root string, path string) (string, error) {
@@ -342,441 +302,6 @@ type PolicyAnalyzerOptions struct {
 	DryRun           bool
 	Tags             map[string]string // Tags for the current stack.
 	AdditionalEnv    map[string]string // Per-pack environment variables (e.g., from ESC).
-}
-
-type pluginLoadRequest struct {
-	load   func() error
-	result chan<- error
-}
-
-type defaultHost struct {
-	ctx *Context // the shared context for this host.
-
-	// the runtime options for the project, passed to resource providers to support dynamic providers.
-	runtimeOptions          map[string]any
-	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
-	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
-	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
-	reportedResourcePlugins map[string]struct{}              // the set of unique resource plugins we'll report.
-	languageLoadRequests    chan pluginLoadRequest           // a channel used to satisfy language load requests.
-	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
-	server                  *hostServer                      // the server's RPC machinery.
-	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
-	config                  map[config.Key]string            // the configuration map for the stack, if any.
-	projectName             tokens.PackageName               // name of the project
-	debugContext            DebugContext
-
-	// Used to synchronize shutdown with in-progress plugin loads.
-	pluginLock sync.RWMutex
-
-	closer         *sync.Once
-	projectPlugins []workspace.ProjectPlugin
-
-	hasLoaderServer bool
-	newLoader       NewLoaderFunc // the loader the host was built with, passed to installLang.
-	hasMapperServer bool
-	installLang     LanguageInstaller // installs unbundled language runtimes on demand; may be nil.
-}
-
-var _ Host = (*defaultHost)(nil)
-
-type analyzerPlugin struct {
-	Plugin Analyzer
-	Info   PluginInfo
-	Name   string
-}
-
-type languagePlugin struct {
-	Plugin LanguageRuntime
-	Info   PluginInfo
-	Name   string
-}
-
-type resourcePlugin struct {
-	Plugin Provider
-	Info   PluginInfo
-	Name   string
-}
-
-func (host *defaultHost) ServerAddr() string {
-	return host.server.Address()
-}
-
-func (host *defaultHost) LoaderAddr() string {
-	if host.hasLoaderServer {
-		return host.ServerAddr()
-	}
-	return ""
-}
-
-func (host *defaultHost) MapperAddr() string {
-	if host.hasMapperServer {
-		return host.ServerAddr()
-	}
-	return ""
-}
-
-func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	host.ctx.Diag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
-}
-
-func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	host.ctx.StatusDiag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
-}
-
-func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
-	if host.debugContext == nil {
-		return errors.New("debugging is not enabled")
-	}
-	return host.debugContext.StartDebugging(info)
-}
-
-func (host *defaultHost) AttachDebugger(spec DebugSpec) bool {
-	return host.debugContext != nil && host.debugContext.AttachDebugger(spec)
-}
-
-// loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.
-func (host *defaultHost) loadPlugin(
-	loadRequestChannel chan pluginLoadRequest, load func() (any, error),
-) (any, error) {
-	var plugin any
-
-	locked := host.pluginLock.TryRLock()
-	if !locked {
-		// If we couldn't get a read lock that must be because we're shutting down, so just return an error.
-		return nil, errors.New("plugin host is shutting down")
-	}
-	defer host.pluginLock.RUnlock()
-
-	result := make(chan error)
-	loadRequestChannel <- pluginLoadRequest{
-		load: func() error {
-			p, err := load()
-			plugin = p
-			return err
-		},
-		result: result,
-	}
-	return plugin, <-result
-}
-
-func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
-	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		// First see if we already loaded this plugin.
-		if plug, has := host.analyzerPlugins[name]; has {
-			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
-			return plug.Plugin, nil
-		}
-
-		// If not, try to load and bind to a plugin.
-		plug, err := NewAnalyzer(host, host.ctx, name)
-		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
-			if infoerr != nil {
-				return nil, infoerr
-			}
-
-			// Memoize the result.
-			host.analyzerPlugins[name] = &analyzerPlugin{Plugin: plug, Info: info, Name: string(name)}
-		}
-
-		return plug, err
-	})
-	if plugin == nil || err != nil {
-		return nil, err
-	}
-	return plugin.(Analyzer), nil
-}
-
-func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
-	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		// First see if we already loaded this plugin.
-		if plug, has := host.analyzerPlugins[name]; has {
-			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
-			return plug.Plugin, nil
-		}
-
-		// If not, try to load and bind to a plugin.
-		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts, nil)
-		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
-			if infoerr != nil {
-				return nil, infoerr
-			}
-
-			// Memoize the result.
-			host.analyzerPlugins[name] = &analyzerPlugin{Plugin: plug, Info: info}
-		}
-
-		return plug, err
-	})
-	if plugin == nil || err != nil {
-		return nil, err
-	}
-	return plugin.(Analyzer), nil
-}
-
-func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {
-	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		pkg := descriptor.Name
-		version := descriptor.Version
-
-		// Try to load and bind to a plugin.
-
-		result := make(map[string]string)
-		for k, v := range host.config {
-			if k.Namespace() != pkg {
-				continue
-			}
-			result[k.Name()] = v
-		}
-		jsonConfig, err := json.Marshal(result)
-		if err != nil {
-			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
-		}
-		plug, err := NewProvider(
-			host, host.ctx, descriptor,
-			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName, e)
-		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
-			if infoerr != nil {
-				return nil, infoerr
-			}
-
-			// Warn if the plugin version was not what we expected
-			if version != nil && !env.Dev.Value() {
-				if info.Version == nil || !info.Version.GTE(*version) {
-					var v string
-					if info.Version != nil {
-						v = info.Version.String()
-					}
-					host.ctx.Diag.Warningf(
-						diag.Message("", /*urn*/
-							"resource plugin %s is expected to have version >=%s, but has %s; "+
-								"the wrong version may be on your path, or this may be a bug in the plugin"),
-						pkg, version.String(), v)
-				}
-			}
-
-			// Record the result and add the plugin's info to our list of loaded plugins if it's the first copy of its
-			// kind.
-			key := pkg
-			if info.Version != nil {
-				key += info.Version.String()
-			}
-			_, alreadyReported := host.reportedResourcePlugins[key]
-			if !alreadyReported {
-				host.reportedResourcePlugins[key] = struct{}{}
-			}
-			host.resourcePlugins[plug] = &resourcePlugin{Plugin: plug, Info: info, Name: pkg}
-		}
-
-		return plug, err
-	})
-	if plugin == nil || err != nil {
-		return nil, err
-	}
-
-	provider := plugin.(Provider)
-	return hostManagedProvider{provider, host}, nil
-}
-
-// hostManagedProvider wraps a Provider such that it can be closed by the host that created it.
-type hostManagedProvider struct {
-	Provider
-
-	host *defaultHost
-}
-
-// shutdownParentContext returns the context to use as the parent for plugin shutdown RPCs
-// (Cancel, SignalCancellation). It preserves the active OTel / OpenTracing span from the plugin
-// Context so those RPCs appear as children of the current operation rather than emitting fresh
-// root spans, but strips cancellation — shutdown still gets its timeout budget even if the caller
-// context has already been cancelled. Falls back to context.Background() when the plugin Context
-// has no base, which happens in tests that construct Context literals directly.
-func shutdownParentContext(ctx *Context) context.Context {
-	base := ctx.Request()
-	return context.WithoutCancel(base)
-}
-
-// Overrides the wrapped provider's implementation of Provider.Close to ask the managing plugin host to close the
-// provider.
-func (pc hostManagedProvider) Close() error {
-	// Send Cancel before tearing the plugin down so that the plugin can acknowledge a graceful shutdown and
-	// Plugin.Close does not treat the subsequent exit as a premature crash. defaultHost.Close does the same for
-	// providers still in resourcePlugins at shutdown, but callers that Close individual providers (e.g. the
-	// convert mapper) bypass that path.
-	cancelCtx, cancelCancel := context.WithTimeout(shutdownParentContext(pc.host.ctx), 5*time.Second)
-	defer cancelCancel()
-	contract.IgnoreError(pc.SignalCancellation(cancelCtx))
-
-	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
-	_, err := pc.host.loadPlugin(pc.host.loadRequests, func() (any, error) {
-		if err := pc.Provider.Close(); err != nil {
-			return nil, err
-		}
-		delete(pc.host.resourcePlugins, pc.Provider)
-		return nil, nil
-	})
-	return err
-}
-
-func (host *defaultHost) LanguageRuntime(runtime string,
-) (LanguageRuntime, error) {
-	// Language runtimes use their own loading channel not the main one
-	plugin, err := host.loadPlugin(host.languageLoadRequests, func() (any, error) {
-		// First see if we already loaded this plugin.
-		if plug, has := host.languagePlugins[runtime]; has {
-			contract.Assertf(plug != nil, "language plugin %v was loaded but is nil", runtime)
-			return plug.Plugin, nil
-		}
-
-		// Download and install the language runtime on demand if it is unbundled and missing.
-		if host.installLang != nil {
-			if err := host.installLang(host.ctx.Request(), runtime, host.newLoader); err != nil {
-				return nil, fmt.Errorf("failed to install language plugin %s: %w", runtime, err)
-			}
-		}
-
-		// If not, allocate a new one.
-		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.ctx.Pwd)
-		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
-			if infoerr != nil {
-				return nil, infoerr
-			}
-
-			// Memoize the result.
-			host.languagePlugins[runtime] = &languagePlugin{Plugin: plug, Info: info, Name: runtime}
-		}
-
-		return plug, err
-	})
-	if plugin == nil || err != nil {
-		return nil, err
-	}
-	return plugin.(LanguageRuntime), nil
-}
-
-func (host *defaultHost) ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
-	return workspace.GetPluginInfo(host.ctx.baseContext, host.ctx.Diag, spec, host.GetProjectPlugins())
-}
-
-func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	return host.projectPlugins
-}
-
-func (host *defaultHost) SignalCancellation() error {
-	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
-	_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		cancelCtx, cancelCancel := context.WithTimeout(shutdownParentContext(host.ctx), 30*time.Second)
-		defer cancelCancel()
-
-		// Cancel in two phases: first resource providers and analyzers, then language hosts. RunPlugin-based providers
-		// run inside a language host, so we cancel non-language host plugins first to give them a chance to shut down
-		// cleanly before cancelling the language host that spawned them.
-		var (
-			mu   sync.Mutex
-			errs []error
-		)
-
-		var wg sync.WaitGroup
-		for _, plug := range host.resourcePlugins {
-			wg.Go(func() {
-				if err := plug.Plugin.SignalCancellation(cancelCtx); err != nil {
-					mu.Lock()
-					errs = append(errs, fmt.Errorf(
-						"error signaling cancellation to resource provider '%s': %w", plug.Name, err))
-					mu.Unlock()
-				}
-			})
-		}
-		for _, plug := range host.analyzerPlugins {
-			wg.Go(func() {
-				if err := plug.Plugin.Cancel(cancelCtx); err != nil {
-					mu.Lock()
-					errs = append(errs, fmt.Errorf(
-						"error signaling cancellation to analyzer '%s': %w", plug.Name, err))
-					mu.Unlock()
-				}
-			})
-		}
-		wg.Wait()
-
-		for _, plug := range host.languagePlugins {
-			wg.Go(func() {
-				if err := plug.Plugin.Cancel(cancelCtx); err != nil {
-					mu.Lock()
-					errs = append(errs, fmt.Errorf(
-						"error signaling cancellation to language runtime '%s': %w", plug.Name, err))
-					mu.Unlock()
-				}
-			})
-		}
-		wg.Wait()
-
-		return nil, errors.Join(errs...)
-	})
-	return err
-}
-
-func (host *defaultHost) Close() (err error) {
-	host.closer.Do(func() {
-		// Wait for all plugins to finish loading, we do this by taking a Write lock on the pluginLock. This
-		// won't take until all read locks are released (indicating that no plugins are currently loading) and
-		// it will then block further read locks from being taken (preventing any new plugins from loading).
-		host.pluginLock.Lock()
-		// N.B We purposefully do not unlock this.
-
-		cancelCtx, cancelCancel := context.WithTimeout(shutdownParentContext(host.ctx), 5*time.Second)
-		defer cancelCancel()
-
-		// Close plugins in two phases: first resource providers and analyzers, then language hosts. RunPlugin-based
-		// providers run inside a language host, so we close them first to give them a chance to shut down cleanly
-		// before closing the language host that spawned them. Each plugin gets a Cancel RPC before being killed, giving
-		// it a chance to shut down gracefully.
-		var wg sync.WaitGroup
-		for _, plug := range host.resourcePlugins {
-			wg.Go(func() {
-				contract.IgnoreError(plug.Plugin.SignalCancellation(cancelCtx))
-				if err := plug.Plugin.Close(); err != nil {
-					logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Name, err)
-				}
-			})
-		}
-		for _, plug := range host.analyzerPlugins {
-			wg.Go(func() {
-				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
-				if err := plug.Plugin.Close(); err != nil {
-					logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Name, err)
-				}
-			})
-		}
-		wg.Wait()
-
-		for _, plug := range host.languagePlugins {
-			wg.Go(func() {
-				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
-				if err := plug.Plugin.Close(); err != nil {
-					logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Name, err)
-				}
-			})
-		}
-		wg.Wait()
-
-		// Empty out all maps.
-		host.analyzerPlugins = make(map[tokens.QName]*analyzerPlugin)
-		host.languagePlugins = make(map[string]*languagePlugin)
-		host.resourcePlugins = make(map[Provider]*resourcePlugin)
-
-		// Shut down the plugin loader.
-		close(host.languageLoadRequests)
-		close(host.loadRequests)
-
-		// Finally, shut down the host's gRPC server.
-		err = host.server.Cancel()
-	})
-	return err
 }
 
 // Flags can be used to filter out plugins during loading that aren't necessary.

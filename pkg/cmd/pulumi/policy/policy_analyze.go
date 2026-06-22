@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -87,18 +88,25 @@ func newPolicyAnalyzeCmd(
 					if err != nil {
 						return nil, nil, fmt.Errorf("getting working directory: %w", err)
 					}
-					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost,
-						convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+					pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(),
+						nil, pkgWorkspace.EnsureLanguageInstalled)
 					if err != nil {
+						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
+					}
+					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
+						pluginHost, nil, cwd, nil, true, nil, schema.NewLoaderServerFromContext,
+						convert.NewMapperServerFromContext)
+					if err != nil {
+						contract.IgnoreClose(pluginHost)
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)
 					}
 					analyzers, err := engine.LoadLocalPolicyPackAnalyzers(ctx, pctx, packs, nil)
 					if err != nil {
 						contract.IgnoreClose(pctx)
+						contract.IgnoreClose(pluginHost)
 						return nil, nil, err
 					}
-					return analyzers, func() { contract.IgnoreClose(pctx) }, nil
+					return analyzers, func() { contract.IgnoreClose(pctx); contract.IgnoreClose(pluginHost) }, nil
 				}
 			}
 

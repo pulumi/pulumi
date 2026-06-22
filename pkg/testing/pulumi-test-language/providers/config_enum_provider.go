@@ -64,7 +64,7 @@ func (p *ConfigEnumProvider) GetSchema(
 			Variables: configProperties,
 			Required:  configRequired,
 		},
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type:       "object",
 				Properties: configProperties,

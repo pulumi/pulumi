@@ -112,7 +112,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 				Name: strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
 				Kind: apitype.LanguagePlugin,
 			},
-			host.GetProjectPlugins(),
+			ctx.ProjectPlugins(),
 		)
 		if err != nil {
 			return nil, err
@@ -271,20 +271,30 @@ func (h *langhost) GetRequiredPackages(
 		if !apitype.IsPluginKind(info.Kind) {
 			return nil, nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
-		var parameterization *workspace.Parameterization
-		if info.Parameterization != nil {
-			sv, err := semver.ParseTolerant(info.Parameterization.Version)
+		unmarshal := func(p *pulumirpc.PackageParameterization) (*workspace.Parameterization, error) {
+			if p == nil {
+				return nil, nil
+			}
+			sv, err := semver.ParseTolerant(p.Version)
 			if err != nil {
-				return nil, nil, fmt.Errorf(
+				return nil, fmt.Errorf(
 					"illegal semver returned by language host: %s@%s: %w",
-					info.GetName(), info.Parameterization.Version, err)
+					info.GetName(), p.Version, err)
 			}
-
-			parameterization = &workspace.Parameterization{
-				Name:    info.Parameterization.Name,
+			return &workspace.Parameterization{
+				Name:    p.Name,
 				Version: sv,
-				Value:   info.Parameterization.Value,
-			}
+				Value:   p.Value,
+			}, nil
+		}
+
+		parameterization, err := unmarshal(info.Parameterization)
+		if err != nil {
+			return nil, nil, err
+		}
+		extensionParameterization, err := unmarshal(info.Extension)
+		if err != nil {
+			return nil, nil, err
 		}
 
 		packageDescriptors = append(packageDescriptors, workspace.PackageDescriptor{
@@ -295,7 +305,8 @@ func (h *langhost) GetRequiredPackages(
 				PluginDownloadURL: info.Server,
 				Checksums:         info.Checksums,
 			},
-			Parameterization: parameterization,
+			Parameterization:          parameterization,
+			ExtensionParameterization: extensionParameterization,
 		})
 	}
 

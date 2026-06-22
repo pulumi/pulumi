@@ -164,6 +164,73 @@ func TestBindResourceOptions(t *testing.T) {
 	}
 }
 
+func TestBindResourceProgram(t *testing.T) {
+	t.Parallel()
+
+	fooPkg := schema.Package{
+		Name: "foo",
+		Provider: &schema.Resource{
+			Token: "foo:index:Foo",
+			InputProperties: []*schema.Property{
+				{Name: "property", Type: schema.StringType},
+			},
+			Properties: []*schema.Property{
+				{Name: "property", Type: schema.StringType},
+			},
+		},
+		Resources: []*schema.Resource{
+			{
+				Token: "foo:index:Foo",
+				InputProperties: []*schema.Property{
+					{Name: "property", Type: schema.StringType},
+				},
+				Properties: []*schema.Property{
+					{Name: "property", Type: schema.StringType},
+				},
+			},
+		},
+	}
+
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(strings.NewReader(`
+property = external.value
+options {
+	range = 2
+	protect = true
+}
+`), "snippet.pcl"))
+	require.False(t, parser.Diagnostics.HasErrors())
+
+	program, diags, err := BindResourceProgram(
+		parser.Files[0],
+		"example",
+		"foo:index:Foo",
+		Loader(&stubSchemaLoader{Package: &fooPkg}),
+		ExtraScopeVariables(map[string]*model.Variable{
+			"external": {Name: "external", VariableType: model.DynamicType},
+		}),
+	)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+	require.Len(t, program.Nodes, 1)
+
+	res, ok := program.Nodes[0].(*Resource)
+	require.True(t, ok)
+	require.Equal(t, "example", res.Name())
+	token, _ := res.GetToken()
+	require.Equal(t, "foo::Foo", token)
+	require.Len(t, res.Inputs, 1)
+	require.NotNil(t, res.Options)
+
+	rangeValue, rangeDiags := res.Options.Range.Evaluate(&hcl.EvalContext{})
+	require.False(t, rangeDiags.HasErrors())
+	require.True(t, rangeValue.RawEquals(cty.NumberIntVal(2)))
+
+	protectValue, protectDiags := res.Options.Protect.Evaluate(&hcl.EvalContext{})
+	require.False(t, protectDiags.HasErrors())
+	require.True(t, protectValue.RawEquals(cty.True))
+}
+
 func TestBindReadResourceOptions(t *testing.T) {
 	t.Parallel()
 
@@ -272,7 +339,7 @@ func TestBindReadComponentResourceFails(t *testing.T) {
 	fooPkgSpec := schema.PackageSpec{
 		Name:    "foo",
 		Version: "1.0.0",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type: "object",
 			},
@@ -325,7 +392,7 @@ func TestBindResourceIgnoreChangesNameCollision(t *testing.T) {
 	pkgSpec := schema.PackageSpec{
 		Name:    "foo",
 		Version: "1.0.0",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"},
 		},
 		Resources: map[string]schema.ResourceSpec{
@@ -490,7 +557,7 @@ func TestBindResourceQuotedPropertyKeys(t *testing.T) {
 	pkgSpec := schema.PackageSpec{
 		Name:    "foo",
 		Version: "1.0.0",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"},
 		},
 		Types: map[string]schema.ComplexTypeSpec{

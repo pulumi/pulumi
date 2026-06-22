@@ -53,22 +53,12 @@ type testHost struct {
 	policies []plugin.Analyzer
 
 	closeMutex sync.Mutex
-
-	loaderAddress string
 }
 
 var _ plugin.Host = (*testHost)(nil)
 
 func (h *testHost) ServerAddr() string {
 	return h.engine.addr
-}
-
-func (h *testHost) LoaderAddr() string {
-	return h.loaderAddress
-}
-
-func (h *testHost) MapperAddr() string {
-	return ""
 }
 
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
@@ -102,12 +92,12 @@ func (h *testHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, st
 	panic("not implemented")
 }
 
-func (h *testHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
+func (h *testHost) Analyzer(ctx *plugin.Context, nm tokens.QName) (plugin.Analyzer, error) {
 	panic("not implemented")
 }
 
 func (h *testHost) PolicyAnalyzer(
-	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
+	ctx *plugin.Context, name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
 	hasPlugin := func(spec workspace.PluginDescriptor) bool {
 		// This is only called for the language runtime, so we can just do a simple check.
@@ -121,7 +111,9 @@ func (h *testHost) PolicyAnalyzer(
 	return analyzer, nil
 }
 
-func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+func (h *testHost) Provider(
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
 	// If we've not been given a version, we'll try and find the provider by name alone, picking the latest if there are
 	// multiple versions of the named provider. Otherwise, we can attempt to find an exact match.
 	var key string
@@ -179,7 +171,7 @@ func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (p
 
 // LanguageRuntime returns the language runtime initialized by the test host.
 // ProgramInfo is only used here for compatibility reasons and will be removed from this function.
-func (h *testHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+func (h *testHost) LanguageRuntime(ctx *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
 	if runtime != h.runtimeName {
 		return nil, fmt.Errorf("unexpected runtime %s", runtime)
 	}
@@ -187,7 +179,7 @@ func (h *testHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, erro
 }
 
 func (h *testHost) ResolvePlugin(
-	spec workspace.PluginDescriptor,
+	ctx *plugin.Context, spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
 		for key, provider := range h.providers {
@@ -221,9 +213,9 @@ func (h *testHost) ResolvePlugin(
 	}, nil
 }
 
-func (h *testHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	// We're not using project plugins, in fact this method shouldn't even really exists on Host given it's
-	// just reading off Pulumi.yaml.
+// ReleaseContext is a no-op: the conformance test host tears its providers down when it closes
+// rather than scoping them to a context.
+func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
 	return nil
 }
 

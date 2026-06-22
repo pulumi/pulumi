@@ -163,7 +163,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 		Name:    string(p.pkg()),
 		Version: p.version(),
 		Config:  configSpec,
-		Provider: pschema.ResourceSpec{
+		Provider: &pschema.ResourceSpec{
 			InputProperties: configSpec.Variables,
 			ObjectTypeSpec: pschema.ObjectTypeSpec{
 				Properties: configSpec.Variables,

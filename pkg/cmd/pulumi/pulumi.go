@@ -324,7 +324,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
-			if err := cmdutil.InitOtelReceiver(otelTracesFlag, nil); err != nil {
+			if err := cmdutil.InitOtelReceiver(otelTracesFlag, &backendlogging.SlogLogExporter{}); err != nil {
 				logging.V(3).Infof("failed to initialize OTLP receiver: %v", err)
 			}
 
@@ -588,7 +588,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	return cmd, cleanup
 }
 
-// haveNewerDevVersion checks whethere we have a newer dev version available.
+// haveNewerDevVersion checks whether we have a newer dev version available.
 func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) bool {
 	if devVersion.Major != curVersion.Major {
 		return devVersion.Major > curVersion.Major

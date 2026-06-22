@@ -411,6 +411,75 @@ class OutputApplyTests(unittest.TestCase):
             test()
 
 
+class OutputRecoverTests(unittest.TestCase):
+    def _faulted_output(self, exc: Exception) -> Output:
+        bad = asyncio.Future()
+        bad.set_exception(exc)
+        ok_res: asyncio.Future = asyncio.Future()
+        ok_res.set_result(set())
+        ok_known: asyncio.Future = asyncio.Future()
+        ok_known.set_result(True)
+        return Output(resources=ok_res, future=bad, is_known=ok_known)
+
+    def test_faulted_output_raises_at_program_exit(self):
+        """Baseline: a faulted Output causes pulumi_test to raise."""
+
+        @pulumi_test
+        async def test():
+            self._faulted_output(Exception("boom"))
+
+        with self.assertRaises(Exception) as cm:
+            test()
+        self.assertIn("boom", str(cm.exception))
+
+    def test_recover_returns_value_on_failure(self):
+        @pulumi_test
+        async def test():
+            recovered = self._faulted_output(Exception("boom")).recover(lambda _: 42)
+            self.assertEqual(await recovered.future(), 42)
+
+        test()
+
+    def test_recover_receives_exception(self):
+        seen: list[Exception] = []
+        exc = ValueError("boom")
+
+        @pulumi_test
+        async def test():
+            def handler(e: Exception) -> str:
+                seen.append(e)
+                return "fallback"
+
+            recovered = self._faulted_output(exc).recover(handler)
+            self.assertEqual(await recovered.future(), "fallback")
+
+        test()
+        self.assertEqual(len(seen), 1)
+        self.assertIs(seen[0], exc)
+
+    def test_recover_passes_through_value_on_success(self):
+        called = []
+
+        @pulumi_test
+        async def test():
+            ok = Output.from_input("hello")
+            recovered = ok.recover(lambda _: called.append("x") or "fallback")
+            self.assertEqual(await recovered.future(), "hello")
+
+        test()
+        self.assertEqual(called, [])
+
+    def test_recover_accepts_output_returning_func(self):
+        @pulumi_test
+        async def test():
+            recovered = self._faulted_output(Exception("boom")).recover(
+                lambda _: Output.from_input("recovered")
+            )
+            self.assertEqual(await recovered.future(), "recovered")
+
+        test()
+
+
 class OutputAllTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_args(self):

@@ -34,6 +34,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -530,7 +531,7 @@ func installPlugins(
 	// When SkipPluginPreInstall is set we skip this up-front install attempt — the provider registry will install
 	// plugins lazily when they are actually requested.
 	if opts == nil || !opts.SkipPluginPreInstall {
-		if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.Host.GetProjectPlugins(),
+		if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.ProjectPlugins(),
 			false /*reinstall*/, false /*explicitInstall*/, manager); err != nil {
 			if returnInstallErrors {
 				return nil, nil, err
@@ -563,7 +564,7 @@ func loadPolicyAnalyzer(
 	ctx context.Context, plugctx *plugin.Context,
 	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
-	analyzer, err := plugctx.Host.PolicyAnalyzer(name, path, opts)
+	analyzer, err := plugctx.Host.PolicyAnalyzer(plugctx, name, path, opts)
 	if err == nil {
 		return analyzer, nil
 	}
@@ -581,13 +582,13 @@ func loadPolicyAnalyzer(
 		plugctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromHost)
+	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromContext)
 	if installErr != nil {
 		return nil, fmt.Errorf("failed to automatically install analyzer plugin %q: %w: %w",
 			string(name), installErr, me)
 	}
 
-	analyzer, err = plugctx.Host.PolicyAnalyzer(name, path, opts)
+	analyzer, err = plugctx.Host.PolicyAnalyzer(plugctx, name, path, opts)
 	if err != nil {
 		var retryMe *workspace.MissingError
 		if errors.As(err, &retryMe) {
@@ -930,9 +931,28 @@ func newUpdateSource(ctx context.Context,
 
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
 
+	var observer *deploy.RegistrationObserver
+	// Now create sources for _any_ snippets in the snapshot and mux them with the main source.
+	if target.Snapshot != nil && len(target.Snapshot.Snippets) > 0 {
+		// Create a registration observer so concurrent sources (the program + any snippet sources below) can wait for
+		// each other's RegisterResource calls. The resource monitor publishes outputs on the observer; snippet sources
+		// consume them when their Snippet.References needs to read another resource's outputs.
+		observer = deploy.NewRegistrationObserver()
+
+		// We need a loader for snippets
+		loader := schema.NewPluginLoader(plugctx)
+
+		snippetSources := make([]func(string) *promise.Promise[struct{}], len(target.Snapshot.Snippets))
+		for i, snippet := range target.Snapshot.Snippets {
+			snippetSources[i] = deploy.NewSnippetSource(
+				ctx, snippet, loader, runinfo.ProjectRoot, runinfo.Pwd, observer)
+		}
+		program = deploy.NewMuxSource(ctx, observer, program, snippetSources...)
+	}
+
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	return deploy.NewEvalSource(plugctx, runinfo,
-		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, nil, program), nil
+		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, observer, program), nil
 }
 
 func update(
@@ -940,6 +960,12 @@ func update(
 	info *deploymentContext,
 	opts *deploymentOptions,
 ) (*deploy.Plan, display.ResourceChanges, error) {
+	// Ensure we have a plugin host for the operation. Constructed here (when not test-injected)
+	// because the host's diag sinks are the engine's event sinks; newDeployment closes it.
+	if err := ensureHost(ctx.Cancel.Base(), opts, info.TracingSpan); err != nil {
+		return nil, nil, err
+	}
+
 	// Create an appropriate set of event listeners.
 	var actions runActions
 	if opts.DryRun {

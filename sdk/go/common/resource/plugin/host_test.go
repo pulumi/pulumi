@@ -15,85 +15,16 @@
 package plugin
 
 import (
-	"context"
-	"errors"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// TestHostManagedProviderCloseSignalsCancellation locks in the contract that hostManagedProvider.Close sends
-// SignalCancellation before tearing the underlying provider down. Without this, Plugin.Close treats the subsequent
-// process exit as a premature crash (since shutdownAcknowledged is only flipped on Cancel RPC ack) and emits a
-// misleading "exited prematurely" error to the user. defaultHost.Close does the same thing for plugins still
-// registered at shutdown; callers that close individual providers (e.g. the convert mapper) bypass that path.
-func TestHostManagedProviderCloseSignalsCancellation(t *testing.T) {
-	t.Parallel()
-
-	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, nil)
-	require.NoError(t, err)
-	host, ok := ctx.Host.(*defaultHost)
-	require.True(t, ok)
-	t.Cleanup(func() { require.NoError(t, host.Close()) })
-
-	var calls []string
-	mockProv := &MockProvider{
-		SignalCancellationF: func(context.Context) error {
-			calls = append(calls, "SignalCancellation")
-			return nil
-		},
-		CloseF: func() error {
-			calls = append(calls, "Close")
-			return nil
-		},
-	}
-
-	host.resourcePlugins[mockProv] = &resourcePlugin{Plugin: mockProv, Name: "mock"}
-
-	managed := hostManagedProvider{Provider: mockProv, host: host}
-	require.NoError(t, managed.Close())
-
-	require.Equal(t, []string{"SignalCancellation", "Close"}, calls)
-	require.NotContains(t, host.resourcePlugins, Provider(mockProv))
-}
-
-func TestClosePanic(t *testing.T) {
-	t.Parallel()
-
-	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil, nil, nil)
-	require.NoError(t, err)
-	host, ok := ctx.Host.(*defaultHost)
-	require.True(t, ok)
-
-	// Spin up a load of loadPlugin calls and then Close the context. This should not panic.
-	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			// We expect some of these to error that the host is shutting down, that's fine this test is just
-			// checking nothing panics.
-			_, _ = host.loadPlugin(host.loadRequests, func() (any, error) {
-				return nil, nil
-			})
-		}()
-	}
-	err = host.Close()
-	require.NoError(t, err)
-
-	wg.Wait()
-}
 
 func TestIsLocalPluginPath(t *testing.T) {
 	t.Parallel()
@@ -197,7 +128,7 @@ func TestIsLocalPluginPath(t *testing.T) {
 	}
 }
 
-func TestNewDefaultHost_PackagesResolution(t *testing.T) {
+func TestProjectPluginsFromProject_PackagesResolution(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for our test
@@ -231,13 +162,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 		"git-plugin":      {Source: "git://github.com/pulumi/pulumi-aws"}, // This should be skipped
 	}
 
-	// Create the host with our packages
-	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil, nil, nil)
+	projectPlugins, err := projectPluginsFromProject(ctx, nil, packages)
 	require.NoError(t, err)
-	defer host.Close()
-
-	// Get the project plugins
-	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (local-plugin and relative-plugin)
 	require.Len(t, projectPlugins, 2)
@@ -260,8 +186,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	assert.NotContains(t, pluginMap, "git-plugin")
 }
 
-// TestNewDefaultHost_BothPluginsAndPackages tests the combined resolution of plugins and packages
-func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
+// TestProjectPluginsFromProject_BothPluginsAndPackages tests the combined resolution of plugins and packages
+func TestProjectPluginsFromProject_BothPluginsAndPackages(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for our test
@@ -298,11 +224,8 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 		"azure":        {Source: "azure"}, // This should be skipped as it's not a local path
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil, nil, nil)
+	projectPlugins, err := projectPluginsFromProject(ctx, plugins, packages)
 	require.NoError(t, err)
-	defer host.Close()
-
-	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (1 from plugins, 1 from packages)
 	require.Len(t, projectPlugins, 2)
@@ -316,111 +239,4 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 	assert.True(t, pluginNames["aws"])
 	assert.True(t, pluginNames["local-plugin"])
 	assert.False(t, pluginNames["azure"])
-}
-
-func TestNewDefaultHost_LoaderAddress(t *testing.T) {
-	t.Parallel()
-
-	ctx := &Context{
-		baseContext: t.Context(),
-		Root:        t.TempDir(),
-		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-			Color: colors.Never,
-		}),
-	}
-
-	var captureHost Host
-	mockLoader := func(h Host) codegenrpc.LoaderServer {
-		captureHost = h
-		return codegenrpc.UnimplementedLoaderServer{}
-	}
-
-	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader, nil, nil)
-	require.NoError(t, err)
-	defer host.Close()
-
-	assert.Equal(t, host, captureHost, "loader function should be called during host creation")
-
-	loaderAddr := host.LoaderAddr()
-	assert.NotEmpty(t, loaderAddr)
-	assert.Equal(t, host.ServerAddr(), loaderAddr)
-
-	assert.Equal(t, "", host.MapperAddr(), "a host built without a mapper should have no mapper address")
-}
-
-func TestNewDefaultHost_MapperAddress(t *testing.T) {
-	t.Parallel()
-
-	ctx := &Context{
-		baseContext: t.Context(),
-		Root:        t.TempDir(),
-		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-			Color: colors.Never,
-		}),
-	}
-
-	var captureHost Host
-	mockMapper := func(_ context.Context, h Host) codegenrpc.MapperServer {
-		captureHost = h
-		return codegenrpc.UnimplementedMapperServer{}
-	}
-
-	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", nil, mockMapper, nil)
-	require.NoError(t, err)
-	defer host.Close()
-
-	assert.Equal(t, host, captureHost, "mapper function should be called during host creation")
-
-	mapperAddr := host.MapperAddr()
-	assert.NotEmpty(t, mapperAddr)
-	assert.Equal(t, host.ServerAddr(), mapperAddr)
-}
-
-func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
-	t.Parallel()
-
-	sink := diagtest.LogSink(t)
-
-	var loaderCalls int
-	mockLoader := func(Host) codegenrpc.LoaderServer {
-		loaderCalls++
-		return codegenrpc.UnimplementedLoaderServer{}
-	}
-
-	errInstall := errors.New("install boom")
-	var (
-		installCalls   int
-		gotRuntime     string
-		gotLoaderIsNil bool
-	)
-	installLang := func(_ context.Context, runtime string, newLoader NewLoaderFunc) error {
-		installCalls++
-		gotRuntime = runtime
-		gotLoaderIsNil = newLoader == nil
-		// Invoke the loader we were handed to prove it is the host's loader, not nil.
-		if newLoader != nil {
-			newLoader(nil)
-		}
-		return errInstall
-	}
-
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, mockLoader, nil, installLang)
-	require.NoError(t, err)
-	host, ok := ctx.Host.(*defaultHost)
-	require.True(t, ok)
-	t.Cleanup(func() { require.NoError(t, host.Close()) })
-
-	loaderCallsBeforeLoad := loaderCalls
-	lang, err := host.LanguageRuntime("test-lang")
-
-	// The installer ran exactly once, for the requested runtime, and its error gated the load so we never
-	// got a runtime back.
-	require.ErrorIs(t, err, errInstall)
-	assert.Nil(t, lang)
-	assert.Equal(t, 1, installCalls)
-	assert.Equal(t, "test-lang", gotRuntime)
-
-	// The installer received the host's loader, not nil, and was able to invoke it.
-	assert.False(t, gotLoaderIsNil, "host should thread its loader to the installer")
-	assert.Greater(t, loaderCalls, loaderCallsBeforeLoad, "installer should have invoked the host's loader")
 }

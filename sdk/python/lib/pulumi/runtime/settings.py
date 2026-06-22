@@ -21,6 +21,7 @@ from __future__ import annotations
 from ._instrumentation import wrap_with_context
 
 import asyncio
+import base64
 import os
 import threading
 from contextvars import ContextVar
@@ -72,6 +73,11 @@ class Settings:
         self.legacy_apply_enabled = legacy_apply_enabled
         self.feature_support = {}
         self.organization = organization
+        # Caches package references returned by `RegisterPackage` for
+        # parameterized providers. Scoped to the deployment so concurrent inline
+        # programs each register against their own engine and receive distinct
+        # refs.
+        self.package_refs = {}
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = (
@@ -140,6 +146,9 @@ class Settings:
 
     @contextproperty
     def feature_support(self) -> Optional[dict]: ...
+
+    @contextproperty
+    def package_refs(self) -> Optional[dict]: ...
 
     @contextproperty
     def callbacks(self) -> Optional[_CallbackServicer]: ...
@@ -381,6 +390,63 @@ def _sync_monitor_supports_invoke_transforms() -> bool:
 
 def _sync_monitor_supports_parameterization() -> bool:
     return SETTINGS.feature_support.get("parameterization", False)
+
+
+async def register_package(
+    base_provider_name: str,
+    base_provider_version: str,
+    base_provider_download_url: str,
+    package_name: str,
+    package_version: str,
+    base64_parameter: str,
+) -> str:
+    """
+    Registers a parameterized provider package with the resource monitor and
+    returns its package reference. The result is cached per deployment so that
+    concurrent inline programs each register against their own engine and
+    receive distinct refs.
+    """
+    key = "\0".join(
+        [
+            base_provider_name,
+            base_provider_version,
+            base_provider_download_url,
+            package_name,
+            package_version,
+            base64_parameter,
+        ]
+    )
+
+    package_refs = SETTINGS.package_refs
+    existing = package_refs.get(key)
+    if existing is not None:
+        return existing
+
+    if not _sync_monitor_supports_parameterization():
+        raise Exception(
+            "The Pulumi CLI does not support parameterization. Please update the Pulumi CLI."
+        )
+
+    monitor = get_monitor()
+    if monitor is None:
+        raise Exception("No monitor available")
+
+    parameterization = resource_pb2.Parameterization(
+        name=package_name,
+        version=package_version,
+        value=base64.b64decode(base64_parameter),
+    )
+    response = monitor.RegisterPackage(
+        resource_pb2.RegisterPackageRequest(
+            name=base_provider_name,
+            version=base_provider_version,
+            download_url=base_provider_download_url,
+            parameterization=parameterization,
+        )
+    )
+    ref = response.ref
+    package_refs[key] = ref
+    return ref
 
 
 async def monitor_supports_resource_hooks() -> bool:

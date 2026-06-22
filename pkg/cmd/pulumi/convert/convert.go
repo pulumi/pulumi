@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -221,7 +222,10 @@ func runConvert(
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
+	// The context owns its loader/mapper servers; the host is caller-owned. Close the context
+	// first, then the host.
 	defer contract.IgnoreClose(pCtx.Host)
+	defer contract.IgnoreClose(pCtx)
 
 	// Translate well known sources to plugins
 	switch strings.ToLower(from) {
@@ -248,7 +252,7 @@ func runConvert(
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-			languagePlugin, err := pCtx.Host.LanguageRuntime(language)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(pCtx, language)
 			if err != nil {
 				return nil, err
 			}
@@ -334,7 +338,7 @@ func runConvert(
 	}
 
 	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
-	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx.Host, stderr, stderr,
+	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx, stderr, stderr,
 		nil, packageworkspace.Options{})
 
 	installPlugin := func(pluginName string) *semver.Version {
@@ -363,12 +367,12 @@ func runConvert(
 		return &version
 	}
 
-	loader := schema.NewPluginLoader(pCtx.Host)
+	loader := schema.NewPluginLoader(pCtx)
 
 	baseMapper, err := convert.NewBasePluginMapper(
 		pluginstorage.Instance,
 		from, /*conversionKey*/
-		convert.ProviderFactoryFromHost(ctx, pCtx.Host),
+		convert.ProviderFactoryFromHost(ctx, pCtx),
 		installPlugin,
 		mappings,
 	)
@@ -499,8 +503,14 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		pluginHost, err := pkghost.New(
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled)
+		if err != nil {
+			return err
+		}
+		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		_, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 		if err != nil {
 			return err
 		}

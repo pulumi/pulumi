@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -109,8 +111,15 @@ func schemaFromSourceOrStdin(cmd *cobra.Command, source string, extraArgs []stri
 		return nil, err
 	}
 	sink := cmdutil.Diag()
-	pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-		nil, schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+	pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+		pkgWorkspace.EnsureLanguageInstalled)
+	if err != nil {
+		return nil, err
+	}
+	// host is owned here, closed after the context
+	defer contract.IgnoreClose(pluginHost)
+	pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
+		nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 	if err != nil {
 		return nil, err
 	}

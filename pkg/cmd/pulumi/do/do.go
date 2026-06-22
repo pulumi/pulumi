@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -53,7 +54,7 @@ import (
 func NewDoCmd(
 	lm cmdBackend.LoginManager, ws pkgWorkspace.Context,
 	pluginFromSource func(context.Context, *plugin.Context, string, string) (plugin.Provider, error),
-	newHost func() (plugin.Host, error),
+	newHost func(ctx context.Context, d, statusD diag.Sink) (plugin.Host, error),
 	loadConverterPlugin func(
 		*plugin.Context, string, func(sev diag.Severity, msg string),
 	) (plugin.Converter, error),
@@ -69,8 +70,12 @@ func NewDoCmd(
 		}
 	}
 	if newHost == nil {
-		newHost = func() (plugin.Host, error) {
-			return nil, nil
+		newHost = func(ctx context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+			// The host is owned by the do command (closed via cleanup), so its lifetime context is
+			// uncancellable. Plugin logs route through the command's diagnostics sinks, so a
+			// provider's output reaches the command's stdout/stderr the same way it does without a
+			// pre-constructed host.
+			return pkghost.New(context.WithoutCancel(ctx), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled)
 		}
 	}
 	if loadConverterPlugin == nil {
@@ -129,37 +134,30 @@ func NewDoCmd(
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return nil, nil, fmt.Errorf("read project: %w", err)
 		}
-		evalContext := functionEvalContext{
-			WorkingDir: wd,
-		}
+		// If we're inside a Pulumi project, the working directory the plugin host runs in should be
+		// the project's pwd, not whatever the user happened to invoke `pulumi` from. Snapshot that
+		// here so plugin.NewContext / pluginFromSource see the project-relative path; the rest of
+		// the PCL evaluation state (project name, stack identity, ...) is derived lazily by
+		// packageCommand.evalContext().
 		if proj != nil {
 			wd, _, err = (&engine.Projinfo{Proj: proj, Root: root}).GetPwdMain()
 			if err != nil {
 				return nil, nil, fmt.Errorf("get project working directory: %w", err)
 			}
-			evalContext = functionEvalContext{
-				WorkingDir:    wd,
-				ProjectName:   string(proj.Name),
-				RootDirectory: root,
-			}
-			// When a stack is selected in the workspace, expose its organization and short name to the PCL
-			// runtime so input files can reference pulumi.organization / pulumi.stack the same way a program
-			// would. We deliberately read just the local selection rather than contacting a backend — `do`
-			// is meant to stay usable without a login.
-			evalContext.Organization, evalContext.Stack = currentStackIdentity(ws)
 		}
 
 		ctx := cmd.Context()
 
-		host, err := newHost()
+		host, err := newHost(ctx, sink, sink)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
 		}
 
 		pctx, err := plugin.NewContext(
 			ctx, sink, sink, host, nil, wd, nil, false,
-			nil, schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 		if err != nil {
+			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}
 
@@ -167,11 +165,14 @@ func NewDoCmd(
 		if err != nil {
 			// Close the plugin context we opened above since we're not returning it to the caller.
 			contract.IgnoreClose(pctx)
+			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("load provider: %w", err)
 		}
 		cleanup := func() {
 			contract.IgnoreClose(p)
 			contract.IgnoreClose(pctx)
+			// host is owned here, closed after the context
+			contract.IgnoreClose(host)
 		}
 
 		// Parse "name@version" out of pkgargs[0] so we can also describe the package to downstream consumers
@@ -240,15 +241,20 @@ func NewDoCmd(
 		subcmd, err := (&packageCommand{
 			pkg:               pkg,
 			args:              pargs,
-			evalContext:       evalContext,
 			converter:         loadConverter,
-			loaderTarget:      pctx.Host.LoaderAddr(),
+			loaderTarget:      pctx.LoaderAddr(),
 			packageDescriptor: packageDescriptor,
 			provider:          p,
 			spec:              boundpkg,
 			dryrun:            dryrun,
 			showSecrets:       showSecrets,
 			stateless:         stateless,
+			wd:                wd,
+			proj:              proj,
+			root:              root,
+			ws:                ws,
+			lm:                lm,
+			sink:              sink,
 		}).newCommand()
 		if err != nil {
 			cleanup()
@@ -341,11 +347,9 @@ func NewDoCmd(
 	}
 
 	cmd := &cobra.Command{
-		// Hidden for now while we iterate.
-		Hidden: true,
-		Use:    "do <pkg:mod:typ> [command]",
-		Short:  "Interact directly with cloud resources",
-		Long: `Interact with any cloud
+		Use:   "do <pkg:mod:typ> [command]",
+		Short: "[EXPERIMENTAL] Interact directly with cloud resources",
+		Long: `[EXPERIMENTAL] Interact with any cloud
 
 pulumi do dynamically builds a CLI from any Pulumi provider's schema, giving you
 direct CRUD access to cloud resources without a Pulumi program or state file.
@@ -459,17 +463,47 @@ func currentStackIdentity(ws pkgWorkspace.Context) (organization, stack string) 
 type packageCommand struct {
 	pkg               string
 	args              []string
-	evalContext       functionEvalContext
 	converter         func(string) (plugin.Converter, error)
 	loaderTarget      string
 	packageDescriptor *codegenrpc.GetSchemaRequest
 	provider          plugin.Provider
 	providerFile      string
+	providerURN       string
 	format            string
 	spec              *schema.Package
 	dryrun            bool
 	showSecrets       bool
 	stateless         bool
+
+	// wd / proj / root capture the working-directory and project-loading state from buildSubcommand
+	// — kept here rather than baked into a snapshot of functionEvalContext so the evalContext()
+	// method can re-read the workspace's currently-selected stack each time a subcommand runs
+	// (test fixtures that mutate the workspace between Execute() calls otherwise see stale data).
+	wd   string
+	proj *workspace.Project
+	root string
+
+	// ws / lm let configureProvider open the current stack's backend when --provider is set so it
+	// can read the referenced provider resource's Inputs. Plumbed from NewDoCmd.
+	ws   pkgWorkspace.Context
+	lm   cmdBackend.LoginManager
+	sink diag.Sink
+}
+
+// evalContext builds the PCL evaluation context from the workspace state we captured at construction
+// time. Computed on demand so the stack selection follows ws (helpful in tests, and matches the
+// "best-effort, no login required" intent — currentStackIdentity reads only the local workspace).
+func (pc *packageCommand) evalContext() functionEvalContext {
+	ec := functionEvalContext{WorkingDir: pc.wd}
+	if pc.proj != nil {
+		ec.ProjectName = string(pc.proj.Name)
+		ec.RootDirectory = pc.root
+		// When a stack is selected in the workspace, expose its organization and short name to the
+		// PCL runtime so input files can reference pulumi.organization / pulumi.stack the same way
+		// a program would.
+		ec.Organization, ec.Stack = currentStackIdentity(pc.ws)
+	}
+	return ec
 }
 
 func (pc *packageCommand) newCommand() (*cobra.Command, error) {
