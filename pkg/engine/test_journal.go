@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -192,9 +193,10 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
 
-	// A missing blob can't happen here — extension resources only enter the
-	// journal alongside their ExtensionParameterizeStep — so drop the missing list.
-	snapExtensions, _ := deploy.MapExtensions(filteredResources, liveExtensions, base)
+	// Extension resources only enter the journal alongside their
+	// ExtensionParameterizeStep, so every referenced blob is present.
+	snapExtensions, missing := deploy.MapExtensions(filteredResources, liveExtensions, base)
+	contract.Assertf(len(missing) == 0, "journal snapshot is missing extension blobs: %v", missing)
 
 	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets, snapExtensions)
 	normSnap, err := snap.NormalizeURNReferences()

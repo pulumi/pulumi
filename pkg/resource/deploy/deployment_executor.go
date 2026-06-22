@@ -762,6 +762,9 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 				if err != nil {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
+				if err := ex.deployment.ensureProviderExtension(res); err != nil {
+					return fmt.Errorf("could not parameterize extension for resource %v: %w", res.URN, err)
+				}
 
 				oldViews := ex.deployment.GetOldViews(res.URN)
 				step := NewRefreshStep(ex.deployment, nil, res, oldViews, nil)
@@ -790,6 +793,9 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 				err := ex.deployment.EnsureProvider(res.Provider)
 				if err != nil {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+				}
+				if err := ex.deployment.ensureProviderExtension(res); err != nil {
+					return fmt.Errorf("could not parameterize extension for resource %v: %w", res.URN, err)
 				}
 
 				oldViews := ex.deployment.GetOldViews(res.URN)

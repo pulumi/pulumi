@@ -1745,7 +1745,7 @@ func (s *ExtensionParameterizeStep) Ref() apitype.ExtensionRef { return s.ref }
 func (s *ExtensionParameterizeStep) Extension() apitype.Extension { return s.extension }
 
 func (s *ExtensionParameterizeStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	version, err := semver.ParseTolerant(s.extension.Version)
+	version, err := semver.Parse(s.extension.Version)
 	if err != nil {
 		s.cts.MustReject(err)
 		return resource.StatusUnknown, nil, fmt.Errorf("could not parse provider version: %w", err)

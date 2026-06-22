@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 
-	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -395,21 +394,20 @@ func (d *Deployment) PostStepError() error {
 }
 
 // LookupOrRegisterExtension is the atomic dedup point for extension parameterization.
-// It returns a promise for the parameterization of extension ref on provider; callers
-// wait on it and never touch the underlying CompletionSource.
-//
-// The first caller for a (provider, ref) pair has makeStep called with the
-// CompletionSource the resulting step must fulfill, and that step is returned to be
-// emitted. Later callers for the same pair get the same promise and a nil step.
+// If the (provider, ref) pair is already in flight or done, returns the existing Promise
+// (caller should wait on it) and a nil CompletionSource.
+// If the pair is not yet registered, atomically records a new in-flight entry and returns
+// the CompletionSource. The caller MUST eventually call Fulfill or Reject on it — the
+// caller is now responsible for performing the parameterize work and signaling completion.
+// Exactly one of the returned values is non-nil.
 func (d *Deployment) LookupOrRegisterExtension(
 	provider sdkproviders.Reference, ref apitype.ExtensionRef,
-	makeStep func(*promise.CompletionSource[struct{}]) Step,
-) (Step, *promise.Promise[struct{}]) {
+) (existing *promise.Promise[struct{}], created *promise.CompletionSource[struct{}]) {
 	d.extensionsM.Lock()
 	defer d.extensionsM.Unlock()
 	for _, e := range d.extensions[provider] {
 		if e.ref == ref {
-			return nil, e.done.Promise()
+			return e.done.Promise(), nil
 		}
 	}
 	completionSource := &promise.CompletionSource[struct{}]{}
@@ -417,7 +415,7 @@ func (d *Deployment) LookupOrRegisterExtension(
 		ref:  ref,
 		done: completionSource,
 	})
-	return makeStep(completionSource), completionSource.Promise()
+	return nil, completionSource
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -683,62 +681,6 @@ func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
-// rehydrateExtensionsForProvider reapplies every extension parameterization in the previous
-// snapshot that targets the given provider. Called from SameProvider after the provider's
-// plugin has been loaded, so the plugin is ready to receive Parameterize calls before any
-// resource ops on extension resources begin.
-func (d *Deployment) rehydrateExtensionsForProvider(ctx context.Context, providerState *resource.State) error {
-	if d.prev == nil || len(d.prev.Extensions) == 0 {
-		return nil
-	}
-
-	providerURN := providerState.URN
-	providerRef, err := sdkproviders.NewReference(providerURN, providerState.ID)
-	if err != nil {
-		return fmt.Errorf("rehydrate extensions: build reference for provider %s: %w", providerURN, err)
-	}
-	provider, ok := d.providers.GetProvider(providerRef)
-	if !ok {
-		// Provider didn't actually get loaded into the registry. Nothing to rehydrate against.
-		return nil
-	}
-
-	// Collect the unique ExtensionRefs that resources in state attribute to this provider.
-	providerKey := providerRef.String()
-	seen := map[apitype.ExtensionRef]bool{}
-	for _, res := range d.prev.Resources {
-		if res.ExtensionRef == "" || res.Provider != providerKey {
-			continue
-		}
-		ref := apitype.ExtensionRef(res.ExtensionRef)
-		if seen[ref] {
-			continue
-		}
-		seen[ref] = true
-
-		blob, ok := d.prev.Extensions[ref]
-		if !ok {
-			return fmt.Errorf("rehydrate extensions: blob for ref %s (resource %s) not found in snapshot",
-				ref, res.URN)
-		}
-		version, err := semver.ParseTolerant(blob.Version)
-		if err != nil {
-			return fmt.Errorf("rehydrate extensions: parse version for ref %s: %w", ref, err)
-		}
-		if _, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
-			Parameters: &plugin.ParameterizeValue{
-				Name:    blob.Name,
-				Version: version,
-				Value:   blob.Value,
-			},
-		}); err != nil {
-			return fmt.Errorf("rehydrate extensions: parameterize provider %s with ref %s: %w",
-				providerRef, ref, err)
-		}
-	}
-	return nil
-}
-
 // SameProvider configures a provider from state without changes.
 // If fromCheck is true, the provider was loaded during Check/Diff and we can reuse it.
 // If fromCheck is false (e.g., from EnsureProvider), we load fresh and don't touch UnconfiguredID.
@@ -749,12 +691,7 @@ func (d *Deployment) SameProvider(res *resource.State, fromCheck bool) error {
 	} else {
 		ctx = d.ctx.Base()
 	}
-	if err := d.providers.Same(ctx, res, fromCheck); err != nil {
-		return err
-	}
-	// Reapply any extension parameterizations recorded in state for this provider so the
-	// just-loaded plugin recognizes extension resources before any ops touch them.
-	return d.rehydrateExtensionsForProvider(ctx, res)
+	return d.providers.Same(ctx, res, fromCheck)
 }
 
 // EnsureProvider ensures that the provider for the given resource is available in the registry. It assumes
@@ -791,6 +728,32 @@ func (d *Deployment) EnsureProvider(provider string) error {
 	}
 
 	return nil
+}
+
+// ensureProviderExtension parameterizes a resource's provider with the extension the resource references, if any.
+func (d *Deployment) ensureProviderExtension(res *resource.State) error {
+	if res.ExtensionRef == "" || d.prev == nil {
+		return nil
+	}
+	providerRef, err := sdkproviders.ParseReference(res.Provider)
+	if err != nil {
+		return fmt.Errorf("invalid provider reference %v: %w", res.Provider, err)
+	}
+	provider, ok := d.providers.GetProvider(providerRef)
+	if !ok {
+		return nil
+	}
+	blob, ok := d.prev.Extensions[res.ExtensionRef]
+	if !ok {
+		return fmt.Errorf("extension blob for %s (resource %s) not found in snapshot", res.ExtensionRef, res.URN)
+	}
+	_, created := d.LookupOrRegisterExtension(providerRef, res.ExtensionRef)
+	if created == nil {
+		return nil
+	}
+	step := NewExtensionParameterizeStep(d, provider, res.ExtensionRef, blob, created)
+	_, _, err = step.Apply()
+	return err
 }
 
 func (d *Deployment) GetProvider(ref sdkproviders.Reference) (plugin.Provider, bool) {

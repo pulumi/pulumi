@@ -691,11 +691,9 @@ type OperationStatus struct {
 	Started int64      `json:"started"`
 }
 
-// ExtensionRef identifies an extension parameterization within a deployment. Its
-// value is the package reference RegisterPackage returns to the SDK: a content
-// hash (sha256 over the extension's name, version, and value), so two identical
-// extensions share a ref and are stored once. It keys the deployment's Extensions map.
-type ExtensionRef string
+// ExtensionRef aliases [resource.ExtensionRef]. The canonical type lives in the
+// resource package so resource.State can use it without an import cycle.
+type ExtensionRef = resource.ExtensionRef
 
 type Extension struct {
 	Name    string `json:"name"`

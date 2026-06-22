@@ -203,8 +203,7 @@ func (sm *SnapshotManager) doExtendParameterize(step deploy.Step) (engine.Snapsh
 	return &noopSnapshotMutation{}, nil
 }
 
-// noopSnapshotMutation records nothing. ExtensionParameterizeStep returns one
-// because parameterizing a plugin changes the plugin process, not the snapshot.
+// noopSnapshotMutation records nothing.
 type noopSnapshotMutation struct{}
 
 func (*noopSnapshotMutation) End(_ deploy.Step, _ bool) error { return nil }
