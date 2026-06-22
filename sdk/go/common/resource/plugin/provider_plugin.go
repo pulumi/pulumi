@@ -188,6 +188,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	prefix := fmt.Sprintf("%v (resource)", pkg)
 	mapperAddr := mapperTarget(ctx)
 	loaderAddr := loaderTarget(ctx)
+	resolverAddr := resolverTarget(ctx)
 
 	if attachPort != nil {
 		port := *attachPort
@@ -206,6 +207,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				InvokeWithPreview:           true,
 				MapperTarget:                mapperAddr,
 				LoaderTarget:                loaderAddr,
+				ResolverTarget:              resolverAddr,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -271,6 +273,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				InvokeWithPreview:           true,
 				MapperTarget:                mapperAddr,
 				LoaderTarget:                loaderAddr,
+				ResolverTarget:              resolverAddr,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -343,6 +346,15 @@ func loaderTarget(ctx *Context) *string {
 	return nil
 }
 
+// resolverTarget returns the context's resolver address as an optional handshake field, nil when the context has no
+// resolver service.
+func resolverTarget(ctx *Context) *string {
+	if addr := ctx.ResolverAddr(); addr != "" {
+		return &addr
+	}
+	return nil
+}
+
 func handshake(
 	ctx context.Context,
 	bin string,
@@ -361,6 +373,7 @@ func handshake(
 		InvokeWithPreview:           req.InvokeWithPreview,
 		MapperTarget:                req.MapperTarget,
 		LoaderTarget:                req.LoaderTarget,
+		ResolverTarget:              req.ResolverTarget,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -409,6 +422,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	mapperAddr := mapperTarget(ctx)
 	loaderAddr := loaderTarget(ctx)
+	resolverAddr := resolverTarget(ctx)
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*ProviderHandshakeResponse, error) {
@@ -423,6 +437,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			InvokeWithPreview:           true,
 			MapperTarget:                mapperAddr,
 			LoaderTarget:                loaderAddr,
+			ResolverTarget:              resolverAddr,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -552,6 +567,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		InvokeWithPreview:           req.InvokeWithPreview,
 		MapperTarget:                req.MapperTarget,
 		LoaderTarget:                req.LoaderTarget,
+		ResolverTarget:              req.ResolverTarget,
 	})
 	if err != nil {
 		return nil, err
