@@ -66,6 +66,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
@@ -498,7 +499,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Commands: []*cobra.Command{
 				auth.NewLoginCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
-				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
+				whoami.NewWhoAmICmd(needle.Context{WS: pkgWorkspace.Instance}),
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
@@ -518,7 +519,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Commands: []*cobra.Command{
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
-				packagecmd.NewPackageCmd(),
+				packagecmd.NewPackageCmd(needle.Context{WS: pkgWorkspace.Instance}),
 			},
 		},
 		{
