@@ -80,5 +80,5 @@ function parseManifestContent(name: string, content: string): Record<string, any
     if (name.endsWith(".json")) {
         return JSON.parse(content);
     }
-    return (yaml.safeLoad(content) as Record<string, any>) || {};
+    return (yaml.load(content) as Record<string, any>) || {};
 }
