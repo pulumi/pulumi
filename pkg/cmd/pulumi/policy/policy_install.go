@@ -127,14 +127,13 @@ func (cmd *policyInstallCmd) Run(
 	}
 
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmd.diag, cmd.diag, nil,
-		pkgWorkspace.EnsureLanguageInstalled)
+		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 	if err != nil {
 		return fmt.Errorf("creating plugin host: %w", err)
 	}
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
-	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, pluginHost, nil, cwd, nil, true, nil,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, pluginHost, nil, cwd, nil, true, nil)
 	if err != nil {
 		return fmt.Errorf("creating plugin context: %w", err)
 	}

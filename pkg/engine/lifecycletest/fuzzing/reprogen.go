@@ -236,7 +236,7 @@ func writeSnapshotTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)")
+			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)")
 			g.writeBlock(
 				"reproOpts := lt.TestUpdateOptions{",
 				func(g *generator) {
@@ -342,7 +342,7 @@ func writeFrameworkTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, setupLoaders...)")
+			g.writeLine("setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, setupLoaders...)")
 			g.writeBlock(
 				"setupOpts := lt.TestUpdateOptions{",
 				func(g *generator) {
@@ -400,7 +400,7 @@ func writeFrameworkTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)")
+			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)")
 			g.writeBlock(
 				"reproOpts := lt.TestUpdateOptions{",
 				func(g *generator) {

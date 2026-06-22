@@ -732,14 +732,13 @@ func NewImportCmd() *cobra.Command {
 			}
 			sink := cmdutil.Diag()
 			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
-				pkgWorkspace.EnsureLanguageInstalled)
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 			if err != nil {
 				return fmt.Errorf("create plugin host: %w", err)
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
-			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil,
-				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -964,14 +963,13 @@ func NewImportCmd() *cobra.Command {
 				sink := cmdutil.Diag()
 
 				innerHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
-					pkgWorkspace.EnsureLanguageInstalled)
+					pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 				if err != nil {
 					return nil, nil, err
 				}
 				// host is owned here, closed after the context
 				defer contract.IgnoreClose(innerHost)
-				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil,
-					schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil)
 				if err != nil {
 					return nil, nil, err
 				}

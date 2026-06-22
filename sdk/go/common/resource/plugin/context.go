@@ -28,11 +28,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // Context is used to group related operations together so that
@@ -90,21 +87,6 @@ func (ctx *Context) LoaderAddr() string {
 	return ctx.loaderServer.Addr()
 }
 
-// StartLoader starts a schema loader service bound to this context's workspace view. The
-// service is shut down when the context is closed. A context may have at most one loader;
-// contexts constructed with a non-nil NewLoaderFunc already have one.
-func (ctx *Context) StartLoader(newLoader NewLoaderFunc) error {
-	contract.Assertf(ctx.loaderServer == nil, "context already has a loader")
-	server, err := NewServer(ctx, func(srv *grpc.Server) {
-		codegenrpc.RegisterLoaderServer(srv, newLoader(ctx))
-	})
-	if err != nil {
-		return err
-	}
-	ctx.loaderServer = server
-	return nil
-}
-
 // MapperAddr returns the address of the conversion mapper service bound to this context, or
 // the empty string if the context has none.
 func (ctx *Context) MapperAddr() string {
@@ -114,18 +96,22 @@ func (ctx *Context) MapperAddr() string {
 	return ctx.mapperServer.Addr()
 }
 
-// StartMapper starts a conversion mapper service bound to this context's workspace view. The
-// service is shut down when the context is closed. A context may have at most one mapper;
-// contexts constructed with a non-nil NewMapperFunc already have one.
-func (ctx *Context) StartMapper(newMapper NewMapperFunc) error {
-	contract.Assertf(ctx.mapperServer == nil, "context already has a mapper")
-	server, err := NewServer(ctx, func(srv *grpc.Server) {
-		codegenrpc.RegisterMapperServer(srv, newMapper(ctx))
-	})
+// startServices binds this context's loader and mapper services, sourced from host. Each
+// service is workspace-scoped: it boots plugins against this context's view and is shut down
+// when the context is closed. A host may serve no loader and/or no mapper, in which case the
+// corresponding service is left unset.
+func (ctx *Context) startServices(host Host) error {
+	loader, err := host.Loader(ctx)
 	if err != nil {
 		return err
 	}
-	ctx.mapperServer = server
+	ctx.loaderServer = loader
+
+	mapper, err := host.Mapper(ctx)
+	if err != nil {
+		return err
+	}
+	ctx.mapperServer = mapper
 	return nil
 }
 
@@ -183,7 +169,7 @@ func (ctx *Context) ProjectPlugins() []workspace.ProjectPlugin {
 // shared by several contexts.
 func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]any, disableProviderPreview bool,
-	parentSpan opentracing.Span, newLoader NewLoaderFunc, newMapper NewMapperFunc,
+	parentSpan opentracing.Span,
 ) (*Context, error) {
 	// TODO: really this ought to just take plugins *workspace.Plugins and packages map[string]workspace.PackageSpec
 	// as args, but yaml depends on this function so *sigh*. For now just see if there's a project we should be using,
@@ -200,14 +186,14 @@ func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSo
 	}
 
 	return NewContextWithRoot(ctx, d, statusD, host, pwd, pwd, runtimeOptions,
-		disableProviderPreview, parentSpan, plugins, packages, nil, newLoader, newMapper)
+		disableProviderPreview, parentSpan, plugins, packages, nil)
 }
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
 func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, newLoader NewLoaderFunc, newMapper NewMapperFunc,
+	config map[config.Key]string,
 ) (*Context, error) {
 	contract.Assertf(host != nil, "host cannot be nil")
 	if d == nil {
@@ -253,18 +239,9 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	}
 	pctx.projectPlugins = projectPlugins
 
-	if newLoader != nil {
-		if err := pctx.StartLoader(newLoader); err != nil {
-			contract.IgnoreClose(pctx)
-			return nil, err
-		}
-	}
-
-	if newMapper != nil {
-		if err := pctx.StartMapper(newMapper); err != nil {
-			contract.IgnoreClose(pctx)
-			return nil, err
-		}
+	if err := pctx.startServices(host); err != nil {
+		contract.IgnoreClose(pctx)
+		return nil, err
 	}
 
 	if logFile := env.DebugGRPC.Value(); logFile != "" {
@@ -297,7 +274,7 @@ func NewContextWithHost(
 	host Host,
 	pwd, root string,
 	parentSpan opentracing.Span,
-) *Context {
+) (*Context, error) {
 	contract.Assertf(host != nil, "NewContextWithHost requires a non-nil host")
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
@@ -308,7 +285,7 @@ func NewContextWithHost(
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	return &Context{
+	pctx := &Context{
 		Diag:            d,
 		StatusDiag:      statusD,
 		Host:            host,
@@ -319,6 +296,13 @@ func NewContextWithHost(
 		cancel:          cancel,
 		baseContext:     ctx,
 	}
+
+	if err := pctx.startServices(host); err != nil {
+		contract.IgnoreClose(pctx)
+		return nil, err
+	}
+
+	return pctx, nil
 }
 
 // Base returns this plugin context's base context; this is useful for things like cancellation.
@@ -338,24 +322,15 @@ func (ctx *Context) Request() context.Context {
 func (ctx *Context) Close() error {
 	defer ctx.cancel()
 
-	// Release the plugins this context booted before tearing down the context's own services and
-	// cancelling it. ReleaseContext is synchronous, so when it returns the providers have shut
-	// down and any diagnostics they emitted have been delivered through this context's sinks --
-	// before the caller that owns those sinks tears them down.
+	// Release everything the host booted on behalf of this context: its plugins and the loader and
+	// mapper gRPC servers the host hosts for it (those are shut down after the plugins, since they
+	// boot plugins through the host). ReleaseContext is synchronous, so when it returns those have
+	// shut down and any diagnostics they emitted have been delivered through this context's sinks
+	// -- before the caller that owns those sinks tears them down.
 	err := ctx.Host.ReleaseContext(ctx)
 
 	if ctx.tracingSpan != nil {
 		ctx.tracingSpan.Finish()
-	}
-	if ctx.loaderServer != nil {
-		if err := ctx.loaderServer.Close(); err != nil && !rpcutil.IsBenignCloseErr(err) {
-			logging.V(5).Infof("Error closing the context's loader service; ignoring: %v", err)
-		}
-	}
-	if ctx.mapperServer != nil {
-		if err := ctx.mapperServer.Close(); err != nil && !rpcutil.IsBenignCloseErr(err) {
-			logging.V(5).Infof("Error closing the context's mapper service; ignoring: %v", err)
-		}
 	}
 	return err
 }

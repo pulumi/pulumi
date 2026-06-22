@@ -85,6 +85,18 @@ type Host interface {
 	// across contexts uses it to reclaim a finished context's plugins without closing the host.
 	ReleaseContext(ctx *Context) error
 
+	// Loader returns a schema loader gRPC server bound to ctx's workspace view, or nil if this
+	// host serves no loader. The loader boots plugins to load schemas, and which plugins resolve
+	// depends on ctx, so the server is workspace-scoped: it is owned by ctx and closed when ctx is
+	// closed. Override this method on a custom Host to serve a bespoke loader.
+	Loader(ctx *Context) (*GrpcServer, error)
+
+	// Mapper returns a conversion mapper gRPC server bound to ctx's workspace view, or nil if this
+	// host serves no mapper. Like the loader, the mapper boots plugins to source mappings against
+	// ctx's workspace view, so the server is workspace-scoped: it is owned by ctx and closed when
+	// ctx is closed. Override this method on a custom Host to serve a bespoke mapper.
+	Mapper(ctx *Context) (*GrpcServer, error)
+
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
 	// will either a creation error or an initialization error. SignalCancellation is advisory and

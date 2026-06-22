@@ -75,7 +75,9 @@ func NewDoCmd(
 			// uncancellable. Plugin logs route through the command's diagnostics sinks, so a
 			// provider's output reaches the command's stdout/stderr the same way it does without a
 			// pre-constructed host.
-			return pkghost.New(context.WithoutCancel(ctx), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled)
+			return pkghost.New(
+				context.WithoutCancel(ctx), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled,
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 		}
 	}
 	if loadConverterPlugin == nil {
@@ -155,7 +157,7 @@ func NewDoCmd(
 
 		pctx, err := plugin.NewContext(
 			ctx, sink, sink, host, nil, wd, nil, false,
-			nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+			nil)
 		if err != nil {
 			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)

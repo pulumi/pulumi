@@ -82,7 +82,7 @@ resource "app" "scaleway:iam/application:Application" {}
 	parser := syntax.NewParser()
 	err = parser.ParseFile(bytes.NewReader([]byte(hcl)), "infra.tf")
 	require.NoError(t, err, "parse failed")
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(plugin.NewContextWithHost(
+	pctx, err := plugin.NewContextWithHost(
 		t.Context(), nil, nil, &plugin.MockHost{
 			ResolvePluginF: func(_ *plugin.Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 				return &workspace.PluginInfo{Name: spec.Name}, nil
@@ -97,7 +97,9 @@ resource "app" "scaleway:iam/application:Application" {}
 					},
 				}, nil
 			},
-		}, "", "", nil)))
+		}, "", "", nil)
+	require.NoError(t, err)
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(pctx))
 	if err != nil || diags.HasErrors() {
 		for _, d := range diags {
 			t.Logf("%s: %s", d.Summary, d.Detail)

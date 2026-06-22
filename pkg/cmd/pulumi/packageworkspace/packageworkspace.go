@@ -46,6 +46,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 type Options struct {
@@ -379,10 +380,8 @@ func (w Workspace) servers(
 		refs[v.Identity()] = v
 	}
 
-	pctx := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, dir, dir, w.parentSpan)
-	err = pctx.StartLoader(func(pctx *plugin.Context) codegenrpc.LoaderServer {
-		return schema.NewLoaderServer(schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx), refs))
-	})
+	host := cachedLoaderHost{Host: w.pctx.Host, refs: refs}
+	pctx, err := plugin.NewContextWithHost(ctx, d, d, host, dir, dir, w.parentSpan)
 	if err != nil {
 		return servers{}, err
 	}
@@ -390,6 +389,21 @@ func (w Workspace) servers(
 		pctx: pctx,
 		lang: languageRuntime,
 	}, nil
+}
+
+// cachedLoaderHost overrides Loader to serve a schema loader pre-seeded with the given package
+// references, delegating every other host method to the embedded host. The seeded references let
+// SDK generation resolve packages that are not yet installed.
+type cachedLoaderHost struct {
+	plugin.Host
+	refs map[string]schema.PackageReference
+}
+
+func (h cachedLoaderHost) Loader(pctx *plugin.Context) (*plugin.GrpcServer, error) {
+	return plugin.NewServer(pctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterLoaderServer(srv,
+			schema.NewLoaderServer(schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx), h.refs)))
+	})
 }
 
 func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Package) (string, error) {
@@ -443,10 +457,10 @@ func (w Workspace) RunPackage(
 		Color: diagutils.GetGlobalColorization(),
 	})
 
-	pctx := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
+	pctx, err := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
 	pctx.CloudCredentialEnv = w.pctx.CloudCredentialEnv
-	if err := pctx.StartLoader(schema.NewLoaderServerFromContext); err != nil {
-		return nil, fmt.Errorf("could not start loader for plugin at %q: %w", pluginPath, err)
+	if err != nil {
+		return nil, fmt.Errorf("could not start context for plugin at %q: %w", pluginPath, err)
 	}
 	p, err := plugin.NewProviderFromPath(w.pctx.Host, pctx, pluginPath)
 	if err != nil {

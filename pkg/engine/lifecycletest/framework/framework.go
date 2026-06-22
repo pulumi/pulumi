@@ -1084,7 +1084,7 @@ func (b *TestBuilder) RunUpdate(
 	program func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error, skipDisplayTests bool,
 ) *Result {
 	programF := deploytest.NewLanguageRuntimeF(program)
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, b.loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, b.loaders...)
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{T: b.t, HostF: hostF, SkipDisplayTests: skipDisplayTests},
