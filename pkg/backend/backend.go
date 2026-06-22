@@ -369,6 +369,8 @@ type UpdateOptions struct {
 	SkipPreview bool
 	// PreviewOnly, when true, causes only the preview step to be run, without running the Update.
 	PreviewOnly bool
+	// DisableIntegrityChecking, when true, disables checkpoint state integrity verification for this operation.
+	DisableIntegrityChecking bool
 }
 
 // CancellationScope provides a scoped source of cancellation and termination requests.
@@ -436,7 +438,7 @@ func (c *backendClient) GetStackResourceOutputs(
 	if s == nil {
 		return property.Map{}, fmt.Errorf("unknown stack %q", name)
 	}
-	snap, err := s.Snapshot(ctx, c.secretsProvider)
+	snap, err := s.Snapshot(ctx, c.secretsProvider, false /* disableIntegrityChecking */)
 	if err != nil {
 		return property.Map{}, err
 	}

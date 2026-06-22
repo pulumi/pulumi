@@ -123,7 +123,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 			}
 		},
 		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
-		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},
 	}
@@ -223,7 +223,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 			}
 		},
 		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
-		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},
 		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {

@@ -64,7 +64,7 @@ func TestStateDeleteMultipleURNs(t *testing.T) {
 		BackendF: func() backend.Backend {
 			return mockBackend
 		},
-		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
 					{URN: "urn:pulumi:proj::stk::pkg:index:typ::res-a"},
@@ -130,7 +130,7 @@ func TestStateDeleteMultipleURNsResolvesDependencyOrder(t *testing.T) {
 		BackendF: func() backend.Backend {
 			return mockBackend
 		},
-		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
 					{URN: depURN},
@@ -195,7 +195,7 @@ func TestStateDeleteParentAndChild(t *testing.T) {
 		BackendF: func() backend.Backend {
 			return mockBackend
 		},
-		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
 					{URN: parentURN},
@@ -252,7 +252,7 @@ func TestStateDeleteInvalidURN(t *testing.T) {
 		BackendF: func() backend.Backend {
 			return mockBackend
 		},
-		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
 					{URN: "urn:pulumi:proj::stk::pkg:index:typ::res"},
@@ -333,7 +333,7 @@ func TestStateDeleteURN(t *testing.T) {
 		BackendF: func() backend.Backend {
 			return mockBackend
 		},
-		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
 					{
@@ -375,7 +375,7 @@ func TestStateDeleteDependency(t *testing.T) {
 	t.Parallel()
 
 	mockStack := &backend.MockStack{
-		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
 					{
@@ -445,7 +445,7 @@ func TestStateDeleteProtected(t *testing.T) {
 		BackendF: func() backend.Backend {
 			return mockBackend
 		},
-		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
 					{
@@ -525,7 +525,7 @@ func TestStateDeleteAll(t *testing.T) {
 		BackendF: func() backend.Backend {
 			return mockBackend
 		},
-		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},
 	}

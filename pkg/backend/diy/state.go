@@ -47,11 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-// DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
-// recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
-// be used as a last resort when a command absolutely must be run.
-var DisableIntegrityChecking bool
-
 func (b *diyBackend) newUpdate(
 	ctx context.Context,
 	secretsProvider secrets.Provider,
@@ -62,7 +57,7 @@ func (b *diyBackend) newUpdate(
 
 	// Construct the deployment target.
 	target, err := b.getTarget(ctx, secretsProvider, ref,
-		op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
+		op.StackConfiguration.Config, op.StackConfiguration.Decrypter, op.Opts.DisableIntegrityChecking)
 	if err != nil {
 		return engine.UpdateInfo{}, err
 	}
@@ -81,13 +76,14 @@ func (b *diyBackend) getTarget(
 	ref *diyBackendReference,
 	cfg config.Map,
 	dec config.Decrypter,
+	disableIntegrityChecking bool,
 ) (*deploy.Target, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 	stack, err := b.GetStack(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
-	snapshot, err := stack.Snapshot(ctx, secretsProvider)
+	snapshot, err := stack.Snapshot(ctx, secretsProvider, disableIntegrityChecking)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +125,7 @@ func (b *diyBackend) stackExists(
 }
 
 func (b *diyBackend) getSnapshot(ctx context.Context,
-	secretsProvider secrets.Provider, ref *diyBackendReference,
+	secretsProvider secrets.Provider, ref *diyBackendReference, disableIntegrityChecking bool,
 ) (*deploy.Snapshot, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
@@ -145,7 +141,7 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
-	if !backend.DisableIntegrityChecking {
+	if !disableIntegrityChecking {
 		if err := snap.VerifyIntegrity(); err != nil {
 			if sie, ok := snapshot.AsSnapshotIntegrityError(err); ok {
 				var metadata *apitype.SnapshotIntegrityErrorMetadataV1
@@ -351,6 +347,7 @@ func (b *diyBackend) saveStack(
 	ctx context.Context,
 	ref *diyBackendReference,
 	deployment apitype.TypedDeployment,
+	disableIntegrityChecking bool,
 ) (string, error) {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
 	chk, err := stack.DeploymentV3ToCheckpointWithMarshaler(
@@ -369,7 +366,7 @@ func (b *diyBackend) saveStack(
 		return "", err
 	}
 
-	if !backend.DisableIntegrityChecking {
+	if !disableIntegrityChecking {
 		// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
 		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
 		// file is already written and might be bad.

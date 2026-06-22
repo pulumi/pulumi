@@ -46,7 +46,7 @@ func MockJournalSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotM
 
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
-		t.Context(), sp, baseSnap.SecretsManager, secretsProvider, baseSnap)
+		t.Context(), sp, baseSnap.SecretsManager, secretsProvider, baseSnap, false)
 	require.NoError(t, err)
 	snap, err := engine.NewJournalSnapshotManager(journal, baseSnap, baseSnap.SecretsManager)
 	require.NoError(t, err)
@@ -1039,7 +1039,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsJournaling(t 
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
-		t.Context(), sp, snap.SecretsManager, secretsProvider, snap)
+		t.Context(), sp, snap.SecretsManager, secretsProvider, snap, false)
 	require.NoError(t, err)
 
 	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
@@ -1062,7 +1062,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsJournaling(t *t
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
-		t.Context(), sp, snap.SecretsManager, secretsProvider, snap)
+		t.Context(), sp, snap.SecretsManager, secretsProvider, snap, false)
 	require.NoError(t, err)
 
 	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
@@ -1074,11 +1074,8 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsJournaling(t *t
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
-//nolint:paralleltest // mutates global state
 func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisabledJournaling(t *testing.T) {
-	old := DisableIntegrityChecking
-	DisableIntegrityChecking = true
-	defer func() { DisableIntegrityChecking = old }()
+	t.Parallel()
 
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
@@ -1087,7 +1084,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
-		t.Context(), sp, snap.SecretsManager, secretsProvider, snap)
+		t.Context(), sp, snap.SecretsManager, secretsProvider, snap, true /* disableIntegrityChecking */)
 	require.NoError(t, err)
 	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
 	require.NoError(t, err)
@@ -1098,11 +1095,8 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
-//nolint:paralleltest // mutates global state
 func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJournaling(t *testing.T) {
-	old := DisableIntegrityChecking
-	DisableIntegrityChecking = true
-	defer func() { DisableIntegrityChecking = old }()
+	t.Parallel()
 
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
@@ -1111,7 +1105,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJ
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
-		t.Context(), sp, snap.SecretsManager, secretsProvider, snap)
+		t.Context(), sp, snap.SecretsManager, secretsProvider, snap, true /* disableIntegrityChecking */)
 	require.NoError(t, err)
 	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
 	require.NoError(t, err)
@@ -1183,7 +1177,7 @@ func TestJournalEncryptionFailureNotSilent(t *testing.T) {
 	}, sm, nil, nil, deploy.SnapshotMetadata{}, nil)
 
 	sp := &MockStackPersister{}
-	j, err := NewSnapshotJournaler(t.Context(), sp, sm, stack.Base64SecretsProvider{}, baseSnap)
+	j, err := NewSnapshotJournaler(t.Context(), sp, sm, stack.Base64SecretsProvider{}, baseSnap, false)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = j.Close() })
 

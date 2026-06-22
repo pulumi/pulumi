@@ -76,7 +76,7 @@ func NewWatchCmd() *cobra.Command {
 			ws := pkgWorkspace.Instance
 
 			opts, err := updateFlagsToOptions(false /* interactive */, true /* skipPreview */, true, /* autoApprove */
-				false /* previewOnly */)
+				false /* previewOnly */, cmdBackend.DisableIntegrityChecking(cmd))
 			if err != nil {
 				return err
 			}

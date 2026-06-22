@@ -19,6 +19,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -31,6 +33,23 @@ import (
 
 // BackendInstance is used to inject a backend mock from tests.
 var BackendInstance backend.Backend
+
+// DisableIntegrityCheckingFlag is the name of the persistent root flag that disables checkpoint state
+// integrity verification.
+const DisableIntegrityCheckingFlag = "disable-integrity-checking"
+
+// DisableIntegrityChecking returns the value of the --disable-integrity-checking persistent flag for the
+// given command. The flag is registered on the root command and inherited by all subcommands.
+func DisableIntegrityChecking(cmd *cobra.Command) bool {
+	v, err := cmd.Flags().GetBool(DisableIntegrityCheckingFlag)
+	if err != nil {
+		// The flag is registered on the root command as a persistent flag, so it is always present on
+		// subcommands. If it is somehow missing we default to enforcing integrity checking, which is the safe
+		// behavior.
+		return false
+	}
+	return v
+}
 
 func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 	if BackendInstance != nil {

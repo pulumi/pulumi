@@ -72,7 +72,7 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
 		},
-		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(context.Context, secrets.Provider, bool) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
 	}
@@ -113,7 +113,7 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
 		},
-		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(context.Context, secrets.Provider, bool) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
 	}
@@ -151,7 +151,7 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return sm, nil
 		},
-		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(context.Context, secrets.Provider, bool) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{}, nil
 		},
 	}
@@ -189,7 +189,7 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
 		},
-		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(context.Context, secrets.Provider, bool) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
 	}
@@ -230,7 +230,7 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
 		},
-		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(context.Context, secrets.Provider, bool) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
 	}
@@ -268,7 +268,7 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return sm, nil
 		},
-		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(context.Context, secrets.Provider, bool) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{}, nil
 		},
 	}

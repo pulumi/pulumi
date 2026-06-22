@@ -53,6 +53,7 @@ func runTotalStateEdit(
 	lm cmdBackend.LoginManager,
 	stackName string,
 	showPrompt bool,
+	disableIntegrityChecking bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 ) error {
 	opts := display.Options{
@@ -71,7 +72,7 @@ func runTotalStateEdit(
 	if err != nil {
 		return err
 	}
-	return TotalStateEdit(ctx, s, showPrompt, opts, operation, nil)
+	return TotalStateEdit(ctx, s, showPrompt, disableIntegrityChecking, opts, operation, nil)
 }
 
 // runTotalStateEditWithPrompt is the same as runTotalStateEdit, but allows the caller to
@@ -83,6 +84,7 @@ func runTotalStateEditWithPrompt(
 	lm cmdBackend.LoginManager,
 	stackName string,
 	showPrompt bool,
+	disableIntegrityChecking bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 	overridePromptMessage string,
 ) error {
@@ -102,18 +104,19 @@ func runTotalStateEditWithPrompt(
 	if err != nil {
 		return err
 	}
-	return TotalStateEdit(ctx, s, showPrompt, opts, operation, &overridePromptMessage)
+	return TotalStateEdit(ctx, s, showPrompt, disableIntegrityChecking, opts, operation, &overridePromptMessage)
 }
 
 func TotalStateEdit(
 	ctx context.Context,
 	s backend.Stack,
 	showPrompt bool,
+	disableIntegrityChecking bool,
 	opts display.Options,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 	overridePromptMessage *string,
 ) error {
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider, disableIntegrityChecking)
 	if err != nil {
 		return err
 	} else if snap == nil {
@@ -146,7 +149,7 @@ func TotalStateEdit(
 	}
 
 	// If the stack is already broken, don't bother verifying the integrity here.
-	if !stackIsAlreadyHosed && !backend.DisableIntegrityChecking {
+	if !stackIsAlreadyHosed && !disableIntegrityChecking {
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
@@ -236,7 +239,7 @@ func resolveStateResourceArg(opts display.Options, snap *deploy.Snapshot, arg st
 // Prompt is displayed to the user when selecting the URN.
 func getURNFromState(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
-	stackName string, snap **deploy.Snapshot, prompt string,
+	stackName string, snap **deploy.Snapshot, prompt string, disableIntegrityChecking bool,
 ) (resource.URN, error) {
 	if snap == nil {
 		// This means we won't cache the value.
@@ -260,7 +263,7 @@ func getURNFromState(
 		if err != nil {
 			return "", err
 		}
-		*snap, err = s.Snapshot(ctx, secrets.DefaultProvider)
+		*snap, err = s.Snapshot(ctx, secrets.DefaultProvider, disableIntegrityChecking)
 		if err != nil {
 			return "", err
 		}

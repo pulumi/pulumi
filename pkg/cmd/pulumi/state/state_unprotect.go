@@ -55,14 +55,16 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			yes = yes || env.SkipConfirmations.Value()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
+			disableIntegrityChecking := backend.DisableIntegrityChecking(cmd)
 
 			if unprotectAll {
-				return unprotectAllResources(ctx, cmd.OutOrStdout(), sink, ws, stack, showPrompt)
+				return unprotectAllResources(ctx, cmd.OutOrStdout(), sink, ws, stack, showPrompt, disableIntegrityChecking)
 			}
 
 			// If URN arguments were provided, use those
 			if len(args) > 0 {
-				return unprotectMultipleResources(ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt)
+				return unprotectMultipleResources(
+					ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt, disableIntegrityChecking)
 			}
 
 			// Otherwise, use interactive selection
@@ -78,12 +80,13 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				stack,
 				nil,
 				"Select a resource to unprotect:",
+				disableIntegrityChecking,
 			)
 			if err != nil {
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return unprotectResource(ctx, cmd.OutOrStdout(), sink, ws, stack, urn, showPrompt)
+			return unprotectResource(ctx, cmd.OutOrStdout(), sink, ws, stack, urn, showPrompt, disableIntegrityChecking)
 		},
 	}
 
@@ -106,10 +109,10 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 
 func unprotectAllResources(
 	ctx context.Context, stdout io.Writer,
-	sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool, disableIntegrityChecking bool,
 ) error {
 	err := runTotalStateEdit(
-		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
+		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt, disableIntegrityChecking,
 		func(_ display.Options, snap *deploy.Snapshot) error {
 			// Protects against Panic when a user tries to unprotect non-existing resources
 			if snap == nil {
@@ -168,9 +171,10 @@ func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []
 func unprotectMultipleResources(
 	ctx context.Context, stdout io.Writer,
 	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	disableIntegrityChecking bool,
 ) error {
 	return runTotalStateEdit(
-		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
+		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt, disableIntegrityChecking,
 		func(_ display.Options, snap *deploy.Snapshot) error {
 			resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
 
@@ -193,6 +197,8 @@ func unprotectMultipleResources(
 func unprotectResource(
 	ctx context.Context, stdout io.Writer,
 	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+	disableIntegrityChecking bool,
 ) error {
-	return unprotectMultipleResources(ctx, stdout, sink, ws, stackName, []string{string(urn)}, showPrompt)
+	return unprotectMultipleResources(
+		ctx, stdout, sink, ws, stackName, []string{string(urn)}, showPrompt, disableIntegrityChecking)
 }

@@ -36,7 +36,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
+//nolint:paralleltest // Uses shared survey/cmdutil terminal state
 func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 	// Arrange.
 	cases := []struct {
@@ -80,7 +80,7 @@ func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
+//nolint:paralleltest // Uses shared survey/cmdutil terminal state
 func TestStateRepair_ConfirmationIncludesReorderSummary(t *testing.T) {
 	// Survey (the library we currently use for managing prompt input) does not currently pick up inputs when tested under
 	// Windows. Consequently we skip if the test is running on Windows.
@@ -105,7 +105,7 @@ func TestStateRepair_ConfirmationIncludesReorderSummary(t *testing.T) {
 	assert.NotContains(t, fx.stdout.String(), "will be modified")
 }
 
-//nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
+//nolint:paralleltest // Uses shared survey/cmdutil terminal state
 func TestStateRepair_ConfirmationIncludesModificationSummary(t *testing.T) {
 	// Survey (the library we currently use for managing prompt input) does not currently pick up inputs when tested under
 	// Windows. Consequently we skip if the test is running on Windows.
@@ -129,7 +129,7 @@ func TestStateRepair_ConfirmationIncludesModificationSummary(t *testing.T) {
 	assert.Contains(t, fx.stdout.String(), "will be modified")
 }
 
-//nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
+//nolint:paralleltest // Uses shared survey/cmdutil terminal state
 func TestStateRepair_ConfirmationIncludesCombinedSummaries(t *testing.T) {
 	// Survey (the library we currently use for managing prompt input) does not currently pick up inputs when tested under
 	// Windows. Consequently we skip if the test is running on Windows.
@@ -155,7 +155,7 @@ func TestStateRepair_ConfirmationIncludesCombinedSummaries(t *testing.T) {
 	assert.Contains(t, fx.stdout.String(), "will be modified")
 }
 
-//nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
+//nolint:paralleltest // Uses shared survey/cmdutil terminal state
 func TestStateRepair_PromptsForConfirmationAndCancels(t *testing.T) {
 	// Survey (the library we currently use for managing prompt input) does not currently pick up inputs when tested under
 	// Windows. Consequently we skip if the test is running on Windows.
@@ -180,7 +180,7 @@ func TestStateRepair_PromptsForConfirmationAndCancels(t *testing.T) {
 	assert.Nil(t, fx.imported, "Import should not have proceeded")
 }
 
-//nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
+//nolint:paralleltest // Uses shared survey/cmdutil terminal state
 func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 	// Survey (the library we currently use for managing prompt input) does not currently pick up inputs when tested under
 	// Windows. Consequently we skip if the test is running on Windows.
@@ -205,7 +205,7 @@ func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 	require.NotNil(t, fx.imported, "Import should have proceeded")
 }
 
-//nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
+//nolint:paralleltest // Uses shared survey/cmdutil terminal state
 func TestStateRepair_SkipsConfirmationIfYesFlagIsSet(t *testing.T) {
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
@@ -223,7 +223,7 @@ func TestStateRepair_SkipsConfirmationIfYesFlagIsSet(t *testing.T) {
 	require.NotNil(t, fx.imported, "Import should have proceeded")
 }
 
-//nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
+//nolint:paralleltest // Uses shared survey/cmdutil terminal state
 func TestStateRepair_DoesNotWriteIfRepairFails(t *testing.T) {
 	// Arrange.
 	//
@@ -246,7 +246,7 @@ func TestStateRepair_DoesNotWriteIfRepairFails(t *testing.T) {
 	assert.Nil(t, fx.imported, "Import should not have proceeded")
 }
 
-//nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
+//nolint:paralleltest // Uses shared survey/cmdutil terminal state
 func TestStateRepair_RepairsSnapshots(t *testing.T) {
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
@@ -302,7 +302,7 @@ func newStateRepairCmdFixture(
 		BackendF: func() backend.Backend {
 			return b
 		},
-		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(context.Context, secrets.Provider, bool) (*deploy.Snapshot, error) {
 			sm := b64.NewBase64SecretsManager()
 			return deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil), nil
 		},

@@ -431,7 +431,7 @@ func prepareConfig(
 		OrgNameF: func() string {
 			return "testOrg"
 		},
-		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+		SnapshotF: func(context.Context, secrets.Provider, bool) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},
 		BackendF: func() backend.Backend {

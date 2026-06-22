@@ -547,7 +547,8 @@ func NewPreviewCmd() *cobra.Command {
 					Autonamer:            autonamer,
 					SkipPluginPreInstall: skipPluginPreInstall,
 				},
-				Display: displayOpts,
+				Display:                  displayOpts,
+				DisableIntegrityChecking: cmdBackend.DisableIntegrityChecking(cmd),
 			}
 
 			// If we're building an import file we want to hook the event stream from the engine to transform

@@ -71,7 +71,9 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			" - the current backend\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			summary := getSummaryAbout(ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
+			summary := getSummaryAbout(
+				ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack,
+				cmdBackend.DisableIntegrityChecking(cmd))
 			if jsonOut {
 				return ui.FprintJSON(cmd.OutOrStdout(), summary)
 			}
@@ -113,7 +115,7 @@ type summaryAbout struct {
 
 func getSummaryAbout(
 	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
-	transitiveDependencies bool, selectedStack string,
+	transitiveDependencies bool, selectedStack string, disableIntegrityChecking bool,
 ) summaryAbout {
 	var err error
 	cli := getCLIAbout()
@@ -203,7 +205,7 @@ func getSummaryAbout(
 		addError(err, "Could not access the backend")
 	} else if backend != nil {
 		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(ctx, ws, backend, selectedStack); err != nil {
+		if stack, err = getCurrentStackAbout(ctx, ws, backend, selectedStack, disableIntegrityChecking); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
@@ -389,6 +391,7 @@ type aboutState struct {
 
 func getCurrentStackAbout(
 	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, selectedStack string,
+	disableIntegrityChecking bool,
 ) (currentStackAbout, error) {
 	var s backend.Stack
 	var err error
@@ -411,7 +414,7 @@ func getCurrentStackAbout(
 
 	name := s.Ref().String()
 	var snapshot *deploy.Snapshot
-	snapshot, err = s.Snapshot(ctx, secrets.DefaultProvider)
+	snapshot, err = s.Snapshot(ctx, secrets.DefaultProvider, disableIntegrityChecking)
 	if err != nil {
 		return currentStackAbout{}, err
 	} else if snapshot == nil {

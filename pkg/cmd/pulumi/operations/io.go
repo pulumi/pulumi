@@ -97,7 +97,9 @@ func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*works
 
 // updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
 // is returned with a nil-error; otherwise, the non-nil error contains information about why the combination is invalid.
-func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (backend.UpdateOptions, error) {
+func updateFlagsToOptions(
+	interactive, skipPreview, yes, previewOnly, disableIntegrityChecking bool,
+) (backend.UpdateOptions, error) {
 	switch {
 	case !interactive && !yes && !skipPreview && !previewOnly:
 		return backend.UpdateOptions{}, backenderr.NoConfirmationInNonInteractiveError{}
@@ -109,9 +111,10 @@ func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (back
 			errors.New("--yes and --preview-only cannot be used together")
 	default:
 		return backend.UpdateOptions{
-			AutoApprove: yes,
-			SkipPreview: skipPreview,
-			PreviewOnly: previewOnly,
+			AutoApprove:              yes,
+			SkipPreview:              skipPreview,
+			PreviewOnly:              previewOnly,
+			DisableIntegrityChecking: disableIntegrityChecking,
 		}, nil
 	}
 }

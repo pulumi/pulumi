@@ -39,11 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
-// DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
-// recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
-// be used as a last resort when a command absolutely must be run.
-var DisableIntegrityChecking bool
-
 // SnapshotPersister is an interface implemented by our backends that implements snapshot
 // persistence. In order to fit into our current model, snapshot persisters have two functions:
 // saving snapshots and invalidating already-persisted snapshots.
@@ -88,6 +83,11 @@ type SnapshotManager struct {
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
 	isRefresh bool // Whether or not the snapshot is part of a refresh
+
+	// disableIntegrityChecking, when true, disables checkpoint state integrity verification. This is not
+	// recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
+	// be used as a last resort when a command absolutely must be run.
+	disableIntegrityChecking bool
 
 	// events is an optional channel for emitting engine events. When set, the snapshot manager will emit
 	// ErrorEvents to this channel when it detects and auto-repairs snapshot integrity errors.
@@ -805,7 +805,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	// If we detected a snapshot integrity error, and we have an events channel
 	// i.e. in the httpstate backend, try to repair the snapshot.
 	var autoRepairErr error
-	if integrityError != nil && !DisableIntegrityChecking && sm.events != nil {
+	if integrityError != nil && !sm.disableIntegrityChecking && sm.events != nil {
 		sm.emitSnapshotIntegrityErrorEvent(integrityError)
 
 		repairedDeployment, repairErr := sm.repairAndSerialize()
@@ -839,7 +839,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	if err := sm.persister.Save(deployment); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
-	if !DisableIntegrityChecking && integrityError != nil {
+	if !sm.disableIntegrityChecking && integrityError != nil {
 		if autoRepairErr != nil {
 			var sie *snapshot.SnapshotIntegrityError
 			if errors.As(integrityError, &sie) {
@@ -945,19 +945,21 @@ func NewSnapshotManager(
 	secretsManager secrets.Manager,
 	baseSnap *deploy.Snapshot,
 	events chan<- engine.Event,
+	disableIntegrityChecking bool,
 ) *SnapshotManager {
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
 	manager := &SnapshotManager{
-		persister:        persister,
-		secretsManager:   secretsManager,
-		baseSnapshot:     baseSnap,
-		dones:            make(map[*resource.State]bool),
-		completeOps:      make(map[*resource.State]bool),
-		mutationRequests: mutationRequests,
-		cancel:           cancel,
-		done:             done,
-		events:           events,
+		persister:                persister,
+		secretsManager:           secretsManager,
+		baseSnapshot:             baseSnap,
+		dones:                    make(map[*resource.State]bool),
+		completeOps:              make(map[*resource.State]bool),
+		mutationRequests:         mutationRequests,
+		cancel:                   cancel,
+		done:                     done,
+		events:                   events,
+		disableIntegrityChecking: disableIntegrityChecking,
 	}
 
 	serviceLoop := manager.defaultServiceLoop

@@ -56,7 +56,9 @@ func TestGetStackResourceOutputs(t *testing.T) {
 		},
 		GetStackF: func(ctx context.Context, stackRef StackReference) (Stack, error) {
 			return &MockStack{
-				SnapshotF: func(ctx context.Context, sp secrets.Provider) (*deploy.Snapshot, error) {
+				SnapshotF: func(
+					ctx context.Context, sp secrets.Provider, disableIntegrityChecking bool,
+				) (*deploy.Snapshot, error) {
 					return &deploy.Snapshot{Resources: []*resource.State{
 						resc1, resc2, deleted,
 					}}, nil

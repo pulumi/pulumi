@@ -70,12 +70,14 @@ func (s *diyStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace
 	return fmt.Errorf("%w for the DIY backend", backend.ErrConfigNotSupported)
 }
 
-func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+func (s *diyStack) Snapshot(
+	ctx context.Context, secretsProvider secrets.Provider, disableIntegrityChecking bool,
+) (*deploy.Snapshot, error) {
 	if v := s.snapshot.Load(); v != nil {
 		return *v, nil
 	}
 
-	snap, err := s.b.getSnapshot(ctx, secretsProvider, s.ref)
+	snap, err := s.b.getSnapshot(ctx, secretsProvider, s.ref, disableIntegrityChecking)
 	if err != nil {
 		return nil, err
 	}

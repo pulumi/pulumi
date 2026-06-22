@@ -162,7 +162,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 
 	// Construct the deployment target.
 	target, err := b.getTarget(ctx, op.SecretsProvider, stackRef,
-		op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
+		op.StackConfiguration.Config, op.StackConfiguration.Decrypter, op.Opts.DisableIntegrityChecking)
 	if err != nil {
 		return engine.UpdateInfo{}, nil, err
 	}
@@ -188,7 +188,7 @@ func (b *cloudBackend) completeUpdate(
 }
 
 func (b *cloudBackend) getSnapshot(ctx context.Context,
-	secretsProvider secrets.Provider, stackRef backend.StackReference,
+	secretsProvider secrets.Provider, stackRef backend.StackReference, disableIntegrityChecking bool,
 ) (*deploy.Snapshot, error) {
 	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
 	if err != nil {
@@ -201,7 +201,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
-	if !backend.DisableIntegrityChecking {
+	if !disableIntegrityChecking {
 		if err := snap.VerifyIntegrity(); err != nil {
 			if sie, ok := snapshot.AsSnapshotIntegrityError(err); ok {
 				var metadata *apitype.SnapshotIntegrityErrorMetadataV1
@@ -244,14 +244,14 @@ func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 }
 
 func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Provider, stackRef backend.StackReference,
-	cfg config.Map, dec config.Decrypter,
+	cfg config.Map, dec config.Decrypter, disableIntegrityChecking bool,
 ) (*deploy.Target, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	snapshot, err := b.getSnapshot(ctx, secretsProvider, stackRef)
+	snapshot, err := b.getSnapshot(ctx, secretsProvider, stackRef, disableIntegrityChecking)
 	if err != nil {
 		return nil, stack.FormatDeploymentDeserializationError(err, stackRef.Name().String())
 	}

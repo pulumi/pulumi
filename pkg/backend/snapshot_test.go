@@ -62,7 +62,7 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 	require.NoError(t, err)
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap, nil), sp
+	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap, nil, false), sp
 }
 
 func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
@@ -1081,7 +1081,7 @@ func TestSnapshotAutoRepairSucceedsForInvalidSnapshots(t *testing.T) {
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
 	events := make(chan engine.Event, 1)
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events, false)
 
 	err := sm.saveSnapshot()
 
@@ -1106,7 +1106,7 @@ func TestSnapshotAutoRepairErrorIsSurfacedWhenRepairFails(t *testing.T) {
 	snap := NewSnapshot([]*resource.State{rA, rB})
 	sp := &MockStackPersister{}
 	events := make(chan engine.Event, 1)
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events, false)
 
 	err := sm.saveSnapshot()
 
@@ -1128,7 +1128,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil, false)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1148,7 +1148,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) 
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil, false)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1158,11 +1158,8 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) 
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
-//nolint:paralleltest // mutates global state
 func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisabled(t *testing.T) {
-	old := DisableIntegrityChecking
-	DisableIntegrityChecking = true
-	defer func() { DisableIntegrityChecking = old }()
+	t.Parallel()
 
 	// Arrange.
 	//
@@ -1171,7 +1168,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil, true /* disableIntegrityChecking */)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1181,11 +1178,8 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	require.NotNil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
-//nolint:paralleltest // mutates global state
 func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(t *testing.T) {
-	old := DisableIntegrityChecking
-	DisableIntegrityChecking = true
-	defer func() { DisableIntegrityChecking = old }()
+	t.Parallel()
 
 	// Arrange.
 	//
@@ -1194,7 +1188,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(
 	r := NewResource("a")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil, true /* disableIntegrityChecking */)
 
 	// Act.
 	err := sm.saveSnapshot()

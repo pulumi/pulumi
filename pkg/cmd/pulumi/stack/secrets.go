@@ -255,7 +255,7 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 		// default secrets manager which differs from what the user has previously
 		// specified.
 		if l.FallbackToState {
-			snap, err := s.Snapshot(ctx, backend_secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, backend_secrets.DefaultProvider, false /* disableIntegrityChecking */)
 			if err != nil {
 				return nil, SecretsManagerUnchanged, err
 			}

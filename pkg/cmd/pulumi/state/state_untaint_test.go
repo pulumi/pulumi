@@ -63,7 +63,7 @@ func TestUntaintSingleResource(t *testing.T) {
 	})
 
 	// Get initial snapshot to verify taint state
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 	require.Len(t, initialSnap.Resources, 2)
 	assert.True(t, initialSnap.Resources[1].Taint)
@@ -124,7 +124,7 @@ func TestUntaintMultipleResources(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Untaint multiple resources
@@ -176,7 +176,7 @@ func TestUntaintNonExistentResource(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Try to untaint a non-existent resource
@@ -235,7 +235,7 @@ func TestUntaintMixedExistingAndNonExistent(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Try to untaint existing and non-existent resources
@@ -291,7 +291,7 @@ func TestUntaintAlreadyUntaintedResource(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 	require.Len(t, initialSnap.Resources, 2)
 	assert.False(t, initialSnap.Resources[1].Taint)
@@ -362,7 +362,7 @@ func TestUntaintWithParentChildRelationship(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Untaint the parent resource only
@@ -462,7 +462,7 @@ func TestUntaintWithDependencies(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 
 	// Untaint the resource that has a dependency
@@ -514,7 +514,7 @@ func TestUntaintRoundTrip(t *testing.T) {
 	})
 
 	// Get initial snapshot
-	initialSnap, err := stack.Snapshot(ctx, mp)
+	initialSnap, err := stack.Snapshot(ctx, mp, false)
 	require.NoError(t, err)
 	require.Len(t, initialSnap.Resources, 2)
 	assert.False(t, initialSnap.Resources[1].Taint)

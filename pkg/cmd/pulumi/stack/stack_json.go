@@ -184,7 +184,7 @@ func snapshotResourceJSON(r *resource.State) stackResourceJSON {
 // resolved backend.Stack: it best-effort loads the local snapshot and, on
 // Pulumi Cloud backends, fetches the GetStack metadata.
 func loadStackJSONInputs(
-	ctx context.Context, s backend.Stack, showSecrets bool,
+	ctx context.Context, s backend.Stack, showSecrets bool, disableIntegrityChecking bool,
 ) (stackJSONInputs, error) {
 	ref := s.Ref()
 	project := ""
@@ -206,7 +206,7 @@ func loadStackJSONInputs(
 	in.CloudStack = cloudInfo
 	in.ConsoleURL = consoleURL
 
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider, disableIntegrityChecking)
 	if err != nil {
 		return stackJSONInputs{}, err
 	}

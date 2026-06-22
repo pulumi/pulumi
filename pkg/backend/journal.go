@@ -494,7 +494,7 @@ func (sj *SnapshotJournaler) saveSnapshot() error {
 	if err := persister.Save(deployment); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
-	if !DisableIntegrityChecking && integrityError != nil {
+	if !sj.disableIntegrityChecking && integrityError != nil {
 		return fmt.Errorf("failed to verify snapshot: %w", integrityError)
 	}
 	return nil
@@ -568,6 +568,9 @@ type SnapshotJournaler struct {
 	secretsManager  secrets.Manager
 	secretsProvider secrets.Provider
 	errors          []error
+
+	// disableIntegrityChecking, when true, disables checkpoint state integrity verification.
+	disableIntegrityChecking bool
 }
 
 // NewSnapshotJournaler creates a new Journal that uses a SnapshotPersister to persist the
@@ -595,6 +598,7 @@ func NewSnapshotJournaler(
 	secretsManager secrets.Manager,
 	secretsProvider secrets.Provider,
 	baseSnap *deploy.Snapshot,
+	disableIntegrityChecking bool,
 ) (*SnapshotJournaler, error) {
 	snapCopy := &deploy.Snapshot{}
 	if baseSnap != nil {
@@ -635,15 +639,16 @@ func NewSnapshotJournaler(
 	}
 
 	journaler := SnapshotJournaler{
-		ctx:             ctx,
-		persister:       persister,
-		snapshot:        deployment,
-		journalEvents:   journalEvents,
-		journalEntries:  make([]apitype.JournalEntry, 0),
-		secretsManager:  secretsManager,
-		secretsProvider: secretsProvider,
-		cancel:          cancel,
-		done:            done,
+		ctx:                      ctx,
+		persister:                persister,
+		snapshot:                 deployment,
+		journalEvents:            journalEvents,
+		journalEntries:           make([]apitype.JournalEntry, 0),
+		secretsManager:           secretsManager,
+		secretsProvider:          secretsProvider,
+		cancel:                   cancel,
+		done:                     done,
+		disableIntegrityChecking: disableIntegrityChecking,
 	}
 
 	serviceLoop := journaler.defaultServiceLoop

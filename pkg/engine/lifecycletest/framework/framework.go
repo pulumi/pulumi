@@ -267,10 +267,10 @@ func (op TestOp) runWithContext(
 
 		var err error
 		journaler, err = backend.NewSnapshotJournaler(
-			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
+			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot, false)
 		require.NoErrorf(opts.T, err, "got error setting up journaler")
 
-		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot, nil)
+		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot, nil, false)
 		journalSnapshotManager, err := engine.NewJournalSnapshotManager(journaler, target.Snapshot, secretsManager)
 		require.NoError(opts.T, err)
 

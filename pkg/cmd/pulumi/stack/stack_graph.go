@@ -88,7 +88,7 @@ func newStackGraphCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, secrets.DefaultProvider, backend.DisableIntegrityChecking(cmd))
 			if err != nil {
 				return err
 			}

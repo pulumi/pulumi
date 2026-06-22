@@ -29,16 +29,19 @@ type diySnapshotPersister struct {
 
 	ref     *diyBackendReference
 	backend *diyBackend
+
+	disableIntegrityChecking bool
 }
 
 func (sp *diySnapshotPersister) Save(deployment apitype.TypedDeployment) error {
-	_, err := sp.backend.saveStack(sp.ctx, sp.ref, deployment)
+	_, err := sp.backend.saveStack(sp.ctx, sp.ref, deployment, sp.disableIntegrityChecking)
 	return err
 }
 
 func (b *diyBackend) newSnapshotPersister(
 	ctx context.Context,
 	ref *diyBackendReference,
+	disableIntegrityChecking bool,
 ) *diySnapshotPersister {
-	return &diySnapshotPersister{ctx: ctx, ref: ref, backend: b}
+	return &diySnapshotPersister{ctx: ctx, ref: ref, backend: b, disableIntegrityChecking: disableIntegrityChecking}
 }

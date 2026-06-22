@@ -154,7 +154,7 @@ func TestPolicyAnalyzeCmd_ErrorOnSnapshotFailure(t *testing.T) {
 
 	snapErr := errors.New("cannot load snapshot")
 	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 		return nil, snapErr
 	}
 	ws, lm := newMockWsAndLm(be)
@@ -167,7 +167,7 @@ func TestPolicyAnalyzeCmd_EmptySnapshotPrintsMessage(t *testing.T) {
 	t.Parallel()
 
 	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 		return &deploy.Snapshot{}, nil
 	}
 	ws, lm := newMockWsAndLm(be)
@@ -180,7 +180,7 @@ func TestPolicyAnalyzeCmd_ErrorOnLoadAnalyzersFailure(t *testing.T) {
 	t.Parallel()
 
 	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 		return makeAnalyzeSnapshot(), nil
 	}
 	ws, lm := newMockWsAndLm(be)
@@ -197,7 +197,7 @@ func TestPolicyAnalyzeCmd_MandatoryViolationReturnsError(t *testing.T) {
 	t.Parallel()
 
 	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 		return makeAnalyzeSnapshot(), nil
 	}
 	ws, lm := newMockWsAndLm(be)
@@ -214,7 +214,7 @@ func TestPolicyAnalyzeCmd_NoViolationsSucceeds(t *testing.T) {
 	t.Parallel()
 
 	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 		return makeAnalyzeSnapshot(), nil
 	}
 	ws, lm := newMockWsAndLm(be)
@@ -227,7 +227,7 @@ func TestPolicyAnalyzeCmd_RemediationWritesToOutputStream(t *testing.T) {
 	t.Parallel()
 
 	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 		return makeAnalyzeSnapshot(), nil
 	}
 	ws, lm := newMockWsAndLm(be)
@@ -246,7 +246,7 @@ func TestPolicyAnalyzeCmd_ProgressDisplayGroupsPolicyOutput(t *testing.T) {
 	t.Parallel()
 
 	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 		return makeAnalyzeSnapshot(), nil
 	}
 	ws, lm := newMockWsAndLm(be)
@@ -269,7 +269,7 @@ func TestPolicyAnalyzeCmd_JSONDisplayWritesPolicyEvents(t *testing.T) {
 	t.Parallel()
 
 	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 		return makeAnalyzeSnapshot(), nil
 	}
 	ws, lm := newMockWsAndLm(be)
@@ -312,7 +312,7 @@ func TestPolicyAnalyzeCmd_AnalyzeStackCalled_PrintsAndUsesOutputs(t *testing.T) 
 	}
 
 	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider, _ bool) (*deploy.Snapshot, error) {
 		return snap, nil
 	}
 	ws, lm := newMockWsAndLm(be)

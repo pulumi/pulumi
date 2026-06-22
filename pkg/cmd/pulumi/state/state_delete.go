@@ -70,6 +70,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			}
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
+			disableIntegrityChecking := backend.DisableIntegrityChecking(cmd)
 			nDeleted := 0
 
 			var handleProtected func(*resource.State) error
@@ -84,7 +85,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 
 			var err error
 			if all {
-				err = runTotalStateEdit(ctx, sink, ws, lm, stack, showPrompt,
+				err = runTotalStateEdit(ctx, sink, ws, lm, stack, showPrompt, disableIntegrityChecking,
 					func(opts display.Options, snap *deploy.Snapshot) error {
 						// Iterate the resources backwards (so we delete dependents first) and delete them.
 						for i := len(snap.Resources) - 1; i >= 0; i-- {
@@ -102,7 +103,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 						return missingNonInteractiveArg("resource URN")
 					}
 					urn, selErr := getURNFromState(ctx, sink, ws, backend.DefaultLoginManager, stack, nil,
-						"Select the resource to delete")
+						"Select the resource to delete", disableIntegrityChecking)
 					if selErr != nil {
 						return fmt.Errorf("failed to select resource: %w", selErr)
 					}
@@ -111,7 +112,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					urnArgs = args
 				}
 				nDeleted, err = runStateDeleteResources(
-					ctx, sink, ws, lm, stack, showPrompt, urnArgs, handleProtected, targetDependents)
+					ctx, sink, ws, lm, stack, showPrompt, urnArgs, handleProtected, targetDependents,
+					disableIntegrityChecking)
 			}
 			if err != nil {
 				switch e := err.(type) {
@@ -166,9 +168,10 @@ func runStateDeleteResources(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm backend.LoginManager,
 	stackName string, showPrompt bool, args []string,
 	handleProtected func(*resource.State) error, targetDependents bool,
+	disableIntegrityChecking bool,
 ) (int, error) {
 	var deleted int
-	err := runTotalStateEdit(ctx, sink, ws, lm, stackName, showPrompt,
+	err := runTotalStateEdit(ctx, sink, ws, lm, stackName, showPrompt, disableIntegrityChecking,
 		func(opts display.Options, snap *deploy.Snapshot) error {
 			targets := make(map[*resource.State]struct{})
 			for _, arg := range args {

@@ -56,14 +56,16 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
+			disableIntegrityChecking := backend.DisableIntegrityChecking(cmd)
 
 			if untaintAll {
-				return untaintAllResources(ctx, cmd.OutOrStdout(), sink, ws, stack, showPrompt)
+				return untaintAllResources(ctx, cmd.OutOrStdout(), sink, ws, stack, showPrompt, disableIntegrityChecking)
 			}
 
 			// If URN arguments were provided, use those:
 			if len(args) > 0 {
-				return untaintMultipleResources(ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt)
+				return untaintMultipleResources(
+					ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt, disableIntegrityChecking)
 			}
 
 			// Otherwise, use interactive selection:
@@ -79,12 +81,13 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				stack,
 				nil,
 				"Select a resource to untaint:",
+				disableIntegrityChecking,
 			)
 			if err != nil {
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return untaintResource(ctx, cmd.OutOrStdout(), sink, ws, stack, urn, showPrompt)
+			return untaintResource(ctx, cmd.OutOrStdout(), sink, ws, stack, urn, showPrompt, disableIntegrityChecking)
 		},
 	}
 
@@ -107,10 +110,10 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 
 func untaintAllResources(
 	ctx context.Context, stdout io.Writer,
-	sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool, disableIntegrityChecking bool,
 ) error {
 	err := runTotalStateEdit(
-		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
+		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt, disableIntegrityChecking,
 		func(_ display.Options, snap *deploy.Snapshot) error {
 			// Protects against Panic when a user tries to untaint non-existing resources
 			if snap == nil {
@@ -169,9 +172,10 @@ func untaintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []er
 func untaintMultipleResources(
 	ctx context.Context, stdout io.Writer,
 	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	disableIntegrityChecking bool,
 ) error {
 	return runTotalStateEdit(
-		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
+		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt, disableIntegrityChecking,
 		func(_ display.Options, snap *deploy.Snapshot) error {
 			resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
 
@@ -194,6 +198,8 @@ func untaintMultipleResources(
 func untaintResource(
 	ctx context.Context, stdout io.Writer,
 	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+	disableIntegrityChecking bool,
 ) error {
-	return untaintMultipleResources(ctx, stdout, sink, ws, stackName, []string{string(urn)}, showPrompt)
+	return untaintMultipleResources(
+		ctx, stdout, sink, ws, stackName, []string{string(urn)}, showPrompt, disableIntegrityChecking)
 }
