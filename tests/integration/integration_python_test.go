@@ -772,18 +772,18 @@ func TestConstructSlowPython(t *testing.T) {
 	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-	// module to run `yarn install && yarn link @pulumi/pulumi` in the Python program's directory, allowing
+	// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+	// module to install the locally-built @pulumi/pulumi into the Python program's directory, allowing
 	// the Node.js dynamic provider plugin to load.
 	// When the underlying issue has been fixed, the use of this environment variable inside the integration
 	// test module should be removed.
-	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+	const testLinkPulumiEnv = "PULUMI_TEST_LINK_PULUMI=true"
 
 	testDir := "construct_component_slow"
 	integration.RunComponentSetup(t, testDir)
 
 	opts := &integration.ProgramTestOptions{
-		Env: []string{testYarnLinkPulumiEnv},
+		Env: []string{testLinkPulumiEnv},
 		Dir: filepath.Join(testDir, "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
@@ -819,12 +819,12 @@ func TestConstructPlainPython(t *testing.T) {
 			componentDir:          "testcomponent",
 			expectedResourceCount: 9,
 			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+			// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+			// module to install the locally-built @pulumi/pulumi into the Go program's directory, allowing
 			// the Node.js dynamic provider plugin to load.
 			// When the underlying issue has been fixed, the use of this environment variable inside the integration
 			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
+			env: []string{"PULUMI_TEST_LINK_PULUMI=true"},
 		},
 		{
 			componentDir:          "testcomponent-python",
