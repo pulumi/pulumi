@@ -2133,6 +2133,10 @@ func (b *cloudBackend) runEngineAction(
 		engineCtx.ParentSpan = parentSpan.Context()
 	}
 
+	if op.Opts.Engine.HostFactory == nil {
+		op.Opts.Engine.HostFactory = backend.DefaultHostFactory
+	}
+
 	var plan *deploy.Plan
 	var changes sdkDisplay.ResourceChanges
 	var updateErr error

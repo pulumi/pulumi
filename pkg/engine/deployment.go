@@ -25,12 +25,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -145,10 +141,9 @@ func (ctx *deploymentContext) Close() {
 type deploymentOptions struct {
 	UpdateOptions
 
-	// ownsHost is true when the engine constructed UpdateOptions.Host itself (via ensureHost) and
-	// is therefore responsible for closing it. A host injected through UpdateOptions.Host (e.g. by
-	// tests) is owned by its injector and is left open.
-	ownsHost bool
+	// host is the plugin host for this deployment, built from UpdateOptions.HostFactory by
+	// ensureHost. The engine owns it and closes it when the deployment context terminates.
+	host plugin.Host
 
 	// SourceFunc is a factory that returns an EvalSource to use during deployment.  This is the thing that
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
@@ -192,26 +187,21 @@ type deploymentSourceFunc func(
 	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks, panicErrs chan<- error,
 ) (deploy.Source, error)
 
-// ensureHost makes sure opts has a non-nil plugin host. A host injected via UpdateOptions.Host
-// (e.g. by tests) is left as-is and owned by its injector; otherwise one is constructed here and
-// flagged so the engine closes it when the deployment finishes. The host's diag sinks are the
-// engine's event sinks so that plugin logs are routed to the UI, which is why the host is built
-// here rather than threaded in from the backend. The lifetime context strips cancellation so a
-// cancelled operation still gets the graceful shutdown budget; ensureHost's caller closes it.
+// ensureHost builds the deployment's plugin host from opts.HostFactory and stores it on opts.
+// The factory is given the engine's event-routed diag sinks and debug context so that plugin
+// logs reach the UI; this is why the engine supplies those rather than receiving a fully-built
+// host. The lifetime context strips cancellation so a cancelled operation still gets the
+// graceful shutdown budget. The engine owns the resulting host and closes it (see newDeployment).
 func ensureHost(ctx context.Context, opts *deploymentOptions, span opentracing.Span) error {
-	if opts.Host != nil {
-		return nil
-	}
+	contract.Assertf(opts.HostFactory != nil, "a plugin host factory must be provided")
 	debugging := newDebugContext(opts.Events, opts.AttachDebugger)
-	h, err := pkghost.New(
+	h, err := opts.HostFactory(
 		opentracing.ContextWithSpan(context.WithoutCancel(ctx), span),
-		opts.Diag, opts.StatusDiag, debugging, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		opts.Diag, opts.StatusDiag, debugging)
 	if err != nil {
 		return err
 	}
-	opts.Host = h
-	opts.ownsHost = true
+	opts.host = h
 	return nil
 }
 
@@ -240,12 +230,9 @@ func newDeployment(
 
 	panicErrsChannel := make(chan error)
 
-	// Create a context for plugins. opts.Host is constructed by update() (or injected by a test);
-	// it is closed once the deployment context is terminated, after the plugin context, since the
-	// context does not own the host. A test-injected host (opts.ownsHost false) is left for its
-	// owner to close.
+	// Create a context for plugins.
 	baseCtx := trace.ContextWithSpan(ctx.Cancel.Base(), info.otelSpan)
-	pwd, main, plugctx, err := ProjectInfoContext(baseCtx, projinfo, opts.Host,
+	pwd, main, plugctx, err := ProjectInfoContext(baseCtx, projinfo, opts.host,
 		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
@@ -255,9 +242,7 @@ func newDeployment(
 	go func() {
 		<-ctx.Cancel.Terminated()
 		contract.IgnoreClose(plugctx)
-		if opts.ownsHost {
-			contract.IgnoreClose(opts.Host)
-		}
+		contract.IgnoreClose(opts.host)
 	}()
 
 	// Set up a goroutine that will signal cancellation to the source if the caller context

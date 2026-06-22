@@ -220,7 +220,11 @@ func update(
 			PluginManager:   framework.NopPluginManager{},
 			BackendClient:   snapshotBackendClient{},
 		},
-		engine.UpdateOptions{Host: host},
+		engine.UpdateOptions{
+			HostFactory: func(context.Context, diag.Sink, diag.Sink, plugin.DebugContext) (plugin.Host, error) {
+				return host, nil
+			},
+		},
 		false,
 	)
 	require.NoError(t, err)
