@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -51,10 +52,11 @@ func newStackWebhookDeliveryRedeliverCmd() *cobra.Command {
 func newStackWebhookDeliveryRedeliverCmdWith(
 	factory stackWebhookRedeliverClientFactory,
 ) *cobra.Command {
-	var (
-		stack  string
-		output string
-	)
+	var stack string
+	output := outputflag.OutputFlag[redeliverRenderFunc]{
+		RenderForTerminal: renderRedeliverText,
+		RenderJSON:        renderRedeliverJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "redeliver",
@@ -77,7 +79,7 @@ func newStackWebhookDeliveryRedeliverCmdWith(
 			}
 			return runRedeliver(
 				cmd.Context(), cmd.OutOrStdout(), factory,
-				stack, args[0], args[1], output,
+				stack, args[0], args[1], output.Get(),
 			)
 		},
 	}
@@ -92,8 +94,7 @@ func newStackWebhookDeliveryRedeliverCmdWith(
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVarP(&output, "output", "o", "default",
-		"The output format: default (human-readable text) or json")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -112,13 +113,8 @@ func runRedeliver(
 	factory stackWebhookRedeliverClientFactory,
 	stackFlag string,
 	webhookName, eventID string,
-	output string,
+	render redeliverRenderFunc,
 ) error {
-	renderer, err := redeliverRenderer(output)
-	if err != nil {
-		return err
-	}
-
 	c, stackID, err := factory(ctx, stackFlag)
 	if err != nil {
 		return err
@@ -129,22 +125,10 @@ func runRedeliver(
 		return fmt.Errorf("redelivering webhook event: %w", err)
 	}
 
-	return renderer(w, delivery)
+	return render(w, delivery)
 }
 
 type redeliverRenderFunc func(w io.Writer, d apitype.WebhookDelivery) error
-
-func redeliverRenderer(output string) (redeliverRenderFunc, error) {
-	switch output {
-	case "", "default":
-		return renderRedeliverText, nil
-	case "json":
-		return renderRedeliverJSON, nil
-	default:
-		return nil, fmt.Errorf(
-			"invalid --output value %q: expected \"default\" or \"json\"", output)
-	}
-}
 
 func renderRedeliverJSON(w io.Writer, d apitype.WebhookDelivery) error {
 	enc := json.NewEncoder(w)

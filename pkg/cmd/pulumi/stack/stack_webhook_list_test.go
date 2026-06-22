@@ -87,7 +87,7 @@ func TestStackWebhookList_TableOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{webhooks: sampleWebhooks()}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "default")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", renderWebhookListTable)
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -140,7 +140,7 @@ func TestStackWebhookList_TableOutput_DropsEmptyColumns(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{webhooks: webhooks}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "table")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", renderWebhookListTable)
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -182,7 +182,7 @@ func TestStackWebhookList_TableOutput_PartialColumns(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{webhooks: webhooks}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "table")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", renderWebhookListTable)
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -197,7 +197,7 @@ func TestStackWebhookList_TableOutput_Empty(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{webhooks: []apitype.Webhook{}}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "table")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", renderWebhookListTable)
 	require.NoError(t, err)
 
 	assert.Contains(t, buf.String(), "No webhooks configured for this stack.")
@@ -208,7 +208,7 @@ func TestStackWebhookList_JSONOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{webhooks: sampleWebhooks()}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "json")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", renderWebhookListJSON)
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -242,7 +242,7 @@ func TestStackWebhookList_JSONOutput_Empty(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{webhooks: []apitype.Webhook{}}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "json")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", renderWebhookListJSON)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{"webhooks": [], "count": 0}`, buf.String())
@@ -264,7 +264,7 @@ func TestStackWebhookList_JSONOutput_NilFormat(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{webhooks: webhooks}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "json")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", renderWebhookListJSON)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -283,23 +283,12 @@ func TestStackWebhookList_JSONOutput_NilFormat(t *testing.T) {
 	}`, buf.String())
 }
 
-func TestStackWebhookList_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	c := &mockWebhookClient{webhooks: sampleWebhooks()}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "xml")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid --output value")
-	assert.Contains(t, err.Error(), "xml")
-}
-
 func TestStackWebhookList_ClientError(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{err: errors.New("server error")}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "default")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", renderWebhookListTable)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "listing stack webhooks")
 	assert.Contains(t, err.Error(), "server error")
@@ -309,7 +298,7 @@ func TestStackWebhookList_FactoryError(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	err := runStackWebhookList(t.Context(), &buf, failingFactory(errors.New("not logged in")), "", "default")
+	err := runStackWebhookList(t.Context(), &buf, failingFactory(errors.New("not logged in")), "", renderWebhookListTable)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
@@ -324,7 +313,7 @@ func TestStackWebhookList_StackFlagPropagation(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := runStackWebhookList(t.Context(), &buf, factory, "org/proj/my-stack", "default")
+	err := runStackWebhookList(t.Context(), &buf, factory, "org/proj/my-stack", renderWebhookListTable)
 	require.NoError(t, err)
 	assert.Equal(t, "org/proj/my-stack", capturedStack)
 }

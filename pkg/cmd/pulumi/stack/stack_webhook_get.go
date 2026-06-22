@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -40,14 +41,15 @@ type stackWebhookGetClient interface {
 type stackWebhookGetCmd struct {
 	client  stackWebhookGetClient
 	stackID client.StackIdentifier
-	output  string
+	render  webhookGetRenderFunc
 }
 
 func newStackWebhookGetCmd() *cobra.Command {
-	var (
-		stack  string
-		output string
-	)
+	var stack string
+	output := outputflag.OutputFlag[webhookGetRenderFunc]{
+		RenderForTerminal: renderWebhookGetText,
+		RenderJSON:        renderWebhookGetJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "get",
@@ -66,7 +68,7 @@ func newStackWebhookGetCmd() *cobra.Command {
 			get := &stackWebhookGetCmd{
 				client:  c,
 				stackID: stackID,
-				output:  output,
+				render:  output.Get(),
 			}
 			return get.run(ctx, cmd.OutOrStdout(), args[0])
 		},
@@ -76,38 +78,21 @@ func newStackWebhookGetCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVar(&output, "output", "default",
-		"The output format: default (human-readable text) or json")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
 
 func (c *stackWebhookGetCmd) run(ctx context.Context, w io.Writer, webhookName string) error {
-	renderer, err := webhookGetRenderer(c.output)
-	if err != nil {
-		return err
-	}
-
 	webhook, err := c.client.GetStackWebhook(ctx, c.stackID, webhookName)
 	if err != nil {
 		return fmt.Errorf("reading stack webhook: %w", err)
 	}
 
-	return renderer(w, webhook)
+	return c.render(w, webhook)
 }
 
 type webhookGetRenderFunc func(w io.Writer, webhook apitype.Webhook) error
-
-func webhookGetRenderer(output string) (webhookGetRenderFunc, error) {
-	switch output {
-	case "", "default":
-		return renderWebhookGetText, nil
-	case "json":
-		return renderWebhookGetJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q: expected \"default\" or \"json\"", output)
-	}
-}
 
 // webhookGetJSON is the full JSON shape for `pulumi stack webhook get --output=json`.
 // It includes all fields returned by the API, unlike the list command's summary.

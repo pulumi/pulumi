@@ -73,6 +73,16 @@ func stubListFactory(c deploymentListClient) deploymentListClientFactory {
 	}
 }
 
+func defaultDeploymentListArgs() deploymentListArgs {
+	return deploymentListArgs{renderOutput: renderDeploymentListTable}
+}
+
+func jsonDeploymentListArgs() deploymentListArgs {
+	a := defaultDeploymentListArgs()
+	a.renderOutput = renderDeploymentListJSON
+	return a
+}
+
 func sampleListResponse() apitype.ListDeploymentResponseV2 {
 	return apitype.ListDeploymentResponseV2{
 		ItemsPerPage: 10,
@@ -117,7 +127,7 @@ func TestDeploymentList_DefaultOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockDeploymentListClient{resp: sampleListResponse()}
-	err := runDeploymentList(t.Context(), &buf, stubListFactory(c), deploymentListArgs{})
+	err := runDeploymentList(t.Context(), &buf, stubListFactory(c), defaultDeploymentListArgs())
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -150,7 +160,7 @@ func TestDeploymentList_DefaultOutput_Empty(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockDeploymentListClient{resp: apitype.ListDeploymentResponseV2{}}
-	err := runDeploymentList(t.Context(), &buf, stubListFactory(c), deploymentListArgs{})
+	err := runDeploymentList(t.Context(), &buf, stubListFactory(c), defaultDeploymentListArgs())
 	require.NoError(t, err)
 	assert.Equal(t, "No deployments found for this stack.\n", buf.String())
 }
@@ -175,7 +185,7 @@ func TestDeploymentList_DefaultOutput_FallsBackToNameWhenGithubLoginMissing(t *t
 
 	var buf bytes.Buffer
 	c := &mockDeploymentListClient{resp: resp}
-	err := runDeploymentList(t.Context(), &buf, stubListFactory(c), deploymentListArgs{})
+	err := runDeploymentList(t.Context(), &buf, stubListFactory(c), defaultDeploymentListArgs())
 	require.NoError(t, err)
 	assert.Contains(t, buf.String(), "Display Name")
 }
@@ -186,7 +196,7 @@ func TestDeploymentList_JSONOutput(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockDeploymentListClient{resp: sampleListResponse()}
 	err := runDeploymentList(t.Context(), &buf, stubListFactory(c),
-		deploymentListArgs{output: "json"})
+		jsonDeploymentListArgs())
 	require.NoError(t, err)
 
 	// Decode and check structural fields rather than comparing the whole
@@ -209,7 +219,7 @@ func TestDeploymentList_JSONOutput_EmptyArray(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockDeploymentListClient{resp: apitype.ListDeploymentResponseV2{}}
 	err := runDeploymentList(t.Context(), &buf, stubListFactory(c),
-		deploymentListArgs{output: "json"})
+		jsonDeploymentListArgs())
 	require.NoError(t, err)
 
 	assert.JSONEq(t,
@@ -253,6 +263,7 @@ func TestDeploymentList_PropagatesFlagsToClient(t *testing.T) {
 			var captured []capturedListCall
 			c := &mockDeploymentListClient{resp: apitype.ListDeploymentResponseV2{}, captured: &captured}
 			var buf bytes.Buffer
+			tt.args.renderOutput = renderDeploymentListTable
 			err := runDeploymentList(t.Context(), &buf, stubListFactory(c), tt.args)
 			require.NoError(t, err)
 			require.NotEmpty(t, captured, "expected at least one client call")
@@ -286,8 +297,9 @@ func TestDeploymentList_AutoPaginates(t *testing.T) {
 		var captured []capturedListCall
 		c := &mockDeploymentListClient{pages: pages, captured: &captured}
 		var buf bytes.Buffer
-		err := runDeploymentList(t.Context(), &buf, stubListFactory(c),
-			deploymentListArgs{all: true, output: "json"})
+		args := jsonDeploymentListArgs()
+		args.all = true
+		err := runDeploymentList(t.Context(), &buf, stubListFactory(c), args)
 		require.NoError(t, err)
 
 		var env deploymentListEnvelope
@@ -304,8 +316,9 @@ func TestDeploymentList_AutoPaginates(t *testing.T) {
 		var captured []capturedListCall
 		c := &mockDeploymentListClient{pages: pages, captured: &captured}
 		var buf bytes.Buffer
-		err := runDeploymentList(t.Context(), &buf, stubListFactory(c),
-			deploymentListArgs{count: 150, output: "json"})
+		args := jsonDeploymentListArgs()
+		args.count = 150
+		err := runDeploymentList(t.Context(), &buf, stubListFactory(c), args)
 		require.NoError(t, err)
 
 		var env deploymentListEnvelope
