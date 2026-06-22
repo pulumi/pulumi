@@ -1949,29 +1949,31 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		// pack-sdk". Long term we should try and unify the style of the code sdk with that of generated sdks
 		// so we don't need this special case.
 
-		yarn, err := executable.FindExecutable("yarn")
+		npm, err := executable.FindExecutable("npm")
 		if err != nil {
-			return nil, fmt.Errorf("find yarn: %w", err)
+			return nil, fmt.Errorf("find npm: %w", err)
 		}
 
-		err = writeString("$ yarn install --frozen-lockfile\n")
+		err = writeString("$ npm ci\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
-		yarnInstallCmd.Dir = req.PackageDirectory
-		if err := runWithOutput(yarnInstallCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("yarn install: %w", err)
+		npmInstallCmd := exec.Command(npm, "ci")
+		npmInstallCmd.Dir = req.PackageDirectory
+		if err := runWithOutput(npmInstallCmd, os.Stdout, os.Stderr); err != nil {
+			return nil, fmt.Errorf("npm ci: %w", err)
 		}
 
-		err = writeString("$ yarn run tsc\n")
+		// Run tsc via npx: it resolves the project-local node_modules/.bin ahead of any
+		// globally-installed TypeScript, and --no-install keeps it from fetching tsc from the registry.
+		err = writeString("$ npx --no-install tsc\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnTscCmd := exec.Command(yarn, "run", "tsc")
-		yarnTscCmd.Dir = req.PackageDirectory
-		if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("yarn run tsc: %w", err)
+		tscCmd := exec.Command("npx", "--no-install", "tsc")
+		tscCmd.Dir = req.PackageDirectory
+		if err := runWithOutput(tscCmd, os.Stdout, os.Stderr); err != nil {
+			return nil, fmt.Errorf("tsc: %w", err)
 		}
 
 		// "tsc" doesn't copy in the "proto" and "vendor" directories.

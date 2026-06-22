@@ -30,6 +30,9 @@ java = "temurin-11"
 gradle = "7.6"
 "github:pulumi/goteststats" = "0.0.7"
 
+[env]
+PULUMI_TEST_USE_NPM = "true"
+
 [tool_alias]
 protoc = "asdf:https://github.com/paxosglobal/asdf-protoc"
 
