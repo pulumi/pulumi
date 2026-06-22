@@ -240,3 +240,91 @@ func TestExtensionParameterizedProvider(t *testing.T) {
 		require.True(t, ok, "phase %q failed; later phases build on its snapshot", ph.name)
 	}
 }
+
+func TestExtensionParameterizedProviderDeleteParameterizesFromState(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		deleteOp lt.TestOp
+	}{
+		{"destroy", lt.TestOp(Destroy)},
+		{"remove_on_update", lt.TestOp(Update)},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			var mu sync.Mutex
+			parameterizeCount := 0
+
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{
+						ParameterizeF: func(
+							_ context.Context, req plugin.ParameterizeRequest,
+						) (plugin.ParameterizeResponse, error) {
+							value := req.Parameters.(*plugin.ParameterizeValue)
+							mu.Lock()
+							parameterizeCount++
+							mu.Unlock()
+							return plugin.ParameterizeResponse{Name: value.Name, Version: value.Version}, nil
+						},
+						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+							return plugin.CreateResponse{
+								ID:         resource.ID("id-" + req.URN.Name()),
+								Properties: req.Properties,
+								Status:     resource.StatusOK,
+							}, nil
+						},
+						DeleteF: func(_ context.Context, _ plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+							mu.Lock()
+							parameterized := parameterizeCount > 0
+							mu.Unlock()
+							assert.True(t, parameterized,
+								"provider must be parameterized before an extension resource is deleted")
+							return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+						},
+					}, nil
+				}),
+			}
+
+			createResource := deploytest.NewLanguageRuntimeF(
+				func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+					ref, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, &pulumirpc.Parameterization{
+						Name: "ext-a", Version: "1.0.0", Value: []byte("blob-a"),
+					})
+					require.NoError(t, err)
+					_, err = monitor.RegisterResource(
+						"pkgA:m:typA", "resA", true, deploytest.ResourceOptions{PackageRef: ref})
+					require.NoError(t, err)
+					return nil
+				})
+
+			hostF := deploytest.NewPluginHostF(nil, nil, createResource, loaders...)
+			p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+			snap, err := lt.TestOp(Update).
+				RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "")
+			require.NoError(t, err)
+			require.NotNil(t, snap)
+
+			mu.Lock()
+			parameterizeCount = 0
+			mu.Unlock()
+
+			noProgram := deploytest.NewLanguageRuntimeF(
+				func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error { return nil })
+			hostF2 := deploytest.NewPluginHostF(nil, nil, noProgram, loaders...)
+			p2 := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF2, SkipDisplayTests: true}}
+			_, err = c.deleteOp.
+				RunStep(p2.GetProject(), p2.GetTarget(t, snap), p2.Options, false, p2.BackendClient, nil, "")
+			require.NoError(t, err)
+
+			mu.Lock()
+			parameterized := parameterizeCount > 0
+			mu.Unlock()
+			require.True(t, parameterized,
+				"a from-state delete must parameterize the provider from state")
+		})
+	}
+}

@@ -681,57 +681,6 @@ func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
-// rehydrateExtensionsForProvider reapplies every extension parameterization in the previous
-// snapshot that targets the given provider.
-func (d *Deployment) rehydrateExtensionsForProvider(providerState *resource.State) error {
-	if d.prev == nil || len(d.prev.Extensions) == 0 {
-		return nil
-	}
-
-	providerURN := providerState.URN
-	providerRef, err := sdkproviders.NewReference(providerURN, providerState.ID)
-	if err != nil {
-		return fmt.Errorf("rehydrate extensions: build reference for provider %s: %w", providerURN, err)
-	}
-	provider, ok := d.providers.GetProvider(providerRef)
-	if !ok {
-		// Provider didn't actually get loaded into the registry. Nothing to rehydrate against.
-		return nil
-	}
-
-	// Collect the unique ExtensionRefs that resources in state attribute to this provider.
-	providerKey := providerRef.String()
-	seen := map[apitype.ExtensionRef]bool{}
-	for _, res := range d.prev.Resources {
-		if res.ExtensionRef == "" || res.Provider != providerKey {
-			continue
-		}
-		ref := res.ExtensionRef
-		if seen[ref] {
-			continue
-		}
-		seen[ref] = true
-
-		blob, ok := d.prev.Extensions[ref]
-		if !ok {
-			return fmt.Errorf("rehydrate extensions: blob for ref %s (resource %s) not found in snapshot",
-				ref, res.URN)
-		}
-		_, created := d.LookupOrRegisterExtension(providerRef, ref)
-		if created == nil {
-			// Another path (the program's registration, or an earlier resource) already
-			// claimed this extension this run and will parameterize it. Don't repeat it.
-			continue
-		}
-		step := NewExtensionParameterizeStep(d, provider, ref, blob, created)
-		if _, _, err := step.Apply(); err != nil {
-			return fmt.Errorf("rehydrate extensions: parameterize provider %s with ref %s: %w",
-				providerRef, ref, err)
-		}
-	}
-	return nil
-}
-
 // SameProvider configures a provider from state without changes.
 // If fromCheck is true, the provider was loaded during Check/Diff and we can reuse it.
 // If fromCheck is false (e.g., from EnsureProvider), we load fresh and don't touch UnconfiguredID.
@@ -742,12 +691,7 @@ func (d *Deployment) SameProvider(res *resource.State, fromCheck bool) error {
 	} else {
 		ctx = d.ctx.Base()
 	}
-	if err := d.providers.Same(ctx, res, fromCheck); err != nil {
-		return err
-	}
-	// Reapply any extension parameterizations recorded in state for this provider so the
-	// just-loaded plugin recognizes extension resources before any ops touch them.
-	return d.rehydrateExtensionsForProvider(res)
+	return d.providers.Same(ctx, res, fromCheck)
 }
 
 // EnsureProvider ensures that the provider for the given resource is available in the registry. It assumes
@@ -784,6 +728,32 @@ func (d *Deployment) EnsureProvider(provider string) error {
 	}
 
 	return nil
+}
+
+// ensureProviderExtension parameterizes a resource's provider with the extension the resource references, if any.
+func (d *Deployment) ensureProviderExtension(res *resource.State) error {
+	if res.ExtensionRef == "" || d.prev == nil {
+		return nil
+	}
+	providerRef, err := sdkproviders.ParseReference(res.Provider)
+	if err != nil {
+		return fmt.Errorf("invalid provider reference %v: %w", res.Provider, err)
+	}
+	provider, ok := d.providers.GetProvider(providerRef)
+	if !ok {
+		return nil
+	}
+	blob, ok := d.prev.Extensions[res.ExtensionRef]
+	if !ok {
+		return fmt.Errorf("extension blob for %s (resource %s) not found in snapshot", res.ExtensionRef, res.URN)
+	}
+	_, created := d.LookupOrRegisterExtension(providerRef, res.ExtensionRef)
+	if created == nil {
+		return nil
+	}
+	step := NewExtensionParameterizeStep(d, provider, res.ExtensionRef, blob, created)
+	_, _, err = step.Apply()
+	return err
 }
 
 func (d *Deployment) GetProvider(ref sdkproviders.Reference) (plugin.Provider, bool) {

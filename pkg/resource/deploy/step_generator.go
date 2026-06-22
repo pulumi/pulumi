@@ -2211,6 +2211,9 @@ func (sg *stepGenerator) GenerateRefreshes(
 					if err != nil {
 						return nil, nil, fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 					}
+					if err := sg.deployment.ensureProviderExtension(res); err != nil {
+						return nil, nil, fmt.Errorf("could not parameterize extension for resource %v: %w", res.URN, err)
+					}
 				}
 			}
 		}
@@ -2320,6 +2323,9 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 					err := sg.deployment.EnsureProvider(res.Provider)
 					if err != nil {
 						return nil, nil, fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+					}
+					if err := sg.deployment.ensureProviderExtension(res); err != nil {
+						return nil, nil, fmt.Errorf("could not parameterize extension for resource %v: %w", res.URN, err)
 					}
 				}
 			} else {
