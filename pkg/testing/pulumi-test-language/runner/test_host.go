@@ -41,8 +41,6 @@ import (
 
 type testHost struct {
 	engine      *languageTestServer
-	ctx         *plugin.Context
-	host        plugin.Host
 	runtime     plugin.LanguageRuntime
 	runtimeName string
 	providers   map[string]func() (plugin.Provider, error)
@@ -103,7 +101,7 @@ func (h *testHost) PolicyAnalyzer(
 		// This is only called for the language runtime, so we can just do a simple check.
 		return spec.Kind == apitype.LanguagePlugin && spec.Name == h.runtimeName
 	}
-	analyzer, err := plugin.NewPolicyAnalyzer(h, h.ctx, name, path, opts, hasPlugin)
+	analyzer, err := plugin.NewPolicyAnalyzer(h, ctx, name, path, opts, hasPlugin)
 	if err != nil {
 		return nil, err
 	}
