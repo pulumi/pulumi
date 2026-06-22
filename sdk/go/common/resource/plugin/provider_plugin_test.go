@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -641,7 +642,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "replacement trigger",
 			give: ConstructOptions{
-				ReplacementTrigger: resource.NewProperty("trigger-value"),
+				ReplacementTrigger: property.New("trigger-value"),
 			},
 			want: &pulumirpc.ConstructRequest{
 				ReplacementTrigger: structpb.NewStringValue("trigger-value"),

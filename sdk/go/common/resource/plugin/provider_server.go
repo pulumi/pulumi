@@ -936,7 +936,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		ResourceHooks:        hooks,
 		DeletedWith:          resource.URN(req.DeletedWith),
 		ReplaceWith:          replaceWith,
-		ReplacementTrigger:   replacementTrigger,
+		ReplacementTrigger:   resource.FromResourcePropertyValue(replacementTrigger),
 		IgnoreChanges:        req.GetIgnoreChanges(),
 		ReplaceOnChanges:     req.GetReplaceOnChanges(),
 	}

@@ -2012,7 +2012,8 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	// Marshal the replacement trigger.
 	var replacementTrigger *structpb.Value
 	if !req.Options.ReplacementTrigger.IsNull() {
-		trigger, err := MarshalPropertyValue("replacementTrigger", req.Options.ReplacementTrigger, MarshalOptions{
+		value := resource.ToResourcePropertyValue(req.Options.ReplacementTrigger)
+		trigger, err := MarshalPropertyValue("replacementTrigger", value, MarshalOptions{
 			Label:            label + ".replacementTrigger",
 			KeepUnknowns:     req.Info.DryRun,
 			KeepSecrets:      true,
