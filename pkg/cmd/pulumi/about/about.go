@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -54,10 +55,20 @@ import (
 )
 
 func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
-	var jsonOut bool
 	var transitiveDependencies bool
 	var stack string
 	short := "Print information about the Pulumi environment."
+
+	output := outputflag.OutputFlag[aboutRenderFunc]{
+		RenderForTerminal: func(w io.Writer, summary summaryAbout) error {
+			summary.Print(w)
+			return nil
+		},
+		RenderJSON: func(w io.Writer, summary summaryAbout) error {
+			return ui.FprintJSON(w, summary)
+		},
+	}
+
 	cmd := &cobra.Command{
 		Use:   "about",
 		Short: short,
@@ -74,11 +85,7 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
-			if jsonOut {
-				return ui.FprintJSON(cmd.OutOrStdout(), summary)
-			}
-			summary.Print(cmd.OutOrStdout())
-			return nil
+			return output.Get()(cmd.OutOrStdout(), summary)
 		},
 	}
 
@@ -86,8 +93,7 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd.AddCommand(newAboutEnvCmd())
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to get info on. Defaults to the current stack")
@@ -96,6 +102,8 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	return cmd
 }
+
+type aboutRenderFunc func(w io.Writer, summary summaryAbout) error
 
 type summaryAbout struct {
 	// We use pointers here to allow the field to be nullable. When
