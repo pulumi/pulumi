@@ -19,12 +19,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConcurrentUpdateError(t *testing.T) {
@@ -105,16 +105,15 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
+	block := make(chan struct{})
+
 	// initialize
 	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
-		time.Sleep(5 * time.Second)
+		<-block
 		ctx.Export("exp_static", pulumi.String("foo"))
 		return nil
 	})
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoErrorf(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
@@ -125,32 +124,22 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 	c := make(chan error)
 
 	// parallel updates to cause conflict
-	for i := 0; i < 50; i++ {
-		go func() {
-			_, err := s.Up(ctx)
-			c <- err
-		}()
+	for range 2 {
+		go func() { _, err := s.Up(ctx); c <- err }()
 	}
 
-	conflicts := 0
+	// One stack successfully entered the program and is waiting on block to close. The only way for a stack
+	// to return is to error before the program, so we assert that's the concurrent update.
+	err = <-c
+	assert.Truef(t, IsConcurrentUpdateError(err), "found %s", err)
 
-	for i := 0; i < 50; i++ {
-		err := <-c
-		if IsConcurrentUpdateError(err) {
-			conflicts++
-		}
-	}
+	// Release the remaining stack to complete, then block until it does.
+	close(block)
+	assert.Nil(t, <-c)
 
 	// -- pulumi destroy --
-
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
-
-	// should have at least one conflict
-	assert.Greater(t, conflicts, 0)
+	require.NoError(t, err, "destroy failed")
 }
 
 const compilationErrProj = "compilation_error"
