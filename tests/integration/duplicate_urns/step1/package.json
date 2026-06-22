@@ -1,0 +1,7 @@
+{
+    "name": "duplicate_urns",
+    "license": "Apache-2.0",
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}

@@ -40,7 +40,7 @@ func (e *Environment) InstallDependencies() {
 	}
 
 	if runtime == "nodejs" {
-		configureNodejsCoreSDK(e.T, e.CWD) // add the SDK to package.json, it will be installed via `pulumi install`
+		ConfigureNodejsCoreSDK(e.T, e.CWD) // add the SDK to package.json, it will be installed via `pulumi install`
 	}
 
 	e.RunCommand("pulumi", "install")
@@ -108,7 +108,7 @@ func installNodejsDependencies(t *testing.T, dir string) {
 	t.Helper()
 
 	restoreAtCleanup(t, dir, "package.json")
-	configureNodejsCoreSDK(t, dir)
+	ConfigureNodejsCoreSDK(t, dir)
 
 	retry(t, dir, "npm install", func() ([]byte, error) {
 		cmd := exec.Command("npm", "install")
@@ -117,10 +117,10 @@ func installNodejsDependencies(t *testing.T, dir string) {
 	})
 }
 
-// configureNodejsCoreSDK points dir's @pulumi/pulumi at the locally-built SDK so that the subsequent npm install
+// ConfigureNodejsCoreSDK points dir's @pulumi/pulumi at the locally-built SDK so that the subsequent npm install
 // (whether run directly or by `pulumi install`) exercises local SDK changes. It pins @pulumi/pulumi to the local
 // SDK tarball and forces every transitive @pulumi/pulumi to resolve to that same tarball via `overrides`.
-func configureNodejsCoreSDK(t *testing.T, dir string) {
+func ConfigureNodejsCoreSDK(t *testing.T, dir string) {
 	t.Helper()
 	spec := "file:" + localCoreSDKTarball(t)
 
