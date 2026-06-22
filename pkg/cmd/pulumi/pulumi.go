@@ -464,6 +464,12 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	cmd.PersistentFlags().StringVar(
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
+	nCtx := needle.Context{
+		WS:  pkgWorkspace.Instance,
+		Env: env.Global(),
+		LM:  cmdBackend.DefaultLoginManager,
+	}
+
 	setCommandGroups(cmd, []commandGroup{
 		// Common commands:
 		{
@@ -499,7 +505,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Commands: []*cobra.Command{
 				auth.NewLoginCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
-				whoami.NewWhoAmICmd(needle.Context{WS: pkgWorkspace.Instance}),
+				whoami.NewWhoAmICmd(nCtx),
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
@@ -519,7 +525,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Commands: []*cobra.Command{
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
-				packagecmd.NewPackageCmd(needle.Context{WS: pkgWorkspace.Instance}),
+				packagecmd.NewPackageCmd(nCtx),
 			},
 		},
 		{
