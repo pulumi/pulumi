@@ -193,6 +193,9 @@ func NewNeoCmd() *cobra.Command {
 		"Run the Neo task with no integration credentials, ignoring any org-enabled "+
 			"integrations.")
 
+	// `pulumi neo acp` runs Neo as an Agent Client Protocol agent over stdio.
+	cmd.AddCommand(newNeoACPCmd())
+
 	return cmd
 }
 
@@ -269,30 +272,13 @@ func runNeo(
 		return err
 	}
 
-	// Allow tools to read/write under temp directories in addition to cwd: the agent
-	// stages scratch files there (downloads, intermediate state) and the CLI sandbox
-	// would otherwise reject those paths. See pulumi/pulumi-service#42027.
-	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
-	fs, err := tools.NewFilesystem(cwdFlag, extraRoots...)
+	// pu's sink stays nil here so live events are dropped in non-interactive mode;
+	// the interactive path below sets pu.Sink to push UIEvents onto uiCh.
+	lt, err := buildLocalToolHandlers(cwdFlag, ws)
 	if err != nil {
 		return err
 	}
-	sh, err := tools.NewShell(cwdFlag, extraRoots...)
-	if err != nil {
-		return err
-	}
-	handlers := map[string]ToolHandler{
-		"filesystem": fs,
-		"shell":      sh,
-	}
-
-	// In non-interactive mode the sink stays nil and live events are dropped; the
-	// interactive path below sets pu.Sink to push UIEvents onto uiCh.
-	pu, err := tools.NewPulumi(cwdFlag, ws, nil)
-	if err != nil {
-		return err
-	}
-	handlers["pulumi"] = pu
+	pu, handlers := lt.pu, lt.handlers
 
 	if printMode || !isInteractive() {
 		if prompt == "" {
@@ -646,6 +632,49 @@ func resolveTaskTarget(
 		return "", "", "", errors.New("could not determine an organization for the Neo task; pass --org")
 	}
 	return org, projectName, stack, nil
+}
+
+// localTools are the CLI-local tool handlers shared by every Neo entrypoint. The
+// concrete fs/sh/pu handles are exposed alongside the assembled handler map so
+// callers can layer on extras without re-deriving the shared construction or the
+// temp-root policy: the interactive path sets pu.Sink, and the ACP adapter routes
+// fs/sh through the editor. handlers already contains fs/sh/pu under their tool
+// names.
+type localTools struct {
+	fs       *tools.Filesystem
+	sh       *tools.Shell
+	pu       *tools.Pulumi
+	handlers map[string]ToolHandler
+}
+
+// buildLocalToolHandlers constructs the CLI-local tool handlers shared by every
+// Neo entrypoint (interactive TUI, non-interactive, ACP): the filesystem, shell,
+// and pulumi tools rooted at cwd. The filesystem and shell additionally allow
+// tools to read/write under temp directories in addition to cwd: the agent
+// stages scratch files there (downloads, intermediate state) and the CLI sandbox
+// would otherwise reject those paths (see pulumi/pulumi-service#42027).
+func buildLocalToolHandlers(cwd string, ws pkgWorkspace.Context) (localTools, error) {
+	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
+	fs, err := tools.NewFilesystem(cwd, extraRoots...)
+	if err != nil {
+		return localTools{}, err
+	}
+	sh, err := tools.NewShell(cwd, extraRoots...)
+	if err != nil {
+		return localTools{}, err
+	}
+	pu, err := tools.NewPulumi(cwd, ws, nil)
+	if err != nil {
+		return localTools{}, err
+	}
+	return localTools{
+		fs: fs, sh: sh, pu: pu,
+		handlers: map[string]ToolHandler{
+			"filesystem": fs,
+			"shell":      sh,
+			"pulumi":     pu,
+		},
+	}, nil
 }
 
 // dedupeExistingRoots returns candidates with duplicates removed by canonical path,

@@ -55,6 +55,20 @@ type Filesystem struct {
 	Root string
 	// allowedRoots is Root followed by any extra roots passed to NewFilesystem.
 	allowedRoots []string
+	// OnWrite, when non-nil, performs the actual file write for the tool's
+	// mutating methods (write, edit, content_replace) in place of writing to
+	// local disk. path is the resolved absolute path; content is the full new
+	// file contents. The Neo ACP adapter sets this to route writes through the
+	// editor's fs/write_text_file request, so changes surface as native diffs
+	// and the editor (not the CLI) owns the on-disk mutation. A nil OnWrite
+	// writes straight to disk, creating parent directories as needed.
+	OnWrite func(ctx context.Context, path, content string) error
+	// OnRead, when non-nil, supplies the full contents of path in place of
+	// reading local disk for the read method. The Neo ACP adapter sets this to
+	// fetch via the editor's fs/read_text_file request, so reads see the
+	// editor's unsaved buffer. The tool still applies its own offset/limit
+	// slicing to the returned content. A nil OnRead reads from disk.
+	OnRead func(ctx context.Context, path string) (string, error)
 }
 
 // NewFilesystem creates a Filesystem handler rooted at the given absolute directory.
@@ -91,7 +105,7 @@ func NewFilesystem(root string, extraRoots ...string) (*Filesystem, error) {
 }
 
 // Invoke dispatches a single filesystem method call.
-func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessage) (any, error) {
+func (f *Filesystem) Invoke(ctx context.Context, method string, args json.RawMessage) (any, error) {
 	switch method {
 	case "read":
 		var p struct {
@@ -102,7 +116,7 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, fmt.Errorf("decoding read args: %w", err)
 		}
-		return nilOnError(f.read(p.FilePath, p.Offset, p.Limit))
+		return nilOnError(f.read(ctx, p.FilePath, p.Offset, p.Limit))
 	case "write":
 		var p struct {
 			FilePath string `json:"file_path"`
@@ -111,7 +125,7 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, fmt.Errorf("decoding write args: %w", err)
 		}
-		return nilOnError(f.write(p.FilePath, p.Content))
+		return nilOnError(f.write(ctx, p.FilePath, p.Content))
 	case "directory_tree":
 		var p struct {
 			Path  string `json:"path"`
@@ -126,7 +140,7 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, fmt.Errorf("decoding edit args: %w", err)
 		}
-		return nilOnError(f.edit(p))
+		return nilOnError(f.edit(ctx, p))
 	case "grep":
 		var p struct {
 			Pattern string `json:"pattern"`
@@ -148,7 +162,7 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, fmt.Errorf("decoding content_replace args: %w", err)
 		}
-		return nilOnError(f.contentReplace(p.Pattern, p.Replacement, p.Path, p.FilePattern, p.DryRun))
+		return nilOnError(f.contentReplace(ctx, p.Pattern, p.Replacement, p.Path, p.FilePattern, p.DryRun))
 	case "grep_ast":
 		return nil, fmt.Errorf("filesystem method %q is not yet implemented in pulumi neo CLI mode", method)
 	default:
@@ -186,16 +200,15 @@ type readResult struct {
 	Content string `json:"content"`
 }
 
-func (f *Filesystem) read(p string, offset, limit int) (readResult, error) {
+func (f *Filesystem) read(ctx context.Context, p string, offset, limit int) (readResult, error) {
 	abs, err := f.resolve(p)
 	if err != nil {
 		return readResult{}, err
 	}
-	b, err := os.ReadFile(abs)
+	content, err := f.getFile(ctx, abs)
 	if err != nil {
 		return readResult{}, err
 	}
-	content := string(b)
 	if offset > 0 || limit > 0 {
 		// Apply line-based slicing matching the upstream tool's offset/limit semantics.
 		lines := strings.Split(content, "\n")
@@ -218,18 +231,43 @@ type writeResult struct {
 	BytesWritten int `json:"bytes_written"`
 }
 
-func (f *Filesystem) write(p, content string) (writeResult, error) {
+func (f *Filesystem) write(ctx context.Context, p, content string) (writeResult, error) {
 	abs, err := f.resolve(p)
 	if err != nil {
 		return writeResult{}, err
 	}
-	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-		return writeResult{}, err
-	}
-	if err := os.WriteFile(abs, []byte(content), 0o600); err != nil {
+	if err := f.putFile(ctx, abs, content); err != nil {
 		return writeResult{}, err
 	}
 	return writeResult{BytesWritten: len(content)}, nil
+}
+
+// getFile returns the full contents of the resolved absolute path abs. When
+// OnRead is set the read is delegated to it (the ACP adapter fetches via the
+// editor's fs/read_text_file); otherwise it reads from local disk.
+func (f *Filesystem) getFile(ctx context.Context, abs string) (string, error) {
+	if f.OnRead != nil {
+		return f.OnRead(ctx, abs)
+	}
+	b, err := os.ReadFile(abs)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+// putFile commits content to the resolved absolute path abs. When OnWrite is set
+// the write is delegated to it (the ACP adapter forwards it to the editor as
+// fs/write_text_file, which creates missing parents itself); otherwise it writes
+// to local disk, creating parent directories as needed.
+func (f *Filesystem) putFile(ctx context.Context, abs, content string) error {
+	if f.OnWrite != nil {
+		return f.OnWrite(ctx, abs, content)
+	}
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(abs, []byte(content), 0o600)
 }
 
 // editArgs is the JSON shape for the `edit` tool. ExpectedReplacements is a pointer so
@@ -245,7 +283,7 @@ type editArgs struct {
 // edit performs a single exact-string replacement. The response string and error wording
 // are deliberately kept byte-identical to the upstream mcp-claude-code `edit` tool so the
 // agent sees the same output whether the call ran on Cloud or CLI.
-func (f *Filesystem) edit(p editArgs) (string, error) {
+func (f *Filesystem) edit(ctx context.Context, p editArgs) (string, error) {
 	abs, err := f.resolve(p.FilePath)
 	if err != nil {
 		return "", err
@@ -267,10 +305,7 @@ func (f *Filesystem) edit(p editArgs) (string, error) {
 
 	// Creation mode: file doesn't exist and old_string is empty.
 	if !fileExists && p.OldString == "" {
-		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-			return "", err
-		}
-		if err := os.WriteFile(abs, []byte(p.NewString), 0o600); err != nil {
+		if err := f.putFile(ctx, abs, p.NewString); err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("Successfully created file: %s (%d bytes)", p.FilePath, len(p.NewString)), nil
@@ -289,14 +324,15 @@ func (f *Filesystem) edit(p editArgs) (string, error) {
 		return "Error: Parameter 'old_string' cannot be empty for existing files", nil
 	}
 
-	raw, err := os.ReadFile(abs)
+	// Read through getFile so an ACP-backed edit matches and diffs against the
+	// same content it will write back (the editor's buffer), not stale disk.
+	original, err := f.getFile(ctx, abs)
 	if err != nil {
 		return "", err
 	}
-	if !utf8.Valid(raw) {
+	if !utf8.ValidString(original) {
 		return "Error: Cannot edit binary file: " + p.FilePath, nil
 	}
-	original := string(raw)
 
 	occurrences := strings.Count(original, p.OldString)
 	if occurrences == 0 {
@@ -321,7 +357,7 @@ func (f *Filesystem) edit(p editArgs) (string, error) {
 		return "No changes made to file: " + p.FilePath, nil
 	}
 
-	if err := os.WriteFile(abs, []byte(modified), 0o600); err != nil {
+	if err := f.putFile(ctx, abs, modified); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf(
@@ -563,7 +599,7 @@ type contentReplaceResult struct {
 // output summarizes what would change. Mirrors the upstream mcp-claude-code
 // `content_replace` tool.
 func (f *Filesystem) contentReplace(
-	pattern, replacement, searchPath, filePattern string, dryRun bool,
+	ctx context.Context, pattern, replacement, searchPath, filePattern string, dryRun bool,
 ) (contentReplaceResult, error) {
 	if pattern == "" {
 		return contentReplaceResult{}, errors.New("pattern is required")
@@ -590,14 +626,16 @@ func (f *Filesystem) contentReplace(
 	totalReplacements := 0
 
 	processFile := func(path string) error {
-		b, readErr := os.ReadFile(path)
+		// Read and write through getFile/putFile so an ACP-backed replace operates
+		// on the editor's view of each file rather than mixing a disk read with an
+		// editor write.
+		before, readErr := f.getFile(ctx, path)
 		if readErr != nil {
 			return nil //nolint:nilerr // skip unreadable files (same stance as grep)
 		}
-		if isBinary(b) {
+		if isBinary([]byte(before)) {
 			return nil
 		}
-		before := string(b)
 		count := strings.Count(before, pattern)
 		if count == 0 {
 			return nil
@@ -608,7 +646,7 @@ func (f *Filesystem) contentReplace(
 			return nil
 		}
 		after := strings.ReplaceAll(before, pattern, replacement)
-		return os.WriteFile(path, []byte(after), 0o600)
+		return f.putFile(ctx, path, after)
 	}
 
 	if err := walkMatching(abs, filePattern, processFile); err != nil {
