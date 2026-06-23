@@ -15,7 +15,9 @@
 // resolver-provider is a test resource provider used to verify that the engine sends a working
 // package-resolver target as part of the provider handshake. On Create it dials the resolver service
 // received during the handshake and asks it to resolve the package named by the "source" input,
-// returning the resolved dependency's coordinates as the created resource's state.
+// returning the resolved dependency's coordinates as the created resource's state. When a loader
+// target is also supplied, it feeds the resolved dependency straight into the schema loader to load
+// the package's schema, exercising the resolve-then-load round trip a consumer would perform.
 package main
 
 import (
@@ -30,12 +32,14 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 type resolverProvider struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
 	resolver pulumirpc.PackageResolverClient
+	loader   codegen.LoaderClient
 }
 
 func (p *resolverProvider) Handshake(
@@ -45,18 +49,37 @@ func (p *resolverProvider) Handshake(
 		return nil, fmt.Errorf("no resolver target received during handshake")
 	}
 
+	if req.LoaderTarget == nil || *req.LoaderTarget == "" {
+		return nil, fmt.Errorf("no resolver loader received during handshake")
+	}
+
 	conn, err := grpc.NewClient(*req.ResolverTarget,
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("dial resolver at %v: %w", *req.ResolverTarget, err)
 	}
-
 	p.resolver = pulumirpc.NewPackageResolverClient(conn)
+
+	loaderConn, err := grpc.NewClient(*req.LoaderTarget,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("dial loader at %v: %w", *req.LoaderTarget, err)
+	}
+	p.loader = codegen.NewLoaderClient(loaderConn)
+
 	return &pulumirpc.ProviderHandshakeResponse{}, nil
 }
 
 func (p *resolverProvider) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{Version: "1.0.0"}, nil
+}
+
+// GetSchema lets the engine's resolver run this provider as a plain (un-parameterized) package: the
+// resolver runs every resolved plugin and reads its schema to detect parameterization.
+func (p *resolverProvider) GetSchema(
+	ctx context.Context, req *pulumirpc.GetSchemaRequest,
+) (*pulumirpc.GetSchemaResponse, error) {
+	return &pulumirpc.GetSchemaResponse{Schema: `{"name":"resolvetest","version":"1.0.0"}`}, nil
 }
 
 func (p *resolverProvider) Configure(
@@ -70,17 +93,51 @@ func (p *resolverProvider) Create(
 ) (*pulumirpc.CreateResponse, error) {
 	source := req.Properties.Fields["source"].GetStringValue()
 
-	dep, err := p.resolver.ResolvePackage(ctx, &pulumirpc.PackageSpec{Source: source})
+	var parameters []string
+	for _, v := range req.Properties.Fields["parameters"].GetListValue().GetValues() {
+		parameters = append(parameters, v.GetStringValue())
+	}
+
+	dep, err := p.resolver.ResolvePackage(ctx, &pulumirpc.PackageSpec{Source: source, Parameters: parameters})
 	if err != nil {
 		return nil, fmt.Errorf("resolve package %q: %w", source, err)
 	}
 
-	props, err := structpb.NewStruct(map[string]any{
+	out := map[string]any{
 		"name":    dep.Name,
 		"kind":    dep.Kind,
 		"version": dep.Version,
 		"server":  dep.Server,
-	})
+	}
+	if param := dep.Parameterization; param != nil {
+		out["param_name"] = param.Name
+		out["param_version"] = param.Version
+		out["param_value"] = string(param.Value)
+	}
+
+	// Hand the resolved dependency straight to the schema loader. This is the round
+	// trip a consumer performs: the resolver turns a spec into a concrete dependency,
+	// and the loader turns that dependency into a schema -- including running and
+	// parameterizing the plugin when the dependency carries a parameterization.
+	lreq := &codegen.GetSchemaRequest{
+		Package:     dep.Name,
+		Version:     dep.Version,
+		DownloadUrl: dep.Server,
+	}
+	if param := dep.Parameterization; param != nil {
+		lreq.Parameterization = &codegen.Parameterization{
+			Name:    param.Name,
+			Version: param.Version,
+			Value:   param.Value,
+		}
+	}
+	schema, err := p.loader.GetSchema(ctx, lreq)
+	if err != nil {
+		return nil, fmt.Errorf("load schema for %q: %w", dep.Name, err)
+	}
+	out["schema"] = string(schema.Schema)
+
+	props, err := structpb.NewStruct(out)
 	if err != nil {
 		return nil, err
 	}
