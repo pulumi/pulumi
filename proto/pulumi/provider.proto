@@ -278,6 +278,10 @@ message ProviderHandshakeRequest {
     // The target of a [](codegen.Mapper) service the provider can use to retrieve mappings from other ecosystems to
     // Pulumi. May be empty on older engines.
     optional string mapper_target = 8;
+
+    // The target of a [](codegen.Loader) service the provider can use to load the schemas of other Pulumi packages.
+    // May be empty on older engines.
+    optional string loader_target = 9;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.

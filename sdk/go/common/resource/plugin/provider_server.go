@@ -153,6 +153,7 @@ func (p *providerServer) Handshake(
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
 		MapperTarget:                req.MapperTarget,
+		LoaderTarget:                req.LoaderTarget,
 	})
 	if err != nil {
 		return nil, err
