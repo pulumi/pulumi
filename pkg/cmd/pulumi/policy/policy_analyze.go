@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -71,9 +69,9 @@ func newPolicyAnalyzeCmd(
 		Long: "Analyze existing resource state against one or more local policy packs.\n" +
 			"\n" +
 			"This command runs policy analysis against existing resource state without\n" +
-			"executing the Pulumi program or making provider calls. By default it analyzes\n" +
-			"the current stack; pass --file to analyze a state file (as produced by\n" +
-			"`pulumi stack export`) instead, without requiring a stack or backend login.\n" +
+			"executing the Pulumi program or making provider calls. Pass --stack to analyze\n" +
+			"a stack (defaulting to the current stack), or --file to analyze a state file\n" +
+			"(as produced by `pulumi stack export`) without requiring a stack or backend login.\n" +
 			"Secrets in the file that can't be decrypted offline are redacted to the\n" +
 			"string `[secret]` for analysis, regardless of their original type.\n" +
 			"\n" +
@@ -154,7 +152,15 @@ func newPolicyAnalyzeCmd(
 						"warning: could not decrypt secrets in %s; analyzing with secret values redacted\n", file)
 				}
 
-				stackRef = stackReferenceForFile(file)
+				// AnalyzeSnapshot dereferences each URN (URN.Name asserts the urn:pulumi:
+				// prefix), so reject a structurally invalid URN here instead of panicking.
+				for _, r := range snap.Resources {
+					if !r.URN.IsValid() {
+						return fmt.Errorf("state file %s contains a resource with an invalid URN %q", file, r.URN)
+					}
+				}
+
+				stackRef = stackReferenceForFile(snap)
 				sourceDesc = "File " + file
 			} else {
 				displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
@@ -169,9 +175,7 @@ func newPolicyAnalyzeCmd(
 				}
 
 				stackRef = s.Ref()
-				// Name(), not String(): this runs unconditionally but is only shown when the
-				// snapshot is empty, and a reference's String() may be unset (panics) or expensive.
-				sourceDesc = fmt.Sprintf("Stack %s", stackRef.Name())
+				sourceDesc = fmt.Sprintf("Stack %s", stackRef)
 			}
 			if len(snap.Resources) == 0 {
 				fmt.Fprintf(cmd.ErrOrStderr(), "%s has no resources; nothing to analyze.\n", sourceDesc)
@@ -231,20 +235,49 @@ func newPolicyAnalyzeCmd(
 	return cmd
 }
 
-// stackReferenceForFile builds a synthetic stack reference for --file mode, where there
-// is no real backend stack. The analysis display only reads the reference's Name() and
-// Project(), so a name derived from the file is sufficient.
-func stackReferenceForFile(file string) backend.StackReference {
-	name := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-	stackName, err := tokens.ParseStackName(name)
-	if err != nil {
-		stackName = tokens.MustParseStackName("file")
+// stackReferenceForFile builds a synthetic stack reference for --file mode (no backend stack).
+// The display reads only Name()/Project(): a file whose resources share one stack/project is
+// labeled with it; a heterogeneous selection (common for an Insights export spanning projects or
+// stacks) gets a neutral "multiple" so the label doesn't imply a single origin; a file with no
+// analyzable URN falls back to "unknown".
+func stackReferenceForFile(snap *deploy.Snapshot) backend.StackReference {
+	ref := &backend.MockStackReference{
+		StringV:  "<unknown>",
+		NameV:    tokens.MustParseStackName("unknown"),
+		ProjectV: "unknown",
 	}
-	return &backend.MockStackReference{
-		StringV:  stackName.String(),
-		NameV:    stackName,
-		ProjectV: tokens.Name("file"),
+
+	var stackName tokens.StackName
+	var project tokens.Name
+	found, homogeneous := false, true
+	for _, r := range snap.Resources {
+		if !r.URN.IsValid() {
+			continue
+		}
+		sn, err := tokens.ParseStackName(string(r.URN.Stack()))
+		if err != nil {
+			continue
+		}
+		proj := tokens.Name(r.URN.Project())
+		if !found {
+			stackName, project, found = sn, proj, true
+		} else if sn != stackName || proj != project {
+			homogeneous = false
+			break
+		}
 	}
+
+	switch {
+	case found && homogeneous:
+		ref.NameV = stackName
+		ref.ProjectV = project
+		ref.StringV = stackName.String()
+	case found:
+		ref.NameV = tokens.MustParseStackName("multiple")
+		ref.ProjectV = "multiple"
+		ref.StringV = "<multiple>"
+	}
+	return ref
 }
 
 // blindingSecretsProvider builds secrets managers that redact every secret to

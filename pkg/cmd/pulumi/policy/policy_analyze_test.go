@@ -64,6 +64,7 @@ func newMockBackendForAnalyze() (*backend.MockBackend, *backend.MockStack) {
 		BackendF: func() backend.Backend { return be },
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
+				StringV:  "organization/project/stack",
 				NameV:    tokens.MustParseStackName("stack"),
 				ProjectV: "project",
 			}
@@ -210,6 +211,22 @@ func TestPolicyAnalyzeCmd_File_MalformedJSON(t *testing.T) {
 	assert.ErrorContains(t, err, "reading deployment from")
 }
 
+// A non-empty but structurally invalid resource URN is rejected with a clear error,
+// rather than panicking deep in snapshot analysis where URNs are dereferenced.
+func TestPolicyAnalyzeCmd_File_InvalidURNRejected(t *testing.T) {
+	t.Parallel()
+
+	path := writeStateFile(t, []apitype.ResourceV3{{
+		Type:   "pkg:index:MyResource",
+		URN:    "not-a-valid-urn",
+		Custom: true,
+	}})
+	_, _, err := runAnalyzeCmd(t, nil, nil,
+		stubLoadAnalyzers([]plugin.Analyzer{&fakeAnalyzer{}}),
+		"--file", path, "--diff")
+	assert.ErrorContains(t, err, "invalid URN")
+}
+
 func TestPolicyAnalyzeCmd_File_MutuallyExclusiveWithStack(t *testing.T) {
 	t.Parallel()
 
@@ -276,14 +293,15 @@ func TestPolicyAnalyzeCmd_File_UndecryptableSecretsRedacted(t *testing.T) {
 }
 
 // The progress (non-diff) display reads the synthetic ref's Name()/Project(); the other
-// file-mode tests use --diff, which never touches it.
+// file-mode tests use --diff, which never touches it. Name and project come from the
+// resource URN (prod/infra), not the file base (prod-export).
 func TestPolicyAnalyzeCmd_File_ProgressDisplayUsesSyntheticRef(t *testing.T) {
 	t.Parallel()
 
 	path := writeStateFileNamed(t, "prod-export.json", apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{{
 			Type:    "pkg:index:MyResource",
-			URN:     "urn:pulumi:stack::project::pkg:index:MyResource::res",
+			URN:     "urn:pulumi:prod::infra::pkg:index:MyResource::res",
 			Custom:  true,
 			Outputs: map[string]any{"k": "v"},
 		}},
@@ -294,8 +312,67 @@ func TestPolicyAnalyzeCmd_File_ProgressDisplayUsesSyntheticRef(t *testing.T) {
 		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
 		"--file", path)
 	assert.ErrorContains(t, err, "mandatory policy violations")
-	// Stack name derived from the file base.
-	assert.Contains(t, stdout, "prod-export")
+	assert.Contains(t, stdout, "infra-prod")
+	assert.NotContains(t, stdout, "prod-export")
+}
+
+func TestStackReferenceForFile(t *testing.T) {
+	t.Parallel()
+
+	t.Run("derives the shared stack and project from the resource URNs", func(t *testing.T) {
+		t.Parallel()
+
+		ref := stackReferenceForFile(&deploy.Snapshot{
+			Resources: []*resource.State{
+				{URN: "urn:pulumi:prod::infra::pkg:index:MyResource::a"},
+				{URN: "urn:pulumi:prod::infra::pkg:index:MyResource::b"},
+			},
+		})
+		assert.Equal(t, "prod", ref.Name().String())
+		project, ok := ref.Project()
+		require.True(t, ok)
+		assert.Equal(t, "infra", string(project))
+	})
+
+	t.Run("uses a neutral label for a heterogeneous selection", func(t *testing.T) {
+		t.Parallel()
+
+		// Resources spanning more than one project or stack — a common shape for a Pulumi
+		// Insights export — must not be labeled with any single origin.
+		for _, urns := range [][]resource.URN{
+			{
+				"urn:pulumi:prod::infra::pkg:index:MyResource::a",
+				"urn:pulumi:prod::networking::pkg:index:MyResource::b", // differing project
+			},
+			{
+				"urn:pulumi:prod::infra::pkg:index:MyResource::a",
+				"urn:pulumi:dev::infra::pkg:index:MyResource::b", // differing stack
+			},
+		} {
+			resources := make([]*resource.State, len(urns))
+			for i, u := range urns {
+				resources[i] = &resource.State{URN: u}
+			}
+			ref := stackReferenceForFile(&deploy.Snapshot{Resources: resources})
+			assert.Equal(t, "multiple", ref.Name().String())
+			project, ok := ref.Project()
+			require.True(t, ok)
+			assert.Equal(t, "multiple", string(project))
+		}
+	})
+
+	t.Run("falls back to unknown when no valid URN is present", func(t *testing.T) {
+		t.Parallel()
+
+		ref := stackReferenceForFile(&deploy.Snapshot{
+			Resources: []*resource.State{{URN: "not-a-urn"}},
+		})
+		assert.Equal(t, "unknown", ref.Name().String())
+		assert.Equal(t, "<unknown>", ref.String())
+		project, ok := ref.Project()
+		require.True(t, ok)
+		assert.Equal(t, "unknown", string(project))
+	})
 }
 
 func TestPolicyAnalyzeCmd_RequiresPolicyPackFlag(t *testing.T) {
@@ -340,8 +417,8 @@ func TestPolicyAnalyzeCmd_EmptySnapshotPrintsMessage(t *testing.T) {
 	ws, lm := newMockWsAndLm(be)
 	_, stderr, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
 	require.NoError(t, err)
-	// Message names the stack via Name(); must not render a panic placeholder from String().
-	assert.Contains(t, stderr, "Stack stack has no resources")
+	// Message names the stack via its fully-qualified reference, not just the bare Name().
+	assert.Contains(t, stderr, "Stack organization/project/stack has no resources")
 }
 
 func TestPolicyAnalyzeCmd_ErrorOnLoadAnalyzersFailure(t *testing.T) {
