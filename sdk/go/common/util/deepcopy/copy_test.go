@@ -19,7 +19,11 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	propertytest "github.com/pulumi/pulumi/sdk/v3/go/property/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"pgregory.net/rapid"
 )
 
 func TestDeepCopy(t *testing.T) {
@@ -90,5 +94,37 @@ func TestDeepCopyDoesntCopyOutputState(t *testing.T) {
 	state := internal.OutputState{}
 	assert.PanicsWithValue(t, "fatal: A failure has occurred: Outputs cannot be deep copied", func() {
 		Copy(state)
+	})
+}
+
+func TestDeepCopyPropertyValue(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		source := propertytest.Value(10).Draw(t, "source")
+
+		copied, ok := Copy(source).(property.Value)
+		require.True(t, ok)
+		assert.True(t, source.Equals(copied))
+	})
+}
+
+func TestDeepCopyStructWithPropertyMap(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		type payload struct {
+			Before property.Map
+			After  property.Map
+		}
+		source := payload{
+			Before: propertytest.Map(10).Draw(t, "before").AsMap(),
+			After:  propertytest.Map(10).Draw(t, "after").AsMap(),
+		}
+
+		copied, ok := Copy(source).(payload)
+		require.True(t, ok)
+		assert.True(t, property.New(source.Before).Equals(property.New(copied.Before)))
+		assert.True(t, property.New(source.After).Equals(property.New(copied.After)))
 	})
 }

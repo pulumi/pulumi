@@ -118,9 +118,9 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		// Serialize properties, ignoring errors, as with other event types.
 		ctx := context.TODO()
 		encrypter := config.BlindingCrypter
-		before, err := stack.SerializeProperties(ctx, p.Before, encrypter, showSecrets)
+		before, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(p.Before), encrypter, showSecrets)
 		contract.IgnoreError(err)
-		after, err := stack.SerializeProperties(ctx, p.After, encrypter, showSecrets)
+		after, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(p.After), encrypter, showSecrets)
 		contract.IgnoreError(err)
 
 		apiEvent.PolicyRemediationEvent = &apitype.PolicyRemediationEvent{
@@ -427,8 +427,8 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyName:        p.PolicyName,
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
-			Before:            before,
-			After:             after,
+			Before:            resource.FromResourcePropertyMap(before),
+			After:             resource.FromResourcePropertyMap(after),
 		})
 
 	case apiEvent.PolicyAnalyzeSummaryEvent != nil:
