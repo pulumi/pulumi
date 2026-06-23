@@ -24,9 +24,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestDefaultProviders(t *testing.T) {
@@ -46,11 +46,7 @@ func TestDefaultProviders(t *testing.T) {
 						},
 					},
 				},
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return resource.PropertyMap{}, nil
-					},
-				},
+				config: &configSourceMock{},
 			}
 			req := d.normalizeProviderRequest(providers.NewProviderRequest(tokens.Package("pkg"), nil, "", nil, nil))
 			require.NotNil(t, req)
@@ -66,8 +62,8 @@ func TestDefaultProviders(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			d := &defaultProviders{
 				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, expectedErr
+					GetPackageConfigF: func(pkg tokens.Package) (property.Map, error) {
+						return property.Map{}, expectedErr
 					},
 				},
 			}
@@ -82,8 +78,8 @@ func TestDefaultProviders(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			d := &defaultProviders{
 				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, expectedErr
+					GetPackageConfigF: func(pkg tokens.Package) (property.Map, error) {
+						return property.Map{}, expectedErr
 					},
 				},
 			}
@@ -95,13 +91,13 @@ func TestDefaultProviders(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			d := &defaultProviders{
 				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+					GetPackageConfigF: func(pkg tokens.Package) (property.Map, error) {
 						if pkg == "pulumi" {
 							// Enables shouldDenyRequest(req) to succeed as it always calls using
 							// "pulumi".
-							return nil, nil
+							return property.Map{}, nil
 						}
-						return nil, expectedErr
+						return property.Map{}, expectedErr
 					},
 				},
 			}
@@ -114,11 +110,7 @@ func TestDefaultProviders(t *testing.T) {
 			cancel <- true
 			d := &defaultProviders{
 				cancel: cancel,
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			}
 			_, err := d.handleRequest(providers.ProviderRequest{})
 			assert.ErrorIs(t, err, context.Canceled)
@@ -131,11 +123,7 @@ func TestDefaultProviders(t *testing.T) {
 			d := &defaultProviders{
 				cancel:          cancel,
 				providerRegChan: providerRegChan,
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config:          &configSourceMock{},
 			}
 			go func() {
 				// Cancel after reading the registration.
@@ -154,8 +142,8 @@ func TestDefaultProviders(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			d := &defaultProviders{
 				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, expectedErr
+					GetPackageConfigF: func(pkg tokens.Package) (property.Map, error) {
+						return property.Map{}, expectedErr
 					},
 				},
 			}
@@ -168,10 +156,10 @@ func TestDefaultProviders(t *testing.T) {
 				t.Parallel()
 				d := &defaultProviders{
 					config: &configSourceMock{
-						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-							return resource.PropertyMap{
-								"disable-default-providers": resource.NewProperty(100.0),
-							}, nil
+						GetPackageConfigF: func(pkg tokens.Package) (property.Map, error) {
+							return property.NewMap(map[string]property.Value{
+								"disable-default-providers": property.New(100.0),
+							}), nil
 						},
 					},
 				}
@@ -182,10 +170,10 @@ func TestDefaultProviders(t *testing.T) {
 				t.Parallel()
 				d := &defaultProviders{
 					config: &configSourceMock{
-						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-							return resource.PropertyMap{
-								"disable-default-providers": resource.NewProperty(""),
-							}, nil
+						GetPackageConfigF: func(pkg tokens.Package) (property.Map, error) {
+							return property.NewMap(map[string]property.Value{
+								"disable-default-providers": property.New(""),
+							}), nil
 						},
 					},
 				}
@@ -198,10 +186,10 @@ func TestDefaultProviders(t *testing.T) {
 					t.Parallel()
 					d := &defaultProviders{
 						config: &configSourceMock{
-							GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-								return resource.PropertyMap{
-									"disable-default-providers": resource.NewProperty("[[["),
-								}, nil
+							GetPackageConfigF: func(pkg tokens.Package) (property.Map, error) {
+								return property.NewMap(map[string]property.Value{
+									"disable-default-providers": property.New("[[["),
+								}), nil
 							},
 						},
 					}
@@ -213,10 +201,10 @@ func TestDefaultProviders(t *testing.T) {
 					t.Parallel()
 					d := &defaultProviders{
 						config: &configSourceMock{
-							GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-								return resource.PropertyMap{
-									"disable-default-providers": resource.NewProperty(`["foo", 2, 3]`),
-								}, nil
+							GetPackageConfigF: func(pkg tokens.Package) (property.Map, error) {
+								return property.NewMap(map[string]property.Value{
+									"disable-default-providers": property.New(`["foo", 2, 3]`),
+								}), nil
 							},
 						},
 					}
