@@ -41,7 +41,8 @@ func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOpt
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
+	program, diags, err := pcl.BindProgram(parser.Files,
+		schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
 	if err != nil {
 		t.Fatalf("could not bind program: %v", err)
 	}

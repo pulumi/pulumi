@@ -478,9 +478,10 @@ func TestTokenToResource(t *testing.T) {
 }
 
 func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
-	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{}, schema.NewNullLoader(), schema.ValidationOptions{
-		AllowDanglingReferences: true,
-	})
+	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{},
+		schema.NewNullLoader(), schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 	require.NoError(t, err)
 	return importedPkg
 }
