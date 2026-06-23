@@ -343,6 +343,18 @@ type PlanEntry struct {
 	Status   string `json:"status"`
 }
 
+// Plan entry priorities and statuses (ACP enums). ACP requires a valid value
+// from these sets on every entry, so the adapter clamps to them on egress.
+const (
+	PlanPriorityHigh   = "high"
+	PlanPriorityMedium = "medium"
+	PlanPriorityLow    = "low"
+
+	PlanStatusPending    = "pending"
+	PlanStatusInProgress = "in_progress"
+	PlanStatusCompleted  = "completed"
+)
+
 // Tool call kinds and statuses (ACP enums).
 const (
 	ToolKindRead    = "read"

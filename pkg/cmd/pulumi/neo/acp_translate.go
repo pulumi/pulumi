@@ -114,14 +114,43 @@ func textContent(s string) []acp.ToolCallContent {
 	return []acp.ToolCallContent{{Type: "content", Content: acp.ContentBlock{Type: "text", Text: s}}}
 }
 
-// planEntries maps Neo todo items to ACP plan entries; the priority and status
-// vocabularies already match.
+// planEntries maps Neo todo items to ACP plan entries. Neo's priority and status
+// vocabularies match ACP today, but ACP requires a valid value from its enums on
+// every entry, so we clamp on egress: a backend that drifts (an empty priority, a
+// new status) can't make us emit a spec-invalid plan that the editor may reject.
 func planEntries(items []UITodoItem) []acp.PlanEntry {
 	out := make([]acp.PlanEntry, 0, len(items))
 	for _, it := range items {
-		out = append(out, acp.PlanEntry{Content: it.Content, Priority: it.Priority, Status: it.Status})
+		out = append(out, acp.PlanEntry{
+			Content:  it.Content,
+			Priority: clampPlanPriority(it.Priority),
+			Status:   clampPlanStatus(it.Status),
+		})
 	}
 	return out
+}
+
+// clampPlanPriority maps a Neo todo priority to an ACP-allowed priority,
+// defaulting unknown or empty values to "medium" (the neutral middle).
+func clampPlanPriority(priority string) string {
+	switch priority {
+	case acp.PlanPriorityHigh, acp.PlanPriorityMedium, acp.PlanPriorityLow:
+		return priority
+	default:
+		return acp.PlanPriorityMedium
+	}
+}
+
+// clampPlanStatus maps a Neo todo status to an ACP-allowed status, defaulting
+// unknown or empty values to "pending" so an unrecognized status reads as
+// not-yet-done rather than silently completed.
+func clampPlanStatus(status string) string {
+	switch status {
+	case acp.PlanStatusPending, acp.PlanStatusInProgress, acp.PlanStatusCompleted:
+		return status
+	default:
+		return acp.PlanStatusPending
+	}
 }
 
 // toolArgs is the subset of a tool call's JSON arguments used to enrich its ACP

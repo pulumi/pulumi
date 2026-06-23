@@ -316,6 +316,26 @@ func TestToolTrackerTranslate(t *testing.T) {
 	assert.Equal(t, acp.PlanEntry{Content: "do", Status: "pending", Priority: "high"}, plan.Entries[0])
 }
 
+// TestPlanEntriesClampVocabulary verifies the ACP egress path keeps plan entries
+// within ACP's enums even if the backend drifts: empty or unknown priority falls
+// back to "medium", empty or unknown status falls back to "pending".
+func TestPlanEntriesClampVocabulary(t *testing.T) {
+	t.Parallel()
+
+	var tr toolTracker
+	u, ok := tr.translate(UITodoList{Items: []UITodoItem{
+		{Content: "valid", Status: "in_progress", Priority: "low"},
+		{Content: "empty", Status: "", Priority: ""},
+		{Content: "unknown", Status: "cancelled", Priority: "urgent"},
+	}})
+	require.True(t, ok)
+	plan := u.(acp.PlanUpdate)
+	require.Len(t, plan.Entries, 3)
+	assert.Equal(t, acp.PlanEntry{Content: "valid", Status: "in_progress", Priority: "low"}, plan.Entries[0])
+	assert.Equal(t, acp.PlanEntry{Content: "empty", Status: "pending", Priority: "medium"}, plan.Entries[1])
+	assert.Equal(t, acp.PlanEntry{Content: "unknown", Status: "pending", Priority: "medium"}, plan.Entries[2])
+}
+
 func TestToolStartHasReadableTitleAndLocation(t *testing.T) {
 	t.Parallel()
 
