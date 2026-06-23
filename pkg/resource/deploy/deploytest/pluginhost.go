@@ -620,6 +620,10 @@ func (host *pluginHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) 
 	return srv, nil
 }
 
+func (host *pluginHost) Resolver(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	return nil, nil
+}
+
 func (host *pluginHost) ResolvePlugin(
 	ctx *plugin.Context, spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {

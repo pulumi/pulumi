@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -96,6 +97,12 @@ type Host interface {
 	// ctx's workspace view, so the server is workspace-scoped: it is owned by ctx and closed when
 	// ctx is closed. Override this method on a custom Host to serve a bespoke mapper.
 	Mapper(ctx *Context) (*GrpcServer, error)
+
+	// Resolver returns a package resolver gRPC server bound to ctx's workspace view, or nil if this
+	// host serves no resolver. Like the loader and mapper, package resolution depends on ctx's
+	// workspace view, so the server is workspace-scoped: it is owned by ctx and closed when ctx is
+	// closed. Override this method on a custom Host to serve a bespoke resolver.
+	Resolver(ctx *Context) (*GrpcServer, error)
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -199,6 +206,10 @@ type NewLoaderFunc = func(ctx *Context) codegenrpc.LoaderServer
 // NewMapperFunc constructs the conversion mapper service bound to a context. The Context
 // supplies the workspace view the mapper boots conversion plugins against.
 type NewMapperFunc = func(ctx *Context) codegenrpc.MapperServer
+
+// NewResolverFunc constructs the package resolver service bound to a context. The Context
+// supplies the workspace view against which package specifications are resolved.
+type NewResolverFunc = func(ctx *Context) pulumirpc.PackageResolverServer
 
 // LanguageInstaller downloads and installs an unbundled language runtime on demand, so that
 // loading it via Host.LanguageRuntime works even when the runtime is not bundled with the CLI

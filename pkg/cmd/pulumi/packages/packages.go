@@ -101,6 +101,7 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 
 	diags, err := GenSDK(
 		pctx.Request(),
+		registry,
 		language,
 		tempOut,
 		pkg,
@@ -154,7 +155,7 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 }
 
 func GenSDK(
-	ctx context.Context, language, out string, pkg *schema.Package, overlays string, local bool,
+	ctx context.Context, reg registry.Registry, language, out string, pkg *schema.Package, overlays string, local bool,
 ) (hcl.Diagnostics, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	_, span := cmdutil.StartSpan(ctx, tracer, "generate-sdk",
@@ -185,7 +186,7 @@ func GenSDK(
 			return nil, err
 		}
 
-		pCtx, err := NewPluginContext(cwd)
+		pCtx, err := NewPluginContext(cwd, reg)
 		if err != nil {
 			return nil, fmt.Errorf("create plugin context: %w", err)
 		}
@@ -333,14 +334,15 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 	return nil
 }
 
-func NewPluginContext(cwd string) (*plugin.Context, error) {
+func NewPluginContext(cwd string, reg registry.Registry) (*plugin.Context, error) {
 	// Helper used by callers without a *cobra.Command writer; emits to
 	// process stderr.
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{ //nolint:forbidigo
 		Color: cmdutil.GetGlobalColorization(),
 	})
 	pluginHost, err := pkghost.New(context.TODO(), sink, sink, nil,
-		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(reg))
 	if err != nil {
 		return nil, err
 	}

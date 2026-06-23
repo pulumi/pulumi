@@ -548,7 +548,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 	// Start up a plugin host and context. The host is owned here and closed after the context.
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), snk, snk, nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin host: %w", err)
 	}

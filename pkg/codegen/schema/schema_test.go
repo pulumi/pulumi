@@ -2659,7 +2659,7 @@ func debugProvidersHelperContext(t *testing.T) *plugin.Context {
 		Color: cmdutil.GetGlobalColorization(),
 	})
 	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), sink, sink, nil, nil,
-		NewLoaderServerFromContext, nil)
+		NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, pluginHost.Close()) })
 	pluginCtx, err := plugin.NewContext(

@@ -223,7 +223,7 @@ func installDependenciesForPluginSpec(
 
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), diagutil.Diag(), diagutil.Diag(), nil, EnsureLanguageInstalled,
-		newLoader, convert.NewMapperServerFromContext)
+		newLoader, convert.NewMapperServerFromContext, nil)
 	if err != nil {
 		return err
 	}

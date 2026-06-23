@@ -215,10 +215,12 @@ func runConvert(
 		name = filepath.Base(cwd)
 	}
 
+	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
+
 	// the plugin context uses the output directory as the working directory
 	// of the generated program because in general, where Pulumi.yaml lives is
 	// the root of the project.
-	pCtx, err := packages.NewPluginContext(outDir)
+	pCtx, err := packages.NewPluginContext(outDir, reg)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
@@ -337,7 +339,6 @@ func runConvert(
 		pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 	}
 
-	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
 	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx, stderr, stderr,
 		nil, packageworkspace.Options{})
 
@@ -505,7 +506,8 @@ func runConvert(
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		pluginHost, err := pkghost.New(
 			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServer(reg))
 		if err != nil {
 			return err
 		}
@@ -606,6 +608,7 @@ func generateAndLinkSdksForPackages(
 
 		diags, err := packages.GenSDK(
 			pctx.Request(),
+			registry,
 			language,
 			tempOut,
 			pkgSchema,
