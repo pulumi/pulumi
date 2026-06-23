@@ -1,0 +1,6 @@
+component: cli
+kind: improvement
+body: Add `--output` flag to about and whoami commands
+time: 2026-06-22T09:30:56.093672+02:00
+custom:
+  PR: "23651"

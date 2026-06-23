@@ -17,12 +17,15 @@ package whoami
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -30,8 +33,25 @@ import (
 )
 
 func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
-	var jsonOut bool
 	var verbose bool
+
+	output := outputflag.OutputFlag[whoAmIRenderFunc]{
+		RenderForTerminal: func(
+			w io.Writer, b backend.Backend, name string, orgs []string, tokenInfo *workspace.TokenInformation,
+		) error {
+			return renderWhoAmIText(w, b, name, orgs, tokenInfo, verbose)
+		},
+		RenderJSON: func(
+			w io.Writer, b backend.Backend, name string, orgs []string, tokenInfo *workspace.TokenInformation,
+		) error {
+			return ui.FprintJSON(w, whoAmIJSON{
+				User:             name,
+				Organizations:    orgs,
+				URL:              b.URL(),
+				TokenInformation: tokenInfo,
+			})
+		},
+	}
 
 	cmd := &cobra.Command{
 		Use:   "whoami",
@@ -67,49 +87,50 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 				return err
 			}
 
-			if jsonOut {
-				return ui.FprintJSON(stdout, whoAmIJSON{
-					User:             name,
-					Organizations:    orgs,
-					URL:              b.URL(),
-					TokenInformation: tokenInfo,
-				})
-			}
-
-			if verbose {
-				fmt.Fprintf(stdout, "User: %s\n", name)
-				fmt.Fprintf(stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
-				fmt.Fprintf(stdout, "Backend URL: %s\n", b.URL())
-				if tokenInfo != nil {
-					tokenType := "unknown"
-					if tokenInfo.Team != "" {
-						tokenType = "team: " + tokenInfo.Team
-					} else if tokenInfo.Organization != "" {
-						tokenType = "organization: " + tokenInfo.Organization
-					}
-					fmt.Fprintf(stdout, "Token type: %s\n", tokenType)
-					fmt.Fprintf(stdout, "Token name: %s\n", tokenInfo.Name)
-				} else {
-					fmt.Fprintf(stdout, "Token type: personal\n")
-				}
-			} else {
-				fmt.Fprintf(stdout, "%s\n", name)
-			}
-
-			return nil
+			return output.Get()(stdout, b, name, orgs, tokenInfo)
 		},
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 
 	cmd.PersistentFlags().BoolVarP(
 		&verbose, "verbose", "v", false,
 		"Print detailed whoami information")
 
 	return cmd
+}
+
+type whoAmIRenderFunc func(
+	w io.Writer, b backend.Backend, name string, orgs []string, tokenInfo *workspace.TokenInformation,
+) error
+
+func renderWhoAmIText(
+	w io.Writer, b backend.Backend, name string, orgs []string,
+	tokenInfo *workspace.TokenInformation, verbose bool,
+) error {
+	if !verbose {
+		fmt.Fprintf(w, "%s\n", name)
+		return nil
+	}
+
+	fmt.Fprintf(w, "User: %s\n", name)
+	fmt.Fprintf(w, "Organizations: %s\n", strings.Join(orgs, ", "))
+	fmt.Fprintf(w, "Backend URL: %s\n", b.URL())
+	if tokenInfo == nil {
+		fmt.Fprintf(w, "Token type: personal\n")
+		return nil
+	}
+	tokenType := "unknown"
+	if tokenInfo.Team != "" {
+		tokenType = "team: " + tokenInfo.Team
+	} else if tokenInfo.Organization != "" {
+		tokenType = "organization: " + tokenInfo.Organization
+	}
+	fmt.Fprintf(w, "Token type: %s\n", tokenType)
+	fmt.Fprintf(w, "Token name: %s\n", tokenInfo.Name)
+	return nil
 }
 
 // whoAmIJSON is the shape of the --json output of this command.
