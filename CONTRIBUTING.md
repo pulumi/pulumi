@@ -124,19 +124,15 @@ If you're using an AI coding assistant to contribute:
 
 ## Releasing
 
-Whenever a new PR is merged in this repository, the latest draft release on the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) is updated with the latest binaries.  To release one of those draft releases a few steps are necessary:
+Whenever a new PR is merged in this repository, the latest draft release on the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) is updated with the latest binaries.  To release one of those draft releases:
 
-If `sdk/.version` is the version we want to release, we need to "freeze" that draft release.  To do that update the version in `pulumi/pulumi` using `scripts/set-version.py <next-patch-version>`.  This stops the draft release for the current version from being updated, and thus it is ready to be released.
+Run `make release` at the repo root.  This automatically determines the next version from the pending changelog entries (`feat`/`improvement` entries trigger a minor bump; `fix`/`chore` entries trigger a patch bump), then opens a PR that batches the changelog, regenerates `CHANGELOG.md`, and bumps all version files.  Once that PR is merged, the current draft release is frozen and no longer updated by new commits.
 
-If `sdk/.version` is not the version we want to release yet, usually in the case of a minor release, bump the version to the right version first, and merge that first (always using `scripts/set-version.py`).  Once that's merged the current release can be frozen as above.
+To gain additional confidence before publishing, run the [Test examples](https://github.com/pulumi/examples/actions/workflows/test-examples.yml) and [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) test suites.
 
-For these version bump PRs it's useful for reviewers if the expected changelog is included.  This can be generated using `changie batch auto --dry-run` at the root of the repository.
-
-The next step, to gain some additional confidence in the release is to run the [Test examples](https://github.com/pulumi/examples/actions/workflows/test-examples.yml), and [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) test suites.  These run the tests in the `pulumi/examples` and `pulumi/templates` repositories using the latest `pulumi/pulumi` dev version, thus including all the latest changes.
-
-Finally to create the release, navigate to the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) and edit the release of the version we froze just before.  Untick "Set as a pre-release", and tick both "Set as the latest release" and "Create a discussion for this release" in the "Releases" category at the bottom of the page, before clicking "Publish release".
+Finally, navigate to the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) and edit the release of the version from the just-merged prepare-release PR.  Untick "Set as a pre-release", and tick both "Set as the latest release" and "Create a discussion for this release" in the "Releases" category at the bottom of the page, before clicking "Publish release".
 
 > [!CAUTION]
-> Double-check the version number of the release. The most recent release in [the releases list](https://github.com/pulumi/pulumi/releases) tracks changes to `master`, and might not be the one you want to release if PRs have been merged since the freeze. For this reason, the version you want to release may be the second one in the list. The version should be the one that was in `sdk/.version` *before* the freeze PR was merged.
+> Double-check the version number of the release. The most recent release in [the releases list](https://github.com/pulumi/pulumi/releases) tracks changes to `master`, and might not be the one you want to release if PRs have been merged since the freeze. For this reason, the version you want to release may be the second one in the list. The version should match the one in the prepare-release PR you just merged.
 
-Finally `pulumi-bot` will create another PR to update with `go.mod` updates and changelog cleanups.  This PR needs to be approved, and will then auto-merge.
+Finally `pulumi-bot` will create another PR with `go.mod` updates.  This PR needs to be approved, and will then auto-merge.

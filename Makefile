@@ -329,6 +329,14 @@ get_schemas: \
 changelog:
 	changie new
 
+.PHONY: release
+release:
+	@NEXT_VERSION=$$(changie next auto) && \
+	changie batch "$$NEXT_VERSION" && \
+	changie merge && \
+	python scripts/set-version.py "$$NEXT_VERSION" && \
+	(cd sdk/python && uv sync)
+
 clean::
 	rm -rf bin/*
 	rm -rf .make

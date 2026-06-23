@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import subprocess
 import sys
 import json
 
@@ -57,8 +56,6 @@ def main():
     replace_line(pyproject, "version = ", f'version = "{version}"\n')
     with open("sdk/python/pyproject.toml", "w") as f:
         f.write("".join(pyproject))
-    # Run `uv sync` to update the version in uv.lock
-    subprocess.run(["uv", "sync"], cwd="sdk/python")
 
 if __name__ == "__main__":
     main()

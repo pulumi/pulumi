@@ -20,10 +20,6 @@ on:
         required: false
         description: "Commit to branch from, if not the tag"
         type: string
-      release-notes:
-        required: true
-        description: "Release notes to publish"
-        type: string
       queue-merge:
         required: false
         default: false
@@ -45,9 +41,6 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: sdk/go.mod
-      - uses: miniscruff/changie-action@v2
-        with:
-          version: v1.21.0
       - name: Create PR
         env:
           PULUMI_VERSION: ${{ inputs.version }}
@@ -57,14 +50,8 @@ jobs:
           set -euo pipefail
           git switch --create "automation/release-v${PULUMI_VERSION}"
 
-          changie batch "${PULUMI_VERSION}"
-          changie merge
-
           git config user.name github-actions
           git config user.email github-actions@github.com
-
-          git add -A
-          git commit -m "chore: changelog for v${PULUMI_VERSION}"
 
           # Update go module dependencies
           (
