@@ -28,6 +28,7 @@ import {
     secret,
     unknown,
     unsecret,
+    recover,
 } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
@@ -285,14 +286,14 @@ describe("output", () => {
         });
 
         it("returns recovered value on failure", async () => {
-            const recovered = faulted<number>(new Error("boom")).recover((_e) => 42);
+            const recovered = recover(faulted<number>(new Error("boom")), (_e) => 42);
             assert.strictEqual(await recovered.promise(), 42);
         });
 
         it("passes the error to the recovery function", async () => {
             const err = new Error("boom");
             let seen: any = undefined;
-            const recovered = faulted<string>(err).recover((e) => {
+            const recovered = recover(faulted<string>(err), (e) => {
                 seen = e;
                 return "fallback";
             });
@@ -303,7 +304,7 @@ describe("output", () => {
         it("passes through value on success without calling func", async () => {
             let called = false;
             const ok = output("hello");
-            const recovered = ok.recover((_e) => {
+            const recovered = recover(ok, (_e) => {
                 called = true;
                 return "fallback";
             });
@@ -312,7 +313,7 @@ describe("output", () => {
         });
 
         it("accepts an Output-returning recovery function", async () => {
-            const recovered = faulted<string>(new Error("boom")).recover((_e) => output("recovered"));
+            const recovered = recover(faulted<string>(new Error("boom")), (_e) => output("recovered"));
             assert.strictEqual(await recovered.promise(), "recovered");
         });
 
@@ -321,7 +322,7 @@ describe("output", () => {
             // promises, an unhandledRejection would surface on the next tick.
             // We assert here that simply awaiting the recovered value works
             // and yields the recovered result.
-            const recovered = faulted<number>(new Error("boom")).recover((_e) => 1);
+            const recovered = recover(faulted<number>(new Error("boom")), (_e) => 1);
             assert.strictEqual(await recovered.promise(), 1);
         });
     });
