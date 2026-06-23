@@ -394,9 +394,8 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	deployment.Metadata = r.base.Metadata
 	deployment.Manifest = manifest.Serialize()
 	// Carry extensions forward from the base, plus any this plan produced.
-	extensions := make(map[apitype.ExtensionRef]apitype.Extension)
+	extensions := maps.Clone(r.extensions)
 	maps.Copy(extensions, r.base.Extensions)
-	maps.Copy(extensions, r.extensions)
 	if len(extensions) > 0 {
 		deployment.Extensions = extensions
 	}

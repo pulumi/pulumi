@@ -815,7 +815,7 @@ func TestPclSnippetResourceReference(t *testing.T) {
 			},
 			Code: `message = producer.value`,
 		},
-	})
+	}, nil)
 
 	// Step 0: the program registers the producer while the snippet waits for its reference.
 	snap, err := lt.TestOp(Update).RunStep(
@@ -940,7 +940,7 @@ func TestPclSnippetReferenceLocalComponent(t *testing.T) {
 			},
 			Code: `message = comp.value`,
 		},
-	})
+	}, nil)
 
 	// The program registers comp and publishes its final outputs before
 	// the observer resolves the snippet's reference.
@@ -1054,7 +1054,7 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 			},
 			Code: `message = producer.value`,
 		},
-	})
+	}, nil)
 
 	// Step 0: the program registers the producer while the snippet waits for its reference.
 	snap, err := lt.TestOp(Update).RunStep(
@@ -1173,7 +1173,7 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 
 	// Step 0: run the complete producer -> middle -> consumer chain side-by-side.
 	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{},
-		[]resource.Snippet{producerSnippet, middleSnippet, consumerSnippet})
+		[]resource.Snippet{producerSnippet, middleSnippet, consumerSnippet}, nil)
 	snap, err := lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
