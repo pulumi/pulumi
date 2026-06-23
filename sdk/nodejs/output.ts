@@ -1284,3 +1284,55 @@ export function jsonParse(text: Input<string>, reviver?: (this: any, key: string
         return JSON.parse(t, reviver);
     });
 }
+
+/**
+ * Returns an {@link Output} that yields the Output's value, or — if the
+ * Output faulted with an error — the value produced by calling `func`
+ * with the error.
+ *
+ * Once recovered, the original failure is considered handled and will not
+ * be reported as an unhandled rejection at program exit. `func` is only
+ * invoked when this Output fails.
+ */
+export function recover<T>(o: Output<T>, func: (err: any) => Input<T>): Output<T> {
+    // Attach no-op catch handlers so a rejection in any of the underlying
+    // promises is considered "handled" and does not surface as an
+    // unhandledRejection at the Node level. Awaiting them via Promise.all
+    // below still rethrows so we can run the recovery path.
+    const swallow = <X>(p: Promise<X>): Promise<X> => {
+        p.catch(() => undefined);
+        return p;
+    };
+
+    type Data = { value: T; isKnown: boolean; isSecret: boolean; allResources: Set<Resource> };
+
+    const data: Promise<Data> = (async () => {
+        try {
+            const [value, isKnown, isSecret, allResources] = await Promise.all([
+                swallow(o.promise(/*withUnknowns*/ true)),
+                swallow(o.isKnown),
+                swallow(o.isSecret),
+                swallow(o.allResources!()),
+            ]);
+            return { value, isKnown, isSecret, allResources };
+        } catch (err) {
+            const inner = <Output<T>>(<any>output(func(err)));
+            const [value, isKnown, isSecret, allResources] = await Promise.all([
+                inner.promise(/*withUnknowns*/ true),
+                inner.isKnown,
+                inner.isSecret,
+                inner.allResources!(),
+            ]);
+            return { value, isKnown, isSecret, allResources };
+        }
+    })();
+
+    const result = new OutputImpl<T>(
+        new Set<Resource>(),
+        data.then((d) => d.value),
+        data.then((d) => d.isKnown),
+        data.then((d) => d.isSecret),
+        data.then((d) => d.allResources),
+    );
+    return <Output<T>>(<any>result);
+}
