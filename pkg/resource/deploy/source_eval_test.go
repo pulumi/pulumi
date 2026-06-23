@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -2907,16 +2908,16 @@ func TestParseSourcePosition(t *testing.T) {
 }
 
 type configSourceMock struct {
-	GetPackageConfigF func(pkg tokens.Package) (resource.PropertyMap, error)
+	GetPackageConfigF func(pkg tokens.Package) (property.Map, error)
 }
 
 var _ plugin.ConfigSource = (*configSourceMock)(nil)
 
-func (c *configSourceMock) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, error) {
+func (c *configSourceMock) GetPackageConfig(pkg tokens.Package) (property.Map, error) {
 	if c.GetPackageConfigF != nil {
 		return c.GetPackageConfigF(pkg)
 	}
-	panic("unimplemented")
+	return property.Map{}, nil
 }
 
 func TestInvoke(t *testing.T) {
@@ -3429,11 +3430,7 @@ func TestReadResource(t *testing.T) {
 		rm := &resmon{
 			defaultProviders: &defaultProviders{
 				cancel: cancel,
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
@@ -3446,11 +3443,7 @@ func TestReadResource(t *testing.T) {
 		t.Parallel()
 		rm := &resmon{
 			defaultProviders: &defaultProviders{
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
@@ -3468,11 +3461,7 @@ func TestReadResource(t *testing.T) {
 		t.Parallel()
 		rm := &resmon{
 			defaultProviders: &defaultProviders{
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
@@ -3492,11 +3481,7 @@ func TestReadResource(t *testing.T) {
 		rm := &resmon{
 			regReadChan: regReadChan,
 			defaultProviders: &defaultProviders{
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		wg := &sync.WaitGroup{}
@@ -3523,11 +3508,7 @@ func TestReadResource(t *testing.T) {
 		rm := &resmon{
 			cancel: cancel,
 			defaultProviders: &defaultProviders{
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		wg := &sync.WaitGroup{}
@@ -3552,11 +3533,7 @@ func TestReadResource(t *testing.T) {
 			regReadChan: regReadChan,
 			cancel:      cancel,
 			defaultProviders: &defaultProviders{
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		wg := &sync.WaitGroup{}
@@ -3727,11 +3704,7 @@ func TestRegisterResource(t *testing.T) {
 			rm := &resmon{
 				defaultProviders: &defaultProviders{
 					requests: requests,
-					config: &configSourceMock{
-						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-							return nil, nil
-						},
-					},
+					config:   &configSourceMock{},
 				},
 			}
 			req := &pulumirpc.RegisterResourceRequest{
@@ -3761,11 +3734,7 @@ func TestRegisterResource(t *testing.T) {
 			rm := &resmon{
 				defaultProviders: &defaultProviders{
 					requests: requests,
-					config: &configSourceMock{
-						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-							return nil, nil
-						},
-					},
+					config:   &configSourceMock{},
 				},
 				providers: &providerSourceMock{
 					Provider: &deploytest.Provider{},
@@ -3799,11 +3768,7 @@ func TestRegisterResource(t *testing.T) {
 			rm := &resmon{
 				defaultProviders: &defaultProviders{
 					requests: requests,
-					config: &configSourceMock{
-						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-							return nil, nil
-						},
-					},
+					config:   &configSourceMock{},
 				},
 				providers: &providerSourceMock{},
 			}
@@ -3835,11 +3800,7 @@ func TestRegisterResource(t *testing.T) {
 		rm := &resmon{
 			defaultProviders: &defaultProviders{
 				requests: requests,
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config:   &configSourceMock{},
 			},
 			providers: &providerSourceMock{
 				Provider: &deploytest.Provider{
@@ -4053,11 +4014,7 @@ func TestValidationFailures(t *testing.T) {
 			abortChan:   abortChan,
 			defaultProviders: &defaultProviders{
 				requests: requests,
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config:   &configSourceMock{},
 			},
 			providers: &providerSourceMock{
 				Provider: &deploytest.Provider{

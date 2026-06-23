@@ -411,10 +411,11 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 		pkg := res.URN.Type().Package()
 		ref, ok := defaultProviderRefs[pkg]
 		if !ok {
-			inputs, err := target.GetPackageConfig(pkg)
+			minputs, err := target.GetPackageConfig(pkg)
 			if err != nil {
 				return false, fmt.Errorf("could not fetch configuration for default provider '%v'", pkg)
 			}
+			inputs := resource.ToResourcePropertyMap(minputs)
 			if pkgInfo, ok := defaultProviderInfo[pkg]; ok {
 				providers.SetProviderVersion(inputs, pkgInfo.Version)
 				providers.SetProviderURL(inputs, pkgInfo.PluginDownloadURL)
