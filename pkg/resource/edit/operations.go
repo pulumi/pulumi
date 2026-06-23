@@ -150,8 +150,8 @@ func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 type RenameStackOptions struct {
 	// OldName filters rewrites to URNs that already reference this stack. Required.
 	OldName tokens.StackName
-	// OldProject filters rewrites to URNs that already reference this project. Empty matches any project
-	// (used when upgrading a legacy project-less stack into a project).
+	// OldProject filters rewrites to URNs that already reference this project. Empty matches any project;
+	// callers should pass the stack's project, which legacy refs carry only inside their URNs.
 	OldProject tokens.PackageName
 	// Force degrades provider-reference rewrite failures to warnings.
 	Force bool
