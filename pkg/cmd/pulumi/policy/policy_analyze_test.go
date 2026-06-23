@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -131,11 +132,25 @@ func runAnalyzeCmd(
 	return stdout.String(), stderr.String(), err
 }
 
+// newAnalyzeCmdForValidation builds the command with a working backend so the
+// stack resolves in PreRunE, leaving RunE free to exercise flag validation.
+// The "--stack" arg is required for the same reason runAnalyzeCmd documents it.
+func newAnalyzeCmdForValidation(t *testing.T) *cobra.Command {
+	t.Helper()
+	be, _ := newMockBackendForAnalyze()
+	ws, lm := newMockWsAndLm(be)
+	cmd := newPolicyAnalyzeCmd(ws, lm, nil, nil)
+	cmd.SilenceUsage = true
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	return cmd
+}
+
 func TestPolicyAnalyzeCmd_RequiresPolicyPackFlag(t *testing.T) {
 	t.Parallel()
 
-	cmd := newPolicyAnalyzeCmd(nil, nil, nil, nil)
-	cmd.SetArgs([]string{}) // no --policy-pack
+	cmd := newAnalyzeCmdForValidation(t)
+	cmd.SetArgs([]string{"--stack", "my-stack"}) // no --policy-pack
 	err := cmd.ExecuteContext(t.Context())
 	assert.ErrorContains(t, err, "--policy-pack")
 }
@@ -143,8 +158,11 @@ func TestPolicyAnalyzeCmd_RequiresPolicyPackFlag(t *testing.T) {
 func TestPolicyAnalyzeCmd_ConfigCountMustMatchPackCount(t *testing.T) {
 	t.Parallel()
 
-	cmd := newPolicyAnalyzeCmd(nil, nil, nil, nil)
-	cmd.SetArgs([]string{"--policy-pack", "./pack", "--policy-pack-config", "a.json", "--policy-pack-config", "b.json"})
+	cmd := newAnalyzeCmdForValidation(t)
+	cmd.SetArgs([]string{
+		"--stack", "my-stack",
+		"--policy-pack", "./pack", "--policy-pack-config", "a.json", "--policy-pack-config", "b.json",
+	})
 	err := cmd.ExecuteContext(t.Context())
 	assert.ErrorContains(t, err, "--policy-pack-config")
 }

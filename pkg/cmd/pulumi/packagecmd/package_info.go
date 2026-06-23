@@ -40,7 +40,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPackageInfoCmd(nCtx needle.Context) *cobra.Command {
+func newPackageInfoCmd(nCtx needle.Spindle) *cobra.Command {
 	var module string
 	var resource string
 	var function string
@@ -98,7 +98,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 		},
 	}
 
-	needle.Inject(cmd, nCtx, needle.NeedRegistry(&registry))
+	needle.Thread(cmd, nCtx, needle.RequireRegistry(&registry))
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{

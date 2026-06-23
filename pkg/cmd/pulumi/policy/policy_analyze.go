@@ -28,7 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -54,7 +54,7 @@ func newPolicyAnalyzeCmd(
 	// Nil uses the real plugin host.
 	loadAnalyzers func(ctx context.Context, packs []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error),
 ) *cobra.Command {
-	var stack string
+	var stack backend.Stack
 	var diffDisplay bool
 	var jsonDisplay bool
 	var policyPackPaths []string
@@ -110,20 +110,13 @@ func newPolicyAnalyzeCmd(
 				}
 			}
 
-			// Get the stack.
-			displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-			s, err := cmdStack.RequireStack(ctx, cmdutil.Diag(), ws, lm, stack, cmdStack.LoadOnly, displayOpts, "")
-			if err != nil {
-				return err
-			}
-
 			// Load the current stack snapshot.
-			snap, err := s.Snapshot(ctx, secretsProvider)
+			snap, err := stack.Snapshot(ctx, secretsProvider)
 			if err != nil {
 				return fmt.Errorf("loading stack snapshot: %w", err)
 			}
 			if len(snap.Resources) == 0 {
-				fmt.Fprintf(cmd.ErrOrStderr(), "Stack %s has no resources; nothing to analyze.\n", s.Ref())
+				fmt.Fprintf(cmd.ErrOrStderr(), "Stack %s has no resources; nothing to analyze.\n", stack.Ref())
 				return nil
 			}
 
@@ -139,7 +132,7 @@ func newPolicyAnalyzeCmd(
 			events, finish, err := newAnalyzeEvents(
 				cmd.Context(),
 				cmd.OutOrStdout(), cmd.ErrOrStderr(), cmdutil.GetGlobalColorization(),
-				diffDisplay, jsonDisplay, s.Ref(), analyzers)
+				diffDisplay, jsonDisplay, stack.Ref(), analyzers)
 			if err != nil {
 				return fmt.Errorf("configuring analysis display: %w", err)
 			}
@@ -159,10 +152,12 @@ func newPolicyAnalyzeCmd(
 		},
 	}
 
+	needle.Thread(cmd, needle.Spindle{WS: ws, LM: lm},
+		needle.RequireStack(&stack,
+			"The name of the stack to analyze. Defaults to the current stack"))
+
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to analyze. Defaults to the current stack")
 	cmd.Flags().BoolVar(&diffDisplay, "diff", false,
 		"Display policy diagnostics as a rich diff instead of grouped progress output")
 	cmd.Flags().BoolVarP(&jsonDisplay, "json", "j", false,

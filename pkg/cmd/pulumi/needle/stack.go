@@ -23,24 +23,25 @@ import (
 
 // Set stack to the current stack.
 //
-// This sets --stack if not already present in flags.
-func NeedCurrentStack(stack *backend.Stack) Request {
+// This registers the --stack/-s flag and resolves it to an existing stack (it never creates one).
+func RequireStack(stack *backend.Stack, usage string) Stitch {
 	return request{
-		value: needCurrentStack,
-		fulfillInto: func(s *state) {
-			*stack = s.stack
-		},
+		value:       requireStack,
+		fulfillInto: func(s *state) { *stack = s.stack },
+		payload:     usage,
 	}
 }
 
-var needCurrentStack = &value{
-	deps: []*value{maybeProject},
-	prepare: func(cmd *cobra.Command, state *state) {
-		cmd.PersistentFlags().StringVarP(
-			&state.stackFlag, "stack", "s", "",
-			"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
+var requireStack = &value{
+	deps: []*value{optionProject},
+	prepare: func(cmd *cobra.Command, state *state, payload any) {
+		usage := "The name of the stack to operate on. Defaults to the current stack"
+		if v, _ := payload.(string); v != "" {
+			usage = v
+		}
+		cmd.PersistentFlags().StringVarP(&state.stackFlag, "stack", "s", "", usage)
 	},
-	get: func(cmd *cobra.Command, state *state) error {
+	get: func(cmd *cobra.Command, state *state, _ any) error {
 		s, err := cmdStack.RequireStack(
 			cmd.Context(),
 			state.DiagSink,
