@@ -246,6 +246,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 			},
 			snippets: []resource.Snippet{
 				{
+					UUID: "f32e0379-9985-5781-b5cb-9c053a8bb890",
 					Name: "r", Type: "pkgA:index:res",
 					Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 					Code:       `propA = true`,
@@ -406,11 +407,13 @@ func TestSnippetRoundTrip(t *testing.T) {
 	snap := &deploy.Snapshot{
 		Snippets: []resource.Snippet{
 			{
+				UUID: "89ed2ff3-1139-54c2-b53b-c3d9fb860da6",
 				Name: "r1", Type: "pkgA:index:res",
 				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 				Code:       `propA = true`,
 			},
 			{
+				UUID: "02c76a6b-a0d6-52bd-888e-ebdc7e44ce99",
 				Name: "r2", Type: "pkgB:index:res",
 				Descriptor: resource.PackageDescriptor{
 					Name:        "pkgB",

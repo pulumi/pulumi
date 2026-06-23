@@ -50,7 +50,6 @@ def func_with_all_optional_inputs(a: Optional[Union['HelmReleaseSettings', 'Helm
     """
     Check codegen of functions with all optional inputs.
 
-
     :param Union['HelmReleaseSettings', 'HelmReleaseSettingsDict'] a: Property A
     :param _builtins.str b: Property B
     """
@@ -67,7 +66,6 @@ def func_with_all_optional_inputs_output(a: pulumi.Input[Optional[Optional[Union
                                          opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FuncWithAllOptionalInputsResult]:
     """
     Check codegen of functions with all optional inputs.
-
 
     :param Union['HelmReleaseSettings', 'HelmReleaseSettingsDict'] a: Property A
     :param _builtins.str b: Property B

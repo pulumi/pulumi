@@ -64,7 +64,6 @@ class Resource(pulumi.CustomResource):
         """
         Resource is a basic resource. Use fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using FunResult.out.
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input['pulumi_enum.StringEnum'] external_enum: External enum value from StringEnum.
@@ -78,7 +77,6 @@ class Resource(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Resource is a basic resource. Use fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using FunResult.out.
-
 
         :param str resource_name: The name of the resource.
         :param ResourceArgs args: The arguments to use to populate this resource's properties.

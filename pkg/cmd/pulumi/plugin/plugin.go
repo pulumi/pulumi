@@ -20,7 +20,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -52,9 +55,9 @@ func NewPluginCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newPluginInstallCmd())
-	cmd.AddCommand(newPluginLsCmd(pluginstorage.Instance))
-	cmd.AddCommand(newPluginRmCmd(pluginstorage.Instance))
-	cmd.AddCommand(newPluginRunCmd(pkgWorkspace.Instance))
+	cmd.AddCommand(newPluginListCmd(pluginstorage.Instance))
+	cmd.AddCommand(newPluginRemoveCmd(pluginstorage.Instance))
+	cmd.AddCommand(newPluginRunCmd())
 
 	return cmd
 }
@@ -67,8 +70,15 @@ func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	pluginHost, err := pkghost.New(
+		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 	pwd, main, pctx, err := engine.ProjectInfoContext(
-		ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +108,13 @@ func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) (
 	d := cmdutil.Diag()
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	_, _, pctx, err := engine.ProjectInfoContext(ctx, projinfo, nil, d, d, nil, false, nil, nil)
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), d, d, nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+	_, _, pctx, err := engine.ProjectInfoContext(ctx, projinfo, pluginHost, d, d, false, nil, nil)
 	if err != nil {
 		return nil, err
 	}

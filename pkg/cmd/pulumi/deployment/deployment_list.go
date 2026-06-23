@@ -30,6 +30,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -57,12 +58,12 @@ const defaultPageSize = 100
 // deploymentListArgs collects the flag values for the list command, in one
 // struct so Run can be driven directly from tests.
 type deploymentListArgs struct {
-	stack  string
-	count  int
-	all    bool
-	sort   string
-	asc    bool
-	output string
+	stack        string
+	count        int
+	all          bool
+	sort         string
+	asc          bool
+	renderOutput deploymentListRenderFunc
 }
 
 // newDeploymentListCmd builds `pulumi deployment list` with the production
@@ -74,6 +75,10 @@ func newDeploymentListCmd() *cobra.Command {
 
 func newDeploymentListCmdWith(factory deploymentListClientFactory) *cobra.Command {
 	var args deploymentListArgs
+	output := outputflag.OutputFlag[deploymentListRenderFunc]{
+		RenderForTerminal: renderDeploymentListTable,
+		RenderJSON:        renderDeploymentListJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -103,6 +108,7 @@ func newDeploymentListCmdWith(factory deploymentListClientFactory) *cobra.Comman
 			if f == nil {
 				f = defaultDeploymentListClientFactory
 			}
+			args.renderOutput = output.Get()
 			return runDeploymentList(cmd.Context(), cmd.OutOrStdout(), f, args)
 		},
 	}
@@ -117,8 +123,7 @@ func newDeploymentListCmdWith(factory deploymentListClientFactory) *cobra.Comman
 		"Fetch all results (mutually exclusive with --count)")
 	cmd.Flags().StringVar(&args.sort, "sort", "", "The field to sort results by")
 	cmd.Flags().BoolVar(&args.asc, "asc", false, "Sort in ascending order (default descending)")
-	cmd.Flags().StringVar(&args.output, "output", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -168,11 +173,6 @@ func defaultDeploymentListClientFactory(
 func runDeploymentList(
 	ctx context.Context, w io.Writer, factory deploymentListClientFactory, args deploymentListArgs,
 ) error {
-	render, err := deploymentListRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, stackID, err := factory(ctx, args.stack)
 	if err != nil {
 		return err
@@ -219,23 +219,12 @@ func runDeploymentList(
 		page++
 	}
 
-	return render(w, deployments, total)
+	return args.renderOutput(w, deployments, total)
 }
 
 type deploymentListRenderFunc func(
 	w io.Writer, deployments []apitype.ListDeploymentSnapshot, total int64,
 ) error
-
-func deploymentListRenderer(format string) (deploymentListRenderFunc, error) {
-	switch format {
-	case "", "default", "table":
-		return renderDeploymentListTable, nil
-	case "json":
-		return renderDeploymentListJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
 
 func renderDeploymentListTable(
 	w io.Writer, deployments []apitype.ListDeploymentSnapshot, total int64,

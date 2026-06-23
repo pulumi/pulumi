@@ -20,6 +20,7 @@ import (
 	"io"
 	"strings"
 
+	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/acarl005/stripansi"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/eval"
@@ -33,6 +34,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -89,6 +91,12 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		stdin:       stdin,
 		stdout:      stdout,
 		interactive: true,
+
+		prompt: func(msg string, options []string, defaultOption string, colorization colors.Colorization,
+			surveyAskOpts ...survey.AskOpt,
+		) string {
+			return defaultOption
+		},
 
 		ws: &pkgWorkspace.MockContext{
 			ReadProjectF: func() (*workspace.Project, string, error) {
@@ -246,11 +254,8 @@ func newConfigEnvCmdForInitTest(
 	)
 }
 
-// The library sending the confirmation prompt may be able to print the prompt
-// in full before recognizing the character we send to stdin for the test.
-// There's nothing really wrong with that other than it makes the tests flake.
-// This cleans the extra output from stdout in case it happens, as it either
-// happening or not happening is fine.
-func cleanStdoutIncludingPrompt(stdout string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(stripansi.Strip(stdout), "\r", ""), "Save? ▸Yes  No", "")
+// cleanStdout strips ANSI escape codes and carriage returns from captured output so
+// assertions can compare plain text.
+func cleanStdout(stdout string) string {
+	return strings.ReplaceAll(stripansi.Strip(stdout), "\r", "")
 }

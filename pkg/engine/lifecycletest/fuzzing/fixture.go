@@ -107,7 +107,8 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 		inSnap := snapSpec.AsSnapshot()
 		require.NoError(t, inSnap.VerifyIntegrity(), "initial snapshot is not valid")
 
-		hostF := deploytest.NewPluginHostF(nil, nil, progSpec.AsLanguageRuntimeF(t), provSpec.AsProviderLoaders()...)
+		hostF := deploytest.NewPluginHostF(
+			nil, nil, progSpec.AsLanguageRuntimeF(t), nil, nil, provSpec.AsProviderLoaders()...)
 
 		opOpts, op := planSpec.Executors(t, hostF)
 		opOpts.SkipDisplayTests = true

@@ -162,6 +162,17 @@ func VerifyIntegrity(snap *apitype.DeploymentV3) error {
 		}
 	}
 
+	snippetUUIDs := make(map[string]int, len(snap.Snippets))
+	for i, snippet := range snap.Snippets {
+		if snippet.UUID == "" {
+			return SnapshotIntegrityErrorf("snippet at index %d missing required 'uuid' field", i)
+		}
+		if other, has := snippetUUIDs[snippet.UUID]; has {
+			return SnapshotIntegrityErrorf("duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i)
+		}
+		snippetUUIDs[snippet.UUID] = i
+	}
+
 	return nil
 }
 

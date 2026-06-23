@@ -201,7 +201,7 @@ func NewAPICmd() *cobra.Command {
 		return runAPI(cmd, args, api)
 	})
 
-	cmd.AddCommand(newLsCmd(api))
+	cmd.AddCommand(newListCmd(api))
 	cmd.AddCommand(newDescribeCmd(api))
 
 	return cmd

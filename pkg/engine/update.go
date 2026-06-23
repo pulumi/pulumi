@@ -34,6 +34,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -327,6 +328,11 @@ func LoadLocalPolicyPackAnalyzers(
 	return analyzers, nil
 }
 
+// HostFactory constructs the plugin host for a deployment.
+type HostFactory func(
+	ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext,
+) (plugin.Host, error)
+
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 //
 // This structure is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
@@ -394,8 +400,8 @@ type UpdateOptions struct {
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
 
-	// the plugin host to use for this update
-	Host plugin.Host
+	// HostFactory builds the plugin host for this operation.
+	HostFactory HostFactory
 
 	// The plan to use for the update, if any.
 	Plan *deploy.Plan
@@ -930,9 +936,28 @@ func newUpdateSource(ctx context.Context,
 
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
 
+	var observer *deploy.RegistrationObserver
+	// Now create sources for _any_ snippets in the snapshot and mux them with the main source.
+	if target.Snapshot != nil && len(target.Snapshot.Snippets) > 0 {
+		// Create a registration observer so concurrent sources (the program + any snippet sources below) can wait for
+		// each other's RegisterResource calls. The resource monitor publishes outputs on the observer; snippet sources
+		// consume them when their Snippet.References needs to read another resource's outputs.
+		observer = deploy.NewRegistrationObserver()
+
+		// We need a loader for snippets
+		loader := schema.NewPluginLoader(plugctx)
+
+		snippetSources := make([]func(string) *promise.Promise[struct{}], len(target.Snapshot.Snippets))
+		for i, snippet := range target.Snapshot.Snippets {
+			snippetSources[i] = deploy.NewSnippetSource(
+				ctx, snippet, loader, runinfo.ProjectRoot, runinfo.Pwd, observer)
+		}
+		program = deploy.NewMuxSource(ctx, observer, program, snippetSources...)
+	}
+
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	return deploy.NewEvalSource(plugctx, runinfo,
-		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, nil, program), nil
+		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, observer, program), nil
 }
 
 func update(
@@ -940,6 +965,12 @@ func update(
 	info *deploymentContext,
 	opts *deploymentOptions,
 ) (*deploy.Plan, display.ResourceChanges, error) {
+	// Ensure we have a plugin host for the operation. Constructed here (when not test-injected)
+	// because the host's diag sinks are the engine's event sinks; newDeployment closes it.
+	if err := ensureHost(ctx.Cancel.Base(), opts, info.TracingSpan); err != nil {
+		return nil, nil, err
+	}
+
 	// Create an appropriate set of event listeners.
 	var actions runActions
 	if opts.DryRun {

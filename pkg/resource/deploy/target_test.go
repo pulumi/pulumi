@@ -19,8 +19,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -82,16 +82,15 @@ func TestTarget(t *testing.T) {
 					},
 				},
 			}
-			res, err := target.GetPackageConfig("test")
+			cfg, err := target.GetPackageConfig("test")
 			require.NoError(t, err, expectedErr)
 
-			cfg := res.Mappable()
-			assert.Equal(t, "regular-value", cfg["regular"])
-			secret, ok := cfg["secret"].(*resource.Secret)
+			assert.Equal(t, property.New("regular-value"), cfg.Get("regular"))
+			secret, ok := cfg.GetOk("secret")
 			assert.True(t, ok)
-			assert.Equal(t, "secret-value", secret.Element.V)
+			assert.Equal(t, property.New("secret-value").WithSecret(true), secret)
 
-			_, ok = cfg["a"].(*resource.Secret)
+			_, ok = cfg.GetOk("a")
 			assert.False(t, ok)
 		})
 	})

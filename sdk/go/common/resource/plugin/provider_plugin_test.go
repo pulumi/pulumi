@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -641,7 +642,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "replacement trigger",
 			give: ConstructOptions{
-				ReplacementTrigger: resource.NewProperty("trigger-value"),
+				ReplacementTrigger: property.New("trigger-value"),
 			},
 			want: &pulumirpc.ConstructRequest{
 				ReplacementTrigger: structpb.NewStringValue("trigger-value"),
@@ -803,7 +804,8 @@ func newTestContext(t testing.TB) *Context {
 	ctx, err := NewContext(
 		t.Context(),
 		sink, sink,
-		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */, nil, nil, nil)
+		// The tests using this context wire up in-process stub clients, so the host is never used.
+		&MockHost{}, nil /* source */, cwd, nil /* options */, false, nil /* span */)
 	require.NoError(t, err, "build context")
 
 	return ctx

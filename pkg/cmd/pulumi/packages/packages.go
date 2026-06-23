@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -188,6 +189,7 @@ func GenSDK(
 		if err != nil {
 			return nil, fmt.Errorf("create plugin context: %w", err)
 		}
+		defer contract.IgnoreClose(pCtx.Host)
 		defer contract.IgnoreClose(pCtx)
 		languagePlugin, err := pCtx.Host.LanguageRuntime(pCtx, language)
 		if err != nil {
@@ -337,10 +339,14 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{ //nolint:forbidigo
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+	pluginHost, err := pkghost.New(context.TODO(), sink, sink, nil,
+		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 	if err != nil {
 		return nil, err
+	}
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+	if err != nil {
+		return nil, errors.Join(err, pluginHost.Close())
 	}
 	return pluginCtx, nil
 }

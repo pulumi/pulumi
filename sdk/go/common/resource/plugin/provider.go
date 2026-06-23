@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type GetSchemaRequest struct {
@@ -70,6 +71,10 @@ type ProviderHandshakeRequest struct {
 	// The target of a codegen.Mapper service the provider can use to retrieve mappings from other ecosystems to
 	// Pulumi. May be nil on older engines.
 	MapperTarget *string
+
+	// The target of a codegen.Loader service the provider can use to load the schemas of other Pulumi packages.
+	// May be nil on older engines.
+	LoaderTarget *string
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -926,7 +931,7 @@ type ConstructOptions struct {
 
 	// ReplacementTrigger specifies that if set, the engine will diff this with
 	// the last recorded value, and trigger a replace if they are not equal.
-	ReplacementTrigger resource.PropertyValue
+	ReplacementTrigger property.Value
 
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.

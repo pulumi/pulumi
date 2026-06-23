@@ -36,6 +36,9 @@ type MockHost struct {
 	ProviderF           func(ctx *Context, descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
 	LanguageRuntimeF    func(ctx *Context, runtime string) (LanguageRuntime, error)
 	ResolvePluginF      func(ctx *Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
+	ReleaseContextF     func(ctx *Context) error
+	LoaderF             func(ctx *Context) (*GrpcServer, error)
+	MapperF             func(ctx *Context) (*GrpcServer, error)
 	SignalCancellationF func() error
 	CloseF              func() error
 	StartDebuggingF     func(info DebuggingInfo) error
@@ -100,6 +103,27 @@ func (m *MockHost) ResolvePlugin(
 		return m.ResolvePluginF(ctx, spec)
 	}
 	return nil, status.Error(codes.Unimplemented, "ResolvePlugin not implemented")
+}
+
+func (m *MockHost) ReleaseContext(ctx *Context) error {
+	if m.ReleaseContextF != nil {
+		return m.ReleaseContextF(ctx)
+	}
+	return nil
+}
+
+func (m *MockHost) Loader(ctx *Context) (*GrpcServer, error) {
+	if m.LoaderF != nil {
+		return m.LoaderF(ctx)
+	}
+	return nil, nil
+}
+
+func (m *MockHost) Mapper(ctx *Context) (*GrpcServer, error) {
+	if m.MapperF != nil {
+		return m.MapperF(ctx)
+	}
+	return nil, nil
 }
 
 func (m *MockHost) SignalCancellation() error {

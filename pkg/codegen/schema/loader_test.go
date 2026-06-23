@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -35,8 +36,12 @@ func initLoader(b testing.TB, options pluginLoaderCacheOptions) ReferenceLoader 
 	require.NoError(b, err)
 	sink := diagtest.LogSink(b)
 	//nolint:usetesting // plugin.NewContext manages gRPC providers; b.Context cancels too early
+	pluginHost, err := pkghost.New(context.WithoutCancel(b.Context()), sink, sink, nil, nil,
+		NewLoaderServerFromContext, nil)
+	require.NoError(b, err)
+	b.Cleanup(func() { require.NoError(b, pluginHost.Close()) })
 	ctx, err := plugin.NewContext(
-		b.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromContext, nil, nil)
+		b.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
 	require.NoError(b, err)
 	loader := newPluginLoaderWithOptions(ctx, options)
 
@@ -180,7 +185,8 @@ func TestLoadParameterized(t *testing.T) {
 		},
 	}
 
-	pctx := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	require.NoError(t, err)
 	loader := newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,
 		disableMmap:       true,
@@ -243,7 +249,8 @@ func TestLoadNameMismatch(t *testing.T) {
 		},
 	}
 
-	pctx := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	require.NoError(t, err)
 	loader := newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,
 		disableMmap:       true,
@@ -315,7 +322,8 @@ func TestLoadVersionMismatch(t *testing.T) {
 		},
 	}
 
-	pctx := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	require.NoError(t, err)
 	loader := newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,
 		disableMmap:       true,

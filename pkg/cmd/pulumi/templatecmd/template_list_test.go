@@ -71,6 +71,16 @@ func registryFactory(r registry.Registry) func(ctx context.Context) registry.Reg
 	return func(_ context.Context) registry.Registry { return r }
 }
 
+func defaultTemplateListArgs() templateListArgs {
+	return templateListArgs{renderOutput: renderTemplatesTable}
+}
+
+func jsonTemplateListArgs() templateListArgs {
+	a := defaultTemplateListArgs()
+	a.renderOutput = renderTemplatesJSON
+	return a
+}
+
 func sampleTemplates() []apitype.TemplateMetadata {
 	desc := "An example template"
 	return []apitype.TemplateMetadata{
@@ -102,7 +112,7 @@ func TestTemplateListCmd_DefaultOutput_WithResults(t *testing.T) {
 	c := &templateListCmd{registryFactory: registryFactory(reg)}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, templateListArgs{})
+	err := c.Run(t.Context(), &out, defaultTemplateListArgs())
 	require.NoError(t, err)
 
 	output := out.String()
@@ -120,7 +130,7 @@ func TestTemplateListCmd_DefaultOutput_NoResults(t *testing.T) {
 	c := &templateListCmd{registryFactory: registryFactory(reg)}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, templateListArgs{})
+	err := c.Run(t.Context(), &out, defaultTemplateListArgs())
 	require.NoError(t, err)
 
 	assert.Equal(t, "No templates found.\n", out.String())
@@ -133,7 +143,7 @@ func TestTemplateListCmd_JSONOutput(t *testing.T) {
 	c := &templateListCmd{registryFactory: registryFactory(reg)}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, templateListArgs{output: "json"})
+	err := c.Run(t.Context(), &out, jsonTemplateListArgs())
 	require.NoError(t, err)
 
 	var got struct {
@@ -166,7 +176,7 @@ func TestTemplateListCmd_ZeroUpdatedAt(t *testing.T) {
 		c := &templateListCmd{registryFactory: registryFactory(reg)}
 
 		var out bytes.Buffer
-		require.NoError(t, c.Run(t.Context(), &out, templateListArgs{}))
+		require.NoError(t, c.Run(t.Context(), &out, defaultTemplateListArgs()))
 		assert.NotContains(t, out.String(), "0001-01-01")
 	})
 
@@ -177,7 +187,7 @@ func TestTemplateListCmd_ZeroUpdatedAt(t *testing.T) {
 		c := &templateListCmd{registryFactory: registryFactory(reg)}
 
 		var out bytes.Buffer
-		require.NoError(t, c.Run(t.Context(), &out, templateListArgs{output: "json"}))
+		require.NoError(t, c.Run(t.Context(), &out, jsonTemplateListArgs()))
 
 		var raw map[string]any
 		require.NoError(t, json.Unmarshal(out.Bytes(), &raw))
@@ -196,7 +206,7 @@ func TestTemplateListCmd_JSONOutput_NoResults(t *testing.T) {
 	c := &templateListCmd{registryFactory: registryFactory(reg)}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, templateListArgs{output: "json"})
+	err := c.Run(t.Context(), &out, jsonTemplateListArgs())
 	require.NoError(t, err)
 
 	// Empty list, not null — keeps the contract stable for scripts.
@@ -247,23 +257,12 @@ func TestTemplateListCmd_FiltersPassedThrough(t *testing.T) {
 			c := &templateListCmd{registryFactory: registryFactory(reg)}
 
 			var out bytes.Buffer
+			tt.args.renderOutput = renderTemplatesTable
 			err := c.Run(t.Context(), &out, tt.args)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, captured)
 		})
 	}
-}
-
-func TestTemplateListCmd_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	reg := newMockListRegistry(t, nil, sampleTemplates(), nil)
-	c := &templateListCmd{registryFactory: registryFactory(reg)}
-
-	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, templateListArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid --output value "yaml"`)
 }
 
 func TestTemplateListCmd_RegistryError(t *testing.T) {
@@ -273,7 +272,7 @@ func TestTemplateListCmd_RegistryError(t *testing.T) {
 	c := &templateListCmd{registryFactory: registryFactory(reg)}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, templateListArgs{})
+	err := c.Run(t.Context(), &out, defaultTemplateListArgs())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "listing templates")
 	assert.Contains(t, err.Error(), "connection refused")

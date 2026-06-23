@@ -1,6 +1,0 @@
-component: sdkgen/go
-kind: feat
-body: Support functions with multiArgumentInputs
-time: 2026-06-12T00:00:00+00:00
-custom:
-    PR: "23554"

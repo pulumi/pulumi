@@ -1306,6 +1306,10 @@ func (b *diyBackend) apply(
 		engineCtx.SnapshotManager = manager
 	}
 
+	if op.Opts.Engine.HostFactory == nil {
+		op.Opts.Engine.HostFactory = backend.DefaultHostFactory
+	}
+
 	// Perform the update
 	start := time.Now().Unix()
 	var plan *deploy.Plan

@@ -1,7 +1,4 @@
 {
     "name": "project_main",
-    "license": "Apache-2.0",
-    "devDependencies": {
-        "typescript": "2.9.2"
-    }
+    "license": "Apache-2.0"
 }

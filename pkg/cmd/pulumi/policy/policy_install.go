@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -125,8 +126,14 @@ func (cmd *policyInstallCmd) Run(
 		return fmt.Errorf("getting current working directory: %w", err)
 	}
 
-	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, nil, nil, cwd, nil, true, nil,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmd.diag, cmd.diag, nil,
+		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+	if err != nil {
+		return fmt.Errorf("creating plugin host: %w", err)
+	}
+	// host is owned here, closed after the context
+	defer contract.IgnoreClose(pluginHost)
+	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, pluginHost, nil, cwd, nil, true, nil)
 	if err != nil {
 		return fmt.Errorf("creating plugin context: %w", err)
 	}

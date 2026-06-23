@@ -38,6 +38,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -2657,9 +2658,12 @@ func debugProvidersHelperContext(t *testing.T) *plugin.Context {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	//nolint:usetesting // plugin.NewContext manages the lifecycle of gRPC providers; t.Context cancels before they shut down
+	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), sink, sink, nil, nil,
+		NewLoaderServerFromContext, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, pluginHost.Close()) })
 	pluginCtx, err := plugin.NewContext(
-		t.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromContext, nil, nil)
+		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
 	require.NoError(t, err)
 	return pluginCtx
 }

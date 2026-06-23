@@ -52,8 +52,8 @@ func newStackTagCmd() *cobra.Command {
 		&stack, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 
 	cmd.AddCommand(newStackTagGetCmd(&stack))
-	cmd.AddCommand(newStackTagLsCmd(&stack))
-	cmd.AddCommand(newStackTagRmCmd(&stack))
+	cmd.AddCommand(newStackTagListCmd(&stack))
+	cmd.AddCommand(newStackTagRemoveCmd(&stack))
 	cmd.AddCommand(newStackTagSetCmd(&stack))
 
 	return cmd
@@ -106,11 +106,12 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 	return cmd
 }
 
-func newStackTagLsCmd(stack *string) *cobra.Command {
+func newStackTagListCmd(stack *string) *cobra.Command {
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List all stack tags",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List all stack tags",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -170,10 +171,11 @@ func printStackTags(w io.Writer, tags map[apitype.StackTagName]string) {
 	}, nil)
 }
 
-func newStackTagRmCmd(stack *string) *cobra.Command {
+func newStackTagRemoveCmd(stack *string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove a stack tag",
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "Remove a stack tag",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()

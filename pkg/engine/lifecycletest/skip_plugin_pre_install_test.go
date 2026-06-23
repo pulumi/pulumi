@@ -109,7 +109,7 @@ func TestSkipPluginPreInstallSkipsUnusedLanguagePackages(t *testing.T) {
 	// The language host advertises both pkgA and pkgB as required, even though the program only
 	// ever registers a resource of pkgA.
 	programF := deploytest.NewLanguageRuntimeF(program, pkgA, pkgB)
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	runUpdate := func(skip bool) *countingPluginManager {
 		// Reset counters

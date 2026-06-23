@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -60,8 +61,11 @@ func newStackWebhookEditCmdWith(factory stackWebhookEditClientFactory) *cobra.Co
 		active       bool
 		secret       string
 		displayName  string
-		output       string
 	)
+	output := outputflag.OutputFlag[webhookGetRenderFunc]{
+		RenderForTerminal: renderWebhookGetText,
+		RenderJSON:        renderWebhookGetJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "edit",
@@ -103,7 +107,7 @@ func newStackWebhookEditCmdWith(factory stackWebhookEditClientFactory) *cobra.Co
 					active:       active,
 					secret:       secret,
 					displayName:  displayName,
-				}, output,
+				}, output.Get(),
 			)
 		},
 	}
@@ -130,8 +134,7 @@ func newStackWebhookEditCmdWith(factory stackWebhookEditClientFactory) *cobra.Co
 		"The HMAC key for signature verification (empty string removes the secret)")
 	cmd.Flags().StringVar(&displayName, "display-name", "",
 		"The webhook display name")
-	cmd.Flags().StringVarP(&output, "output", "o", "default",
-		"The output format: default (human-readable text) or json")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -164,13 +167,8 @@ func runEdit(
 	stackFlag string,
 	webhookName string,
 	flags editFlags,
-	output string,
+	render webhookGetRenderFunc,
 ) error {
-	renderer, err := webhookGetRenderer(output)
-	if err != nil {
-		return err
-	}
-
 	c, stackID, err := factory(ctx, stackFlag)
 	if err != nil {
 		return err
@@ -192,7 +190,7 @@ func runEdit(
 		return fmt.Errorf("updating webhook %q: %w", webhookName, err)
 	}
 
-	return renderer(w, updated)
+	return render(w, updated)
 }
 
 // removeSecretSentinel is the value the Pulumi Service recognises as

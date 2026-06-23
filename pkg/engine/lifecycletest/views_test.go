@@ -186,7 +186,7 @@ func TestViewsBasic(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -391,7 +391,7 @@ func TestViewsUpdateError(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -544,7 +544,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -695,7 +695,7 @@ func TestViewsRefreshSame(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -830,7 +830,7 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -967,7 +967,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1107,7 +1107,7 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1234,7 +1234,7 @@ func TestViewsRefreshDelete(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1355,7 +1355,7 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1434,7 +1434,7 @@ func TestViewsImport(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1616,7 +1616,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1824,7 +1824,7 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -2013,7 +2013,7 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2181,7 +2181,7 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2349,7 +2349,7 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2446,7 +2446,7 @@ func TestViewsDestroyPreview(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},

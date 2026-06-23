@@ -26,6 +26,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -37,15 +39,27 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 type testHost struct {
-	engine      *languageTestServer
-	ctx         *plugin.Context
-	host        plugin.Host
-	runtime     plugin.LanguageRuntime
-	runtimeName string
-	providers   map[string]func() (plugin.Provider, error)
+	engine       *languageTestServer
+	runtime      plugin.LanguageRuntime
+	runtimeName  string
+	languageInfo string
+	providers    map[string]func() (plugin.Provider, error)
+
+	// servicesMu guards loader and contextServices, which are written from Loader/Mapper as the
+	// engine boots contexts concurrently.
+	servicesMu sync.Mutex
+
+	// loader is the provider-backed schema loader this host binds onto a context. It is captured
+	// here when Loader runs so the conformance runner can reuse it to bind PCL programs.
+	loader *providerLoader
+
+	// contextServices holds the loader/mapper gRPC servers this host hosts for each context; they
+	// are shut down in that context's ReleaseContext.
+	contextServices map[*plugin.Context][]*plugin.GrpcServer
 
 	connectionsMutex sync.Mutex
 	connections      map[plugin.Provider]io.Closer
@@ -103,7 +117,7 @@ func (h *testHost) PolicyAnalyzer(
 		// This is only called for the language runtime, so we can just do a simple check.
 		return spec.Kind == apitype.LanguagePlugin && spec.Name == h.runtimeName
 	}
-	analyzer, err := plugin.NewPolicyAnalyzer(h, h.ctx, name, path, opts, hasPlugin)
+	analyzer, err := plugin.NewPolicyAnalyzer(h, ctx, name, path, opts, hasPlugin)
 	if err != nil {
 		return nil, err
 	}
@@ -211,6 +225,60 @@ func (h *testHost) ResolvePlugin(
 		Kind:    spec.Kind,
 		Version: spec.Version,
 	}, nil
+}
+
+// ReleaseContext shuts down the loader and mapper gRPC servers this host hosts for the context.
+// The test host's providers are not scoped to a context and are torn down when it closes.
+func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
+	h.servicesMu.Lock()
+	servers := h.contextServices[ctx]
+	delete(h.contextServices, ctx)
+	h.servicesMu.Unlock()
+
+	var errs []error
+	for _, srv := range servers {
+		if err := srv.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// Loader serves the conformance runner's provider-backed schema loader, bound to ctx. The loader
+// resolves schemas from the test's own providers via this host.
+func (h *testHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	loader := &providerLoader{
+		language:     h.runtimeName,
+		languageInfo: h.languageInfo,
+		pctx:         ctx,
+		host:         h,
+	}
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterLoaderServer(srv, schema.NewLoaderServer(loader))
+	})
+	if err != nil {
+		return nil, err
+	}
+	h.servicesMu.Lock()
+	h.loader = loader
+	h.contextServices[ctx] = append(h.contextServices[ctx], srv)
+	h.servicesMu.Unlock()
+	return srv, nil
+}
+
+// Mapper serves the standard conversion mapper bound to ctx, sourcing mappings from the plugins
+// installed in the global plugin storage.
+func (h *testHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterMapperServer(srv, convert.NewMapperServerFromContext(ctx))
+	})
+	if err != nil {
+		return nil, err
+	}
+	h.servicesMu.Lock()
+	h.contextServices[ctx] = append(h.contextServices[ctx], srv)
+	h.servicesMu.Unlock()
+	return srv, nil
 }
 
 func (h *testHost) SignalCancellation() error {

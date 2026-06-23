@@ -104,7 +104,19 @@ func RenderDocs(w io.Writer, source []byte, node ast.Node, options ...RendererOp
 		util.Prioritized(md, 200),
 	}
 	r := renderer.NewRenderer(renderer.WithNodeRenderers(nodeRenderers...))
-	return r.Render(w, source, node)
+
+	var buf bytes.Buffer
+	if err := r.Render(&buf, source, node); err != nil {
+		return err
+	}
+
+	rendered := buf.Bytes()
+	if !bytes.HasSuffix(source, []byte("\n")) {
+		rendered = bytes.TrimSuffix(rendered, []byte("\n"))
+	}
+
+	_, err := w.Write(rendered)
+	return err
 }
 
 // RenderDocsToString is like RenderDocs, but renders to a string instead of a Writer.

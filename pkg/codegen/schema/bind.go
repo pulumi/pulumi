@@ -38,6 +38,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -233,7 +234,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions, types.pkg.TokenToModule))
 
 	// Now we've bound everything we can do a pass over the Descriptions and Comments to check they have valid doc refs.
-	diags = diags.Extend(checkDocRefs(types, spec, options))
+	diags = diags.Extend(checkDocRefs(types, spec))
 
 	pkg := types.pkg
 	pkg.Config = config
@@ -252,13 +253,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		return nil, nil, err
 	}
 	pkg.interpretPulumiRefs = func(description string, resolver PulumiRefResolver) (string, error) {
-		source := []byte(description)
-		parsed := ParseDocs(source)
-		err := interpretPulumiRefs("", types, ValidationOptions{}, parsed, resolver)
-		if err != nil {
-			return "", err
-		}
-		return RenderDocsToString(source, parsed), nil
+		return interpretPulumiRefsInDescription(description, types, resolver)
 	}
 	return pkg, diags, nil
 }
@@ -366,13 +361,21 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil,
-			NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+		pluginHost, err := pkghost.New(context.TODO(), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
+			NewLoaderServerFromContext, convert.NewMapperServerFromContext)
 		if err != nil {
 			return nil, nil, err
 		}
+		ctx, err := plugin.NewContext(context.TODO(), nil, nil, pluginHost, nil, cwd, nil, false, nil)
+		if err != nil {
+			return nil, nil, errors.Join(err, pluginHost.Close())
+		}
 
-		loader, loadCtx = NewPluginLoader(ctx), ctx
+		// loadCtx closes the context and then the host it was built with, since the host is owned
+		// here and not by the context.
+		loader, loadCtx = NewPluginLoader(ctx), closerFunc(func() error {
+			return errors.Join(ctx.Close(), pluginHost.Close())
+		})
 	}
 
 	// Create a type binder.
@@ -398,7 +401,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	return types, diags, nil
 }
 
-// Options that affect the validation of the packgae schema.
+// Options that affect the validation of the package schema.
 type ValidationOptions struct {
 	// Internal flag set to allow the builtin pulumi package to bind.
 	AllowPulumiPackage      bool
@@ -536,6 +539,11 @@ func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, b
 	}
 	return spec, true, nil
 }
+
+// closerFunc adapts a function to io.Closer.
+type closerFunc func() error
+
+func (f closerFunc) Close() error { return f() }
 
 // types facilitates interning (only storing a single reference to an object) during schema processing. The fields
 // correspond to fields in the schema, and are populated during the binding process.
@@ -1710,7 +1718,7 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 	return typeList, diags, nil
 }
 
-func checkDocRefs(types *types, spec PackageSpec, options ValidationOptions) hcl.Diagnostics {
+func checkDocRefs(types *types, spec PackageSpec) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 	resolver := func(ref DocRef) (string, bool) { return "", false }
 
@@ -1719,7 +1727,7 @@ func checkDocRefs(types *types, spec PackageSpec, options ValidationOptions) hcl
 			return
 		}
 		parsed := ParseDocs([]byte(text))
-		diags = diags.Extend(interpretPulumiRefs(path, types, options, parsed, resolver))
+		diags = diags.Extend(interpretPulumiRefs(path, types, parsed, resolver))
 	}
 
 	checkProperties := func(basePath string, props map[string]PropertySpec) {

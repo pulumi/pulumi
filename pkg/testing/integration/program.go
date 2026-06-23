@@ -33,6 +33,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -56,6 +57,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/stretchr/testify/require"
 )
@@ -2989,5 +2991,52 @@ func (t AssertPerfBenchmark) ReportCommand(ctx context.Context, stats TestComman
 				"Test step %q took longer than expected. %.2fs vs. max %.2fs",
 				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
 		}
+	}
+}
+
+// componentSetupMutexes holds one mutex per fixture dir and guards concurrent access within a process.
+var componentSetupMutexes gsync.Map[string, *sync.Mutex]
+
+// RunComponentSetup installs the locally-built SDK into the test-component fixtures under testDir: `testcomponent` for
+// Node.js and `testcomponent-python` for Python. Go test components don't need any setup.
+func RunComponentSetup(t *testing.T, testDir string) {
+	t.Helper()
+	setupComponent(t, filepath.Join(testDir, "testcomponent"), NodeJSRuntime)
+	setupComponent(t, filepath.Join(testDir, "testcomponent-python"), PythonRuntime)
+}
+
+func setupComponent(t *testing.T, dir, runtime string) {
+	t.Helper()
+	if _, err := os.Stat(dir); err != nil {
+		return // this component variant isn't present under the test directory
+	}
+
+	mu, _ := componentSetupMutexes.LoadOrStore(filepath.Clean(dir), &sync.Mutex{})
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Guard against multiple processes running the tests concurrently.
+	lockfile := filepath.Join(dir, ".lock")
+	flock := fsutil.NewFileMutex(lockfile)
+	deadline := time.Now().Add(10 * time.Minute)
+	for {
+		if err := flock.Lock(); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for lock on %s", lockfile)
+		}
+		time.Sleep(time.Second)
+	}
+	defer func() {
+		require.NoError(t, flock.Unlock())
+	}()
+
+	ptesting.InstallDependencies(t, dir)
+	if runtime == NodeJSRuntime {
+		cmd := exec.Command("npx", "tsc")
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "npx tsc in %s failed: %s", dir, out)
 	}
 }

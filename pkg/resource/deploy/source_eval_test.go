@@ -38,7 +38,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -50,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -239,7 +239,7 @@ func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
 	return plugin.NewContext(t.Context(), sink, statusSink, host, nil, "", nil, false,
-		nil, schema.NewLoaderServerFromContext, nil, nil)
+		nil)
 }
 
 type testProviderSource struct {
@@ -896,7 +896,7 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 	}
 	getterDone := make(chan result, 1)
 	go func() {
-		reg, err := observer.Get(expectedURN).Result(t.Context())
+		reg, err := observeRegistration(observer, expectedURN).Result(t.Context())
 		getterDone <- result{reg, err}
 	}()
 
@@ -1013,7 +1013,7 @@ func TestRegistrationObserverNotResolvedForUnsuccessfulRegisterResource(t *testi
 				})
 			}
 
-			if registration, _, ok := observer.Get(expectedURN).TryResult(); ok {
+			if registration, _, ok := observeRegistration(observer, expectedURN).TryResult(); ok {
 				t.Fatalf("observer should not resolve an unsuccessful registration: %+v", registration)
 			}
 		})
@@ -1104,7 +1104,7 @@ func TestRegistrationObserverNotResolvedForLocalComponentOnRegister(t *testing.T
 	getterCtx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go func() {
-		reg, err := observer.Get(expectedURN).Result(getterCtx)
+		reg, err := observeRegistration(observer, expectedURN).Result(getterCtx)
 		getterDone <- result{reg, err}
 	}()
 
@@ -1200,16 +1200,16 @@ func TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs(t *testi
 	driveIter(t, iter, runInfo)
 
 	// After both RegisterResource and RegisterResourceOutputs have run, the observer should resolve.
-	got, err := observer.Get(expectedURN).Result(t.Context())
+	got, err := observeRegistration(observer, expectedURN).Result(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, expectedOutputs, got.Outputs, "observer should publish ROC outputs")
 	require.Equal(t, resource.ID(""), got.ID, "component ID should be empty")
 }
 
-// TestRegistrationObserverRemoteComponentNotResolvedOnRegister verifies that a remote component is
-// treated the same as a local component for publish timing: nothing on the observer at RegisterResource
-// time, even though the Construct response carries the URN. This pins the design choice that remote
-// components publish via RegisterResourceOutputs rather than via the Construct return value.
+// TestRegistrationObserverRemoteComponentNotResolvedOnRegister verifies that a remote component is treated the same as
+// a local component for publish timing: nothing on the observer at RegisterResource time, even though the Construct
+// response carries the URN. This pins the design choice that remote components publish via RegisterResourceOutputs
+// rather than via the Construct return value. This is so the outputs match what is stored in state.
 func TestRegistrationObserverRemoteComponentNotResolvedOnRegister(t *testing.T) {
 	t.Parallel()
 
@@ -1264,7 +1264,7 @@ func TestRegistrationObserverRemoteComponentNotResolvedOnRegister(t *testing.T) 
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		_, err := observer.Get(expectedURN).Result(getterCtx)
+		_, err := observeRegistration(observer, expectedURN).Result(getterCtx)
 		done <- err
 	}()
 
@@ -1352,8 +1352,8 @@ func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
 	}
 
 	for _, urn := range []resource.URN{canonicalURN, aliasURN} {
-		got, err := observer.Get(urn).Result(t.Context())
-		require.NoError(t, err, "Get %s", urn)
+		got, err := observeRegistration(observer, urn).Result(t.Context())
+		require.NoError(t, err, "observe %s", urn)
 		require.Equal(t, expectedOutputs, got.Outputs, "outputs for %s", urn)
 		require.Equal(t, resource.ID("id1"), got.ID, "id for %s", urn)
 	}
@@ -1408,8 +1408,8 @@ func TestRegistrationObserverComponentAliasesArePublishedAtROC(t *testing.T) {
 	driveIter(t, iter, runInfo)
 
 	for _, urn := range []resource.URN{canonicalURN, aliasURN} {
-		got, err := observer.Get(urn).Result(t.Context())
-		require.NoError(t, err, "Get %s", urn)
+		got, err := observeRegistration(observer, urn).Result(t.Context())
+		require.NoError(t, err, "observe %s", urn)
 		require.Equal(t, expectedOutputs, got.Outputs, "outputs for %s should be the ROC outputs", urn)
 		require.Equal(t, resource.ID(""), got.ID, "component %s ID should be empty", urn)
 	}
@@ -2716,8 +2716,8 @@ func TestGetDeploymentInfo(t *testing.T) {
 
 	plugctx, err := plugin.NewContext(t.Context(),
 		&deploytest.NoopSink{}, &deploytest.NoopSink{},
-		deploytest.NewPluginHostF(nil, nil, nil)(),
-		nil, "", nil, false, nil, nil, nil, nil)
+		deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
+		nil, "", nil, false, nil)
 	require.NoError(t, err)
 
 	plainKey := config.MustMakeKey("test", "region")
@@ -2917,16 +2917,16 @@ func TestParseSourcePosition(t *testing.T) {
 }
 
 type configSourceMock struct {
-	GetPackageConfigF func(pkg tokens.Package) (resource.PropertyMap, error)
+	GetPackageConfigF func(pkg tokens.Package) (property.Map, error)
 }
 
 var _ plugin.ConfigSource = (*configSourceMock)(nil)
 
-func (c *configSourceMock) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, error) {
+func (c *configSourceMock) GetPackageConfig(pkg tokens.Package) (property.Map, error) {
 	if c.GetPackageConfigF != nil {
 		return c.GetPackageConfigF(pkg)
 	}
-	panic("unimplemented")
+	return property.Map{}, nil
 }
 
 func TestInvoke(t *testing.T) {
@@ -2945,8 +2945,8 @@ func TestInvoke(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil, nil, nil, nil)
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
+			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3005,8 +3005,8 @@ func TestInvoke(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil, nil, nil, nil)
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
+			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3086,8 +3086,8 @@ func TestCall(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil, nil, nil, nil)
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
+			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3160,8 +3160,8 @@ func TestCall(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil, nil, nil, nil)
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
+			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3265,8 +3265,8 @@ func TestCall(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil, nil, nil, nil)
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
+			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3333,8 +3333,8 @@ func TestCall(t *testing.T) {
 
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil, nil, nil, nil)
+			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
+			nil, "", nil, false, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3439,11 +3439,7 @@ func TestReadResource(t *testing.T) {
 		rm := &resmon{
 			defaultProviders: &defaultProviders{
 				cancel: cancel,
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
@@ -3456,11 +3452,7 @@ func TestReadResource(t *testing.T) {
 		t.Parallel()
 		rm := &resmon{
 			defaultProviders: &defaultProviders{
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
@@ -3478,11 +3470,7 @@ func TestReadResource(t *testing.T) {
 		t.Parallel()
 		rm := &resmon{
 			defaultProviders: &defaultProviders{
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
@@ -3502,11 +3490,7 @@ func TestReadResource(t *testing.T) {
 		rm := &resmon{
 			regReadChan: regReadChan,
 			defaultProviders: &defaultProviders{
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		wg := &sync.WaitGroup{}
@@ -3533,11 +3517,7 @@ func TestReadResource(t *testing.T) {
 		rm := &resmon{
 			cancel: cancel,
 			defaultProviders: &defaultProviders{
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		wg := &sync.WaitGroup{}
@@ -3562,11 +3542,7 @@ func TestReadResource(t *testing.T) {
 			regReadChan: regReadChan,
 			cancel:      cancel,
 			defaultProviders: &defaultProviders{
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config: &configSourceMock{},
 			},
 		}
 		wg := &sync.WaitGroup{}
@@ -3738,11 +3714,7 @@ func TestRegisterResource(t *testing.T) {
 			rm := &resmon{
 				defaultProviders: &defaultProviders{
 					requests: requests,
-					config: &configSourceMock{
-						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-							return nil, nil
-						},
-					},
+					config:   &configSourceMock{},
 				},
 			}
 			req := &pulumirpc.RegisterResourceRequest{
@@ -3773,11 +3745,7 @@ func TestRegisterResource(t *testing.T) {
 			rm := &resmon{
 				defaultProviders: &defaultProviders{
 					requests: requests,
-					config: &configSourceMock{
-						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-							return nil, nil
-						},
-					},
+					config:   &configSourceMock{},
 				},
 				providers: &providerSourceMock{
 					Provider: &deploytest.Provider{},
@@ -3812,11 +3780,7 @@ func TestRegisterResource(t *testing.T) {
 			rm := &resmon{
 				defaultProviders: &defaultProviders{
 					requests: requests,
-					config: &configSourceMock{
-						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-							return nil, nil
-						},
-					},
+					config:   &configSourceMock{},
 				},
 				providers: &providerSourceMock{},
 			}
@@ -3849,11 +3813,7 @@ func TestRegisterResource(t *testing.T) {
 		rm := &resmon{
 			defaultProviders: &defaultProviders{
 				requests: requests,
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config:   &configSourceMock{},
 			},
 			providers: &providerSourceMock{
 				Provider: &deploytest.Provider{
@@ -4068,11 +4028,7 @@ func TestValidationFailures(t *testing.T) {
 			abortChan:   abortChan,
 			defaultProviders: &defaultProviders{
 				requests: requests,
-				config: &configSourceMock{
-					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
-						return nil, nil
-					},
-				},
+				config:   &configSourceMock{},
 			},
 			providers: &providerSourceMock{
 				Provider: &deploytest.Provider{

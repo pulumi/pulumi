@@ -192,6 +192,10 @@
             "description": "A PCL snippet stored alongside a snapshot. The engine evaluates these on every update.",
             "type": "object",
             "properties": {
+                "uuid": {
+                    "description": "The stable identity of this snippet within the snapshot.",
+                    "type": "string"
+                },
                 "name": {
                     "description": "The logical name of the resource this snippet registers.",
                     "type": "string"
@@ -216,7 +220,7 @@
                     }
                 }
             },
-            "required": ["name", "type", "code", "descriptor"],
+            "required": ["uuid", "name", "type", "code", "descriptor"],
             "additionalProperties": false
         },
         "packageDescriptorV1": {

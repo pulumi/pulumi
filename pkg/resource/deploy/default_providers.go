@@ -138,10 +138,11 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	req providers.ProviderRequest,
 ) (*registerResourceEvent, <-chan *RegisterResult, error) {
 	// Attempt to get the config for the package.
-	inputs, err := d.config.GetPackageConfig(req.Package())
+	minputs, err := d.config.GetPackageConfig(req.Package())
 	if err != nil {
 		return nil, nil, err
 	}
+	inputs := resource.ToResourcePropertyMap(minputs)
 	if req.Version() != nil {
 		providers.SetProviderVersion(inputs, req.Version())
 	}
@@ -270,19 +271,19 @@ func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (boo
 	}
 
 	denyCreation := false
-	if value, ok := pConfig["disable-default-providers"]; ok {
+	if value, ok := pConfig.GetOk("disable-default-providers"); ok {
 		array := []any{}
 		if !value.IsString() {
 			return true, errors.New("Unexpected encoding of pulumi:disable-default-providers")
 		}
-		if value.StringValue() == "" {
+		if value.AsString() == "" {
 			// If the list is provided but empty, we don't encode a empty json
 			// list, we just encode the empty string. Check to ensure we don't
 			// get parse errors.
 			return false, nil
 		}
-		if err := json.Unmarshal([]byte(value.StringValue()), &array); err != nil {
-			return true, fmt.Errorf("Failed to parse %s: %w", value.StringValue(), err)
+		if err := json.Unmarshal([]byte(value.AsString()), &array); err != nil {
+			return true, fmt.Errorf("Failed to parse %s: %w", value.AsString(), err)
 		}
 		for i, v := range array {
 			s, ok := v.(string)

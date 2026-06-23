@@ -2943,7 +2943,12 @@ func newRunEngineActionFixture(
 			Name:    tokens.PackageName("project"),
 			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		},
-		Opts:            backend.UpdateOptions{Display: display.Options{Color: colors.Never}},
+		Opts: backend.UpdateOptions{Display: display.Options{
+			Color:            colors.Never,
+			Stdout:           io.Discard,
+			Stderr:           io.Discard,
+			SuppressProgress: true,
+		}},
 		SecretsManager:  opSecretsManager,
 		SecretsProvider: secretsProvider,
 		StackConfiguration: backend.StackConfiguration{
