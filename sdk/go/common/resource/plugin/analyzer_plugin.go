@@ -66,7 +66,7 @@ var _ Analyzer = (*analyzer)(nil)
 
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
-func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
+func NewAnalyzer(host Host, ctx *Context, name tokens.QName, e env.Env) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(
 		ctx.baseContext,
@@ -84,7 +84,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	dialOpts := rpcutil.TracingInterceptorDialOptions()
 
 	plug, _, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil, /*env*/
+		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, e,
 		testConnection, dialOpts, host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	if err != nil {
 		return nil, err

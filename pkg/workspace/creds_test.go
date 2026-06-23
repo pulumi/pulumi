@@ -93,3 +93,31 @@ func TestGetCurrentCloudURL(t *testing.T) {
 		})
 	}
 }
+
+//nolint:paralleltest // these subtests use t.Setenv
+func TestCloudCredentialEnv(t *testing.T) {
+	t.Run("cloud login injects api address and token", func(t *testing.T) {
+		t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
+		t.Setenv("PULUMI_ACCESS_TOKEN", "secret")
+
+		assert.Equal(t, map[string]string{
+			"PULUMI_API":          "https://api.example.com",
+			"PULUMI_ACCESS_TOKEN": "secret",
+		}, CloudCredentialEnv(nil))
+	})
+
+	t.Run("diy backend gets nothing", func(t *testing.T) {
+		t.Setenv("PULUMI_BACKEND_URL", "file:///tmp/state")
+		t.Setenv("PULUMI_ACCESS_TOKEN", "secret")
+
+		assert.Nil(t, CloudCredentialEnv(nil))
+	})
+
+	t.Run("logged out gets nothing", func(t *testing.T) {
+		t.Setenv("PULUMI_CREDENTIALS_PATH", t.TempDir())
+		t.Setenv("PULUMI_BACKEND_URL", "")
+		t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+		assert.Nil(t, CloudCredentialEnv(nil))
+	})
+}

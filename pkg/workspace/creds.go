@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
@@ -81,6 +82,36 @@ func GetCurrentCloudURLWithAgentFallback(ws Context, e env.Env, project *workspa
 	}
 
 	return agentCreds.Current, nil
+}
+
+// CloudCredentialEnv resolves the Pulumi Cloud API address and access token to expose to plugins,
+// so trusted providers can reach the cloud on the user's behalf. It returns nil for non-cloud
+// logins and when logged out, so plugins only ever receive credentials they can actually use.
+//
+// project is optional.
+func CloudCredentialEnv(project *workspace.Project) map[string]string {
+	url, err := GetCurrentCloudURLWithAgentFallback(Instance, env.Global(), project)
+	if err != nil {
+		return nil
+	}
+	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+		return nil
+	}
+
+	token := env.AccessToken.Value()
+	if token == "" {
+		if account, _, err := workspace.GetAccountWithAgentFallback(url); err == nil {
+			token = account.AccessToken
+		}
+	}
+	if token == "" {
+		return nil
+	}
+
+	return map[string]string{
+		env.APIURL.Var().Name():      url,
+		env.AccessToken.Var().Name(): token,
+	}
 }
 
 // GetCloudInsecure returns if this cloud url is saved as one that should use insecure transport.

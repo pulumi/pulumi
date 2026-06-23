@@ -732,7 +732,8 @@ func NewImportCmd() *cobra.Command {
 			}
 			sink := cmdutil.Diag()
 			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
-				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				pkgWorkspace.CloudCredentialEnv(proj))
 			if err != nil {
 				return fmt.Errorf("create plugin host: %w", err)
 			}
@@ -963,7 +964,8 @@ func NewImportCmd() *cobra.Command {
 				sink := cmdutil.Diag()
 
 				innerHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
-					pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+					pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+					pkgWorkspace.CloudCredentialEnv(proj))
 				if err != nil {
 					return nil, nil, err
 				}

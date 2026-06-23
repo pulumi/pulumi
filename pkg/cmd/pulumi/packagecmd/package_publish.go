@@ -166,7 +166,8 @@ func (cmd *packagePublishCmd) Run(
 	}
 	sink := cmdutil.Diag()
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		pkgWorkspace.CloudCredentialEnv(project))
 	if err != nil {
 		return err
 	}

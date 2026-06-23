@@ -192,12 +192,14 @@ type deploymentSourceFunc func(
 // logs reach the UI; this is why the engine supplies those rather than receiving a fully-built
 // host. The lifetime context strips cancellation so a cancelled operation still gets the
 // graceful shutdown budget. The engine owns the resulting host and closes it (see newDeployment).
-func ensureHost(ctx context.Context, opts *deploymentOptions, span opentracing.Span) error {
+func ensureHost(
+	ctx context.Context, opts *deploymentOptions, span opentracing.Span, project *workspace.Project,
+) error {
 	contract.Assertf(opts.HostFactory != nil, "a plugin host factory must be provided")
 	debugging := newDebugContext(opts.Events, opts.AttachDebugger)
 	h, err := opts.HostFactory(
 		opentracing.ContextWithSpan(context.WithoutCancel(ctx), span),
-		opts.Diag, opts.StatusDiag, debugging)
+		opts.Diag, opts.StatusDiag, debugging, project)
 	if err != nil {
 		return err
 	}

@@ -63,7 +63,7 @@ func main() {
 		}
 
 		sink := cmdutil.Diag()
-		pluginHost, err := pkghost.New(context.WithoutCancel(ctx.Context()), sink, sink, nil, nil, nil, nil)
+		pluginHost, err := pkghost.New(context.WithoutCancel(ctx.Context()), sink, sink, nil, nil, nil, nil, nil)
 		if err != nil {
 			return err
 		}

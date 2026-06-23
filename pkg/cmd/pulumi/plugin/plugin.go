@@ -72,7 +72,8 @@ func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		pkgWorkspace.CloudCredentialEnv(proj))
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +110,8 @@ func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) (
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), d, d, nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		pkgWorkspace.CloudCredentialEnv(proj))
 	if err != nil {
 		return nil, err
 	}

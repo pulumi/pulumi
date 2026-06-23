@@ -127,7 +127,8 @@ func (cmd *policyInstallCmd) Run(
 	}
 
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmd.diag, cmd.diag, nil,
-		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		pkgWorkspace.CloudCredentialEnv(nil))
 	if err != nil {
 		return fmt.Errorf("creating plugin host: %w", err)
 	}

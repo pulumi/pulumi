@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"sync"
 	"time"
 
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -43,7 +45,7 @@ import (
 // RPC server parents its tracing interceptors on the span carried by ctx, if any.
 func New(
 	ctx context.Context, d, statusD diag.Sink, debugging plugin.DebugContext, installLang plugin.LanguageInstaller,
-	newLoader plugin.NewLoaderFunc, newMapper plugin.NewMapperFunc,
+	newLoader plugin.NewLoaderFunc, newMapper plugin.NewMapperFunc, cloudCredentialEnv map[string]string,
 ) (plugin.Host, error) {
 	// d and statusD may be nil; default them to a discarding sink so that logging through the host
 	// (e.g. from a plugin download-progress callback) never dereferences a nil sink.
@@ -71,6 +73,7 @@ func New(
 		installLang:             installLang,
 		newLoader:               newLoader,
 		newMapper:               newMapper,
+		cloudCredentialEnv:      cloudCredentialEnv,
 		contextServers:          map[*plugin.Context][]*plugin.GrpcServer{},
 	}
 
@@ -136,6 +139,8 @@ type defaultHost struct {
 	// case the host serves no loader / no mapper.
 	newLoader plugin.NewLoaderFunc
 	newMapper plugin.NewMapperFunc
+
+	cloudCredentialEnv map[string]string
 
 	// contextServers holds the loader and mapper gRPC servers the host hosts on behalf of a
 	// context. The host creates them in Loader/Mapper and shuts them down in ReleaseContext --
@@ -255,6 +260,32 @@ func (host *defaultHost) ServerAddr() string {
 	return host.server.Address()
 }
 
+func (host *defaultHost) pluginEnv(base env.Env) env.Env {
+	if len(host.cloudCredentialEnv) == 0 {
+		return base
+	}
+	store := envutil.MapStore(host.cloudCredentialEnv)
+	if base == nil {
+		return envutil.NewEnv(store)
+	}
+	return envutil.NewEnv(envutil.JoinStore(store, base.GetStore()))
+}
+
+func (host *defaultHost) policyAnalyzerOpts(opts *plugin.PolicyAnalyzerOptions) *plugin.PolicyAnalyzerOptions {
+	if len(host.cloudCredentialEnv) == 0 {
+		return opts
+	}
+	merged := plugin.PolicyAnalyzerOptions{}
+	if opts != nil {
+		merged = *opts
+	}
+	additional := make(map[string]string, len(merged.AdditionalEnv)+len(host.cloudCredentialEnv))
+	maps.Copy(additional, merged.AdditionalEnv)
+	maps.Copy(additional, host.cloudCredentialEnv)
+	merged.AdditionalEnv = additional
+	return &merged
+}
+
 func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	host.diag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
 }
@@ -310,7 +341,7 @@ func (host *defaultHost) Analyzer(ctx *plugin.Context, name tokens.QName) (plugi
 		}
 
 		// If not, try to load and bind to a plugin.
-		plug, err := plugin.NewAnalyzer(host, ctx, name)
+		plug, err := plugin.NewAnalyzer(host, ctx, name, host.pluginEnv(env.Global()))
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {
@@ -352,7 +383,7 @@ func (host *defaultHost) PolicyAnalyzer(
 		}
 
 		// If not, try to load and bind to a plugin.
-		plug, err := plugin.NewPolicyAnalyzer(host, ctx, name, path, opts, nil)
+		plug, err := plugin.NewPolicyAnalyzer(host, ctx, name, path, host.policyAnalyzerOpts(opts), nil)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {
@@ -395,7 +426,8 @@ func (host *defaultHost) Provider(
 		}
 		plug, err := plugin.NewProvider(
 			host, ctx, descriptor,
-			ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(), e)
+			ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(),
+			host.pluginEnv(e))
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {
@@ -491,7 +523,7 @@ func (host *defaultHost) LanguageRuntime(ctx *plugin.Context, runtime string,
 		}
 
 		// If not, allocate a new one.
-		plug, err := plugin.NewLanguageRuntime(host, ctx, runtime, ctx.Pwd)
+		plug, err := plugin.NewLanguageRuntime(host, ctx, runtime, ctx.Pwd, host.pluginEnv(nil))
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {

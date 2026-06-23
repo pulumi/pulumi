@@ -34,6 +34,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -55,7 +56,7 @@ type langhost struct {
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string,
+func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory string, e env.Env,
 ) (LanguageRuntime, error) {
 	attachPort, err := GetLanguageAttachPort(runtime)
 	if err != nil {
@@ -132,7 +133,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 			runtime,
 			apitype.LanguagePlugin,
 			args,
-			nil, /*env*/
+			e,
 			testConnection,
 			langRuntimePluginDialOptions(ctx, runtime),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: runtime}),

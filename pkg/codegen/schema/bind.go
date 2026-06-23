@@ -362,7 +362,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 			return nil, nil, err
 		}
 		pluginHost, err := pkghost.New(context.TODO(), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
-			NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+			NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			pkgWorkspace.CloudCredentialEnv(nil))
 		if err != nil {
 			return nil, nil, err
 		}

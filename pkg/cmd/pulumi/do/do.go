@@ -77,7 +77,8 @@ func NewDoCmd(
 			// pre-constructed host.
 			return pkghost.New(
 				context.WithoutCancel(ctx), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled,
-				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				pkgWorkspace.CloudCredentialEnv(nil))
 		}
 	}
 	if loadConverterPlugin == nil {
