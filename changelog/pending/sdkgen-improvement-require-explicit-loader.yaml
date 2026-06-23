@@ -1,0 +1,4 @@
+component: sdkgen
+kind: improvement
+body: Require callers to pass an explicit schema loader when binding PCL programs and package schemas
+time: 2026-06-23T00:00:00+00:00

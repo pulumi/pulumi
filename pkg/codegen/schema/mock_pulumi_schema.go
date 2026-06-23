@@ -115,6 +115,10 @@ func newPulumiPackage() *Package {
 	return pkg
 }
 
+// NewNullLoader returns a [Loader] that fails if asked to load a package. Bind a spec with it when the
+// spec references no other packages, so binding needs a non-nil loader but never actually loads one.
+func NewNullLoader() Loader { return nullLoader{} }
+
 type nullLoader struct{}
 
 func (nullLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {

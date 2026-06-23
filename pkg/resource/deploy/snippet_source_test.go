@@ -133,7 +133,7 @@ func TestSnippetSource_CancellationStopsReferenceWait(t *testing.T) {
 				RequiredInputs: []string{"message"},
 			},
 		},
-	}, nil, schema.ValidationOptions{})
+	}, nil, schema.NewNullLoader(), schema.ValidationOptions{})
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())

@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
@@ -135,7 +136,7 @@ func bindImportPathProgram(t *testing.T) *pcl.Program {
 	require.False(t, pclParser.Diagnostics.HasErrors(), "parse diagnostics: %v", pclParser.Diagnostics)
 
 	host := utils.NewContextWithProviders(testdataPath, utils.NewSchemaProvider("importpath", "1.0.0"))
-	program, diags, err := pcl.BindProgram(pclParser.Files, pcl.PluginHost(host))
+	program, diags, err := pcl.BindProgram(pclParser.Files, schema.NewPluginLoader(host))
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), "bind diagnostics: %v", diags)
 	return program

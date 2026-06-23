@@ -385,7 +385,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			require.NoError(t, err)
 			require.False(t, parser.Diagnostics.HasErrors())
 
-			p, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+			p, diags, err := pcl.BindProgram(parser.Files, loader, pcl.AllowMissingVariables)
 			require.NoError(t, err)
 			assert.False(t, diags.HasErrors())
 
