@@ -26,6 +26,6 @@ if optional_map is None:
 optional_object = config.get_object("optionalObject")
 if optional_object is None:
     optional_object = None
-pulumi.export("optionalList", "null" if optional_list == None else json.dumps(optional_list))
-pulumi.export("optionalMap", "null" if optional_map == None else json.dumps(optional_map))
-pulumi.export("optionalObject", "null" if optional_object == None else json.dumps(optional_object))
+pulumi.export("optionalList", "null" if optional_list is None else json.dumps(optional_list))
+pulumi.export("optionalMap", "null" if optional_map is None else json.dumps(optional_map))
+pulumi.export("optionalObject", "null" if optional_object is None else json.dumps(optional_object))
