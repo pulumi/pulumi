@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/spf13/cobra"
 )
 
@@ -324,8 +325,8 @@ func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiag
 func (e *analyzeEvents) OnPolicyRemediation(
 	urn resource.URN,
 	rem plugin.Remediation,
-	before resource.PropertyMap,
-	after resource.PropertyMap,
+	before property.Map,
+	after property.Map,
 ) {
 	e.outLock.Lock()
 	defer e.outLock.Unlock()
@@ -334,8 +335,8 @@ func (e *analyzeEvents) OnPolicyRemediation(
 		PolicyName:        rem.PolicyName,
 		PolicyPackName:    rem.PolicyPackName,
 		PolicyPackVersion: rem.PolicyPackVersion,
-		Before:            before,
-		After:             after,
+		Before:            resource.ToResourcePropertyMap(before),
+		After:             resource.ToResourcePropertyMap(after),
 	}))
 }
 

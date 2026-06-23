@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // ResolvedPolicyEnvironment holds resolved ESC environment data for a policy pack.
@@ -1202,7 +1203,7 @@ func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeD
 }
 
 func (acts *updateActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
-	before resource.PropertyMap, after resource.PropertyMap,
+	before property.Map, after property.Map,
 ) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }
@@ -1367,7 +1368,7 @@ func (acts *previewActions) OnPolicyViolation(urn resource.URN, d plugin.Analyze
 }
 
 func (acts *previewActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
-	before resource.PropertyMap, after resource.PropertyMap,
+	before property.Map, after property.Map,
 ) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }
