@@ -28,7 +28,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewWhoAmICmd(ctx needle.Context) *cobra.Command {
+func NewWhoAmICmd(ctx needle.Spindle) *cobra.Command {
 	var verbose bool
 	var b backend.Backend
 
@@ -72,7 +72,7 @@ func NewWhoAmICmd(ctx needle.Context) *cobra.Command {
 		},
 	}
 
-	needle.Inject(cmd, ctx, needle.NeedBackend(&b))
+	needle.Thread(cmd, ctx, needle.RequireBackend(&b))
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 

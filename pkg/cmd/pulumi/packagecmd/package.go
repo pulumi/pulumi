@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewPackageCmd(nCtx needle.Context) *cobra.Command {
+func NewPackageCmd(nCtx needle.Spindle) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package",
 		Short: "Work with Pulumi packages",

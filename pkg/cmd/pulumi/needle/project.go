@@ -21,8 +21,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var maybeProject = &value{
-	get: func(_ *cobra.Command, state *state) error {
+var optionProject = &value{
+	get: func(_ *cobra.Command, state *state, _ any) error {
 		p, root, err := state.WS.ReadProject()
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return err

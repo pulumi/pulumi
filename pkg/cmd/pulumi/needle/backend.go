@@ -26,16 +26,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-func NeedBackend(backend *backend.Backend) Request {
+func RequireBackend(backend *backend.Backend) Stitch {
 	return &request{
-		value:       needBackend,
+		value:       requireBackend,
 		fulfillInto: func(s *state) { *backend = s.backend },
 	}
 }
 
-var needBackend = &value{
-	deps: []*value{maybeProject},
-	get: func(cmd *cobra.Command, state *state) error {
+var requireBackend = &value{
+	deps: []*value{optionProject},
+	get: func(cmd *cobra.Command, state *state, _ any) error {
 		url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(state.WS, state.Env, state.project)
 		if err != nil {
 			return fmt.Errorf("could not get cloud url: %w", err)
@@ -54,9 +54,9 @@ var needBackend = &value{
 	},
 }
 
-var maybeBackend = &value{
-	deps: []*value{maybeProject},
-	get: func(cmd *cobra.Command, state *state) error {
+var optionBackend = &value{
+	deps: []*value{optionProject},
+	get: func(cmd *cobra.Command, state *state, _ any) error {
 		url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(state.WS, state.Env, state.project)
 		if err != nil {
 			return fmt.Errorf("could not get cloud url: %w", err)

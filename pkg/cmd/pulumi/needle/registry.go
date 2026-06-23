@@ -20,16 +20,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NeedRegistry(registry *registry.Registry) Request {
+func RequireRegistry(registry *registry.Registry) Stitch {
 	return request{
-		value:       needRegistry,
+		value:       requireRegistry,
 		fulfillInto: func(s *state) { *registry = s.registry },
 	}
 }
 
-var needRegistry = &value{
-	deps: []*value{maybeBackend},
-	get: func(_ *cobra.Command, state *state) error {
+var requireRegistry = &value{
+	deps: []*value{optionBackend},
+	get: func(_ *cobra.Command, state *state, _ any) error {
 		// When the user is not logged in maybeBackend leaves the backend nil, so fall back to the
 		// unauthenticated registry, which can still resolve public packages.
 		if state.backend != nil {
