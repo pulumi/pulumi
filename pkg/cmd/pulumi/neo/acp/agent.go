@@ -57,6 +57,12 @@ type Delegate interface {
 	// corresponds to the session/cancel notification, so it returns promptly; the
 	// turn itself ends with StopCancelled once the backend acknowledges.
 	Cancel(ctx context.Context, params CancelParams) error
+
+	// SetConfigOption applies a session config option change (params.ConfigID =
+	// params.Value) for params.SessionID and returns the complete, updated option
+	// list. The agent may clamp or ignore a change it cannot honor; the returned
+	// current values are authoritative.
+	SetConfigOption(ctx context.Context, params SetConfigOptionParams) (SetConfigOptionResult, error)
 }
 
 // Agent is the ACP agent side of the Pulumi Neo adapter. It holds the state that
@@ -214,6 +220,20 @@ func (a *Agent) prompt(ctx context.Context, req *jsonrpc2.Request) (any, error) 
 		return nil, err
 	}
 	return d.Prompt(ctx, params)
+}
+
+func (a *Agent) setConfigOption(ctx context.Context, req *jsonrpc2.Request) (any, error) {
+	a.mu.Lock()
+	d := a.delegate
+	a.mu.Unlock()
+	if d == nil {
+		return nil, errNotImplemented("session/set_config_option")
+	}
+	params, err := decodeParams[SetConfigOptionParams](req)
+	if err != nil {
+		return nil, err
+	}
+	return d.SetConfigOption(ctx, params)
 }
 
 // cancel handles the session/cancel notification. As a notification it has no

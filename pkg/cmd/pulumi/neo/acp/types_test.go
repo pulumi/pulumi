@@ -38,6 +38,11 @@ func TestSessionUpdateDiscriminators(t *testing.T) {
 		{"tool_call", ToolCallStart{ToolCallID: "tc_1", Title: "shell"}, "tool_call", "toolCallId"},
 		{"tool_call_update", ToolCallProgress{ToolCallID: "tc_1", Status: "completed"}, "tool_call_update", "toolCallId"},
 		{"plan", PlanUpdate{Entries: []PlanEntry{{Content: "do"}}}, "plan", "entries"},
+		{
+			"config_option_update",
+			ConfigOptionUpdate{ConfigOptions: []ConfigOption{{ID: "permission"}}},
+			"config_option_update", "configOptions",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

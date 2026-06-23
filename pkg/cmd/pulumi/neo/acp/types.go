@@ -114,8 +114,58 @@ type NewSessionParams struct {
 
 // NewSessionResult is the agent→client `session/new` response carrying the id
 // the client passes on subsequent session/prompt and session/cancel requests.
+// ConfigOptions advertises the session settings the editor may change (see
+// ConfigOption); it is omitted when the agent exposes none.
 type NewSessionResult struct {
+	SessionID     string         `json:"sessionId"`
+	ConfigOptions []ConfigOption `json:"configOptions,omitempty"`
+}
+
+// ConfigOptionTypeSelect is the only ConfigOption.Type the spec defines so far: a
+// choice among a fixed set of values.
+const ConfigOptionTypeSelect = "select"
+
+// ConfigCategoryMode is the ConfigOption.Category hint for options that change how
+// the agent behaves (vs. e.g. "model"). Editors may surface these prominently.
+const ConfigCategoryMode = "mode"
+
+// ConfigOption is one session configuration setting the agent advertises and the
+// editor can change via session/set_config_option. It supersedes the older
+// Session Modes API and, unlike modes, lets the agent expose several independent
+// settings at once. Today every option is a "select" (Type) over Options, with
+// CurrentValue naming the active one.
+//
+// https://agentclientprotocol.com/protocol/v1/session-config-options
+type ConfigOption struct {
+	ID           string              `json:"id"`
+	Name         string              `json:"name"`
+	Description  string              `json:"description,omitempty"`
+	Category     string              `json:"category,omitempty"`
+	Type         string              `json:"type"`
+	CurrentValue string              `json:"currentValue"`
+	Options      []ConfigOptionValue `json:"options"`
+}
+
+// ConfigOptionValue is one selectable value of a select ConfigOption.
+type ConfigOptionValue struct {
+	Value       string `json:"value"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// SetConfigOptionParams is the client→agent `session/set_config_option` request:
+// set the option ConfigID to Value for SessionID.
+type SetConfigOptionParams struct {
 	SessionID string `json:"sessionId"`
+	ConfigID  string `json:"configId"`
+	Value     string `json:"value"`
+}
+
+// SetConfigOptionResult is the agent→client response: the complete, updated option
+// list (current values reflect the change, including any the agent clamped or
+// adjusted as a side effect).
+type SetConfigOptionResult struct {
+	ConfigOptions []ConfigOption `json:"configOptions"`
 }
 
 // ContentBlock is a single piece of prompt or message content. We only produce
@@ -177,10 +227,11 @@ type SessionUpdate interface {
 	isSessionUpdate()
 }
 
-func (AgentMessageChunk) isSessionUpdate() {}
-func (ToolCallStart) isSessionUpdate()     {}
-func (ToolCallProgress) isSessionUpdate()  {}
-func (PlanUpdate) isSessionUpdate()        {}
+func (AgentMessageChunk) isSessionUpdate()  {}
+func (ToolCallStart) isSessionUpdate()      {}
+func (ToolCallProgress) isSessionUpdate()   {}
+func (PlanUpdate) isSessionUpdate()         {}
+func (ConfigOptionUpdate) isSessionUpdate() {}
 
 // The session/update payload types below each marshal with a constant
 // "sessionUpdate" discriminator injected by MarshalJSON, so the wire tag is
@@ -265,6 +316,23 @@ func (u PlanUpdate) MarshalJSON() ([]byte, error) {
 		SessionUpdate string `json:"sessionUpdate"`
 		alias
 	}{"plan", alias(u)})
+}
+
+// ConfigOptionUpdate is the session/update payload announcing that one or more
+// config options changed value out of band (e.g. the agent left plan mode on its
+// own). It carries the complete, current option list, mirroring the
+// session/set_config_option response.
+type ConfigOptionUpdate struct {
+	ConfigOptions []ConfigOption `json:"configOptions"`
+}
+
+// MarshalJSON tags the payload as "config_option_update".
+func (u ConfigOptionUpdate) MarshalJSON() ([]byte, error) {
+	type alias ConfigOptionUpdate
+	return json.Marshal(struct {
+		SessionUpdate string `json:"sessionUpdate"`
+		alias
+	}{"config_option_update", alias(u)})
 }
 
 // PlanEntry is one item in a PlanUpdate. Field values match ACP: priority is

@@ -133,11 +133,11 @@ func (d *acpDelegate) NewSession(
 	}
 
 	pc := cloudBe.Client()
-	d.mu.Lock()
-	d.sessions[sessionID] = &acpSession{
+	sess := &acpSession{
 		acpID:        sessionID,
 		pc:           pc,
 		poster:       pc,
+		updater:      pc,
 		orgName:      orgName,
 		projectName:  projectName,
 		stackRefName: stackRefName,
@@ -145,9 +145,16 @@ func (d *acpDelegate) NewSession(
 		handlers:     handlers,
 		client:       client,
 	}
+	d.mu.Lock()
+	d.sessions[sessionID] = sess
 	d.mu.Unlock()
 
-	return acp.NewSessionResult{SessionID: sessionID}, nil
+	// Advertise the read-only and plan-mode config options at their defaults so
+	// the editor can change them before (or, for read-only, during) the session.
+	return acp.NewSessionResult{
+		SessionID:     sessionID,
+		ConfigOptions: sess.configOptionsSnapshot(),
+	}, nil
 }
 
 // Prompt runs one prompt turn: on the first prompt it creates the Neo task and
@@ -216,6 +223,23 @@ func (d *acpDelegate) Cancel(ctx context.Context, params acp.CancelParams) error
 		return nil
 	}
 	return s.poster.PostNeoTaskUserEvent(ctx, s.orgName, taskID, apitype.AgentUserEventCancel{Type: "user_cancel"})
+}
+
+// SetConfigOption applies a `permission` or `plan` config-option change for the
+// session and returns the full, updated option list. Read-only takes effect
+// immediately (PATCHing a running task); plan mode only applies before the task
+// is created and is otherwise clamped. See acp.Delegate.
+func (d *acpDelegate) SetConfigOption(
+	ctx context.Context, params acp.SetConfigOptionParams,
+) (acp.SetConfigOptionResult, error) {
+	s, ok := d.session(params.SessionID)
+	if !ok {
+		return acp.SetConfigOptionResult{}, fmt.Errorf("unknown session %q", params.SessionID)
+	}
+	if err := s.setConfigOption(ctx, params.ConfigID, params.Value); err != nil {
+		return acp.SetConfigOptionResult{}, err
+	}
+	return acp.SetConfigOptionResult{ConfigOptions: s.configOptionsSnapshot()}, nil
 }
 
 // session returns the registered session for id. Used by Prompt and Cancel to

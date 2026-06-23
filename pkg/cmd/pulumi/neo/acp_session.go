@@ -36,6 +36,7 @@ type acpSession struct {
 	// one cloud client.
 	pc           *client.Client
 	poster       userEventPoster
+	updater      neoTaskUpdater
 	orgName      string
 	projectName  string
 	stackRefName string
@@ -43,16 +44,30 @@ type acpSession struct {
 	handlers     map[string]ToolHandler
 	client       acp.Client
 
-	mu         sync.Mutex
-	taskID     string
-	started    bool
-	activeTurn chan turnResult
+	mu      sync.Mutex
+	taskID  string
+	started bool
+	// permissionMode and planMode are the config-option selections that feed the
+	// Neo task. They are mutated by SetConfigOption and read when the task is
+	// created (start) — permissionMode also live-PATCHes a running task, while
+	// planMode is fixed once the task exists. Default zero values mean the
+	// hardcoded baseline: full-access permissions, plan mode off.
+	permissionMode client.NeoPermissionMode
+	planMode       bool
+	activeTurn     chan turnResult
 }
 
 // userEventPoster posts user events (chat messages, approvals, cancels) back to
 // a Neo task. *client.Client satisfies it; tests fake it.
 type userEventPoster interface {
 	PostNeoTaskUserEvent(ctx context.Context, orgName, taskID string, body any) error
+}
+
+// neoTaskUpdater PATCHes a live Neo task's mode settings. *client.Client
+// satisfies it; tests fake it. Used to push a read-only toggle to a task that
+// already exists (SetConfigOption).
+type neoTaskUpdater interface {
+	UpdateNeoTask(ctx context.Context, orgName, taskID string, opts client.UpdateNeoTaskOptions) error
 }
 
 // turnResult is how the event pump signals the waiting Prompt call that the
@@ -67,14 +82,25 @@ type turnResult struct {
 // on a context derived from the connection lifetime so they survive past the
 // prompt request that started them.
 func (s *acpSession) start(baseCtx context.Context, prompt string) error {
+	s.mu.Lock()
+	permissionMode := s.permissionMode
+	if permissionMode == "" {
+		permissionMode = client.NeoPermissionModeDefault
+	}
+	planMode := s.planMode
+	s.mu.Unlock()
+
 	resp, err := createNeoTaskWithEntityRetry(baseCtx, s.pc, s.orgName, prompt, s.stackRefName, s.projectName,
 		client.CreateNeoTaskOptions{
 			ToolExecutionMode: "cli",
 			// Manual approval routes every gated tool call to the editor as an ACP
 			// permission request; balanced/auto would resolve them server-side and
-			// bypass the editor.
-			ApprovalMode:   client.NeoApprovalModeManual,
-			PermissionMode: client.NeoPermissionModeDefault,
+			// bypass the editor. It is fixed (not a config option) for that reason.
+			ApprovalMode: client.NeoApprovalModeManual,
+			// PermissionMode (read-only) and PlanMode come from the editor's config
+			// option selections; see the `permission` and `plan` ACP config options.
+			PermissionMode: permissionMode,
+			PlanMode:       planMode,
 		}, nil)
 	if err != nil {
 		return err
@@ -209,6 +235,13 @@ func (s *acpSession) requestPermission(ctx context.Context, e UIApprovalRequest)
 		Options:   acp.ApprovalOptions(),
 	}, &res); err == nil {
 		approved = res.Approved()
+	}
+
+	// Approving an exit_plan_mode request exits plan mode server-side (the
+	// PlanModeTracker clears in lockstep). Reflect that to the editor with a
+	// config_option_update so its plan-mode indicator follows along.
+	if approved && e.ApprovalType == approvalTypePlanExit && s.noteExitedPlanMode() {
+		s.notify(ctx, acp.ConfigOptionUpdate{ConfigOptions: s.configOptionsSnapshot()})
 	}
 
 	s.mu.Lock()

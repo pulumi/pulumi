@@ -133,6 +133,9 @@ type fakeDelegate struct {
 	promptErr    error
 	gotPrompt    PromptParams
 	gotCancel    CancelParams
+	configResult SetConfigOptionResult
+	configErr    error
+	gotConfig    SetConfigOptionParams
 }
 
 func (f *fakeDelegate) NewSession(
@@ -150,6 +153,13 @@ func (f *fakeDelegate) Prompt(_ context.Context, params PromptParams) (PromptRes
 func (f *fakeDelegate) Cancel(_ context.Context, params CancelParams) error {
 	f.gotCancel = params
 	return nil
+}
+
+func (f *fakeDelegate) SetConfigOption(
+	_ context.Context, params SetConfigOptionParams,
+) (SetConfigOptionResult, error) {
+	f.gotConfig = params
+	return f.configResult, f.configErr
 }
 
 func TestNewSessionDelegatesWithCapturedCapabilities(t *testing.T) {
@@ -204,6 +214,12 @@ func (d *readingDelegate) Prompt(ctx context.Context, _ PromptParams) (PromptRes
 
 func (d *readingDelegate) Cancel(context.Context, CancelParams) error { return nil }
 
+func (d *readingDelegate) SetConfigOption(
+	context.Context, SetConfigOptionParams,
+) (SetConfigOptionResult, error) {
+	return SetConfigOptionResult{}, nil
+}
+
 // replyingClient answers fs/read_text_file with canned content. It models the
 // editor satisfying the agent's read while the agent's prompt handler is blocked
 // waiting for it.
@@ -239,6 +255,29 @@ func TestPromptCanReadFileBackThroughClient(t *testing.T) {
 	require.NoError(t, err, "prompt that reads a file back through the editor must not deadlock")
 	assert.Equal(t, StopEndTurn, res.StopReason)
 	assert.Equal(t, "hello", fd.gotResult)
+}
+
+func TestSetConfigOptionDelegates(t *testing.T) {
+	t.Parallel()
+
+	agent := NewAgent("v3.0.0")
+	fd := &fakeDelegate{configResult: SetConfigOptionResult{
+		ConfigOptions: []ConfigOption{{ID: "permission", Type: ConfigOptionTypeSelect, CurrentValue: "read-only"}},
+	}}
+	agent.SetDelegate(fd)
+	client := newTestPeers(t, agent)
+
+	var res SetConfigOptionResult
+	err := client.Call(t.Context(), "session/set_config_option", SetConfigOptionParams{
+		SessionID: "sess_1", ConfigID: "permission", Value: "read-only",
+	}, &res)
+	require.NoError(t, err)
+
+	assert.Equal(t, "sess_1", fd.gotConfig.SessionID)
+	assert.Equal(t, "permission", fd.gotConfig.ConfigID)
+	assert.Equal(t, "read-only", fd.gotConfig.Value)
+	require.Len(t, res.ConfigOptions, 1)
+	assert.Equal(t, "read-only", res.ConfigOptions[0].CurrentValue)
 }
 
 func TestNewSessionAuthRequiredMapsToCode(t *testing.T) {

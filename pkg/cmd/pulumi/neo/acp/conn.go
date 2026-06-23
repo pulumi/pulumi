@@ -69,6 +69,8 @@ func (a *Agent) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.R
 		return a.prompt(ctx, req)
 	case "session/cancel":
 		return a.cancel(ctx, req)
+	case "session/set_config_option":
+		return a.setConfigOption(ctx, req)
 	default:
 		return nil, &jsonrpc2.Error{
 			Code:    jsonrpc2.CodeMethodNotFound,
