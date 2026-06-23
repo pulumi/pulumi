@@ -635,7 +635,8 @@ func TestRenameStack(t *testing.T) {
 	// Rename just the stack.
 	//nolint:paralleltest // uses shared stack
 	t.Run("JustTheStack", func(t *testing.T) {
-		err := RenameStack(deployment, tokens.MustParseStackName("new-stack"), tokens.PackageName(""))
+		err := RenameStack(deployment, tokens.MustParseStackName("new-stack"), tokens.PackageName(""),
+			RenameStackOptions{OldName: tokens.MustParseStackName("test"), OldProject: "test"})
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
@@ -655,7 +656,8 @@ func TestRenameStack(t *testing.T) {
 	// Rename the stack and project.
 	//nolint:paralleltest // uses shared stack
 	t.Run("StackAndProject", func(t *testing.T) {
-		err := RenameStack(deployment, tokens.MustParseStackName("new-stack2"), tokens.PackageName("new-project"))
+		err := RenameStack(deployment, tokens.MustParseStackName("new-stack2"), tokens.PackageName("new-project"),
+			RenameStackOptions{OldName: tokens.MustParseStackName("new-stack"), OldProject: "test"})
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
@@ -896,13 +898,16 @@ func TestRenameStack_InvalidProviderReference(t *testing.T) {
 		}
 	}
 
-	err := RenameStack(newDeployment(), tokens.MustParseStackName("renamed"), "")
+	err := RenameStack(newDeployment(), tokens.MustParseStackName("renamed"), "",
+		RenameStackOptions{OldName: tokens.MustParseStackName("test"), OldProject: "test"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parsing provider reference")
 
 	var warnings strings.Builder
 	deployment := newDeployment()
 	err = RenameStack(deployment, tokens.MustParseStackName("renamed"), "", RenameStackOptions{
+		OldName:       tokens.MustParseStackName("test"),
+		OldProject:    "test",
 		Force:         true,
 		WarningWriter: &warnings,
 	})

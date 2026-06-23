@@ -148,9 +148,10 @@ func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 
 // RenameStackOptions controls how RenameStack rewrites URNs.
 type RenameStackOptions struct {
-	// OldName filters rewrites to URNs that already reference this stack. Empty rewrites any stack.
+	// OldName filters rewrites to URNs that already reference this stack. Required.
 	OldName tokens.StackName
-	// OldProject filters rewrites to URNs that already reference this project. Empty rewrites any project.
+	// OldProject filters rewrites to URNs that already reference this project. Empty matches any project
+	// (used when upgrading a legacy project-less stack into a project).
 	OldProject tokens.PackageName
 	// Force degrades provider-reference rewrite failures to warnings.
 	Force bool
@@ -321,15 +322,11 @@ func RenameStack(
 	deployment *apitype.DeploymentV3,
 	newName tokens.StackName,
 	newProject tokens.PackageName,
-	options ...RenameStackOptions,
+	opts RenameStackOptions,
 ) error {
 	contract.Requiref(deployment != nil, "deployment", "must not be nil")
-	contract.Requiref(len(options) <= 1, "options", "must contain at most one element")
+	contract.Requiref(!opts.OldName.IsEmpty(), "opts.OldName", "must be set")
 
-	var opts RenameStackOptions
-	if len(options) == 1 {
-		opts = options[0]
-	}
 	renamer := stackRenamer{
 		oldName:    opts.OldName,
 		oldProject: opts.OldProject,
