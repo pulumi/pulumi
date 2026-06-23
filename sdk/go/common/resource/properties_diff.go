@@ -212,20 +212,12 @@ func (props PropertyMap) diff(other PropertyMap, opts diffOptions, path Property
 
 		if new, has := other[k]; has {
 			// If a new exists, use it; for output properties, however, ignore differences.
-			if new.IsOutput() {
-				sames[k] = old
-			} else if diff := old.diff(new, opts, append(path, string(k))); diff != nil {
-				if !old.HasValue() {
-					adds[k] = new
-				} else if !new.HasValue() {
-					deletes[k] = old
-				} else {
-					updates[k] = *diff
-				}
+			if diff := old.diff(new, opts, append(path, string(k))); diff != nil {
+				updates[k] = *diff
 			} else {
 				sames[k] = old
 			}
-		} else if old.HasValue() {
+		} else {
 			// If there was no new property, it has been deleted.
 			deletes[k] = old
 		}
@@ -237,7 +229,7 @@ func (props PropertyMap) diff(other PropertyMap, opts diffOptions, path Property
 			continue
 		}
 
-		if _, has := props[k]; !has && new.HasValue() {
+		if _, has := props[k]; !has {
 			adds[k] = new
 		}
 	}
@@ -340,14 +332,14 @@ func (props PropertyMap) DeepEquals(other PropertyMap) bool {
 			if !v.DeepEquals(p) {
 				return false
 			}
-		} else if v.HasValue() {
+		} else {
 			return false
 		}
 	}
 
 	// If the other map has properties that this map doesn't have, return false.
 	for _, k := range other.StableKeys() {
-		if _, has := props[k]; !has && other[k].HasValue() {
+		if _, has := props[k]; !has {
 			return false
 		}
 	}
@@ -493,16 +485,8 @@ func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap, ignoreKeys ...Ig
 
 		if new, has := other[k]; has {
 			// If a new exists, use it; for output properties, however, ignore differences.
-			if new.IsOutput() {
-				sames[k] = new
-			} else if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
-				if !old.HasValue() {
-					adds[k] = new
-				} else if !new.HasValue() {
-					deletes[k] = old
-				} else {
-					updates[k] = *diff
-				}
+			if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
+				updates[k] = *diff
 			} else {
 				sames[k] = new
 			}
@@ -510,7 +494,7 @@ func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap, ignoreKeys ...Ig
 			if old.IsComputed() {
 				// The old property was <computed> it probably resolved to undefined so this isn't a diff,
 				// but it isn't really a same either... just don't add to the diff
-			} else if old.HasValue() {
+			} else {
 				// If there was no new property, it has been deleted.
 				deletes[k] = old
 			}
@@ -523,7 +507,7 @@ func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap, ignoreKeys ...Ig
 			continue
 		}
 
-		if _, has := props[k]; !has && new.HasValue() {
+		if _, has := props[k]; !has {
 			adds[k] = new
 		}
 	}
@@ -608,14 +592,14 @@ func (props PropertyMap) DeepEqualsIncludeUnknowns(other PropertyMap) bool {
 			if !v.DeepEqualsIncludeUnknowns(p) {
 				return false
 			}
-		} else if v.HasValue() && !v.IsComputed() {
+		} else if !v.IsComputed() {
 			return false
 		}
 	}
 
 	// If the other map has properties that this map doesn't have, return false.
 	for _, k := range other.StableKeys() {
-		if _, has := props[k]; !has && other[k].HasValue() {
+		if _, has := props[k]; !has {
 			return false
 		}
 	}

@@ -156,14 +156,6 @@ func (err *ReqError) Error() string {
 	return fmt.Sprintf("required property '%v' is missing", err.K)
 }
 
-// HasValue returns true if the slot associated with the given property key contains a real value.  It returns false
-// if a value is null or an output property that is awaiting a value to be assigned.  That is to say, HasValue indicates
-// a semantically meaningful value is present (even if it's a computed one whose concrete value isn't yet evaluated).
-func (props PropertyMap) HasValue(k PropertyKey) bool {
-	v, has := props[k]
-	return has && v.HasValue()
-}
-
 // ContainsUnknowns returns true if the property map contains at least one unknown value.
 func (props PropertyMap) ContainsUnknowns() bool {
 	for _, v := range props {

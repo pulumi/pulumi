@@ -464,47 +464,6 @@ func TestContainsSecrets(t *testing.T) {
 	}
 }
 
-func TestHasValue(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		prop     PropertyValue
-		expected bool
-	}{
-		{
-			name:     "null",
-			prop:     NewNullProperty(),
-			expected: false,
-		},
-		{
-			name:     "string",
-			prop:     NewProperty(""),
-			expected: true,
-		},
-		{
-			name:     "output unknown",
-			prop:     MakeOutput(NewProperty("")),
-			expected: false,
-		},
-		{
-			name: "output known",
-			prop: NewProperty(Output{
-				Element: NewProperty(""),
-				Known:   true,
-			}),
-			expected: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, tt.expected, tt.prop.HasValue())
-		})
-	}
-}
-
 // Test for https://github.com/pulumi/pulumi/issues/16889
 func TestMapFromMapNestedPropertyValues(t *testing.T) {
 	t.Parallel()

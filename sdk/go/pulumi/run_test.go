@@ -256,8 +256,8 @@ func TestRegisterResource(t *testing.T) {
 		require.NoError(t, err)
 		rawOutputs, ok := rawOutputsTmp.(resource.PropertyMap)
 		assert.True(t, ok)
-		assert.True(t, rawOutputs.HasValue("foo"))
-		assert.True(t, rawOutputs.HasValue("secret"))
+		assert.Contains(t, rawOutputs, resource.PropertyKey("foo"))
+		assert.Contains(t, rawOutputs, resource.PropertyKey("secret"))
 		assert.True(t, rawOutputs.ContainsSecrets())
 
 		return nil
