@@ -1,4 +1,0 @@
-component: engine
-kind: feat
-body: Send the address of a schema loader service to resource providers as part of the provider handshake
-time: 2026-06-18T00:00:00+00:00
