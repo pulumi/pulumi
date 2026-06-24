@@ -18,10 +18,14 @@ import (
 	"fmt"
 	"os"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -38,11 +42,16 @@ func newPackagePackSdkCmd() *cobra.Command {
 				return fmt.Errorf("get current working directory: %w", err)
 			}
 
-			pCtx, err := packages.NewPluginContext(cwd)
+			reg := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+			pCtx, err := packages.NewPluginContext(cwd, reg)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
+			// The context owns its loader/mapper servers; the host is caller-owned. Close the
+			// context first, then the host.
 			defer contract.IgnoreClose(pCtx.Host)
+			defer contract.IgnoreClose(pCtx)
 
 			language := args[0]
 			path := args[1]

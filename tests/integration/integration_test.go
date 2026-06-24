@@ -233,8 +233,7 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 	}
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	e.CWD = os.TempDir()
@@ -395,8 +394,7 @@ func TestExcludeProtected(t *testing.T) {
 
 	e.RunCommand("pulumi", "stack", "init", "dev")
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
@@ -851,7 +849,6 @@ func testConstructProviderPropagation(t *testing.T, lang string, deps []string) 
 		testDir      = "construct_component_provider_propagation"
 		componentDir = "testcomponent-go"
 	)
-	runComponentSetup(t, testDir)
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join(testDir, lang),
@@ -893,7 +890,6 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 		testDir      = "construct_component_resource_options"
 		componentDir = "testcomponent-go"
 	)
-	runComponentSetup(t, testDir)
 
 	validate := func(t *testing.T, resources []apitype.ResourceV3) {
 		urns := make(map[string]resource.URN) // name => URN
@@ -964,8 +960,7 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 	}
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	newProjectName := "new_emptyjs"
@@ -1136,8 +1131,7 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "advisory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack")
@@ -1163,8 +1157,7 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack")
@@ -1191,8 +1184,7 @@ func TestBunMandatoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "bun_mandatory_policy_pack"), "bun", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "bun_mandatory_policy_pack")
@@ -1221,8 +1213,7 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes",
 		"--policy-pack", "advisory_policy_pack",
@@ -1246,8 +1237,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	stackName, err := resource.NewUniqueHex("policy-plugin-extra-args", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	require.NoError(t, err)
 	// Create a venv for the policy package and install the current python SDK into it
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
@@ -1592,7 +1582,7 @@ func TestComponentProviderErrorInResourceRegistration(t *testing.T) {
 				require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 
 				// Install the provider's dependencies
-				installNodejsProviderDependencies(t, providerPath)
+				ptesting.InstallDependencies(t, providerPath)
 
 				// Add the provider to our project
 				cmd = exec.Command("pulumi", "package", "add", providerPath)
@@ -1644,7 +1634,9 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 	e.ImportDirectory(filepath.Join("automation", "error"))
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	e.RunCommandWithRetry("yarn", "install")
+	// This is an Automation-API host program (package.json, no Pulumi.yaml), so it can't use
+	// e.InstallDependencies (which runs `pulumi install`). Install + link the SDK directly.
+	ptesting.InstallDependencies(t, e.CWD)
 
 	// The bug was causing a hang, ensure the test times out
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
@@ -1674,14 +1666,15 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	e.ImportDirectory("interrupt")
 	// Install the provider's dependencies
-	installPythonProviderDependencies(t, providerPath)
+	ptesting.InstallDependencies(t, providerPath)
 	e.CWD = programPath
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "dev")
 	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
-	e.RunCommand("pulumi", "install")
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	// `pulumi package add` rewrites package.json, so install the local SDK *after* it: InstallDependencies
+	// pins @pulumi/pulumi to the local build with a matching npm override.
 	e.RunCommand("pulumi", "package", "add", providerPath)
+	e.InstallDependencies()
 	e.CWD = e.RootPath
 
 	// Run pulumi via a wrapper that does not start Pulumi in its own process group.
@@ -1748,7 +1741,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 		// This is the bug - process hung trying to control terminal
 		if cmd.Process != nil {
 			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
+			<-processFinished
 		}
 
 		require.Failf(t, "up hung", "pulumi up hung after %s - likely trying to set raw mode without foreground control."+

@@ -126,6 +126,7 @@ var expectedFailures = map[string]string{
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
 	"l3-component-nested":                 "./main.go:10:11: cannot use true (constant of type bool) as pulumi.BoolInput",
+	"l3-resource-keyword-overlap":         "same component-input/output type bugs as l3-component-nested; does not compile", //nolint:lll
 	"l3-deferred-outputs":                 "does not compile && for expressions are not supported",
 
 	"l3-rewrite-conversions": "does not compile; missing necessary casts for pulumi inputs",
@@ -134,7 +135,10 @@ var expectedFailures = map[string]string{
 	"l3-component-config-objects":        "does not compile; missing necessary casts for pulumi inputs",
 	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
-	"l3-range-ref":                       "fails with syntax errors",
+
+	"l3-range-list-ref": "fails with syntax errors: undefined: err",
+	"l3-range-map-ref":  "fails with syntax errors: mapResource.K1 undefined (type []*nestedobject.Target has no field or method K1)", //nolint:lll
+	"l3-range-bool-ref": "fails with syntax errors: index < createBool (mismatched types int and bool)",
 
 	"l2-id-type": "codegen isn't keeping track of ID right now",
 

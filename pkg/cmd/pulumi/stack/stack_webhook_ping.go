@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -49,10 +50,11 @@ func newStackWebhookPingCmd() *cobra.Command {
 }
 
 func newStackWebhookPingCmdWith(factory stackWebhookPingClientFactory) *cobra.Command {
-	var (
-		stack  string
-		output string
-	)
+	var stack string
+	output := outputflag.OutputFlag[webhookPingRenderFunc]{
+		RenderForTerminal: renderWebhookPingText,
+		RenderJSON:        renderWebhookPingJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "ping",
@@ -76,7 +78,7 @@ func newStackWebhookPingCmdWith(factory stackWebhookPingClientFactory) *cobra.Co
 			if factory == nil {
 				factory = defaultStackWebhookPingClientFactory
 			}
-			return runStackWebhookPing(cmd.Context(), cmd.OutOrStdout(), factory, stack, args[0], output)
+			return runStackWebhookPing(cmd.Context(), cmd.OutOrStdout(), factory, stack, args[0], output.Get())
 		},
 	}
 
@@ -84,8 +86,7 @@ func newStackWebhookPingCmdWith(factory stackWebhookPingClientFactory) *cobra.Co
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVar(&output, "output", "default",
-		"The output format: default (human-readable text) or json")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -105,13 +106,8 @@ func runStackWebhookPing(
 	factory stackWebhookPingClientFactory,
 	stackFlag string,
 	webhookName string,
-	output string,
+	render webhookPingRenderFunc,
 ) error {
-	renderer, err := webhookPingRenderer(output)
-	if err != nil {
-		return err
-	}
-
 	c, stackID, err := factory(ctx, stackFlag)
 	if err != nil {
 		return err
@@ -122,21 +118,10 @@ func runStackWebhookPing(
 		return fmt.Errorf("pinging stack webhook: %w", err)
 	}
 
-	return renderer(w, delivery)
+	return render(w, delivery)
 }
 
 type webhookPingRenderFunc func(w io.Writer, d apitype.WebhookDelivery) error
-
-func webhookPingRenderer(output string) (webhookPingRenderFunc, error) {
-	switch output {
-	case "", "default":
-		return renderWebhookPingText, nil
-	case "json":
-		return renderWebhookPingJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q: expected \"default\" or \"json\"", output)
-	}
-}
 
 func renderWebhookPingJSON(w io.Writer, d apitype.WebhookDelivery) error {
 	enc := json.NewEncoder(w)

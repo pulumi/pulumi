@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -87,24 +88,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "ReadFile function translation works",
 	},
 	{
-		Directory:   "aws-optionals",
-		Description: "AWS get invoke with nested object constructor that takes an optional string",
-		// Testing Go behavior exclusively:
-		Skip: allProgLanguages.Except(TestGo),
-	},
-	{
 		Directory:   "third-party-package",
 		Description: "Ensuring correct imports for third party packages",
 		// compiling and type checking involves downloading the real package to
 		// check against. Because we are checking against the "other" package
 		// (which doesn't exist), this does not work.
 		SkipCompile: codegen.NewStringSet(TestNodeJS, TestDotnet, TestGo),
-	},
-	{
-		Directory: "this-keyword-resource-attr",
-		Description: "ensure that the this keyword is rewritten when it is a variable but kept as is" +
-			"when it is a reference to this pointer in nodejs",
-		Skip: codegen.NewStringSet(TestDotnet, TestPython, TestGo),
 	},
 	{
 		Directory:   "traverse-union-repro",
@@ -190,11 +179,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "python-regress-14037",
 		Description: "Regression test for rewriting qoutes in python",
 		Skip:        allProgLanguages.Except(TestPython),
-	},
-	{
-		Directory:   "inline-invokes",
-		Description: "Tests whether using inline invoke expressions works",
-		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 }
 
@@ -366,7 +350,7 @@ func TestProgramCodegen(
 				pluginCtx = utils.NewContext(testcase.inputDirectory())
 			}
 
-			opts := append(tt.BindOptions, pcl.PluginHost(pluginCtx))
+			opts := tt.BindOptions
 			absoluteProgramPath, err := filepath.Abs(testInputDir)
 			if err != nil {
 				t.Fatalf("failed to bind program: unable to find the absolute path of %v", testInputDir)
@@ -374,7 +358,7 @@ func TestProgramCodegen(
 			opts = append(opts, pcl.DirPath(absoluteProgramPath))
 			opts = append(opts, pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
-			program, diags, err := pcl.BindProgram(parser.Files, opts...)
+			program, diags, err := pcl.BindProgram(parser.Files, schema.NewPluginLoader(pluginCtx), opts...)
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}

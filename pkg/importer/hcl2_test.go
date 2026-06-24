@@ -385,7 +385,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			require.NoError(t, err)
 			require.False(t, parser.Diagnostics.HasErrors())
 
-			p, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+			p, diags, err := pcl.BindProgram(parser.Files, loader, pcl.AllowMissingVariables)
 			require.NoError(t, err)
 			assert.False(t, diags.HasErrors())
 
@@ -503,7 +503,9 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	})
 
 	host := deploytest.NewPluginHost(nil /*sink*/, nil /*statusSink*/, nil /*languageRuntime*/, pluginLoader)
-	schemaLoader := schema.NewPluginLoader(plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil))
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	require.NoError(t, err)
+	schemaLoader := schema.NewPluginLoader(pctx)
 
 	state := &resource.State{
 		Type:     "aws:cloudformation/stack:Stack",
@@ -532,7 +534,7 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	}
 
 	// Act.
-	_, _, err := GenerateHCL2Definition(schemaLoader, state, importState)
+	_, _, err = GenerateHCL2Definition(schemaLoader, state, importState)
 
 	// Assert.
 	require.NoError(t, err)

@@ -66,7 +66,7 @@ var testPackageSpec = schema.PackageSpec{
 func getTestPackage(t *testing.T) *schema.Package {
 	t.Helper()
 
-	pkg, err := schema.ImportSpec(testPackageSpec, nil, schema.ValidationOptions{
+	pkg, err := schema.ImportSpec(testPackageSpec, nil, schema.NewNullLoader(), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err, "could not import the test package spec")
@@ -132,7 +132,7 @@ func TestGetFunctionName(t *testing.T) {
 			"pkg:index:getSomeFunction": {},
 			"pkg:conflict:newResource":  {},
 		},
-	}, nil, schema.ValidationOptions{
+	}, nil, schema.NewNullLoader(), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
@@ -167,7 +167,7 @@ func TestGetFunctionNameWithoutPackageMapDoesNotPanic(t *testing.T) {
 		Functions: map[string]schema.FunctionSpec{
 			"pkg:index:getSomeFunction": {},
 		},
-	}, nil, schema.ValidationOptions{
+	}, nil, schema.NewNullLoader(), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)

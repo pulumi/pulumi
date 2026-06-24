@@ -5,9 +5,9 @@ from simpleComponent import SimpleComponent
 from typing import Any
 
 simple_component = SimpleComponent("simpleComponent")
-multiple_simple_components: list[Any] = []
-for range in [{"value": i} for i in range(0, 10)]:
-    multiple_simple_components.append(SimpleComponent(f"multipleSimpleComponents-{range['value']}"))
+multiple_simple_components: list[SimpleComponent] = []
+for multiple_simple_components_range in [{"value": i} for i in range(0, 10)]:
+    multiple_simple_components.append(SimpleComponent(f"multipleSimpleComponents-{multiple_simple_components_range['value']}"))
 another_component = AnotherComponent("anotherComponent")
 example_component = ExampleComponent("exampleComponent", {
     'input': "doggo", 

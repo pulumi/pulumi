@@ -32,7 +32,9 @@ func TestNewHelp(t *testing.T) {
 	os.Args = []string{"pulumi", "help", "new"}
 	defer func() { os.Args = args }()
 
-	cmd, _ := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
 	err := cmd.Execute()
 	require.NoError(t, err)
 }

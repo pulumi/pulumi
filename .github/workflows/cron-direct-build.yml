@@ -20,7 +20,23 @@ jobs:
             experimental: true
       - name: Build
         shell: bash
-        run: GOPROXY=direct SDKS="" make build
+        run: |
+          # Fetching dependencies directly from their origin (GOPROXY=direct)
+          # is more prone to transient network failures, so retry.
+          retry() {
+            local attempt=1 max=5
+            while true; do
+              "$@" && return 0
+              if [ "$attempt" -ge "$max" ]; then
+                echo "Command failed after $max attempts: $*" >&2
+                return 1
+              fi
+              echo "Attempt $attempt/$max failed: $*; retrying in 15s..." >&2
+              attempt=$((attempt + 1))
+              sleep 15
+            done
+          }
+          retry env GOPROXY=direct SDKS="" make build
   sdk:
     runs-on: ubuntu-latest
     steps:
@@ -36,8 +52,23 @@ jobs:
       - name: Build
         shell: bash
         run: |
+          # Fetching dependencies directly from their origin (GOPROXY=direct)
+          # is more prone to transient network failures, so retry.
+          retry() {
+            local attempt=1 max=5
+            while true; do
+              "$@" && return 0
+              if [ "$attempt" -ge "$max" ]; then
+                echo "Command failed after $max attempts: $*" >&2
+                return 1
+              fi
+              echo "Attempt $attempt/$max failed: $*; retrying in 15s..." >&2
+              attempt=$((attempt + 1))
+              sleep 15
+            done
+          }
           mkdir test
           cd test
           pulumi new random-go --generate-only --yes
           go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../sdk
-          GOPROXY=direct pulumi install
+          retry env GOPROXY=direct pulumi install

@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -76,10 +77,15 @@ func InstallPackagesFromProject(
 	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
 		Color: utilCmdutil.GetGlobalColorization(),
 	})
-	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), d, d, nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(registry))
 	if err != nil {
 		return packageinstallation.State{}, err
+	}
+	pctx, err := plugin.NewContext(ctx, d, d, pluginHost, nil, root, nil, false, nil)
+	if err != nil {
+		return packageinstallation.State{}, errors.Join(err, pluginHost.Close())
 	}
 	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx, stdout, stderr, nil,
 		packageworkspace.Options{
@@ -98,5 +104,5 @@ func InstallPackagesFromProject(
 		err = cmdDiag.FormatCyclicInstallError(ctx, e, root)
 	}
 
-	return continuation, errors.Join(err, pctx.Close())
+	return continuation, errors.Join(err, pctx.Close(), pluginHost.Close())
 }

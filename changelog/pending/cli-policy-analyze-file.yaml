@@ -1,0 +1,4 @@
+component: cli/policy
+kind: feat
+body: Add a `--file` flag to `pulumi policy analyze` to analyze a state file (as produced by `pulumi stack export`) without requiring a stack or backend login
+time: 2026-06-22T00:00:00+00:00

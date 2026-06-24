@@ -31,8 +31,10 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -164,8 +166,15 @@ func (cmd *packagePublishCmd) Run(
 		return err
 	}
 	sink := cmdutil.Diag()
-	pctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, wd, nil, false, nil,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(b.GetReadOnlyCloudRegistry()))
+	if err != nil {
+		return err
+	}
+	// host is owned here, closed after the context
+	defer contract.IgnoreClose(pluginHost)
+	pctx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, wd, nil, false, nil)
 	if err != nil {
 		return err
 	}

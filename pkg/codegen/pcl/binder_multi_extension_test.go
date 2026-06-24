@@ -60,7 +60,7 @@ func (multiExtensionLoader) LoadPackageV2(
 		return nil, fmt.Errorf("unexpected package %q", d.PackageName())
 	}
 
-	pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{})
+	pkg, diags, err := schema.BindSpec(spec, schema.NewNullLoader(), schema.ValidationOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ resource base "extbase:index:Base" { }
 	require.NoError(t, parser.ParseFile(bytes.NewReader([]byte(source)), "program.pp"))
 	require.False(t, parser.Diagnostics.HasErrors(), "parse: %v", parser.Diagnostics)
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(multiExtensionLoader{}))
+	program, diags, err := pcl.BindProgram(parser.Files, multiExtensionLoader{})
 	require.NoError(t, err)
 	require.NotNil(t, program, "program should bind")
 	require.False(t, diags.HasErrors(),

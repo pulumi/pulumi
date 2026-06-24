@@ -29,12 +29,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
@@ -75,6 +72,14 @@ type bindOptions struct {
 	// which refer to a component resource in a relative directory
 	dirPath                string
 	componentProgramBinder ComponentProgramBinder
+	// extraScopeVariables, if non-empty, are additional variables to define in the binder's root scope before
+	// binding the input file. Used by snippet bindings to inject references to resources owned by another source.
+	extraScopeVariables map[string]*model.Variable
+	// extraPackageDescriptors, if non-empty, are package descriptors supplied by the caller rather than read from
+	// `package { ... }` blocks in the source. Used by snippet bindings, which carry the descriptor structurally on
+	// the Snippet record rather than as PCL syntax. Merged into the descriptor map read from files; same-key entries
+	// from this option take precedence.
+	extraPackageDescriptors map[string]*schema.PackageDescriptor
 }
 
 func (opts bindOptions) modelOptions() []model.BindOption {
@@ -126,16 +131,6 @@ func SkipInvokeTypechecking(options *bindOptions) {
 	options.skipInvokeTypecheck = true
 }
 
-func PluginHost(pctx *plugin.Context) BindOption {
-	return Loader(schema.NewPluginLoader(pctx))
-}
-
-func Loader(loader schema.Loader) BindOption {
-	return func(options *bindOptions) {
-		options.loader = loader
-	}
-}
-
 func Cache(cache *PackageCache) BindOption {
 	return func(options *bindOptions) {
 		options.packageCache = cache
@@ -151,6 +146,24 @@ func DirPath(path string) BindOption {
 func ComponentBinder(binder ComponentProgramBinder) BindOption {
 	return func(options *bindOptions) {
 		options.componentProgramBinder = binder
+	}
+}
+
+// ExtraScopeVariables returns a BindOption that defines additional variables in the binder's root scope before
+// the input file is bound. Used by snippet bindings to inject references to resources owned by another source so
+// expressions like `someResource.someProp` can typecheck without the binder seeing a `resource` block for them.
+func ExtraScopeVariables(extras map[string]*model.Variable) BindOption {
+	return func(options *bindOptions) {
+		options.extraScopeVariables = extras
+	}
+}
+
+// PackageDescriptors returns a BindOption that supplies pre-built package descriptors to BindProgram, as if they
+// were declared by `package { ... }` blocks in the source. Used by snippet bindings, which carry the descriptor
+// structurally on the Snippet record rather than as PCL syntax.
+func PackageDescriptors(descriptors map[string]*schema.PackageDescriptor) BindOption {
+	return func(options *bindOptions) {
+		options.extraPackageDescriptors = descriptors
 	}
 }
 
@@ -288,6 +301,50 @@ func BindResource(
 	return args, inputType, diagnostics
 }
 
+// BindResourceProgram binds a PCL file body as a single resource program. Unlike BindResource,
+// this binds the full resource shape, including options and range, so the resulting program can be
+// evaluated through the normal resource registration path.
+func BindResourceProgram(
+	file *syntax.File, name, token string,
+	loader schema.Loader,
+	opts ...BindOption,
+) (*Program, hcl.Diagnostics, error) {
+	bodyRange := file.Body.Range()
+	labelRange := hcl.Range{
+		Filename: bodyRange.Filename,
+		Start:    bodyRange.Start,
+		End:      bodyRange.Start,
+	}
+	block := &hclsyntax.Block{
+		Type:        "resource",
+		Labels:      []string{name, token},
+		Body:        file.Body,
+		TypeRange:   labelRange,
+		LabelRanges: []hcl.Range{labelRange, labelRange},
+		OpenBraceRange: hcl.Range{
+			Filename: bodyRange.Filename,
+			Start:    bodyRange.Start,
+			End:      bodyRange.Start,
+		},
+		CloseBraceRange: hcl.Range{
+			Filename: bodyRange.Filename,
+			Start:    bodyRange.End,
+			End:      bodyRange.End,
+		},
+	}
+	resourceFile := &syntax.File{
+		Name: file.Name,
+		Body: &hclsyntax.Body{
+			Blocks:   []*hclsyntax.Block{block},
+			SrcRange: bodyRange,
+			EndRange: bodyRange,
+		},
+		Bytes:  file.Bytes,
+		Tokens: file.Tokens,
+	}
+	return BindProgram([]*syntax.File{resourceFile}, loader, opts...)
+}
+
 // BindResourceList binds a PCL file as a resource list input and returns the bound arguments. This is used for `do` to
 // type check and evaluate resource list inputs.
 func BindResourceList(
@@ -375,28 +432,16 @@ func typecheckObjectArgs(
 	return diagnostics
 }
 
-// BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
-// host, if any, is used for loading any resource plugins necessary to extract schema information.
-func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
+// BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The
+// loader resolves any packages the program references; the caller owns its lifetime. A program that references
+// no packages can pass a non-resolving loader (see [schema.NewNullLoader]).
+func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
+	contract.Requiref(loader != nil, "loader", "must not be nil")
+
 	ctx := context.TODO()
-	var options bindOptions
+	options := bindOptions{loader: loader}
 	for _, o := range opts {
 		o(&options)
-	}
-
-	if options.loader == nil {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, nil, err
-		}
-		ctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, cwd, nil, false, nil,
-			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
-		if err != nil {
-			return nil, nil, err
-		}
-		options.loader = schema.NewPluginLoader(ctx)
-
-		defer contract.IgnoreClose(ctx)
 	}
 
 	if options.packageCache == nil {
@@ -425,6 +470,11 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(b.bindInvokeSignature)))
 	// Define the call function.
 	b.root.DefineFunction(Call, model.NewFunction(model.GenericFunctionSignature(b.bindCallSignature)))
+	// Define any external scope variables supplied by the caller (e.g. resources owned by another source that
+	// a snippet program references). The caller chooses each variable's VariableType.
+	for name, v := range options.extraScopeVariables {
+		b.root.Define(name, v)
+	}
 
 	var diagnostics hcl.Diagnostics
 
@@ -432,6 +482,11 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	descriptorMap, descriptorDiags := ReadAllPackageDescriptors(files)
 	diagnostics = append(diagnostics, descriptorDiags...)
 	for packageName, descriptor := range descriptorMap {
+		b.packageDescriptors[packageName] = descriptor
+	}
+	// Caller-supplied descriptors (snippet bindings carry these structurally rather than as PCL syntax)
+	// take precedence over any file-declared block for the same package.
+	for packageName, descriptor := range options.extraPackageDescriptors {
 		b.packageDescriptors[packageName] = descriptor
 	}
 
@@ -478,16 +533,15 @@ func BindDirectory(
 		return nil, parseDiagnostics, nil
 	}
 
-	opts := make([]BindOption, 0, 3+len(extraOptions))
+	opts := make([]BindOption, 0, 2+len(extraOptions))
 	opts = append(opts,
-		Loader(loader),
 		DirPath(directory),
 		ComponentBinder(ComponentProgramBinderFromFileSystem()),
 	)
 
 	opts = append(opts, extraOptions...)
 
-	program, bindDiagnostics, err := BindProgram(parser.Files, opts...)
+	program, bindDiagnostics, err := BindProgram(parser.Files, loader, opts...)
 
 	// err will be the same as bindDiagnostics if there are errors, but we don't want to return that here.
 	// err _could_ also be a context setup error in which case bindDiagnotics will be nil and that we do want to return.

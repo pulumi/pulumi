@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -214,14 +215,19 @@ func runConvert(
 		name = filepath.Base(cwd)
 	}
 
+	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
+
 	// the plugin context uses the output directory as the working directory
 	// of the generated program because in general, where Pulumi.yaml lives is
 	// the root of the project.
-	pCtx, err := packages.NewPluginContext(outDir)
+	pCtx, err := packages.NewPluginContext(outDir, reg)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
+	// The context owns its loader/mapper servers; the host is caller-owned. Close the context
+	// first, then the host.
 	defer contract.IgnoreClose(pCtx.Host)
+	defer contract.IgnoreClose(pCtx)
 
 	// Translate well known sources to plugins
 	switch strings.ToLower(from) {
@@ -333,7 +339,6 @@ func runConvert(
 		pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 	}
 
-	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
 	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx, stderr, stderr,
 		nil, packageworkspace.Options{})
 
@@ -499,8 +504,16 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		pluginHost, err := pkghost.New(
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServer(reg))
+		if err != nil {
+			return err
+		}
+		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		_, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -588,13 +601,14 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		pkgSchema, err := packages.BindSpec(*pkgSpec)
+		pkgSchema, err := packages.BindSpec(*pkgSpec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			return fmt.Errorf("binding package schema: %w", err)
 		}
 
 		diags, err := packages.GenSDK(
 			pctx.Request(),
+			registry,
 			language,
 			tempOut,
 			pkgSchema,

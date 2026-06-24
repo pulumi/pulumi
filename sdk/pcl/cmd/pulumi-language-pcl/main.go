@@ -635,14 +635,13 @@ func (host *pclLanguageHost) GenerateProgram(
 	}
 
 	options := []pcl.BindOption{
-		pcl.Loader(schema.NewCachedLoader(loader)),
 		pcl.PreferOutputVersionedInvokes,
 	}
 	if !req.Strict {
 		options = append(options, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, options...)
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader), options...)
 	if err != nil {
 		return nil, err
 	}

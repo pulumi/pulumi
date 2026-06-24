@@ -130,7 +130,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -151,7 +151,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -173,7 +173,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -217,7 +217,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -250,7 +250,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -286,7 +286,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 

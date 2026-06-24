@@ -745,7 +745,6 @@ func (p *PartialPackage) Definition() (*Package, error) {
 		return nil, diags
 	}
 
-	contract.IgnoreClose(p.types)
 	p.spec = nil
 	p.types = nil
 	p.languages = nil
@@ -835,17 +834,7 @@ func (p *PartialPackage) InterpretPulumiRefs(description string, resolver Pulumi
 		return p.def.InterpretPulumiRefs(description, resolver)
 	}
 
-	if description == "" {
-		return "", nil
-	}
-
-	source := []byte(description)
-	parsed := ParseDocs(source)
-	err := interpretPulumiRefs("", p.types, ValidationOptions{}, parsed, resolver)
-	if err != nil {
-		return "", err
-	}
-	return RenderDocsToString(source, parsed), nil
+	return interpretPulumiRefsInDescription(description, p.types, resolver)
 }
 
 type partialPackageTypes struct {

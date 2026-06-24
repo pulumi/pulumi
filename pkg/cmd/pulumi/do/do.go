@@ -35,10 +35,12 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -53,7 +55,7 @@ import (
 func NewDoCmd(
 	lm cmdBackend.LoginManager, ws pkgWorkspace.Context,
 	pluginFromSource func(context.Context, *plugin.Context, string, string) (plugin.Provider, error),
-	newHost func() (plugin.Host, error),
+	newHost func(ctx context.Context, d, statusD diag.Sink) (plugin.Host, error),
 	loadConverterPlugin func(
 		*plugin.Context, string, func(sev diag.Severity, msg string),
 	) (plugin.Converter, error),
@@ -69,8 +71,16 @@ func NewDoCmd(
 		}
 	}
 	if newHost == nil {
-		newHost = func() (plugin.Host, error) {
-			return nil, nil
+		newHost = func(ctx context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+			// The host is owned by the do command (closed via cleanup), so its lifetime context is
+			// uncancellable. Plugin logs route through the command's diagnostics sinks, so a
+			// provider's output reaches the command's stdout/stderr the same way it does without a
+			// pre-constructed host.
+			reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, d, env.Global())
+			return pkghost.New(
+				context.WithoutCancel(ctx), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled,
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(reg))
 		}
 	}
 	if loadConverterPlugin == nil {
@@ -143,15 +153,16 @@ func NewDoCmd(
 
 		ctx := cmd.Context()
 
-		host, err := newHost()
+		host, err := newHost(ctx, sink, sink)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
 		}
 
 		pctx, err := plugin.NewContext(
 			ctx, sink, sink, host, nil, wd, nil, false,
-			nil, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+			nil)
 		if err != nil {
+			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}
 
@@ -159,11 +170,14 @@ func NewDoCmd(
 		if err != nil {
 			// Close the plugin context we opened above since we're not returning it to the caller.
 			contract.IgnoreClose(pctx)
+			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("load provider: %w", err)
 		}
 		cleanup := func() {
 			contract.IgnoreClose(p)
 			contract.IgnoreClose(pctx)
+			// host is owned here, closed after the context
+			contract.IgnoreClose(host)
 		}
 
 		// Parse "name@version" out of pkgargs[0] so we can also describe the package to downstream consumers
@@ -216,7 +230,7 @@ func NewDoCmd(
 			packageDescriptor.Parameterization.Value = spec.Parameterization.Parameter
 		}
 
-		boundpkg, err := packages.BindSpec(spec)
+		boundpkg, err := packages.BindSpec(spec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("bind schema: %w", err)
@@ -338,11 +352,9 @@ func NewDoCmd(
 	}
 
 	cmd := &cobra.Command{
-		// Hidden for now while we iterate.
-		Hidden: true,
-		Use:    "do <pkg:mod:typ> [command]",
-		Short:  "Interact directly with cloud resources",
-		Long: `Interact with any cloud
+		Use:   "do <pkg:mod:typ> [command]",
+		Short: "[EXPERIMENTAL] Interact directly with cloud resources",
+		Long: `[EXPERIMENTAL] Interact with any cloud
 
 pulumi do dynamically builds a CLI from any Pulumi provider's schema, giving you
 direct CRUD access to cloud resources without a Pulumi program or state file.

@@ -21,15 +21,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // stackWebhookRemoveClient is the interface the remove command needs.
@@ -68,6 +67,7 @@ func newStackWebhookRemoveCmdWith(factory stackWebhookRemoveClientFactory) *cobr
 			"  # Remove without confirmation\n" +
 			"  pulumi stack webhook remove 1a2b3c4d --yes",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			yes = yes || env.SkipConfirmations.Value()
 			if factory == nil {
 				factory = defaultStackWebhookRemoveClientFactory
 			}
@@ -105,16 +105,9 @@ func runStackWebhookRemove(
 ) error {
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	if !yes {
-		if !cmdutil.Interactive() {
-			return backenderr.ErrNonInteractiveRequiresYes
-		}
-		prompt := fmt.Sprintf(
-			"This will permanently remove the webhook '%s'!",
-			webhookName)
-		if !ui.ConfirmPrompt(prompt, webhookName, opts) {
-			return result.FprintBailf(w, "confirmation declined")
-		}
+	prompt := fmt.Sprintf("This will permanently remove the webhook '%s'!", webhookName)
+	if err := ui.ConfirmDeletion(yes, cmdutil.Interactive(), prompt, webhookName, w, opts); err != nil {
+		return err
 	}
 
 	c, stackID, err := factory(ctx, stackFlag)

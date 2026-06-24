@@ -61,6 +61,15 @@ type generator struct {
 	isComponent             bool
 	deferredOutputVariables []*pcl.DeferredOutputVariable
 
+	// rangeVariable is the Python loop variable bound for the resource currently
+	// being range-generated, replacing the PCL `range` scope name. It is unique
+	// per range statement so that distinct ranges in one program never share a
+	// loop variable — which would otherwise type-lock its element type across
+	// loops and reject, for example, a map range's string key after a numeric
+	// range. Empty outside a ranged resource, where references keep the `range`
+	// name.
+	rangeVariable string
+
 	// insideApplyLambda is set while generating the body of an __apply callback.
 	insideApplyLambda bool
 	// applyLambdaType holds the destination type for the current resource input.
@@ -1251,6 +1260,32 @@ func (g *generator) genHookDeclarations(r *pcl.Resource) map[string][]string {
 	return hookVars
 }
 
+// genMapRangedCollection emits a dict-typed collection, keyed by the map key and
+// strongly typed by valueType, for a resource or component that ranges over a
+// map. Indexing such a collection by key (e.g. `r["k"]`) is then well-typed,
+// unlike the list used for numeric and list ranges. preInstantiate, when
+// non-nil, runs inside the loop before each resource is instantiated.
+func (g *generator) genMapRangedCollection(
+	w io.Writer, nameVar, valueType, name string, rangeExpr model.Expression,
+	needsDefinition bool, preInstantiate func(), instantiate func(string),
+) {
+	if needsDefinition {
+		g.Fgenf(w, "%s%s: dict[str, %s] = {}\n", g.Indent, nameVar, valueType)
+	}
+	g.Fgenf(w,
+		"%sfor %s in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
+		g.Indent, g.rangeVariable, rangeExpr)
+	resName := g.makeResourceName(name, g.rangeVariable+"['key']")
+	g.Indented(func() {
+		if preInstantiate != nil {
+			preInstantiate()
+		}
+		g.Fgenf(w, "%s%s[%s['key']] = ", g.Indent, nameVar, g.rangeVariable)
+		instantiate(resName)
+		g.Fprint(w, "\n")
+	})
+}
+
 // genResourceDeclaration handles the generation of instantiations resources.
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
 	qualifiedMemberName, diagnostics := g.resourceTypeName(r)
@@ -1322,14 +1357,19 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 	if r.Options != nil && r.Options.Range != nil {
 		rangeExpr := r.Options.Range
+		prevRangeVariable := g.rangeVariable
+		g.rangeVariable = nameVar + "_range"
+		defer func() { g.rangeVariable = prevRangeVariable }()
 		rangeType := r.Options.Range.Type()
 
 		if model.ContainsOutputs(rangeType) {
 			loweredRangeExpr, rangeExprTemps := g.lowerExpression(rangeExpr, rangeType)
 			if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
+			} else if _, isMap := pcl.UnwrapOption(model.ResolveOutputs(rangeType)).(*model.MapType); isMap {
+				g.Fgenf(w, "%s%s: dict[str, %s] = {}\n", g.Indent, nameVar, qualifiedMemberName)
 			} else {
-				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[%s] = []\n", g.Indent, nameVar, qualifiedMemberName)
 			}
 			localFuncName := "create_" + PyName(r.LogicalName())
 
@@ -1430,24 +1470,23 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
 			})
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, nameVar, qualifiedMemberName, name, rangeExpr, needsDefinition, nil, instantiate)
 		} else {
 			if needsDefinition {
-				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[%s] = []\n", g.Indent, nameVar, qualifiedMemberName)
 			}
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, g.rangeVariable, rangeExpr)
 				resKey = "value"
-			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
-				g.Fgenf(w,
-					"%sfor range in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
-					g.Indent, rangeExpr)
 			} else {
-				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n",
+					g.Indent, g.rangeVariable, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, fmt.Sprintf("range['%s']", resKey))
+			resName := g.makeResourceName(name, fmt.Sprintf("%s['%s']", g.rangeVariable, resKey))
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s.append(", g.Indent, nameVar)
 				instantiate(resName)
@@ -1543,13 +1582,16 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 
 	if r.Options != nil && r.Options.Range != nil {
 		rangeExpr := r.Options.Range
+		prevRangeVariable := g.rangeVariable
+		g.rangeVariable = nameVar + "_range"
+		defer func() { g.rangeVariable = prevRangeVariable }()
 		rangeType := r.Options.Range.Type()
 		if model.ContainsOutputs(rangeType) {
 			loweredRangeExpr, rangeExprTemps := g.lowerExpression(rangeExpr, rangeType)
 			if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			} else {
-				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[%s] = []\n", g.Indent, nameVar, qualifiedMemberName)
 			}
 			localFuncName := "read_" + PyName(r.LogicalName())
 			g.Fgenf(w, "def %s(range_body):\n", localFuncName)
@@ -1622,23 +1664,22 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
 			})
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, nameVar, qualifiedMemberName, name, rangeExpr, needsDefinition, nil, instantiate)
 		} else {
 			if needsDefinition {
-				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[%s] = []\n", g.Indent, nameVar, qualifiedMemberName)
 			}
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, g.rangeVariable, rangeExpr)
 				resKey = "value"
-			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
-				g.Fgenf(w,
-					"%sfor range in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
-					g.Indent, rangeExpr)
 			} else {
-				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n",
+					g.Indent, g.rangeVariable, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, fmt.Sprintf("range['%s']", resKey))
+			resName := g.makeResourceName(name, fmt.Sprintf("%s['%s']", g.rangeVariable, resKey))
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s.append(", g.Indent, nameVar)
 				instantiate(resName)
@@ -1740,6 +1781,9 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 
 	if r.Options != nil && r.Options.Range != nil {
 		rangeExpr := r.Options.Range
+		prevRangeVariable := g.rangeVariable
+		g.rangeVariable = nameVar + "_range"
+		defer func() { g.rangeVariable = prevRangeVariable }()
 		if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 			g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			g.Fgenf(w, "%sif %.v:\n", g.Indent, rangeExpr)
@@ -1749,22 +1793,22 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
 			})
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, nameVar, componentName, name, rangeExpr, true,
+				declareDeferredOutputVariables, instantiate)
 		} else {
-			g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
+			g.Fgenf(w, "%s%s: list[%s] = []\n", g.Indent, nameVar, componentName)
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, g.rangeVariable, rangeExpr)
 				resKey = "value"
-			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
-				g.Fgenf(w,
-					"%sfor range in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
-					g.Indent, rangeExpr)
 			} else {
-				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n",
+					g.Indent, g.rangeVariable, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, fmt.Sprintf("range['%s']", resKey))
+			resName := g.makeResourceName(name, fmt.Sprintf("%s['%s']", g.rangeVariable, resKey))
 			g.Indented(func() {
 				declareDeferredOutputVariables()
 				g.Fgenf(w, "%s%s.append(", g.Indent, nameVar)

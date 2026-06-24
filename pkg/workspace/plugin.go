@@ -26,6 +26,7 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
@@ -220,28 +221,32 @@ func installDependenciesForPluginSpec(
 		return nil
 	}
 
+	pluginHost, err := pkghost.New(
+		context.WithoutCancel(ctx), diagutil.Diag(), diagutil.Diag(), nil, EnsureLanguageInstalled,
+		newLoader, convert.NewMapperServerFromContext, nil)
+	if err != nil {
+		return err
+	}
+
 	pctx, err := plugin.NewContextWithRoot(ctx,
 		diagutil.Diag(),
 		diagutil.Diag(),
-		nil,    // host
-		subdir, // pwd
-		subdir, // root
+		pluginHost, // host
+		subdir,     // pwd
+		subdir,     // root
 		proj.RuntimeInfo().Options(),
 		false, // disableProviderPreview
 		nil,   // tracingSpan
 		nil,   // Plugins
 		proj.GetPackageSpecs(),
 		nil, // config
-		nil, // debugging
-		newLoader,
-		convert.NewMapperServerFromContext,
-		EnsureLanguageInstalled,
 	)
 	if err != nil {
-		return err
+		return errors.Join(err, pluginHost.Close())
 	}
 
-	return errors.Join(InstallPluginAtPath(pctx, proj, stdout, stderr), pctx.Close())
+	// The host is owned here, not by the context, so close it after the context.
+	return errors.Join(InstallPluginAtPath(pctx, proj, stdout, stderr), pctx.Close(), pluginHost.Close())
 }
 
 func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, stdout, stderr io.Writer) error {

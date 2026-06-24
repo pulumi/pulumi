@@ -14,8 +14,6 @@
 
 package policy
 
-// AI Generated - needs human review
-
 import (
 	"context"
 	"encoding/json"
@@ -26,7 +24,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -34,9 +31,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // policyGroupRemoveClient is the narrow subset of cloud-API operations the
@@ -97,6 +94,7 @@ func newPolicyGroupRemoveCmdWith(factory policyGroupRemoveClientFactory) *cobra.
 			"  # Remove from a specific organization\n" +
 			"  pulumi policy group remove prod-policies --org acme --yes",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
+			args.yes = args.yes || env.SkipConfirmations.Value()
 			return runPolicyGroupRemove(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
 	}
@@ -164,16 +162,10 @@ func runPolicyGroupRemove(
 	ctx context.Context, w io.Writer,
 	factory policyGroupRemoveClientFactory, name string, args policyGroupRemoveArgs,
 ) error {
-	if !cmdutil.Interactive() && !args.yes {
-		return backenderr.ErrNonInteractiveRequiresYes
-	}
-
-	if !args.yes {
-		opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-		prompt := fmt.Sprintf("This will permanently remove the policy group '%s'!", name)
-		if !ui.ConfirmPrompt(prompt, name, opts) {
-			return result.FprintBailf(w, "confirmation declined")
-		}
+	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	prompt := fmt.Sprintf("This will permanently remove the policy group '%s'!", name)
+	if err := ui.ConfirmDeletion(args.yes, cmdutil.Interactive(), prompt, name, w, opts); err != nil {
+		return err
 	}
 
 	c, org, err := factory(ctx, args.org)

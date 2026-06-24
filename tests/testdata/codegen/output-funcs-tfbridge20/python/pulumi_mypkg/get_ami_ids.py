@@ -116,7 +116,6 @@ def get_ami_ids(executable_users: Optional[Sequence[_builtins.str]] = None,
     """
     Taken from pulumi-AWS to regress an issue
 
-
     :param Sequence[_builtins.str] executable_users: Limit search to users with *explicit* launch
            permission on  the image. Valid items are the numeric account ID or `self`.
     :param Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']] filters: One or more name/value pairs to filter off of. There
@@ -156,7 +155,6 @@ def get_ami_ids_output(executable_users: pulumi.Input[Optional[Optional[Sequence
                        opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[GetAmiIdsResult]:
     """
     Taken from pulumi-AWS to regress an issue
-
 
     :param Sequence[_builtins.str] executable_users: Limit search to users with *explicit* launch
            permission on  the image. Valid items are the numeric account ID or `self`.

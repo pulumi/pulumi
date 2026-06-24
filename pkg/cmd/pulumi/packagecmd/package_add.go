@@ -28,8 +28,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -127,9 +129,16 @@ from the parameters, as in:
 			}
 
 			sink := cmdutil.Diag()
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(target.reg))
+			if err != nil {
+				return err
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(cmd.Context(),
-				sink, sink, nil, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromContext,
-				convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil)
 			if err != nil {
 				return err
 			}

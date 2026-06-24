@@ -147,10 +147,8 @@ func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
 		operationIDToResourceIndex: make(map[int64]int64),
 		incompleteOps:              make(map[int64]apitype.JournalEntry),
 		newResources:               make([]*apitype.ResourceV3, 0),
+		extensions:                 make(map[apitype.ExtensionRef]apitype.Extension),
 		base:                       base,
-	}
-	if base != nil {
-		replayer.extensions = maps.Clone(base.Extensions)
 	}
 	return &replayer
 }
@@ -247,11 +245,8 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {
 		r.operationIDToResourceIndex = make(map[int64]int64)
 		r.incompleteOps = make(map[int64]apitype.JournalEntry)
 		r.newResources = make([]*apitype.ResourceV3, 0)
-		r.extensions = maps.Clone(r.base.Extensions)
+		r.extensions = make(map[apitype.ExtensionRef]apitype.Extension)
 	case apitype.JournalEntryKindExtensionParameterize:
-		if r.extensions == nil {
-			r.extensions = make(map[apitype.ExtensionRef]apitype.Extension)
-		}
 		r.extensions[*entry.ExtensionRef] = *entry.Extension
 	}
 	return nil
@@ -398,8 +393,11 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	deployment.PendingOperations = operations
 	deployment.Metadata = r.base.Metadata
 	deployment.Manifest = manifest.Serialize()
-	if len(r.extensions) > 0 {
-		deployment.Extensions = maps.Clone(r.extensions)
+	// Carry extensions forward from the base, plus any this plan produced.
+	extensions := maps.Clone(r.extensions)
+	maps.Copy(extensions, r.base.Extensions)
+	if len(extensions) > 0 {
+		deployment.Extensions = extensions
 	}
 
 	version := apitype.DeploymentSchemaVersionCurrent

@@ -153,7 +153,7 @@ func bindTestPackage(t *testing.T) *schema.Package {
 			},
 		},
 	}
-	pkg, err := schema.ImportSpec(spec, nil, schema.ValidationOptions{})
+	pkg, err := schema.ImportSpec(spec, nil, schema.NewNullLoader(), schema.ValidationOptions{})
 	require.NoError(t, err)
 	return pkg
 }
@@ -167,7 +167,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		pkg := bindTestPackage(t)
 		description := "This is a reference to {{% ref #/resources/test:s3:Bucket %}} and one to the " +
 			"{{% ref #/resources/test:s3:Bucket/properties/region %}} property."
-		expected := "This is a reference to s3.Bucket and one to the region property.\n"
+		expected := "This is a reference to s3.Bucket and one to the region property."
 		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
 			if ref.Kind == schema.DocRefKindResource {
 				rt := ref.Type.(*schema.ResourceType)
@@ -186,7 +186,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		pkg := bindTestPackage(t)
 		description := "This is a reference to {{% ref #/resources/test:mod:Resource/properties/myProperty %}}" +
 			" and to {{% ref #/resources/test:mod:Resource %}}."
-		expected := "This is a reference to myProperty and to test:mod:Resource.\n"
+		expected := "This is a reference to myProperty and to test:mod:Resource."
 		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
 			return "", false
 		})
@@ -210,7 +210,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 
 		pkg := bindTestPackage(t)
 		description := "This description has no Pulumi references."
-		expected := "This description has no Pulumi references.\n"
+		expected := "This description has no Pulumi references."
 		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
 			return "ResolvedName", true
 		})
@@ -260,7 +260,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 				},
 			},
 		}
-		extPkg, err := schema.ImportSpec(extSpec, nil, schema.ValidationOptions{})
+		extPkg, err := schema.ImportSpec(extSpec, nil, schema.NewNullLoader(), schema.ValidationOptions{})
 		require.NoError(t, err)
 
 		loader := &stubSchemaLoader{pkg: extPkg}

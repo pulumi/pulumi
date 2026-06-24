@@ -655,7 +655,8 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 //  3. Parents must precede children in the resource list
 //  4. Dependents must precede their dependencies in the resource list
 //  5. For every URN in the snapshot, there must be at most one resource with that URN that is not pending deletion
-//  6. The magic manifest number should change every time the snapshot is mutated
+//  6. Every snippet must have a non-empty, unique UUID
+//  7. The magic manifest number should change every time the snapshot is mutated
 //
 // N.B. Constraints 2 does NOT apply for resources that are pending deletion. This is because they may have
 // had their provider replaced but not yet be replaced themselves yet (due to a partial update). Pending
@@ -825,6 +826,18 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			if deletes != len(states)-1 && deletes != len(states) {
 				return snapshot.SnapshotIntegrityErrorf("duplicate resource %s (not marked for deletion)", urn)
 			}
+		}
+
+		snippetUUIDs := make(map[string]int, len(snap.Snippets))
+		for i, snippet := range snap.Snippets {
+			if snippet.UUID == "" {
+				return snapshot.SnapshotIntegrityErrorf("snippet at index %d missing required 'uuid' field", i)
+			}
+			if other, has := snippetUUIDs[snippet.UUID]; has {
+				return snapshot.SnapshotIntegrityErrorf(
+					"duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i)
+			}
+			snippetUUIDs[snippet.UUID] = i
 		}
 	}
 

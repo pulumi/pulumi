@@ -299,6 +299,7 @@ func SerializeSnippet(s resource.Snippet) apitype.SnippetV1 {
 		}
 	}
 	return apitype.SnippetV1{
+		UUID:       s.UUID,
 		Name:       s.Name,
 		Type:       s.Type,
 		Code:       s.Code,
@@ -333,6 +334,7 @@ func DeserializeSnippet(s apitype.SnippetV1) resource.Snippet {
 		}
 	}
 	return resource.Snippet{
+		UUID:       s.UUID,
 		Name:       s.Name,
 		Type:       s.Type,
 		Code:       s.Code,

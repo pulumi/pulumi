@@ -733,11 +733,6 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			continue
 		}
 
-		if f.MultiArgumentInputs {
-			return fmt.Errorf("python SDK-gen does not implement MultiArgumentInputs for function '%s'",
-				f.Token)
-		}
-
 		fun, err := mod.genFunction(f)
 		if err != nil {
 			return err
@@ -2688,6 +2683,7 @@ func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties 
 	// If this type has documentation, write it at the top of the docstring.
 	if comment != "" {
 		fmt.Fprintln(b, comment)
+		fmt.Fprintln(b, "")
 	}
 
 	for _, prop := range properties {

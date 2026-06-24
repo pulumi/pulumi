@@ -100,7 +100,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l1-expand-final":                    "Node.js program generation does not support `...` argument expansion",
 	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
-	"l3-range-ref":                       "Property 'k1' does not exist on type 'Target[]'",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 }
@@ -210,7 +209,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 
 					if runtime == "bun" {
 						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" ||
-							tt == "provider-replacement-trigger-component" {
+							tt == "provider-replacement-trigger-component" || tt == "l2-docs" {
 							t.Skip(
 								"On linux bun has trouble resolving indirect dependencies that point to a local file" +
 									"https://github.com/pulumi/pulumi/issues/22100")

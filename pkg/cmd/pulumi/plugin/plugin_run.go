@@ -15,20 +15,22 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -36,38 +38,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// preparePluginEnv prepares environment variables for the plugin including
-// RPC target, cloud URL, and access token from the workspace.
-func preparePluginEnv(ws pkgWorkspace.Context, grpcServer *plugin.GrpcServer) []string {
-	pluginEnv := os.Environ()
-	pluginEnv = append(pluginEnv, "PULUMI_RPC_TARGET="+grpcServer.Addr())
-
-	// Get current cloud URL from workspace
-	project, _, err := ws.ReadProject()
-	if err == nil {
-		cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-		if err == nil {
-			cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
-			pluginEnv = append(pluginEnv, "PULUMI_API="+cloudURL)
-
-			// Get account credentials for this cloud URL
-			creds, err := ws.GetStoredCredentials()
-			if err == nil {
-				if token, ok := creds.AccessTokens[cloudURL]; ok && token != "" {
-					pluginEnv = append(pluginEnv, "PULUMI_ACCESS_TOKEN="+token)
-				}
-			}
-		}
-	}
-
-	return pluginEnv
-}
-
-func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
+func newPluginRunCmd() *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
@@ -134,8 +110,16 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			pluginArgs := args[1:]
 
-			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil,
-				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, nil, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(reg))
+			if err != nil {
+				return fmt.Errorf("could not create plugin host: %w", err)
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil)
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}
@@ -148,17 +132,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 			defer grpcServer.Close()
 
-			// Prepare environment variables for the plugin
-			pluginEnvStrings := preparePluginEnv(ws, grpcServer)
-			// Convert []string to env.Env
-			pluginEnvMap := make(env.MapStore)
-			for _, envVar := range pluginEnvStrings {
-				parts := strings.SplitN(envVar, "=", 2)
-				if len(parts) == 2 {
-					pluginEnvMap[parts[0]] = parts[1]
-				}
-			}
-			pluginEnv := env.NewEnv(pluginEnvMap)
+			pluginEnv := env.NewEnv(env.MapStore{"PULUMI_RPC_TARGET": grpcServer.Addr()})
 
 			plugin, err := plugin.ExecPlugin(pctx, pluginPath, source, kind, pluginArgs, "", pluginEnv, false)
 			if err != nil {
@@ -222,7 +196,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	return cmd
 }
 
-var _ cmd.CustomExitCodeError = pluginErrorCode{}
+var _ cmdCmd.CustomExitCodeError = pluginErrorCode{}
 
 type pluginErrorCode struct {
 	plugin string

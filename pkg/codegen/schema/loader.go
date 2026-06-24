@@ -587,7 +587,7 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 		Kind:              apitype.ResourcePlugin,
 	}
 
-	provider, err := l.pctx.Host.Provider(l.pctx, wsDescriptor, env.Global())
+	provider, err := l.pctx.Host.Provider(l.pctx.WithoutProviderDebugging(), wsDescriptor, env.Global())
 	if err != nil {
 		return nil, nil, err
 	}

@@ -114,7 +114,6 @@ func TestPanickingComponentConfigure(t *testing.T) {
 		testDir      = filepath.Join("go", "component-configure-panic")
 		componentDir = "testcomponent-go"
 	)
-	runComponentSetup(t, testDir)
 
 	var stderr bytes.Buffer
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -589,7 +588,7 @@ func TestConstructSlowGo(t *testing.T) {
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
 	testDir := "construct_component_slow"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	opts := &integration.ProgramTestOptions{
 		Env: []string{testYarnLinkPulumiEnv},
@@ -617,7 +616,7 @@ func TestConstructPlainGo(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_plain"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -685,7 +684,7 @@ func TestConstructMethodsGo(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_methods"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -761,7 +760,7 @@ func TestConstructProviderGo(t *testing.T) {
 	t.Parallel()
 
 	const testDir = "construct_component_provider"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -1634,7 +1633,7 @@ func TestPluginDebuggerAttach(t *testing.T) {
 		// Therefore we expect a EOF error.
 		stdout, _ := e.RunCommandExpectError("pulumi", "preview", "--attach-debugger=plugins",
 			"--event-log", eventLogPath)
-		require.Regexp(t, "error: could not read plugin \\[.*/go-plugin/pulumi-resource-debugplugin\\]: EOF", stdout)
+		require.Regexp(t, "could not read plugin \\[.*/go-plugin/pulumi-resource-debugplugin\\]: EOF", stdout)
 	}()
 
 	wait := 20 * time.Millisecond
@@ -1768,14 +1767,17 @@ func TestRunPlugin(t *testing.T) {
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	installNodejsProviderDependencies(t, filepath.Join(e.RootPath, "provider-nodejs"))
-	installPythonProviderDependencies(t, filepath.Join(e.RootPath, "provider-python"))
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider-nodejs"))
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider-python"))
 
 	e.CWD = filepath.Join(e.RootPath, "go")
 	sdkPath, err := filepath.Abs("../../sdk/")
 	require.NoError(t, err)
+	pkgPath, err := filepath.Abs("../../pkg/")
+	require.NoError(t, err)
 
 	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/sdk/v3="+sdkPath)
+	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/pkg/v3="+pkgPath)
 	e.RunCommand("go", "mod", "tidy")
 	e.RunCommand("pulumi", "stack", "init", "runplugin-test")
 	e.RunCommand("pulumi", "stack", "select", "runplugin-test")

@@ -222,7 +222,7 @@ func TestExtensionParameterizedProvider(t *testing.T) {
 			paramCalls = nil
 			paramLock.Unlock()
 
-			hostF := deploytest.NewPluginHostF(nil, nil, ph.program, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, ph.program, nil, nil, loaders...)
 			p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
 
 			next, err := ph.op.RunStep(
@@ -301,7 +301,7 @@ func TestExtensionParameterizedProviderDeleteParameterizesFromState(t *testing.T
 					return nil
 				})
 
-			hostF := deploytest.NewPluginHostF(nil, nil, createResource, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, createResource, nil, nil, loaders...)
 			p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
 			snap, err := lt.TestOp(Update).
 				RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "")
@@ -314,7 +314,7 @@ func TestExtensionParameterizedProviderDeleteParameterizesFromState(t *testing.T
 
 			noProgram := deploytest.NewLanguageRuntimeF(
 				func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error { return nil })
-			hostF2 := deploytest.NewPluginHostF(nil, nil, noProgram, loaders...)
+			hostF2 := deploytest.NewPluginHostF(nil, nil, noProgram, nil, nil, loaders...)
 			p2 := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF2, SkipDisplayTests: true}}
 			_, err = c.deleteOp.
 				RunStep(p2.GetProject(), p2.GetTarget(t, snap), p2.Options, false, p2.BackendClient, nil, "")

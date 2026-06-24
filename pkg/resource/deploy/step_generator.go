@@ -1403,7 +1403,9 @@ func (sg *stepGenerator) continueStepsFromImport(
 				})
 			} else if tresult.Properties != nil {
 				// Emit a nice message so users know what was remediated.
-				sg.deployment.events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
+				sg.deployment.events.OnPolicyRemediation(new.URN, tresult,
+					resource.FromResourcePropertyMap(inputs),
+					resource.FromResourcePropertyMap(tresult.Properties))
 				// Use the transformed inputs rather than the old ones from this point onwards.
 				inputs = tresult.Properties
 				new.Inputs = tresult.Properties

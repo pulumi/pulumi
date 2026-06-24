@@ -377,7 +377,7 @@ func TestRunStackJSON_NonCloud_NilSnapshot(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	err := runStackJSON(t.Context(), newMockStack(nil, nil), &buf, stackArgs{output: "json"})
+	err := runStackJSON(t.Context(), newMockStack(nil, nil), &buf, stackArgs{})
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{

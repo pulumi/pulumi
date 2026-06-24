@@ -2663,7 +2663,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			ReplaceWith:             replaceWith,
 			IgnoreChanges:           ignoreChanges,
 			ReplaceOnChanges:        replaceOnChanges,
-			ReplacementTrigger:      replacementTrigger,
+			ReplacementTrigger:      resource.FromResourcePropertyValue(replacementTrigger),
 			RetainOnDelete:          retainOnDelete,
 			ResourceHooks:           resourceHooks,
 		}

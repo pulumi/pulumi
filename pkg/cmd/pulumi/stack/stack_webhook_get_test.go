@@ -57,11 +57,11 @@ func sampleWebhook() apitype.Webhook {
 	}
 }
 
-func newTestGetCmd(c *mockWebhookGetClient, output string) *stackWebhookGetCmd {
+func newTestGetCmd(c *mockWebhookGetClient, render webhookGetRenderFunc) *stackWebhookGetCmd {
 	return &stackWebhookGetCmd{
 		client:  c,
 		stackID: testStackID,
-		output:  output,
+		render:  render,
 	}
 }
 
@@ -70,7 +70,7 @@ func TestStackWebhookGet_TextOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookGetClient{webhook: sampleWebhook()}
-	err := newTestGetCmd(c, "default").run(t.Context(), &buf, "deploy-hook")
+	err := newTestGetCmd(c, renderWebhookGetText).run(t.Context(), &buf, "deploy-hook")
 	require.NoError(t, err)
 
 	assert.Equal(t, `ID:                deploy-hook
@@ -101,7 +101,7 @@ func TestStackWebhookGet_TextOutput_Minimal(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookGetClient{webhook: wh}
-	err := newTestGetCmd(c, "default").run(t.Context(), &buf, "bare-hook")
+	err := newTestGetCmd(c, renderWebhookGetText).run(t.Context(), &buf, "bare-hook")
 	require.NoError(t, err)
 
 	assert.Equal(t, `ID:                bare-hook
@@ -117,7 +117,7 @@ func TestStackWebhookGet_JSONOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookGetClient{webhook: sampleWebhook()}
-	err := newTestGetCmd(c, "json").run(t.Context(), &buf, "deploy-hook")
+	err := newTestGetCmd(c, renderWebhookGetJSON).run(t.Context(), &buf, "deploy-hook")
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -149,7 +149,7 @@ func TestStackWebhookGet_JSONOutput_NilFields(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookGetClient{webhook: wh}
-	err := newTestGetCmd(c, "json").run(t.Context(), &buf, "bare-hook")
+	err := newTestGetCmd(c, renderWebhookGetJSON).run(t.Context(), &buf, "bare-hook")
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -169,22 +169,12 @@ func TestStackWebhookGet_JSONOutput_NilFields(t *testing.T) {
 	}`, buf.String())
 }
 
-func TestStackWebhookGet_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	c := &mockWebhookGetClient{webhook: sampleWebhook()}
-	err := newTestGetCmd(c, "yaml").run(t.Context(), &buf, "deploy-hook")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid --output value")
-}
-
 func TestStackWebhookGet_ClientError(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
 	c := &mockWebhookGetClient{err: errors.New("not found")}
-	err := newTestGetCmd(c, "default").run(t.Context(), &buf, "no-such")
+	err := newTestGetCmd(c, renderWebhookGetText).run(t.Context(), &buf, "no-such")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "reading stack webhook")
 	assert.Contains(t, err.Error(), "not found")
@@ -195,7 +185,7 @@ func TestStackWebhookGet_WebhookNamePropagation(t *testing.T) {
 
 	c := &mockWebhookGetClient{webhook: sampleWebhook()}
 	var buf bytes.Buffer
-	err := newTestGetCmd(c, "default").run(t.Context(), &buf, "my-hook-name")
+	err := newTestGetCmd(c, renderWebhookGetText).run(t.Context(), &buf, "my-hook-name")
 	require.NoError(t, err)
 	assert.Equal(t, "my-hook-name", c.gotName)
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -172,8 +173,12 @@ func TestProviderFromSource(t *testing.T) {
 		t.Helper()
 		installCtx.t = t
 
+		pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), nil, nil, nil, nil,
+			schema.NewLoaderServerFromContext, nil, nil)
+		require.NoError(t, err)
+		defer func() { require.NoError(t, pluginHost.Close()) }()
 		pctx, err := plugin.NewContext(
-			t.Context(), nil, nil, nil, nil, t.TempDir(), nil, false, nil, schema.NewLoaderServerFromContext, nil, nil)
+			t.Context(), nil, nil, pluginHost, nil, t.TempDir(), nil, false, nil)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, pctx.Close()) }()
 

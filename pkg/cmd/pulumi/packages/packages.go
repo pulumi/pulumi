@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -52,8 +53,8 @@ import (
 )
 
 // BindSpec binds a PackageSpec into a Package, returning any error or error diagnostics encountered.
-func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
-	pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
+func BindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, error) {
+	pkg, diags, err := schema.BindSpec(spec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	if err != nil {
@@ -80,7 +81,7 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 		return nil, nil, nil, fmt.Errorf("failed to get schema: %w", err)
 	}
 
-	pkg, err := BindSpec(*pkgSpec)
+	pkg, err := BindSpec(*pkgSpec, schema.NewPluginLoader(pctx))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to bind schema: %w", err)
 	}
@@ -100,6 +101,7 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 
 	diags, err := GenSDK(
 		pctx.Request(),
+		registry,
 		language,
 		tempOut,
 		pkg,
@@ -153,7 +155,7 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 }
 
 func GenSDK(
-	ctx context.Context, language, out string, pkg *schema.Package, overlays string, local bool,
+	ctx context.Context, reg registry.Registry, language, out string, pkg *schema.Package, overlays string, local bool,
 ) (hcl.Diagnostics, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	_, span := cmdutil.StartSpan(ctx, tracer, "generate-sdk",
@@ -184,10 +186,11 @@ func GenSDK(
 			return nil, err
 		}
 
-		pCtx, err := NewPluginContext(cwd)
+		pCtx, err := NewPluginContext(cwd, reg)
 		if err != nil {
 			return nil, fmt.Errorf("create plugin context: %w", err)
 		}
+		defer contract.IgnoreClose(pCtx.Host)
 		defer contract.IgnoreClose(pCtx)
 		languagePlugin, err := pCtx.Host.LanguageRuntime(pCtx, language)
 		if err != nil {
@@ -331,16 +334,21 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 	return nil
 }
 
-func NewPluginContext(cwd string) (*plugin.Context, error) {
+func NewPluginContext(cwd string, reg registry.Registry) (*plugin.Context, error) {
 	// Helper used by callers without a *cobra.Command writer; emits to
 	// process stderr.
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{ //nolint:forbidigo
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
+	pluginHost, err := pkghost.New(context.TODO(), sink, sink, nil,
+		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(reg))
 	if err != nil {
 		return nil, err
+	}
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+	if err != nil {
+		return nil, errors.Join(err, pluginHost.Close())
 	}
 	return pluginCtx, nil
 }

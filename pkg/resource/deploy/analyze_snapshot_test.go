@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // recordingPolicyEvents records all policy events for later inspection.
@@ -40,8 +41,8 @@ type recordingPolicyEvents struct {
 
 type remediationRecord struct {
 	urn    resource.URN
-	before resource.PropertyMap
-	after  resource.PropertyMap
+	before property.Map
+	after  property.Map
 }
 
 func (r *recordingPolicyEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
@@ -50,7 +51,7 @@ func (r *recordingPolicyEvents) OnPolicyViolation(urn resource.URN, d plugin.Ana
 
 func (r *recordingPolicyEvents) OnPolicyRemediation(
 	urn resource.URN, _ plugin.Remediation,
-	before, after resource.PropertyMap,
+	before, after property.Map,
 ) {
 	r.remediations = append(r.remediations, remediationRecord{urn: urn, before: before, after: after})
 }
@@ -212,11 +213,11 @@ func TestAnalyzeSnapshot_RemediationReportedNotApplied(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
-	original := resource.PropertyMap{"key": resource.NewProperty("bad")}
-	remediated := resource.PropertyMap{"key": resource.NewProperty("good")}
+	original := property.NewMap(map[string]property.Value{"key": property.New("bad")})
+	remediated := property.NewMap(map[string]property.Value{"key": property.New("good")})
 
 	res := makeTestResource(urn)
-	res.Inputs = original
+	res.Inputs = resource.ToResourcePropertyMap(original)
 
 	snap := &deploy.Snapshot{Resources: []*resource.State{res}}
 	events := &recordingPolicyEvents{}
@@ -229,13 +230,13 @@ func TestAnalyzeSnapshot_RemediationReportedNotApplied(t *testing.T) {
 					PolicyName:     "fix-key",
 					PolicyPackName: "test-pack",
 					Description:    "sets key to good",
-					Properties:     remediated,
+					Properties:     resource.ToResourcePropertyMap(remediated),
 				}},
 			}, nil
 		},
 		// Analysis still sees the original properties (remediation was not applied).
 		AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
-			assert.Equal(t, original, r.Properties,
+			assert.Equal(t, original, resource.FromResourcePropertyMap(r.Properties),
 				"analysis should see original properties, not remediated ones")
 			return plugin.AnalyzeResponse{}, nil
 		},

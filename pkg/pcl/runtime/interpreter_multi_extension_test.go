@@ -60,7 +60,7 @@ func (l *multiExtensionRuntimeLoader) LoadPackageV2(
 			Parameter:    []byte(name),
 		},
 	}
-	p, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{})
+	p, diags, err := schema.BindSpec(spec, schema.NewNullLoader(), schema.ValidationOptions{})
 	if err != nil {
 		return nil, err
 	}

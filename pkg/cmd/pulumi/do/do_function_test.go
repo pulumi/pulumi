@@ -1816,8 +1816,14 @@ func TestDoCmdFunctionInvokeWithYAMLInputFile(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
-		return &plugin.MockHost{}, nil
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
+		// `do` forwards to the converter as its TargetLoader.
+		return &plugin.MockHost{
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
+			},
+		}, nil
 	}
 	loadConverter := func(
 		pctx *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -1940,8 +1946,14 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
-		return &plugin.MockHost{}, nil
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
+		// `do` forwards to the converter as its TargetLoader.
+		return &plugin.MockHost{
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
+			},
+		}, nil
 	}
 	subVersion := semver.MustParse("1.2.3")
 	parameterValue := []byte("opaque-parameter-blob")
@@ -2079,8 +2091,14 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
-		return &plugin.MockHost{}, nil
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
+		// `do` forwards to the converter as its TargetLoader.
+		return &plugin.MockHost{
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
+			},
+		}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2164,7 +2182,7 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2222,7 +2240,7 @@ func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2281,7 +2299,7 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2348,7 +2366,7 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
@@ -2487,8 +2505,14 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
-		return &plugin.MockHost{}, nil
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
+		// `do` forwards to the converter as its TargetLoader.
+		return &plugin.MockHost{
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
+			},
+		}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),

@@ -47,6 +47,10 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, skipToJSONWhenRewritingApplies)
 	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
+	// Guard dereferences of conditionally-created resources after applies and
+	// conversions are rewritten, so the guard wraps the (converted) apply rather
+	// than being hoisted inside it, and the `null` fallback is left untouched.
+	expr = pcl.RewriteOptionalResourceGuards(expr)
 	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
 
 	diags = diags.Extend(lowerProxyDiags)
@@ -108,6 +112,23 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	g.Fgenf(w, ": %.v", expr.Body)
 }
 
+// isNoneLiteral reports whether expr is the `null`/`None` literal, so equality
+// comparisons against it can be rendered with Python's identity operators
+// (`is`/`is not`), which read idiomatically and let type checkers narrow.
+func isNoneLiteral(expr model.Expression) bool {
+	switch expr := expr.(type) {
+	case *model.LiteralValueExpression:
+		return expr.Value.IsNull()
+	case *model.ScopeTraversalExpression:
+		if len(expr.Parts) == 1 {
+			if c, ok := expr.Parts[0].(*model.Constant); ok {
+				return c.ConstantValue.IsNull()
+			}
+		}
+	}
+	return false
+}
+
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
 	var opstr string
 	precedence := g.GetPrecedence(expr)
@@ -118,6 +139,9 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 		opstr = "/"
 	case hclsyntax.OpEqual:
 		opstr = "=="
+		if isNoneLiteral(expr.RightOperand) || isNoneLiteral(expr.LeftOperand) {
+			opstr = "is"
+		}
 	case hclsyntax.OpGreaterThan:
 		opstr = ">"
 	case hclsyntax.OpGreaterThanOrEqual:
@@ -136,6 +160,9 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 		opstr = "*"
 	case hclsyntax.OpNotEqual:
 		opstr = "!="
+		if isNoneLiteral(expr.RightOperand) || isNoneLiteral(expr.LeftOperand) {
+			opstr = "is not"
+		}
 	case hclsyntax.OpSubtract:
 		opstr = "-"
 	default:
@@ -485,12 +512,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fprint(w, ")")
 	case pcl.Invoke:
-		if expr.Signature.MultiArgumentInputs {
-			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for function '%v'",
-				expr.Args[0])
-			panic(err)
-		}
-
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 		if module != "" {
@@ -555,14 +576,26 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			})
 		}
 
-		switch arg := expr.Args[1].(type) {
-		case *model.FunctionCallExpression:
-			if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
-				genFuncArgs(argsObject)
+		if expr.Signature.MultiArgumentInputs {
+			// A multi-argument invoke spreads its inputs into positional arguments, ordered by the
+			// schema's multiArgumentInputs list, with None standing in for omitted optional inputs.
+			var invokeArgs *model.ObjectConsExpression
+			if converted, objectArgs, _ := pcl.RecognizeTypedObjectCons(expr.Args[1]); converted {
+				invokeArgs = objectArgs
+			} else {
+				invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
 			}
+			pcl.GenerateMultiArguments(g.Formatter, w, "None", invokeArgs, pcl.SortedFunctionParameters(expr))
+		} else {
+			switch arg := expr.Args[1].(type) {
+			case *model.FunctionCallExpression:
+				if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
+					genFuncArgs(argsObject)
+				}
 
-		case *model.ObjectConsExpression:
-			genFuncArgs(arg)
+			case *model.ObjectConsExpression:
+				genFuncArgs(arg)
+			}
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
@@ -938,6 +971,9 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	}
 
 	rootName := g.nodeName(expr.RootName)
+	if expr.RootName == "range" && g.rangeVariable != "" {
+		rootName = g.rangeVariable
+	}
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
 		for _, configVar := range g.program.ConfigVariables() {

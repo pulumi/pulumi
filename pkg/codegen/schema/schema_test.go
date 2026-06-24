@@ -38,6 +38,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -275,7 +276,7 @@ func TestImportSpec(t *testing.T) {
 	// Read in, decode, and import the schema.
 	pkgSpec := readSchemaFile("random-4.11.2.json")
 
-	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+	pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	if err != nil {
@@ -441,7 +442,7 @@ func TestInvalidTypes(t *testing.T) {
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			_, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			_, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			assert.ErrorContains(t, err, tt.expected)
@@ -458,7 +459,7 @@ func TestEnums(t *testing.T) {
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			if tt.shouldError {
@@ -1630,7 +1631,7 @@ func TestMethods(t *testing.T) {
 
 			// provider-methods-3.json declares the builtin "pulumi" package to exercise method binding on
 			// pulumi:providers:pulumi; allow the reserved name for these fixtures.
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 				AllowPulumiPackage:      true,
 			})
@@ -1656,7 +1657,7 @@ func TestIsOverlay(t *testing.T) {
 
 		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay.json"))
 
-		pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+		pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 			AllowDanglingReferences: true,
 		})
 		if err != nil {
@@ -1699,7 +1700,7 @@ func TestOverlaySupportedLanguages(t *testing.T) {
 
 		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay-supported-languages.json"))
 
-		pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+		pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 			AllowDanglingReferences: true,
 		})
 		if err != nil {
@@ -1776,7 +1777,7 @@ func TestBindingOutputsPopulatesReturnType(t *testing.T) {
 		},
 	}
 
-	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+	pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	if err != nil {
@@ -1858,7 +1859,7 @@ func TestReplaceOnChanges(t *testing.T) {
 			pkgSpec := readSchemaFile(
 				filepath.Join("schema", tt.filePath),
 			)
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			require.NoError(t, err, "Import should be successful")
@@ -2657,9 +2658,12 @@ func debugProvidersHelperContext(t *testing.T) *plugin.Context {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	//nolint:usetesting // plugin.NewContext manages the lifecycle of gRPC providers; t.Context cancels before they shut down
+	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), sink, sink, nil, nil,
+		NewLoaderServerFromContext, nil, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, pluginHost.Close()) })
 	pluginCtx, err := plugin.NewContext(
-		t.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromContext, nil, nil)
+		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
 	require.NoError(t, err)
 	return pluginCtx
 }
@@ -3022,7 +3026,7 @@ func TestFunctionToken(t *testing.T) {
 			}
 
 			// Try to bind the spec
-			pkg, diags, err := BindSpec(spec, nil, ValidationOptions{
+			pkg, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 
@@ -3035,7 +3039,7 @@ func TestFunctionToken(t *testing.T) {
 			require.NotNil(t, newSpec)
 
 			// Try and bind again
-			_, diags, err = BindSpec(*newSpec, nil, ValidationOptions{
+			_, diags, err = BindSpec(*newSpec, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			require.NoError(t, err)
@@ -3067,7 +3071,7 @@ func TestProviderRefWarning(t *testing.T) {
 	}
 
 	// Try to bind the spec
-	_, diags, err := BindSpec(spec, nil, ValidationOptions{
+	_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 
@@ -3127,7 +3131,7 @@ func TestBindExtensionParameterized(t *testing.T) {
 	var pkgSpec PackageSpec
 	require.NoError(t, json.Unmarshal([]byte(schema), &pkgSpec))
 
-	pkg, diags, err := BindSpec(pkgSpec, nil, ValidationOptions{AllowDanglingReferences: true})
+	pkg, diags, err := BindSpec(pkgSpec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 	require.NoError(t, err)
 	require.NotNil(t, pkg.ExtensionParameterization)
 	assert.Nil(t, pkg.Provider)
@@ -3138,7 +3142,7 @@ func TestBindExtensionParameterized(t *testing.T) {
 	require.NotNil(t, newSpec)
 
 	// Bind the round-tripped spec again to confirm the extension parameterization survives.
-	pkg2, diags, err := BindSpec(*newSpec, nil, ValidationOptions{AllowDanglingReferences: true})
+	pkg2, diags, err := BindSpec(*newSpec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 	require.NoError(t, err)
 	require.NotNil(t, pkg2.ExtensionParameterization)
 	assert.Nil(t, pkg2.Provider)
@@ -3160,7 +3164,7 @@ func TestBindSpecRejectsBothParameterizationFlavors(t *testing.T) {
 			Parameter:    []byte("p"),
 		},
 	}
-	_, diags, err := BindSpec(spec, nil, ValidationOptions{})
+	_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{})
 	require.NoError(t, err)
 	require.True(t, diags.HasErrors())
 	var found bool
@@ -3185,7 +3189,7 @@ func TestBindSpecRejectsExtensionWithProvider(t *testing.T) {
 			Parameter:    []byte("p"),
 		},
 	}
-	_, diags, err := BindSpec(spec, nil, ValidationOptions{})
+	_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{})
 	require.NoError(t, err)
 	require.True(t, diags.HasErrors())
 	var found bool
@@ -3269,7 +3273,7 @@ func TestAliasBuildIsLazy(t *testing.T) {
 	t.Run("Package", func(t *testing.T) {
 		t.Parallel()
 
-		pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		pkg, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 
 		_, ok := pkg.GetResource("test:mod:Thing")
@@ -3295,7 +3299,7 @@ func TestAliasBuildIsLazy(t *testing.T) {
 		var partial PartialPackageSpec
 		require.NoError(t, json.Unmarshal(raw, &partial))
 
-		pkg, err := ImportPartialSpec(partial, nil, nil)
+		pkg, err := ImportPartialSpec(partial, nil, NewNullLoader())
 		require.NoError(t, err)
 
 		_, ok, err := pkg.Resources().Get("test:mod:Thing")
@@ -3327,7 +3331,7 @@ func TestGetWithIndexAliases(t *testing.T) {
 		},
 	}
 
-	pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+	pkg, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 	require.NoError(t, err)
 
 	for _, query := range []string{"test:index:Thing", "test::Thing", "test:Thing"} {
@@ -3369,7 +3373,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 	t.Run("Package", func(t *testing.T) {
 		t.Parallel()
 
-		pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		pkg, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 
 		r, ok := pkg.GetResource("test:mod:Thing")
@@ -3397,7 +3401,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 		var partial PartialPackageSpec
 		require.NoError(t, json.Unmarshal(raw, &partial))
 
-		pkg, err := ImportPartialSpec(partial, nil, nil)
+		pkg, err := ImportPartialSpec(partial, nil, NewNullLoader())
 		require.NoError(t, err)
 
 		r, ok, err := pkg.Resources().Get("test:mod:Thing")
@@ -3441,7 +3445,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:thing")
 	})
@@ -3461,7 +3465,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1_v2:a")
 	})
@@ -3482,7 +3486,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 	})
 
@@ -3505,7 +3509,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1:a")
 	})
@@ -3525,7 +3529,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:a")
 	})
@@ -3543,7 +3547,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 	})
 }
@@ -3576,7 +3580,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"foo": {TypeSpec: refSpec("test:index:A")},
 			}, "foo"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Equal(t, hcl.Diagnostics{{
 			Severity: hcl.DiagError,
@@ -3595,7 +3599,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"a": {TypeSpec: refSpec("test:index:A")},
 			}, "a"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Equal(t, hcl.Diagnostics{{
 			Severity: hcl.DiagError,
@@ -3617,7 +3621,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"a": {TypeSpec: refSpec("test:index:A")},
 			}, "a"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Equal(t, hcl.Diagnostics{{
 			Severity: hcl.DiagError,
@@ -3633,7 +3637,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"foo": {TypeSpec: refSpec("test:index:A")},
 			}),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -3648,7 +3652,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				}},
 			}, "foo"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -3663,7 +3667,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				}},
 			}, "foo"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -3677,7 +3681,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				}},
 			}, "foo"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -3696,7 +3700,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"leaf":   {TypeSpec: refSpec("test:index:Leaf")},
 			}, "branch", "leaf"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -3711,7 +3715,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"b": {TypeSpec: refSpec("test:index:B")},
 			}, "b"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Equal(t, hcl.Diagnostics{
 			{
@@ -3737,7 +3741,7 @@ func TestBindSpecReservedPackageNames(t *testing.T) {
 	for _, name := range []string{"pulumi", "input"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, diags, err := BindSpec(PackageSpec{Name: name}, nil, ValidationOptions{})
+			_, diags, err := BindSpec(PackageSpec{Name: name}, NewNullLoader(), ValidationOptions{})
 			require.NoError(t, err)
 			require.True(t, diags.HasErrors(), "expected errors for reserved name %q, got %v", name, diags)
 			found := false
@@ -3755,7 +3759,7 @@ func TestBindSpecReservedPackageNames(t *testing.T) {
 	// Sanity-check: any other name binds without that specific diagnostic.
 	t.Run("non-reserved", func(t *testing.T) {
 		t.Parallel()
-		_, diags, _ := BindSpec(PackageSpec{Name: "aws"}, nil, ValidationOptions{})
+		_, diags, _ := BindSpec(PackageSpec{Name: "aws"}, NewNullLoader(), ValidationOptions{})
 		for _, d := range diags {
 			assert.NotContains(t, d.Summary, "package names 'pulumi' and 'input' are reserved")
 		}
@@ -3897,7 +3901,7 @@ func TestMissingRefErrors(t *testing.T) {
 	}
 
 	// Try to bind the spec
-	_, diags, err := BindSpec(spec, nil, ValidationOptions{})
+	_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{})
 
 	require.NoError(t, err)
 	missingRefError := "reference to resource '/resources/test:index:Missing' not found in package test"
@@ -4002,7 +4006,7 @@ func TestMissingPropertyRefErrors(t *testing.T) {
 		},
 	}
 
-	_, diags, err := BindSpec(spec, nil, ValidationOptions{})
+	_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{})
 	require.NoError(t, err)
 
 	summaries := make([]string, 0, len(diags))

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type SchemaProvider struct {
@@ -82,7 +83,9 @@ func NewContextWithProviders(schemaDirectoryPath string, providers ...SchemaProv
 	host := deploytest.NewPluginHost(nil, nil, nil,
 		pluginLoaders...,
 	)
-	return plugin.NewContextWithHost(context.Background(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(context.Background(), nil, nil, host, "", "", nil)
+	contract.AssertNoErrorf(err, "failed to create schema-only plugin context")
+	return pctx
 }
 
 // NewContext creates a plugin context with a schema-only plugin host, supporting multiple package

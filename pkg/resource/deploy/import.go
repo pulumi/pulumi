@@ -367,10 +367,11 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		urn := i.deployment.generateURN("", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
-		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
+		minputs, err := i.deployment.target.GetPackageConfig(req.Package())
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch provider config: %w", err)
 		}
+		inputs := resource.ToResourcePropertyMap(minputs)
 
 		// Calculate the inputs for the provider using the ambient config.
 		if v := req.Version(); v != nil {

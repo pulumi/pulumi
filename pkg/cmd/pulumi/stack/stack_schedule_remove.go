@@ -21,15 +21,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 type stackScheduleRemoveClient interface {
@@ -61,6 +60,7 @@ func newStackScheduleRemoveCmdWith(factory stackScheduleRemoveClientFactory) *co
 			"  # Remove without confirmation\n" +
 			"  pulumi stack schedule remove bb61b60a-a313-46cb-b4ab-9d42dce46de8 --yes",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			yes = yes || env.SkipConfirmations.Value()
 			if factory == nil {
 				factory = defaultStackScheduleRemoveClientFactory
 			}
@@ -101,14 +101,9 @@ func runStackScheduleRemove(
 ) error {
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	if !yes {
-		if !cmdutil.Interactive() {
-			return backenderr.ErrNonInteractiveRequiresYes
-		}
-		prompt := fmt.Sprintf("This will remove the schedule '%s'!", scheduleID)
-		if !ui.ConfirmPrompt(prompt, "remove", opts) {
-			return result.FprintBailf(w, "confirmation declined")
-		}
+	prompt := fmt.Sprintf("This will remove the schedule '%s'!", scheduleID)
+	if err := ui.ConfirmDeletion(yes, cmdutil.Interactive(), prompt, "remove", w, opts); err != nil {
+		return err
 	}
 
 	c, stackID, err := factory(ctx, stackFlag)

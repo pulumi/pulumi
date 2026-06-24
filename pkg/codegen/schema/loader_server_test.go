@@ -51,7 +51,9 @@ func mockSchemaHost(
 			}, nil
 		},
 	}
-	return plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	require.NoError(t, err)
+	return pctx
 }
 
 func schemaProvider(schemaBytes []byte) *plugin.MockProvider {
@@ -208,7 +210,7 @@ func TestLoaderServerCachedEntryBypassesRawPath(t *testing.T) {
 		Resources: map[string]ResourceSpec{
 			"mypkg:index:Resource": {},
 		},
-	}, nil, ValidationOptions{})
+	}, nil, NewNullLoader(), ValidationOptions{})
 	require.NoError(t, err)
 
 	// A host whose plugin resolution always fails: the cached entry is the only way to serve the schema.
@@ -217,7 +219,8 @@ func TestLoaderServerCachedEntryBypassesRawPath(t *testing.T) {
 			return nil, workspace.NewMissingError(spec, false)
 		},
 	}
-	pctx := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	require.NoError(t, err)
 	loader := NewCachedLoaderWithEntries(
 		NewPluginLoader(pctx),
 		map[string]PackageReference{pkg.Reference().Identity(): pkg.Reference()},

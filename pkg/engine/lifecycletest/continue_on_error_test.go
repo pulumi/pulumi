@@ -73,7 +73,7 @@ func TestDestroyContinueOnError(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -195,7 +195,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -327,7 +327,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -453,7 +453,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -538,7 +538,7 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -623,7 +623,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -692,7 +692,7 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -752,7 +752,7 @@ func TestContinueOnErrorImport(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -837,7 +837,7 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -900,7 +900,7 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 		return nil
 	})
 
-	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, upLoaders...)
 	upOptions := lt.TestUpdateOptions{
 		T: t, HostF: upHostF, UpdateOptions: UpdateOptions{
 			ContinueOnError: true,
@@ -947,7 +947,7 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 
 		return nil
 	})
-	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, replaceLoaders...)
 	replaceOptions := lt.TestUpdateOptions{
 		T: t, HostF: replaceHostF,
 		UpdateOptions: UpdateOptions{

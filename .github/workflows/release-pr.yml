@@ -57,6 +57,7 @@ jobs:
           set -euo pipefail
           git switch --create "automation/release-v${PULUMI_VERSION}"
 
+          python3 scripts/changie-pr-lookup.py
           changie batch "${PULUMI_VERSION}"
           changie merge
 

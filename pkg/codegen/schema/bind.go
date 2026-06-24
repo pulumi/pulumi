@@ -27,7 +27,6 @@ import (
 	"maps"
 	"math"
 	"net/url"
-	"os"
 	"path"
 	"regexp"
 	"slices"
@@ -37,9 +36,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/santhosh-tekuri/jsonschema/v5"
@@ -182,7 +178,6 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	if err != nil {
 		return nil, diags, err
 	}
-	defer contract.IgnoreClose(types)
 
 	diags = diags.Extend(spec.validateTypeTokens())
 
@@ -233,7 +228,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions, types.pkg.TokenToModule))
 
 	// Now we've bound everything we can do a pass over the Descriptions and Comments to check they have valid doc refs.
-	diags = diags.Extend(checkDocRefs(types, spec, options))
+	diags = diags.Extend(checkDocRefs(types, spec))
 
 	pkg := types.pkg
 	pkg.Config = config
@@ -252,13 +247,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		return nil, nil, err
 	}
 	pkg.interpretPulumiRefs = func(description string, resolver PulumiRefResolver) (string, error) {
-		source := []byte(description)
-		parsed := ParseDocs(source)
-		err := interpretPulumiRefs("", types, ValidationOptions{}, parsed, resolver)
-		if err != nil {
-			return "", err
-		}
-		return RenderDocsToString(source, parsed), nil
+		return interpretPulumiRefsInDescription(description, types, resolver)
 	}
 	return pkg, diags, nil
 }
@@ -269,6 +258,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	bindTo PackageReference,
 ) (*types, hcl.Diagnostics, error) {
+	contract.Requiref(loader != nil, "loader", "must not be nil")
 	var diags hcl.Diagnostics
 
 	// Validate that there is a name
@@ -358,29 +348,11 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		ExtensionParameterization: extensionParameterization,
 	}
 
-	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
-	// reference is nil.
-	var loadCtx io.Closer
-	if loader == nil {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, nil, err
-		}
-		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil,
-			NewLoaderServerFromContext, convert.NewMapperServerFromContext, pkgWorkspace.EnsureLanguageInstalled)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		loader, loadCtx = NewPluginLoader(ctx), ctx
-	}
-
 	// Create a type binder.
 	types := &types{
 		pkg:          pkg,
 		spec:         spec,
 		loader:       loader,
-		loadCtx:      loadCtx,
 		typeDefs:     map[string]Type{},
 		functionDefs: map[string]*Function{},
 		resourceDefs: map[string]*Resource{},
@@ -398,7 +370,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	return types, diags, nil
 }
 
-// Options that affect the validation of the packgae schema.
+// Options that affect the validation of the package schema.
 type ValidationOptions struct {
 	// Internal flag set to allow the builtin pulumi package to bind.
 	AllowPulumiPackage      bool
@@ -415,9 +387,10 @@ func BindSpec(spec PackageSpec, loader Loader, options ValidationOptions) (*Pack
 // input against the Pulumi package metaschema. ImportSpec should only be used to load packages that are assumed to be
 // well-formed (e.g. packages referenced for program code generation or by a root package being used for SDK
 // generation). BindSpec should be used to load and validate a package spec prior to generating its SDKs.
-func ImportSpec(spec PackageSpec, languages map[string]Language, options ValidationOptions) (*Package, error) {
-	// Call the internal implementation that includes a loader parameter.
-	pkg, diags, err := bindSpec(spec, languages, nil, false, options)
+func ImportSpec(
+	spec PackageSpec, languages map[string]Language, loader Loader, options ValidationOptions,
+) (*Package, error) {
+	pkg, diags, err := bindSpec(spec, languages, loader, false, options)
 	if err != nil {
 		return nil, err
 	}
@@ -540,10 +513,9 @@ func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, b
 // types facilitates interning (only storing a single reference to an object) during schema processing. The fields
 // correspond to fields in the schema, and are populated during the binding process.
 type types struct {
-	pkg     *Package
-	spec    specSource
-	loader  Loader
-	loadCtx io.Closer
+	pkg    *Package
+	spec   specSource
+	loader Loader
 
 	typeDefs     map[string]Type      // objects and enums
 	functionDefs map[string]*Function // function definitions
@@ -559,13 +531,6 @@ type types struct {
 
 	// A pointer to the package reference that `types` is a part of if it exists.
 	bindToReference PackageReference
-}
-
-func (t *types) Close() error {
-	if t.loadCtx != nil {
-		return t.loadCtx.Close()
-	}
-	return nil
 }
 
 // The package which bound types will link back to.
@@ -1710,7 +1675,7 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 	return typeList, diags, nil
 }
 
-func checkDocRefs(types *types, spec PackageSpec, options ValidationOptions) hcl.Diagnostics {
+func checkDocRefs(types *types, spec PackageSpec) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 	resolver := func(ref DocRef) (string, bool) { return "", false }
 
@@ -1719,7 +1684,7 @@ func checkDocRefs(types *types, spec PackageSpec, options ValidationOptions) hcl
 			return
 		}
 		parsed := ParseDocs([]byte(text))
-		diags = diags.Extend(interpretPulumiRefs(path, types, options, parsed, resolver))
+		diags = diags.Extend(interpretPulumiRefs(path, types, parsed, resolver))
 	}
 
 	checkProperties := func(basePath string, props map[string]PropertySpec) {
