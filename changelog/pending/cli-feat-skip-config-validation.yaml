@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Add `--skip-config-validation` flag to preview, up, refresh, and destroy to skip validation of stack config against the project config schema
+time: 2026-06-24T12:45:00.000000-04:00
