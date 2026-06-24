@@ -1117,7 +1117,7 @@ func (sg *stepGenerator) ContinueStepsFromImport(
 
 	if async {
 		// We only need to validate _real_ steps. If we're returning async work then steps should just be a
-		// DiffStep.
+		// DiffStep or CheckStep.
 		return steps, true, nil
 	}
 
@@ -1193,45 +1193,144 @@ func (sg *stepGenerator) continueStepsFromImport(
 		oldOutputs = old.Outputs
 	}
 
+	continueEvent := &continueCheckResourceEvent{
+		RegisterResourceEvent: event,
+		invalid:               invalid,
+		oldInputs:             oldInputs,
+		oldOutputs:            oldOutputs,
+		recreating:            recreating,
+		wasExternal:           wasExternal,
+		imported:              imported,
+		inputs:                inputs,
+		urn:                   urn,
+		new:                   new,
+		old:                   old,
+		randomSeed:            randomSeed,
+		goal:                  goal,
+		provider:              prov,
+		isTargeted:            isTargeted,
+		autonaming:            autonaming,
+	}
+
+	if prov == nil {
+		// There is no provider to check against (e.g. component resources), continue with the inputs as
+		// they are.
+		return sg.continueStepsFromCheck(ctx, continueEvent)
+	}
+
+	if !isTargeted {
+		// If not targeted, skip the provider check and use the old inputs directly.
+		continueEvent.resp = plugin.CheckResponse{Properties: oldInputs}
+		return sg.continueStepsFromCheck(ctx, continueEvent)
+	}
+
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
-	if prov != nil {
-		var resp plugin.CheckResponse
-
-		checkInputs := prov.Check
-		if !isTargeted {
-			// If not targeted, stub out the provider check and use the old inputs directly.
-			checkInputs = func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
-				return plugin.CheckResponse{Properties: oldInputs}, nil
-			}
+	//
+	// If we are re-creating this resource because it was deleted earlier, the old inputs are now
+	// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
+	// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
+	// targeted for replacement, ignore its old state.
+	var checkReq plugin.CheckRequest
+	if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
+		checkReq = plugin.CheckRequest{
+			URN:           urn,
+			News:          goal.Properties,
+			AllowUnknowns: allowUnknowns,
+			RandomSeed:    randomSeed,
+			Autonaming:    autonaming,
 		}
-
-		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
-		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
-		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
-		// targeted for replacement, ignore its old state.
-		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
-			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
-				URN:           urn,
-				News:          goal.Properties,
-				AllowUnknowns: allowUnknowns,
-				RandomSeed:    randomSeed,
-				Autonaming:    autonaming,
-			})
-		} else {
-			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
-				URN:           urn,
-				Olds:          oldInputs,
-				News:          inputs,
-				AllowUnknowns: allowUnknowns,
-				RandomSeed:    randomSeed,
-				Autonaming:    autonaming,
-			})
+	} else {
+		checkReq = plugin.CheckRequest{
+			URN:           urn,
+			Olds:          oldInputs,
+			News:          inputs,
+			AllowUnknowns: allowUnknowns,
+			RandomSeed:    randomSeed,
+			Autonaming:    autonaming,
 		}
-		inputs = resp.Properties
+	}
 
+	if !sg.deployment.opts.ParallelCheck {
+		// If parallel check isn't enabled just do the check directly.
+		continueEvent.resp, err = prov.Check(ctx, checkReq)
 		if err != nil {
 			return nil, false, err
-		} else if issueCheckErrors(sg.deployment, new, urn, resp.Failures) {
+		}
+		return sg.continueStepsFromCheck(ctx, continueEvent)
+	}
+
+	// Else run the check on the bounded step workers via a CheckStep and continue step generation once
+	// its completion source resolves.
+	pcs := &promise.CompletionSource[plugin.CheckResponse]{}
+	go PanicRecovery(sg.deployment.panicErrs, func() {
+		// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
+		// but a goroutine blocked on Result and then posting to a channel is very cheap.
+		continueEvent.resp, continueEvent.err = pcs.Promise().Result(context.Background())
+		sg.events <- continueEvent
+	})
+	return []Step{NewCheckStep(sg.deployment, pcs, event, prov, old, new, checkReq)}, true, nil
+}
+
+// This function is called by the deployment executor in response to a ContinueResourceCheckEvent. It
+// simply calls into continueStepsFromCheck and then validateSteps to continue the work that
+// GenerateSteps would have done with a synchronous check.
+func (sg *stepGenerator) ContinueStepsFromCheck(
+	ctx context.Context, event ContinueResourceCheckEvent,
+) ([]Step, bool, error) {
+	if err := event.Error(); err != nil {
+		if errors.Is(err, errSkippedCheck) {
+			// The CheckStep was skipped (e.g. a dependency errored and --continue-on-error is set). The
+			// registration has already been completed as skipped, there is nothing further to do.
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+
+	steps, async, err := sg.continueStepsFromCheck(ctx, event)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if async {
+		// We only need to validate _real_ steps. If we're returning async work then steps should just be a
+		// DiffStep.
+		return steps, true, nil
+	}
+
+	steps, err = sg.validateSteps(steps)
+	return steps, false, err
+}
+
+func (sg *stepGenerator) continueStepsFromCheck(
+	ctx context.Context, event ContinueResourceCheckEvent,
+) ([]Step, bool, error) {
+	invalid := event.Invalid()
+	recreating := event.Recreating()
+	wasExternal := event.WasExternal()
+	imported := event.Imported()
+	oldInputs := event.OldInputs()
+	oldOutputs := event.OldOutputs()
+	inputs := event.Inputs()
+	urn := event.URN()
+	old := event.Old()
+	new := event.New()
+	randomSeed := event.RandomSeed()
+	goal := event.Goal()
+	isTargeted := event.IsTargeted()
+	autonaming := event.Autonaming()
+	prov := event.Provider()
+
+	// A step generation that ran while this resource's check was in flight may have marked this
+	// resource deleted (due to a dependent delete-before-replace); pick that up just as a synchronous
+	// check would have seen it.
+	recreating = recreating || sg.deletes[urn]
+
+	// Process the result of the provider check (if any) here on the event loop, so that resource state
+	// is never mutated from the goroutine that waits on a CheckStep.
+	if prov != nil {
+		resp := event.CheckResponse()
+		inputs = resp.Properties
+		if issueCheckErrors(sg.deployment, new, urn, resp.Failures) {
 			invalid = true
 		}
 		new.Inputs = inputs

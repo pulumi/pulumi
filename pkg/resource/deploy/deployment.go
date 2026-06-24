@@ -67,6 +67,8 @@ type BackendClient interface {
 type Options struct {
 	// true if the step generator should calculate diffs in parallel via DiffSteps.
 	ParallelDiff bool
+	// true if the step generator should run provider checks in parallel via CheckSteps.
+	ParallelCheck bool
 	// true if the process is a dry run (that is, won't make any changes), such as
 	// during a preview action or when previewing another action like refresh or
 	// destroy.

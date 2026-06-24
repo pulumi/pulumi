@@ -215,3 +215,71 @@ func (g *continueResourceImportEvent) RandomSeed() []byte {
 func (g *continueResourceImportEvent) IsImported() bool {
 	return g.isImported
 }
+
+// ContinueResourceCheckEvent is an event that asks the engine to continue step generation for a
+// resource whose provider Check call has completed.
+type ContinueResourceCheckEvent interface {
+	RegisterResourceEvent
+	Invalid() bool
+	Recreating() bool
+	WasExternal() bool
+	Imported() bool
+	OldInputs() resource.PropertyMap
+	OldOutputs() resource.PropertyMap
+	Inputs() resource.PropertyMap
+	URN() resource.URN
+	New() *resource.State
+	Old() *resource.State
+	RandomSeed() []byte
+	Goal() *resource.Goal
+	Provider() plugin.Provider
+	IsTargeted() bool
+	Autonaming() *plugin.AutonamingOptions
+
+	// CheckResponse is the response from the provider Check call. Only valid when Provider is
+	// non-nil and Error is nil.
+	CheckResponse() plugin.CheckResponse
+	Error() error
+}
+
+type continueCheckResourceEvent struct {
+	RegisterResourceEvent
+	invalid     bool
+	recreating  bool
+	wasExternal bool
+	imported    bool
+	oldInputs   resource.PropertyMap
+	oldOutputs  resource.PropertyMap
+	inputs      resource.PropertyMap
+	urn         resource.URN
+	new         *resource.State
+	old         *resource.State
+	randomSeed  []byte
+	goal        *resource.Goal
+	provider    plugin.Provider
+	isTargeted  bool
+	autonaming  *plugin.AutonamingOptions
+
+	resp plugin.CheckResponse
+	err  error
+}
+
+var _ ContinueResourceCheckEvent = (*continueCheckResourceEvent)(nil)
+
+func (e *continueCheckResourceEvent) Invalid() bool                         { return e.invalid }
+func (e *continueCheckResourceEvent) Recreating() bool                      { return e.recreating }
+func (e *continueCheckResourceEvent) WasExternal() bool                     { return e.wasExternal }
+func (e *continueCheckResourceEvent) Imported() bool                        { return e.imported }
+func (e *continueCheckResourceEvent) OldInputs() resource.PropertyMap       { return e.oldInputs }
+func (e *continueCheckResourceEvent) OldOutputs() resource.PropertyMap      { return e.oldOutputs }
+func (e *continueCheckResourceEvent) Inputs() resource.PropertyMap          { return e.inputs }
+func (e *continueCheckResourceEvent) URN() resource.URN                     { return e.urn }
+func (e *continueCheckResourceEvent) New() *resource.State                  { return e.new }
+func (e *continueCheckResourceEvent) Old() *resource.State                  { return e.old }
+func (e *continueCheckResourceEvent) RandomSeed() []byte                    { return e.randomSeed }
+func (e *continueCheckResourceEvent) Goal() *resource.Goal                  { return e.goal }
+func (e *continueCheckResourceEvent) Provider() plugin.Provider             { return e.provider }
+func (e *continueCheckResourceEvent) IsTargeted() bool                      { return e.isTargeted }
+func (e *continueCheckResourceEvent) Autonaming() *plugin.AutonamingOptions { return e.autonaming }
+func (e *continueCheckResourceEvent) CheckResponse() plugin.CheckResponse   { return e.resp }
+func (e *continueCheckResourceEvent) Error() error                          { return e.err }

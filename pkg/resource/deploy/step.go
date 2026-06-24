@@ -2066,6 +2066,7 @@ const (
 	OpImport               display.StepOp = "import"                 // import an existing resource.
 	OpImportReplacement    display.StepOp = "import-replacement"     // replace an existing resource
 	OpDiff                 display.StepOp = "diff"                   // diffing a resource
+	OpCheck                display.StepOp = "check"                  // checking a resource
 	// with an imported resource.
 )
 
@@ -2087,6 +2088,7 @@ var StepOps = []display.StepOp{
 	OpImport,
 	OpImportReplacement,
 	OpDiff,
+	OpCheck,
 }
 
 func IsReplacementStep(op display.StepOp) bool {
@@ -2328,6 +2330,78 @@ func (s *DiffStep) Fail() {
 
 func (s *DiffStep) Skip() {
 	s.pcs.Reject(errors.New("skipped diff resource"))
+}
+
+// errSkippedCheck is the error a CheckStep rejects its completion source with when the step is
+// skipped (e.g. because a dependency errored and --continue-on-error is set). The check continuation
+// treats it as "nothing further to do" rather than a deployment error.
+var errSkippedCheck = errors.New("skipped check resource")
+
+// CheckStep isn't really a step like a normal step. It's just a way to get access to the parallel but bounded step
+// workers. We use this step to call `provider.Check` in parallel with other steps.
+type CheckStep struct {
+	deployment *Deployment                                     // the deployment that produced this check
+	pcs        *promise.CompletionSource[plugin.CheckResponse] // the completion source for this check
+	reg        RegisterResourceEvent                           // the registration intent to convey a URN back to.
+	provider   plugin.Provider                                 // the provider to call Check on
+	old        *resource.State                                 // the old resource state, if any
+	new        *resource.State                                 // the new resource state
+	req        plugin.CheckRequest                             // the request to send to the provider
+}
+
+func NewCheckStep(
+	deployment *Deployment, pcs *promise.CompletionSource[plugin.CheckResponse], reg RegisterResourceEvent,
+	provider plugin.Provider, old, new *resource.State, req plugin.CheckRequest,
+) Step {
+	return &CheckStep{
+		deployment: deployment,
+		pcs:        pcs,
+		reg:        reg,
+		provider:   provider,
+		old:        old,
+		new:        new,
+		req:        req,
+	}
+}
+
+func (s *CheckStep) Op() display.StepOp {
+	return OpCheck
+}
+
+func (s *CheckStep) Deployment() *Deployment { return s.deployment }
+func (s *CheckStep) Type() tokens.Type       { return s.new.Type }
+func (s *CheckStep) Provider() string        { return s.new.Provider }
+func (s *CheckStep) URN() resource.URN       { return s.new.URN }
+func (s *CheckStep) Old() *resource.State    { return s.old }
+func (s *CheckStep) New() *resource.State    { return s.new }
+func (s *CheckStep) Res() *resource.State    { return s.new }
+func (s *CheckStep) Logical() bool           { return true }
+
+func (s *CheckStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	// CheckStep is a special step in that we're just using it as a way to get access to the parallel step
+	// workers. We don't actually want it to participate in the rest of what normally happens for step
+	// execution. As such we never actually return an error here, we just reject the completion source in an
+	// error case instead. The step generator will pick that error up and turn it into a stepgen error.
+
+	resp, err := s.provider.Check(context.TODO(), s.req)
+	if err != nil {
+		s.pcs.Reject(err)
+		return resource.StatusOK, nil, nil
+	}
+	s.pcs.Fulfill(resp)
+
+	return resource.StatusOK, nil, nil
+}
+
+func (s *CheckStep) Fail() {
+	s.pcs.Reject(errors.New("failed check resource"))
+}
+
+func (s *CheckStep) Skip() {
+	// Complete the registration as skipped so the program sees a SKIP result, then reject the
+	// completion source so the waiting continuation cleans up without failing the deployment.
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	s.pcs.Reject(errSkippedCheck)
 }
 
 // ViewStep isn't like a normal step. It's a virtual step for a view resource. The step itself

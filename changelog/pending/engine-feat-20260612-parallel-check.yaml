@@ -1,0 +1,4 @@
+component: engine
+kind: feat
+body: Add opt-in support for running provider `Check` calls in parallel via the `PULUMI_PARALLEL_CHECK` environment variable
+time: 2026-06-12T00:00:00.000000+02:00
