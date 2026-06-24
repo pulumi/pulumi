@@ -92,13 +92,39 @@ func TestInitializeNegotiatesAndCapturesCapabilities(t *testing.T) {
 	assert.True(t, caps.Terminal)
 }
 
-func TestAuthenticateAcknowledges(t *testing.T) {
+func TestAuthenticateAcknowledgesWhenLoggedIn(t *testing.T) {
+	t.Parallel()
+
+	agent := NewAgent("v3.0.0")
+	agent.SetDelegate(&fakeDelegate{}) // authErr nil: a Pulumi Cloud session exists.
+	client := newTestPeers(t, agent)
+
+	err := client.Call(t.Context(), "authenticate", AuthenticateParams{MethodID: authMethodPulumiLogin}, nil)
+	require.NoError(t, err)
+}
+
+func TestAuthenticateAuthRequiredMapsToCode(t *testing.T) {
+	t.Parallel()
+
+	agent := NewAgent("v3.0.0")
+	agent.SetDelegate(&fakeDelegate{authErr: ErrAuthRequired})
+	client := newTestPeers(t, agent)
+
+	err := client.Call(t.Context(), "authenticate", AuthenticateParams{MethodID: authMethodPulumiLogin}, nil)
+	var rpcErr *jsonrpc2.Error
+	require.ErrorAs(t, err, &rpcErr)
+	assert.EqualValues(t, codeAuthRequired, rpcErr.Code)
+}
+
+func TestAuthenticateWithoutDelegateIsNotImplemented(t *testing.T) {
 	t.Parallel()
 
 	client := newTestPeers(t, NewAgent("v3.0.0"))
 
 	err := client.Call(t.Context(), "authenticate", AuthenticateParams{MethodID: authMethodPulumiLogin}, nil)
-	require.NoError(t, err)
+	var rpcErr *jsonrpc2.Error
+	require.ErrorAs(t, err, &rpcErr)
+	assert.EqualValues(t, jsonrpc2.CodeInternalError, rpcErr.Code)
 }
 
 func TestUnknownMethodIsMethodNotFound(t *testing.T) {
@@ -126,6 +152,7 @@ func TestCallerWiredBySetup(t *testing.T) {
 type fakeDelegate struct {
 	result       NewSessionResult
 	err          error
+	authErr      error
 	gotParams    NewSessionParams
 	gotCaps      ClientCapabilities
 	gotClient    Client
@@ -137,6 +164,8 @@ type fakeDelegate struct {
 	configErr    error
 	gotConfig    SetConfigOptionParams
 }
+
+func (f *fakeDelegate) CheckAuth(context.Context) error { return f.authErr }
 
 func (f *fakeDelegate) NewSession(
 	_ context.Context, params NewSessionParams, caps ClientCapabilities, client Client,
@@ -194,6 +223,8 @@ type readingDelegate struct {
 	readPath  string
 	gotResult string
 }
+
+func (d *readingDelegate) CheckAuth(context.Context) error { return nil }
 
 func (d *readingDelegate) NewSession(
 	_ context.Context, _ NewSessionParams, _ ClientCapabilities, client Client,

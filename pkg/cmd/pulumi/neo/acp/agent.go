@@ -37,6 +37,13 @@ const codeAuthRequired int64 = -32000
 // Session event loop, keeping this package free of Pulumi dependencies. A nil
 // Delegate makes the session methods report "not implemented".
 type Delegate interface {
+	// CheckAuth reports whether a usable Pulumi Cloud session is available from
+	// the existing CLI credentials, returning ErrAuthRequired when none is. It
+	// never prompts. The agent calls it from the `authenticate` handler so the
+	// editor learns at that point whether the user still needs to run
+	// `pulumi login`, rather than only when the first session is created.
+	CheckAuth(ctx context.Context) error
+
 	// NewSession resolves Pulumi Cloud auth from existing CLI credentials and
 	// the org/stack target for a session rooted at params.Cwd, builds the
 	// session's tool handlers — routing filesystem writes through client (as an
@@ -166,13 +173,25 @@ func (a *Agent) initialize(req *jsonrpc2.Request) (any, error) {
 }
 
 // authenticate handles the `authenticate` request. Interactive browser login
-// cannot run over the stdio JSON-RPC channel, so the real Pulumi Cloud session
-// check is performed by the Delegate when the first session is created (it
-// returns ErrAuthRequired when no CLI login is present); here we only
-// acknowledge the chosen method. Returns null on success.
-func (a *Agent) authenticate(_ context.Context, req *jsonrpc2.Request) (any, error) {
+// cannot run over the stdio JSON-RPC channel, so authenticate cannot perform a
+// login itself; instead it verifies via the Delegate that a Pulumi Cloud session
+// already exists (from a prior `pulumi login`), mapping its absence to the ACP
+// "Authentication required" error so the editor can tell the user to run
+// `pulumi login` at the point it asked. session/new performs the same check, so
+// auth stays gated even if credentials lapse between calls. Returns null on
+// success.
+func (a *Agent) authenticate(ctx context.Context, req *jsonrpc2.Request) (any, error) {
 	if _, err := decodeParams[AuthenticateParams](req); err != nil {
 		return nil, err
+	}
+	a.mu.Lock()
+	d := a.delegate
+	a.mu.Unlock()
+	if d == nil {
+		return nil, errNotImplemented("authenticate")
+	}
+	if err := d.CheckAuth(ctx); err != nil {
+		return nil, mapDelegateErr(err)
 	}
 	return nil, nil
 }
@@ -185,6 +204,16 @@ func errNotImplemented(method string) error {
 		Code:    jsonrpc2.CodeInternalError,
 		Message: method + " is not implemented yet",
 	}
+}
+
+// mapDelegateErr converts a Delegate error into the response the editor should
+// see, translating ErrAuthRequired to the ACP "Authentication required" code so
+// the editor can prompt for login. Other errors pass through unchanged.
+func mapDelegateErr(err error) error {
+	if errors.Is(err, ErrAuthRequired) {
+		return &jsonrpc2.Error{Code: codeAuthRequired, Message: err.Error()}
+	}
+	return err
 }
 
 func (a *Agent) newSession(ctx context.Context, req *jsonrpc2.Request) (any, error) {
@@ -200,10 +229,7 @@ func (a *Agent) newSession(ctx context.Context, req *jsonrpc2.Request) (any, err
 	}
 	res, err := d.NewSession(ctx, params, caps, client)
 	if err != nil {
-		if errors.Is(err, ErrAuthRequired) {
-			return nil, &jsonrpc2.Error{Code: codeAuthRequired, Message: err.Error()}
-		}
-		return nil, err
+		return nil, mapDelegateErr(err)
 	}
 	return res, nil
 }

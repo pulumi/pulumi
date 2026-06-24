@@ -26,6 +26,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
@@ -81,6 +82,35 @@ type acpDelegate struct {
 	sessions map[string]*acpSession
 }
 
+// currentBackend resolves the Pulumi Cloud backend from the stored CLI
+// credentials, returning acp.ErrAuthRequired when the user is not logged in. It
+// never prompts, so it is safe to call on the JSON-RPC channel. The project (if
+// any) is returned alongside so callers needing it for target resolution don't
+// re-read it.
+func (d *acpDelegate) currentBackend(ctx context.Context) (backend.Backend, *workspace.Project, error) {
+	project, _, err := d.ws.ReadProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, nil, err
+	}
+	// NonInteractiveCurrentBackend uses the stored CLI credentials and never
+	// prompts, so it returns a nil backend when the user is not logged in.
+	be, err := cmdBackend.NonInteractiveCurrentBackend(ctx, d.ws, cmdBackend.DefaultLoginManager, project)
+	if err != nil {
+		return nil, nil, err
+	}
+	if be == nil {
+		return nil, nil, acp.ErrAuthRequired
+	}
+	return be, project, nil
+}
+
+// CheckAuth reports whether a usable Pulumi Cloud session exists. See
+// acp.Delegate; the agent calls it from the `authenticate` handler.
+func (d *acpDelegate) CheckAuth(ctx context.Context) error {
+	_, _, err := d.currentBackend(ctx)
+	return err
+}
+
 // NewSession resolves CLI auth and the task target, builds the session's tool
 // handlers, registers the session, and returns its id. See acp.Delegate.
 func (d *acpDelegate) NewSession(
@@ -95,19 +125,9 @@ func (d *acpDelegate) NewSession(
 		}
 	}
 
-	project, _, err := d.ws.ReadProject()
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return acp.NewSessionResult{}, err
-	}
-
-	// NonInteractiveCurrentBackend uses the stored CLI credentials and never
-	// prompts, so it returns a nil backend when the user is not logged in.
-	be, err := cmdBackend.NonInteractiveCurrentBackend(ctx, d.ws, cmdBackend.DefaultLoginManager, project)
+	be, project, err := d.currentBackend(ctx)
 	if err != nil {
 		return acp.NewSessionResult{}, err
-	}
-	if be == nil {
-		return acp.NewSessionResult{}, acp.ErrAuthRequired
 	}
 	cloudBe, ok := be.(httpstate.Backend)
 	if !ok {
