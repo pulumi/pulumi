@@ -51,6 +51,7 @@ import (
 
 func NewRefreshCmd() *cobra.Command {
 	var runProgram bool
+	var skipConfigValidation bool
 	var debug bool
 	var expectNop bool
 	var message string
@@ -244,16 +245,22 @@ func NewRefreshCmd() *cobra.Command {
 			encrypter := sm.Encrypter()
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
-				ctx,
-				stackName,
-				proj,
-				cfg.Environment,
-				cfg.Config,
-				encrypter,
-				decrypter)
-			if configErr != nil {
-				return fmt.Errorf("validating stack config: %w", configErr)
+			// Skip config validation when the program is not being run (the default for refresh),
+			// or when explicitly requested via --skip-config-validation. This allows stacks with
+			// missing or invalid config to be refreshed in scenarios such as ephemeral PR environments
+			// where config may diverge between branches.
+			if runProgram && !skipConfigValidation {
+				configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+					ctx,
+					stackName,
+					proj,
+					cfg.Environment,
+					cfg.Config,
+					encrypter,
+					decrypter)
+				if configErr != nil {
+					return fmt.Errorf("validating stack config: %w", configErr)
+				}
 			}
 
 			if skipPendingCreates && clearPendingCreates {
@@ -366,6 +373,10 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to refresh resources")
+	cmd.PersistentFlags().BoolVar(
+		&skipConfigValidation, "skip-config-validation", env.SkipConfigValidation.Value(),
+		"Skip validation of stack config values against the project config schema. "+
+			"Config validation is skipped automatically when --run-program is not set.")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,

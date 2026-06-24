@@ -144,6 +144,10 @@ var ParallelDiff = env.Bool("PARALLEL_DIFF",
 var RunProgram = env.Bool("RUN_PROGRAM",
 	"Run the Pulumi program for refresh and destroy operations. This is the same as passing --run-program=true.")
 
+var SkipConfigValidation = env.Bool("SKIP_CONFIG_VALIDATION",
+	"Skip validation of stack config values against the project config schema. "+
+		"This is the same as passing --skip-config-validation=true.")
+
 // List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
 // be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`
 //
