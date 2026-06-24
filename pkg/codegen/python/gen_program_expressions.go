@@ -949,6 +949,9 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	}
 
 	rootName := g.nodeName(expr.RootName)
+	if expr.RootName == "range" && g.rangeVariable != "" {
+		rootName = g.rangeVariable
+	}
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
 		for _, configVar := range g.program.ConfigVariables() {
