@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -42,12 +43,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type stackSummariesRenderFunc func(
+	w io.Writer, b backend.Backend, currentStack string, stackSummaries []backend.StackSummary,
+) error
+
 func newStackListCmd() *cobra.Command {
-	var jsonOut bool
 	var allStacks bool
 	var orgFilter string
 	var projFilter string
 	var tagFilter string
+
+	output := outputflag.OutputFlag[stackSummariesRenderFunc]{
+		RenderForTerminal: formatStackSummariesConsole,
+		RenderJSON: func(
+			w io.Writer, b backend.Backend, currentStack string, stackSummaries []backend.StackSummary,
+		) error {
+			return formatStackSummariesJSON(b, currentStack, stackSummaries, w)
+		},
+	}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -65,12 +78,12 @@ func newStackListCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			cmdArgs := stackLSArgs{
-				jsonOut:    jsonOut,
-				allStacks:  allStacks,
-				orgFilter:  orgFilter,
-				projFilter: projFilter,
-				tagFilter:  tagFilter,
-				stdout:     cmd.OutOrStdout(),
+				renderOutput: output.Get(),
+				allStacks:    allStacks,
+				orgFilter:    orgFilter,
+				projFilter:   projFilter,
+				tagFilter:    tagFilter,
+				stdout:       cmd.OutOrStdout(),
 			}
 			return runStackLS(ctx, cmdArgs)
 		},
@@ -78,8 +91,7 @@ func newStackListCmd() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 
 	cmd.PersistentFlags().BoolVarP(
 		&allStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
@@ -95,17 +107,20 @@ func newStackListCmd() *cobra.Command {
 }
 
 type stackLSArgs struct {
-	jsonOut    bool
-	allStacks  bool
-	orgFilter  string
-	projFilter string
-	tagFilter  string
-	stdout     io.Writer
+	renderOutput stackSummariesRenderFunc
+	allStacks    bool
+	orgFilter    string
+	projFilter   string
+	tagFilter    string
+	stdout       io.Writer
 }
 
 func runStackLS(ctx context.Context, args stackLSArgs) error {
 	if args.stdout == nil {
 		args.stdout = io.Discard
+	}
+	if args.renderOutput == nil {
+		args.renderOutput = formatStackSummariesConsole
 	}
 	// Build up the stack filters. We do not support accepting empty strings as filters
 	// from command-line arguments, though the API technically supports it.
@@ -195,11 +210,7 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 		return allStackSummaries[i].Name().String() < allStackSummaries[j].Name().String()
 	})
 
-	if args.jsonOut {
-		return formatStackSummariesJSON(b, current, allStackSummaries, args.stdout)
-	}
-
-	return formatStackSummariesConsole(args.stdout, b, current, allStackSummaries)
+	return args.renderOutput(args.stdout, b, current, allStackSummaries)
 }
 
 // parseTagFilter parses a tag filter into its separate name and value parts, separatedby an equal sign.
