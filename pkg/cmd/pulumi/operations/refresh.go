@@ -374,7 +374,7 @@ func NewRefreshCmd() *cobra.Command {
 		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to refresh resources")
 	cmd.PersistentFlags().BoolVar(
-		&skipConfigValidation, "skip-config-validation", env.SkipConfigValidation.Value(),
+		&skipConfigValidation, "skip-config-validation", false,
 		"Skip validation of stack config values against the project config schema. "+
 			"Config validation is skipped automatically when --run-program is not set.")
 

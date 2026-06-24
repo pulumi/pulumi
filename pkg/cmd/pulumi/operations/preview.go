@@ -737,7 +737,7 @@ func NewPreviewCmd() *cobra.Command {
 		"Run the program to determine up-to-date state for providers to refresh resources,"+
 			" this only applies if --refresh is set")
 	cmd.PersistentFlags().BoolVar(
-		&skipConfigValidation, "skip-config-validation", env.SkipConfigValidation.Value(),
+		&skipConfigValidation, "skip-config-validation", false,
 		"Skip validation of stack config values against the project config schema")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,

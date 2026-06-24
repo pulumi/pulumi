@@ -1865,8 +1865,8 @@ func TestSkipConfigValidation(t *testing.T) {
 	// run for refresh and destroy. The program runs but does not read the missing key.
 	e.RunCommand("pulumi", "refresh", "--run-program", "--skip-config-validation", "--yes")
 
-	// The PULUMI_SKIP_CONFIG_VALIDATION env var is equivalent to the flag.
-	e.Env = append(e.Env, "PULUMI_SKIP_CONFIG_VALIDATION=true")
+	// The flag is also exposed automatically as an env var (PULUMI_OPTION_<FLAG>).
+	e.Env = append(e.Env, "PULUMI_OPTION_SKIP_CONFIG_VALIDATION=true")
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	e.Env = e.Env[:len(e.Env)-1]
 
