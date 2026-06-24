@@ -275,17 +275,25 @@ func NewDestroyCmd() *cobra.Command {
 			// or when explicitly requested via --skip-config-validation. This allows stacks with
 			// missing or invalid config to be destroyed in scenarios such as ephemeral PR environments
 			// where config may diverge between branches.
-			if runProgram && !skipConfigValidation {
-				configError := workspace.ValidateStackConfigAndApplyProjectConfig(
-					ctx,
-					stackName,
-					proj,
-					cfg.Environment,
-					cfg.Config,
-					encrypter,
-					decrypter)
-				if configError != nil {
-					return fmt.Errorf("validating stack config: %w", configError)
+			if runProgram {
+				if skipConfigValidation {
+					// Still apply project config defaults onto the stack config, but skip validation.
+					if configError := workspace.ApplyProjectConfigWithoutValidation(
+						ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configError != nil {
+						return fmt.Errorf("applying stack config: %w", configError)
+					}
+				} else {
+					configError := workspace.ValidateStackConfigAndApplyProjectConfig(
+						ctx,
+						stackName,
+						proj,
+						cfg.Environment,
+						cfg.Config,
+						encrypter,
+						decrypter)
+					if configError != nil {
+						return fmt.Errorf("validating stack config: %w", configError)
+					}
 				}
 			}
 

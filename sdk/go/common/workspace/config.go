@@ -255,6 +255,7 @@ func mergeConfig(
 	stackConfig config.Map,
 	encrypter config.Encrypter,
 	decrypter config.Decrypter,
+	requireKeys bool,
 	validate bool,
 ) error {
 	projectName := project.Name.String()
@@ -343,7 +344,7 @@ func mergeConfig(
 		}
 	}
 
-	if len(missingConfigurationKeys) > 0 {
+	if requireKeys && len(missingConfigurationKeys) > 0 {
 		// there are missing configuration keys in the stack
 		// return them as a single error.
 		return missingStackConfigurationKeysError(missingConfigurationKeys, stackName)
@@ -369,7 +370,24 @@ func ValidateStackConfigAndApplyProjectConfig(
 	encrypter config.Encrypter,
 	decrypter config.Decrypter,
 ) error {
-	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, decrypter, true)
+	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, decrypter, true, true)
+}
+
+// ApplyProjectConfigWithoutValidation applies the project configuration onto the stack configuration
+// exactly like ValidateStackConfigAndApplyProjectConfig, but without validating the merged config:
+// it neither errors on missing required keys nor type-checks stack values against the project schema.
+// This is used by operations run with --skip-config-validation, where project defaults still need to
+// be applied even though config validation is intentionally skipped.
+func ApplyProjectConfigWithoutValidation(
+	ctx context.Context,
+	stackName string,
+	project *Project,
+	stackEnv esc.Value,
+	stackConfig config.Map,
+	encrypter config.Encrypter,
+	decrypter config.Decrypter,
+) error {
+	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, decrypter, false, false)
 }
 
 // ApplyConfigDefaults applies the default values for the project configuration onto the stack configuration
@@ -384,5 +402,5 @@ func ApplyProjectConfig(
 	stackConfig config.Map,
 	encrypter config.Encrypter,
 ) error {
-	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, nil, false)
+	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, nil, true, false)
 }

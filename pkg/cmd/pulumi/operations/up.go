@@ -193,7 +193,13 @@ func NewUpCmd() *cobra.Command {
 		encrypter := sm.Encrypter()
 
 		stackName := s.Ref().Name().String()
-		if !skipConfigValidation {
+		if skipConfigValidation {
+			// Still apply project config defaults onto the stack config, but skip validation.
+			if configErr := workspace.ApplyProjectConfigWithoutValidation(
+				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+				return fmt.Errorf("applying stack config: %w", configErr)
+			}
+		} else {
 			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
@@ -482,7 +488,13 @@ func NewUpCmd() *cobra.Command {
 		encrypter := sm.Encrypter()
 
 		stackName := s.Ref().String()
-		if !skipConfigValidation {
+		if skipConfigValidation {
+			// Still apply project config defaults onto the stack config, but skip validation.
+			if configErr := workspace.ApplyProjectConfigWithoutValidation(
+				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+				return fmt.Errorf("applying stack config: %w", configErr)
+			}
+		} else {
 			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
