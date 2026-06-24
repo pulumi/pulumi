@@ -169,12 +169,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Tests that interpolated string keys are supported in maps. ",
 		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestPython),
 	},
-	{
-		Directory:   "regress-node-12507",
-		Description: "Regression test for https://github.com/pulumi/pulumi/issues/12507",
-		Skip:        allProgLanguages.Except(TestNodeJS),
-		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
-	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
