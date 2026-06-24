@@ -54,6 +54,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
@@ -988,15 +989,7 @@ func (pt *ProgramTester) getYarnBin() (string, error) {
 // useNpm reports whether Node.js dependencies should be installed with npm instead of the default yarn. npm is
 // opt-in per-test via ProgramTestOptions.UseNpm, or globally via the PULUMI_TEST_USE_NPM environment variable.
 func (pt *ProgramTester) useNpm() bool {
-	if pt.opts.UseNpm {
-		return true
-	}
-	switch strings.ToLower(os.Getenv("PULUMI_TEST_USE_NPM")) {
-	case "1", "true", "yes", "on":
-		return true
-	default:
-		return false
-	}
+	return pt.opts.UseNpm || cmdutil.IsTruthy(os.Getenv("PULUMI_TEST_USE_NPM"))
 }
 
 func (pt *ProgramTester) getBunBin() (string, error) {
