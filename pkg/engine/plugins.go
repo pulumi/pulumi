@@ -691,16 +691,26 @@ func installPlugin(
 	return nil
 }
 
-// samePluginSource reports whether two PackageDescriptors refer to the same
-// underlying plugin (matching binary Name and matching parameterization
-// origin). Two descriptors that differ only in version are the same source;
-// two descriptors with different plugin Names (for example, a native
-// "scaleway" provider and a "terraform-provider" bridge parameterized as
-// "scaleway") are not.
-func samePluginSource(a, b workspace.PackageDescriptor) bool {
+// samePackage reports whether two descriptors resolve to the same package: the
+// same plugin binary and the same parameterization, if any. A bridge
+// parameterized as "scaleway" and a native "scaleway" provider are different
+// packages, and so are a plain "aws" plugin and an extension layered on it.
+func samePackage(a, b workspace.PackageDescriptor) bool {
+	replacementName := func(pd workspace.PackageDescriptor) string {
+		if pd.Parameterization == nil {
+			return ""
+		}
+		return pd.Parameterization.Name
+	}
+	extensionName := func(pd workspace.PackageDescriptor) string {
+		if pd.ExtensionParameterization == nil {
+			return ""
+		}
+		return pd.ExtensionParameterization.Name
+	}
 	return a.Name == b.Name &&
-		(a.Parameterization == nil) == (b.Parameterization == nil) &&
-		(a.Parameterization == nil || a.Parameterization.Name == b.Parameterization.Name)
+		replacementName(a) == replacementName(b) &&
+		extensionName(a) == extensionName(b)
 }
 
 // describePluginSource returns a human-readable description of a plugin that
@@ -800,10 +810,19 @@ func computeDefaultProviderPackages(
 			continue
 		}
 
+		if p.ExtensionParameterization != nil {
+			// Extensions reuse their base provider, so they don't get a default provider
+			// of their own: extension resources register against an explicit package ref,
+			// and the base plugin is installed via the plugin set, not from here.
+			logging.V(preparePluginVerboseLog).Infof(
+				"computeDefaultProviderPlugins(): skipping extension package %s", p.PackageName())
+			continue
+		}
+
 		name := tokens.Package(p.PackageName())
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
-			if !samePluginSource(seenPlugin, p) {
+			if !samePackage(seenPlugin, p) {
 				return nil, ambigiousPluginSourceError{name, seenPlugin, p}
 			}
 

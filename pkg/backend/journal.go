@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"strconv"
 	"strings"
@@ -93,6 +94,8 @@ func SerializeJournalEntry(
 		DeleteNew:             je.DeleteNew,
 		IsRefresh:             je.IsRefresh,
 		NewSnapshot:           snapshot,
+		ExtensionRef:          je.ExtensionRef,
+		Extension:             je.Extension,
 	}
 
 	return serializedEntry, nil
@@ -128,6 +131,10 @@ type JournalReplayer struct {
 
 	// newResources is the list of new resources created by the current plan.
 	newResources []*apitype.ResourceV3
+
+	// extensions accumulates (ref, blob) pairs produced by extension parameterize
+	// entries so the rebuilt DeploymentV3.Extensions map survives cancellation/replay.
+	extensions map[apitype.ExtensionRef]apitype.Extension
 }
 
 func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
@@ -140,6 +147,7 @@ func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
 		operationIDToResourceIndex: make(map[int64]int64),
 		incompleteOps:              make(map[int64]apitype.JournalEntry),
 		newResources:               make([]*apitype.ResourceV3, 0),
+		extensions:                 make(map[apitype.ExtensionRef]apitype.Extension),
 		base:                       base,
 	}
 	return &replayer
@@ -237,6 +245,9 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {
 		r.operationIDToResourceIndex = make(map[int64]int64)
 		r.incompleteOps = make(map[int64]apitype.JournalEntry)
 		r.newResources = make([]*apitype.ResourceV3, 0)
+		r.extensions = make(map[apitype.ExtensionRef]apitype.Extension)
+	case apitype.JournalEntryKindExtensionParameterize:
+		r.extensions[*entry.ExtensionRef] = *entry.Extension
 	}
 	return nil
 }
@@ -382,6 +393,12 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	deployment.PendingOperations = operations
 	deployment.Metadata = r.base.Metadata
 	deployment.Manifest = manifest.Serialize()
+	// Carry extensions forward from the base, plus any this plan produced.
+	extensions := maps.Clone(r.extensions)
+	maps.Copy(extensions, r.base.Extensions)
+	if len(extensions) > 0 {
+		deployment.Extensions = extensions
+	}
 
 	version := apitype.DeploymentSchemaVersionCurrent
 	if len(features) > 0 {

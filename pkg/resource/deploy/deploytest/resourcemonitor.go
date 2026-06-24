@@ -849,7 +849,7 @@ func (rm *ResourceMonitor) RegisterStackInvokeTransform(callback *pulumirpc.Call
 }
 
 func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, checksums map[string][]byte,
-	parameterization *pulumirpc.Parameterization,
+	parameterization, extension *pulumirpc.Parameterization,
 ) (string, error) {
 	resp, err := rm.resmon.RegisterPackage(context.Background(), &pulumirpc.RegisterPackageRequest{
 		Name:             pkg,
@@ -857,6 +857,7 @@ func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, che
 		DownloadUrl:      downloadURL,
 		Checksums:        checksums,
 		Parameterization: parameterization,
+		Extension:        extension,
 	})
 	if err != nil {
 		return "", err

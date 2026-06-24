@@ -1132,10 +1132,10 @@ func (acts *updateActions) OnResourceStepPost(
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		// Deletions emit the resourceOutputEvent so the display knows when to stop the time elapsed counter.
 		// Additionally, emit the event for views with outputs.
-		if step.Res().Custom ||
+		if res := step.Res(); res != nil && (res.Custom ||
 			acts.Opts.Refresh && step.Op() == deploy.OpRefresh ||
 			step.Op() == deploy.OpDelete ||
-			step.Res().ViewOf != "" {
+			res.ViewOf != "") {
 			acts.Opts.Events.resourceOutputsEvent(
 				op,
 				step,
@@ -1237,7 +1237,9 @@ type previewActions struct {
 }
 
 func isInternalStep(step deploy.Step) bool {
-	if step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step) {
+	if step.Op() == deploy.OpRemovePendingReplace ||
+		step.Op() == deploy.OpExtendParameterize ||
+		isDefaultProviderStep(step) {
 		return true
 	}
 	refreshStep, ok := step.(*deploy.RefreshStep)

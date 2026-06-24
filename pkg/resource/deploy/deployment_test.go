@@ -18,13 +18,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func newResource(name string) *resource.State {
@@ -42,7 +45,7 @@ func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapsho
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, ops, SnapshotMetadata{}, nil)
+	}, b64.NewBase64SecretsManager(), resources, ops, SnapshotMetadata{}, nil, nil)
 }
 
 func TestPendingOperationsDeployment(t *testing.T) {
@@ -123,4 +126,49 @@ func TestGlobUrn(t *testing.T) {
 			}
 		})
 	}
+}
+
+func makeProviderRef(t *testing.T, name string) sdkproviders.Reference {
+	t.Helper()
+	providerURN := resource.URN("urn:pulumi:stack::project::pulumi:providers:" + name + "::default")
+	ref, err := sdkproviders.NewReference(providerURN, resource.ID("id-"+name))
+	require.NoError(t, err)
+	return ref
+}
+
+func TestLookupOrRegisterExtension(t *testing.T) {
+	t.Parallel()
+
+	d := &Deployment{
+		extensions: map[sdkproviders.Reference][]inFlightExtension{},
+	}
+	k8sProvider := makeProviderRef(t, "k8s")
+	azureProvider := makeProviderRef(t, "azure")
+	extA := apitype.ExtensionRef("extension-a")
+	extB := apitype.ExtensionRef("extension-b")
+
+	// Registering an unseen (provider, ref) makes this caller the owner: no promise to
+	// wait on, and a CompletionSource it is responsible for fulfilling.
+	ownerWait, ownerSource := d.LookupOrRegisterExtension(k8sProvider, extA)
+	require.Nil(t, ownerWait, "registering an unseen extension has no in-flight promise")
+	require.NotNil(t, ownerSource, "registering an unseen extension yields a CompletionSource to fulfill")
+
+	// Registering the same pair again makes this caller a waiter: the in-flight promise,
+	// and no CompletionSource of its own.
+	waiterWait, waiterSource := d.LookupOrRegisterExtension(k8sProvider, extA)
+	require.NotNil(t, waiterWait, "a duplicate registration returns the in-flight promise to wait on")
+	require.Nil(t, waiterSource, "a duplicate registration does not mint a second CompletionSource")
+
+	// The waiter's promise resolves once the owner fulfills its CompletionSource.
+	ownerSource.MustFulfill(struct{}{})
+	_, err := waiterWait.Result(t.Context())
+	require.NoError(t, err, "the waiter's promise resolves once the owner fulfills")
+
+	otherRefWait, otherRefSource := d.LookupOrRegisterExtension(k8sProvider, extB)
+	require.Nil(t, otherRefWait)
+	require.NotNil(t, otherRefSource, "a different ref under the same provider registers independently")
+
+	otherProviderWait, otherProviderSource := d.LookupOrRegisterExtension(azureProvider, extA)
+	require.Nil(t, otherProviderWait)
+	require.NotNil(t, otherProviderSource, "the same ref under a different provider registers independently")
 }

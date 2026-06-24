@@ -43,6 +43,8 @@ type MockRegisterResourceEvent struct {
 
 func (m MockRegisterResourceEvent) Goal() *resource.Goal               { return nil }
 func (m MockRegisterResourceEvent) Done(result *deploy.RegisterResult) {}
+func (m MockRegisterResourceEvent) Extension() *apitype.Extension      { return nil }
+func (m MockRegisterResourceEvent) ExtensionRef() apitype.ExtensionRef { return "" }
 
 type MockStackPersister struct {
 	SavedSnapshots []*apitype.DeploymentV3
@@ -94,7 +96,7 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{}, nil)
+	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 }
 
 var (

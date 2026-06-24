@@ -305,6 +305,17 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 			expectedVersion:  4,
 			expectedFeatures: []string{"taint"},
 		},
+		{
+			name: "v4 deployment with extension parameterization",
+			resources: []*resource.State{
+				{
+					URN:          "urn1",
+					ExtensionRef: "ref-1",
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{"extensionParameterization"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

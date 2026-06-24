@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -93,14 +94,15 @@ func (sm *JournalSnapshotManager) Close() error {
 type JournalEntryKind int
 
 const (
-	JournalEntryBegin            JournalEntryKind = 0
-	JournalEntrySuccess          JournalEntryKind = 1
-	JournalEntryFailure          JournalEntryKind = 2
-	JournalEntryRefreshSuccess   JournalEntryKind = 3
-	JournalEntryOutputs          JournalEntryKind = 4
-	JournalEntryWrite            JournalEntryKind = 5
-	JournalEntrySecretsManager   JournalEntryKind = 6
-	JournalEntryRebuiltBaseState JournalEntryKind = 7
+	JournalEntryBegin                 JournalEntryKind = 0
+	JournalEntrySuccess               JournalEntryKind = 1
+	JournalEntryFailure               JournalEntryKind = 2
+	JournalEntryRefreshSuccess        JournalEntryKind = 3
+	JournalEntryOutputs               JournalEntryKind = 4
+	JournalEntryWrite                 JournalEntryKind = 5
+	JournalEntrySecretsManager        JournalEntryKind = 6
+	JournalEntryRebuiltBaseState      JournalEntryKind = 7
+	JournalEntryExtensionParameterize JournalEntryKind = 8
 )
 
 func (k JournalEntryKind) String() string {
@@ -121,6 +123,8 @@ func (k JournalEntryKind) String() string {
 		return "SecretsManager"
 	case JournalEntryRebuiltBaseState:
 		return "RebuiltBaseState"
+	case JournalEntryExtensionParameterize:
+		return "ExtensionParameterize"
 	default:
 		return "Unknown"
 	}
@@ -161,6 +165,12 @@ type JournalEntry struct {
 
 	// The new snapshot if this journal entry is part of a rebase operation.
 	NewSnapshot *deploy.Snapshot
+
+	// ExtensionRef and Extension carry the (ref, blob) pair produced by an
+	// ExtensionParameterizeStep so the journal can rebuild the live extensions
+	// map on replay. Only set for JournalEntryExtensionParameterize entries.
+	ExtensionRef *apitype.ExtensionRef
+	Extension    *apitype.Extension
 }
 
 func hasNewResource(entry JournalEntry) bool {
@@ -276,11 +286,36 @@ func (sm *JournalSnapshotManager) BeginMutation(step deploy.Step) (SnapshotMutat
 		return sm.doRemovePendingReplace(step, operationID)
 	case deploy.OpImport, deploy.OpImportReplacement:
 		return sm.doImport(step, operationID)
+	case deploy.OpExtendParameterize:
+		return sm.doExtendParameterize(step)
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
 	return nil, nil
 }
+
+// doExtendParameterize records the (ref, blob) pair produced by an
+// ExtensionParameterizeStep into the journal so replay can rebuild the live
+// extensions map and rematerialize the snapshot's Extensions correctly.
+func (sm *JournalSnapshotManager) doExtendParameterize(step deploy.Step) (SnapshotMutation, error) {
+	ps, ok := step.(*deploy.ExtensionParameterizeStep)
+	contract.Assertf(ok, "doExtendParameterize called on non-ExtensionParameterizeStep: %T", step)
+	operationID := sm.operationIDCounter.Add(1)
+	entry := sm.newJournalEntry(JournalEntryExtensionParameterize, operationID)
+	ref := ps.Ref()
+	ext := ps.Extension()
+	entry.ExtensionRef = &ref
+	entry.Extension = &ext
+	if err := sm.addJournalEntry(entry); err != nil {
+		return nil, err
+	}
+	return &noopJournalMutation{}, nil
+}
+
+// noopJournalMutation is a SnapshotMutation that doesn't record anything in the journal.
+type noopJournalMutation struct{}
+
+func (*noopJournalMutation) End(_ deploy.Step, _ bool) error { return nil }
 
 // Write sets the base snapshot for this SnapshotManager. This is used to rebase the journal
 // on a new base snapshot, in particular when providers have been updated. We always expect
@@ -298,6 +333,7 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 		Resources:         make([]*resource.State, 0, len(base.Resources)),
 		PendingOperations: make([]resource.Operation, 0, len(base.PendingOperations)),
 		Metadata:          base.Metadata,
+		Extensions:        base.Extensions,
 	}
 
 	// Copy the resources from the base snapshot to the new snapshot.
@@ -643,7 +679,8 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 				step.Op() == deploy.OpDiscardReplaced ||
 				step.Op() == deploy.OpDeleteReplaced,
 			"Old must be unprotected (got %v) or the operation must be a replace (got %q)",
-			step.Old().Protect, step.Op())
+			step.Old().Protect, step.Op(),
+		)
 
 		if step.Old().PendingReplacement {
 			journalEntry.PendingReplacementOld,

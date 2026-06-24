@@ -555,7 +555,13 @@ func (ex *deploymentExecutor) performPostSteps(
 }
 
 func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
-	_, allDeps := step.Res().GetAllDependencies()
+	// Some step types (e.g. ExtensionParameterizeStep) operate on the provider rather than a
+	// resource and have no Res(). They can't depend on skipped resources.
+	res := step.Res()
+	if res == nil {
+		return false
+	}
+	_, allDeps := res.GetAllDependencies()
 	for _, dep := range allDeps {
 		if skipped.Contains(dep.URN) {
 			return true
@@ -586,6 +592,14 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		ex.asyncEventsExpected--
 		var async bool
 		steps, async, err = ex.stepGen.ContinueStepsFromRefresh(ctx, e)
+		if async {
+			ex.asyncEventsExpected++
+		}
+	case ContinueExtensionEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueExtensionEvent")
+		ex.asyncEventsExpected--
+		var async bool
+		steps, async, err = ex.stepGen.ContinueStepsFromExtension(ctx, e)
 		if async {
 			ex.asyncEventsExpected++
 		}
@@ -748,6 +762,9 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 				if err != nil {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
+				if err := ex.deployment.ensureProviderExtension(res); err != nil {
+					return fmt.Errorf("could not parameterize extension for resource %v: %w", res.URN, err)
+				}
 
 				oldViews := ex.deployment.GetOldViews(res.URN)
 				step := NewRefreshStep(ex.deployment, nil, res, oldViews, nil)
@@ -776,6 +793,9 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 				err := ex.deployment.EnsureProvider(res.Provider)
 				if err != nil {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+				}
+				if err := ex.deployment.ensureProviderExtension(res); err != nil {
+					return fmt.Errorf("could not parameterize extension for resource %v: %w", res.URN, err)
 				}
 
 				oldViews := ex.deployment.GetOldViews(res.URN)

@@ -19,7 +19,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -47,8 +49,16 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	isRefresh := false
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
+	// Collect extension blobs from ExtensionParameterizeStep entries seen during this plan.
+	liveExtensions := map[apitype.ExtensionRef]apitype.Extension{}
 	for _, e := range entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
+
+		if e.Kind == TestJournalEntrySuccess && e.Step.Op() == deploy.OpExtendParameterize {
+			if ps, ok := e.Step.(*deploy.ExtensionParameterizeStep); ok {
+				liveExtensions[ps.Ref()] = ps.Extension()
+			}
+		}
 
 		// Begin journal entries add pending operations to the snapshot. As we see success or failure
 		// entries, we'll record them in doneOps.
@@ -183,7 +193,12 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
 
-	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets)
+	// Extension resources only enter the journal alongside their
+	// ExtensionParameterizeStep, so every referenced blob is present.
+	snapExtensions, missing := deploy.MapExtensions(filteredResources, liveExtensions, base)
+	contract.Assertf(len(missing) == 0, "journal snapshot is missing extension blobs: %v", missing)
+
+	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets, snapExtensions)
 	normSnap, err := snap.NormalizeURNReferences()
 	if err != nil {
 		return snap, err

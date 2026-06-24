@@ -24,6 +24,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -164,9 +165,11 @@ func NewImportDeployment(
 
 type noopEvent int
 
-func (noopEvent) event()                      {}
-func (noopEvent) Goal() *resource.Goal        { return nil }
-func (noopEvent) Done(result *RegisterResult) {}
+func (noopEvent) event()                             {}
+func (noopEvent) Goal() *resource.Goal               { return nil }
+func (noopEvent) Done(result *RegisterResult)        {}
+func (noopEvent) Extension() *apitype.Extension      { return nil }
+func (noopEvent) ExtensionRef() apitype.ExtensionRef { return "" }
 
 type noopOutputsEvent resource.URN
 
