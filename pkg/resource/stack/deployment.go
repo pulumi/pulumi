@@ -636,7 +636,7 @@ func SerializeResource(
 		Dependencies:            res.Dependencies,
 		InitErrors:              res.InitErrors,
 		Provider:                res.Provider,
-		ExtensionRef:            apitype.ExtensionRef(res.ExtensionRef),
+		ExtensionRef:            res.ExtensionRef,
 		PropertyDependencies:    res.PropertyDependencies,
 		PendingReplacement:      res.PendingReplacement,
 		AdditionalSecretOutputs: res.AdditionalSecretOutputs,

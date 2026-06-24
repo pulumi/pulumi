@@ -16,7 +16,6 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
@@ -67,7 +66,7 @@ func init() {
 						"greeting must be served by the base provider, not the extension")
 
 					// The base plugin should also be present and unrenamed.
-					require.Contains(l, snap.Extensions, apitype.ExtensionRef(greeting.ExtensionRef),
+					require.Contains(l, snap.Extensions, greeting.ExtensionRef,
 						"snapshot Extensions must include the extension blob keyed by ExtensionRef")
 				},
 			},
