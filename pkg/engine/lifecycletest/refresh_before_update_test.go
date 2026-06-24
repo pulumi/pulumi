@@ -281,10 +281,17 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		require.NoError(t, err)
 
-		resp, err := monitor.RegisterResource("pkgA:m:typA", "res0", true, deploytest.ResourceOptions{})
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "res0", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"input": resource.NewProperty("value"),
+			},
+		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"input": resp.Outputs["result"],
+			},
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{
 				"input": {resp.URN},
 			},
