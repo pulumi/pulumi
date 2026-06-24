@@ -5025,3 +5025,73 @@ func TestResourceError(t *testing.T) {
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "create failed intentionally")
 }
+
+func TestNullDiffsAgainstMissingDisplay(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					diff := req.OldInputs.Diff(req.NewInputs)
+					if diff == nil {
+						return plugin.DiffResult{
+							Changes: plugin.DiffNone,
+						}, nil
+					}
+
+					return plugin.DiffResult{
+						Changes:      plugin.DiffSome,
+						ChangedKeys:  diff.ChangedKeys(),
+						DetailedDiff: plugin.NewDetailedDiffFromObjectDiff(diff, true),
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{
+						Properties: req.NewInputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithGrpc),
+	}
+
+	inputs := resource.PropertyMap{
+		"nullable": resource.NewNullProperty(),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+		Steps: []lt.TestStep{{
+			Op: engine.Update,
+		}},
+	}
+
+	created := p.Run(t, &deploy.Snapshot{})
+	require.Contains(t, created.Resources[1].Inputs, resource.PropertyKey("nullable"))
+	require.True(t, created.Resources[1].Inputs["nullable"].IsNull())
+
+	inputs = resource.PropertyMap{}
+	updated := p.Run(t, created)
+	require.NotContains(t, updated.Resources[1].Inputs, resource.PropertyKey("nullable"))
+	require.NotContains(t, updated.Resources[1].Outputs, resource.PropertyKey("nullable"))
+}
