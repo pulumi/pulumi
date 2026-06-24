@@ -204,6 +204,7 @@ install::
 	cd "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" && \
 	npm install --prefer-offline --omit=dev && \
 	npm link && \
+	yarn link && \
 	bun link
 endif
 
