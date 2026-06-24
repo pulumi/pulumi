@@ -27,14 +27,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type pluginListRenderFunc func(w io.Writer, plugins []workspace.PluginInfo) error
+
 func newPluginListCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var projectOnly bool
-	var jsonOut bool
+	output := outputflag.OutputFlag[pluginListRenderFunc]{
+		RenderForTerminal: formatPluginConsole,
+		RenderJSON:        formatPluginsJSON,
+	}
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
@@ -72,10 +78,7 @@ func newPluginListCmd(pluginContext pluginstorage.Context) *cobra.Command {
 				return false
 			})
 
-			if jsonOut {
-				return formatPluginsJSON(cmd.OutOrStdout(), plugins)
-			}
-			return formatPluginConsole(cmd.OutOrStdout(), plugins)
+			return output.Get()(cmd.OutOrStdout(), plugins)
 		},
 	}
 
@@ -84,9 +87,7 @@ func newPluginListCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&projectOnly, "project", "p", false,
 		"List only the plugins used by the current project")
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false,
-		"Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 
 	return cmd
 }
