@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -62,6 +64,7 @@ func newMockBackendForAnalyze() (*backend.MockBackend, *backend.MockStack) {
 		BackendF: func() backend.Backend { return be },
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
+				StringV:  "organization/project/stack",
 				NameV:    tokens.MustParseStackName("stack"),
 				ProjectV: "project",
 			}
@@ -131,6 +134,247 @@ func runAnalyzeCmd(
 	return stdout.String(), stderr.String(), err
 }
 
+// writeStateFile marshals the given resources into an UntypedDeployment JSON file
+// (the shape `pulumi stack export` produces) and returns its path.
+func writeStateFile(t *testing.T, resources []apitype.ResourceV3) string {
+	t.Helper()
+	return writeStateFileNamed(t, "state.json", apitype.DeploymentV3{Resources: resources})
+}
+
+// writeStateFileNamed marshals a DeploymentV3 into an UntypedDeployment JSON file with
+// the given base name and returns its path.
+func writeStateFileNamed(t *testing.T, name string, deployment apitype.DeploymentV3) string {
+	t.Helper()
+	raw, err := json.Marshal(deployment)
+	require.NoError(t, err)
+	data, err := json.Marshal(apitype.UntypedDeployment{Version: 3, Deployment: raw})
+	require.NoError(t, err)
+	path := filepath.Join(t.TempDir(), name)
+	require.NoError(t, os.WriteFile(path, data, 0o600))
+	return path
+}
+
+// encryptedSecret returns the serialized form `pulumi stack export` writes for an
+// encrypted secret value.
+func encryptedSecret(ciphertext string) apitype.SecretV1 {
+	return apitype.SecretV1{Sig: resource.SecretSig, Ciphertext: ciphertext}
+}
+
+func TestPolicyAnalyzeCmd_File_NoViolationsSucceeds(t *testing.T) {
+	t.Parallel()
+
+	path := writeStateFile(t, []apitype.ResourceV3{{
+		Type:    "pkg:index:MyResource",
+		URN:     "urn:pulumi:stack::project::pkg:index:MyResource::res",
+		Custom:  true,
+		Outputs: map[string]any{"k": "v"},
+	}})
+	stdout, stderr, err := runAnalyzeCmd(t, nil, nil, stubLoadAnalyzers(nil), "--file", path, "--diff")
+	require.NoError(t, err)
+	assert.Empty(t, stdout)
+	// No secrets to redact: the fallback warning must not fire.
+	assert.NotContains(t, stderr, "redacted")
+}
+
+func TestPolicyAnalyzeCmd_File_MandatoryViolationReturnsError(t *testing.T) {
+	t.Parallel()
+
+	path := writeStateFile(t, []apitype.ResourceV3{{
+		Type:    "pkg:index:MyResource",
+		URN:     "urn:pulumi:stack::project::pkg:index:MyResource::res",
+		Custom:  true,
+		Outputs: map[string]any{"k": "v"},
+	}})
+	analyzer := &fakeAnalyzer{mandatory: true}
+	stdout, _, err := runAnalyzeCmd(t, nil, nil,
+		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
+		"--file", path, "--diff")
+	assert.ErrorContains(t, err, "mandatory policy violations")
+	expected := "    test-pack@v [mandatory]  test-policy  (pkg:index:MyResource: res)test violation\n"
+	assert.Equal(t, expected, stdout)
+}
+
+func TestPolicyAnalyzeCmd_File_MissingFile(t *testing.T) {
+	t.Parallel()
+
+	_, _, err := runAnalyzeCmd(t, nil, nil, stubLoadAnalyzers(nil),
+		"--file", filepath.Join(t.TempDir(), "does-not-exist.json"), "--diff")
+	assert.ErrorContains(t, err, "could not open")
+}
+
+func TestPolicyAnalyzeCmd_File_MalformedJSON(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "bad.json")
+	require.NoError(t, os.WriteFile(path, []byte("{not json"), 0o600))
+	_, _, err := runAnalyzeCmd(t, nil, nil, stubLoadAnalyzers(nil), "--file", path, "--diff")
+	assert.ErrorContains(t, err, "reading deployment from")
+}
+
+// A non-empty but structurally invalid resource URN is rejected with a clear error,
+// rather than panicking deep in snapshot analysis where URNs are dereferenced.
+func TestPolicyAnalyzeCmd_File_InvalidURNRejected(t *testing.T) {
+	t.Parallel()
+
+	path := writeStateFile(t, []apitype.ResourceV3{{
+		Type:   "pkg:index:MyResource",
+		URN:    "not-a-valid-urn",
+		Custom: true,
+	}})
+	_, _, err := runAnalyzeCmd(t, nil, nil,
+		stubLoadAnalyzers([]plugin.Analyzer{&fakeAnalyzer{}}),
+		"--file", path, "--diff")
+	assert.ErrorContains(t, err, "invalid URN")
+}
+
+func TestPolicyAnalyzeCmd_File_MutuallyExclusiveWithStack(t *testing.T) {
+	t.Parallel()
+
+	_, _, err := runAnalyzeCmd(t, nil, nil, stubLoadAnalyzers(nil),
+		"--file", "state.json", "--stack", "my-stack")
+	assert.ErrorContains(t, err, "[file stack]")
+}
+
+func TestPolicyAnalyzeCmd_File_EmptyDeploymentPrintsMessage(t *testing.T) {
+	t.Parallel()
+
+	path := writeStateFile(t, nil)
+	_, stderr, err := runAnalyzeCmd(t, nil, nil, stubLoadAnalyzers(nil), "--file", path, "--diff")
+	require.NoError(t, err)
+	assert.Contains(t, stderr, "no resources")
+}
+
+// A state file exported from a query is a filtered subset: it can reference a
+// provider, parent, or dependencies that are not themselves present. Analysis
+// must tolerate these dangling references rather than fail.
+func TestPolicyAnalyzeCmd_File_DanglingReferencesTolerated(t *testing.T) {
+	t.Parallel()
+
+	path := writeStateFile(t, []apitype.ResourceV3{{
+		Type:         "pkg:index:MyResource",
+		URN:          "urn:pulumi:stack::project::pkg:index:MyResource::res",
+		Custom:       true,
+		External:     true,
+		Provider:     "urn:pulumi:stack::project::pulumi:providers:pkg::missing::00000000-0000-0000-0000-000000000000",
+		Parent:       "urn:pulumi:stack::project::pkg:index:Missing::parent",
+		Dependencies: []resource.URN{"urn:pulumi:stack::project::pkg:index:Missing::dep"},
+		Outputs:      map[string]any{"k": "v"},
+	}})
+	_, _, err := runAnalyzeCmd(t, nil, nil,
+		stubLoadAnalyzers([]plugin.Analyzer{&fakeAnalyzer{}}),
+		"--file", path, "--diff")
+	require.NoError(t, err)
+}
+
+// A file whose secrets can't be decrypted offline must still analyze, redacting them.
+func TestPolicyAnalyzeCmd_File_UndecryptableSecretsRedacted(t *testing.T) {
+	t.Parallel()
+
+	path := writeStateFileNamed(t, "state.json", apitype.DeploymentV3{
+		SecretsProviders: &apitype.SecretsProvidersV1{Type: "service"},
+		Resources: []apitype.ResourceV3{{
+			Type:   "pkg:index:MyResource",
+			URN:    "urn:pulumi:stack::project::pkg:index:MyResource::res",
+			Custom: true,
+			Inputs: map[string]any{"password": encryptedSecret("v1:cannot-decrypt-offline")},
+		}},
+	})
+
+	analyzer := &fakeAnalyzer{}
+	_, stderr, err := runAnalyzeCmd(t, nil, nil,
+		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
+		"--file", path, "--diff")
+	require.NoError(t, err)
+	assert.Contains(t, stderr, "secret values redacted")
+
+	pw := analyzer.analyzeProperties["password"]
+	require.True(t, pw.IsSecret())
+	assert.Equal(t, "[secret]", pw.SecretValue().Element.StringValue())
+}
+
+// The progress (non-diff) display reads the synthetic ref's Name()/Project(); the other
+// file-mode tests use --diff, which never touches it. Name and project come from the
+// resource URN (prod/infra), not the file base (prod-export).
+func TestPolicyAnalyzeCmd_File_ProgressDisplayUsesSyntheticRef(t *testing.T) {
+	t.Parallel()
+
+	path := writeStateFileNamed(t, "prod-export.json", apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{{
+			Type:    "pkg:index:MyResource",
+			URN:     "urn:pulumi:prod::infra::pkg:index:MyResource::res",
+			Custom:  true,
+			Outputs: map[string]any{"k": "v"},
+		}},
+	})
+
+	analyzer := &fakeAnalyzer{mandatory: true}
+	stdout, _, err := runAnalyzeCmd(t, nil, nil,
+		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
+		"--file", path)
+	assert.ErrorContains(t, err, "mandatory policy violations")
+	assert.Contains(t, stdout, "infra-prod")
+	assert.NotContains(t, stdout, "prod-export")
+}
+
+func TestStackReferenceForFile(t *testing.T) {
+	t.Parallel()
+
+	t.Run("derives the shared stack and project from the resource URNs", func(t *testing.T) {
+		t.Parallel()
+
+		ref := stackReferenceForFile(&deploy.Snapshot{
+			Resources: []*resource.State{
+				{URN: "urn:pulumi:prod::infra::pkg:index:MyResource::a"},
+				{URN: "urn:pulumi:prod::infra::pkg:index:MyResource::b"},
+			},
+		})
+		assert.Equal(t, "prod", ref.Name().String())
+		project, ok := ref.Project()
+		require.True(t, ok)
+		assert.Equal(t, "infra", string(project))
+	})
+
+	t.Run("uses a neutral label for a heterogeneous selection", func(t *testing.T) {
+		t.Parallel()
+
+		// Resources spanning more than one project or stack — a common shape for a Pulumi
+		// Insights export — must not be labeled with any single origin.
+		for _, urns := range [][]resource.URN{
+			{
+				"urn:pulumi:prod::infra::pkg:index:MyResource::a",
+				"urn:pulumi:prod::networking::pkg:index:MyResource::b", // differing project
+			},
+			{
+				"urn:pulumi:prod::infra::pkg:index:MyResource::a",
+				"urn:pulumi:dev::infra::pkg:index:MyResource::b", // differing stack
+			},
+		} {
+			resources := make([]*resource.State, len(urns))
+			for i, u := range urns {
+				resources[i] = &resource.State{URN: u}
+			}
+			ref := stackReferenceForFile(&deploy.Snapshot{Resources: resources})
+			assert.Equal(t, "multiple", ref.Name().String())
+			project, ok := ref.Project()
+			require.True(t, ok)
+			assert.Equal(t, "multiple", string(project))
+		}
+	})
+
+	t.Run("falls back to unknown when no valid URN is present", func(t *testing.T) {
+		t.Parallel()
+
+		ref := stackReferenceForFile(&deploy.Snapshot{
+			Resources: []*resource.State{{URN: "not-a-urn"}},
+		})
+		assert.Equal(t, "unknown", ref.Name().String())
+		assert.Equal(t, "<unknown>", ref.String())
+		project, ok := ref.Project()
+		require.True(t, ok)
+		assert.Equal(t, "unknown", string(project))
+	})
+}
+
 func TestPolicyAnalyzeCmd_RequiresPolicyPackFlag(t *testing.T) {
 	t.Parallel()
 
@@ -173,7 +417,8 @@ func TestPolicyAnalyzeCmd_EmptySnapshotPrintsMessage(t *testing.T) {
 	ws, lm := newMockWsAndLm(be)
 	_, stderr, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
 	require.NoError(t, err)
-	assert.Contains(t, stderr, "no resources")
+	// Message names the stack via its fully-qualified reference, not just the bare Name().
+	assert.Contains(t, stderr, "Stack organization/project/stack has no resources")
 }
 
 func TestPolicyAnalyzeCmd_ErrorOnLoadAnalyzersFailure(t *testing.T) {
@@ -369,9 +614,11 @@ type fakeAnalyzer struct {
 	stackDiagnostic        *plugin.AnalyzeDiagnostic
 	analyzeStackCalled     bool
 	analyzeStackProperties resource.PropertyMap
+	analyzeProperties      resource.PropertyMap
 }
 
 func (a *fakeAnalyzer) Analyze(_ context.Context, r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+	a.analyzeProperties = r.Properties.Copy()
 	if a.mandatory {
 		return plugin.AnalyzeResponse{
 			Diagnostics: []plugin.AnalyzeDiagnostic{{
