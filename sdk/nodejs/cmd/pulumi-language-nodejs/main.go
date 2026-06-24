@@ -1817,7 +1817,6 @@ func (host *nodeLanguageHost) GenerateProgram(
 	}
 
 	bindOptions := []pcl.BindOption{
-		pcl.Loader(schema.NewCachedLoader(loader)),
 		// for nodejs, prefer output-versioned invokes
 		pcl.PreferOutputVersionedInvokes,
 	}
@@ -1826,7 +1825,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, bindOptions...)
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader), bindOptions...)
 	if err != nil {
 		return nil, err
 	}

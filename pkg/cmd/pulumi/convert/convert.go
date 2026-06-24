@@ -601,7 +601,7 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		pkgSchema, err := packages.BindSpec(*pkgSpec)
+		pkgSchema, err := packages.BindSpec(*pkgSpec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			return fmt.Errorf("binding package schema: %w", err)
 		}

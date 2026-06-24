@@ -745,7 +745,6 @@ func (p *PartialPackage) Definition() (*Package, error) {
 		return nil, diags
 	}
 
-	contract.IgnoreClose(p.types)
 	p.spec = nil
 	p.types = nil
 	p.languages = nil

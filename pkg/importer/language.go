@@ -286,7 +286,7 @@ func GenerateLanguageDefinitions(
 			})
 		}
 
-		return pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+		return pcl.BindProgram(parser.Files, loader, pcl.AllowMissingVariables)
 	}
 
 	if names == nil {

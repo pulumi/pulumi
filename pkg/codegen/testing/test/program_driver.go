@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -349,7 +350,7 @@ func TestProgramCodegen(
 				pluginCtx = utils.NewContext(testcase.inputDirectory())
 			}
 
-			opts := append(tt.BindOptions, pcl.PluginHost(pluginCtx))
+			opts := tt.BindOptions
 			absoluteProgramPath, err := filepath.Abs(testInputDir)
 			if err != nil {
 				t.Fatalf("failed to bind program: unable to find the absolute path of %v", testInputDir)
@@ -357,7 +358,7 @@ func TestProgramCodegen(
 			opts = append(opts, pcl.DirPath(absoluteProgramPath))
 			opts = append(opts, pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
-			program, diags, err := pcl.BindProgram(parser.Files, opts...)
+			program, diags, err := pcl.BindProgram(parser.Files, schema.NewPluginLoader(pluginCtx), opts...)
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}

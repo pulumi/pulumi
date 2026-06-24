@@ -230,7 +230,7 @@ func NewDoCmd(
 			packageDescriptor.Parameterization.Value = spec.Parameterization.Parameter
 		}
 
-		boundpkg, err := packages.BindSpec(spec)
+		boundpkg, err := packages.BindSpec(spec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("bind schema: %w", err)

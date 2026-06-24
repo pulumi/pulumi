@@ -210,7 +210,7 @@ func TestLoaderServerCachedEntryBypassesRawPath(t *testing.T) {
 		Resources: map[string]ResourceSpec{
 			"mypkg:index:Resource": {},
 		},
-	}, nil, ValidationOptions{})
+	}, nil, NewNullLoader(), ValidationOptions{})
 	require.NoError(t, err)
 
 	// A host whose plugin resolution always fails: the cached entry is the only way to serve the schema.
