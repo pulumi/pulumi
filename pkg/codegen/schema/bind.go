@@ -178,7 +178,6 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	if err != nil {
 		return nil, diags, err
 	}
-	defer contract.IgnoreClose(types)
 
 	diags = diags.Extend(spec.validateTypeTokens())
 
@@ -533,8 +532,6 @@ type types struct {
 	// A pointer to the package reference that `types` is a part of if it exists.
 	bindToReference PackageReference
 }
-
-func (t *types) Close() error { return nil }
 
 // The package which bound types will link back to.
 func (t *types) externalPackage() PackageReference {
