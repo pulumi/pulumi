@@ -5,7 +5,7 @@ const config = new pulumi.Config();
 const numItems = config.requireNumber("numItems");
 const itemList = config.requireObject<Array<string>>("itemList");
 const numResource: nestedobject.Target[] = [];
-for (const range = {value: 0}; range.value < numItems; range.value++) {
+for (let range = {value: 0}; range.value < numItems; range = {value: range.value + 1}) {
     numResource.push(new nestedobject.Target(`numResource-${range.value}`, {name: `num-${range.value}`}));
 }
 const numTarget = new nestedobject.Target("numTarget", {name: pulumi.interpolate`${numResource[0].name}+`});

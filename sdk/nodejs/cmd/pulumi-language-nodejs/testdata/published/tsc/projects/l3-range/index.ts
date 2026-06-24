@@ -7,7 +7,7 @@ const itemList = config.requireObject<Array<string>>("itemList");
 const itemMap = config.requireObject<Record<string, string>>("itemMap");
 const createBool = config.requireBoolean("createBool");
 const numResource: nestedobject.Target[] = [];
-for (const range = {value: 0}; range.value < numItems; range.value++) {
+for (let range = {value: 0}; range.value < numItems; range = {value: range.value + 1}) {
     numResource.push(new nestedobject.Target(`numResource-${range.value}`, {name: `num-${range.value}`}));
 }
 const listResource: nestedobject.Target[] = [];

@@ -9,7 +9,7 @@ const main = new unknown.index.Main("main", {
     },
 });
 const fromModule: unknown.eks.Example[] = [];
-for (const range = {value: 0}; range.value < 10; range.value++) {
+for (let range = {value: 0}; range.value < 10; range = {value: range.value + 1}) {
     fromModule.push(new unknown.eks.Example(`fromModule-${range.value}`, {associatedMain: main.id}));
 }
 export const mainId = main.id;

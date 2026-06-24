@@ -32,7 +32,7 @@ export = async () => {
     const currentVpc = new aws.ec2.Vpc("currentVpc", {});
     const createPublicSubnets = true;
     const publicSubnet: aws.ec2.Subnet[] = [];
-    for (const range = {value: 0}; range.value < (createPublicSubnets && (!oneNatGatewayPerAz || lenPublicSubnets >= azs.length) ? lenPublicSubnets : 0); range.value++) {
+    for (let range = {value: 0}; range.value < (createPublicSubnets && (!oneNatGatewayPerAz || lenPublicSubnets >= azs.length) ? lenPublicSubnets : 0); range = {value: range.value + 1}) {
         publicSubnet.push(new aws.ec2.Subnet(`publicSubnet-${range.value}`, {
             assignIpv6AddressOnCreation: enableIpv6 && publicSubnetIpv6Native ? true : publicSubnetAssignIpv6AddressOnCreation,
             enableDns64: enableIpv6 && publicSubnetEnableDns64,

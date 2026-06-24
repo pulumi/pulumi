@@ -57,7 +57,7 @@ export class ExampleComponent extends pulumi.ComponentResource {
 
         // Example of iterating a list of objects
         const serverPasswords: random.RandomPassword[] = [];
-        for (const range = {value: 0}; range.value < args.servers.length; range.value++) {
+        for (let range = {value: 0}; range.value < args.servers.length; range = {value: range.value + 1}) {
             serverPasswords.push(new random.RandomPassword(`${name}-serverPasswords-${range.value}`, {
                 length: 16,
                 special: true,

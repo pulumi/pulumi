@@ -43,6 +43,11 @@ import (
 
 const PulumiToken = "pulumi"
 
+// rangeLoopFmt renders a `range`-over-count loop. Each iteration binds
+// a fresh `range` object so that deferred applies in the loop body capture the
+// value for their own iteration rather than the final one.
+const rangeLoopFmt = "%sfor (let range = {value: 0}; range.value < %.12o; range = {value: range.value + 1}) {\n"
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -1600,7 +1605,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			}
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
+				g.Fgenf(w, rangeLoopFmt, g.Indent, rangeExpr)
 				resKey = "value"
 			} else {
 				rangeExpr := &model.FunctionCallExpression{
@@ -1724,7 +1729,7 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 			}
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
+				g.Fgenf(w, rangeLoopFmt, g.Indent, rangeExpr)
 				resKey = "value"
 			} else {
 				entries := &model.FunctionCallExpression{Name: "entries", Args: []model.Expression{rangeExpr}}
@@ -1853,7 +1858,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
+				g.Fgenf(w, rangeLoopFmt, g.Indent, rangeExpr)
 				resKey = "value"
 			} else {
 				rangeExpr := &model.FunctionCallExpression{
