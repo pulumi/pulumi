@@ -1,6 +1,0 @@
-component: programgen
-kind: fix
-body: Generate map `range` resource collections as key-indexed maps in Python and NodeJS so they can be indexed by key
-time: 2026-06-18T00:00:00.000000+00:00
-custom:
-    PR: "23639"

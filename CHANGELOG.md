@@ -1,5 +1,38 @@
 # Changelog
 
+## 3.248.0 (2026-06-24)
+
+### Bug Fixes
+
+- [cli] Fix a panic in `pulumi package get-schema` when binding a schema that references an uninstalled plugin [#23647](https://github.com/pulumi/pulumi/pull/23647)
+
+### Improvements
+
+- [cli] Add options to `pulumi stack get` for parity with bare `pulumi stack` [#23623](https://github.com/pulumi/pulumi/pull/23623)
+- [cli] Add `--output` flag to about and whoami commands [#23651](https://github.com/pulumi/pulumi/pull/23651)
+
+### Features
+
+- [engine] Add support for 'snippets', blocks of PCL kept in state to track ad-hoc resources [#23286](https://github.com/pulumi/pulumi/pull/23286)
+- [engine] Send the address of a schema loader service to resource providers as part of the provider handshake [#23645](https://github.com/pulumi/pulumi/pull/23645)
+- [engine] Send the address of a package resolver service to resource providers as part of the provider handshake [#23654](https://github.com/pulumi/pulumi/pull/23654)
+
+### Bug Fixes
+
+- [programgen] Guard references to conditionally-created (boolean `range`) resources in generated Python and NodeJS programs so they type-check [#23634](https://github.com/pulumi/pulumi/pull/23634)
+- [programgen] Generate map `range` resource collections as key-indexed maps in Python and NodeJS so they can be indexed by key [#23639](https://github.com/pulumi/pulumi/pull/23639)
+
+### Features
+
+- [sdk/nodejs] Add `Output.recover` to catch and recover from exceptions in outputs [#23642](https://github.com/pulumi/pulumi/pull/23642)
+
+### Bug Fixes
+
+- [sdkgen] Fix extra trailing new lines in comments [#23619](https://github.com/pulumi/pulumi/pull/23619)
+
+### Improvements
+
+- [sdkgen] Require callers to pass an explicit schema loader when binding PCL programs and package schemas [#23672](https://github.com/pulumi/pulumi/pull/23672)
 ## 3.247.0 (2026-06-18)
 
 ### Bug Fixes
