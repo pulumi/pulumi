@@ -88,7 +88,7 @@ func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
 	eventsChan := make(chan Event, 10)
 	acts.Opts.Events.ch = eventsChan
 
-	step := deploy.NewDeleteStep(&deploy.Deployment{}, map[resource.URN]bool{}, &resource.State{
+	step := deploy.NewDeleteStep(&deploy.Deployment{}, map[resource.URN]bool{}, map[resource.URN]bool{}, &resource.State{
 		URN:      resource.URN("urn:pulumi:stack::project::my:example:Foo::foo"),
 		ID:       "foo",
 		Custom:   false,

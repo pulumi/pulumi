@@ -591,7 +591,7 @@ func TestDeletionJournaling(t *testing.T) {
 	})
 
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -613,7 +613,7 @@ func TestFailedDeleteJournaling(t *testing.T) {
 	})
 
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -766,7 +766,7 @@ func TestRecordingDeleteSuccessJournaling(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -794,7 +794,7 @@ func TestRecordingDeleteFailureJournaling(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 

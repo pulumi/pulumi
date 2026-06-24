@@ -242,7 +242,20 @@ func NewCreateReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool,
 ) Step {
 	contract.Requiref(reg != nil, "reg", "must not be nil")
+	return newCreateReplacementStep(deployment, reg, old, new, keys, diffs, detailedDiff, pendingDelete)
+}
 
+// NewDeferredCreateReplacementStep builds a CreateReplacement step whose provider Create runs after the
+// deferred-delete phase. reg is nil — the paired DeferredReplaceStep signals source completion earlier.
+func NewDeferredCreateReplacementStep(deployment *Deployment, old, new *resource.State,
+	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
+) Step {
+	return newCreateReplacementStep(deployment, nil, old, new, keys, diffs, detailedDiff, true /*pendingDelete*/)
+}
+
+func newCreateReplacementStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
+	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool,
+) Step {
 	contract.Requiref(old != nil, "old", "must not be nil")
 	contract.Requiref(old.URN != "", "old", "must have a URN")
 	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is a custom resource")
@@ -443,7 +456,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+	complete := func() { s.signalRegDone(&RegisterResult{State: s.new}) }
 
 	if resourceError != nil {
 		// If we have a failure, we should return an empty complete function
@@ -478,11 +491,19 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 }
 
 func (s *CreateStep) Fail() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+	s.signalRegDone(&RegisterResult{State: s.new, Result: ResultStateFailed})
 }
 
 func (s *CreateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	s.signalRegDone(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+}
+
+// signalRegDone calls reg.Done when set. Nil for deferred create-replacements, whose paired
+// DeferredReplaceStep signals source completion earlier.
+func (s *CreateStep) signalRegDone(result *RegisterResult) {
+	if s.reg != nil {
+		s.reg.Done(result)
+	}
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -493,14 +514,15 @@ type DeleteStep struct {
 	pendingReplacement bool                  // true if this resource is pending replacement.
 	replacing          bool                  // true if part of a replacement.
 	otherDeletions     map[resource.URN]bool // other resources that are planned to delete
+	otherReplacements  map[resource.URN]bool // other resources that are planned to replace
 	provider           plugin.Provider       // the optional provider to use.
 	oldViews           []plugin.View         // the old views for this resource.
 }
 
 var _ Step = (*DeleteStep)(nil)
 
-func NewDeleteStep(deployment *Deployment, otherDeletions map[resource.URN]bool, old *resource.State,
-	oldViews []plugin.View,
+func NewDeleteStep(deployment *Deployment, otherDeletions, otherReplacements map[resource.URN]bool,
+	old *resource.State, oldViews []plugin.View,
 ) Step {
 	contract.Requiref(old != nil, "old", "must not be nil")
 	contract.Requiref(old.URN != "", "old", "must have a URN")
@@ -508,20 +530,22 @@ func NewDeleteStep(deployment *Deployment, otherDeletions map[resource.URN]bool,
 	contract.Requiref(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type),
 		"old", "must have or be a provider if it is a custom resource")
 	contract.Requiref(otherDeletions != nil, "otherDeletions", "must not be nil")
+	contract.Requiref(otherReplacements != nil, "otherReplacements", "must not be nil")
 
 	contract.Requiref(old.ViewOf == "", "old", "must not be a view")
 
 	return &DeleteStep{
-		deployment:     deployment,
-		old:            old,
-		otherDeletions: otherDeletions,
-		oldViews:       oldViews,
+		deployment:        deployment,
+		old:               old,
+		otherDeletions:    otherDeletions,
+		otherReplacements: otherReplacements,
+		oldViews:          oldViews,
 	}
 }
 
 func NewDeleteReplacementStep(
 	deployment *Deployment,
-	otherDeletions map[resource.URN]bool,
+	otherDeletions, otherReplacements map[resource.URN]bool,
 	old *resource.State,
 	pendingReplace bool,
 	oldViews []plugin.View,
@@ -533,6 +557,7 @@ func NewDeleteReplacementStep(
 		"old", "must have or be a provider if it is a custom resource")
 
 	contract.Requiref(otherDeletions != nil, "otherDeletions", "must not be nil")
+	contract.Requiref(otherReplacements != nil, "otherReplacements", "must not be nil")
 	contract.Assertf(pendingReplace != old.Delete,
 		"resource %v cannot be pending replacement and deletion at the same time", old.URN)
 
@@ -541,6 +566,7 @@ func NewDeleteReplacementStep(
 	return &DeleteStep{
 		deployment:         deployment,
 		otherDeletions:     otherDeletions,
+		otherReplacements:  otherReplacements,
 		old:                old,
 		pendingReplacement: pendingReplace,
 		replacing:          true,
@@ -570,15 +596,11 @@ func (s *DeleteStep) New() *resource.State    { return nil }
 func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
-func isDeletedWith(with resource.URN, otherDeletions map[resource.URN]bool) bool {
+func isDeletedWith(with resource.URN, otherDeletions, otherReplacements map[resource.URN]bool) bool {
 	if with == "" {
 		return false
 	}
-	r, ok := otherDeletions[with]
-	if !ok {
-		return false
-	}
-	return r
+	return otherDeletions[with] || otherReplacements[with]
 }
 
 type deleteProtectedError struct {
@@ -629,7 +651,7 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
 	} else if s.old.RetainOnDelete {
 		// Deleting a "drop on delete" is a no-op as the user has explicitly asked us to not delete the resource.
-	} else if isDeletedWith(s.old.DeletedWith, s.otherDeletions) {
+	} else if isDeletedWith(s.old.DeletedWith, s.otherDeletions, s.otherReplacements) {
 		// No need to delete this resource since this resource will be deleted by the another deletion
 	} else if s.old.Custom {
 		// Not preview and not external and not Drop and is custom, do the actual delete
@@ -856,6 +878,43 @@ func (s *RemovePendingReplaceStep) Fail() {
 
 func (s *RemovePendingReplaceStep) Skip() {
 	// Nothing to do here.
+}
+
+// DeferredReplaceStep is emitted when a replacement's provider Create must run after the deferred-delete
+// phase. Apply signals source-program completion and marks the old for deletion; the paired
+// CreateReplacementStep in stepGenerator.DeferredCreateSteps() runs the real Create later.
+//
+// Op is OpReplace so the snapshot manager treats it as a no-op — new state is written by that paired step.
+type DeferredReplaceStep struct {
+	*ReplaceStep
+	reg RegisterResourceEvent
+}
+
+var _ Step = (*DeferredReplaceStep)(nil)
+
+func NewDeferredReplaceStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
+	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
+) Step {
+	contract.Requiref(reg != nil, "reg", "must not be nil")
+	rs := NewReplaceStep(deployment, old, new, keys, diffs, detailedDiff, true /*pendingDelete*/).(*ReplaceStep)
+	return &DeferredReplaceStep{ReplaceStep: rs, reg: reg}
+}
+
+func (s *DeferredReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	s.old.Lock.Lock()
+	s.old.Delete = true
+	s.old.Lock.Unlock()
+
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+	return resource.StatusOK, complete, nil
+}
+
+func (s *DeferredReplaceStep) Fail() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+func (s *DeferredReplaceStep) Skip() {
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
 // UpdateStep is a mutating step that updates an existing resource's state.
