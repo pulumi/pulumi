@@ -35,6 +35,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -75,9 +76,11 @@ func NewDoCmd(
 			// uncancellable. Plugin logs route through the command's diagnostics sinks, so a
 			// provider's output reaches the command's stdout/stderr the same way it does without a
 			// pre-constructed host.
+			reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, d, env.Global())
 			return pkghost.New(
 				context.WithoutCancel(ctx), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled,
-				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(reg))
 		}
 	}
 	if loadConverterPlugin == nil {
@@ -227,7 +230,7 @@ func NewDoCmd(
 			packageDescriptor.Parameterization.Value = spec.Parameterization.Parameter
 		}
 
-		boundpkg, err := packages.BindSpec(spec)
+		boundpkg, err := packages.BindSpec(spec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("bind schema: %w", err)

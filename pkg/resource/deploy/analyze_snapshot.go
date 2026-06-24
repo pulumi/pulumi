@@ -199,7 +199,9 @@ func AnalyzeSnapshot(
 					})
 				} else if tresult.Properties != nil {
 					// Report what would be remediated without applying it.
-					events.OnPolicyRemediation(res.URN, tresult, analyzerRes.Properties, tresult.Properties)
+					events.OnPolicyRemediation(res.URN, tresult,
+						resource.FromResourcePropertyMap(analyzerRes.Properties),
+						resource.FromResourcePropertyMap(tresult.Properties))
 				}
 				// A remediation might not set diagnostic or properties, we just ignore them.
 			}

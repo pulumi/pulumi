@@ -48,6 +48,8 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     SUPPORTS_REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
     INVOKE_WITH_PREVIEW_FIELD_NUMBER: builtins.int
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
+    RESOLVER_TARGET_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -77,6 +79,14 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     """The target of a [](codegen.Mapper) service the provider can use to retrieve mappings from other ecosystems to
     Pulumi. May be empty on older engines.
     """
+    loader_target: builtins.str
+    """The target of a [](codegen.Loader) service the provider can use to load the schemas of other Pulumi packages.
+    May be empty on older engines.
+    """
+    resolver_target: builtins.str
+    """The target of a [](pulumirpc.PackageResolver) service the provider can use to resolve package specifications to
+    concrete package dependencies. May be empty on older engines.
+    """
     def __init__(
         self,
         *,
@@ -88,13 +98,19 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
         supports_refresh_before_update: builtins.bool = ...,
         invoke_with_preview: builtins.bool = ...,
         mapper_target: builtins.str | None = ...,
+        loader_target: builtins.str | None = ...,
+        resolver_target: builtins.str | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_loader_target", b"_loader_target"]) -> typing.Literal["loader_target"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_mapper_target", b"_mapper_target"]) -> typing.Literal["mapper_target"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_program_directory", b"_program_directory"]) -> typing.Literal["program_directory"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_resolver_target", b"_resolver_target"]) -> typing.Literal["resolver_target"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_root_directory", b"_root_directory"]) -> typing.Literal["root_directory"] | None: ...
 

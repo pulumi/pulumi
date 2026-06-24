@@ -1466,7 +1466,7 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(schema.NewCachedLoader(loader)),
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader),
 		pcl.PreferOutputVersionedInvokes)
 	if err != nil {
 		return nil, err

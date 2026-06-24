@@ -39,6 +39,7 @@ type MockHost struct {
 	ReleaseContextF     func(ctx *Context) error
 	LoaderF             func(ctx *Context) (*GrpcServer, error)
 	MapperF             func(ctx *Context) (*GrpcServer, error)
+	ResolverF           func(ctx *Context) (*GrpcServer, error)
 	SignalCancellationF func() error
 	CloseF              func() error
 	StartDebuggingF     func(info DebuggingInfo) error
@@ -122,6 +123,13 @@ func (m *MockHost) Loader(ctx *Context) (*GrpcServer, error) {
 func (m *MockHost) Mapper(ctx *Context) (*GrpcServer, error) {
 	if m.MapperF != nil {
 		return m.MapperF(ctx)
+	}
+	return nil, nil
+}
+
+func (m *MockHost) Resolver(ctx *Context) (*GrpcServer, error) {
+	if m.ResolverF != nil {
+		return m.ResolverF(ctx)
 	}
 	return nil, nil
 }

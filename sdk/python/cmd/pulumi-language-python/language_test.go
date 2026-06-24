@@ -106,9 +106,7 @@ var expectedFailures = map[string]string{
 	"l1-expand-final":                    "Python program generation does not support `...` argument expansion",
 	"l1-builtin-can":                     "Temporarily disabled until pr #18916 is submitted",
 	"l3-deferred-outputs":                "does not type-check",
-	"l3-range-bool-ref":                  `Item "None" of "Target | None" has no attribute "name"  [union-attr]`,
-	"l3-range-map-ref":                   `No overload variant of "__getitem__" of "list" matches argument type "str"  [call-overload]`, //nolint:lll
-	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",     //nolint:lll
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-component-nested":                "syntax error",
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 }

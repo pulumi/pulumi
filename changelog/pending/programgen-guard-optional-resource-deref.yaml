@@ -1,0 +1,6 @@
+component: programgen
+kind: fix
+body: Guard references to conditionally-created (boolean `range`) resources in generated Python and NodeJS programs so they type-check
+time: 2026-06-18T00:00:00.000000+00:00
+custom:
+    PR: "23634"

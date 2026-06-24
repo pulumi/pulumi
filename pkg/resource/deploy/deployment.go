@@ -249,7 +249,7 @@ type StepExecutorEvents interface {
 // PolicyEvents is an interface that can be used to hook policy events.
 type PolicyEvents interface {
 	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
-	OnPolicyRemediation(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
+	OnPolicyRemediation(resource.URN, plugin.Remediation, property.Map, property.Map)
 	OnPolicyAnalyzeSummary(plugin.PolicySummary)
 	OnPolicyRemediateSummary(plugin.PolicySummary)
 	OnPolicyAnalyzeStackSummary(plugin.PolicySummary)

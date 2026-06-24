@@ -1382,6 +1382,32 @@ func (g *generator) genHookDeclarations(r *pcl.Resource) map[string][]string {
 	return hookVars
 }
 
+// genMapRangedCollection emits an object-typed collection, keyed by the map key
+// and strongly typed by valueType, for a resource or component that ranges over a
+// map. Indexing such a collection by key (e.g. `r["k"]`) is then well-typed,
+// unlike the array used for numeric and list ranges. preInstantiate, when
+// non-nil, runs inside the loop before each resource is instantiated.
+func (g *generator) genMapRangedCollection(
+	w io.Writer, variableName, valueType, name string, rangeExpr model.Expression,
+	needsDefinition bool, preInstantiate func(), instantiate func(string),
+) {
+	if needsDefinition {
+		g.Fgenf(w, "%sconst %s: {[key: string]: %s} = {};\n", g.Indent, variableName, valueType)
+	}
+	entries := &model.FunctionCallExpression{Name: "entries", Args: []model.Expression{rangeExpr}}
+	g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, entries)
+	resName := g.makeResourceName(name, "range.key")
+	g.Indented(func() {
+		if preInstantiate != nil {
+			preInstantiate()
+		}
+		g.Fgenf(w, "%s%s[range.key] = ", g.Indent, variableName)
+		instantiate(resName)
+		g.Fgenf(w, ";\n")
+	})
+	g.Fgenf(w, "%s}\n", g.Indent)
+}
+
 // genResourceDeclaration handles the generation of instantiations of resources.
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
@@ -1459,6 +1485,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			rangeExpr = g.lowerExpression(rangeExpr, rangeType)
 			if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
 				g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
+			} else if _, isMap := pcl.UnwrapOption(model.ResolveOutputs(rangeType)).(*model.MapType); isMap {
+				g.Fgenf(w, "%sconst %s: {[key: string]: %s} = {};\n", g.Indent, variableName, qualifiedMemberName)
 			} else {
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 			}
@@ -1564,6 +1592,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, variableName, qualifiedMemberName, name, rangeExpr, needsDefinition, nil, instantiate)
 		} else {
 			if needsDefinition {
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
@@ -1686,6 +1716,8 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, variableName, qualifiedMemberName, name, rangeExpr, needsDefinition, nil, instantiate)
 		} else {
 			if needsDefinition {
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
@@ -1813,6 +1845,9 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, variableName, componentName, name, rangeExpr, true,
+				declareDeferredOutputVariables, instantiate)
 		} else {
 			g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, componentName)
 

@@ -29,13 +29,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
@@ -133,16 +129,6 @@ func PreferOutputVersionedInvokes(options *bindOptions) {
 
 func SkipInvokeTypechecking(options *bindOptions) {
 	options.skipInvokeTypecheck = true
-}
-
-func PluginHost(pctx *plugin.Context) BindOption {
-	return Loader(schema.NewPluginLoader(pctx))
-}
-
-func Loader(loader schema.Loader) BindOption {
-	return func(options *bindOptions) {
-		options.loader = loader
-	}
 }
 
 func Cache(cache *PackageCache) BindOption {
@@ -320,6 +306,7 @@ func BindResource(
 // evaluated through the normal resource registration path.
 func BindResourceProgram(
 	file *syntax.File, name, token string,
+	loader schema.Loader,
 	opts ...BindOption,
 ) (*Program, hcl.Diagnostics, error) {
 	bodyRange := file.Body.Range()
@@ -355,7 +342,7 @@ func BindResourceProgram(
 		Bytes:  file.Bytes,
 		Tokens: file.Tokens,
 	}
-	return BindProgram([]*syntax.File{resourceFile}, opts...)
+	return BindProgram([]*syntax.File{resourceFile}, loader, opts...)
 }
 
 // BindResourceList binds a PCL file as a resource list input and returns the bound arguments. This is used for `do` to
@@ -445,35 +432,16 @@ func typecheckObjectArgs(
 	return diagnostics
 }
 
-// BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
-// host, if any, is used for loading any resource plugins necessary to extract schema information.
-func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
+// BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The
+// loader resolves any packages the program references; the caller owns its lifetime. A program that references
+// no packages can pass a non-resolving loader (see [schema.NewNullLoader]).
+func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
+	contract.Requiref(loader != nil, "loader", "must not be nil")
+
 	ctx := context.TODO()
-	var options bindOptions
+	options := bindOptions{loader: loader}
 	for _, o := range opts {
 		o(&options)
-	}
-
-	if options.loader == nil {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, nil, err
-		}
-		pluginHost, err := pkghost.New(
-			context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
-			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
-		if err != nil {
-			return nil, nil, err
-		}
-		// The host is owned here, not by the context; the deferred closes run host-last.
-		defer contract.IgnoreClose(pluginHost)
-		ctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, cwd, nil, false, nil)
-		if err != nil {
-			return nil, nil, err
-		}
-		options.loader = schema.NewPluginLoader(ctx)
-
-		defer contract.IgnoreClose(ctx)
 	}
 
 	if options.packageCache == nil {
@@ -565,16 +533,15 @@ func BindDirectory(
 		return nil, parseDiagnostics, nil
 	}
 
-	opts := make([]BindOption, 0, 3+len(extraOptions))
+	opts := make([]BindOption, 0, 2+len(extraOptions))
 	opts = append(opts,
-		Loader(loader),
 		DirPath(directory),
 		ComponentBinder(ComponentProgramBinderFromFileSystem()),
 	)
 
 	opts = append(opts, extraOptions...)
 
-	program, bindDiagnostics, err := BindProgram(parser.Files, opts...)
+	program, bindDiagnostics, err := BindProgram(parser.Files, loader, opts...)
 
 	// err will be the same as bindDiagnostics if there are errors, but we don't want to return that here.
 	// err _could_ also be a context setup error in which case bindDiagnotics will be nil and that we do want to return.

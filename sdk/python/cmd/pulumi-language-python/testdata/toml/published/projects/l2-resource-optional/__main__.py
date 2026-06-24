@@ -10,12 +10,12 @@ unset_b = optionalprimitive.Resource("unsetB",
     string=unset_a.string,
     number_array=unset_a.number_array,
     boolean_map=unset_a.boolean_map)
-pulumi.export("unsetBoolean", unset_b.boolean.apply(lambda boolean: "null" if boolean == None else "not null"))
-pulumi.export("unsetFloat", unset_b.float.apply(lambda float: "null" if float == None else "not null"))
-pulumi.export("unsetInteger", unset_b.integer.apply(lambda integer: "null" if integer == None else "not null"))
-pulumi.export("unsetString", unset_b.string.apply(lambda string: "null" if string == None else "not null"))
-pulumi.export("unsetNumberArray", unset_b.number_array.apply(lambda number_array: "null" if number_array == None else "not null"))
-pulumi.export("unsetBooleanMap", unset_b.boolean_map.apply(lambda boolean_map: "null" if boolean_map == None else "not null"))
+pulumi.export("unsetBoolean", unset_b.boolean.apply(lambda boolean: "null" if boolean is None else "not null"))
+pulumi.export("unsetFloat", unset_b.float.apply(lambda float: "null" if float is None else "not null"))
+pulumi.export("unsetInteger", unset_b.integer.apply(lambda integer: "null" if integer is None else "not null"))
+pulumi.export("unsetString", unset_b.string.apply(lambda string: "null" if string is None else "not null"))
+pulumi.export("unsetNumberArray", unset_b.number_array.apply(lambda number_array: "null" if number_array is None else "not null"))
+pulumi.export("unsetBooleanMap", unset_b.boolean_map.apply(lambda boolean_map: "null" if boolean_map is None else "not null"))
 set_a = optionalprimitive.Resource("setA",
     boolean=True,
     float=3.14,

@@ -281,6 +281,10 @@ func (h *testHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
 	return srv, nil
 }
 
+func (h *testHost) Resolver(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	return nil, nil
+}
+
 func (h *testHost) SignalCancellation() error {
 	panic("not implemented")
 }

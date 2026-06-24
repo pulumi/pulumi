@@ -99,7 +99,7 @@ resource "app" "scaleway:iam/application:Application" {}
 			},
 		}, "", "", nil)
 	require.NoError(t, err)
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(pctx))
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewPluginLoader(pctx))
 	if err != nil || diags.HasErrors() {
 		for _, d := range diags {
 			t.Logf("%s: %s", d.Summary, d.Detail)
@@ -137,8 +137,7 @@ func parseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewContext(testdataPath)))
-	return pcl.BindProgram(parser.Files, options...)
+	return pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
 }
 
 func bindProgramWithParameterizedDependencies(t *testing.T) *pcl.Program {

@@ -29,7 +29,7 @@ import (
 
 func TestStartupFailure(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
 	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
@@ -53,7 +53,7 @@ func TestStartupFailure(t *testing.T) {
 
 func TestNonZeroExitcode(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
 	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
@@ -114,7 +114,7 @@ func TestNonZeroExitcode(t *testing.T) {
 // Similar to TestNonZeroExitcode but with a zero exit code, but no port written so it's still an error.
 func TestZeroExitcode(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
 	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
@@ -177,7 +177,7 @@ func TestZeroExitcode(t *testing.T) {
 //nolint:paralleltest // Modifying the global version.Version
 func TestPulumiVersionRangeYaml(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, h.Close()) })
 	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)

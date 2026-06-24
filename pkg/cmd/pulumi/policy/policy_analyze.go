@@ -27,7 +27,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -39,12 +41,14 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/spf13/cobra"
 )
 
@@ -95,9 +99,11 @@ func newPolicyAnalyzeCmd(
 					if err != nil {
 						return nil, nil, fmt.Errorf("getting working directory: %w", err)
 					}
+					reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), env.Global())
 					pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(),
 						nil, pkgWorkspace.EnsureLanguageInstalled,
-						schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+						schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+						packageworkspace.NewResolverServer(reg))
 					if err != nil {
 						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
 					}
@@ -470,8 +476,8 @@ func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiag
 func (e *analyzeEvents) OnPolicyRemediation(
 	urn resource.URN,
 	rem plugin.Remediation,
-	before resource.PropertyMap,
-	after resource.PropertyMap,
+	before property.Map,
+	after property.Map,
 ) {
 	e.outLock.Lock()
 	defer e.outLock.Unlock()
@@ -480,8 +486,8 @@ func (e *analyzeEvents) OnPolicyRemediation(
 		PolicyName:        rem.PolicyName,
 		PolicyPackName:    rem.PolicyPackName,
 		PolicyPackVersion: rem.PolicyPackVersion,
-		Before:            before,
-		After:             after,
+		Before:            resource.ToResourcePropertyMap(before),
+		After:             resource.ToResourcePropertyMap(after),
 	}))
 }
 
