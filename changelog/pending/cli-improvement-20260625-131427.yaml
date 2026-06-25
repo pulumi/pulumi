@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Add --output $format to `pulumi policy list` and `pulumi policy group list`
+time: 2026-06-25T13:14:27.099189+02:00
