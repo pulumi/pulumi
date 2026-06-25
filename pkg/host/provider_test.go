@@ -21,7 +21,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/stretchr/testify/require"

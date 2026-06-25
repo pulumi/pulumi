@@ -22,11 +22,11 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // analyzeResource runs all analyzers against a single resource in parallel, emitting

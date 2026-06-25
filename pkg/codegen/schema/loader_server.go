@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/segmentio/encoding/json"
