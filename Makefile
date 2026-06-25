@@ -69,21 +69,6 @@ check_proto: .make/proto
 		exit 1; \
 	fi
 
-.PHONY: generate-versions check-versions
-# generate-versions regenerates the Go view of the pinned language-runtime versions from
-# versions.json, the single source of truth. scripts/get-language-providers.sh reads
-# versions.json directly, so it needs no generated counterpart.
-generate-versions:
-	go run -C pkg ./util/versiongen ../versions.json util/known_runtimes_gen.go
-
-# check-versions fails if pkg/util/known_runtimes_gen.go is out of date with versions.json.
-check-versions: generate-versions
-	@if ! git diff --quiet -- pkg/util/known_runtimes_gen.go; then \
-		echo "pkg/util/known_runtimes_gen.go is out of date. Run 'make generate-versions' and commit."; \
-		git diff -- pkg/util/known_runtimes_gen.go; \
-		exit 1; \
-	fi
-
 .PHONY: generate
 generate::
 	$(call STEP_MESSAGE)
@@ -299,7 +284,7 @@ tidy::
 tidy_fix::
 	./scripts/tidy.sh
 
-renovate: tidy_fix generate-versions
+renovate: tidy_fix
 	./scripts/renovate-changelog.py
 
 validate_codecov_yaml::

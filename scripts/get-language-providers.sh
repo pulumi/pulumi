@@ -53,8 +53,8 @@ download_release() {
 # the runtime's repo field.
 #
 # Note: the HCL language runtime is no longer bundled. Its pinned version and download URL
-# live in versions.json + pkg/util/plugin.go (knownLanguageRuntimes) and the CLI fetches it on
-# demand, so it is intentionally absent from the bundled list below.
+# live in pkg/util/plugin.go (knownLanguageRuntimes) and the CLI fetches it on demand, so it is
+# intentionally absent from the bundled list below.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERSIONS_JSON="${SCRIPT_DIR}/../versions.json"
 

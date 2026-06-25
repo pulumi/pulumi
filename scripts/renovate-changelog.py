@@ -20,7 +20,6 @@ SCOPE_FOR = {
     "dotnet": "sdk/dotnet",
     "java": "java",
     "yaml": "yaml",
-    "hcl": "cli",
 }
 
 # Pinned version to match the version used by `make changelog` in the Makefile.

@@ -23,16 +23,25 @@
     "custom.regex",
   ],
   customManagers: [
-    // Update the pinned external language-runtime versions in `versions.json`, the single
-    // source of truth. Each runtime records its GitHub `repo` (used as the renovate depName)
-    // next to its `version`. After a bump, the auto-merge rule below runs `make renovate`,
-    // which regenerates pkg/util/known_runtimes_gen.go and writes a changelog entry.
+    // Update the pinned bundled language-runtime versions in `versions.json`. Each runtime
+    // records its GitHub `repo` (used as the renovate depName) next to its `version`. After a
+    // bump, the auto-merge rule below runs `make renovate`, which writes a changelog entry.
     {
       customType: "regex",
       fileMatch: ["^versions\\.json$"],
       datasourceTemplate: "github-releases",
       matchStrings: [
         "\"repo\":\\s*\"(?<depName>[^\"]+)\",\\s*\"version\":\\s*\"(?<currentValue>[^\"]+)\"",
+      ],
+    },
+    // Update the pinned version of the unbundled HCL language runtime in `pkg/util/plugin.go`.
+    // The `// renovate:` annotation on the knownLanguageRuntimes entry tells this manager which
+    // release to track.
+    {
+      customType: "regex",
+      fileMatch: ["^pkg/util/plugin\\.go$"],
+      matchStrings: [
+        "// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+Version:\\s+semver\\.MustParse\\(\"(?<currentValue>[^\"]+)\"\\)",
       ],
     },
   ],

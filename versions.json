@@ -1,11 +1,8 @@
 {
-  "//": "Single source of truth for the pinned external Pulumi language-runtime versions. Renovate updates this file; `make generate-versions` regenerates the derived file pkg/util/known_runtimes_gen.go, and `make renovate` writes a changelog entry per bump. For each runtime, `repo` is the GitHub owner/repo (also the renovate depName) and `version` is the release tag. Consumers: scripts/get-language-providers.sh (bundled) and pkg/util/plugin.go (unbundled).",
+  "//": "Single source of truth for the pinned versions of the bundled external Pulumi language runtimes. Renovate updates this file and `make renovate` writes a changelog entry per bump. For each runtime, `repo` is the GitHub owner/repo (also the renovate depName) and `version` is the release tag. Consumed by scripts/get-language-providers.sh. (The unbundled HCL runtime is pinned separately in pkg/util/plugin.go.)",
   "bundledLanguageRuntimes": {
     "dotnet": { "repo": "pulumi/pulumi-dotnet", "version": "v3.107.2" },
     "java": { "repo": "pulumi/pulumi-java", "version": "v1.31.0" },
     "yaml": { "repo": "pulumi/pulumi-yaml", "version": "v1.37.0" }
-  },
-  "unbundledLanguageRuntimes": {
-    "hcl": { "repo": "pulumi-labs/pulumi-hcl", "version": "v0.8.0" }
   }
 }

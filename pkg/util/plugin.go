@@ -32,38 +32,18 @@ type knownLanguageRuntime struct {
 	Version           semver.Version
 }
 
-// unbundledLanguageRuntimeSpec is one entry of unbundledLanguageRuntimeData, which is
-// generated from the repo-root versions.json (see known_runtimes_gen.go). Repo is the GitHub
-// owner/repo that publishes the runtime's releases; Version is the pinned release as a semver
-// string without a leading "v".
-type unbundledLanguageRuntimeSpec struct {
-	Name    string
-	Repo    string
-	Version string
-}
-
 // knownLanguageRuntimes is the set of language runtimes that the CLI knows how to fetch
 // without being told a download URL by the user or a project file. As we migrate
-// previously-bundled language runtimes off the CLI release tarball, they are recorded in
-// versions.json (the single source of truth, updated by renovate) and surfaced here via the
-// generated unbundledLanguageRuntimeData so the CLI continues to know where to find them.
-var knownLanguageRuntimes = buildKnownLanguageRuntimes()
-
-func buildKnownLanguageRuntimes() map[string]knownLanguageRuntime {
-	m := make(map[string]knownLanguageRuntime, len(unbundledLanguageRuntimeData))
-	for _, r := range unbundledLanguageRuntimeData {
-		m[r.Name] = knownLanguageRuntime{
-			PluginDownloadURL: githubReleasesDownloadURL(r.Repo),
-			Version:           semver.MustParse(r.Version),
-		}
-	}
-	return m
-}
-
-// githubReleasesDownloadURL returns the github:// download URL the CLI uses to fetch a plugin
-// published as GitHub releases under the given owner/repo.
-func githubReleasesDownloadURL(repo string) string {
-	return "github://api.github.com/" + repo
+// previously-bundled language runtimes off the CLI release tarball, they are added here so
+// the CLI continues to know where to find them.
+var knownLanguageRuntimes = map[string]knownLanguageRuntime{
+	// The HCL language runtime lives in pulumi-labs/pulumi-hcl rather than pulumi/pulumi-hcl,
+	// so we have to point downloads at that repo explicitly.
+	"hcl": {
+		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
+		// renovate: datasource=github-releases depName=pulumi-labs/pulumi-hcl extractVersion=^v(?<version>.+)$
+		Version: semver.MustParse("0.8.0"),
+	},
 }
 
 // SetKnownPluginDownloadURL fills in metadata on the given PluginDescriptor that the CLI
@@ -83,14 +63,12 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginDescriptor) bool {
 	}
 
 	if spec.Kind == apitype.ConverterPlugin && spec.Name == "hcl" {
-		// The HCL converter ships from the same repo as the HCL language runtime
-		// (pulumi-labs/pulumi-hcl), which doesn't match the default pulumi-converter-<name>
-		// convention, so we point downloads there explicitly. Reusing the language runtime's entry
-		// keeps that repo recorded in exactly one place (versions.json).
-		if known, ok := knownLanguageRuntimes["hcl"]; ok {
-			spec.PluginDownloadURL = known.PluginDownloadURL
-			return true
-		}
+		// The HCL converter lives in the pulumi-labs org rather than pulumi, and at a repository
+		// name (pulumi-hcl) that doesn't match the default pulumi-converter-<name> convention. We
+		// encode both pieces of information here so the auto-install machinery resolves the right
+		// release artifact.
+		spec.PluginDownloadURL = "github://api.github.com/pulumi-labs/pulumi-hcl"
+		return true
 	}
 
 	if spec.Kind == apitype.LanguagePlugin {
