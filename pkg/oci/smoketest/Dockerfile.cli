@@ -1,0 +1,15 @@
+# Engine/CLI image for the engine-in-container smoke test (design Option C).
+#
+# This is deliberately NOT one of the published pulumi/pulumi(-base) images: it
+# bakes in the *branch's* pulumi binary (which binds 0.0.0.0 in pod mode) and the
+# prototype pulumi-language-oci host — neither of which exists upstream. The
+# docker CLI lets the in-container language host start sibling program and
+# provider containers through the mounted host docker socket.
+#
+# The build context must contain the cross-compiled linux binaries
+# (pulumi-cli-linux, pulumi-language-oci-linux); run-pod.sh produces them.
+FROM alpine:3
+RUN apk add --no-cache docker-cli ca-certificates
+COPY pulumi-cli-linux /usr/local/bin/pulumi
+COPY pulumi-language-oci-linux /usr/local/bin/pulumi-language-oci
+ENTRYPOINT ["pulumi"]
