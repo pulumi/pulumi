@@ -42,9 +42,10 @@ import (
 type containerHost struct {
 	plugin.Host
 
-	pod        PodManager
-	engineHost string                                  // engine container name; providers share its netns
-	imageFor   func(workspace.PluginDescriptor) string // provider descriptor -> image ref
+	pod          PodManager
+	engineHost   string                                  // engine container name; providers share its netns
+	programImage string                                  // program image; workspace-coupled providers run from it
+	imageFor     func(workspace.PluginDescriptor) string // provider descriptor -> image ref
 }
 
 // Assert containerHost still satisfies the full Host interface after wrapping.
@@ -53,19 +54,24 @@ var _ plugin.Host = (*containerHost)(nil)
 // NewContainerHost wraps base so that Provider() runs the provider as a container
 // in engineHost's network namespace (via pod) and attaches to it. engineHost is
 // the engine container's name; peers reach its loopback by sharing its netns.
-func NewContainerHost(base plugin.Host, pod PodManager, engineHost string) plugin.Host {
+// programImage is the program's image; workspace-coupled providers (command,
+// docker-build, ...) run from it — rooted in the program's filesystem — rather
+// than from their own image. It may be empty when no such provider is used.
+func NewContainerHost(base plugin.Host, pod PodManager, engineHost, programImage string) plugin.Host {
 	return &containerHost{
-		Host:       base,
-		pod:        pod,
-		engineHost: engineHost,
-		imageFor:   providerImageRef,
+		Host:         base,
+		pod:          pod,
+		engineHost:   engineHost,
+		programImage: programImage,
+		imageFor:     providerImageRef,
 	}
 }
 
 // NewContainerHostFromEnv builds a container host from the pod environment:
 // PULUMI_POD_ADVERTISE_HOST (else the process hostname) names the engine
-// container whose netns providers join, and PULUMI_POD_ID labels the pod so its
-// containers can be cleaned up as a group.
+// container whose netns providers join, PULUMI_POD_ID labels the pod so its
+// containers can be cleaned up as a group, and PULUMI_POD_PROGRAM_IMAGE is the
+// program image that workspace-coupled providers run from.
 func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 	engineHost := os.Getenv("PULUMI_POD_ADVERTISE_HOST")
 	if engineHost == "" {
@@ -79,7 +85,8 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 	if podID == "" {
 		podID = engineHost
 	}
-	return NewContainerHost(base, NewDockerPodManager(podID), engineHost), nil
+	programImage := os.Getenv("PULUMI_POD_PROGRAM_IMAGE")
+	return NewContainerHost(base, NewDockerPodManager(podID), engineHost, programImage), nil
 }
 
 // providerImageRef maps a provider plugin descriptor to its container image by
@@ -94,22 +101,47 @@ func providerImageRef(spec workspace.PluginDescriptor) string {
 	return fmt.Sprintf("pulumi-provider-%s:%s", spec.Name, version)
 }
 
+// providerBinDir is the directory in which a (prototype) provider image lays its
+// binary, named "provider". It is a directory so the dir-oriented CopyFromImage
+// can inject it wholesale into a program-image run; injectedBinPath is where it
+// lands and is exec'd from. Stateless providers ignore this and run their image's
+// own ENTRYPOINT (which points at providerBinDir/provider).
+const (
+	providerBinDir   = "/plugin"
+	injectedBinDir   = "/plugins"
+	injectedBinPath  = injectedBinDir + "/provider"
+	pluginVolumePrfx = "plugin-"
+)
+
+// workspaceCoupled reports whether a provider must run rooted in the program's
+// filesystem — for its workspace and toolchain — rather than its own image. The
+// `command` provider shells out to the user's toolchain; `docker-build` resolves
+// a build context from the workspace. This is the prototype's convention table;
+// pre-start image labels are the generalizing layer (see the design doc). Cloud
+// providers are not workspace-coupled — they run from their own image.
+func workspaceCoupled(name string) bool {
+	switch name {
+	case "command", "docker-build":
+		return true
+	}
+	return false
+}
+
 // Provider starts the provider as a container sharing the engine's network
-// namespace and attaches to it, rather than spawning a plugin binary.
+// namespace and attaches to it, rather than spawning a plugin binary. Stateless
+// providers run from their own image; workspace-coupled providers run from the
+// program image with their binary injected (see providerContainer).
 func (h *containerHost) Provider(
 	ctx *plugin.Context, descriptor workspace.PluginDescriptor, _ env.Env,
 ) (plugin.Provider, error) {
-	image := h.imageFor(descriptor)
-	c, err := h.pod.RunContainer(ctx.Base(), ContainerConfig{
-		Image: image,
-		Name:  "provider-" + descriptor.Name,
-		// container:<engine> shares the engine's netns: the provider binds
-		// 127.0.0.1 and the engine reaches it over the shared loopback, so the
-		// stock binary and the engine's hardcoded 127.0.0.1 dial both work as-is.
-		Network: "container:" + h.engineHost,
-	})
+	cfg, err := h.providerContainer(ctx.Base(), descriptor)
 	if err != nil {
-		return nil, fmt.Errorf("oci: starting provider container %q for %s: %w", image, descriptor.Name, err)
+		return nil, err
+	}
+
+	c, err := h.pod.RunContainer(ctx.Base(), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("oci: starting provider container %q for %s: %w", cfg.Image, descriptor.Name, err)
 	}
 
 	port, err := scrapeServingPort(ctx.Base(), h.pod, c)
@@ -121,6 +153,51 @@ func (h *containerHost) Provider(
 	fmt.Fprintf(os.Stderr, "oci: provider %s running as container %s, attaching at 127.0.0.1:%d\n",
 		descriptor.Name, c.Name, port)
 	return plugin.NewProviderAttached(h, ctx, descriptor, port, ctx.DisableProviderPreview())
+}
+
+// providerContainer builds the spec for a provider container, on the engine's
+// netns so the provider binds 127.0.0.1 and the engine reaches it over the shared
+// loopback. A stateless provider runs from its own image. A workspace-coupled
+// provider instead runs from the *program* image — rooted in the program's
+// filesystem so it sees the workspace and toolchain — with its binary injected
+// from the provider image via an ephemeral, pod-scoped volume. See the design
+// doc's "execution as one primitive" section.
+func (h *containerHost) providerContainer(
+	ctx context.Context, descriptor workspace.PluginDescriptor,
+) (ContainerConfig, error) {
+	cfg := ContainerConfig{
+		Name:    "provider-" + descriptor.Name,
+		Network: "container:" + h.engineHost,
+	}
+
+	if !workspaceCoupled(descriptor.Name) {
+		cfg.Image = h.imageFor(descriptor)
+		return cfg, nil
+	}
+
+	if h.programImage == "" {
+		return ContainerConfig{}, fmt.Errorf(
+			"oci: provider %s needs the program filesystem, but PULUMI_POD_PROGRAM_IMAGE is unset",
+			descriptor.Name)
+	}
+
+	// Inject the provider binary into an ephemeral volume, then run it from the
+	// program image. The volume is pod-scoped and torn down by Close()/Cleanup().
+	vol, err := h.pod.CreateVolume(ctx, pluginVolumePrfx+descriptor.Name)
+	if err != nil {
+		return ContainerConfig{}, fmt.Errorf("oci: creating plugin volume for %s: %w", descriptor.Name, err)
+	}
+	if err := h.pod.CopyFromImage(ctx, h.imageFor(descriptor), providerBinDir, vol, injectedBinDir); err != nil {
+		return ContainerConfig{}, fmt.Errorf("oci: injecting %s provider binary: %w", descriptor.Name, err)
+	}
+
+	fmt.Fprintf(os.Stderr,
+		"oci: provider %s is workspace-coupled — running from program image %s with injected binary\n",
+		descriptor.Name, h.programImage)
+	cfg.Image = h.programImage
+	cfg.Volumes = []VolumeMount{{Source: vol.Name, Target: injectedBinDir}}
+	cfg.Entrypoint = []string{injectedBinPath}
+	return cfg, nil
 }
 
 // Close tears down the provider containers this host started, then closes the

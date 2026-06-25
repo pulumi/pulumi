@@ -1,0 +1,10 @@
+name: oci-smoketest-command
+description: Smoke test for a workspace-coupled provider (command) in the OCI pod model
+runtime:
+  name: oci
+  options:
+    # Pod mode only: the program image the driver builds. This demo always runs
+    # the program as a container, so no subprocess `program` path is set. The
+    # same image is what the `command` provider runs from (run-from-program-image),
+    # so it sees the workspace baked into it.
+    image: oci-smoke-command:latest

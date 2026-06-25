@@ -4,7 +4,14 @@
 # attach-wait mode (no args) and prints its port to stdout, which the engine
 # scrapes from `docker logs`. alpine (rather than scratch) gives a shell for
 # debugging and CA certs for providers that call cloud APIs.
+#
+# The binary lives at /plugin/provider — a directory — for two reasons:
+#   - stateless providers run this image directly, via the ENTRYPOINT;
+#   - workspace-coupled providers (command, docker-build) don't run this image at
+#     all: the container host copies /plugin's contents into a volume (the
+#     dir-oriented CopyFromImage) and runs the binary from the *program* image.
+# Keeping it in a directory lets one image serve both paths unchanged.
 FROM alpine:3
 RUN apk add --no-cache ca-certificates
-COPY provider-bin /provider
-ENTRYPOINT ["/provider"]
+COPY provider-bin /plugin/provider
+ENTRYPOINT ["/plugin/provider"]
