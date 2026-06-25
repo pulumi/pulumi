@@ -23,24 +23,16 @@
     "custom.regex",
   ],
   customManagers: [
-    // Update the language provider versions in `scripts/get-language-providers.sh`.
-    // Each entry in the LANGUAGES array is preceded by a `# renovate:` annotation
-    // that tells this manager which package to track.
+    // Update the pinned external language-runtime versions in `versions.json`, the single
+    // source of truth. Each runtime records its GitHub `repo` (used as the renovate depName)
+    // next to its `version`. After a bump, the auto-merge rule below runs `make renovate`,
+    // which regenerates pkg/util/known_runtimes_gen.go and writes a changelog entry.
     {
       customType: "regex",
-      fileMatch: ["^scripts/get-language-providers\\.sh$"],
+      fileMatch: ["^versions\\.json$"],
+      datasourceTemplate: "github-releases",
       matchStrings: [
-        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+\"\\S+ (?<currentValue>\\S+)\"",
-      ],
-    },
-    // Update the pinned versions of unbundled language runtimes in
-    // `pkg/util/plugin.go`. Each entry in `knownLanguageRuntimes` is preceded by a
-    // `// renovate:` annotation that tells this manager which release to track.
-    {
-      customType: "regex",
-      fileMatch: ["^pkg/util/plugin\\.go$"],
-      matchStrings: [
-        "// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+Version:\\s+semver\\.MustParse\\(\"(?<currentValue>[^\"]+)\"\\)",
+        "\"repo\":\\s*\"(?<depName>[^\"]+)\",\\s*\"version\":\\s*\"(?<currentValue>[^\"]+)\"",
       ],
     },
   ],
@@ -104,7 +96,7 @@
     {
       description: "Auto merge the language runtimes",
       matchManagers: ["custom.regex"],
-      matchFileNames: ["scripts/get-language-providers.sh"],
+      matchFileNames: ["versions.json"],
       dependencyDashboardApproval: false,
       minimumReleaseAge: "0 days",
       postUpgradeTasks: {

@@ -103,6 +103,21 @@ jobs:
       - name: Check Protobufs
         run: make check_proto
 
+  versions-gen:
+    name: Check generated versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: ./.github/actions/retry
+        with:
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
+      - name: Check versions.json is in sync with generated files
+        run: make check-versions
+
   sdk-lint:
     name: Lint SDKs
     runs-on: ubuntu-latest

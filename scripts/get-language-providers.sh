@@ -47,18 +47,28 @@ download_release() {
   fi
 }
 
-# Each entry is "lang tag [owner]". The owner defaults to "pulumi" when omitted.
+# The pinned language-runtime versions live in versions.json at the repo root (the single
+# source of truth, kept up to date by renovate). We read the bundled runtimes from there into
+# the LANGUAGES array, each entry as "lang version owner" where owner is the GitHub org from
+# the runtime's repo field.
 #
 # Note: the HCL language runtime is no longer bundled. Its pinned version and download URL
-# live in pkg/util/plugin.go (knownLanguageRuntimes) and the CLI fetches it on demand.
-LANGUAGES=(
-  # renovate: datasource=github-releases depName=pulumi/pulumi-dotnet
-  "dotnet v3.107.2"
-  # renovate: datasource=github-releases depName=pulumi/pulumi-java
-  "java v1.31.0"
-  # renovate: datasource=github-releases depName=pulumi/pulumi-yaml
-  "yaml v1.37.0"
-)
+# live in versions.json + pkg/util/plugin.go (knownLanguageRuntimes) and the CLI fetches it on
+# demand, so it is intentionally absent from the bundled list below.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSIONS_JSON="${SCRIPT_DIR}/../versions.json"
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "error: jq is required to read ${VERSIONS_JSON}" >&2
+  exit 1
+fi
+
+# Capture jq's output first so a failure aborts under 'set -e'.
+LANGUAGES_TSV="$(jq -r '.bundledLanguageRuntimes | to_entries[] | "\(.key) \(.value.version) \(.value.repo | split("/")[0])"' "${VERSIONS_JSON}")"
+LANGUAGES=()
+while IFS= read -r entry; do
+  [ -n "${entry}" ] && LANGUAGES+=("${entry}")
+done <<< "${LANGUAGES_TSV}"
 
 for i in "${LANGUAGES[@]}"; do
   set -- $i # treat strings in loop as args
