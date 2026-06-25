@@ -16,12 +16,14 @@ package backend
 
 import (
 	"context"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/oci"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -38,10 +40,20 @@ func DefaultHostFactory(reg registry.Registry) engine.HostFactory {
 	return func(
 		ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext,
 	) (plugin.Host, error) {
-		return pkghost.New(ctx, d, statusD, debug,
+		host, err := pkghost.New(ctx, d, statusD, debug,
 			pkgWorkspace.EnsureLanguageInstalled,
 			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 			resolver)
+		if err != nil {
+			return nil, err
+		}
+		// In pod mode the engine runs in a container and providers run as sibling
+		// containers; wrap the standard host so Provider() starts and attaches to
+		// them instead of spawning binaries.
+		if os.Getenv("PULUMI_POD_MODE") == "true" {
+			return oci.NewContainerHostFromEnv(host)
+		}
+		return host, nil
 	}
 }
 
