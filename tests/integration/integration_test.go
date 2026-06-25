@@ -1456,8 +1456,6 @@ func TestPulumiInstallInstallsPackagesWithExperimentalRegistry(t *testing.T) {
 description: A minimal TypeScript Pulumi program
 runtime:
   name: nodejs
-  options:
-    packagemanager: yarn
 packages:
   test-provider: github.com/pulumi/component-test-providers/test-provider@52a8a71555d964542b308da197755c64dbe63352
 `

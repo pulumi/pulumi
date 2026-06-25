@@ -286,7 +286,7 @@ func TestCompilationErrorTypescript(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "compilation_error", "typescript")
 
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("npm", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
 	if err != nil {
@@ -471,7 +471,7 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "javascript")
 
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("npm", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
 	if err != nil {
@@ -513,7 +513,7 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "typescript")
 
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("npm", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
 	if err != nil {
