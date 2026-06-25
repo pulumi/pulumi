@@ -1592,9 +1592,23 @@ outer:
 	resp, err = dap.ReadProtocolMessage(reader)
 	require.NoError(t, err)
 	assert.IsType(t, &dap.ContinueResponse{}, resp)
-	resp, err = dap.ReadProtocolMessage(reader)
-	require.NoError(t, err)
-	assert.IsType(t, &dap.TerminatedEvent{}, resp)
+	// On program exit the debugger sends both an "exited" and a "terminated" event. DAP doesn't
+	// guarantee their order, and delve changed it in 1.27 (exited now precedes terminated), so read
+	// until we see the terminated event.
+	sawTerminated := false
+	for i := 0; i < 2 && !sawTerminated; i++ {
+		resp, err = dap.ReadProtocolMessage(reader)
+		require.NoError(t, err)
+		switch resp.(type) {
+		case *dap.TerminatedEvent:
+			sawTerminated = true
+		case *dap.ExitedEvent:
+			// Ignore; its order relative to the terminated event is not guaranteed.
+		default:
+			t.Fatalf("unexpected DAP message waiting for terminated event: %T", resp)
+		}
+	}
+	require.True(t, sawTerminated, "expected a terminated event")
 
 	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
 		Request: newDAPRequest(seq, "disconnect"),
