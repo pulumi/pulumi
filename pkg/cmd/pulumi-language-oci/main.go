@@ -17,17 +17,20 @@
 // language toolchain, it runs the program as an OCI container — the container
 // IS the program's shape declaration (see oci-execution-design.md).
 //
-// This is the minimal Option-A slice: the engine still runs in-process with the
-// host CLI, and the program container reaches the engine's resource monitor over
-// the host loopback via `host.docker.internal`. Run() has two modes so the host
-// plumbing can be validated independently of container networking:
+// Run() has three operating modes so the plumbing can be validated in layers:
 //
 //   - subprocess mode (default): exec the program binary directly, passing the
 //     monitor address through unchanged. Proves discovery + the RPC sequence +
 //     Run + the backend with zero networking variables.
-//   - pod mode (PULUMI_POD_MODE=true): `docker run` the program image, rewriting
-//     the advertised monitor/engine addresses to `host.docker.internal` so the
-//     container can dial back to the host.
+//   - pod mode, engine on the host (PULUMI_POD_MODE=true, no pod network):
+//     `docker run` the program image on the default bridge and rewrite the
+//     advertised monitor/engine addresses to host.docker.internal so the
+//     container dials back to the host engine (design Option A).
+//   - pod mode, engine in a container (PULUMI_POD_MODE=true + PULUMI_POD_NETWORK):
+//     the engine itself runs in a container on a shared pod network; the program
+//     joins that network and reaches the engine by its container DNS name (design
+//     Option C). PULUMI_POD_ADVERTISE_HOST names that DNS host; absent it, we fall
+//     back to this process's own hostname (the engine container's name).
 package main
 
 import (
@@ -147,10 +150,19 @@ func (h *ociHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirp
 
 	monitor, engine := req.MonitorAddress, h.engineAddress
 	if podMode {
-		// The engine advertises loopback; rewrite it to a host the container can
-		// reach. (Phases 4+ will instead point peers at container DNS names.)
-		monitor = rewriteHost(monitor, "host.docker.internal")
-		engine = rewriteHost(engine, "host.docker.internal")
+		// The engine binds 0.0.0.0 but advertises a loopback host it can't know is
+		// reachable from elsewhere. Rewrite the host portion to one the program
+		// container can dial: host.docker.internal when the engine is on the host,
+		// or the engine container's DNS name when it runs on the pod network. The
+		// shim sets PULUMI_POD_ADVERTISE_HOST; absent it, fall back to our own
+		// hostname (equal to the engine container's name in the in-container case).
+		advertiseHost := os.Getenv("PULUMI_POD_ADVERTISE_HOST")
+		if advertiseHost == "" {
+			advertiseHost, _ = os.Hostname()
+		}
+		monitor = rewriteHost(monitor, advertiseHost)
+		engine = rewriteHost(engine, advertiseHost)
+		fmt.Fprintf(os.Stderr, "oci: pod mode — advertising monitor=%s engine=%s\n", monitor, engine)
 	}
 
 	env := map[string]string{
@@ -209,7 +221,16 @@ func (h *ociHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirp
 // dockerRunArgs builds the argv for `docker run` of a program image. Env keys are
 // emitted in sorted order so the argv is deterministic.
 func dockerRunArgs(image string, env map[string]string) []string {
-	args := []string{"run", "--rm", "--add-host=host.docker.internal:host-gateway"}
+	args := []string{"run", "--rm"}
+	if network := os.Getenv("PULUMI_POD_NETWORK"); network != "" {
+		// Engine-in-container: join the pod network and reach the engine by its
+		// container DNS name (no host gateway needed).
+		args = append(args, "--network", network)
+	} else {
+		// Engine on the host: the program runs on the default bridge and reaches
+		// the host engine through Docker's host-gateway alias.
+		args = append(args, "--add-host=host.docker.internal:host-gateway")
+	}
 	for _, k := range sortedKeys(env) {
 		args = append(args, "-e", k+"="+env[k])
 	}

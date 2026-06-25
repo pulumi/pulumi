@@ -101,7 +101,10 @@ run_container_stage() {
 
   echo "==> [container] pulumi up (PULUMI_POD_MODE=true)"
   init_stack
-  PULUMI_POD_MODE=true pulumi up --yes --skip-preview --stack "$STACK"
+  # Engine runs in-process on the host; the program container dials back via the
+  # docker host-gateway alias, so advertise host.docker.internal explicitly.
+  PULUMI_POD_MODE=true PULUMI_POD_ADVERTISE_HOST=host.docker.internal \
+    pulumi up --yes --skip-preview --stack "$STACK"
   assert_output greeting "OCI runtime"
   echo "==> [container] PASS"
 }
