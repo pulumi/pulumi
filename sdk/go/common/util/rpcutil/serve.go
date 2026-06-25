@@ -17,6 +17,7 @@ package rpcutil
 import (
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -77,7 +78,18 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 	port := opts.Port
 
 	// Listen on a TCP port, but let the kernel choose a free port for us.
-	lis, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
+	//
+	// In pod mode (containerized execution) the gRPC servers booted through this
+	// path — the resource monitor, the engine, the language host — must be
+	// reachable from peer containers on the pod network, not just loopback, so we
+	// bind all interfaces. The address advertised to peers is rewritten to a
+	// container-reachable host by whoever launches them (e.g. the OCI language
+	// host). The gate keeps default (non-pod) behavior byte-for-byte identical.
+	listenAddr := "127.0.0.1"
+	if os.Getenv("PULUMI_POD_MODE") == "true" {
+		listenAddr = "0.0.0.0"
+	}
+	lis, err := net.Listen("tcp", listenAddr+":"+strconv.Itoa(port))
 	if err != nil {
 		return ServeHandle{Port: port}, nil,
 			fmt.Errorf("failed to listen on TCP port ':%v': %v", port, err)
