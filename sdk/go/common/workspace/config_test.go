@@ -160,11 +160,11 @@ func TestValidateStackConfigValues(t *testing.T) {
 		require.NoError(t, err, "Should be able to read the stack")
 
 		err = ValidateStackConfigAndApplyProjectConfig(
-			t.Context(), "testProject", project, esc.Value{}, stack.Config, config.Base64Crypter, config.Base64Crypter)
+			t.Context(), project.Name.String(), project, esc.Value{}, stack.Config, config.Base64Crypter, config.Base64Crypter)
 		require.NoError(t, err, "a defaulted secret config must not be mis-validated")
 
 		// The default must have been applied as an encrypted (secure) value.
-		value, ok, err := stack.Config.Get(config.MustMakeKey("testProject", "top-secret"), true)
+		value, ok, err := stack.Config.Get(config.MustMakeKey(project.Name.String(), "top-secret"), true)
 		require.NoError(t, err)
 		require.True(t, ok, "the defaulted secret key should be present on the stack")
 		require.True(t, value.Secure(), "the applied secret default must be encrypted")
