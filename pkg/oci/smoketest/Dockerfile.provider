@@ -1,0 +1,10 @@
+# Provider image for the containerized-provider smoke test. Built mechanically
+# from a STOCK released provider binary — no rebuild against this branch. The
+# binary is downloaded from get.pulumi.com and wrapped here as-is; it boots into
+# attach-wait mode (no args) and prints its port to stdout, which the engine
+# scrapes from `docker logs`. alpine (rather than scratch) gives a shell for
+# debugging and CA certs for providers that call cloud APIs.
+FROM alpine:3
+RUN apk add --no-cache ca-certificates
+COPY provider-bin /provider
+ENTRYPOINT ["/provider"]

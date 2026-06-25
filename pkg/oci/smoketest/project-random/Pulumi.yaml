@@ -1,0 +1,8 @@
+name: oci-smoketest-random
+description: Smoke test for a containerized resource provider (OCI)
+runtime:
+  name: oci
+  options:
+    # Pod mode only: the program image the driver builds. This demo always runs
+    # the program as a container, so no subprocess `program` path is set.
+    image: oci-smoke-random:latest
