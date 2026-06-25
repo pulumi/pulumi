@@ -1,0 +1,13 @@
+# Program image for the image-build smoke test. Beyond the Go program, it bakes:
+#   - a build context at /workspace/app (a trivial Dockerfile to build), and
+#   - the docker CLI (+ buildx), part of the program's declared toolchain.
+# The `docker` provider runs *from this image* (run-from-program-image), so it
+# resolves the build context from /workspace/app and finds the docker CLI on its
+# PATH — both present only because the program image declares them. It reaches the
+# daemon over the docker socket the pod projects in (the capability mechanism).
+FROM alpine:3
+RUN apk add --no-cache docker-cli docker-cli-buildx
+RUN mkdir -p /workspace/app \
+    && printf 'FROM alpine:3\nRUN echo built-in-the-pod > /built\n' > /workspace/app/Dockerfile
+COPY program-linux /program
+ENTRYPOINT ["/program"]
