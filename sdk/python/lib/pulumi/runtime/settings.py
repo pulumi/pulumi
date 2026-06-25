@@ -439,18 +439,16 @@ async def register_package(
         version=package_version,
         value=base64.b64decode(base64_parameter),
     )
-    request_kwargs = {
-        "name": base_provider_name,
-        "version": base_provider_version,
-        "download_url": base_provider_download_url,
-    }
-    if extension:
-        request_kwargs["extension"] = parameterization
-    else:
-        request_kwargs["parameterization"] = parameterization
-    response = monitor.RegisterPackage(
-        resource_pb2.RegisterPackageRequest(**request_kwargs)
+    request = resource_pb2.RegisterPackageRequest(
+        name=base_provider_name,
+        version=base_provider_version,
+        download_url=base_provider_download_url,
     )
+    if extension:
+        request.extension.CopyFrom(parameterization)
+    else:
+        request.parameterization.CopyFrom(parameterization)
+    response = monitor.RegisterPackage(request)
     ref = response.ref
     package_refs[key] = ref
     return ref
