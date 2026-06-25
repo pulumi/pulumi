@@ -1,0 +1,4 @@
+component: sdk/go
+kind: improvement
+body: Move provider RPC setup code to the sdk module
+time: 2026-06-25T10:08:35.708179+01:00

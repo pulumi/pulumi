@@ -25,6 +25,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/texttheater/golang-levenshtein v1.0.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
+	go.opentelemetry.io/otel/bridge/opentracing v1.33.0
 	golang.org/x/crypto v0.52.0
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.55.0
