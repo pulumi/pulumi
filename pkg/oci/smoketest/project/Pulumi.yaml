@@ -1,0 +1,10 @@
+name: oci-smoketest
+description: Smoke test for containerized (OCI) program execution
+runtime:
+  name: oci
+  options:
+    # Subprocess mode (default): the built program binary, resolved relative to
+    # this project directory. The driver compiles ./program before `pulumi up`.
+    program: ./program
+    # Pod mode (PULUMI_POD_MODE=true): the program image the driver builds.
+    image: oci-smoke-demo:latest
