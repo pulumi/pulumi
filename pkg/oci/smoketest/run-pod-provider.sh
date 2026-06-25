@@ -1,25 +1,27 @@
 #!/usr/bin/env bash
 #
-# Containerized-provider smoke test (design Phase 4a). Builds on run-pod.sh: the
-# engine runs in a container on a pod network, and a real resource provider runs
-# in *its own* container too. The key trick is the k8s pod model — the provider
-# container shares the engine container's network namespace
-# (`--network container:<engine>`), so the engine's existing 127.0.0.1
-# spawn/attach/callback machinery is correct over the shared loopback. That means
-# we can drive a STOCK released provider binary (which binds 127.0.0.1, built
-# against the released SDK, not this branch) with no rebuild and no engine code:
+# Containerized-provider smoke test (design Phase 4b). The engine runs in a
+# container on a pod network and starts resource providers as *sibling*
+# containers on demand, through a real container-mode plugin.Host
+# (pkg/oci.NewContainerHost) wired in under PULUMI_POD_MODE. Unlike 4a — which
+# pre-started the provider from this shell and pointed the engine at it via
+# PULUMI_DEBUG_PROVIDERS — here the engine does it itself: on first use it runs
+# the provider container in its own network namespace, reads the port the
+# provider prints, and attaches via plugin.NewProviderAttached. No env-var
+# backchannel, no shell pre-start.
 #
-#   1. download the stock provider tarball and wrap the binary in an image
-#   2. engine container starts the provider in its own netns, scrapes the port
-#      line from `docker logs`, and points the engine at it via
-#      PULUMI_DEBUG_PROVIDERS=<pkg>:<port> — the existing attach mechanism
-#   3. a program (program-random/) creates a random.RandomPet through it
+# The provider runs from a STOCK released binary wrapped in an image (no rebuild);
+# sharing the engine's netns makes the engine's hardcoded 127.0.0.1 dial correct.
 #
-# A green run proves the engine drove a provider-in-a-container through the full
-# RegisterResource -> Create gRPC path.
+# Pipeline:
+#   1. cross-compile this branch's pulumi + pulumi-language-oci; build the engine
+#      image (Dockerfile.cli) and the demo program image (Dockerfile)
+#   2. download + wrap the stock provider binary into an image (assume-present;
+#      the engine's host resolves it by convention, it does not build it)
+#   3. create a pod network, run `pulumi up` in the engine container
+#   4. the engine lazily starts the provider container and creates a RandomPet
 #
 # Usage: run-pod-provider.sh
-#
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).
 set -euo pipefail
 
@@ -36,7 +38,9 @@ BUILDER="${OCI_BUILDER:-desktop-linux}"
 GOARCH="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')"
 
 # The stock provider version is kept in lockstep with the SDK the program builds
-# against (program-random/go.mod requires pulumi-random/sdk/v4 v4.21.0).
+# against (program-random/go.mod requires pulumi-random/sdk/v4 v4.21.0). The
+# engine's container host resolves the image by the same convention:
+# pulumi-provider-<name>:v<version>.
 PROVIDER_PKG="random"
 PROVIDER_VERSION="4.21.0"
 
@@ -54,10 +58,10 @@ export PULUMI_CONFIG_PASSPHRASE="smoke-test"
 mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/state" "$WORK/project"
 
 cleanup() {
-  # Backstop: remove every container this pod created (engine + provider +
-  # program) by label, then the network. The inner script already tears the
-  # provider down before the engine exits; this covers a mid-run failure. Filter
-  # by label, not network — a netns-sharing provider is not listed under $NET.
+  # Backstop: remove every container labeled for this pod — the engine container
+  # and any provider container the engine started (which shares the engine's
+  # netns, so it is not listed under $NET). The engine's host.Close() already
+  # tears providers down on the happy path; this covers a mid-run failure.
   local leftovers
   leftovers="$(docker ps -aq --filter "label=$POD_LABEL" 2>/dev/null || true)"
   [ -n "$leftovers" ] && docker rm -f $leftovers >/dev/null 2>&1 || true
@@ -103,10 +107,10 @@ docker network create "$NET" >/dev/null
 
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 
-echo "==> running engine container $ENGINE_NAME on $NET (provider in shared netns, then pulumi up)"
-# Inside the engine container: start the provider in this container's netns,
-# scrape its port line, and attach to it via PULUMI_DEBUG_PROVIDERS. The provider
-# binds 127.0.0.1:<port> which, in the shared netns, the engine reaches directly.
+echo "==> running engine container $ENGINE_NAME on $NET (engine starts the provider lazily)"
+# The engine binds 0.0.0.0 (PULUMI_POD_MODE) and, in pod mode, its plugin host is
+# the container host: on first use of `random` it runs the provider container in
+# this engine container's netns (PULUMI_POD_ID labels it for cleanup) and attaches.
 docker run --rm -i \
   --privileged \
   --network "$NET" \
@@ -120,41 +124,14 @@ docker run --rm -i \
   -e PULUMI_POD_MODE=true \
   -e PULUMI_POD_NETWORK="$NET" \
   -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
+  -e PULUMI_POD_ID="$POD_ID" \
   -e PULUMI_BACKEND_URL=file:///state \
   -e PULUMI_CONFIG_PASSPHRASE="$PULUMI_CONFIG_PASSPHRASE" \
   -e STACK="$STACK" \
-  -e ENGINE_NAME="$ENGINE_NAME" \
-  -e POD_LABEL="$POD_LABEL" \
-  -e PROVIDER_PKG="$PROVIDER_PKG" \
-  -e PROVIDER_IMAGE="$PROVIDER_IMAGE" \
   --entrypoint sh \
   "$ENGINE_IMAGE" \
   -c '
     set -e
-    PROVIDER_NAME="$ENGINE_NAME-provider-$PROVIDER_PKG"
-    # Remove the provider before the engine exits; a netns-sharing container
-    # otherwise blocks the engine container'"'"'s own --rm teardown.
-    trap '"'"'docker rm -f "$PROVIDER_NAME" >/dev/null 2>&1 || true'"'"' EXIT
-
-    echo "oci: starting $PROVIDER_PKG provider container in the engine netns"
-    docker run -d --name "$PROVIDER_NAME" \
-      --network "container:$ENGINE_NAME" \
-      --label "$POD_LABEL" \
-      "$PROVIDER_IMAGE" >/dev/null
-
-    PORT=""
-    i=0
-    while [ $i -lt 30 ]; do
-      PORT="$(docker logs "$PROVIDER_NAME" 2>/dev/null | grep -m1 -E "^[0-9]+$" || true)"
-      [ -n "$PORT" ] && break
-      i=$((i + 1)); sleep 1
-    done
-    if [ -z "$PORT" ]; then
-      echo "!! provider did not report a port"; docker logs "$PROVIDER_NAME" || true; exit 1
-    fi
-    echo "oci: attaching to $PROVIDER_PKG provider at 127.0.0.1:$PORT (shared netns)"
-    export PULUMI_DEBUG_PROVIDERS="$PROVIDER_PKG:$PORT"
-
     pulumi login "$PULUMI_BACKEND_URL"
     pulumi stack select --create "$STACK"
     pulumi up --yes --skip-preview --stack "$STACK"
@@ -163,6 +140,10 @@ docker run --rm -i \
   2>&1 | tee "$WORK/engine.log"
 
 echo "==> asserting the random resource was created through the containerized provider"
+if ! grep -q 'oci: provider random running as container' "$WORK/engine.log"; then
+  echo "!! the engine did not start the provider as a container"
+  exit 1
+fi
 PET="$(sed -n 's/.*SMOKE petName=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
 if [ -z "$PET" ]; then
   echo "!! no petName output — the provider did not create the resource"
