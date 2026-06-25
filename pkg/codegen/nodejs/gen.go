@@ -2601,8 +2601,17 @@ func genNPMPackageMetadata(
 		npminfo.Scripts["postinstall"] = "node ./scripts/postinstall.js"
 	}
 
+	// For local SDKs we pin typescript and @types/node ourselves in dependencies above. Ignore any schema-provided
+	// versions of these.
+	ownedByLocalSDK := func(dep string) bool {
+		return localSDK && (dep == "typescript" || dep == "@types/node")
+	}
+
 	// Copy the overlay dependencies, if any.
 	for depk, depv := range info.Dependencies {
+		if ownedByLocalSDK(depk) {
+			continue
+		}
 		if npminfo.Dependencies == nil {
 			npminfo.Dependencies = make(map[string]string)
 		}
@@ -2613,6 +2622,9 @@ func genNPMPackageMetadata(
 		}
 	}
 	for depk, depv := range info.DevDependencies {
+		if ownedByLocalSDK(depk) {
+			continue
+		}
 		if npminfo.DevDependencies == nil {
 			npminfo.DevDependencies = make(map[string]string)
 		}

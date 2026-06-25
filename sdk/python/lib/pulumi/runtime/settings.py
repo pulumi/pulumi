@@ -399,12 +399,14 @@ async def register_package(
     package_name: str,
     package_version: str,
     base64_parameter: str,
+    extension: bool = False,
 ) -> str:
     """
     Registers a parameterized provider package with the resource monitor and
     returns its package reference. The result is cached per deployment so that
     concurrent inline programs each register against their own engine and
-    receive distinct refs.
+    receive distinct refs. When extension is True, the package is registered as
+    an extension parameterization rather than a replacement.
     """
     key = "\0".join(
         [
@@ -414,6 +416,7 @@ async def register_package(
             package_name,
             package_version,
             base64_parameter,
+            str(extension),
         ]
     )
 
@@ -436,13 +439,17 @@ async def register_package(
         version=package_version,
         value=base64.b64decode(base64_parameter),
     )
+    request_kwargs = {
+        "name": base_provider_name,
+        "version": base_provider_version,
+        "download_url": base_provider_download_url,
+    }
+    if extension:
+        request_kwargs["extension"] = parameterization
+    else:
+        request_kwargs["parameterization"] = parameterization
     response = monitor.RegisterPackage(
-        resource_pb2.RegisterPackageRequest(
-            name=base_provider_name,
-            version=base_provider_version,
-            download_url=base_provider_download_url,
-            parameterization=parameterization,
-        )
+        resource_pb2.RegisterPackageRequest(**request_kwargs)
     )
     ref = response.ref
     package_refs[key] = ref

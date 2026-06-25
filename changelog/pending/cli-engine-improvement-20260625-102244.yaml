@@ -1,0 +1,4 @@
+component: cli/engine
+kind: improvement
+body: Fix TestDebuggerAttach for dlv@1.27
+time: 2026-06-25T10:22:44.003933+02:00

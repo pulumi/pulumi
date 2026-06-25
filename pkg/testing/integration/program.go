@@ -2281,7 +2281,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	// Until that's been fixed, this environment variable can be set by a test, which results in
 	// a package.json being emitted in the project directory with the locally-built @pulumi/pulumi linked in.
 	// When the underlying issue has been fixed, the use of this environment variable should be removed.
-	linkPulumi := slices.Contains(pt.opts.Env, "PULUMI_TEST_YARN_LINK_PULUMI=true")
+	linkPulumi := slices.Contains(pt.opts.Env, "PULUMI_TEST_LINK_PULUMI=true")
 	if linkPulumi {
 		if pt.useNpm() {
 			const packageJSON = `{
