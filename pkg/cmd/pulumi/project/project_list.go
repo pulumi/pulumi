@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -25,10 +26,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdbackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+type projectListRenderFunc func(w io.Writer, results []projectListResult, orgName string) error
 
 // StackReferenceWithOrg extends the backend.StackReference interface with Organization method
 type StackReferenceWithOrg interface {
@@ -45,7 +49,11 @@ type projectListResult struct {
 
 func newProjectListCmd() *cobra.Command {
 	var orgName string
-	var jsonOut bool
+
+	output := outputflag.OutputFlag[projectListRenderFunc]{
+		RenderForTerminal: renderProjectsConsole,
+		RenderJSON:        renderProjectsJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -142,48 +150,7 @@ func newProjectListCmd() *cobra.Command {
 				results = append(results, project)
 			}
 
-			out := cmd.OutOrStdout()
-			// If no projects, return empty array for JSON output
-			if len(results) == 0 {
-				if jsonOut {
-					fmt.Fprintln(out, "[]")
-					return nil
-				}
-
-				if orgName != "" {
-					fmt.Fprintln(out, "No projects found in organization", orgName)
-				} else {
-					fmt.Fprintln(out, "No projects found")
-				}
-				return nil
-			}
-
-			// Output the results
-			if jsonOut {
-				marshaled, err := json.MarshalIndent(results, "", "    ")
-				if err != nil {
-					return err
-				}
-				fmt.Fprintln(out, string(marshaled))
-			} else {
-				// Display header
-				if orgName != "" {
-					fmt.Fprintf(out, "PROJECTS IN ORGANIZATION %s:\n", orgName)
-				} else {
-					fmt.Fprintln(out, "PROJECTS:")
-				}
-
-				// Display all projects consistently with organization if available
-				for _, result := range results {
-					if result.Organization != "" {
-						fmt.Fprintf(out, "  %s (org: %s, stacks: %d)\n", result.Name, result.Organization, result.StackCount)
-					} else {
-						fmt.Fprintf(out, "  %s (stacks: %d)\n", result.Name, result.StackCount)
-					}
-				}
-			}
-
-			return nil
+			return output.Get()(cmd.OutOrStdout(), results, orgName)
 		},
 	}
 
@@ -191,8 +158,52 @@ func newProjectListCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(
 		&orgName, "organization", "o", "", "The organization whose projects to list")
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 
 	return cmd
+}
+
+// renderProjectsJSON is the --json/--output=json renderer for the project list.
+func renderProjectsJSON(w io.Writer, results []projectListResult, _ string) error {
+	// If no projects, return an empty array for JSON output.
+	if len(results) == 0 {
+		fmt.Fprintln(w, "[]")
+		return nil
+	}
+
+	marshaled, err := json.MarshalIndent(results, "", "    ")
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(w, string(marshaled))
+	return nil
+}
+
+// renderProjectsConsole is the default terminal renderer for the project list.
+func renderProjectsConsole(w io.Writer, results []projectListResult, orgName string) error {
+	if len(results) == 0 {
+		if orgName != "" {
+			fmt.Fprintln(w, "No projects found in organization", orgName)
+		} else {
+			fmt.Fprintln(w, "No projects found")
+		}
+		return nil
+	}
+
+	// Display header
+	if orgName != "" {
+		fmt.Fprintf(w, "PROJECTS IN ORGANIZATION %s:\n", orgName)
+	} else {
+		fmt.Fprintln(w, "PROJECTS:")
+	}
+
+	// Display all projects consistently with organization if available
+	for _, result := range results {
+		if result.Organization != "" {
+			fmt.Fprintf(w, "  %s (org: %s, stacks: %d)\n", result.Name, result.Organization, result.StackCount)
+		} else {
+			fmt.Fprintf(w, "  %s (stacks: %d)\n", result.Name, result.StackCount)
+		}
+	}
+	return nil
 }
