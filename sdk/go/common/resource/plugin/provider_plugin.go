@@ -174,15 +174,16 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	options map[string]any, disableProviderPreview bool, jsonConfig string,
 	projectName tokens.PackageName, e env.Env,
 ) (Provider, error) {
-	// See if this is a provider we just want to attach to
-	var plug *Plugin
-	var handshakeRes *ProviderHandshakeResponse
-
 	pkg := tokens.Package(spec.Name)
 
+	// If a debug attach port is configured for this package, attach to the
+	// already-running provider instead of resolving and spawning a binary.
 	attachPort, err := GetProviderAttachPort(pkg)
 	if err != nil {
 		return nil, err
+	}
+	if attachPort != nil {
+		return NewProviderAttached(host, ctx, spec, *attachPort, disableProviderPreview)
 	}
 
 	prefix := fmt.Sprintf("%v (resource)", pkg)
@@ -190,104 +191,128 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	loaderAddr := loaderTarget(ctx)
 	resolverAddr := resolverTarget(ctx)
 
-	if attachPort != nil {
-		port := *attachPort
-
-		handshake := func(
-			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
-		) (*ProviderHandshakeResponse, error) {
-			req := &ProviderHandshakeRequest{
-				EngineAddress: host.ServerAddr(),
-				// If we're attaching then we don't know the root or program directory.
-				RootDirectory:               nil,
-				ProgramDirectory:            nil,
-				ConfigureWithUrn:            true,
-				SupportsViews:               true,
-				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
-				InvokeWithPreview:           true,
-				MapperTarget:                mapperAddr,
-				LoaderTarget:                loaderAddr,
-				ResolverTarget:              resolverAddr,
-			}
-			return handshake(ctx, bin, prefix, conn, req)
-		}
-
-		var conn *grpc.ClientConn
-		conn, handshakeRes, err = dialPlugin(ctx.Base(), port, pkg.String(), prefix,
-			handshake, providerPluginDialOptions(ctx, pkg, ""))
-		if err != nil {
-			return nil, err
-		}
-
-		// Done; store the connection and return the plugin info.
-		plug = &Plugin{
-			Conn: conn,
-			// Nothing to kill
-			Kill: func() error { return nil },
-		}
-	} else {
-		// Load the plugin's path by using the standard workspace logic.
-		path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, ctx.ProjectPlugins())
-		if err != nil {
-			return nil, err
-		}
-
-		contract.Assertf(path != "", "unexpected empty path for plugin %s", pkg)
-
-		// Runtime options are passed as environment variables to the provider, this is _currently_ used by
-		// dynamic providers to do things like lookup the virtual environment to use.
-
-		optionsStore := env.MapStore{}
-
-		for k, v := range options {
-			optionsStore["PULUMI_RUNTIME_"+strings.ToUpper(k)] = fmt.Sprintf("%v", v)
-		}
-		if projectName != "" {
-			if pkg == tokens.Package(nodejsDynamicProviderPackage) {
-				// The Node.js SDK uses PULUMI_NODEJS_PROJECT to set the project name.
-				// Eventually, we should standardize on PULUMI_PROJECT for all SDKs.
-				// Also see `constructEnv` in sdk/go/common/resource/plugin/analyzer_plugin.go
-				optionsStore["PULUMI_NODEJS_PROJECT"] = projectName.String()
-			}
-			optionsStore["PULUMI_PROJECT"] = projectName.String()
-		}
-		if jsonConfig != "" {
-			optionsStore["PULUMI_CONFIG"] = jsonConfig
-		}
-
-		// Get existing environment and add options
-		baseStore := e.GetStore()
-		e = envutil.NewEnv(envutil.JoinStore(optionsStore, baseStore))
-
-		handshake := func(
-			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
-		) (*ProviderHandshakeResponse, error) {
-			dir := filepath.Dir(bin)
-			req := &ProviderHandshakeRequest{
-				EngineAddress:               host.ServerAddr(),
-				RootDirectory:               &dir,
-				ProgramDirectory:            &dir,
-				ConfigureWithUrn:            true,
-				SupportsViews:               true,
-				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
-				InvokeWithPreview:           true,
-				MapperTarget:                mapperAddr,
-				LoaderTarget:                loaderAddr,
-				ResolverTarget:              resolverAddr,
-			}
-			return handshake(ctx, bin, prefix, conn, req)
-		}
-
-		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
-			apitype.ResourcePlugin, []string{host.ServerAddr()}, e,
-			handshake, providerPluginDialOptions(ctx, pkg, ""),
-			!ctx.DisableProviderDebugging() &&
-				host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
-		if err != nil {
-			return nil, err
-		}
+	// Load the plugin's path by using the standard workspace logic.
+	path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, ctx.ProjectPlugins())
+	if err != nil {
+		return nil, err
 	}
 
+	contract.Assertf(path != "", "unexpected empty path for plugin %s", pkg)
+
+	// Runtime options are passed as environment variables to the provider, this is _currently_ used by
+	// dynamic providers to do things like lookup the virtual environment to use.
+
+	optionsStore := env.MapStore{}
+
+	for k, v := range options {
+		optionsStore["PULUMI_RUNTIME_"+strings.ToUpper(k)] = fmt.Sprintf("%v", v)
+	}
+	if projectName != "" {
+		if pkg == tokens.Package(nodejsDynamicProviderPackage) {
+			// The Node.js SDK uses PULUMI_NODEJS_PROJECT to set the project name.
+			// Eventually, we should standardize on PULUMI_PROJECT for all SDKs.
+			// Also see `constructEnv` in sdk/go/common/resource/plugin/analyzer_plugin.go
+			optionsStore["PULUMI_NODEJS_PROJECT"] = projectName.String()
+		}
+		optionsStore["PULUMI_PROJECT"] = projectName.String()
+	}
+	if jsonConfig != "" {
+		optionsStore["PULUMI_CONFIG"] = jsonConfig
+	}
+
+	// Get existing environment and add options
+	baseStore := e.GetStore()
+	e = envutil.NewEnv(envutil.JoinStore(optionsStore, baseStore))
+
+	handshake := func(
+		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+	) (*ProviderHandshakeResponse, error) {
+		dir := filepath.Dir(bin)
+		req := &ProviderHandshakeRequest{
+			EngineAddress:               host.ServerAddr(),
+			RootDirectory:               &dir,
+			ProgramDirectory:            &dir,
+			ConfigureWithUrn:            true,
+			SupportsViews:               true,
+			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+			InvokeWithPreview:           true,
+			MapperTarget:                mapperAddr,
+			LoaderTarget:                loaderAddr,
+			ResolverTarget:              resolverAddr,
+		}
+		return handshake(ctx, bin, prefix, conn, req)
+	}
+
+	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, prefix,
+		apitype.ResourcePlugin, []string{host.ServerAddr()}, e,
+		handshake, providerPluginDialOptions(ctx, pkg, ""),
+		!ctx.DisableProviderDebugging() &&
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
+	if err != nil {
+		return nil, err
+	}
+
+	return newProviderFromPlugin(ctx, host, spec, plug, handshakeRes, disableProviderPreview)
+}
+
+// NewProviderAttached constructs a provider by attaching to an already-running
+// provider listening on 127.0.0.1:port, instead of resolving and spawning a
+// plugin binary. This is the seam a container-mode Host uses: it starts the
+// provider container, discovers the port the provider prints, and attaches
+// directly — without the PULUMI_DEBUG_PROVIDERS backchannel. NewProvider routes
+// its debug-attach case through here too, so both share one implementation.
+func NewProviderAttached(host Host, ctx *Context, spec workspace.PluginDescriptor,
+	port int, disableProviderPreview bool,
+) (Provider, error) {
+	pkg := tokens.Package(spec.Name)
+	prefix := fmt.Sprintf("%v (resource)", pkg)
+	// Compute these against the plugin *Context before the closure, whose own
+	// ctx parameter is a context.Context that would otherwise shadow it.
+	mapperAddr := mapperTarget(ctx)
+	loaderAddr := loaderTarget(ctx)
+	resolverAddr := resolverTarget(ctx)
+
+	handshake := func(
+		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+	) (*ProviderHandshakeResponse, error) {
+		req := &ProviderHandshakeRequest{
+			EngineAddress: host.ServerAddr(),
+			// If we're attaching then we don't know the root or program directory.
+			RootDirectory:               nil,
+			ProgramDirectory:            nil,
+			ConfigureWithUrn:            true,
+			SupportsViews:               true,
+			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+			InvokeWithPreview:           true,
+			MapperTarget:                mapperAddr,
+			LoaderTarget:                loaderAddr,
+			ResolverTarget:              resolverAddr,
+		}
+		return handshake(ctx, bin, prefix, conn, req)
+	}
+
+	conn, handshakeRes, err := dialPlugin(ctx.Base(), port, pkg.String(), prefix,
+		handshake, providerPluginDialOptions(ctx, pkg, ""))
+	if err != nil {
+		return nil, err
+	}
+
+	// Done; store the connection. There is no child process to kill.
+	plug := &Plugin{
+		Conn: conn,
+		Kill: func() error { return nil },
+	}
+
+	return newProviderFromPlugin(ctx, host, spec, plug, handshakeRes, disableProviderPreview)
+}
+
+// newProviderFromPlugin wraps an established plugin connection (spawned or
+// attached) in a provider: it negotiates the handshake-derived protocol and,
+// for the attach case (no bin), issues the Attach RPC with the engine address.
+func newProviderFromPlugin(ctx *Context, host Host, spec workspace.PluginDescriptor,
+	plug *Plugin, handshakeRes *ProviderHandshakeResponse, disableProviderPreview bool,
+) (Provider, error) {
+	pkg := tokens.Package(spec.Name)
 	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
