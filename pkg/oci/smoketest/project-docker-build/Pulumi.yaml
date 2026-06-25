@@ -1,0 +1,9 @@
+name: oci-smoketest-docker
+description: Smoke test for an image-building workspace-coupled provider in the OCI pod model
+runtime:
+  name: oci
+  options:
+    # Pod mode only: the program image the driver builds. The `docker` provider
+    # runs from this same image (run-from-program-image), so it sees the build
+    # context (/workspace/app) and the docker CLI baked into it.
+    image: oci-smoke-docker:latest

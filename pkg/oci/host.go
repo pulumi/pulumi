@@ -121,10 +121,46 @@ const (
 // providers are not workspace-coupled — they run from their own image.
 func workspaceCoupled(name string) bool {
 	switch name {
-	case "command", "docker-build":
+	case "command", "docker", "docker-build":
 		return true
 	}
 	return false
+}
+
+// capability is a symbolic host resource a provider asks the pod to project into
+// its container (the docker socket, an SSH agent, cloud credentials). The provider
+// declares the need; the pod resolves it to a concrete, pod-conventional source —
+// so the provider never sees the host-side path, which is environment-dependent
+// (e.g. $DOCKER_HOST). Prototype: a convention table; image labels generalize it.
+type capability string
+
+const capDockerSocket capability = "docker-socket"
+
+// dockerSocketPath is the pod-conventional docker socket location. The driver
+// mounts the host's $DOCKER_HOST socket here when it creates the pod, so inside
+// the pod the socket is always at this fixed path regardless of where it lives on
+// the host.
+const dockerSocketPath = "/var/run/docker.sock"
+
+// providerCapabilities lists the capabilities a provider needs projected.
+// docker-build needs a docker/buildkit endpoint to run builds and reaches it over
+// the projected socket. Convention table for the prototype; pre-start image labels
+// (com.pulumi.needs: docker-socket, ...) are the generalizing layer.
+func providerCapabilities(name string) []capability {
+	switch name {
+	case "docker", "docker-build":
+		return []capability{capDockerSocket}
+	}
+	return nil
+}
+
+// capabilityMount resolves a capability to the mount that satisfies it.
+func capabilityMount(need capability) (VolumeMount, bool) {
+	switch need {
+	case capDockerSocket:
+		return VolumeMount{Source: dockerSocketPath, Target: dockerSocketPath}, true
+	}
+	return VolumeMount{}, false
 }
 
 // Provider starts the provider as a container sharing the engine's network
@@ -170,33 +206,42 @@ func (h *containerHost) providerContainer(
 		Network: "container:" + h.engineHost,
 	}
 
-	if !workspaceCoupled(descriptor.Name) {
+	if workspaceCoupled(descriptor.Name) {
+		if h.programImage == "" {
+			return ContainerConfig{}, fmt.Errorf(
+				"oci: provider %s needs the program filesystem, but PULUMI_POD_PROGRAM_IMAGE is unset",
+				descriptor.Name)
+		}
+		// Inject the provider binary into an ephemeral volume, then run it from the
+		// program image. The volume is pod-scoped and torn down by Close()/Cleanup().
+		vol, err := h.pod.CreateVolume(ctx, pluginVolumePrfx+descriptor.Name)
+		if err != nil {
+			return ContainerConfig{}, fmt.Errorf("oci: creating plugin volume for %s: %w", descriptor.Name, err)
+		}
+		if err := h.pod.CopyFromImage(ctx, h.imageFor(descriptor), providerBinDir, vol, injectedBinDir); err != nil {
+			return ContainerConfig{}, fmt.Errorf("oci: injecting %s provider binary: %w", descriptor.Name, err)
+		}
+		fmt.Fprintf(os.Stderr,
+			"oci: provider %s is workspace-coupled — running from program image %s with injected binary\n",
+			descriptor.Name, h.programImage)
+		cfg.Image = h.programImage
+		cfg.Volumes = append(cfg.Volumes, VolumeMount{Source: vol.Name, Target: injectedBinDir})
+		cfg.Entrypoint = []string{injectedBinPath}
+	} else {
 		cfg.Image = h.imageFor(descriptor)
-		return cfg, nil
 	}
 
-	if h.programImage == "" {
-		return ContainerConfig{}, fmt.Errorf(
-			"oci: provider %s needs the program filesystem, but PULUMI_POD_PROGRAM_IMAGE is unset",
-			descriptor.Name)
+	// Project the host capabilities the provider declares it needs (docker socket,
+	// etc.) — applies to both archetypes; a cloud provider could ask for creds.
+	for _, need := range providerCapabilities(descriptor.Name) {
+		m, ok := capabilityMount(need)
+		if !ok {
+			return ContainerConfig{}, fmt.Errorf(
+				"oci: provider %s requested unknown capability %q", descriptor.Name, need)
+		}
+		cfg.Volumes = append(cfg.Volumes, m)
+		fmt.Fprintf(os.Stderr, "oci: provider %s gets capability %q at %s\n", descriptor.Name, need, m.Target)
 	}
-
-	// Inject the provider binary into an ephemeral volume, then run it from the
-	// program image. The volume is pod-scoped and torn down by Close()/Cleanup().
-	vol, err := h.pod.CreateVolume(ctx, pluginVolumePrfx+descriptor.Name)
-	if err != nil {
-		return ContainerConfig{}, fmt.Errorf("oci: creating plugin volume for %s: %w", descriptor.Name, err)
-	}
-	if err := h.pod.CopyFromImage(ctx, h.imageFor(descriptor), providerBinDir, vol, injectedBinDir); err != nil {
-		return ContainerConfig{}, fmt.Errorf("oci: injecting %s provider binary: %w", descriptor.Name, err)
-	}
-
-	fmt.Fprintf(os.Stderr,
-		"oci: provider %s is workspace-coupled — running from program image %s with injected binary\n",
-		descriptor.Name, h.programImage)
-	cfg.Image = h.programImage
-	cfg.Volumes = []VolumeMount{{Source: vol.Name, Target: injectedBinDir}}
-	cfg.Entrypoint = []string{injectedBinPath}
 	return cfg, nil
 }
 
