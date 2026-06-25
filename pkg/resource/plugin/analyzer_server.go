@@ -58,7 +58,7 @@ func (a *analyzerServer) Analyze(
 		URN:        resource.URN(req.GetUrn()),
 		Type:       tokens.Type(req.GetType()),
 		Name:       req.GetName(),
-		Properties: props,
+		Properties: resource.FromResourcePropertyMap(props),
 		Options:    convertResourceOptions(req.GetOptions()),
 		Provider:   provider,
 	})
@@ -106,7 +106,7 @@ func (a *analyzerServer) AnalyzeStack(
 					URN:        resource.URN(r.GetUrn()),
 					Type:       tokens.Type(r.GetType()),
 					Name:       r.GetName(),
-					Properties: props,
+					Properties: resource.FromResourcePropertyMap(props),
 					Options:    convertResourceOptions(r.GetOptions()),
 					Provider:   provider,
 				},
@@ -153,7 +153,7 @@ func (a *analyzerServer) Remediate(
 		URN:        resource.URN(req.GetUrn()),
 		Type:       tokens.Type(req.GetType()),
 		Name:       req.GetName(),
-		Properties: props,
+		Properties: resource.FromResourcePropertyMap(props),
 		Options:    convertResourceOptions(req.GetOptions()),
 		Provider:   provider,
 	})
@@ -162,11 +162,12 @@ func (a *analyzerServer) Remediate(
 	}
 
 	remediations, err := slice.MapError(res.Remediations, func(r Remediation) (*pulumirpc.Remediation, error) {
-		mprops, err := MarshalProperties(r.Properties, MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			SkipInternalKeys: false,
-		})
+		mprops, err := MarshalProperties(
+			resource.ToResourcePropertyMap(r.Properties), MarshalOptions{
+				KeepUnknowns:     true,
+				KeepSecrets:      true,
+				SkipInternalKeys: false,
+			})
 		if err != nil {
 			return nil, err
 		}
@@ -391,7 +392,7 @@ func convertProvider(p *pulumirpc.AnalyzerProviderResource) (*AnalyzerProviderRe
 		URN:        resource.URN(p.Urn),
 		Type:       tokens.Type(p.Type),
 		Name:       p.Name,
-		Properties: props,
+		Properties: resource.FromResourcePropertyMap(props),
 	}, nil
 }
 

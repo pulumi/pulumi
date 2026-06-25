@@ -230,13 +230,13 @@ func TestAnalyzeSnapshot_RemediationReportedNotApplied(t *testing.T) {
 					PolicyName:     "fix-key",
 					PolicyPackName: "test-pack",
 					Description:    "sets key to good",
-					Properties:     resource.ToResourcePropertyMap(remediated),
+					Properties:     remediated,
 				}},
 			}, nil
 		},
 		// Analysis still sees the original properties (remediation was not applied).
 		AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
-			assert.Equal(t, original, resource.FromResourcePropertyMap(r.Properties),
+			assert.Equal(t, original, r.Properties,
 				"analysis should see original properties, not remediated ones")
 			return plugin.AnalyzeResponse{}, nil
 		},

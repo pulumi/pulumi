@@ -302,8 +302,8 @@ func (a *analyzer) Analyze(ctx context.Context, r AnalyzerResource) (AnalyzeResp
 	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
-	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
-	mprops, err := MarshalProperties(props,
+	logging.V(7).Infof("%s executing (#props=%d)", label, props.Len())
+	mprops, err := MarshalProperties(resource.ToResourcePropertyMap(props),
 		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return AnalyzeResponse{}, err
@@ -346,20 +346,20 @@ func (a *analyzer) AnalyzeStack(ctx context.Context, resources []AnalyzerStackRe
 	logging.V(7).Infof("%s.AnalyzeStack(#resources=%d) executing", a.label(), len(resources))
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
-	for idx, resource := range resources {
-		props, err := MarshalProperties(resource.Properties,
+	for idx, res := range resources {
+		props, err := MarshalProperties(resource.ToResourcePropertyMap(res.Properties),
 			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 		if err != nil {
 			return AnalyzeResponse{}, fmt.Errorf("marshalling properties: %w", err)
 		}
 
-		provider, err := marshalProvider(resource.Provider)
+		provider, err := marshalProvider(res.Provider)
 		if err != nil {
 			return AnalyzeResponse{}, err
 		}
 
 		propertyDeps := make(map[string]*pulumirpc.AnalyzerPropertyDependencies)
-		for pk, pd := range resource.PropertyDependencies {
+		for pk, pd := range res.PropertyDependencies {
 			// Skip properties that have no dependencies.
 			if len(pd) == 0 {
 				continue
@@ -375,14 +375,14 @@ func (a *analyzer) AnalyzeStack(ctx context.Context, resources []AnalyzerStackRe
 		}
 
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
-			Urn:                  string(resource.URN),
-			Type:                 string(resource.Type),
-			Name:                 resource.Name,
+			Urn:                  string(res.URN),
+			Type:                 string(res.Type),
+			Name:                 res.Name,
 			Properties:           props,
-			Options:              marshalResourceOptions(resource.Options),
+			Options:              marshalResourceOptions(res.Options),
 			Provider:             provider,
-			Parent:               string(resource.Parent),
-			Dependencies:         convertURNs(resource.Dependencies),
+			Parent:               string(res.Parent),
+			Dependencies:         convertURNs(res.Dependencies),
 			PropertyDependencies: propertyDeps,
 		}
 	}
@@ -422,8 +422,8 @@ func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (Remediate
 	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Remediate(%s)", a.label(), t)
-	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
-	mprops, err := MarshalProperties(props,
+	logging.V(7).Infof("%s executing (#props=%d)", label, props.Len())
+	mprops, err := MarshalProperties(resource.ToResourcePropertyMap(props),
 		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
 	if err != nil {
 		return RemediateResponse{}, err
@@ -475,7 +475,7 @@ func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (Remediate
 			Description:       r.GetDescription(),
 			PolicyPackName:    r.GetPolicyPackName(),
 			PolicyPackVersion: policyPackVersion,
-			Properties:        tprops,
+			Properties:        resource.FromResourcePropertyMap(tprops),
 			Diagnostic:        r.GetDiagnostic(),
 		}
 	}
@@ -768,7 +768,7 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 		return nil, nil
 	}
 
-	props, err := MarshalProperties(provider.Properties,
+	props, err := MarshalProperties(resource.ToResourcePropertyMap(provider.Properties),
 		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return nil, fmt.Errorf("marshalling properties: %w", err)

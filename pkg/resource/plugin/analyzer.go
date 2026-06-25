@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // AnalyzerPolicyType indicates the type of a policy.
@@ -69,7 +70,7 @@ type AnalyzerResource struct {
 	URN        resource.URN
 	Type       tokens.Type
 	Name       string
-	Properties resource.PropertyMap
+	Properties property.Map
 	Options    AnalyzerResourceOptions
 	Provider   *AnalyzerProviderResource
 }
@@ -99,7 +100,7 @@ type AnalyzerProviderResource struct {
 	URN        resource.URN
 	Type       tokens.Type
 	Name       string
-	Properties resource.PropertyMap
+	Properties property.Map
 }
 
 // AnalyzeDiagnostic indicates that resource analysis failed; it contains the property and reason
@@ -131,7 +132,7 @@ type Remediation struct {
 	PolicyPackName    string
 	PolicyPackVersion string
 	URN               resource.URN
-	Properties        resource.PropertyMap
+	Properties        property.Map
 	Diagnostic        string
 }
 
