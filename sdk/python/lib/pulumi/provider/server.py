@@ -279,13 +279,11 @@ class ProviderServicer(ResourceProviderServicer):
 
         deleted_with = None
         if request.deletedWith != "":
-            deleted_with = _create_provider_resource(request.deletedWith)
+            deleted_with = DependencyResource(request.deletedWith)
 
         replace_with: Optional[list[pulumi.Resource]] = None
         if request.replace_with:
-            replace_with = [
-                _create_provider_resource(urn) for urn in request.replace_with
-            ]
+            replace_with = [DependencyResource(urn) for urn in request.replace_with]
 
         replacement_trigger: Optional[Any] = None
         if request.HasField("replacement_trigger"):
