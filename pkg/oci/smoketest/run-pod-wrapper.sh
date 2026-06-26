@@ -33,7 +33,7 @@ STACK="dev"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
-mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/state" "$WORK/project" "$WORK/home"
+mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/project"
 
 cleanup() {
   # The wrapper reclaims each pod itself; this only clears anything a crashed run
@@ -77,14 +77,13 @@ docker buildx build --builder "$BUILDER" --load \
 
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 
-# Everything below is what a user would actually type. The wrapper owns the pod.
-# PULUMI_POD_HOME makes the (independent) pods behave as one stateful session:
-# select the stack once and the later commands need no --stack.
+# Everything below is what a user would actually type. The wrapper owns the pod —
+# and, with no state/home/backend env set, defaults PULUMI_HOME *and* the file
+# backend into the mounted dir (.pulumi-pod). So login, stack selection, and state
+# persist across these independent pods with zero extra config — which is exactly
+# what the no---stack commands below exercise.
 export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
-export PULUMI_POD_PROJECT_DIR="$WORK/project"
-export PULUMI_POD_STATE_DIR="$WORK/state"
-export PULUMI_POD_HOME="$WORK/home"
-export PULUMI_BACKEND_URL="file:///state"
+export PULUMI_POD_MOUNT_DIR="$WORK/project"
 
 echo "==> pulumi-pod stack init $STACK (selection persists via mounted PULUMI_HOME)"
 "$WRAPPER" stack init "$STACK"
