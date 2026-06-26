@@ -147,6 +147,72 @@ func (h *ociHost) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error
 	return &emptypb.Empty{}, nil
 }
 
+// InstallDependencies builds the program's local component images. In the OCI
+// model the "dependency" that needs installing is a local program-as-component:
+// its image does not exist yet (unlike a published MLC, whose image is pulled by
+// convention), so we build it here and tag it by the provider convention
+// (pulumi-provider-<name>:v<version>) — the same ref the container host resolves
+// when it starts the component at Construct time.
+//
+// This works across the process split that defeated stashing the *program* image
+// ref (the up pre-install host, this, and the engine-update host are all different
+// processes): the built image lands in the shared container runtime (the docker
+// daemon), which every process sees. The daemon is the cross-process artifact
+// store; no in-process handoff is needed.
+//
+// Components are declared in runtime options as a `components` list of
+// {name, version, path, [build]}. This is a throwaway prototype schema — the real
+// version should align with package resolution + the registry (design open
+// questions), not entrench a parallel mechanism.
+func (h *ociHost) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest,
+	stream pulumirpc.LanguageRuntime_InstallDependenciesServer,
+) error {
+	dir := req.GetInfo().GetProgramDirectory()
+	if dir == "" {
+		dir = req.GetDirectory()
+	}
+	components := req.GetInfo().GetOptions().GetFields()["components"].GetListValue().GetValues()
+
+	out := &installStreamWriter{stream: stream}
+	// Log the parsed count so a silent options round-trip failure (the `components`
+	// list dropped between Pulumi.yaml and here) is distinguishable from a build
+	// failure — the two look identical downstream (the container host can't find
+	// the image either way).
+	fmt.Fprintf(out, "oci: %d local component(s) to build\n", len(components))
+
+	for _, v := range components {
+		f := v.GetStructValue().GetFields()
+		name := f["name"].GetStringValue()
+		version := f["version"].GetStringValue()
+		path := f["path"].GetStringValue()
+		if name == "" || path == "" {
+			return fmt.Errorf("oci: each component needs 'name' and 'path' (got name=%q path=%q)", name, path)
+		}
+		build := f["build"].GetStringValue()
+		if build == "" {
+			// Default: tag by the convention the container host resolves, so the
+			// just-built image is found at Construct time. (Docker tags can't contain
+			// '+'; a version carrying semver build metadata would need the same
+			// sanitization as providerImageRef — fine for the prototype's 0.x components.)
+			build = fmt.Sprintf("docker build -q -t pulumi-provider-%s:v%s .", name, version)
+		}
+		cdir := path
+		if !filepath.IsAbs(cdir) {
+			cdir = filepath.Join(dir, path)
+		}
+		fmt.Fprintf(out, "oci: building local component %s (v%s) in %s: %s\n", name, version, path, build)
+		cmd := exec.CommandContext(stream.Context(), "sh", "-c", build)
+		cmd.Dir = cdir
+		cmd.Stdout, cmd.Stderr = out, out // safe: os/exec serializes writes to a shared (==) writer
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("oci: building local component %s: %w", name, err)
+		}
+		fmt.Fprintf(out, "oci: built local component %s\n", name)
+	}
+	return nil
+}
+
 // Run starts the program, either as a local subprocess or as a container, and
 // blocks until it exits.
 func (h *ociHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
@@ -341,6 +407,24 @@ func lastLine(s string) string {
 		}
 	}
 	return ""
+}
+
+// installStreamWriter forwards bytes to the InstallDependencies response stream as
+// stderr chunks, so build progress reaches the engine as it happens. Using one
+// instance for a command's Stdout and Stderr is safe: os/exec guarantees at most
+// one goroutine writes to a shared (==) writer at a time.
+type installStreamWriter struct {
+	stream pulumirpc.LanguageRuntime_InstallDependenciesServer
+}
+
+func (w *installStreamWriter) Write(p []byte) (int, error) {
+	// Copy p: the gRPC layer may retain the message past this call.
+	if err := w.stream.Send(&pulumirpc.InstallDependenciesResponse{
+		Stderr: append([]byte(nil), p...),
+	}); err != nil {
+		return 0, err
+	}
+	return len(p), nil
 }
 
 // rewriteHost replaces the host portion of a host:port address, preserving the
