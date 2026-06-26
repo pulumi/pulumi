@@ -5,10 +5,10 @@ runtime:
   options:
     image: oci-smoke-mlc:latest
     # The greeting component is *local*: its source is here, not a published image.
-    # InstallDependencies builds each declared component, tagging it by the provider
-    # convention (pulumi-provider-<name>:v<version>) so the container host resolves
-    # the just-built image at Construct time. Default build is
-    # `docker build -q -t <conventional-tag> .` run in `path`.
+    # InstallDependencies builds each declared component in a dedicated builder
+    # container (the same build/run seam as the program image), tagging it by the
+    # provider convention (pulumi-provider-<name>:v<version>) so the container host
+    # resolves the just-built image at Construct time.
     #
     # NOTE: this `components:` schema is a throwaway prototype declaration. The real
     # version should align with the existing package resolution machinery
@@ -18,3 +18,12 @@ runtime:
       - name: greeting
         version: "0.1.0"
         path: component-greeter
+        # build.image is the builder container image; the source + docker socket
+        # reach it via --volumes-from the engine. The explicit command (vs. the
+        # convention default) guards on a marker present ONLY in the builder image,
+        # so if this build were routed to the in-process/engine path the marker would
+        # be absent and it would fail loudly — proving it ran in the builder. The tag
+        # matches the provider convention so the container host resolves it.
+        build:
+          image: oci-smoke-builder:latest
+          command: test -e /only-in-builder && docker build -q -t pulumi-provider-greeting:v0.1.0 .
