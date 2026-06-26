@@ -352,18 +352,88 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 	return &pulumirpc.RunResponse{}, nil
 }
 
-// resolveProgramImage determines the program image to run in pod mode. If the
-// project declares a `build` runtime option, run it to produce the image (the
-// build step); otherwise use a prebuilt `image` option.
+// resolveProgramImage determines the program image to run in pod mode. The
+// `build` runtime option may take two shapes:
+//
+//   - a struct {image, command, …}: run the command in a dedicated *builder
+//     container* whose image supplies the build toolchain (the build/run seam —
+//     the build no longer borrows the engine container's rootfs, so a build needing
+//     nix/bazel/buildpacks works as long as the builder image carries it);
+//   - a bare string command: the legacy in-process path — run the command inside
+//     the engine container. This is the degenerate case where the "builder image"
+//     is the engine image (which happens to ship the docker CLI), kept for backward
+//     compatibility and the common `docker build` case.
+//
+// Otherwise a prebuilt `image` option is used.
 func resolveProgramImage(ctx context.Context, opts *structpb.Struct, dir string) (string, error) {
-	if build := optString(opts, "build"); build != "" {
-		return buildProgramImage(ctx, build, dir)
+	if build := opts.GetFields()["build"]; build != nil {
+		if spec := build.GetStructValue(); spec != nil {
+			return buildProgramImageInContainer(ctx, spec, dir)
+		}
+		if cmd := build.GetStringValue(); cmd != "" {
+			return buildProgramImage(ctx, cmd, dir)
+		}
 	}
 	if image := optString(opts, "image"); image != "" {
 		return image, nil
 	}
 	return "", errors.New(
-		"oci: no program image — set runtime option 'build' (to build one) or 'image' (a prebuilt one)")
+		"oci: no program image — set runtime option 'build' (a string command, or {image, command}) " +
+			"or 'image' (a prebuilt one)")
+}
+
+// buildProgramImageInContainer runs the build command in a dedicated builder
+// container (design: "Topology — the build phase"). The builder image supplies the
+// build toolchain; the build command prints the resulting image ref to stdout.
+//
+// The source reaches the builder via --volumes-from the engine container: the
+// builder inherits the engine's workspace mount (the program source) and docker
+// socket at the *same* paths, so WorkingDir is just the engine-internal program
+// directory — no host-path translation across the docker-out-of-docker boundary.
+// The socket riding along is the artifact sink: a `docker build` inside the builder
+// loads into the shared daemon, exactly as the in-process build did, just relocated.
+//
+// Over-sharing every engine mount (incl. PULUMI_HOME) is acceptable for a trusted
+// local builder image but is what must be replaced with explicit, scoped mounts once
+// the builder image is registry-supplied — at which point --volumes-from goes away.
+func buildProgramImageInContainer(ctx context.Context, spec *structpb.Struct, dir string) (string, error) {
+	image := optString(spec, "image")
+	command := optString(spec, "command")
+	if image == "" || command == "" {
+		return "", fmt.Errorf("oci: build needs 'image' and 'command' (got image=%q command=%q)", image, command)
+	}
+
+	// The builder mounts the engine container's volumes by name; in pod mode the
+	// wrapper sets --hostname to the engine container's name, so our hostname is a
+	// valid --volumes-from reference.
+	engine, err := os.Hostname()
+	if err != nil || engine == "" {
+		return "", fmt.Errorf("oci: cannot determine engine container name for the build: %w", err)
+	}
+	podID := os.Getenv("PULUMI_POD_ID")
+	if podID == "" {
+		podID = engine
+	}
+	pod := oci.NewDockerPodManager(podID)
+
+	fmt.Fprintf(os.Stderr, "oci: building program image in builder %s: %s\n", image, command)
+	stdout, err := pod.RunToCompletion(ctx, oci.ContainerConfig{
+		Image:       image,
+		Name:        "build",
+		WorkingDir:  dir,
+		VolumesFrom: []string{engine},
+		Entrypoint:  []string{"sh", "-c"},
+		Cmd:         []string{command},
+	}, os.Stderr)
+	if err != nil {
+		return "", fmt.Errorf("oci: builder %q failed: %w", image, err)
+	}
+	ref := lastLine(stdout)
+	if ref == "" {
+		return "", fmt.Errorf("oci: builder %q produced no image ref on stdout", image)
+	}
+	fmt.Fprintf(os.Stderr, "oci: built program image %s\n", ref)
+	return ref, nil
 }
 
 // buildProgramImage runs the project's `build` command (design §7: a shell

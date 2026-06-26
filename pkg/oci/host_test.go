@@ -36,6 +36,10 @@ func (f fakePod) ContainerLogs(context.Context, Container, bool) (io.ReadCloser,
 func (f fakePod) StopContainer(context.Context, Container) error       { panic("unused") }
 func (f fakePod) CreateVolume(context.Context, string) (Volume, error) { panic("unused") }
 
+func (f fakePod) RunToCompletion(context.Context, ContainerConfig, io.Writer) (string, error) {
+	panic("unused")
+}
+
 func (f fakePod) CopyFromImage(context.Context, string, string, Volume, string) error {
 	panic("unused")
 }

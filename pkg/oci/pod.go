@@ -65,6 +65,15 @@ type PodManager interface {
 	// already-stopped or already-removed container is not an error.
 	StopContainer(ctx context.Context, c Container) error
 
+	// RunToCompletion runs a container attached and blocks until it exits,
+	// returning its stdout. The container's stderr is streamed to the provided
+	// writer as it runs (e.g. build progress) while stdout is captured (e.g. the
+	// build's image ref). It is the build primitive: one-shot, ephemeral (--rm),
+	// with stdout and stderr kept separate so a ref printed to stdout can be read
+	// cleanly regardless of stderr chatter. A non-zero exit is returned as an
+	// error — unlike a program Run, a failed build has no "bail".
+	RunToCompletion(ctx context.Context, cfg ContainerConfig, stderr io.Writer) (string, error)
+
 	// CreateVolume creates a named volume scoped to this pod. The name is a short
 	// logical label; the manager namespaces it to avoid cross-pod collisions.
 	CreateVolume(ctx context.Context, name string) (Volume, error)
@@ -170,4 +179,14 @@ type ContainerConfig struct {
 	// unnecessary — and ignored by callers — when the container joins the engine's
 	// pod network and reaches it by container DNS (Option C).
 	HostGateway bool
+	// WorkingDir sets the container's working directory (docker -w). The build
+	// step uses it so the build command runs in the program directory.
+	WorkingDir string
+	// VolumesFrom mounts every volume of another container into this one (docker
+	// --volumes-from). The build container uses it to inherit the engine
+	// container's workspace mount (the program source) and docker socket at the
+	// same paths — sidestepping host-path translation across the
+	// docker-out-of-docker boundary, since the language host only knows the
+	// engine-internal path, not the host path the daemon would need for a bind.
+	VolumesFrom []string
 }

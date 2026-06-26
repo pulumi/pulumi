@@ -108,6 +108,40 @@ func TestRunContainerValidation(t *testing.T) {
 	assert.ErrorContains(t, err, "Image")
 }
 
+// runToCompletionArgs is the build container's argv: ephemeral (--rm, no --name),
+// inheriting the engine's mounts via --volumes-from, with stdout reserved for the
+// ref (so no -t/-i here — that is enforced by the streaming exec, not the argv).
+func TestRunToCompletionArgs(t *testing.T) {
+	t.Parallel()
+	args := runToCompletionArgs("com.pulumi.pod=p1", ContainerConfig{
+		Image:       "docker:cli",
+		WorkingDir:  "/workspace/app",
+		VolumesFrom: []string{"pulumi-pod-p1-engine"},
+		// Out of order to prove env is sorted.
+		Env:        map[string]string{"B": "2", "A": "1"},
+		Entrypoint: []string{"sh", "-c"},
+		Cmd:        []string{"docker build -q ."},
+	})
+	want := []string{
+		"run", "--rm", "--label", "com.pulumi.pod=p1",
+		"--volumes-from", "pulumi-pod-p1-engine",
+		"-w", "/workspace/app",
+		"-e", "A=1", "-e", "B=2",
+		"--entrypoint", "sh",
+		"docker:cli",
+		"-c", "docker build -q .",
+	}
+	assert.Equal(t, want, args)
+}
+
+func TestRunToCompletionValidation(t *testing.T) {
+	t.Parallel()
+	pm := NewDockerPodManager("p1")
+	// Missing Image returns before any exec, so no daemon is needed.
+	_, err := pm.RunToCompletion(context.Background(), ContainerConfig{}, io.Discard)
+	assert.ErrorContains(t, err, "Image")
+}
+
 func TestCreateNetworkArgs(t *testing.T) {
 	t.Parallel()
 	fake := &fakeRunner{respond: func([]string) (string, string, error) { return "net-xyz", "", nil }}

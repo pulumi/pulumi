@@ -156,6 +156,62 @@ func (m *dockerPodManager) RunContainer(ctx context.Context, cfg ContainerConfig
 	return c, nil
 }
 
+// runToCompletionArgs builds the `docker run` argv for a one-shot, attached
+// container. It is pure (no I/O) so the argv can be asserted in tests; the
+// streaming execution in RunToCompletion bypasses the buffered commandRunner.
+func runToCompletionArgs(label string, cfg ContainerConfig) []string {
+	// --rm: the build container is ephemeral and synchronous, so it removes itself
+	// on exit; the pod label is only a crash backstop. No tracking is needed (cf.
+	// CopyFromImage).
+	args := []string{"run", "--rm", "--label", label}
+	if cfg.Network != "" {
+		args = append(args, "--network", cfg.Network)
+	}
+	if cfg.Privileged {
+		args = append(args, "--privileged")
+	}
+	for _, src := range cfg.VolumesFrom {
+		args = append(args, "--volumes-from", src)
+	}
+	if cfg.WorkingDir != "" {
+		args = append(args, "-w", cfg.WorkingDir)
+	}
+	for _, k := range sortedKeys(cfg.Env) {
+		args = append(args, "-e", k+"="+cfg.Env[k])
+	}
+	for _, v := range cfg.Volumes {
+		args = append(args, "-v", v.mountSpec())
+	}
+	cmdArgs := cfg.Cmd
+	if len(cfg.Entrypoint) > 0 {
+		args = append(args, "--entrypoint", cfg.Entrypoint[0])
+		cmdArgs = append(append([]string{}, cfg.Entrypoint[1:]...), cfg.Cmd...)
+	}
+	args = append(args, cfg.Image)
+	args = append(args, cmdArgs...)
+	return args
+}
+
+func (m *dockerPodManager) RunToCompletion(ctx context.Context, cfg ContainerConfig, stderr io.Writer) (string, error) {
+	if cfg.Image == "" {
+		return "", errors.New("container config requires an Image")
+	}
+	args := runToCompletionArgs(m.label(), cfg)
+
+	// Exec directly rather than through the buffered commandRunner: stderr streams
+	// live (build progress is visible as it happens) while stdout is captured for
+	// the ref. No -t/-i, so the two streams stay separate and stdout isn't polluted
+	// by progress chatter.
+	cmd := exec.CommandContext(ctx, m.bin, args...)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("docker %s: %w", strings.Join(args, " "), err)
+	}
+	return stdout.String(), nil
+}
+
 func (m *dockerPodManager) WaitContainer(ctx context.Context, c Container) (int, error) {
 	// `docker wait` blocks until the container exits, then prints its exit code.
 	out, err := m.docker(ctx, "wait", c.ID)

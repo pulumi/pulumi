@@ -1,0 +1,18 @@
+name: oci-smoketest-buildercontainer
+description: Build runs in a dedicated builder container, not the engine container
+runtime:
+  name: oci
+  options:
+    # Structured build (vs. the bare-string form in project-build): the command
+    # runs in a *builder container* whose image supplies the build toolchain, not
+    # in the engine container. This is the build/run seam — the build no longer
+    # borrows the engine's rootfs.
+    #
+    # `test -e /only-in-builder` guards on a marker present ONLY in the builder
+    # image (it stands in for a toolchain the engine lacks): if this command were
+    # routed to the in-process/engine path the marker would be absent and the build
+    # would fail loudly, so a passing run proves it ran in the builder container.
+    # The source + docker socket reach the builder via --volumes-from the engine.
+    build:
+      image: oci-smoke-builder:latest
+      command: test -e /only-in-builder && docker build -q -t oci-smoke-buildercontainer:latest .
