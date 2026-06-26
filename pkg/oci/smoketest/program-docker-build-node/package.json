@@ -1,0 +1,9 @@
+{
+  "name": "oci-smoke-docker-build-node-program",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@pulumi/pulumi": "^3.150.0",
+    "@pulumi/docker-build": "0.0.20"
+  }
+}

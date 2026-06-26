@@ -1,0 +1,24 @@
+# Program image for the docker-build (buildkit) smoke test, driven from a Node
+# host. A real language image (Node base + npm deps + the bootstrap shim) that
+# ALSO bakes a build context at /workspace/app. The docker-build provider is
+# workspace-coupled, so it runs *from this image* (run-from-program-image) and
+# resolves the build context from /workspace/app.
+#
+# Note what is NOT here: unlike the classic `docker` provider's program image,
+# there is no docker CLI. docker-build uses an embedded buildkit client and reaches
+# the daemon directly over the socket the pod projects in — the program image only
+# has to carry the build context.
+#
+# --ignore-scripts skips @pulumi/docker-build's `pulumi plugin install` install
+# hook: we don't want it pulling the plugin into the image, since the engine
+# resolves the provider as a container by the pulumi-provider-<name>:v<version>
+# convention.
+FROM node:20-alpine
+WORKDIR /app
+COPY package.json ./
+RUN npm install --omit=dev --ignore-scripts
+COPY index.js oci-bootstrap.sh ./
+RUN chmod +x oci-bootstrap.sh
+RUN mkdir -p /workspace/app \
+    && printf 'FROM alpine:3\nRUN echo built-in-the-pod > /built\n' > /workspace/app/Dockerfile
+ENTRYPOINT ["/app/oci-bootstrap.sh"]

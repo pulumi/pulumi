@@ -1,0 +1,9 @@
+name: oci-smoketest-docker-build-node
+description: Smoke test for the docker-build (buildkit) provider, driven from a Node host program
+runtime:
+  name: oci
+  options:
+    # Pod mode only: the program image the driver builds. The docker-build provider
+    # runs from this same image (run-from-program-image), so it sees the build
+    # context (/workspace/app) baked into it.
+    image: oci-smoke-docker-build-node:latest
