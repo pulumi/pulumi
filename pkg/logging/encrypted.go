@@ -250,7 +250,7 @@ func (l *Logger) rename(stackName, updateID string) error {
 	defer l.mu.Unlock()
 
 	// Close before renaming — Windows cannot rename an open file.
-	if err := l.f.Close(); err != nil {
+	if err := l.f.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
 		return fmt.Errorf("closing log file: %w", err)
 	}
 	if err := l.renameLocked(stackName, updateID); err != nil {
