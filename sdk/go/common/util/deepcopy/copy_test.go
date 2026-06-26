@@ -118,8 +118,8 @@ func TestDeepCopyStructWithPropertyMap(t *testing.T) {
 			After  property.Map
 		}
 		source := payload{
-			Before: propertytest.Map(10).Draw(t, "before").AsMap(),
-			After:  propertytest.Map(10).Draw(t, "after").AsMap(),
+			Before: propertytest.Map(10).Draw(t, "before"),
+			After:  propertytest.Map(10).Draw(t, "after"),
 		}
 
 		copied, ok := Copy(source).(payload)
