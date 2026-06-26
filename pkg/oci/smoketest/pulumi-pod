@@ -22,21 +22,24 @@
 # pod session (a long-lived engine the wrapper attaches to, amortizing startup) —
 # the design's tier-one inner-loop-latency concern, a separate feature.
 #
-# State persists across these ephemeral pods via mounts: PULUMI_POD_STATE_DIR holds
-# the (file) backend, and PULUMI_POD_HOME holds PULUMI_HOME (login + stack
-# selection), so a `stack select` sticks for a later `up` with no `--stack`.
+# State persists across these ephemeral pods through a single mounted dir, with
+# sensible defaults so nothing is silently lost. The pod keeps its PULUMI_HOME
+# *inside* the mounted workspace (a `.pulumi-pod` dir), and — unless you point
+# PULUMI_BACKEND_URL elsewhere — the file backend lives inside that home too. So
+# login, stack selection, and stack state all persist together via the one
+# workspace mount: a `stack select` sticks for a later `up` with no `--stack`. (The
+# file backend's location follows the login URL, not PULUMI_HOME, so we point it
+# explicitly inside the home rather than relying on them to coincide.)
 #
 # This is a prototype helper living alongside the smoke tests. The eventual home is
 # the CLI itself (or an installed `pulumi-pod` on PATH); the design deliberately
 # prefers this wrapper over having the CLI fork itself.
 #
 # Config via env (all optional):
-#   PULUMI_POD_ENGINE_IMAGE   engine/CLI image to run        (default pulumi-cli-oci:latest)
-#   PULUMI_POD_PROJECT_DIR    project dir mounted at /project (default: cwd)
-#   PULUMI_POD_STATE_DIR      host dir mounted at /state      (for file:// backends)
-#   PULUMI_POD_HOME           host dir mounted as the container's PULUMI_HOME, so
-#                             login + stack selection persist across invocations
-#                             (a pod-dedicated dir — NOT the host's ~/.pulumi)
+#   PULUMI_POD_ENGINE_IMAGE     engine/CLI image to run             (default pulumi-cli-oci:latest)
+#   PULUMI_POD_MOUNT_DIR        host dir mounted at /workspace       (default: cwd) — mount a
+#                               repo root here when the program reads files from a parent dir
+#   PULUMI_POD_PROJECT_SUBPATH  Pulumi.yaml dir relative to the mount (default: the mount root)
 # Forwarded into the engine container when set in the environment:
 #   PULUMI_BACKEND_URL  PULUMI_CONFIG_PASSPHRASE  PULUMI_ACCESS_TOKEN
 #   PULUMI_POD_PROGRAM_IMAGE  PULUMI_POD_PLUGIN_REGISTRY
@@ -44,8 +47,18 @@
 # Usage: pulumi-pod <pulumi args...>
 set -euo pipefail
 
-PROJECT_DIR="${PULUMI_POD_PROJECT_DIR:-$PWD}"
+MOUNT_DIR="${PULUMI_POD_MOUNT_DIR:-$PWD}"
+SUBPATH="${PULUMI_POD_PROJECT_SUBPATH:-}"
 ENGINE_IMAGE="${PULUMI_POD_ENGINE_IMAGE:-pulumi-cli-oci:latest}"
+
+# The workspace is mounted at /workspace; the project (Pulumi.yaml) is the mount
+# root, or a subpath of it when a parent was mounted for shared libraries. The pod
+# home — and, by default, the file backend — live inside it as .pulumi-pod, so the
+# single mount carries login, stack selection, and stack state together.
+WORKDIR="/workspace${SUBPATH:+/$SUBPATH}"
+POD_HOME="$WORKDIR/.pulumi-pod"
+# Ensure the home exists on the host so the mount + file backend have a target.
+mkdir -p "$MOUNT_DIR${SUBPATH:+/$SUBPATH}/.pulumi-pod"
 
 POD_ID="$$-${RANDOM}"
 NET="pulumi-pod-$POD_ID"
@@ -72,20 +85,15 @@ for v in PULUMI_BACKEND_URL PULUMI_CONFIG_PASSPHRASE PULUMI_ACCESS_TOKEN \
          PULUMI_POD_PROGRAM_IMAGE PULUMI_POD_PLUGIN_REGISTRY; do
   [ -n "${!v:-}" ] && fwd+=(-e "$v=${!v}")
 done
-
-mounts=(-v "$PROJECT_DIR:/project")
-[ -n "${PULUMI_POD_STATE_DIR:-}" ] && mounts+=(-v "$PULUMI_POD_STATE_DIR:/state")
-# A pod-dedicated PULUMI_HOME, mounted so login + stack selection persist across
-# invocations (each is a fresh container, but they share this dir). Set PULUMI_HOME
-# explicitly rather than relying on the container's HOME. Use a dedicated dir, not
-# the host's ~/.pulumi: the container writes linux/pod state that shouldn't mingle
-# with the host CLI's home.
-if [ -n "${PULUMI_POD_HOME:-}" ]; then
-  mounts+=(-v "$PULUMI_POD_HOME:/pulumi-home" -e "PULUMI_HOME=/pulumi-home")
+# Default the backend to a file backend inside the pod home, unless the caller
+# configured one (a backend URL, or a service access token).
+if [ -z "${PULUMI_BACKEND_URL:-}" ] && [ -z "${PULUMI_ACCESS_TOKEN:-}" ]; then
+  fwd+=(-e "PULUMI_BACKEND_URL=file://$POD_HOME")
 fi
 
 # Run the command in the engine container (its ENTRYPOINT is `pulumi`). Capture the
-# exit code rather than exec'ing, so the EXIT trap still reclaims the pod.
+# exit code rather than exec'ing, so the EXIT trap still reclaims the pod. The lone
+# bind is the workspace; PULUMI_HOME (and the file backend) sit inside it.
 status=0
 docker run --rm -i \
   --privileged \
@@ -94,8 +102,9 @@ docker run --rm -i \
   --hostname "$ENGINE_NAME" \
   --label "$POD_LABEL" \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  "${mounts[@]}" \
-  -w /project \
+  -v "$MOUNT_DIR:/workspace" \
+  -w "$WORKDIR" \
+  -e PULUMI_HOME="$POD_HOME" \
   -e PULUMI_POD_MODE=true \
   -e PULUMI_POD_NETWORK="$NET" \
   -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
