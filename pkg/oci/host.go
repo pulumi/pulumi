@@ -96,7 +96,9 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 func providerImageRef(spec workspace.PluginDescriptor) string {
 	version := ""
 	if spec.Version != nil {
-		version = "v" + spec.Version.String()
+		// Docker image tags cannot contain '+' (semver build metadata, e.g. a
+		// dev build's 0.1.0-alpha.0+dev), so map it to a tag-safe character.
+		version = "v" + strings.ReplaceAll(spec.Version.String(), "+", "_")
 	}
 	return fmt.Sprintf("pulumi-provider-%s:%s", spec.Name, version)
 }
