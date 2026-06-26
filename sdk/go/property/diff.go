@@ -60,7 +60,7 @@ func (diff *ObjectDiff) Same(k string) bool {
 
 // AnyChanges returns true if there are any changes (adds, deletes, updates) in the diff. Otherwise returns false.
 func (diff *ObjectDiff) AnyChanges() bool {
-	return diff != nil && len(diff.Adds)+len(diff.Deletes)+len(diff.Updates) > 0
+	return len(diff.Adds)+len(diff.Deletes)+len(diff.Updates) > 0
 }
 
 // Keys returns a stable snapshot of all keys known to this object, across adds, deletes, sames, and updates.
