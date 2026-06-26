@@ -17,6 +17,7 @@ package stack
 import (
 	"bytes"
 	"context"
+	"io"
 	"testing"
 	"time"
 
@@ -230,7 +231,11 @@ func TestListStacksJsonProgress(t *testing.T) {
 	var buff bytes.Buffer
 	ctx := t.Context()
 	args := stackLSArgs{
-		jsonOut:   true,
+		renderOutput: func(
+			w io.Writer, b backend.Backend, currentStack string, stackSummaries []backend.StackSummary,
+		) error {
+			return formatStackSummariesJSON(b, currentStack, stackSummaries, w)
+		},
 		allStacks: true,
 		stdout:    &buff,
 	}
@@ -288,7 +293,11 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 	var buff bytes.Buffer
 	ctx := t.Context()
 	args := stackLSArgs{
-		jsonOut:   true,
+		renderOutput: func(
+			w io.Writer, b backend.Backend, currentStack string, stackSummaries []backend.StackSummary,
+		) error {
+			return formatStackSummariesJSON(b, currentStack, stackSummaries, w)
+		},
 		allStacks: true,
 		stdout:    &buff,
 	}
