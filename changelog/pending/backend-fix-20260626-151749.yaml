@@ -1,4 +1,4 @@
-component: backend
+component: cli
 kind: fix
 body: Use display resource type names in policy violation output
 time: 2026-06-26T15:17:49.534339+03:00
