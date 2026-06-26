@@ -61,7 +61,7 @@ func (t *toolTracker) translate(evt UIEvent) (acp.SessionUpdate, bool) {
 			Title:      toolTitle(e.Name, args, t.cwd),
 			Kind:       toolKind(e.Name),
 			Status:     acp.ToolStatusInProgress,
-			Locations:  toolLocations(args),
+			Locations:  toolLocations(args, t.cwd),
 			RawInput:   e.Args,
 		}, true
 	case UIToolProgress:
@@ -227,11 +227,24 @@ func toolTitle(name string, args toolArgs, cwd string) string {
 	return base
 }
 
+// absToolPath renders a tool-call path as absolute: relative arguments are joined
+// against cwd (the session working directory), matching how the filesystem tool
+// resolves them before it reads or writes. Absolute arguments, or any path when cwd
+// is unknown, are returned unchanged. Both the title and the location derive from
+// this single normalized value so they can't disagree about the same file.
+func absToolPath(path, cwd string) string {
+	if cwd == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(cwd, path)
+}
+
 // displayPath renders a tool-call path for a title: relative to cwd with a
 // leading "./" (and forward slashes) when it sits inside the working directory,
-// otherwise the path as given. Paths outside cwd, paths not under it, or
-// non-absolute paths are returned unchanged.
+// otherwise the path as given. Paths outside cwd, or any path when cwd is unknown,
+// are returned as the absolute path.
 func displayPath(path, cwd string) string {
+	path = absToolPath(path, cwd)
 	if cwd == "" || !filepath.IsAbs(path) {
 		return path
 	}
@@ -243,13 +256,16 @@ func displayPath(path, cwd string) string {
 }
 
 // toolLocations reports the file a tool call touches, so the editor can render
-// the call against that file natively. Tools without a file target (shell,
-// pulumi) yield none.
-func toolLocations(args toolArgs) []acp.ToolCallLocation {
-	if path := args.file(); path != "" {
-		return []acp.ToolCallLocation{{Path: path}}
+// the call against that file natively — a clickable target or follow-along
+// highlighting. ACP locations must be absolute, so the path is normalized through
+// absToolPath; the editor can only resolve a path that points at a real on-disk
+// location. Tools without a file target (shell, pulumi) yield none.
+func toolLocations(args toolArgs, cwd string) []acp.ToolCallLocation {
+	path := args.file()
+	if path == "" {
+		return nil
 	}
-	return nil
+	return []acp.ToolCallLocation{{Path: absToolPath(path, cwd)}}
 }
 
 // toolKind maps a Neo tool name ("<server>__<method>") to an ACP ToolKind for

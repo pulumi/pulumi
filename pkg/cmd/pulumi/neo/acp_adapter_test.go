@@ -367,6 +367,9 @@ func TestToolTitleAndLocations(t *testing.T) {
 		toolTitle("filesystem__read", fsArgs("file_path", filepath.Join(cwd, "pyproject.toml")), cwd))
 	assert.Equal(t, "Content replace ./src/a.go",
 		toolTitle("filesystem__content_replace", fsArgs("path", filepath.Join(cwd, "src", "a.go")), cwd))
+	assert.Equal(t, "Read ./src/a.go",
+		toolTitle("filesystem__read", fsArgs("file_path", "src/a.go"), cwd),
+		"relative paths absolutize against cwd, then relativize — matching the location")
 	outside := filepath.Join(filepath.Dir(cwd), "elsewhere", "hosts")
 	assert.Equal(t, "Read "+outside,
 		toolTitle("filesystem__read", fsArgs("file_path", outside), cwd),
@@ -385,11 +388,17 @@ func TestToolTitleAndLocations(t *testing.T) {
 
 	assert.Equal(t, "weird", toolTitle("weird", toolArgs{}, ""), "names without a server prefix pass through")
 
-	assert.Nil(t, toolLocations(toolArgs{}))
-	assert.Nil(t, toolLocations(parseToolArgs(json.RawMessage(`{"command":"ls"}`))), "no file target -> no location")
-	locs := toolLocations(parseToolArgs(json.RawMessage(`{"path":"/work/src"}`)))
+	assert.Nil(t, toolLocations(toolArgs{}, cwd))
+	assert.Nil(t, toolLocations(parseToolArgs(json.RawMessage(`{"command":"ls"}`)), cwd), "no file target -> no location")
+	locs := toolLocations(parseToolArgs(json.RawMessage(`{"path":"/work/src"}`)), cwd)
 	require.Len(t, locs, 1)
-	assert.Equal(t, "/work/src", locs[0].Path)
+	assert.Equal(t, "/work/src", locs[0].Path, "absolute paths pass through unchanged")
+
+	// Relative arguments are absolutized against cwd: ACP locations must be
+	// absolute or the editor can't resolve the file.
+	rel := toolLocations(fsArgs("file_path", "src/a.go"), cwd)
+	require.Len(t, rel, 1)
+	assert.Equal(t, filepath.Join(cwd, "src", "a.go"), rel[0].Path)
 }
 
 // mustJSON marshals v to a json.RawMessage, failing the test on error. Used to

@@ -47,9 +47,10 @@ import (
 // The remaining filesystem method (grep_ast) returns a structured "not yet implemented"
 // error so the agent can degrade gracefully.
 //
-// All paths in incoming requests are absolute (the cloud agent assumes a sandboxed VM).
-// We resolve them and reject anything that lands outside the allowed roots, so the agent
-// can never read or write files outside Root or the configured extras (e.g. /tmp).
+// Incoming paths may be absolute or relative; relative paths are resolved against Root.
+// Either way we canonicalize the result and reject anything that lands outside the allowed
+// roots, so the agent can never read or write files outside Root or the configured extras
+// (e.g. /tmp).
 type Filesystem struct {
 	// Root is the user's working directory. Relative paths are joined against it.
 	Root string
@@ -182,9 +183,9 @@ func nilOnError[T any](v T, err error) (any, error) {
 	return v, nil
 }
 
-// resolve safely interprets a path supplied by the agent. The agent sends absolute paths
-// (they were absolute inside its sandboxed VM); we accept those but require they resolve
-// to a location under one of the allowed roots. Relative paths are resolved against Root.
+// resolve safely interprets a path supplied by the agent, which may be absolute or
+// relative. Relative paths are resolved against Root; absolute paths are accepted as given.
+// Either way we require the result resolve to a location under one of the allowed roots.
 func (f *Filesystem) resolve(p string) (string, error) {
 	if p == "" {
 		return "", errors.New("path is required")
