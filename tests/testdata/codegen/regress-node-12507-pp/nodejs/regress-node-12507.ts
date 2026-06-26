@@ -11,10 +11,10 @@ const rts = aws.ec2.getLocalGatewayRouteTablesOutput({
 });
 const routes: aws.ec2.LocalGatewayRoute[] = [];
 rts.ids.length.apply(rangeBody => {
-    for (let range = {value: 0}; range.value < rangeBody; range = {value: range.value + 1}) {
-        routes.push(new aws.ec2.LocalGatewayRoute(`routes-${range.value}`, {
+    for (let range = 0; range < rangeBody; range++) {
+        routes.push(new aws.ec2.LocalGatewayRoute(`routes-${range}`, {
             destinationCidrBlock: "10.0.1.0/22",
-            localGatewayRouteTableId: rts.apply(rts => rts.ids[range.value]),
+            localGatewayRouteTableId: rts.apply(rts => rts.ids[range]),
             localGatewayVirtualInterfaceGroupId: localGatewayVirtualInterfaceGroupId,
         }));
     }

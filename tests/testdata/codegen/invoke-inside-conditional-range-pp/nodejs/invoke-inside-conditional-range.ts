@@ -32,8 +32,8 @@ export = async () => {
     const currentVpc = new aws.ec2.Vpc("currentVpc", {});
     const createPublicSubnets = true;
     const publicSubnet: aws.ec2.Subnet[] = [];
-    for (let range = {value: 0}; range.value < (createPublicSubnets && (!oneNatGatewayPerAz || lenPublicSubnets >= azs.length) ? lenPublicSubnets : 0); range = {value: range.value + 1}) {
-        publicSubnet.push(new aws.ec2.Subnet(`publicSubnet-${range.value}`, {
+    for (let range = 0; range < (createPublicSubnets && (!oneNatGatewayPerAz || lenPublicSubnets >= azs.length) ? lenPublicSubnets : 0); range++) {
+        publicSubnet.push(new aws.ec2.Subnet(`publicSubnet-${range}`, {
             assignIpv6AddressOnCreation: enableIpv6 && publicSubnetIpv6Native ? true : publicSubnetAssignIpv6AddressOnCreation,
             enableDns64: enableIpv6 && publicSubnetEnableDns64,
             enableResourceNameDnsAaaaRecordOnLaunch: enableIpv6 && publicSubnetEnableResourceNameDnsAaaaRecordOnLaunch,
@@ -41,7 +41,7 @@ export = async () => {
             ipv6CidrBlock: enableIpv6 && publicSubnetIpv6Prefixes.length > 0 ? std.cidrsubnetOutput({
                 input: currentVpc.ipv6CidrBlock,
                 newbits: 8,
-                netnum: Number(publicSubnetIpv6Prefixes[range.value]),
+                netnum: Number(publicSubnetIpv6Prefixes[range]),
             }).apply(invoke => invoke.result) : null,
             ipv6Native: enableIpv6 && publicSubnetIpv6Native,
             vpcId: currentVpc.id,

@@ -5,8 +5,8 @@ import { SimpleComponent } from "./simpleComponent";
 
 const simpleComponent = new SimpleComponent("simpleComponent");
 const multipleSimpleComponents: SimpleComponent[] = [];
-for (let range = {value: 0}; range.value < 10; range = {value: range.value + 1}) {
-    multipleSimpleComponents.push(new SimpleComponent(`multipleSimpleComponents-${range.value}`));
+for (let range = 0; range < 10; range++) {
+    multipleSimpleComponents.push(new SimpleComponent(`multipleSimpleComponents-${range}`));
 }
 const anotherComponent = new AnotherComponent("anotherComponent");
 const exampleComponent = new ExampleComponent("exampleComponent", {

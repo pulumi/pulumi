@@ -16,7 +16,7 @@ const values = nestedobject.getValuesOutput({
 // https://github.com/pulumi/pulumi/issues/12507.
 const routes: nestedobject.Target[] = [];
 values.results.length.apply(rangeBody => {
-    for (let range = {value: 0}; range.value < rangeBody; range = {value: range.value + 1}) {
-        routes.push(new nestedobject.Target(`routes-${range.value}`, {name: values.apply(values => values.results[range.value])}));
+    for (let range = 0; range < rangeBody; range++) {
+        routes.push(new nestedobject.Target(`routes-${range}`, {name: values.apply(values => values.results[range])}));
     }
 });
