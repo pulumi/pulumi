@@ -1,0 +1,6 @@
+name: oci-smoketest-node
+description: Language-image smoke test — a Node program running as a pod container
+runtime:
+  name: oci
+  options:
+    image: oci-smoke-node:latest
