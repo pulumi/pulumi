@@ -42,10 +42,11 @@ import (
 type containerHost struct {
 	plugin.Host
 
-	pod          PodManager
-	engineHost   string                                  // engine container name; providers share its netns
-	programImage string                                  // program image; workspace-coupled providers run from it
-	imageFor     func(workspace.PluginDescriptor) string // provider descriptor -> image ref
+	pod            PodManager
+	engineHost     string                                  // engine container name; providers share its netns
+	programImage   string                                  // program image; workspace-coupled providers run from it
+	pluginRegistry string                                  // OCI registry to pull absent provider images from ("" = assume present)
+	imageFor       func(workspace.PluginDescriptor) string // provider descriptor -> image ref
 }
 
 // Assert containerHost still satisfies the full Host interface after wrapping.
@@ -57,13 +58,18 @@ var _ plugin.Host = (*containerHost)(nil)
 // programImage is the program's image; workspace-coupled providers (command,
 // docker-build, ...) run from it — rooted in the program's filesystem — rather
 // than from their own image. It may be empty when no such provider is used.
-func NewContainerHost(base plugin.Host, pod PodManager, engineHost, programImage string) plugin.Host {
+// pluginRegistry, if non-empty, is an OCI registry from which absent provider
+// images are pulled (and retagged to the bare convention) before use — the
+// container-model "install" step. Empty preserves the prior behaviour: an absent
+// image is assumed prebuilt/loaded and surfaces at run time if it is not.
+func NewContainerHost(base plugin.Host, pod PodManager, engineHost, programImage, pluginRegistry string) plugin.Host {
 	return &containerHost{
-		Host:         base,
-		pod:          pod,
-		engineHost:   engineHost,
-		programImage: programImage,
-		imageFor:     providerImageRef,
+		Host:           base,
+		pod:            pod,
+		engineHost:     engineHost,
+		programImage:   programImage,
+		pluginRegistry: pluginRegistry,
+		imageFor:       providerImageRef,
 	}
 }
 
@@ -86,7 +92,9 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 		podID = engineHost
 	}
 	programImage := os.Getenv("PULUMI_POD_PROGRAM_IMAGE")
-	return NewContainerHost(base, NewDockerPodManager(podID), engineHost, programImage), nil
+	// Optional: an OCI registry to pull provider plugin images from on demand.
+	pluginRegistry := os.Getenv("PULUMI_POD_PLUGIN_REGISTRY")
+	return NewContainerHost(base, NewDockerPodManager(podID), engineHost, programImage, pluginRegistry), nil
 }
 
 // providerImageRef maps a provider plugin descriptor to its container image by
@@ -208,6 +216,15 @@ func (h *containerHost) providerContainer(
 		Network: "container:" + h.engineHost,
 	}
 
+	// Resolve the provider image and ensure it is present — pulling it from the
+	// configured registry if absent (the container-model install step). Both
+	// archetypes need it: a stateless provider runs it directly; a workspace-coupled
+	// provider copies its binary out of it.
+	providerImage := h.imageFor(descriptor)
+	if err := h.ensureImage(ctx, providerImage); err != nil {
+		return ContainerConfig{}, err
+	}
+
 	if workspaceCoupled(descriptor.Name) {
 		if h.programImage == "" {
 			return ContainerConfig{}, fmt.Errorf(
@@ -220,7 +237,7 @@ func (h *containerHost) providerContainer(
 		if err != nil {
 			return ContainerConfig{}, fmt.Errorf("oci: creating plugin volume for %s: %w", descriptor.Name, err)
 		}
-		if err := h.pod.CopyFromImage(ctx, h.imageFor(descriptor), providerBinDir, vol, injectedBinDir); err != nil {
+		if err := h.pod.CopyFromImage(ctx, providerImage, providerBinDir, vol, injectedBinDir); err != nil {
 			return ContainerConfig{}, fmt.Errorf("oci: injecting %s provider binary: %w", descriptor.Name, err)
 		}
 		fmt.Fprintf(os.Stderr,
@@ -230,7 +247,7 @@ func (h *containerHost) providerContainer(
 		cfg.Volumes = append(cfg.Volumes, VolumeMount{Source: vol.Name, Target: injectedBinDir})
 		cfg.Entrypoint = []string{injectedBinPath}
 	} else {
-		cfg.Image = h.imageFor(descriptor)
+		cfg.Image = providerImage
 	}
 
 	// Project the host capabilities the provider declares it needs (docker socket,
@@ -245,6 +262,41 @@ func (h *containerHost) providerContainer(
 		fmt.Fprintf(os.Stderr, "oci: provider %s gets capability %q at %s\n", descriptor.Name, need, m.Target)
 	}
 	return cfg, nil
+}
+
+// ensureImage makes a provider image present in the local store before it is run
+// or copied from — the container-model install step (the OCI analogue of
+// downloading a plugin binary). If it is already present, this is a no-op.
+// Otherwise, when a plugin registry is configured, the image is pulled from
+// <registry>/<ref> and retagged to the bare <ref> the rest of the host resolves
+// by. With no registry configured a missing image is left alone, so the later
+// run/copy surfaces the absence (the prior assume-prebuilt behaviour).
+//
+// This runs in Provider() (acquire-on-use), which is provably reached for every
+// provider. Hoisting it to a pre-flight ensure step (parallel pre-pull, fail-fast,
+// the `pulumi install` hook) is a natural follow-on — same pull, earlier.
+func (h *containerHost) ensureImage(ctx context.Context, ref string) error {
+	has, err := h.pod.ImageExists(ctx, ref)
+	if err != nil {
+		return fmt.Errorf("oci: checking for plugin image %s: %w", ref, err)
+	}
+	if has {
+		return nil
+	}
+	if h.pluginRegistry == "" {
+		return nil // no registry to install from; let the run/copy report the absence
+	}
+	remote := h.pluginRegistry + "/" + ref
+	fmt.Fprintf(os.Stderr, "oci: plugin image %s not present — pulling from %s\n", ref, remote)
+	if err := h.pod.PullImage(ctx, remote); err != nil {
+		return fmt.Errorf("oci: pulling plugin image %s: %w", remote, err)
+	}
+	if err := h.pod.TagImage(ctx, remote, ref); err != nil {
+		return fmt.Errorf("oci: tagging pulled image %s as %s: %w", remote, ref, err)
+	}
+	fmt.Fprintf(os.Stderr, "oci: installed plugin %s by pulling its image from registry %s\n",
+		ref, h.pluginRegistry)
+	return nil
 }
 
 // Close tears down the provider containers this host started, then closes the
