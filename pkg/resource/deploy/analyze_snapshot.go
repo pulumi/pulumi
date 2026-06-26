@@ -95,6 +95,42 @@ func analyzeResource(
 	return invalidAtomic.Load(), sawErrorAtomic.Load(), nil
 }
 
+// snapshotRootStackURN returns the URN to attribute stack-level policy violations to:
+// the snapshot's root stack resource, or a default root stack URN synthesized from any
+// resource. Only valid URNs are considered, so a malformed URN never reaches consumers
+// that dereference it. Returns an empty URN for a resourceless snapshot; the display
+// layer's policyResourceClause guard tolerates that.
+func snapshotRootStackURN(snap *Snapshot) resource.URN {
+	var fallback resource.URN
+	for _, res := range snap.Resources {
+		if !res.URN.IsValid() {
+			continue
+		}
+		if res.Type == resource.RootStackType && res.Parent == "" {
+			return res.URN
+		}
+		if fallback == "" {
+			fallback = resource.DefaultRootStackURN(res.URN.Stack(), res.URN.Project())
+		}
+	}
+	return fallback
+}
+
+// resolveStackPolicyViolationURN returns the URN to attribute a stack-level policy
+// diagnostic to: the diagnostic's own URN when it names a resource currently in the
+// stack, otherwise the root stack URN, since stack-level violations are not tied to a
+// resource. Shared by the deployment path (step_generator.go) and the offline snapshot
+// analyzer so their attribution stays consistent.
+func resolveStackPolicyViolationURN(
+	diagURN, rootStackURN resource.URN,
+	inStack func(resource.URN) bool,
+) resource.URN {
+	if inStack(diagURN) {
+		return diagURN
+	}
+	return rootStackURN
+}
+
 // buildSnapshotProviderMap builds a map of provider URN -> provider state from a snapshot.
 func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*resource.State {
 	providers := make(map[resource.URN]*resource.State)
@@ -235,6 +271,18 @@ func AnalyzeSnapshot(
 		})
 	}
 
+	// Inputs for resolveStackPolicyViolationURN: only non-deleted resources are sent to
+	// AnalyzeStack, so only those are valid violation targets; anything else (including a
+	// stack-level violation's empty URN) attributes to the root stack.
+	rootStackURN := snapshotRootStackURN(snap)
+	snapshotURNs := make(map[resource.URN]struct{}, len(snap.Resources))
+	for _, res := range snap.Resources {
+		if res.Delete {
+			continue
+		}
+		snapshotURNs[res.URN] = struct{}{}
+	}
+
 	var sawStackError atomic.Bool
 	var g errgroup.Group
 	if parallelism := env.ParallelAnalyze.Value(); parallelism > 0 {
@@ -261,7 +309,9 @@ func AnalyzeSnapshot(
 				if d.EnforcementLevel == apitype.Mandatory {
 					sawStackError.Store(true)
 				}
-				events.OnPolicyViolation(d.URN, d)
+				urn := resolveStackPolicyViolationURN(d.URN, rootStackURN,
+					func(u resource.URN) bool { _, ok := snapshotURNs[u]; return ok })
+				events.OnPolicyViolation(urn, d)
 			}
 
 			summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)

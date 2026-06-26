@@ -438,3 +438,66 @@ func TestRenderDiffPolicyViolationEventUsesDisplayResourceTypeNameWithURNs(t *te
 		"(aws:s3:Bucket: urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket)",
 	)
 }
+
+func TestRenderDiffPolicyRemediationEventUsesDisplayResourceTypeName(t *testing.T) {
+	t.Parallel()
+
+	payload := engine.PolicyRemediationEventPayload{
+		ResourceURN:       "urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket",
+		PolicyName:        "tag-policy",
+		PolicyPackName:    "foo-policy-pack",
+		PolicyPackVersion: "0.0.6",
+		Before:            resource.PropertyMap{"tag": resource.NewProperty("before")},
+		After:             resource.PropertyMap{"tag": resource.NewProperty("after")},
+	}
+
+	output := renderDiffPolicyRemediationEvent(payload, "", false, Options{Color: colors.Never})
+
+	assert.Contains(t, output, "(aws:s3:Bucket: my-bucket)")
+	assert.NotContains(t, output, "aws:s3/bucket:Bucket")
+}
+
+func TestPolicyResourceClause(t *testing.T) {
+	t.Parallel()
+
+	opts := Options{Color: colors.Never}
+
+	// A stack-level violation carries an empty URN; an empty or otherwise malformed URN
+	// must produce no clause and must not panic (URN.Type/URN.Name assert the urn:pulumi:
+	// prefix).
+	assert.Empty(t, policyResourceClause("", opts))
+	assert.Empty(t, policyResourceClause("not-a-pulumi-urn", opts))
+
+	// Resource types render as display names (the module path is truncated).
+	assert.Equal(t,
+		"  (aws:s3:Bucket: my-bucket)",
+		policyResourceClause("urn:pulumi:stack::project::aws:s3/bucket:Bucket::my-bucket", opts))
+}
+
+func TestRenderDiffPolicyViolationEvent_StackLevel(t *testing.T) {
+	t.Parallel()
+
+	opts := Options{Color: colors.Never}
+	base := engine.PolicyViolationEventPayload{
+		PolicyName:        "resource-inventory",
+		PolicyPackName:    "my-pack",
+		PolicyPackVersion: "1.0.0",
+		EnforcementLevel:  apitype.Advisory,
+		Message:           "analyzed 6209 resources",
+	}
+
+	// A stack-level violation has no resource URN; rendering must not panic and
+	// must omit the "(type: name)" clause.
+	var stackOut string
+	require.NotPanics(t, func() {
+		stackOut = renderDiffPolicyViolationEvent(base, "", "", opts)
+	})
+	assert.Contains(t, stackOut, "resource-inventory")
+	assert.Contains(t, stackOut, "analyzed 6209 resources")
+	assert.NotContains(t, stackOut, "(")
+
+	resourceLevel := base
+	resourceLevel.ResourceURN = "urn:pulumi:stack::project::aws:s3/bucket:Bucket::my-bucket"
+	resourceOut := renderDiffPolicyViolationEvent(resourceLevel, "", "", opts)
+	assert.Contains(t, resourceOut, "(aws:s3:Bucket: my-bucket)")
+}
