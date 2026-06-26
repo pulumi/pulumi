@@ -5,9 +5,11 @@
 # run-pod-provider.sh — which wraps the provider image and leaves it sitting in the
 # local daemon for the engine to find — here the image lives ONLY in a registry.
 # The engine must *install* it: on first use the container host sees the image is
-# absent, pulls it from the registry, retags it to the bare convention, and runs
-# it. This is the container-model analogue of downloading a plugin binary, and it
-# completes the install path that was previously only "run it if already present".
+# absent, pulls it from the registry, and runs it — all under one registry-
+# qualified name (PULUMI_POD_PLUGIN_REGISTRY threads through providerImageRef, so
+# resolution, pull, and run share the same name; no retag). This is the
+# container-model analogue of downloading a plugin binary, and it completes the
+# install path that was previously only "run it if already present".
 #
 # Pipeline:
 #   1. build the engine + program images (as usual)
@@ -150,8 +152,8 @@ docker run --rm -i \
   ' \
   2>&1 | tee "$WORK/engine.log"
 
-echo "==> asserting the engine installed the provider by pulling its image from the registry"
-if ! grep -q "oci: installed plugin $PROVIDER_IMAGE by pulling its image from registry $REGISTRY_HOST" "$WORK/engine.log"; then
+echo "==> asserting the engine installed the provider by pulling its registry-qualified image"
+if ! grep -q "oci: installed plugin $REGISTRY_REF by pulling its image" "$WORK/engine.log"; then
   echo "!! the engine did not install the provider by pulling from the registry"
   exit 1
 fi
@@ -162,11 +164,12 @@ if [ -z "$PET" ]; then
 fi
 echo "    petName = $PET"
 
-# The pull retagged the image to the bare convention, so it is now present locally.
-echo "==> asserting the pulled image now resolves under the bare convention"
-if ! docker image inspect "$PROVIDER_IMAGE" >/dev/null 2>&1; then
-  echo "!! $PROVIDER_IMAGE is not present after the run — pull/retag did not land it"
+# Resolution, pull, and run all used the single qualified name (no retag), so the
+# qualified ref is now present locally.
+echo "==> asserting the pulled image is present under its qualified name"
+if ! docker image inspect "$REGISTRY_REF" >/dev/null 2>&1; then
+  echo "!! $REGISTRY_REF is not present after the run — the pull did not land it"
   exit 1
 fi
-echo "    $PROVIDER_IMAGE present ($(docker image inspect -f '{{.Id}}' "$PROVIDER_IMAGE"))"
-echo "==> OCI-registry plugin install smoke test PASS — a provider plugin was installed by pulling its image"
+echo "    $REGISTRY_REF present ($(docker image inspect -f '{{.Id}}' "$REGISTRY_REF"))"
+echo "==> OCI-registry plugin install smoke test PASS — a provider plugin was installed by pulling its qualified image"

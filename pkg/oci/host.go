@@ -69,7 +69,9 @@ func NewContainerHost(base plugin.Host, pod PodManager, engineHost, programImage
 		engineHost:     engineHost,
 		programImage:   programImage,
 		pluginRegistry: pluginRegistry,
-		imageFor:       providerImageRef,
+		imageFor: func(spec workspace.PluginDescriptor) string {
+			return providerImageRef(pluginRegistry, spec)
+		},
 	}
 }
 
@@ -97,18 +99,37 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 	return NewContainerHost(base, NewDockerPodManager(podID), engineHost, programImage, pluginRegistry), nil
 }
 
-// providerImageRef maps a provider plugin descriptor to its container image by
-// convention. For the prototype the image is assumed already present (the smoke
-// test prebuilds it from the stock binary); a registry pull or an install-time
-// wrap would slot in here without changing the rest of the host.
-func providerImageRef(spec workspace.PluginDescriptor) string {
+// ProviderImageRef returns the OCI image reference for a provider plugin, by
+// convention. When registry is non-empty the ref is *qualified* with it
+// (<registry>/pulumi-provider-<name>:v<version>) so that resolution, pull, and a
+// future publish-by-push all share one fully-qualified name; an empty registry
+// yields the bare ref (unchanged prior behaviour). Docker tags cannot contain
+// '+', so semver build metadata (e.g. a dev build's 0.1.0-alpha.0+dev) is mapped
+// to a tag-safe '_'.
+//
+// This is the single source of truth for the convention: the container host uses
+// it to resolve provider images, and the OCI language host uses it to tag the
+// local component images it builds, so the two cannot drift.
+func ProviderImageRef(registry, name, version string) string {
+	tag := ""
+	if version != "" {
+		tag = "v" + strings.ReplaceAll(version, "+", "_")
+	}
+	ref := fmt.Sprintf("pulumi-provider-%s:%s", name, tag)
+	if registry != "" {
+		ref = registry + "/" + ref
+	}
+	return ref
+}
+
+// providerImageRef resolves a plugin descriptor to its image ref via the
+// convention above, qualified with registry when one is configured.
+func providerImageRef(registry string, spec workspace.PluginDescriptor) string {
 	version := ""
 	if spec.Version != nil {
-		// Docker image tags cannot contain '+' (semver build metadata, e.g. a
-		// dev build's 0.1.0-alpha.0+dev), so map it to a tag-safe character.
-		version = "v" + strings.ReplaceAll(spec.Version.String(), "+", "_")
+		version = spec.Version.String()
 	}
-	return fmt.Sprintf("pulumi-provider-%s:%s", spec.Name, version)
+	return ProviderImageRef(registry, spec.Name, version)
 }
 
 // providerBinDir is the directory in which a (prototype) provider image lays its
@@ -267,10 +288,11 @@ func (h *containerHost) providerContainer(
 // ensureImage makes a provider image present in the local store before it is run
 // or copied from — the container-model install step (the OCI analogue of
 // downloading a plugin binary). If it is already present, this is a no-op.
-// Otherwise, when a plugin registry is configured, the image is pulled from
-// <registry>/<ref> and retagged to the bare <ref> the rest of the host resolves
-// by. With no registry configured a missing image is left alone, so the later
-// run/copy surfaces the absence (the prior assume-prebuilt behaviour).
+// Otherwise, when a plugin registry is configured, the image is pulled. The ref
+// is already registry-qualified by providerImageRef, so it is pulled and run
+// under the same fully-qualified name — no retag. With no registry configured a
+// missing image is left alone, so the later run/copy surfaces the absence (the
+// prior assume-prebuilt behaviour).
 //
 // This runs in Provider() (acquire-on-use), which is provably reached for every
 // provider. Hoisting it to a pre-flight ensure step (parallel pre-pull, fail-fast,
@@ -286,16 +308,11 @@ func (h *containerHost) ensureImage(ctx context.Context, ref string) error {
 	if h.pluginRegistry == "" {
 		return nil // no registry to install from; let the run/copy report the absence
 	}
-	remote := h.pluginRegistry + "/" + ref
-	fmt.Fprintf(os.Stderr, "oci: plugin image %s not present — pulling from %s\n", ref, remote)
-	if err := h.pod.PullImage(ctx, remote); err != nil {
-		return fmt.Errorf("oci: pulling plugin image %s: %w", remote, err)
+	fmt.Fprintf(os.Stderr, "oci: plugin image %s not present — pulling\n", ref)
+	if err := h.pod.PullImage(ctx, ref); err != nil {
+		return fmt.Errorf("oci: pulling plugin image %s: %w", ref, err)
 	}
-	if err := h.pod.TagImage(ctx, remote, ref); err != nil {
-		return fmt.Errorf("oci: tagging pulled image %s as %s: %w", remote, ref, err)
-	}
-	fmt.Fprintf(os.Stderr, "oci: installed plugin %s by pulling its image from registry %s\n",
-		ref, h.pluginRegistry)
+	fmt.Fprintf(os.Stderr, "oci: installed plugin %s by pulling its image\n", ref)
 	return nil
 }
 

@@ -191,11 +191,14 @@ func (h *ociHost) InstallDependencies(
 		}
 		build := f["build"].GetStringValue()
 		if build == "" {
-			// Default: tag by the convention the container host resolves, so the
-			// just-built image is found at Construct time. (Docker tags can't contain
-			// '+'; a version carrying semver build metadata would need the same
-			// sanitization as providerImageRef — fine for the prototype's 0.x components.)
-			build = fmt.Sprintf("docker build -q -t pulumi-provider-%s:v%s .", name, version)
+			// Default: tag by the same convention the container host resolves to —
+			// qualified with the plugin registry when one is configured — so the
+			// just-built image is found at Construct time, and is named exactly where
+			// it would be pushed. oci.ProviderImageRef is the shared source of truth,
+			// so the build tag and the host's resolution cannot drift.
+			registry := os.Getenv("PULUMI_POD_PLUGIN_REGISTRY")
+			tag := oci.ProviderImageRef(registry, name, version)
+			build = fmt.Sprintf("docker build -q -t %s .", tag)
 		}
 		cdir := path
 		if !filepath.IsAbs(cdir) {

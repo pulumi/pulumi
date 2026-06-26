@@ -253,11 +253,6 @@ func (m *dockerPodManager) PullImage(ctx context.Context, ref string) error {
 	return err
 }
 
-func (m *dockerPodManager) TagImage(ctx context.Context, src, dst string) error {
-	_, err := m.docker(ctx, "tag", src, dst)
-	return err
-}
-
 func (m *dockerPodManager) Cleanup(ctx context.Context) error {
 	// Snapshot and clear tracked resources under the lock, then tear down without
 	// holding it.

@@ -90,11 +90,6 @@ type PodManager interface {
 	// the same infrastructure used to distribute any other image.
 	PullImage(ctx context.Context, ref string) error
 
-	// TagImage applies tag dst to the image currently referenced by src. Used to
-	// retag a registry-qualified pull (registry/name:version) to the bare
-	// convention (name:version) the rest of the host resolves by.
-	TagImage(ctx context.Context, src, dst string) error
-
 	// Cleanup stops and removes every container, volume, and network this manager
 	// created. It is best-effort: it attempts to remove all resources and returns
 	// a joined error describing any failures, so one failure does not strand the
