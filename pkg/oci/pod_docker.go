@@ -126,6 +126,9 @@ func (m *dockerPodManager) RunContainer(ctx context.Context, cfg ContainerConfig
 	if cfg.Privileged {
 		args = append(args, "--privileged")
 	}
+	if cfg.HostGateway {
+		args = append(args, "--add-host=host.docker.internal:host-gateway")
+	}
 	// Emit env in sorted key order so the argv is deterministic (and testable).
 	for _, k := range sortedKeys(cfg.Env) {
 		args = append(args, "-e", k+"="+cfg.Env[k])

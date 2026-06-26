@@ -39,6 +39,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -50,6 +51,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi/pkg/v3/oci"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -183,34 +185,34 @@ func (h *ociHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirp
 
 	opts := req.GetInfo().GetOptions()
 
-	var cmd *exec.Cmd
 	if podMode {
 		image := optString(opts, "image")
 		if image == "" {
 			return nil, errors.New("oci: runtime option 'image' is required in pod mode")
 		}
-		cmd = exec.CommandContext(ctx, "docker", dockerRunArgs(image, env)...)
-	} else {
-		program := optString(opts, "program")
-		if program == "" {
-			return nil, errors.New("oci: runtime option 'program' is required for subprocess mode")
-		}
-		if !filepath.IsAbs(program) {
-			program = filepath.Join(req.GetInfo().GetProgramDirectory(), program)
-		}
-		cmd = exec.CommandContext(ctx, program)
-		cmd.Env = append(os.Environ(), envSlice(env)...)
+		return runProgramContainer(ctx, image, env)
 	}
 
+	// Subprocess mode: exec the program binary directly. This is the fast
+	// inner-loop dev path — no image build or container start — not the spine;
+	// pod mode is the normal form.
+	program := optString(opts, "program")
+	if program == "" {
+		return nil, errors.New("oci: runtime option 'program' is required for subprocess mode")
+	}
+	if !filepath.IsAbs(program) {
+		program = filepath.Join(req.GetInfo().GetProgramDirectory(), program)
+	}
+	cmd := exec.CommandContext(ctx, program)
+	cmd.Env = append(os.Environ(), envSlice(env)...)
 	// The program's output goes to stderr; stdout is reserved for the language
 	// host's port-line protocol with the engine.
 	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
-
 	if err := cmd.Run(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			// The program (or docker) ran and exited non-zero; its own output
-			// already explained why. Bail so the engine halts without double-reporting.
+			// The program ran and exited non-zero; its own output already explained
+			// why. Bail so the engine halts without double-reporting.
 			return &pulumirpc.RunResponse{Bail: true}, nil
 		}
 		return nil, fmt.Errorf("oci: starting program: %w", err)
@@ -218,23 +220,65 @@ func (h *ociHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirp
 	return &pulumirpc.RunResponse{}, nil
 }
 
-// dockerRunArgs builds the argv for `docker run` of a program image. Env keys are
-// emitted in sorted order so the argv is deterministic.
-func dockerRunArgs(image string, env map[string]string) []string {
-	args := []string{"run", "--rm"}
-	if network := os.Getenv("PULUMI_POD_NETWORK"); network != "" {
-		// Engine-in-container: join the pod network and reach the engine by its
-		// container DNS name (no host gateway needed).
-		args = append(args, "--network", network)
-	} else {
-		// Engine on the host: the program runs on the default bridge and reaches
-		// the host engine through Docker's host-gateway alias.
-		args = append(args, "--add-host=host.docker.internal:host-gateway")
+// runProgramContainer runs the program image as a pod container through the
+// PodManager — the same runtime abstraction the container host uses to start
+// providers — rather than shelling out to `docker` directly. It streams the
+// container's output to stderr (stdout is reserved for the port-line protocol),
+// blocks until the program exits, and maps a non-zero exit to a Bail.
+func runProgramContainer(ctx context.Context, image string, env map[string]string) (*pulumirpc.RunResponse, error) {
+	podID := os.Getenv("PULUMI_POD_ID")
+	if podID == "" {
+		// Mirror the container host's fallback: without an explicit pod id, derive
+		// one from this (engine) container's hostname so the container is still
+		// labelled for cleanup.
+		podID, _ = os.Hostname()
 	}
-	for _, k := range sortedKeys(env) {
-		args = append(args, "-e", k+"="+env[k])
+	pod := oci.NewDockerPodManager(podID)
+
+	network := os.Getenv("PULUMI_POD_NETWORK")
+	cfg := oci.ContainerConfig{
+		Image:   image,
+		Name:    "program",
+		Network: network,
+		Env:     env,
+		// Engine-on-host mode (Option A) has no pod network; the program reaches
+		// the host engine through the host-gateway alias. On the pod network
+		// (Option C) it reaches the engine by container DNS and needs no gateway.
+		HostGateway: network == "",
 	}
-	return append(args, image)
+
+	c, err := pod.RunContainer(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("oci: starting program container: %w", err)
+	}
+	// The program container is detached (no --rm); remove it when Run returns. The
+	// pod label is a crash backstop. WithoutCancel so a cancelled ctx still cleans up.
+	defer func() { _ = pod.StopContainer(context.WithoutCancel(ctx), c) }()
+
+	// Follow the container's combined output onto our stderr. `docker logs -f`
+	// replays from the start, so output emitted before this attaches is not lost.
+	logs, err := pod.ContainerLogs(ctx, c, true)
+	if err != nil {
+		return nil, fmt.Errorf("oci: streaming program logs: %w", err)
+	}
+	copied := make(chan struct{})
+	go func() {
+		defer close(copied)
+		_, _ = io.Copy(os.Stderr, logs)
+	}()
+
+	code, waitErr := pod.WaitContainer(ctx, c)
+	_ = logs.Close()
+	<-copied
+	if waitErr != nil {
+		return nil, fmt.Errorf("oci: waiting for program container: %w", waitErr)
+	}
+	if code != 0 {
+		// The program ran and exited non-zero; its own output already explained
+		// why. Bail so the engine halts without double-reporting.
+		return &pulumirpc.RunResponse{Bail: true}, nil
+	}
+	return &pulumirpc.RunResponse{}, nil
 }
 
 // rewriteHost replaces the host portion of a host:port address, preserving the
