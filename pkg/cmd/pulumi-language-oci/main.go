@@ -34,6 +34,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -46,6 +47,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -186,9 +188,9 @@ func (h *ociHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirp
 	opts := req.GetInfo().GetOptions()
 
 	if podMode {
-		image := optString(opts, "image")
-		if image == "" {
-			return nil, errors.New("oci: runtime option 'image' is required in pod mode")
+		image, err := resolveProgramImage(ctx, opts, req.GetInfo().GetProgramDirectory())
+		if err != nil {
+			return nil, err
 		}
 		return runProgramContainer(ctx, image, env)
 	}
@@ -279,6 +281,66 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 		return &pulumirpc.RunResponse{Bail: true}, nil
 	}
 	return &pulumirpc.RunResponse{}, nil
+}
+
+// resolveProgramImage determines the program image to run in pod mode. If the
+// project declares a `build` runtime option, run it to produce the image (the
+// build step); otherwise use a prebuilt `image` option.
+func resolveProgramImage(ctx context.Context, opts *structpb.Struct, dir string) (string, error) {
+	if build := optString(opts, "build"); build != "" {
+		return buildProgramImage(ctx, build, dir)
+	}
+	if image := optString(opts, "image"); image != "" {
+		return image, nil
+	}
+	return "", errors.New(
+		"oci: no program image — set runtime option 'build' (to build one) or 'image' (a prebuilt one)")
+}
+
+// buildProgramImage runs the project's `build` command (design §7: a shell
+// command that prints an image ref to stdout) in the program directory and
+// returns the ref. The build must load the image into the same container runtime
+// the pod manager runs it with — e.g. `docker build -q` loads into the local
+// daemon and prints the image ID, which runProgramContainer then `docker run`s by
+// ref, with no tar round-trip. (A tar handoff is only needed when the build
+// daemon and the run daemon differ — the remote-execution case — left for later.)
+//
+// The build runs here, in Run, rather than in InstallDependencies, on purpose:
+// the `up` pre-install host and the engine-update host are different processes
+// (DefaultHostFactory builds a fresh host), so an image ref stashed during
+// InstallDependencies would not reach this Run. Building here keeps it in one
+// process; docker layer caching makes the rebuild on each preview/up cheap. Once
+// the CLI wrapper owns invocation order, the build can move host-side and the
+// engine container would only ever run prebuilt images (which is also what remote
+// execution wants).
+func buildProgramImage(ctx context.Context, build, dir string) (string, error) {
+	fmt.Fprintf(os.Stderr, "oci: building program image: %s\n", build)
+	var ref bytes.Buffer
+	cmd := exec.CommandContext(ctx, "sh", "-c", build)
+	cmd.Dir = dir
+	cmd.Stdout = &ref
+	cmd.Stderr = os.Stderr // build progress is visible to the user
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("oci: build command %q failed: %w", build, err)
+	}
+	image := lastLine(ref.String())
+	if image == "" {
+		return "", fmt.Errorf("oci: build command %q produced no image ref on stdout", build)
+	}
+	fmt.Fprintf(os.Stderr, "oci: built program image %s\n", image)
+	return image, nil
+}
+
+// lastLine returns the last non-empty, trimmed line of s — the image ref, even if
+// the build command emitted other chatter on stdout before it.
+func lastLine(s string) string {
+	lines := strings.Split(s, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		if t := strings.TrimSpace(lines[i]); t != "" {
+			return t
+		}
+	}
+	return ""
 }
 
 // rewriteHost replaces the host portion of a host:port address, preserving the
