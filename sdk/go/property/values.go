@@ -285,7 +285,7 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 	return v
 }
 
-// HasValue returns true if a value is non-null and non-computed. This is private to discourage external use, null
+// hasValue returns true if a value is non-null and non-computed. This is private to discourage external use, null
 // _should_ normally be semantically meaningful, but currently for diffs we have to treat missing, null and computed the
 // same.
 func (v Value) hasValue() bool {
