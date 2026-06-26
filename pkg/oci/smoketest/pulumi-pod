@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+#
+# pulumi-pod — a drop-in `pulumi` wrapper for containerized (pod-mode) execution.
+#
+# For a `runtime: oci` project it bootstraps a pod and runs the given pulumi
+# command inside the engine/CLI container; for anything else it transparently
+# forwards to the real `pulumi`. That dispatch-by-project-type is what lets you
+# treat `pulumi-pod` as a stand-in for `pulumi` (`pulumi-pod up`, `pulumi-pod
+# preview`, `pulumi-pod stack output x`) without caring whether a given project
+# runs in a pod.
+#
+# It encapsulates the orchestration boilerplate that was previously hand-rolled in
+# every smoke test: create a pod network, run the engine container on it with the
+# docker socket + project (+ state) mounted and the PULUMI_POD_* contract set, run
+# the command, then tear the pod down. Each invocation is one pulumi command in a
+# fresh, ephemeral pod (state persists via the mounted backend dir), which is the
+# "self-contained execution unit" the design is aiming at — and the same shape a
+# remote executor would run.
+#
+# This is a prototype helper living alongside the smoke tests. The eventual home
+# is the CLI itself (or an installed `pulumi-pod` on PATH); the design deliberately
+# prefers this wrapper over having the CLI fork itself.
+#
+# Config via env (all optional):
+#   PULUMI_POD_ENGINE_IMAGE   engine/CLI image to run        (default pulumi-cli-oci:latest)
+#   PULUMI_POD_PROJECT_DIR    project dir mounted at /project (default: cwd)
+#   PULUMI_POD_STATE_DIR      host dir mounted at /state      (for file:// backends)
+#   PULUMI_REAL               real pulumi for non-oci passthrough (default: pulumi)
+# Forwarded into the engine container when set in the environment:
+#   PULUMI_BACKEND_URL  PULUMI_CONFIG_PASSPHRASE  PULUMI_ACCESS_TOKEN
+#   PULUMI_POD_PROGRAM_IMAGE  PULUMI_POD_PLUGIN_REGISTRY
+#
+# Usage: pulumi-pod <pulumi args...>
+set -euo pipefail
+
+PROJECT_DIR="${PULUMI_POD_PROJECT_DIR:-$PWD}"
+ENGINE_IMAGE="${PULUMI_POD_ENGINE_IMAGE:-pulumi-cli-oci:latest}"
+
+# Dispatch by project type. Only a `runtime: oci` project bootstraps a pod; match
+# the runtime line specifically so a project merely *named* "oci-..." is not a
+# false positive. Everything else forwards to the real CLI unchanged.
+if ! grep -qE '^[[:space:]]*(name|runtime):[[:space:]]*oci[[:space:]]*$' \
+       "$PROJECT_DIR/Pulumi.yaml" 2>/dev/null; then
+  exec "${PULUMI_REAL:-pulumi}" "$@"
+fi
+
+POD_ID="$$-${RANDOM}"
+NET="pulumi-pod-$POD_ID"
+ENGINE_NAME="$NET-engine"
+POD_LABEL="com.pulumi.pod=$POD_ID"
+
+cleanup() {
+  # The engine container is --rm; this reclaims the network and any provider/
+  # program containers the engine started in its netns (labelled, but not removed
+  # if the run was interrupted before host.Close()).
+  local leftovers
+  leftovers="$(docker ps -aq --filter "label=$POD_LABEL" 2>/dev/null || true)"
+  [ -n "$leftovers" ] && docker rm -f $leftovers >/dev/null 2>&1 || true
+  docker network rm "$NET" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+docker network create "$NET" >/dev/null
+
+# Forward selected env vars into the engine container, but only those actually set
+# — so the contract stays explicit and the argv stays clean.
+fwd=()
+for v in PULUMI_BACKEND_URL PULUMI_CONFIG_PASSPHRASE PULUMI_ACCESS_TOKEN \
+         PULUMI_POD_PROGRAM_IMAGE PULUMI_POD_PLUGIN_REGISTRY; do
+  [ -n "${!v:-}" ] && fwd+=(-e "$v=${!v}")
+done
+
+mounts=(-v "$PROJECT_DIR:/project")
+[ -n "${PULUMI_POD_STATE_DIR:-}" ] && mounts+=(-v "$PULUMI_POD_STATE_DIR:/state")
+
+# Run the command in the engine container (its ENTRYPOINT is `pulumi`). Capture the
+# exit code rather than exec'ing, so the EXIT trap still reclaims the pod.
+status=0
+docker run --rm -i \
+  --privileged \
+  --network "$NET" \
+  --name "$ENGINE_NAME" \
+  --hostname "$ENGINE_NAME" \
+  --label "$POD_LABEL" \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  "${mounts[@]}" \
+  -w /project \
+  -e PULUMI_POD_MODE=true \
+  -e PULUMI_POD_NETWORK="$NET" \
+  -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
+  -e PULUMI_POD_ID="$POD_ID" \
+  "${fwd[@]}" \
+  "$ENGINE_IMAGE" \
+  "$@" || status=$?
+exit $status
