@@ -73,13 +73,13 @@ func (h *PropertySinkHandler) encodeAttr(a slog.Attr) slog.Attr {
 // PropertyExportHandler wraps the OTLP export handler, converting
 // property-typed attributes into logging.PropertyValue for OTLP transport.
 //
-// Deprecated: use github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin.PropertyExportHandler.
+// Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin.PropertyExportHandler].
 type PropertyExportHandler = plugin.PropertyExportHandler
 
 // NewPropertyExportHandler wraps the OTLP export handler, converting
 // property-typed attributes into logging.PropertyValue for OTLP transport.
 //
-// Deprecated: use github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin.NewPropertyExportHandler.
+// Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin.NewPropertyExportHandler].
 func NewPropertyExportHandler(inner slog.Handler) *PropertyExportHandler {
 	return plugin.NewPropertyExportHandler(inner)
 }
