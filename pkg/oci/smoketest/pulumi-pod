@@ -1,31 +1,42 @@
 #!/usr/bin/env bash
 #
-# pulumi-pod — a drop-in `pulumi` wrapper for containerized (pod-mode) execution.
+# pulumi-pod — a `pulumi` stand-in for containerized (pod-mode) execution.
 #
-# For a `runtime: oci` project it bootstraps a pod and runs the given pulumi
-# command inside the engine/CLI container; for anything else it transparently
-# forwards to the real `pulumi`. That dispatch-by-project-type is what lets you
-# treat `pulumi-pod` as a stand-in for `pulumi` (`pulumi-pod up`, `pulumi-pod
-# preview`, `pulumi-pod stack output x`) without caring whether a given project
-# runs in a pod.
+# It unconditionally bootstraps a pod and runs the given pulumi command inside the
+# engine/CLI container — pulumi-pod *is* the OCI bootstrap, invoked intentionally,
+# so there is no project-type sniffing or fall-through to a bare `pulumi`. Use it
+# in place of `pulumi` for a containerized project (`pulumi-pod up`, `pulumi-pod
+# preview`, `pulumi-pod stack output x`).
 #
 # It encapsulates the orchestration boilerplate that was previously hand-rolled in
 # every smoke test: create a pod network, run the engine container on it with the
-# docker socket + project (+ state) mounted and the PULUMI_POD_* contract set, run
-# the command, then tear the pod down. Each invocation is one pulumi command in a
-# fresh, ephemeral pod (state persists via the mounted backend dir), which is the
-# "self-contained execution unit" the design is aiming at — and the same shape a
-# remote executor would run.
+# docker socket + project (+ state + PULUMI_HOME) mounted and the PULUMI_POD_*
+# contract set, run the command, then tear the pod down. Each invocation is one
+# pulumi command in a fresh, ephemeral pod — the "self-contained execution unit"
+# the design aims at, and the same shape a remote executor would run.
 #
-# This is a prototype helper living alongside the smoke tests. The eventual home
-# is the CLI itself (or an installed `pulumi-pod` on PATH); the design deliberately
+# Cost: every invocation stands up a container + network. For deploy commands
+# (up/preview/destroy) that is inherent — they need the engine, providers, and
+# program on a network. For read-only commands the network is unused overhead;
+# acceptable for this MVP. The eventual local-dev optimization is a *persistent*
+# pod session (a long-lived engine the wrapper attaches to, amortizing startup) —
+# the design's tier-one inner-loop-latency concern, a separate feature.
+#
+# State persists across these ephemeral pods via mounts: PULUMI_POD_STATE_DIR holds
+# the (file) backend, and PULUMI_POD_HOME holds PULUMI_HOME (login + stack
+# selection), so a `stack select` sticks for a later `up` with no `--stack`.
+#
+# This is a prototype helper living alongside the smoke tests. The eventual home is
+# the CLI itself (or an installed `pulumi-pod` on PATH); the design deliberately
 # prefers this wrapper over having the CLI fork itself.
 #
 # Config via env (all optional):
 #   PULUMI_POD_ENGINE_IMAGE   engine/CLI image to run        (default pulumi-cli-oci:latest)
 #   PULUMI_POD_PROJECT_DIR    project dir mounted at /project (default: cwd)
 #   PULUMI_POD_STATE_DIR      host dir mounted at /state      (for file:// backends)
-#   PULUMI_REAL               real pulumi for non-oci passthrough (default: pulumi)
+#   PULUMI_POD_HOME           host dir mounted as the container's PULUMI_HOME, so
+#                             login + stack selection persist across invocations
+#                             (a pod-dedicated dir — NOT the host's ~/.pulumi)
 # Forwarded into the engine container when set in the environment:
 #   PULUMI_BACKEND_URL  PULUMI_CONFIG_PASSPHRASE  PULUMI_ACCESS_TOKEN
 #   PULUMI_POD_PROGRAM_IMAGE  PULUMI_POD_PLUGIN_REGISTRY
@@ -35,14 +46,6 @@ set -euo pipefail
 
 PROJECT_DIR="${PULUMI_POD_PROJECT_DIR:-$PWD}"
 ENGINE_IMAGE="${PULUMI_POD_ENGINE_IMAGE:-pulumi-cli-oci:latest}"
-
-# Dispatch by project type. Only a `runtime: oci` project bootstraps a pod; match
-# the runtime line specifically so a project merely *named* "oci-..." is not a
-# false positive. Everything else forwards to the real CLI unchanged.
-if ! grep -qE '^[[:space:]]*(name|runtime):[[:space:]]*oci[[:space:]]*$' \
-       "$PROJECT_DIR/Pulumi.yaml" 2>/dev/null; then
-  exec "${PULUMI_REAL:-pulumi}" "$@"
-fi
 
 POD_ID="$$-${RANDOM}"
 NET="pulumi-pod-$POD_ID"
@@ -72,6 +75,14 @@ done
 
 mounts=(-v "$PROJECT_DIR:/project")
 [ -n "${PULUMI_POD_STATE_DIR:-}" ] && mounts+=(-v "$PULUMI_POD_STATE_DIR:/state")
+# A pod-dedicated PULUMI_HOME, mounted so login + stack selection persist across
+# invocations (each is a fresh container, but they share this dir). Set PULUMI_HOME
+# explicitly rather than relying on the container's HOME. Use a dedicated dir, not
+# the host's ~/.pulumi: the container writes linux/pod state that shouldn't mingle
+# with the host CLI's home.
+if [ -n "${PULUMI_POD_HOME:-}" ]; then
+  mounts+=(-v "$PULUMI_POD_HOME:/pulumi-home" -e "PULUMI_HOME=/pulumi-home")
+fi
 
 # Run the command in the engine container (its ENTRYPOINT is `pulumi`). Capture the
 # exit code rather than exec'ing, so the EXIT trap still reclaims the pod.
