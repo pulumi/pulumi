@@ -34,7 +34,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -363,32 +362,26 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 }
 
 // resolveProgramImage determines the program image to run in pod mode. The
-// `build` runtime option may take two shapes:
+// `build` runtime option takes the shape:
 //
 //   - a struct {image, command, …}: run the command in a dedicated *builder
 //     container* whose image supplies the build toolchain (the build/run seam —
 //     the build no longer borrows the engine container's rootfs, so a build needing
-//     nix/bazel/buildpacks works as long as the builder image carries it);
-//   - a bare string command: the legacy in-process path — run the command inside
-//     the engine container. This is the degenerate case where the "builder image"
-//     is the engine image (which happens to ship the docker CLI), kept for backward
-//     compatibility and the common `docker build` case.
+//     nix/bazel/buildpacks works as long as the builder image carries it).
 //
 // Otherwise a prebuilt `image` option is used.
 func resolveProgramImage(ctx context.Context, opts *structpb.Struct, dir string) (string, error) {
-	if build := opts.GetFields()["build"]; build != nil {
-		if spec := build.GetStructValue(); spec != nil {
-			return buildProgramImageInContainer(ctx, spec, dir)
-		}
-		if cmd := build.GetStringValue(); cmd != "" {
-			return buildProgramImage(ctx, cmd, dir)
-		}
+	// `build` is always an {image, command} mapping. A missing or non-mapping value
+	// is treated as absent (the nil-safe getters fall through), so the generic error
+	// below covers it — no special handling of the removed bare-string form.
+	if spec := opts.GetFields()["build"].GetStructValue(); spec != nil {
+		return buildProgramImageInContainer(ctx, spec, dir)
 	}
 	if image := optString(opts, "image"); image != "" {
 		return image, nil
 	}
 	return "", errors.New(
-		"oci: no program image — set runtime option 'build' (a string command, or {image, command}) " +
+		"oci: no program image — set runtime option 'build' ({image, command}) " +
 			"or 'image' (a prebuilt one)")
 }
 
@@ -452,40 +445,6 @@ func buildProgramImageInContainer(ctx context.Context, spec *structpb.Struct, di
 	}
 	fmt.Fprintf(os.Stderr, "oci: built program image %s\n", ref)
 	return ref, nil
-}
-
-// buildProgramImage runs the project's `build` command (design §7: a shell
-// command that prints an image ref to stdout) in the program directory and
-// returns the ref. The build must load the image into the same container runtime
-// the pod manager runs it with — e.g. `docker build -q` loads into the local
-// daemon and prints the image ID, which runProgramContainer then `docker run`s by
-// ref, with no tar round-trip. (A tar handoff is only needed when the build
-// daemon and the run daemon differ — the remote-execution case — left for later.)
-//
-// The build runs here, in Run, rather than in InstallDependencies, on purpose:
-// the `up` pre-install host and the engine-update host are different processes
-// (DefaultHostFactory builds a fresh host), so an image ref stashed during
-// InstallDependencies would not reach this Run. Building here keeps it in one
-// process; docker layer caching makes the rebuild on each preview/up cheap. Once
-// the CLI wrapper owns invocation order, the build can move host-side and the
-// engine container would only ever run prebuilt images (which is also what remote
-// execution wants).
-func buildProgramImage(ctx context.Context, build, dir string) (string, error) {
-	fmt.Fprintf(os.Stderr, "oci: building program image: %s\n", build)
-	var ref bytes.Buffer
-	cmd := exec.CommandContext(ctx, "sh", "-c", build)
-	cmd.Dir = dir
-	cmd.Stdout = &ref
-	cmd.Stderr = os.Stderr // build progress is visible to the user
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("oci: build command %q failed: %w", build, err)
-	}
-	image := lastLine(ref.String())
-	if image == "" {
-		return "", fmt.Errorf("oci: build command %q produced no image ref on stdout", build)
-	}
-	fmt.Fprintf(os.Stderr, "oci: built program image %s\n", image)
-	return image, nil
 }
 
 // lastLine returns the last non-empty, trimmed line of s — the image ref, even if
