@@ -1,0 +1,20 @@
+name: oci-smoketest-mlc-localbuild
+description: Local-component build — the OCI language host builds the MLC image itself, then a Go program consumes it
+runtime:
+  name: oci
+  options:
+    image: oci-smoke-mlc:latest
+    # The greeting component is *local*: its source is here, not a published image.
+    # InstallDependencies builds each declared component, tagging it by the provider
+    # convention (pulumi-provider-<name>:v<version>) so the container host resolves
+    # the just-built image at Construct time. Default build is
+    # `docker build -q -t <conventional-tag> .` run in `path`.
+    #
+    # NOTE: this `components:` schema is a throwaway prototype declaration. The real
+    # version should align with the existing package resolution machinery
+    # (packageworkspace/packageresolution/packageinstallation) and the registry
+    # story (design open question #8), not entrench a parallel mechanism.
+    components:
+      - name: greeting
+        version: "0.1.0"
+        path: component-greeter
