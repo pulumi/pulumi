@@ -66,12 +66,14 @@ ENGINE_NAME="$NET-engine"
 POD_LABEL="com.pulumi.pod=$POD_ID"
 
 cleanup() {
-  # The engine container is --rm; this reclaims the network and any provider/
-  # program containers the engine started in its netns (labelled, but not removed
-  # if the run was interrupted before host.Close()).
-  local leftovers
+  # The engine container is --rm; this reclaims the network and any provider/program
+  # containers and plugin volumes the engine created in this pod (labelled, but not
+  # removed if the run was interrupted before host.Close()).
+  local leftovers vols
   leftovers="$(docker ps -aq --filter "label=$POD_LABEL" 2>/dev/null || true)"
   [ -n "$leftovers" ] && docker rm -f $leftovers >/dev/null 2>&1 || true
+  vols="$(docker volume ls -q --filter "label=$POD_LABEL" 2>/dev/null || true)"
+  [ -n "$vols" ] && docker volume rm -f $vols >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT

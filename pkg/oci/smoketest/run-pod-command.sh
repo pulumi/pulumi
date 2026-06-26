@@ -44,32 +44,20 @@ GOARCH="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')"
 PROVIDER_PKG="command"
 PROVIDER_VERSION="1.1.0"
 
-POD_ID="smoke-$$"
-NET="pulumi-pod-$POD_ID"
-ENGINE_NAME="$NET-engine"
+WRAPPER="$SMOKE_DIR/pulumi-pod"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-command:latest"
 PROVIDER_IMAGE="pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
-POD_LABEL="com.pulumi.pod=$POD_ID"
 STACK="dev"
 EXPECTED_MARKER="hello-from-the-program-workspace"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
-mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/state" "$WORK/project"
+mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/project"
 
 cleanup() {
-  # Backstop: remove every container labeled for this pod (engine + any provider
-  # container the engine started, which shares the engine's netns) and the pod's
-  # volumes. The engine's host.Close() already tears these down on the happy path;
-  # this covers a mid-run failure.
-  local leftovers
-  leftovers="$(docker ps -aq --filter "label=$POD_LABEL" 2>/dev/null || true)"
-  [ -n "$leftovers" ] && docker rm -f $leftovers >/dev/null 2>&1 || true
-  local vols
-  vols="$(docker volume ls -q --filter "label=$POD_LABEL" 2>/dev/null || true)"
-  [ -n "$vols" ] && docker volume rm -f $vols >/dev/null 2>&1 || true
-  docker network rm "$NET" >/dev/null 2>&1 || true
+  # The wrapper reclaims each pod (containers, volumes, network) itself; this only
+  # clears the cross-compiled binary and the scratch dir.
   rm -f "$SMOKE_DIR/program-linux"
   rm -rf "$WORK"
 }
@@ -106,49 +94,26 @@ mv "$WORK/provctx/pulumi-resource-$PROVIDER_PKG" "$WORK/provctx/provider-bin"
 docker buildx build --builder "$BUILDER" --load \
   -t "$PROVIDER_IMAGE" -f "$SMOKE_DIR/Dockerfile.provider" "$WORK/provctx"
 
-echo "==> creating pod network $NET"
-docker network create "$NET" >/dev/null
-
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 
-echo "==> running engine container $ENGINE_NAME on $NET (engine runs command FROM the program image)"
-# PULUMI_POD_PROGRAM_IMAGE tells the container host which image workspace-coupled
-# providers run from; the command provider is rooted in it and reads its workspace.
-docker run --rm -i \
-  --privileged \
-  --network "$NET" \
-  --name "$ENGINE_NAME" \
-  --hostname "$ENGINE_NAME" \
-  --label "$POD_LABEL" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v "$WORK/project":/project \
-  -v "$WORK/state":/state \
-  -w /project \
-  -e PULUMI_POD_MODE=true \
-  -e PULUMI_POD_NETWORK="$NET" \
-  -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
-  -e PULUMI_POD_ID="$POD_ID" \
-  -e PULUMI_POD_PROGRAM_IMAGE="$PROGRAM_IMAGE" \
-  -e PULUMI_BACKEND_URL=file:///state \
-  -e PULUMI_CONFIG_PASSPHRASE="$PULUMI_CONFIG_PASSPHRASE" \
-  -e STACK="$STACK" \
-  --entrypoint sh \
-  "$ENGINE_IMAGE" \
-  -c '
-    set -e
-    pulumi login "$PULUMI_BACKEND_URL"
-    pulumi stack select --create "$STACK"
-    pulumi up --yes --skip-preview --stack "$STACK"
-    printf "SMOKE marker=<<%s>>\n" "$(pulumi stack output marker --stack "$STACK")"
-  ' \
-  2>&1 | tee "$WORK/engine.log"
+# Drive the deployment with the wrapper — it bootstraps the pod (network, engine
+# container, PULUMI_POD_* contract, mounts, teardown) and defaults the backend +
+# stack state into the mounted dir. PULUMI_POD_PROGRAM_IMAGE is forwarded so the
+# workspace-coupled command provider runs from the program image.
+export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
+export PULUMI_POD_MOUNT_DIR="$WORK/project"
+export PULUMI_POD_PROGRAM_IMAGE="$PROGRAM_IMAGE"
+
+echo "==> pulumi-pod: stack init + up + output (engine runs command FROM the program image)"
+"$WRAPPER" stack init "$STACK"
+"$WRAPPER" up --yes --skip-preview 2>&1 | tee "$WORK/up.log"
+MARKER="$("$WRAPPER" stack output marker)"
 
 echo "==> asserting the command provider ran from the program image and read the workspace"
-if ! grep -q 'oci: provider command is workspace-coupled' "$WORK/engine.log"; then
+if ! grep -q 'oci: provider command is workspace-coupled' "$WORK/up.log"; then
   echo "!! the engine did not run command from the program image"
   exit 1
 fi
-MARKER="$(sed -n 's/.*SMOKE marker=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
 if [ "$MARKER" != "$EXPECTED_MARKER" ]; then
   echo "!! marker mismatch: got '${MARKER:-<empty>}', want '$EXPECTED_MARKER'"
   echo "   (the command provider did not read the program image's baked workspace)"
