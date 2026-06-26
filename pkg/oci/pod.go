@@ -153,4 +153,10 @@ type ContainerConfig struct {
 	// Privileged runs the container with extended privileges. Required for the
 	// CLI-in-container case, which needs access to the Docker socket.
 	Privileged bool
+	// HostGateway adds the host-gateway alias (host.docker.internal resolving to
+	// the host) so a container on the default network can reach a service running
+	// on the host. Used for the engine-on-host execution mode (design Option A);
+	// unnecessary — and ignored by callers — when the container joins the engine's
+	// pod network and reaches it by container DNS (Option C).
+	HostGateway bool
 }
