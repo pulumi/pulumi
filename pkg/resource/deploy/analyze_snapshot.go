@@ -119,7 +119,7 @@ func stateToAnalyzerResource(
 		URN:        res.URN,
 		Type:       res.Type,
 		Name:       res.URN.Name(),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Options: plugin.AnalyzerResourceOptions{
 			Protect:                 res.Protect,
 			IgnoreChanges:           res.IgnoreChanges,
@@ -136,7 +136,7 @@ func stateToAnalyzerResource(
 					URN:        provRes.URN,
 					Type:       provRes.Type,
 					Name:       provRes.URN.Name(),
-					Properties: provRes.Inputs,
+					Properties: resource.FromResourcePropertyMap(provRes.Inputs),
 				}
 			}
 		}
@@ -197,11 +197,10 @@ func AnalyzeSnapshot(
 						EnforcementLevel:  apitype.Advisory,
 						URN:               res.URN,
 					})
-				} else if tresult.Properties != nil {
+				} else {
 					// Report what would be remediated without applying it.
 					events.OnPolicyRemediation(res.URN, tresult,
-						resource.FromResourcePropertyMap(analyzerRes.Properties),
-						resource.FromResourcePropertyMap(tresult.Properties))
+						analyzerRes.Properties, tresult.Properties)
 				}
 				// A remediation might not set diagnostic or properties, we just ignore them.
 			}

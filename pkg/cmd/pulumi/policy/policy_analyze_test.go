@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // makeAnalyzeSnapshot builds a minimal snapshot with a single resource.
@@ -287,9 +288,9 @@ func TestPolicyAnalyzeCmd_File_UndecryptableSecretsRedacted(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, stderr, "secret values redacted")
 
-	pw := analyzer.analyzeProperties["password"]
-	require.True(t, pw.IsSecret())
-	assert.Equal(t, "[secret]", pw.SecretValue().Element.StringValue())
+	pw := analyzer.analyzeProperties.Get("password")
+	require.True(t, pw.Secret())
+	assert.Equal(t, "[secret]", pw.AsString())
 }
 
 // The progress (non-diff) display reads the synthetic ref's Name()/Project(); the other
@@ -580,10 +581,9 @@ func TestPolicyAnalyzeCmd_AnalyzeStackCalled_PrintsAndUsesOutputs(t *testing.T) 
 	expected := "    test-pack@v [mandatory]  stack-policy  (pkg:index:MyResource: res)stack-level violation\n"
 	assert.Equal(t, expected, stdout)
 
-	got, ok := analyzer.analyzeStackProperties["origin"]
+	got, ok := analyzer.analyzeStackProperties.GetOk("origin")
 	require.True(t, ok)
-	assert.True(t, got.DeepEquals(resource.NewProperty("output")))
-	assert.False(t, got.DeepEquals(resource.NewProperty("input")))
+	assert.Equal(t, property.New("output"), got)
 }
 
 func decodeEngineEventsJSON(t *testing.T, out string) []apitype.EngineEvent {
@@ -613,12 +613,12 @@ type fakeAnalyzer struct {
 	remediate              bool
 	stackDiagnostic        *plugin.AnalyzeDiagnostic
 	analyzeStackCalled     bool
-	analyzeStackProperties resource.PropertyMap
-	analyzeProperties      resource.PropertyMap
+	analyzeStackProperties property.Map
+	analyzeProperties      property.Map
 }
 
 func (a *fakeAnalyzer) Analyze(_ context.Context, r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
-	a.analyzeProperties = r.Properties.Copy()
+	a.analyzeProperties = r.Properties
 	if a.mandatory {
 		return plugin.AnalyzeResponse{
 			Diagnostics: []plugin.AnalyzeDiagnostic{{
@@ -638,7 +638,7 @@ func (a *fakeAnalyzer) AnalyzeStack(
 ) (plugin.AnalyzeResponse, error) {
 	a.analyzeStackCalled = true
 	if len(resources) > 0 {
-		a.analyzeStackProperties = resources[0].Properties.Copy()
+		a.analyzeStackProperties = resources[0].Properties
 	}
 	if a.stackDiagnostic != nil {
 		return plugin.AnalyzeResponse{
@@ -656,7 +656,7 @@ func (a *fakeAnalyzer) Remediate(_ context.Context, _ plugin.AnalyzerResource) (
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
 				Description:       "fixes a property",
-				Properties:        resource.PropertyMap{"k": resource.NewProperty("fixed")},
+				Properties:        property.NewMap(map[string]property.Value{"k": property.New("fixed")}),
 			}},
 		}, nil
 	}
