@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "main": "mlc.js",
   "dependencies": {
-    "@pulumi/pulumi": "^3.150.0"
+    "@pulumi/pulumi": "^3.150.0",
+    "@pulumi/random": "4.21.0"
   }
 }

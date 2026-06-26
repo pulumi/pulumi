@@ -20,16 +20,29 @@
 // calls Construct here; this Node code runs the component and registers it,
 // returning the component's outputs. This proves the program=component
 // unification: a Go program drives a Node component, both as pod containers.
+//
+// Crucially, the component registers a *real, provider-backed child*
+// (random.RandomPet) rather than just round-tripping a string. That makes the
+// component build infrastructure — the whole point of an MLC — and forces the
+// engine to lazily start the `random` provider as another pod container *during
+// Construct*. That recursive provider-start is what proves the full chain works:
+// program -> MLC container -> child RegisterResource -> engine -> provider
+// container -> monitor.
 "use strict";
 
 const pulumi = require("@pulumi/pulumi");
 const provider = require("@pulumi/pulumi/provider");
+const random = require("@pulumi/random");
 
 class Greeter extends pulumi.ComponentResource {
     constructor(name, args, opts) {
         super("greeting:index:Greeter", name, {}, opts);
         const who = (args && args.who) || "world";
-        this.message = pulumi.output(`hello, ${who}, from a Node multi-language component`);
+        // The child resource: registering it drives the engine to start the
+        // `random` provider container recursively, from within this component's
+        // Construct. The generated pet name flows back out through the message.
+        const pet = new random.RandomPet(`${name}-pet`, {}, { parent: this });
+        this.message = pulumi.interpolate`hello, ${who}, from a Node multi-language component (pet: ${pet.id})`;
         this.registerOutputs({ message: this.message });
     }
 }

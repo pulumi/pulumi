@@ -8,6 +8,13 @@
 # to it, and calls Construct. The Node code runs the component and returns its
 # outputs, which flow back to the Go program as a stack output.
 #
+# The component does not merely round-trip a string: it registers a real
+# provider-backed child (random.RandomPet). That forces the engine to lazily start
+# the `random` provider as *another* pod container from inside Construct — the
+# recursive provider-start that proves the whole chain (program -> MLC container ->
+# child RegisterResource -> engine -> provider container -> monitor), not just the
+# Construct hop. The child's generated pet name flows back out through the message.
+#
 # This exercises the Construct flow (engine -> provider.Construct -> component
 # container) end-to-end, the last untouched surface, and demonstrates the
 # program=component unification: a Go program drives a Node component, uniformly,
@@ -31,19 +38,28 @@ GOARCH="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')"
 COMPONENT_PKG="greeting"
 COMPONENT_VERSION="0.1.0"
 
+# The component registers a random.RandomPet child. That makes the engine lazily
+# start the stock `random` provider as another pod container *during Construct* —
+# the recursive provider-start this test exists to prove. Its version is pinned to
+# the @pulumi/random the component's package.json depends on, so the container
+# host resolves pulumi-provider-random:v<version> by the same convention.
+RANDOM_PKG="random"
+RANDOM_VERSION="4.21.0"
+
 POD_ID="smoke-$$"
 NET="pulumi-pod-$POD_ID"
 ENGINE_NAME="$NET-engine"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-mlc:latest"
 COMPONENT_IMAGE="pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION"
+RANDOM_IMAGE="pulumi-provider-$RANDOM_PKG:v$RANDOM_VERSION"
 POD_LABEL="com.pulumi.pod=$POD_ID"
 STACK="dev"
 EXPECTED_FRAGMENT="from a Node multi-language component"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
-mkdir -p "$WORK/cli" "$WORK/state" "$WORK/project"
+mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/state" "$WORK/project"
 
 cleanup() {
   local leftovers
@@ -81,6 +97,17 @@ docker buildx build --builder "$BUILDER" --load \
 echo "==> building Node component image $COMPONENT_IMAGE (npm install @pulumi/pulumi)"
 docker buildx build --builder "$BUILDER" --load \
   -t "$COMPONENT_IMAGE" -f "$COMPONENT_DIR/Dockerfile" "$COMPONENT_DIR"
+
+echo "==> downloading stock $RANDOM_PKG provider v$RANDOM_VERSION (linux/$GOARCH) and wrapping it"
+# The component's child needs this provider, but the engine resolves and starts it
+# by convention — we only have to make the image present, exactly as a stateless
+# provider test would. We do not build it against this branch.
+RANDOM_URL="https://get.pulumi.com/releases/plugins/pulumi-resource-$RANDOM_PKG-v$RANDOM_VERSION-linux-$GOARCH.tar.gz"
+curl -fsSL "$RANDOM_URL" -o "$WORK/random.tar.gz"
+tar -xzf "$WORK/random.tar.gz" -C "$WORK/provctx" "pulumi-resource-$RANDOM_PKG"
+mv "$WORK/provctx/pulumi-resource-$RANDOM_PKG" "$WORK/provctx/provider-bin"
+docker buildx build --builder "$BUILDER" --load \
+  -t "$RANDOM_IMAGE" -f "$SMOKE_DIR/Dockerfile.provider" "$WORK/provctx"
 
 echo "==> creating pod network $NET"
 docker network create "$NET" >/dev/null
@@ -120,9 +147,31 @@ if ! grep -q "oci: provider $COMPONENT_PKG running as container" "$WORK/engine.l
   echo "!! the engine did not start the Node component as a container"
   exit 1
 fi
+
+# The payoff: the component's Construct registered a RandomPet child, which drove
+# the engine to lazily start the `random` provider as *another* pod container —
+# the recursive provider-start, from inside Construct. Prove both the container
+# start and that the child resource was actually created.
+echo "==> asserting the component recursively started the random provider and created its child"
+if ! grep -q "oci: provider $RANDOM_PKG running as container" "$WORK/engine.log"; then
+  echo "!! the component did not recursively start the random provider as a container"
+  exit 1
+fi
+# Match the `created` line specifically, not `creating` — require the child's
+# Create to have completed, not merely started. (The pet-name check below is the
+# stronger proof, since a concrete generated name can't exist without a finished
+# round-trip; this is belt-and-suspenders.)
+if ! grep -qE "random:index:RandomPet .*created" "$WORK/engine.log"; then
+  echo "!! the component's RandomPet child was not created"
+  exit 1
+fi
+
 MESSAGE="$(sed -n 's/.*SMOKE message=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
+# The message must carry both the component's own text and the child's generated
+# pet name — proving the child's output propagated back out through Construct.
 case "$MESSAGE" in
-  *"$EXPECTED_FRAGMENT"*) echo "    message = $MESSAGE" ;;
-  *) echo "!! component output missing/unexpected: '${MESSAGE:-<empty>}'"; exit 1 ;;
+  *"$EXPECTED_FRAGMENT"*"(pet: "*) echo "    message = $MESSAGE" ;;
+  *) echo "!! component output missing child pet name or unexpected: '${MESSAGE:-<empty>}'"; exit 1 ;;
 esac
-echo "==> MLC smoke test PASS — a Go program drove a Node component, both as pod containers"
+echo "==> MLC smoke test PASS — a Go program drove a Node component that built real"
+echo "    infrastructure (a RandomPet), recursively starting the random provider container"
