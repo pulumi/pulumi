@@ -33,7 +33,7 @@ STACK="dev"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
-mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/state" "$WORK/project"
+mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/state" "$WORK/project" "$WORK/home"
 
 cleanup() {
   # The wrapper reclaims each pod itself; this only clears anything a crashed run
@@ -78,19 +78,22 @@ docker buildx build --builder "$BUILDER" --load \
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 
 # Everything below is what a user would actually type. The wrapper owns the pod.
+# PULUMI_POD_HOME makes the (independent) pods behave as one stateful session:
+# select the stack once and the later commands need no --stack.
 export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
 export PULUMI_POD_PROJECT_DIR="$WORK/project"
 export PULUMI_POD_STATE_DIR="$WORK/state"
+export PULUMI_POD_HOME="$WORK/home"
 export PULUMI_BACKEND_URL="file:///state"
 
-echo "==> pulumi-pod stack init $STACK"
+echo "==> pulumi-pod stack init $STACK (selection persists via mounted PULUMI_HOME)"
 "$WRAPPER" stack init "$STACK"
 
-echo "==> pulumi-pod up (the engine runs in a pod the wrapper bootstrapped)"
-"$WRAPPER" up --yes --skip-preview --stack "$STACK" 2>&1 | tee "$WORK/up.log"
+echo "==> pulumi-pod up (no --stack: uses the persisted stack selection)"
+"$WRAPPER" up --yes --skip-preview 2>&1 | tee "$WORK/up.log"
 
-echo "==> pulumi-pod stack output petName"
-PET="$("$WRAPPER" stack output petName --stack "$STACK")"
+echo "==> pulumi-pod stack output petName (no --stack)"
+PET="$("$WRAPPER" stack output petName)"
 
 echo "==> asserting the deployment ran through the wrapper-bootstrapped pod"
 if ! grep -q "oci: provider $PROVIDER_PKG running as container" "$WORK/up.log"; then
