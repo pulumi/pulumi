@@ -217,7 +217,7 @@ func (h *ociHost) InstallDependencies(
 		fmt.Fprintf(out, "oci: building local component %s (v%s) in builder %s: %s\n", name, version, image, command)
 		// The build tags the image by convention; its stdout (the image id) is not
 		// needed here — the container host resolves the component by that tag.
-		if _, err := buildInContainer(stream.Context(), image, command, cdir, out); err != nil {
+		if _, err := buildInContainer(stream.Context(), image, command, cdir, optStringList(buildSpec, "caches"), out); err != nil {
 			return fmt.Errorf("oci: building local component %s: %w", name, err)
 		}
 		fmt.Fprintf(out, "oci: built local component %s\n", name)
@@ -371,9 +371,6 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 //
 // Otherwise a prebuilt `image` option is used.
 func resolveProgramImage(ctx context.Context, opts *structpb.Struct, dir string) (string, error) {
-	// `build` is always an {image, command} mapping. A missing or non-mapping value
-	// is treated as absent (the nil-safe getters fall through), so the generic error
-	// below covers it — no special handling of the removed bare-string form.
 	if spec := opts.GetFields()["build"].GetStructValue(); spec != nil {
 		return buildProgramImageInContainer(ctx, spec, dir)
 	}
@@ -400,10 +397,16 @@ func resolveProgramImage(ctx context.Context, opts *structpb.Struct, dir string)
 // returned (the program build reads an image ref from it; the component build relies
 // on the build tagging by convention and ignores it).
 //
+// caches are container paths backed by persistent named volumes (cacheVolumeName).
+// They are deliberately NOT pod-scoped, so they survive across builds and pods —
+// without them every preview rebuilds from scratch (the nix store, the go/npm cache,
+// docker layers all evaporate). This is the same ephemeral-filesystem failure mode
+// the buildkit-builder leak exposed, fixed by giving the build durable scratch.
+//
 // Over-sharing every engine mount (incl. PULUMI_HOME) is acceptable for a trusted
 // local builder image but is what must be replaced with explicit, scoped mounts once
 // the builder image is registry-supplied — at which point --volumes-from goes away.
-func buildInContainer(ctx context.Context, image, command, workingDir string, stderr io.Writer) (string, error) {
+func buildInContainer(ctx context.Context, image, command, workingDir string, caches []string, stderr io.Writer) (string, error) {
 	// The builder mounts the engine container's volumes by name; in pod mode the
 	// wrapper sets --hostname to the engine container's name, so our hostname is a
 	// valid --volumes-from reference.
@@ -415,15 +418,39 @@ func buildInContainer(ctx context.Context, image, command, workingDir string, st
 	if podID == "" {
 		podID = engine
 	}
+	// Each cache path gets a stable, persistent named volume. Docker auto-creates it
+	// on first use; it is untracked by the pod manager, so pod Cleanup leaves it —
+	// that persistence is the point.
+	var volumes []oci.VolumeMount
+	for _, c := range caches {
+		volumes = append(volumes, oci.VolumeMount{Source: cacheVolumeName(c), Target: c})
+	}
 	pod := oci.NewDockerPodManager(podID)
 	return pod.RunToCompletion(ctx, oci.ContainerConfig{
 		Image:       image,
 		Name:        "build",
 		WorkingDir:  workingDir,
 		VolumesFrom: []string{engine},
+		Volumes:     volumes,
 		Entrypoint:  []string{"sh", "-c"},
 		Cmd:         []string{command},
 	}, stderr)
+}
+
+// cacheVolumeName derives a stable, persistent named volume for a build cache path.
+// It is path-keyed (global across projects — build caches are content-addressed, so
+// sharing helps), with a recognizable prefix so the volumes are identifiable and
+// prunable, since by design they outlive the pod and accumulate.
+func cacheVolumeName(path string) string {
+	sanitized := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '.', r == '-':
+			return r
+		default:
+			return '-'
+		}
+	}, strings.Trim(path, "/"))
+	return "pulumi-oci-buildcache-" + sanitized
 }
 
 // buildProgramImageInContainer builds the program image in a builder container and
@@ -435,7 +462,7 @@ func buildProgramImageInContainer(ctx context.Context, spec *structpb.Struct, di
 		return "", fmt.Errorf("oci: build needs 'image' and 'command' (got image=%q command=%q)", image, command)
 	}
 	fmt.Fprintf(os.Stderr, "oci: building program image in builder %s: %s\n", image, command)
-	stdout, err := buildInContainer(ctx, image, command, dir, os.Stderr)
+	stdout, err := buildInContainer(ctx, image, command, dir, optStringList(spec, "caches"), os.Stderr)
 	if err != nil {
 		return "", fmt.Errorf("oci: builder %q failed: %w", image, err)
 	}
@@ -492,6 +519,22 @@ func optString(s *structpb.Struct, key string) string {
 		return ""
 	}
 	return s.GetFields()[key].GetStringValue() // nil-safe: missing key -> ""
+}
+
+// optStringList reads a list-of-strings option, skipping non-string/empty entries.
+// nil-safe: a missing key yields nil.
+func optStringList(s *structpb.Struct, key string) []string {
+	if s == nil {
+		return nil
+	}
+	vals := s.GetFields()[key].GetListValue().GetValues()
+	out := make([]string, 0, len(vals))
+	for _, v := range vals {
+		if str := v.GetStringValue(); str != "" {
+			out = append(out, str)
+		}
+	}
+	return out
 }
 
 func envSlice(env map[string]string) []string {
