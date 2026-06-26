@@ -22,10 +22,17 @@ import (
 	"github.com/pulumi/esc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 )
 
-func ptr[T any](v T) *T {
-	return &v
+func lsOutput(t *testing.T, format string) *outputflag.OutputFlag[stackEnvironmentsRenderFunc] {
+	output := &outputflag.OutputFlag[stackEnvironmentsRenderFunc]{
+		RenderForTerminal: formatStackEnvironmentsConsole,
+		RenderJSON:        formatStackEnvironmentsJSON,
+	}
+	require.NoError(t, output.Set(format))
+	return output
 }
 
 func TestConfigEnvLsCmd(t *testing.T) {
@@ -48,7 +55,7 @@ runtime: yaml`
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: ptr(false)}
+		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "default")}
 		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
@@ -73,7 +80,7 @@ runtime: yaml`
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: ptr(true)}
+		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "json")}
 		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
@@ -104,7 +111,7 @@ runtime: yaml`
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: ptr(false)}
+		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "default")}
 		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
@@ -139,7 +146,7 @@ thirdEnv
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: ptr(true)}
+		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "json")}
 		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
@@ -175,7 +182,7 @@ thirdEnv
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: ptr(false)}
+		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "default")}
 		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
@@ -211,7 +218,7 @@ thirdEnv
 		stdin := strings.NewReader("")
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, jsonOut: ptr(true)}
+		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "json")}
 		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)

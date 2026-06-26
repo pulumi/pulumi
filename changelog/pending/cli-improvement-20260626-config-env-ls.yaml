@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Add `--output $format` flag to `pulumi config env list`
+time: 2026-06-26T15:49:58.924705+02:00
