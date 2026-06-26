@@ -239,6 +239,25 @@ func (m *dockerPodManager) CopyFromImage(ctx context.Context, image, srcPath str
 	return err
 }
 
+func (m *dockerPodManager) ImageExists(ctx context.Context, ref string) (bool, error) {
+	// `docker image inspect` exits non-zero when the image is absent. Any failure
+	// (absent, or a malformed ref) is reported as "not present" — the caller's only
+	// recourse is to pull, and a genuine daemon problem resurfaces there with a
+	// clearer error than an inspect failure would give.
+	_, _, err := m.run(ctx, nil, m.bin, "image", "inspect", ref)
+	return err == nil, nil
+}
+
+func (m *dockerPodManager) PullImage(ctx context.Context, ref string) error {
+	_, err := m.docker(ctx, "pull", ref)
+	return err
+}
+
+func (m *dockerPodManager) TagImage(ctx context.Context, src, dst string) error {
+	_, err := m.docker(ctx, "tag", src, dst)
+	return err
+}
+
 func (m *dockerPodManager) Cleanup(ctx context.Context) error {
 	// Snapshot and clear tracked resources under the lock, then tear down without
 	// holding it.

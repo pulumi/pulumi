@@ -79,6 +79,22 @@ type PodManager interface {
 	// only moves data between a container and the host.
 	CopyFromImage(ctx context.Context, image, srcPath string, vol Volume, dstPath string) error
 
+	// ImageExists reports whether an image reference is present in the local image
+	// store. It is the "is this plugin installed?" check for the container model:
+	// a plugin's installation state is "is its image in the daemon", not "is its
+	// binary on disk".
+	ImageExists(ctx context.Context, ref string) (bool, error)
+
+	// PullImage pulls an image reference into the local image store. This is how a
+	// container plugin is "installed" — its image is fetched from an OCI registry,
+	// the same infrastructure used to distribute any other image.
+	PullImage(ctx context.Context, ref string) error
+
+	// TagImage applies tag dst to the image currently referenced by src. Used to
+	// retag a registry-qualified pull (registry/name:version) to the bare
+	// convention (name:version) the rest of the host resolves by.
+	TagImage(ctx context.Context, src, dst string) error
+
 	// Cleanup stops and removes every container, volume, and network this manager
 	// created. It is best-effort: it attempts to remove all resources and returns
 	// a joined error describing any failures, so one failure does not strand the
