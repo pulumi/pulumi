@@ -43,26 +43,21 @@ COMPONENT_VERSION="0.1.0"
 RANDOM_PKG="random"
 RANDOM_VERSION="4.21.0"
 
-POD_ID="smoke-$$"
-NET="pulumi-pod-$POD_ID"
-ENGINE_NAME="$NET-engine"
+WRAPPER="$SMOKE_DIR/pulumi-pod"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-mlc:latest"
 COMPONENT_IMAGE="pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION" # built in-pod, not prebuilt
 RANDOM_IMAGE="pulumi-provider-$RANDOM_PKG:v$RANDOM_VERSION"
-POD_LABEL="com.pulumi.pod=$POD_ID"
 STACK="dev"
 EXPECTED_FRAGMENT="from a Node multi-language component"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
-mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/state" "$WORK/project"
+mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/project"
 
 cleanup() {
-  local leftovers
-  leftovers="$(docker ps -aq --filter "label=$POD_LABEL" 2>/dev/null || true)"
-  [ -n "$leftovers" ] && docker rm -f $leftovers >/dev/null 2>&1 || true
-  docker network rm "$NET" >/dev/null 2>&1 || true
+  # The wrapper reclaims each pod itself; this clears the in-pod-built component
+  # image, the cross-compiled binary, and the scratch dir.
   docker image rm -f "$COMPONENT_IMAGE" >/dev/null 2>&1 || true
   rm -f "$SMOKE_DIR/program-linux"
   rm -rf "$WORK"
@@ -107,49 +102,28 @@ mv "$WORK/provctx/pulumi-resource-$RANDOM_PKG" "$WORK/provctx/provider-bin"
 docker buildx build --builder "$BUILDER" --load \
   -t "$RANDOM_IMAGE" -f "$SMOKE_DIR/Dockerfile.provider" "$WORK/provctx"
 
-echo "==> creating pod network $NET"
-docker network create "$NET" >/dev/null
-
-# Assemble /project: the program's Pulumi.yaml (declaring the local component) plus
-# the component's source under the declared `path`, so InstallDependencies can build
-# it inside the engine container.
+# Assemble the mounted dir: the program's Pulumi.yaml (declaring the local
+# component) plus the component's source under the declared `path`, so
+# InstallDependencies can build it.
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 mkdir -p "$WORK/project/component-greeter"
 cp "$COMPONENT_DIR"/* "$WORK/project/component-greeter/"
 
-echo "==> running engine container $ENGINE_NAME (language host builds the local component, then the chain runs)"
-docker run --rm -i \
-  --privileged \
-  --network "$NET" \
-  --name "$ENGINE_NAME" \
-  --hostname "$ENGINE_NAME" \
-  --label "$POD_LABEL" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v "$WORK/project":/project \
-  -v "$WORK/state":/state \
-  -w /project \
-  -e PULUMI_POD_MODE=true \
-  -e PULUMI_POD_NETWORK="$NET" \
-  -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
-  -e PULUMI_POD_ID="$POD_ID" \
-  -e PULUMI_POD_PROGRAM_IMAGE="$PROGRAM_IMAGE" \
-  -e PULUMI_BACKEND_URL=file:///state \
-  -e PULUMI_CONFIG_PASSPHRASE="$PULUMI_CONFIG_PASSPHRASE" \
-  -e STACK="$STACK" \
-  --entrypoint sh \
-  "$ENGINE_IMAGE" \
-  -c '
-    set -e
-    pulumi login "$PULUMI_BACKEND_URL"
-    pulumi stack select --create "$STACK"
-    pulumi install
-    pulumi up --yes --skip-preview --stack "$STACK"
-    printf "SMOKE message=<<%s>>\n" "$(pulumi stack output message --stack "$STACK")"
-  ' \
-  2>&1 | tee "$WORK/engine.log"
+export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
+export PULUMI_POD_MOUNT_DIR="$WORK/project"
+
+# install and up run as *separate* pods: the component image `pulumi-pod install`
+# builds lands in the shared daemon, so the up pod resolves it at Construct time.
+# This is the cross-pod daemon-as-artifact-store the design relies on, now driven
+# by plain pulumi-pod commands.
+echo "==> pulumi-pod: stack init, install (builds the local component), up, output"
+"$WRAPPER" stack init "$STACK"
+"$WRAPPER" install 2>&1 | tee "$WORK/install.log"
+"$WRAPPER" up --yes --skip-preview 2>&1 | tee "$WORK/up.log"
+MESSAGE="$("$WRAPPER" stack output message)"
 
 echo "==> asserting the language host built the local component image"
-if ! grep -q "oci: building local component $COMPONENT_PKG" "$WORK/engine.log"; then
+if ! grep -q "oci: building local component $COMPONENT_PKG" "$WORK/install.log"; then
   echo "!! the language host did not build the local component"
   exit 1
 fi
@@ -160,20 +134,19 @@ fi
 echo "    $COMPONENT_IMAGE present ($(docker image inspect -f '{{.Id}}' "$COMPONENT_IMAGE"))"
 
 echo "==> asserting the engine started the (locally built) component and Construct returned its output"
-if ! grep -q "oci: provider $COMPONENT_PKG running as container" "$WORK/engine.log"; then
+if ! grep -q "oci: provider $COMPONENT_PKG running as container" "$WORK/up.log"; then
   echo "!! the engine did not start the component as a container"
   exit 1
 fi
-if ! grep -q "oci: provider $RANDOM_PKG running as container" "$WORK/engine.log"; then
+if ! grep -q "oci: provider $RANDOM_PKG running as container" "$WORK/up.log"; then
   echo "!! the component did not recursively start the random provider as a container"
   exit 1
 fi
-if ! grep -qE "random:index:RandomPet .*created" "$WORK/engine.log"; then
+if ! grep -qE "random:index:RandomPet .*created" "$WORK/up.log"; then
   echo "!! the component's RandomPet child was not created"
   exit 1
 fi
 
-MESSAGE="$(sed -n 's/.*SMOKE message=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
 case "$MESSAGE" in
   *"$EXPECTED_FRAGMENT"*"(pet: "*) echo "    message = $MESSAGE" ;;
   *) echo "!! component output missing child pet name or unexpected: '${MESSAGE:-<empty>}'"; exit 1 ;;
