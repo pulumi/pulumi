@@ -150,7 +150,8 @@ func (h *ociHost) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error
 // InstallDependencies builds the program's local component images. In the OCI
 // model the "dependency" that needs installing is a local program-as-component:
 // its image does not exist yet (unlike a published MLC, whose image is pulled by
-// convention), so we build it here and tag it by the provider convention
+// convention), so we build it here (in a dedicated builder container, the same
+// build/run seam as the program image) and tag it by the provider convention
 // (pulumi-provider-<name>:v<version>) — the same ref the container host resolves
 // when it starts the component at Construct time.
 //
@@ -161,9 +162,11 @@ func (h *ociHost) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error
 // store; no in-process handoff is needed.
 //
 // Components are declared in runtime options as a `components` list of
-// {name, version, path, [build]}. This is a throwaway prototype schema — the real
-// version should align with package resolution + the registry (design open
-// questions), not entrench a parallel mechanism.
+// {name, version, path, build: {image, [command]}}, where build.image is the builder
+// container image and build.command defaults to a convention-tagged `docker build`.
+// This is a throwaway prototype schema — the real version should align with package
+// resolution + the registry (design open questions), not entrench a parallel
+// mechanism.
 func (h *ociHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest,
 	stream pulumirpc.LanguageRuntime_InstallDependenciesServer,
@@ -189,26 +192,33 @@ func (h *ociHost) InstallDependencies(
 		if name == "" || path == "" {
 			return fmt.Errorf("oci: each component needs 'name' and 'path' (got name=%q path=%q)", name, path)
 		}
-		build := f["build"].GetStringValue()
-		if build == "" {
+		// build is a struct {image, [command]}: like the program build, the component
+		// build runs in a dedicated builder container (not in-process), so its
+		// toolchain comes from the builder image rather than the engine. image is the
+		// builder; command is optional.
+		buildSpec := f["build"].GetStructValue()
+		if buildSpec == nil || optString(buildSpec, "image") == "" {
+			return fmt.Errorf("oci: component %q needs a build.image (the builder image)", name)
+		}
+		image := optString(buildSpec, "image")
+		command := optString(buildSpec, "command")
+		if command == "" {
 			// Default: tag by the same convention the container host resolves to —
 			// qualified with the plugin registry when one is configured — so the
 			// just-built image is found at Construct time, and is named exactly where
 			// it would be pushed. oci.ProviderImageRef is the shared source of truth,
 			// so the build tag and the host's resolution cannot drift.
 			registry := os.Getenv("PULUMI_POD_PLUGIN_REGISTRY")
-			tag := oci.ProviderImageRef(registry, name, version)
-			build = fmt.Sprintf("docker build -q -t %s .", tag)
+			command = fmt.Sprintf("docker build -q -t %s .", oci.ProviderImageRef(registry, name, version))
 		}
 		cdir := path
 		if !filepath.IsAbs(cdir) {
 			cdir = filepath.Join(dir, path)
 		}
-		fmt.Fprintf(out, "oci: building local component %s (v%s) in %s: %s\n", name, version, path, build)
-		cmd := exec.CommandContext(stream.Context(), "sh", "-c", build)
-		cmd.Dir = cdir
-		cmd.Stdout, cmd.Stderr = out, out // safe: os/exec serializes writes to a shared (==) writer
-		if err := cmd.Run(); err != nil {
+		fmt.Fprintf(out, "oci: building local component %s (v%s) in builder %s: %s\n", name, version, image, command)
+		// The build tags the image by convention; its stdout (the image id) is not
+		// needed here — the container host resolves the component by that tag.
+		if _, err := buildInContainer(stream.Context(), image, command, cdir, out); err != nil {
 			return fmt.Errorf("oci: building local component %s: %w", name, err)
 		}
 		fmt.Fprintf(out, "oci: built local component %s\n", name)
@@ -382,27 +392,25 @@ func resolveProgramImage(ctx context.Context, opts *structpb.Struct, dir string)
 			"or 'image' (a prebuilt one)")
 }
 
-// buildProgramImageInContainer runs the build command in a dedicated builder
-// container (design: "Topology — the build phase"). The builder image supplies the
-// build toolchain; the build command prints the resulting image ref to stdout.
+// buildInContainer runs a build command in a dedicated builder container and
+// returns its stdout (design: "Topology — the build phase"). It is the shared
+// mechanism for both build sites: the program image build (Run) and the local
+// component builds (InstallDependencies).
 //
 // The source reaches the builder via --volumes-from the engine container: the
-// builder inherits the engine's workspace mount (the program source) and docker
-// socket at the *same* paths, so WorkingDir is just the engine-internal program
+// builder inherits the engine's workspace mount (the program/component source) and
+// docker socket at the *same* paths, so workingDir is just the engine-internal
 // directory — no host-path translation across the docker-out-of-docker boundary.
 // The socket riding along is the artifact sink: a `docker build` inside the builder
 // loads into the shared daemon, exactly as the in-process build did, just relocated.
+// Build progress (the command's stderr) streams to the given writer; its stdout is
+// returned (the program build reads an image ref from it; the component build relies
+// on the build tagging by convention and ignores it).
 //
 // Over-sharing every engine mount (incl. PULUMI_HOME) is acceptable for a trusted
 // local builder image but is what must be replaced with explicit, scoped mounts once
 // the builder image is registry-supplied — at which point --volumes-from goes away.
-func buildProgramImageInContainer(ctx context.Context, spec *structpb.Struct, dir string) (string, error) {
-	image := optString(spec, "image")
-	command := optString(spec, "command")
-	if image == "" || command == "" {
-		return "", fmt.Errorf("oci: build needs 'image' and 'command' (got image=%q command=%q)", image, command)
-	}
-
+func buildInContainer(ctx context.Context, image, command, workingDir string, stderr io.Writer) (string, error) {
 	// The builder mounts the engine container's volumes by name; in pod mode the
 	// wrapper sets --hostname to the engine container's name, so our hostname is a
 	// valid --volumes-from reference.
@@ -415,16 +423,26 @@ func buildProgramImageInContainer(ctx context.Context, spec *structpb.Struct, di
 		podID = engine
 	}
 	pod := oci.NewDockerPodManager(podID)
-
-	fmt.Fprintf(os.Stderr, "oci: building program image in builder %s: %s\n", image, command)
-	stdout, err := pod.RunToCompletion(ctx, oci.ContainerConfig{
+	return pod.RunToCompletion(ctx, oci.ContainerConfig{
 		Image:       image,
 		Name:        "build",
-		WorkingDir:  dir,
+		WorkingDir:  workingDir,
 		VolumesFrom: []string{engine},
 		Entrypoint:  []string{"sh", "-c"},
 		Cmd:         []string{command},
-	}, os.Stderr)
+	}, stderr)
+}
+
+// buildProgramImageInContainer builds the program image in a builder container and
+// returns the ref the build prints to stdout.
+func buildProgramImageInContainer(ctx context.Context, spec *structpb.Struct, dir string) (string, error) {
+	image := optString(spec, "image")
+	command := optString(spec, "command")
+	if image == "" || command == "" {
+		return "", fmt.Errorf("oci: build needs 'image' and 'command' (got image=%q command=%q)", image, command)
+	}
+	fmt.Fprintf(os.Stderr, "oci: building program image in builder %s: %s\n", image, command)
+	stdout, err := buildInContainer(ctx, image, command, dir, os.Stderr)
 	if err != nil {
 		return "", fmt.Errorf("oci: builder %q failed: %w", image, err)
 	}

@@ -45,6 +45,7 @@ RANDOM_VERSION="4.21.0"
 
 WRAPPER="$SMOKE_DIR/pulumi-pod"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
+BUILDER_IMAGE="oci-smoke-builder:latest" # discriminating builder for the component build
 PROGRAM_IMAGE="oci-smoke-mlc:latest"
 COMPONENT_IMAGE="pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION" # built in-pod, not prebuilt
 RANDOM_IMAGE="pulumi-provider-$RANDOM_PKG:v$RANDOM_VERSION"
@@ -82,6 +83,10 @@ echo "==> cross-compiling pulumi + pulumi-language-oci (linux/$GOARCH)"
 echo "==> building engine image $ENGINE_IMAGE"
 docker buildx build --builder "$BUILDER" --load \
   -t "$ENGINE_IMAGE" -f "$SMOKE_DIR/Dockerfile.cli" "$WORK/cli"
+
+echo "==> building builder image $BUILDER_IMAGE (docker CLI + /only-in-builder marker the engine lacks)"
+docker buildx build --builder "$BUILDER" --load \
+  -t "$BUILDER_IMAGE" -f "$SMOKE_DIR/Dockerfile.builder" "$SMOKE_DIR"
 
 echo "==> cross-compiling Go consumer program (linux/$GOARCH)"
 ( cd "$PROGRAM_DIR" && GOWORK=off GOOS=linux GOARCH="$GOARCH" CGO_ENABLED=0 \
@@ -122,9 +127,12 @@ echo "==> pulumi-pod: stack init, install (builds the local component), up, outp
 "$WRAPPER" up --yes --skip-preview 2>&1 | tee "$WORK/up.log"
 MESSAGE="$("$WRAPPER" stack output message)"
 
-echo "==> asserting the language host built the local component image"
-if ! grep -q "oci: building local component $COMPONENT_PKG" "$WORK/install.log"; then
-  echo "!! the language host did not build the local component"
+echo "==> asserting the language host built the local component in the builder container"
+# The "in builder $BUILDER_IMAGE" log line proves the builder-container path was
+# taken; the build itself guards on a marker only the builder image carries, so an
+# in-process build would have failed rather than reach this assertion.
+if ! grep -q "oci: building local component $COMPONENT_PKG.*in builder $BUILDER_IMAGE" "$WORK/install.log"; then
+  echo "!! the language host did not build the local component in the builder container"
   exit 1
 fi
 if ! docker image inspect "$COMPONENT_IMAGE" >/dev/null 2>&1; then
