@@ -402,6 +402,38 @@ func TestMismatchedPropertyValueDiff(t *testing.T) {
 	assert.True(t, reflect.DeepEqual(s1, s2))
 }
 
+func TestSecretVsNonSecretMapDiff(t *testing.T) {
+	t.Parallel()
+
+	plain := NewMap(map[string]Value{"k": New("v")})
+	secret := NewMap(map[string]Value{"k": New("v").WithSecret(true)})
+
+	assert.False(t, reflect.DeepEqual(plain, secret))
+	assert.False(t, reflect.DeepEqual(secret, plain))
+
+	diff := plain.Diff(secret)
+	require.NotNil(t, diff)
+	assert.Empty(t, diff.Adds)
+	assert.Empty(t, diff.Deletes)
+	assert.Empty(t, diff.Sames)
+	require.Contains(t, diff.Updates, "k")
+
+	vd := diff.Updates["k"]
+	assert.True(t, vd.Old.IsString())
+	assert.Equal(t, "v", vd.Old.AsString())
+	assert.False(t, vd.Old.Secret())
+	assert.True(t, vd.New.IsString())
+	assert.Equal(t, "v", vd.New.AsString())
+	assert.True(t, vd.New.Secret())
+	assert.Nil(t, vd.Array)
+	assert.Nil(t, vd.Object)
+
+	// And the reverse direction should also surface as an update.
+	rdiff := secret.Diff(plain)
+	require.NotNil(t, rdiff)
+	require.Contains(t, rdiff.Updates, "k")
+}
+
 func TestComputedProperyValueDiff(t *testing.T) {
 	t.Parallel()
 
@@ -411,4 +443,48 @@ func TestComputedProperyValueDiff(t *testing.T) {
 
 	a3 := New("a")
 	assert.False(t, reflect.DeepEqual(a1, a3))
+}
+
+func TestSecretVsNonSecretWholeMapDiff(t *testing.T) {
+	t.Parallel()
+
+	inner := NewMap(map[string]Value{"k": New("v")})
+	plain := New(inner)
+	secret := New(inner).WithSecret(true)
+
+	assert.False(t, reflect.DeepEqual(plain, secret))
+	assert.False(t, reflect.DeepEqual(secret, plain))
+
+	// At the value level the secret wrapper makes the whole thing differ —
+	// the diff is a flat Old/New replacement, not a recursive Object diff.
+	vd := plain.Diff(secret)
+	require.NotNil(t, vd)
+	assert.Nil(t, vd.Object)
+	assert.Nil(t, vd.Array)
+	assert.True(t, vd.Old.IsMap())
+	assert.False(t, vd.Old.Secret())
+	assert.True(t, vd.New.IsMap())
+	assert.True(t, vd.New.Secret())
+}
+
+func TestSecretVsNonSecretWholeArrayDiff(t *testing.T) {
+	t.Parallel()
+
+	inner := NewArray([]Value{New("a"), New("b")})
+	plain := New(inner)
+	secret := New(inner).WithSecret(true)
+
+	assert.False(t, reflect.DeepEqual(plain, secret))
+	assert.False(t, reflect.DeepEqual(secret, plain))
+
+	// As with maps, wrapping the whole array in a secret produces a flat
+	// Old/New replacement rather than a recursive Array diff.
+	vd := plain.Diff(secret)
+	require.NotNil(t, vd)
+	assert.Nil(t, vd.Array)
+	assert.Nil(t, vd.Object)
+	assert.True(t, vd.Old.IsArray())
+	assert.False(t, vd.Old.Secret())
+	assert.True(t, vd.New.IsArray())
+	assert.True(t, vd.New.Secret())
 }

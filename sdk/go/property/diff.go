@@ -15,6 +15,7 @@
 package property
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -255,6 +256,15 @@ func (props Value) Diff(other Value, options ...DiffOption) *ValueDiff {
 
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
 func (v Value) diff(other Value, opts diffOptions, path Path) *ValueDiff {
+	// If secretness differs, then the values are different.
+	if v.Secret() != other.Secret() {
+		return &ValueDiff{Old: v, New: other}
+	}
+	// If the dependencies differ, then the values are different.
+	if !slices.Equal(v.Dependencies(), other.Dependencies()) {
+		return &ValueDiff{Old: v, New: other}
+	}
+
 	if v.IsArray() && other.IsArray() {
 		old := v.AsArray()
 		new := other.AsArray()
