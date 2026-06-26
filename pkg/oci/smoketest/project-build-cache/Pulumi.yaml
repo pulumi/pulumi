@@ -1,0 +1,16 @@
+name: oci-smoketest-buildcache
+description: A build cache volume persists across builds and pods
+runtime:
+  name: oci
+  options:
+    build:
+      image: oci-smoke-builder:latest
+      # caches mounts a persistent named volume at each path (cacheVolumeName), so it
+      # survives across builds and pods — without it every build starts from scratch.
+      caches:
+        - /buildcache
+      # The build increments a counter file in the cache each time it runs (stdout
+      # stays the image ref, docker build -q). The test reads the counter directly from
+      # the volume after each pod: if it grows across pods, the cache content persisted
+      # and was reused. This is ground truth, vs. parsing Pulumi's noisy build output.
+      command: "n=$(cat /buildcache/n 2>/dev/null || echo 0); n=$((n+1)); echo $n > /buildcache/n; docker build -q -t oci-smoke-buildcache:latest ."
