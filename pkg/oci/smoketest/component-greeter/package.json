@@ -1,0 +1,8 @@
+{
+  "name": "oci-smoke-greeter-component",
+  "version": "0.1.0",
+  "main": "mlc.js",
+  "dependencies": {
+    "@pulumi/pulumi": "^3.150.0"
+  }
+}
