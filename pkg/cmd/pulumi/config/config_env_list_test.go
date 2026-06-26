@@ -16,30 +16,32 @@ package config
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/pulumi/esc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 )
 
-func lsOutput(t *testing.T, format string) *outputflag.OutputFlag[stackEnvironmentsRenderFunc] {
-	output := &outputflag.OutputFlag[stackEnvironmentsRenderFunc]{
-		RenderForTerminal: formatStackEnvironmentsConsole,
-		RenderJSON:        formatStackEnvironmentsJSON,
-	}
-	require.NoError(t, output.Set(format))
-	return output
+const configEnvLsProjectYAML = `name: test
+runtime: yaml`
+
+func runConfigEnvLs(t *testing.T, stackYAML string, env *esc.Environment, args ...string) string {
+	var stdout bytes.Buffer
+	parent := newConfigEnvCmdForTest(
+		strings.NewReader(""), &stdout, configEnvLsProjectYAML, stackYAML, env, nil, nil)
+	cmd := newConfigEnvListCmd(parent)
+	cmd.SetArgs(args)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	require.NoError(t, cmd.ExecuteContext(t.Context()))
+	return cleanStdout(stdout.String())
 }
 
 func TestConfigEnvLsCmd(t *testing.T) {
 	t.Parallel()
-
-	projectYAML := `name: test
-runtime: yaml`
 
 	t.Run("no imports", func(t *testing.T) {
 		t.Parallel()
@@ -52,18 +54,10 @@ runtime: yaml`
 			},
 		}
 
-		stdin := strings.NewReader("")
-		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "default")}
-		ctx := t.Context()
-		err := ls.run(ctx, nil)
-		require.NoError(t, err)
-
 		const expectedOut = "This stack configuration has no environments listed. " +
 			"Try adding one with `pulumi config env add <projectName>/<envName>`.\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, runConfigEnvLs(t, "", env))
 	})
 
 	t.Run("no imports, json", func(t *testing.T) {
@@ -77,17 +71,9 @@ runtime: yaml`
 			},
 		}
 
-		stdin := strings.NewReader("")
-		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "json")}
-		ctx := t.Context()
-		err := ls.run(ctx, nil)
-		require.NoError(t, err)
-
 		const expectedOut = "[]\n"
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, runConfigEnvLs(t, "", env, "--output", "json"))
 	})
 
 	t.Run("with imports", func(t *testing.T) {
@@ -108,21 +94,13 @@ runtime: yaml`
     - thirdEnv
 `
 
-		stdin := strings.NewReader("")
-		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "default")}
-		ctx := t.Context()
-		err := ls.run(ctx, nil)
-		require.NoError(t, err)
-
 		const expectedOut = `ENVIRONMENTS
 env
 otherEnv
 thirdEnv
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, runConfigEnvLs(t, stackYAML, env))
 	})
 
 	t.Run("with imports, json", func(t *testing.T) {
@@ -143,14 +121,6 @@ thirdEnv
     - thirdEnv
 `
 
-		stdin := strings.NewReader("")
-		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "json")}
-		ctx := t.Context()
-		err := ls.run(ctx, nil)
-		require.NoError(t, err)
-
 		const expectedOut = `[
   "env",
   "otherEnv",
@@ -158,7 +128,7 @@ thirdEnv
 ]
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, runConfigEnvLs(t, stackYAML, env, "--output", "json"))
 	})
 
 	t.Run("with imports", func(t *testing.T) {
@@ -179,21 +149,13 @@ thirdEnv
     - thirdEnv
 `
 
-		stdin := strings.NewReader("")
-		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "default")}
-		ctx := t.Context()
-		err := ls.run(ctx, nil)
-		require.NoError(t, err)
-
 		const expectedOut = `ENVIRONMENTS
 env
 otherEnv
 thirdEnv
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, runConfigEnvLs(t, stackYAML, env))
 	})
 
 	t.Run("repeated imports", func(t *testing.T) {
@@ -215,14 +177,6 @@ thirdEnv
     - thirdEnv
 `
 
-		stdin := strings.NewReader("")
-		var stdout bytes.Buffer
-		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
-		ls := &configEnvLsCmd{parent: parent, output: lsOutput(t, "json")}
-		ctx := t.Context()
-		err := ls.run(ctx, nil)
-		require.NoError(t, err)
-
 		const expectedOut = `[
   "env",
   "otherEnv",
@@ -231,6 +185,6 @@ thirdEnv
 ]
 `
 
-		assert.Equal(t, expectedOut, cleanStdout(stdout.String()))
+		assert.Equal(t, expectedOut, runConfigEnvLs(t, stackYAML, env, "--output", "json"))
 	})
 }
