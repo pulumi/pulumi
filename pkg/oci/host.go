@@ -242,7 +242,7 @@ func (h *containerHost) providerContainer(
 	// archetypes need it: a stateless provider runs it directly; a workspace-coupled
 	// provider copies its binary out of it.
 	providerImage := h.imageFor(descriptor)
-	if err := h.ensureImage(ctx, providerImage); err != nil {
+	if err := h.ensureImage(ctx, descriptor.Name, providerImage); err != nil {
 		return ContainerConfig{}, err
 	}
 
@@ -290,14 +290,18 @@ func (h *containerHost) providerContainer(
 // downloading a plugin binary). If it is already present, this is a no-op.
 // Otherwise, when a plugin registry is configured, the image is pulled. The ref
 // is already registry-qualified by providerImageRef, so it is pulled and run
-// under the same fully-qualified name — no retag. With no registry configured a
-// missing image is left alone, so the later run/copy surfaces the absence (the
-// prior assume-prebuilt behaviour).
+// under the same fully-qualified name — no retag.
+//
+// With no registry configured and the image absent, it cannot be installed, so we
+// bail out here with an actionable message rather than letting the downstream
+// `docker run`/CopyFromImage fail with a cryptic "Unable to find image / pull
+// access denied" — the error a user hits when they forget `pulumi install` for a
+// local component, or have not set a registry for a published one.
 //
 // This runs in Provider() (acquire-on-use), which is provably reached for every
 // provider. Hoisting it to a pre-flight ensure step (parallel pre-pull, fail-fast,
 // the `pulumi install` hook) is a natural follow-on — same pull, earlier.
-func (h *containerHost) ensureImage(ctx context.Context, ref string) error {
+func (h *containerHost) ensureImage(ctx context.Context, name, ref string) error {
 	has, err := h.pod.ImageExists(ctx, ref)
 	if err != nil {
 		return fmt.Errorf("oci: checking for plugin image %s: %w", ref, err)
@@ -306,7 +310,11 @@ func (h *containerHost) ensureImage(ctx context.Context, ref string) error {
 		return nil
 	}
 	if h.pluginRegistry == "" {
-		return nil // no registry to install from; let the run/copy report the absence
+		return fmt.Errorf(
+			"oci: provider %q has no image: %s is not present locally and no plugin registry "+
+				"is configured to install it from. Run `pulumi install` if it is a local "+
+				"component, or set PULUMI_POD_PLUGIN_REGISTRY to a registry that has it",
+			name, ref)
 	}
 	fmt.Fprintf(os.Stderr, "oci: plugin image %s not present — pulling\n", ref)
 	if err := h.pod.PullImage(ctx, ref); err != nil {
