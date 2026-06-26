@@ -3,14 +3,13 @@
 # Builder-container smoke test: the OCI language host builds the program image in a
 # *dedicated builder container*, not inside the engine container.
 #
-# This is the build/run seam (design: "Topology — the build phase"). The bare-string
-# `build` option (run-pod-build.sh) runs the build in-process, in the engine
-# container — which only works because the engine image happens to ship the docker
-# CLI. The structured form `build: {image, command}` instead runs the command in a
-# builder container whose image supplies the toolchain. The source + docker socket
-# reach the builder via `--volumes-from` the engine container (same paths, no
-# host-path translation); the socket is the artifact sink (load into the shared
-# daemon).
+# This is the build/run seam (design: "Topology — the build phase"). Previously the
+# build ran in-process inside the engine container — which only worked because the
+# engine image happens to ship the docker CLI. Now `build: {image, command}` runs the
+# command in a builder container whose image supplies the toolchain. The source +
+# docker socket reach the builder via `--volumes-from` the engine container (same
+# paths, no host-path translation); the socket is the artifact sink (load into the
+# shared daemon).
 #
 # The test DISCRIMINATES: the builder image carries a marker (/only-in-builder) the
 # engine image lacks, and the build command guards on it. So the build can only
