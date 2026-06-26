@@ -1,0 +1,9 @@
+name: oci-smoketest-build
+description: Build-step smoke test — the OCI language host builds the program image itself
+runtime:
+  name: oci
+  options:
+    # No prebuilt `image`: the language host runs this build command (design §7 —
+    # a shell command that prints an image ref to stdout) to produce the program
+    # image, then runs it. `-q` prints the image ID; `-t` also tags it for cleanup.
+    build: docker build -q -t oci-smoke-build:latest .
