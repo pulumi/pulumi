@@ -175,11 +175,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except(TestNodeJS),
 		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
 	},
-	{
-		Directory:   "python-regress-14037",
-		Description: "Regression test for rewriting qoutes in python",
-		Skip:        allProgLanguages.Except(TestPython),
-	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
