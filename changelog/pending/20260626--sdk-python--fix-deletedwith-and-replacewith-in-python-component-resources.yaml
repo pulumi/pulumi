@@ -1,6 +1,6 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Fix `deletedWith` and `replaceWith` resource options being mishandled in Python component resource providers, causing "invalid DeletedWith URN" errors
-  custom:
-    PR: 23710
+component: sdk/python
+kind: fix
+body: Fix `deletedWith` and `replaceWith` resource options in Python component resource providers
+time: 2026-06-26T12:59:20.000000-05:00
+custom:
+    PR: "23710"
