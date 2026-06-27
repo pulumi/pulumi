@@ -123,6 +123,7 @@ var expectedFailures = map[string]string{
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
 	"l3-range":                            "list(string) and map(string) config values decoded as raw JSON strings by cfg.Require; cannot range over string as list/map", //nolint:lll
 	"l3-range-resource-output-traversal":  "pulumi#21678: cannot range over an ArrayOutput",
+	"l3-range-invoke-output-traversal":    "pulumi#21678: len() of an invoke's ArrayOutput does not compile",
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
 	"l3-component-nested":                 "./main.go:10:11: cannot use true (constant of type bool) as pulumi.BoolInput",

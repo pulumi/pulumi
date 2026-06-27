@@ -17,6 +17,7 @@ package providers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/blang/semver"
 
@@ -167,10 +168,63 @@ func (p *NestedObjectProvider) GetSchema(
 				RequiredInputs: []string{"details"},
 			},
 		},
+		Functions: map[string]schema.FunctionSpec{
+			// getValues echoes its input list back. It exists so that a program can
+			// obtain a computed list from an invoke and range over it.
+			"nestedobject:index:getValues": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"names": {
+							TypeSpec: schema.TypeSpec{
+								Type:  "array",
+								Items: &schema.TypeSpec{Type: "string"},
+							},
+						},
+					},
+					Required: []string{"names"},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"results": {
+								TypeSpec: schema.TypeSpec{
+									Type:  "array",
+									Items: &schema.TypeSpec{Type: "string"},
+								},
+							},
+						},
+						Required: []string{"results"},
+					},
+				},
+			},
+		},
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
 	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
+}
+
+func (p *NestedObjectProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	if req.Tok != "nestedobject:index:getValues" {
+		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
+	}
+
+	names, ok := req.Args["names"]
+	if !ok || !names.IsArray() {
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("names", "missing names list"),
+		}, nil
+	}
+
+	return plugin.InvokeResponse{
+		Properties: resource.PropertyMap{
+			"results": names,
+		},
+	}, nil
 }
 
 func (p *NestedObjectProvider) CheckConfig(
