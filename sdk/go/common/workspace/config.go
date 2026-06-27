@@ -255,7 +255,6 @@ func mergeConfig(
 	stackConfig config.Map,
 	encrypter config.Encrypter,
 	decrypter config.Decrypter,
-	requireKeys bool,
 	validate bool,
 ) error {
 	projectName := project.Name.String()
@@ -344,7 +343,7 @@ func mergeConfig(
 		}
 	}
 
-	if requireKeys && len(missingConfigurationKeys) > 0 {
+	if validate && len(missingConfigurationKeys) > 0 {
 		// there are missing configuration keys in the stack
 		// return them as a single error.
 		return missingStackConfigurationKeysError(missingConfigurationKeys, stackName)
@@ -370,15 +369,18 @@ func ValidateStackConfigAndApplyProjectConfig(
 	encrypter config.Encrypter,
 	decrypter config.Decrypter,
 ) error {
-	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, decrypter, true, true)
+	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, decrypter, true)
 }
 
-// ApplyProjectConfigWithoutValidation applies the project configuration onto the stack configuration
-// exactly like ValidateStackConfigAndApplyProjectConfig, but without validating the merged config:
-// it neither errors on missing required keys nor type-checks stack values against the project schema.
-// This is used by operations run with --skip-config-validation, where project defaults still need to
-// be applied even though config validation is intentionally skipped.
-func ApplyProjectConfigWithoutValidation(
+// ApplyProjectConfig applies the project configuration onto the stack configuration without validating
+// the merged config: it neither errors on missing required keys nor type-checks stack values against the
+// project schema. Project-level defaults and values are still merged onto the stack config.
+//
+// This is used both during pulumi config ls and pulumi config get (where, if users are using
+// PassphraseDecrypter, we don't want to always prompt for values when not necessary, and where a single
+// missing key should not block reading the others), and by operations run with --skip-config-validation,
+// where project defaults still need to be applied even though validation is intentionally skipped.
+func ApplyProjectConfig(
 	ctx context.Context,
 	stackName string,
 	project *Project,
@@ -387,20 +389,5 @@ func ApplyProjectConfigWithoutValidation(
 	encrypter config.Encrypter,
 	decrypter config.Decrypter,
 ) error {
-	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, decrypter, false, false)
-}
-
-// ApplyConfigDefaults applies the default values for the project configuration onto the stack configuration
-// without validating the contents of stack config values.
-// This is because sometimes during pulumi config ls and pulumi config get, if users are
-// using PassphraseDecrypter, we don't want to always prompt for the values when not necessary
-func ApplyProjectConfig(
-	ctx context.Context,
-	stackName string,
-	project *Project,
-	stackEnv esc.Value,
-	stackConfig config.Map,
-	encrypter config.Encrypter,
-) error {
-	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, nil, true, false)
+	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, decrypter, false)
 }

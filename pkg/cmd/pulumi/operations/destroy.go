@@ -278,7 +278,7 @@ func NewDestroyCmd() *cobra.Command {
 			if runProgram {
 				if skipConfigValidation {
 					// Still apply project config defaults onto the stack config, but skip validation.
-					if configError := workspace.ApplyProjectConfigWithoutValidation(
+					if configError := workspace.ApplyProjectConfig(
 						ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configError != nil {
 						return fmt.Errorf("applying stack config: %w", configError)
 					}
