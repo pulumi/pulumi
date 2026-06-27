@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // fakePod is a minimal PodManager for unit tests. Only ImageExists is meaningful;
@@ -67,4 +69,34 @@ func TestEnsureImageNoopWhenPresent(t *testing.T) {
 	t.Parallel()
 	h := &containerHost{pod: fakePod{imageExists: true}}
 	require.NoError(t, h.ensureImage(context.Background(), "random", "anything:v1"))
+}
+
+// A dynamic provider runs from the program image with the SDK's own entrypoint,
+// selected via the role env, and with nothing injected: no provider image is
+// resolved, no ensure/pull, no volume. fakePod's methods all panic, so a green
+// run also asserts the pod is never touched on the dynamic path.
+func TestProviderContainerDynamicRunsFromProgramImage(t *testing.T) {
+	t.Parallel()
+	h := &containerHost{
+		pod:          fakePod{},
+		engineHost:   "engine",
+		programImage: "my-program:v1",
+	}
+	cfg, err := h.providerContainer(context.Background(), workspace.PluginDescriptor{Name: "pulumi-nodejs"})
+	require.NoError(t, err)
+	require.Equal(t, "my-program:v1", cfg.Image)
+	require.Equal(t, "container:engine", cfg.Network)
+	require.Equal(t, roleDynamicProvider, cfg.Env[roleEnvVar])
+	require.Empty(t, cfg.Volumes, "dynamic providers inject nothing")
+	require.Empty(t, cfg.Entrypoint, "the image's bootstrap shim selects the entrypoint via the role env")
+}
+
+// Without a program image there is nothing to run the dynamic provider from, so it
+// fails with an actionable message rather than a cryptic downstream docker error.
+func TestProviderContainerDynamicRequiresProgramImage(t *testing.T) {
+	t.Parallel()
+	h := &containerHost{pod: fakePod{}, engineHost: "engine"}
+	_, err := h.providerContainer(context.Background(), workspace.PluginDescriptor{Name: "pulumi-python"})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "PULUMI_POD_PROGRAM_IMAGE")
 }
