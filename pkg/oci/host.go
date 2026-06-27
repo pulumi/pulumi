@@ -215,6 +215,53 @@ func capabilityMount(need capability) (VolumeMount, bool) {
 	return VolumeMount{}, false
 }
 
+// contextOwnedEnv reports whether an environment variable belongs to the engine's
+// own container context and so must NOT be projected onto a provider container. The
+// provider image owns PATH/HOME/etc. (projecting the engine's would clobber them —
+// e.g. a program image with its language venv on PATH); DOCKER_HOST points at a
+// socket path valid only on the host (the docker socket is bind-mounted at a fixed
+// path instead, via the docker-socket capability); PULUMI_HOME and PULUMI_BACKEND_URL
+// point at engine-orchestration state that lives inside the engine's workspace mount
+// (the pod home and the file backend), for which a provider container has neither the
+// path nor a need — and an MLC/component container, itself a Pulumi program, would
+// actively misread a PULUMI_HOME pointing at a path it does not have; and the
+// PULUMI_POD_* family is pod-control state the provider is not party to.
+func contextOwnedEnv(key string) bool {
+	switch key {
+	case "PATH", "HOME", "PWD", "HOSTNAME", "SHLVL", "TERM", "DOCKER_HOST",
+		"PULUMI_HOME", "PULUMI_BACKEND_URL":
+		return true
+	}
+	return strings.HasPrefix(key, "PULUMI_POD_")
+}
+
+// projectedProviderEnv copies the engine's environment for a provider container —
+// the container analogue of a spawned provider inheriting the engine's os.Environ().
+//
+// This is the deliberate "project the whole environment" policy, symmetric with how
+// providers are exec'd today: credentials (AWS_*, GOOGLE_*, ARM_*, …) and other
+// runtime env ride along. The design decision behind it: **provider credentials
+// travel as environment (plus ESC via config), never via a host-filesystem mount.**
+// A host mount (e.g. ~/.aws) would couple to host layout and break remote execution
+// (a remote executor has no host home), whereas env travels with the execution unit.
+//
+// Context-owned vars (see contextOwnedEnv) are dropped so they don't clobber the
+// provider image's own environment. Per-provider scoping of *what* is projected —
+// letting a provider declare the creds/mounts it needs so it can be treated as
+// untrusted-ish — is a deliberate future enhancement (design §8 isolation), not done
+// here: today providers run fully privileged, exactly as under the process model.
+func projectedProviderEnv() map[string]string {
+	out := map[string]string{}
+	for _, kv := range os.Environ() {
+		k, v, ok := strings.Cut(kv, "=")
+		if !ok || contextOwnedEnv(k) {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
 // Provider starts the provider as a container sharing the engine's network
 // namespace and attaches to it, rather than spawning a plugin binary. Stateless
 // providers run from their own image; workspace-coupled providers run from the
@@ -256,6 +303,10 @@ func (h *containerHost) providerContainer(
 	cfg := ContainerConfig{
 		Name:    "provider-" + descriptor.Name,
 		Network: "container:" + h.engineHost,
+		// Project the engine's environment onto every provider — the container
+		// analogue of a spawned provider inheriting os.Environ(). This is how a
+		// provider's credentials reach it; see projectedProviderEnv.
+		Env: projectedProviderEnv(),
 	}
 
 	// Dynamic providers are native to the program image: the SDK's dynamic-provider
@@ -284,7 +335,7 @@ func (h *containerHost) providerContainer(
 			"oci: provider %s is a dynamic provider — running from program image %s (SDK entrypoint, nothing injected)\n",
 			descriptor.Name, h.programImage)
 		cfg.Image = h.programImage
-		cfg.Env = map[string]string{roleEnvVar: roleDynamicProvider}
+		cfg.Env[roleEnvVar] = roleDynamicProvider
 		return cfg, nil
 	}
 

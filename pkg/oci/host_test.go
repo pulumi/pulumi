@@ -100,3 +100,20 @@ func TestProviderContainerDynamicRequiresProgramImage(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "PULUMI_POD_PROGRAM_IMAGE")
 }
+
+// projectedProviderEnv copies the engine env onto a provider container (spawn
+// parity) so credentials travel as environment — but drops vars owned by the
+// engine's own container context so they don't clobber the provider image's.
+// Not parallel: it mutates the process environment via t.Setenv.
+func TestProjectedProviderEnv(t *testing.T) {
+	t.Setenv("OCI_TEST_FAKE_CRED", "sekret-value")
+	t.Setenv("DOCKER_HOST", "unix:///host/only/docker.sock")
+	t.Setenv("PULUMI_POD_ID", "pod-xyz")
+	t.Setenv("PULUMI_HOME", "/workspace/.pulumi-pod")
+	e := projectedProviderEnv()
+	require.Equal(t, "sekret-value", e["OCI_TEST_FAKE_CRED"], "credentials project through")
+	require.NotContains(t, e, "DOCKER_HOST", "host-context docker socket var is dropped")
+	require.NotContains(t, e, "PULUMI_POD_ID", "pod-control vars are dropped")
+	require.NotContains(t, e, "PULUMI_HOME", "engine-orchestration path (pod home) is dropped")
+	require.NotContains(t, e, "PATH", "the provider image owns its PATH")
+}
