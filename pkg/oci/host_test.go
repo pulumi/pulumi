@@ -17,6 +17,8 @@ package oci
 import (
 	"context"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -116,4 +118,53 @@ func TestProjectedProviderEnv(t *testing.T) {
 	require.NotContains(t, e, "PULUMI_POD_ID", "pod-control vars are dropped")
 	require.NotContains(t, e, "PULUMI_HOME", "engine-orchestration path (pod home) is dropped")
 	require.NotContains(t, e, "PATH", "the provider image owns its PATH")
+}
+
+// writePolicyPack writes a PulumiPolicy.yaml into a fresh dir and returns the dir.
+func writePolicyPack(t *testing.T, yaml string) string {
+	t.Helper()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "PulumiPolicy.yaml"), []byte(yaml), 0o600))
+	return dir
+}
+
+// A policy pack declaring runtime: oci resolves to its declared image, so the
+// container host runs it as a container rather than spawning it.
+func TestPolicyPackImageOCI(t *testing.T) {
+	t.Parallel()
+	dir := writePolicyPack(t, "runtime:\n  name: oci\n  options:\n    image: my-policy:latest\n")
+	image, ok, err := policyPackImage(dir)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, "my-policy:latest", image)
+}
+
+// A policy pack on a normal language runtime is not an OCI pack: ok is false, so
+// the container host falls back to the base host's spawn path.
+func TestPolicyPackImageNonOCIFallsBack(t *testing.T) {
+	t.Parallel()
+	dir := writePolicyPack(t, "runtime: nodejs\n")
+	image, ok, err := policyPackImage(dir)
+	require.NoError(t, err)
+	require.False(t, ok)
+	require.Empty(t, image)
+}
+
+// An OCI policy pack that names no image is an error — there is nothing to run.
+func TestPolicyPackImageOCIRequiresImage(t *testing.T) {
+	t.Parallel()
+	dir := writePolicyPack(t, "runtime:\n  name: oci\n")
+	_, ok, err := policyPackImage(dir)
+	require.Error(t, err)
+	require.False(t, ok)
+	require.Contains(t, err.Error(), "no image option")
+}
+
+// Container names derive from a policy pack's filesystem path, which is not a legal
+// Docker name; sanitizeContainerName maps the illegal characters to dashes.
+func TestSanitizeContainerName(t *testing.T) {
+	t.Parallel()
+	require.Equal(t, "policy", sanitizeContainerName("policy"))
+	require.Equal(t, "my-pack_v1.2", sanitizeContainerName("my-pack_v1.2"))
+	require.Equal(t, "a-b-c", sanitizeContainerName("a/b:c"))
 }

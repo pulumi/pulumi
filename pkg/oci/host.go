@@ -20,13 +20,21 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // containerHost wraps a base plugin.Host so that resource providers run as
@@ -160,12 +168,15 @@ func workspaceCoupled(name string) bool {
 
 // roleEnvVar selects which entrypoint a program image boots into. The program
 // image's bootstrap shim reads it: unset → run the program (the run harness);
-// roleDynamicProvider → serve the SDK's dynamic-provider entrypoint instead. The
-// host stays language-agnostic — it only sets the role — while the image owns the
-// translation, exactly as the shim already owns the PULUMI_* → run-harness mapping.
+// roleDynamicProvider → serve the SDK's dynamic-provider entrypoint instead;
+// rolePolicyPack → serve the policy pack's analyzer (the run-policy-pack harness).
+// The host stays language-agnostic — it only sets the role — while the image owns
+// the translation, exactly as the shim already owns the PULUMI_* → run-harness
+// mapping.
 const (
 	roleEnvVar          = "PULUMI_OCI_ROLE"
 	roleDynamicProvider = "dynamic-provider"
+	rolePolicyPack      = "policy-pack"
 )
 
 // isDynamicProvider reports whether a provider package is a language SDK's
@@ -429,6 +440,144 @@ func (h *containerHost) ensureImage(ctx context.Context, name, ref string) error
 	}
 	fmt.Fprintf(os.Stderr, "oci: installed plugin %s by pulling its image\n", ref)
 	return nil
+}
+
+// PolicyAnalyzer runs a policy pack as a container in the pod and attaches an
+// analyzer client to it, rather than booting the policy pack as a host process via
+// a language plugin. A policy pack is just another containerized program — its
+// PulumiPolicy.yaml is the analyzer analogue of Pulumi.yaml — so a pack that
+// declares `runtime: oci` (with an `image` option) is built and run exactly like a
+// program or MLC, and the engine drives its Analyzer gRPC surface
+// (GetAnalyzerInfo/Analyze/AnalyzeStack) over the shared loopback. This reuses the
+// same build-and-run-from-image mechanism as MLCs; the one genuinely new bit is the
+// analyzer protocol, which the engine speaks to a *server* (the pack binds
+// 127.0.0.1, prints its port, raises its own message-size limit), so unlike a
+// provider there is no Attach RPC to issue — we dial and hand the engine a client.
+//
+// A pack that does not opt into the OCI runtime falls back to the base host's
+// normal spawn path, so non-containerized policy packs keep working unchanged. The
+// path the engine passes is the pack's *manifest* directory (the dir holding
+// PulumiPolicy.yaml); it must be reachable in the engine container (mounted), while
+// the pack's code lives in the image — the same manifest-here / code-in-image split
+// as the program (Pulumi.yaml in the mount, program in its image).
+func (h *containerHost) PolicyAnalyzer(
+	ctx *plugin.Context, name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
+) (plugin.Analyzer, error) {
+	image, ok, err := policyPackImage(path)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		// Not an OCI policy pack — defer to the base host's spawn path.
+		return h.Host.PolicyAnalyzer(ctx, name, path, opts)
+	}
+
+	if err := h.ensureImage(ctx.Base(), string(name), image); err != nil {
+		return nil, err
+	}
+
+	cfg := ContainerConfig{
+		Name:    "policy-" + sanitizeContainerName(filepath.Base(path)),
+		Network: "container:" + h.engineHost,
+		Image:   image,
+		// Project the engine's environment (credentials and so on), as for any pod
+		// member; a policy that performs provider invokes needs them just like a
+		// provider does. See projectedProviderEnv.
+		Env: projectedProviderEnv(),
+	}
+	cfg.Env[roleEnvVar] = rolePolicyPack
+	// Hand the pack the engine address it would normally receive as argv. The pack
+	// is a server the engine calls, but it may dial back for invokes/logging; it
+	// shares the engine netns, so the engine's own ServerAddr is reachable.
+	cfg.Env["PULUMI_ENGINE"] = h.ServerAddr()
+
+	c, err := h.pod.RunContainer(ctx.Base(), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("oci: starting policy pack container %q for %s: %w", image, name, err)
+	}
+
+	port, err := scrapeServingPort(ctx.Base(), h.pod, c)
+	if err != nil {
+		_ = h.pod.StopContainer(context.Background(), c)
+		return nil, fmt.Errorf("oci: discovering port for policy pack %s: %w", name, err)
+	}
+
+	fmt.Fprintf(os.Stderr, "oci: policy pack %s running as container %s, attaching at 127.0.0.1:%d\n",
+		name, c.Name, port)
+
+	client, err := dialAnalyzer(ctx.Base(), port)
+	if err != nil {
+		_ = h.pod.StopContainer(context.Background(), c)
+		return nil, fmt.Errorf("oci: attaching to policy pack %s: %w", name, err)
+	}
+	return plugin.NewAnalyzerWithClient(name, client), nil
+}
+
+// policyPackImage reads a policy pack's PulumiPolicy.yaml and, if it declares the
+// OCI runtime, returns the container image to run it from. ok is false when the
+// pack does not opt into the OCI runtime, so the caller falls back to the base
+// host. An OCI pack that names no image is an error — there is nothing to run.
+func policyPackImage(path string) (image string, ok bool, err error) {
+	projPath := filepath.Join(path, "PulumiPolicy.yaml")
+	proj, err := workspace.LoadPolicyPack(projPath)
+	if err != nil {
+		return "", false, fmt.Errorf("oci: loading policy pack project %q: %w", projPath, err)
+	}
+	if proj.Runtime.Name() != "oci" {
+		return "", false, nil
+	}
+	image, _ = proj.Runtime.Options()["image"].(string)
+	if image == "" {
+		return "", false, fmt.Errorf(
+			"oci: policy pack %q declares runtime oci but sets no image option", path)
+	}
+	return image, true, nil
+}
+
+// dialAnalyzer connects to a policy pack's analyzer server on the shared loopback
+// and returns a client. It raises the gRPC message-size limit to match the engine's
+// other plugin connections (rpcutil.GrpcChannelOptions) — AnalyzeStack ships the
+// whole resource set, so the 4 MB default is far too small. The pack already printed
+// its port, meaning it is bound and serving, so we just wait for the connection to
+// report ready before handing the client to the engine.
+func dialAnalyzer(ctx context.Context, port int) (pulumirpc.AnalyzerClient, error) {
+	conn, err := grpc.NewClient(
+		fmt.Sprintf("127.0.0.1:%d", port),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("dialing analyzer: %w", err)
+	}
+	conn.Connect()
+
+	waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	for {
+		s := conn.GetState()
+		if s == connectivity.Ready {
+			return pulumirpc.NewAnalyzerClient(conn), nil
+		}
+		if !conn.WaitForStateChange(waitCtx, s) {
+			_ = conn.Close()
+			return nil, errors.New("analyzer did not begin responding before timeout")
+		}
+	}
+}
+
+// sanitizeContainerName maps an arbitrary string to a Docker-safe container-name
+// fragment (alphanumerics, dash, underscore, dot). A policy pack is identified to
+// the engine by its filesystem path, which is not a legal container name.
+func sanitizeContainerName(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
+			r == '-', r == '_', r == '.':
+			return r
+		default:
+			return '-'
+		}
+	}, s)
 }
 
 // Close tears down the provider containers this host started, then closes the
