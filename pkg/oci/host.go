@@ -158,6 +158,27 @@ func workspaceCoupled(name string) bool {
 	return false
 }
 
+// roleEnvVar selects which entrypoint a program image boots into. The program
+// image's bootstrap shim reads it: unset → run the program (the run harness);
+// roleDynamicProvider → serve the SDK's dynamic-provider entrypoint instead. The
+// host stays language-agnostic — it only sets the role — while the image owns the
+// translation, exactly as the shim already owns the PULUMI_* → run-harness mapping.
+const (
+	roleEnvVar          = "PULUMI_OCI_ROLE"
+	roleDynamicProvider = "dynamic-provider"
+)
+
+// isDynamicProvider reports whether a provider package is a language SDK's
+// dynamic-provider package. Unlike a stock provider, these are not standalone
+// plugins: the CRUD code is serialized from the program and ships in-band as a
+// resource property, and the binary that runs it is the SDK's own dynamic-provider
+// entrypoint — already present in (and welded to) the program image. So a dynamic
+// provider runs from the program image with nothing to inject. The engine
+// special-cases the same two package names (pkg/resource/deploy/target.go).
+func isDynamicProvider(name string) bool {
+	return name == "pulumi-nodejs" || name == "pulumi-python"
+}
+
 // capability is a symbolic host resource a provider asks the pod to project into
 // its container (the docker socket, an SSH agent, cloud credentials). The provider
 // declares the need; the pod resolves it to a concrete, pod-conventional source —
@@ -235,6 +256,36 @@ func (h *containerHost) providerContainer(
 	cfg := ContainerConfig{
 		Name:    "provider-" + descriptor.Name,
 		Network: "container:" + h.engineHost,
+	}
+
+	// Dynamic providers are native to the program image: the SDK's dynamic-provider
+	// entrypoint already ships in it, and the serialized CRUD closure resolves
+	// against the program's own dependency closure — baked into that image. So,
+	// unlike a workspace-coupled provider, there is nothing to inject: no separate
+	// provider image, no binary copy, no ensure step. Run a fresh container from the
+	// program image and let its bootstrap shim boot the dynamic-provider entrypoint,
+	// selected by roleEnvVar.
+	//
+	// This is the same `docker run program-image` primitive as the other
+	// workspace-context providers (command, docker) — deliberately, so execution
+	// stays one uniform, recursive primitive with no coupling to a live program
+	// container's lifetime. A dynamic provider that needs the program's *live*
+	// runtime filesystem (files the program wrote at run time, not baked into the
+	// image) is the documented exception — served by the runtime volume-mount escape
+	// hatch or the procfs/exec-into-live fallback (see the design doc), not by making
+	// dynamic the odd one out here.
+	if isDynamicProvider(descriptor.Name) {
+		if h.programImage == "" {
+			return ContainerConfig{}, fmt.Errorf(
+				"oci: dynamic provider %s needs the program image, but PULUMI_POD_PROGRAM_IMAGE is unset",
+				descriptor.Name)
+		}
+		fmt.Fprintf(os.Stderr,
+			"oci: provider %s is a dynamic provider — running from program image %s (SDK entrypoint, nothing injected)\n",
+			descriptor.Name, h.programImage)
+		cfg.Image = h.programImage
+		cfg.Env = map[string]string{roleEnvVar: roleDynamicProvider}
+		return cfg, nil
 	}
 
 	// Resolve the provider image and ensure it is present — pulling it from the
