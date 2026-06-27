@@ -1,0 +1,10 @@
+name: oci-smoketest-dynamic-py
+description: Smoke test for a Python dynamic provider (run from the program image) in the OCI pod model
+runtime:
+  name: oci
+  options:
+    # Pod mode: the program image the driver builds. The same image also serves the
+    # Python dynamic provider (run-from-program-image), selected via PULUMI_OCI_ROLE;
+    # the driver forwards it as PULUMI_POD_PROGRAM_IMAGE so the engine's container
+    # host runs the dynamic provider from it.
+    image: oci-smoke-python-dynamic:latest
