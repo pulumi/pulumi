@@ -5,6 +5,11 @@
 # and toolchain (here `command`) runs *from the program image* with its binary
 # injected, rather than from its own image or via a copied workspace volume.
 #
+# It also proves environment projection: the engine forwards a stand-in credential
+# (OCI_SMOKE_FAKE_CRED) that the program image lacks, the container host projects
+# the engine's environment onto the provider container, and the program reads the
+# credential back — the path a real cloud provider's credentials would take.
+#
 # The program uses command.local.Command to `cat /workspace/marker` — a file
 # baked into the PROGRAM image and present in no provider image. For the command
 # to succeed, the provider must run rooted in the program's filesystem. The engine
@@ -50,6 +55,7 @@ PROGRAM_IMAGE="oci-smoke-command:latest"
 PROVIDER_IMAGE="pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 STACK="dev"
 EXPECTED_MARKER="hello-from-the-program-workspace"
+EXPECTED_CRED="fake-cloud-credential-9f3a"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
@@ -104,6 +110,13 @@ export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
 export PULUMI_POD_MOUNT_DIR="$WORK/project"
 export PULUMI_POD_PROGRAM_IMAGE="$PROGRAM_IMAGE"
 
+# A stand-in credential the engine has but the program image does not. Forward it
+# into the engine (host -> engine); the container host then projects the engine's
+# environment onto the command provider's container (engine -> provider), where the
+# program reads it back. This is the path a real cloud provider's creds would take.
+export OCI_SMOKE_FAKE_CRED="$EXPECTED_CRED"
+export PULUMI_POD_FORWARD_ENV="OCI_SMOKE_FAKE_CRED"
+
 echo "==> pulumi-pod: stack init + up + output (engine runs command FROM the program image)"
 "$WRAPPER" stack init "$STACK"
 "$WRAPPER" up --yes --skip-preview 2>&1 | tee "$WORK/up.log"
@@ -120,4 +133,13 @@ if [ "$MARKER" != "$EXPECTED_MARKER" ]; then
   exit 1
 fi
 echo "    marker = $MARKER"
-echo "==> workspace-coupled-provider smoke test PASS"
+
+CRED="$("$WRAPPER" stack output cred)"
+echo "==> asserting the engine's environment was projected onto the provider container"
+if [ "$CRED" != "$EXPECTED_CRED" ]; then
+  echo "!! cred mismatch: got '${CRED:-<empty>}', want '$EXPECTED_CRED'"
+  echo "   (the engine's environment was not projected onto the command provider container)"
+  exit 1
+fi
+echo "    cred = $CRED (projected from the engine env onto the provider container)"
+echo "==> workspace-coupled-provider smoke test PASS — workspace + projected-env (credentials)"

@@ -13,13 +13,19 @@
 // limitations under the License.
 
 // A Pulumi program for the workspace-coupled-provider smoke test. It uses the
-// `command` provider — which shells out to the local toolchain — to read a file
-// baked into the program image's own workspace (/workspace/marker). A successful
-// run proves the command provider ran *rooted in the program's filesystem*
-// (design's run-from-program-image model): it saw a file that exists only in the
-// program image, not in the provider image, and not via a copied volume. This is
-// the case a read-only workspace volume could never serve, because `command`
-// needs the program's toolchain, not just its files.
+// `command` provider — which shells out to the local toolchain — to exercise two
+// things a provider container gets in the OCI pod model:
+//
+//  1. The program's own *filesystem*: it reads a file baked into the program
+//     image's workspace (/workspace/marker), proving the command provider ran
+//     rooted in the program's filesystem (run-from-program-image) — a file that
+//     exists only in the program image, not in the provider image or a copied
+//     volume, and that needs the program's toolchain, not just its files.
+//  2. The engine's projected *environment*: it reads a credential-like variable
+//     (OCI_SMOKE_FAKE_CRED) that the engine has but the program image does not.
+//     The only way it reaches the provider is the container host projecting the
+//     engine's environment onto the provider container — the mechanism by which a
+//     real cloud provider would receive its credentials.
 package main
 
 import (
@@ -37,6 +43,17 @@ func main() {
 		}
 		ctx.Log.Info("oci smoke-test ran a command provider rooted in the program image", nil)
 		ctx.Export("marker", read.Stdout)
+
+		// Read a credential projected from the engine's environment. printf (no
+		// newline) so the output is exactly the value; if projection did not happen
+		// the variable is unset and stdout is empty.
+		cred, err := local.NewCommand(ctx, "read-cred", &local.CommandArgs{
+			Create: pulumi.String(`printf '%s' "$OCI_SMOKE_FAKE_CRED"`),
+		})
+		if err != nil {
+			return err
+		}
+		ctx.Export("cred", cred.Stdout)
 		return nil
 	})
 }
