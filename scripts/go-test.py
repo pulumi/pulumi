@@ -93,7 +93,12 @@ if shutil.which('gotestsum') is not None:
     junit_dir = root.joinpath('junit')
     if not junit_dir.is_dir():
         os.mkdir(str(junit_dir))
-    json_file = str(test_results_dir.joinpath(f'{test_run}.json'))
+    # Prefix the timing file with the OS so that the job matrix generator can
+    # partition a platform using only that platform's timing data. On GitHub
+    # Actions RUNNER_OS is one of Linux, Windows, macOS; fall back to the local
+    # platform otherwise. See scripts/get-job-matrix.py's --timing-glob.
+    os_label = os.environ.get('RUNNER_OS') or platform.system()
+    json_file = str(test_results_dir.joinpath(f'{os_label}-{test_run}.json'))
     junit_file = str(junit_dir.joinpath(f'{test_run}-junit.xml'))
     args = ['gotestsum', '--junitfile', junit_file, '--jsonfile', json_file, '--packages', pkgs, '--'] + \
         opts

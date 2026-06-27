@@ -238,6 +238,7 @@ jobs:
               "$CODEGEN_TESTS_FLAG" \
               --platform macos-latest \
               --version-set current \
+              --timing-glob 'macOS-*.json' \
               --partition-module pkg 1 \
               --partition-module sdk 1 \
               --partition-module tests 8 \

@@ -11,6 +11,7 @@ Uses `gotestsum tool ci-matrix` to divide up Go packages into partitions to redu
 
 
 import argparse
+import glob
 import itertools
 import json
 import os
@@ -260,12 +261,29 @@ Matrix = TypedDict("Matrix", {
 })
 
 
-def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: PartitionModule, tags: List[str]) -> List[TestSuite]:
-    """Runs `gotestsum tool ci-matrix` to compute Go test partitions"""
+def resolve_timing_files(timing_glob: str) -> str:
+    """Resolve the --timing-files glob passed to gotestsum.
+
+    `timing_glob` may select a single platform's timing data (e.g. 'macOS-*.json'),
+    which keeps a platform's partitions balanced by its own runtimes rather than the
+    blended cross-platform pool. If the glob matches no files yet — e.g. the first run
+    after the prefixed timing data is introduced — fall back to all timing files so the
+    partitioning never regresses to an even split.
+    """
     script_dir = os.path.dirname(os.path.realpath(__file__))
     test_reports_dir = os.path.join(script_dir, "..", "test-results")
     os.makedirs(test_reports_dir, exist_ok=True)
 
+    if not glob.glob(os.path.join(test_reports_dir, timing_glob)):
+        if global_verbosity >= 1:
+            print(f"No timing files match {timing_glob!r}; falling back to *.json", file=sys.stderr)
+        timing_glob = "*.json"
+
+    return os.path.join(test_reports_dir, timing_glob)
+
+
+def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: PartitionModule, tags: List[str], timing_glob: str) -> List[TestSuite]:
+    """Runs `gotestsum tool ci-matrix` to compute Go test partitions"""
     if partition_module.partitions == 1:
         pkgs = " ".join(go_packages)
         return [{
@@ -280,7 +298,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
         "--partitions",
         f"{partition_module.partitions}",
         "--timing-files",
-        f"{test_reports_dir}/*.json",
+        resolve_timing_files(timing_glob),
         "--debug",
     ]
 
@@ -322,13 +340,9 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
 
 
 def run_gotestsum_ci_matrix_single_package(
-    partition_pkg: PartitionPackage, tests: List[str], tags: List[str]
+    partition_pkg: PartitionPackage, tests: List[str], tags: List[str], timing_glob: str
 ) -> List[TestSuite]:
     """Runs `gotestsum tool ci-matrix` to compute Go test partitions for a single package"""
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    test_reports_dir = os.path.join(script_dir, "..", "test-results")
-    os.makedirs(test_reports_dir, exist_ok=True)
-
     gotestsum_matrix_args = [
         "gotestsum",
         "tool",
@@ -336,7 +350,7 @@ def run_gotestsum_ci_matrix_single_package(
         "--partitions",
         f"{partition_pkg.partitions}",
         "--timing-files",
-        f"{test_reports_dir}/*.json",
+        resolve_timing_files(timing_glob),
         "--partition-tests-in-package",
         partition_pkg.package,
         "--debug",
@@ -402,6 +416,7 @@ def get_matrix(
     partition_packages: List[PartitionPackage],
     platforms: List[str],
     version_sets: List[VersionSet],
+    timing_glob: str = "*.json",
     fast: bool = False,
     codegen_tests: bool = False,
 ) -> Matrix:
@@ -447,12 +462,12 @@ def get_matrix(
             # Skip all Go packages for lowest-deps tests (only Makefile tests)
             go_packages = set()
 
-        test_suites += run_gotestsum_ci_matrix_packages(list(go_packages), item, tags)
+        test_suites += run_gotestsum_ci_matrix_packages(list(go_packages), item, tags, timing_glob)
 
     for item in partition_packages:
         pkg_tests = run_list_tests(item.package_dir, tags)
 
-        test_suites += run_gotestsum_ci_matrix_single_package(item, pkg_tests, tags)
+        test_suites += run_gotestsum_ci_matrix_single_package(item, pkg_tests, tags, timing_glob)
 
     return {
         "test-suite": test_suites,
@@ -525,6 +540,7 @@ def generate_matrix(args: argparse.Namespace):
         partition_modules=partition_modules,
         partition_packages=partition_packages,
         version_sets=version_sets,
+        timing_glob=args.timing_glob,
         codegen_tests=args.codegen_tests,
     )
 
@@ -578,6 +594,16 @@ def add_generate_matrix_args(parser: argparse.ArgumentParser):
         nargs="*",
         default=["all"],
         help="Go build tags",
+    )
+
+    parser.add_argument(
+        "--timing-glob",
+        action="store",
+        default="*.json",
+        help="Glob (relative to test-results/) selecting the timing files used to balance "
+        + "partitions. Defaults to all platforms' timing data. Pass e.g. 'macOS-*.json' to "
+        + "balance a single platform's partitions by its own runtimes. Falls back to '*.json' "
+        + "when the glob matches no files.",
     )
 
     parser.add_argument(
