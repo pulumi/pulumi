@@ -342,10 +342,20 @@ func newProviderFromPlugin(ctx *Context, host Host, spec workspace.PluginDescrip
 		}
 	}
 
-	// If we just attached (i.e. plugin bin is nil) we need to call attach
+	// If we just attached (i.e. plugin bin is nil) hand the provider the engine
+	// address via Attach. Some providers do not implement Attach — notably the
+	// dynamic providers (pulumi-nodejs/pulumi-python), which predate it and do not
+	// consume the engine address that way (even their legacy argv engine-address is
+	// unused). Treat an Unimplemented Attach as "nothing to deliver" and proceed,
+	// mirroring the existing tolerance of an unimplemented Handshake; a provider
+	// that needs the engine address implements Attach. Without this, attaching to a
+	// dynamic provider (e.g. when it runs as a container in the OCI pod model) would
+	// fail with "Attach is not implemented by the dynamic provider".
 	if plug.Bin == "" {
-		err := p.Attach(host.ServerAddr())
-		if err != nil {
+		// provider.Attach returns an rpcerror.Error (not a raw gRPC status), so
+		// detect Unimplemented through rpcerror.Convert — the same pattern
+		// SignalCancellation uses for its backwards-compatibility no-op.
+		if err := p.Attach(host.ServerAddr()); err != nil && rpcerror.Convert(err).Code() != codes.Unimplemented {
 			return nil, err
 		}
 	}
