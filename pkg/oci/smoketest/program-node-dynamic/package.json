@@ -1,0 +1,8 @@
+{
+  "name": "oci-smoke-node-dynamic-program",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@pulumi/pulumi": "^3.150.0"
+  }
+}
