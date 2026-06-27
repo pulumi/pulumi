@@ -218,7 +218,8 @@ func capabilityMount(need capability) (VolumeMount, bool) {
 // contextOwnedEnv reports whether an environment variable belongs to the engine's
 // own container context and so must NOT be projected onto a provider container. The
 // provider image owns PATH/HOME/etc. (projecting the engine's would clobber them —
-// e.g. a program image with its language venv on PATH); DOCKER_HOST points at a
+// e.g. a program image with its language venv on PATH); PYTHONPATH/NODE_PATH are
+// language module paths the provider image likewise owns; DOCKER_HOST points at a
 // socket path valid only on the host (the docker socket is bind-mounted at a fixed
 // path instead, via the docker-socket capability); PULUMI_HOME and PULUMI_BACKEND_URL
 // point at engine-orchestration state that lives inside the engine's workspace mount
@@ -226,10 +227,14 @@ func capabilityMount(need capability) (VolumeMount, bool) {
 // path nor a need — and an MLC/component container, itself a Pulumi program, would
 // actively misread a PULUMI_HOME pointing at a path it does not have; and the
 // PULUMI_POD_* family is pod-control state the provider is not party to.
+//
+// This is the same denylist shape the pulumi-pod wrapper applies on the host → engine
+// hop; both exist because the env crosses a filesystem boundary (host → container, or
+// engine image → provider image) where path-valued vars stop being valid.
 func contextOwnedEnv(key string) bool {
 	switch key {
 	case "PATH", "HOME", "PWD", "HOSTNAME", "SHLVL", "TERM", "DOCKER_HOST",
-		"PULUMI_HOME", "PULUMI_BACKEND_URL":
+		"PYTHONPATH", "NODE_PATH", "PULUMI_HOME", "PULUMI_BACKEND_URL":
 		return true
 	}
 	return strings.HasPrefix(key, "PULUMI_POD_")

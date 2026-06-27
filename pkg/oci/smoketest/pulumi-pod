@@ -40,12 +40,12 @@
 #   PULUMI_POD_MOUNT_DIR        host dir mounted at /workspace       (default: cwd) — mount a
 #                               repo root here when the program reads files from a parent dir
 #   PULUMI_POD_PROJECT_SUBPATH  Pulumi.yaml dir relative to the mount (default: the mount root)
-# Forwarded into the engine container when set in the environment:
-#   PULUMI_BACKEND_URL  PULUMI_CONFIG_PASSPHRASE  PULUMI_ACCESS_TOKEN
-#   PULUMI_POD_PROGRAM_IMAGE  PULUMI_POD_PLUGIN_REGISTRY
-#   PULUMI_POD_FORWARD_ENV      space-separated names of extra vars to forward into
-#                               the engine (e.g. cloud credentials); the engine then
-#                               projects its env onto provider containers
+# The whole host environment is forwarded into the engine container, minus a
+# denylist of host-context vars (PATH/HOME/TMPDIR/…, DOCKER_HOST, and the vars this
+# wrapper sets itself). So credentials (AWS_*, GOOGLE_*, …), PULUMI_BACKEND_URL,
+# PULUMI_CONFIG_PASSPHRASE, PULUMI_POD_PROGRAM_IMAGE, etc. all forward by default —
+# the same way stock Pulumi gives providers the full shell env. The engine then
+# projects its environment onto provider containers (same denylist shape).
 #
 # Usage: pulumi-pod <pulumi args...>
 set -euo pipefail
@@ -83,20 +83,28 @@ trap cleanup EXIT
 
 docker network create "$NET" >/dev/null
 
-# Forward selected env vars into the engine container, but only those actually set
-# — so the contract stays explicit and the argv stays clean.
+# Forward the whole host environment into the engine container, minus a denylist of
+# vars meaningful only in the host's context. This mirrors stock Pulumi, which
+# spawns providers as child processes inheriting the full shell env (so credentials
+# "just work"), and it is symmetric with the engine -> provider projection (same
+# denylist shape): credentials and config flow by default; no var needs naming.
+#
+# The denylist drops (a) host paths / shell vars the engine image owns its own copy
+# of — projecting them would clobber the container or point at host paths that do not
+# exist in it (PATH/HOME/PWD/TMPDIR/…, and language paths PYTHONPATH/NODE_PATH that
+# would later mislead a provider container the engine projects onto); (b) DOCKER_HOST,
+# a host socket path (the socket is bind-mounted at a fixed path); and (c) the vars
+# this wrapper sets itself below (PULUMI_HOME and the pod-runtime vars), so the
+# wrapper's values win. Best effort: the list grows as we find host vars that mislead
+# the pod. (host -> engine is a trust boundary; an allowlist would be the opt-in
+# hardened mode — forward-all is the dev default, parity with stock.)
 fwd=()
-for v in PULUMI_BACKEND_URL PULUMI_CONFIG_PASSPHRASE PULUMI_ACCESS_TOKEN \
-         PULUMI_POD_PROGRAM_IMAGE PULUMI_POD_PLUGIN_REGISTRY; do
-  [ -n "${!v:-}" ] && fwd+=(-e "$v=${!v}")
-done
-# Forward arbitrary extra named vars (e.g. cloud credentials: AWS_ACCESS_KEY_ID,
-# GOOGLE_CREDENTIALS, ...) into the engine. This is the host -> engine hop; the
-# engine's container host then projects its environment onto provider containers
-# (the engine -> provider hop), so credentials reach providers as environment
-# without ever touching host-filesystem mounts. Space-separated names.
-for v in ${PULUMI_POD_FORWARD_ENV:-}; do
-  [ -n "${!v:-}" ] && fwd+=(-e "$v=${!v}")
+for name in $(compgen -e); do
+  case "$name" in
+    PATH | HOME | PWD | OLDPWD | TMPDIR | SHLVL | TERM | HOSTNAME | DOCKER_HOST | PYTHONPATH | NODE_PATH) continue ;;
+    PULUMI_HOME | PULUMI_POD_MODE | PULUMI_POD_NETWORK | PULUMI_POD_ADVERTISE_HOST | PULUMI_POD_ID) continue ;;
+  esac
+  fwd+=(-e "$name=${!name}")
 done
 # Default the backend to a file backend inside the pod home, unless the caller
 # configured one (a backend URL, or a service access token).

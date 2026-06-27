@@ -110,12 +110,12 @@ export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
 export PULUMI_POD_MOUNT_DIR="$WORK/project"
 export PULUMI_POD_PROGRAM_IMAGE="$PROGRAM_IMAGE"
 
-# A stand-in credential the engine has but the program image does not. Forward it
-# into the engine (host -> engine); the container host then projects the engine's
-# environment onto the command provider's container (engine -> provider), where the
-# program reads it back. This is the path a real cloud provider's creds would take.
+# A stand-in credential the engine has but the program image does not. The wrapper
+# forwards the whole host env into the engine by default (no naming needed), and the
+# container host then projects the engine's environment onto the command provider's
+# container, where the program reads it back — the path a real cloud provider's
+# credentials would take.
 export OCI_SMOKE_FAKE_CRED="$EXPECTED_CRED"
-export PULUMI_POD_FORWARD_ENV="OCI_SMOKE_FAKE_CRED"
 
 echo "==> pulumi-pod: stack init + up + output (engine runs command FROM the program image)"
 "$WRAPPER" stack init "$STACK"
