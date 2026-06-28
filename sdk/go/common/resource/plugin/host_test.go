@@ -116,6 +116,11 @@ func TestIsLocalPluginPath(t *testing.T) {
 			path:     "github.com/example/component.git/path_here",
 			expected: false,
 		},
+		{
+			name:     "oci image ref",
+			path:     "oci://localhost:5000/pulumi-provider-random:v4.21.0", // a remote image ref, not a local path
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {

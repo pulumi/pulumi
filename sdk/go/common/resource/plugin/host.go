@@ -124,6 +124,14 @@ type Host interface {
 // IsLocalPluginPath determines if a plugin source refers to a local path rather than a downloadable plugin.
 // A plugin is considered local if it doesn't match the plugin name regexp and doesn't have a download URL.
 func IsLocalPluginPath(ctx context.Context, source string) bool {
+	// An oci:// source is a remote image ref, not a local path: the package is a
+	// pre-built provider image resolved by running the image (see the package commands'
+	// oci:// handling). Classify it as remote so it is recorded and loaded as a ref,
+	// never stat'd as a folder.
+	if strings.HasPrefix(source, "oci://") {
+		return false
+	}
+
 	// If the source starts with ./ or ../ or / it's definitely a local path
 	if strings.HasPrefix(source, "./") || strings.HasPrefix(source, "..") || strings.HasPrefix(source, "/") {
 		return true
