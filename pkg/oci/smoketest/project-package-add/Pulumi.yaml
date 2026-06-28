@@ -6,12 +6,14 @@ runtime:
     # The dev-language axis: the OCI host delegates SDK *generation* (GeneratePackage) to
     # pulumi-language-<language>. runtime: oci is only how the program *runs*.
     language: go
-    # Linking is BUILD-OWNED: the OCI host runs build.link in build.image (which carries the
-    # toolchain/package manager), handing it the generated SDK path via $PULUMI_LINK_SDK_PATHS.
-    # A real template would `go mod edit -replace`; here we write a receipt proving the command
-    # ran in the Go toolchain image (absent from the alpine engine) and saw the SDK path.
-    build:
+    # Linking is BUILD-OWNED and runs in link.image (its own environment — link DECLARES a
+    # dependency, the build materializes it, so link.image just needs a package manager, not
+    # the build's exact toolchain). The OCI host runs link.command once per added package,
+    # handing it $PULUMI_LINK_SDK_NAME / $PULUMI_LINK_SDK_PATH. A real template would
+    # `go mod edit -replace`; here we write a receipt proving the command ran in the Go
+    # toolchain image (absent from the alpine engine) and saw the SDK name+path.
+    link:
       image: golang:alpine
-      link: |
+      command: |
         echo "go: $(go version)" > LINK_RECEIPT
-        echo "sdk: $PULUMI_LINK_SDK_PATHS" >> LINK_RECEIPT
+        echo "sdk: $PULUMI_LINK_SDK_NAME=$PULUMI_LINK_SDK_PATH" >> LINK_RECEIPT

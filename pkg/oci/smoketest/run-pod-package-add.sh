@@ -225,13 +225,13 @@ if ! grep -q 'go version go' "$RECEIPT"; then
   cat "$RECEIPT"
   exit 1
 fi
-# Proves the OCI host handed the generated SDK path to the build.link command.
-if ! grep -q 'sdk: sdks/random' "$RECEIPT"; then
-  echo "!! LINK_RECEIPT lacks the SDK path — the link command did not receive PULUMI_LINK_SDK_PATHS"
+# Proves the OCI host handed the generated SDK name+path to the link command.
+if ! grep -q 'sdk: random=sdks/random' "$RECEIPT"; then
+  echo "!! LINK_RECEIPT lacks the SDK name+path — the link command did not receive PULUMI_LINK_SDK_NAME/PATH"
   cat "$RECEIPT"
   exit 1
 fi
-echo "    build-owned link ran in golang:alpine and received the SDK path ($(grep '^sdk:' "$RECEIPT"))"
+echo "    build-owned link ran in golang:alpine and received the SDK name+path ($(grep '^sdk:' "$RECEIPT"))"
 
 echo "==> package-add-from-image smoke test PASS — a provider was consumed as an IMAGE:"
 echo "    schema read from the running container, SDK generated via delegation, ref (not path) recorded"
