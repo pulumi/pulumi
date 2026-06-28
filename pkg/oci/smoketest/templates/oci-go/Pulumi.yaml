@@ -1,0 +1,28 @@
+name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime:
+  name: oci
+  options:
+    # The program's source language. runtime: oci is how the program *runs* (as a
+    # container); `language` is the dev axis — the OCI host delegates SDK generation
+    # (`pulumi package add`) to pulumi-language-go.
+    language: go
+    # How to build the PROGRAM image. The Dockerfile compiles the Go binary and uses it
+    # as the entrypoint directly: unlike Node/Python, a Go program needs NO bootstrap
+    # shim — the Go SDK reads the monitor/engine address from the PULUMI_* environment the
+    # OCI host sets. Edit the Dockerfile and its base images as you like.
+    build:
+      image: docker:cli
+      command: docker build -q .
+    # How to wire a generated SDK (`pulumi package add`) into the program. DECLARE-ONLY:
+    # it adds a `replace` directive to go.mod; the program image build (go build, which
+    # downloads/compiles) materializes it. So link.image just needs the go toolchain to
+    # edit go.mod — `go mod edit` does not download. The OCI host runs this once per added
+    # package with $PULUMI_LINK_SDK_NAME / $PULUMI_LINK_SDK_PATH in the environment.
+    link:
+      image: golang:1.25-alpine
+      command: |
+        # Read the SDK's own module path from its go.mod and replace it with the local
+        # path (declare-only — `go mod edit` edits go.mod without downloading).
+        mod=$(awk '/^module /{print $2; exit}' "$PULUMI_LINK_SDK_PATH/go.mod")
+        go mod edit -replace "$mod=./$PULUMI_LINK_SDK_PATH" -require "$mod@v0.0.0"
