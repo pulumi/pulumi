@@ -1,0 +1,25 @@
+name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime:
+  name: oci
+  options:
+    # The program's source language. runtime: oci is how the program *runs* (as a
+    # container); `language` is the dev axis — the OCI host delegates SDK generation
+    # (`pulumi package add`) to pulumi-language-python.
+    language: python
+    # How to build the PROGRAM image (the Dockerfile in this directory). The Dockerfile,
+    # its base image, and the bootstrap entrypoint are all yours to edit.
+    build:
+      image: docker:cli
+      command: docker build -q .
+    # How to wire a generated SDK (`pulumi package add`) into the program. DECLARE-ONLY:
+    # it adds the SDK's local path to requirements.txt; the program image build
+    # (pip install, in the Dockerfile) materializes it. Because link only declares, the
+    # link environment just needs to edit a text file — it does not install. The OCI host
+    # runs this once per added package with $PULUMI_LINK_SDK_NAME / $PULUMI_LINK_SDK_PATH.
+    link:
+      image: python:3.12-slim
+      command: |
+        # Add the generated SDK as a local (editable-style) requirement, idempotently.
+        grep -qxF "./$PULUMI_LINK_SDK_PATH" requirements.txt 2>/dev/null \
+          || echo "./$PULUMI_LINK_SDK_PATH" >> requirements.txt
