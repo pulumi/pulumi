@@ -14,9 +14,12 @@
 #   Phase 2 — package add (layers codegen + delegation + loader onto a proven phase 1):
 #     `pulumi package add oci://<proxy>/...` in an oci project (runtime.options.language:
 #     go) generates a local SDK and records the package. The schema comes from the image
-#     (phase 1); the OCI language host then DELEGATES GeneratePackage/Link to
-#     pulumi-language-go (the dev-language axis). Asserts a Go SDK lands in sdks/ and the
-#     oci:// REF — not a path — is written into Pulumi.yaml.
+#     (phase 1); the OCI language host then DELEGATES SDK *generation* (GeneratePackage) to
+#     pulumi-language-go (the dev-language axis), and runs the BUILD-OWNED link command in
+#     the build environment image (build.{image,link}) — linking is package-manager-specific,
+#     so the build owns it, not the language host. Asserts a Go SDK lands in sdks/, the
+#     build.link command ran in the toolchain image, and the oci:// REF — not a path — is
+#     written into Pulumi.yaml.
 #
 # Together: a package is a plugin image; the consumer needs no provider toolchain (the
 # image carries it), and the engine only ever sees a ref. The delegate is `go` here
@@ -186,11 +189,10 @@ echo "    schema container stopped; proxy + network still up"
 ###############################################################################
 # Phase 2: package add (layers codegen delegation + loader onto a proven phase 1).
 ###############################################################################
-# An oci project whose dev-language is go has a Go program, hence a go.mod — the Go
-# delegate's Link adds a replace directive to it, pointing at the generated SDK.
+# An oci project whose dev-language is go has a Go program, hence a go.mod.
 cp "$PROJECT_DIR/Pulumi.yaml" "$PROJECT_DIR/go.mod" "$WORK/project/"
 
-echo "==> PHASE 2: pulumi package add $OCI_SOURCE (delegate codegen to pulumi-language-go)"
+echo "==> PHASE 2: pulumi package add $OCI_SOURCE (delegate SDK gen to pulumi-language-go; build-owned link)"
 engine_run "pulumi package add '$OCI_SOURCE'" 2>&1 | tee "$WORK/add.log"
 
 echo "==> asserting a Go SDK was generated locally (codegen delegated to pulumi-language-go)"
@@ -210,13 +212,26 @@ if ! grep -q "$OCI_SOURCE" "$WORK/project/Pulumi.yaml"; then
 fi
 echo "    Pulumi.yaml records the package as: $OCI_SOURCE"
 
-echo "==> asserting Link ran via delegation (the Go host added a replace directive to go.mod)"
-if ! grep -qE 'replace .*=> ./sdks/' "$WORK/project/go.mod"; then
-  echo "!! go.mod has no replace directive for the generated SDK — Link did not delegate to pulumi-language-go"
-  echo "--- go.mod ---"; cat "$WORK/project/go.mod"
+echo "==> asserting Link was BUILD-OWNED (the build.link command ran in the toolchain image)"
+RECEIPT="$WORK/project/LINK_RECEIPT"
+if [ ! -f "$RECEIPT" ]; then
+  echo "!! no LINK_RECEIPT — the build.link command did not run (linking is build-owned, not delegated)"
   exit 1
 fi
-echo "    go.mod links the SDK via a replace directive"
+# Discriminating: `go version` only succeeds in the golang build image — the alpine engine
+# has no go toolchain, so had linking run in-host (or in the language plugin) this would be absent.
+if ! grep -q 'go version go' "$RECEIPT"; then
+  echo "!! LINK_RECEIPT lacks a go toolchain version — link did not run in the build environment"
+  cat "$RECEIPT"
+  exit 1
+fi
+# Proves the OCI host handed the generated SDK path to the build.link command.
+if ! grep -q 'sdk: sdks/random' "$RECEIPT"; then
+  echo "!! LINK_RECEIPT lacks the SDK path — the link command did not receive PULUMI_LINK_SDK_PATHS"
+  cat "$RECEIPT"
+  exit 1
+fi
+echo "    build-owned link ran in golang:alpine and received the SDK path ($(grep '^sdk:' "$RECEIPT"))"
 
 echo "==> package-add-from-image smoke test PASS — a provider was consumed as an IMAGE:"
 echo "    schema read from the running container, SDK generated via delegation, ref (not path) recorded"

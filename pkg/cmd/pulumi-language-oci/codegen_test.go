@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -38,9 +39,8 @@ import (
 type fakeDelegate struct {
 	pulumirpc.UnimplementedLanguageRuntimeServer
 
-	mu      sync.Mutex
-	genReq  *pulumirpc.GeneratePackageRequest
-	linkReq *pulumirpc.LinkRequest
+	mu     sync.Mutex
+	genReq *pulumirpc.GeneratePackageRequest
 }
 
 func (f *fakeDelegate) Handshake(
@@ -69,17 +69,6 @@ func (f *fakeDelegate) GeneratePackage(
 		return nil, err
 	}
 	return &pulumirpc.GeneratePackageResponse{}, nil
-}
-
-func (f *fakeDelegate) Link(_ context.Context, req *pulumirpc.LinkRequest) (*pulumirpc.LinkResponse, error) {
-	f.mu.Lock()
-	f.linkReq = req
-	f.mu.Unlock()
-	name := ""
-	if len(req.Packages) > 0 {
-		name = req.Packages[0].GetPackage().GetName()
-	}
-	return &pulumirpc.LinkResponse{ImportInstructions: "delegate-linked: " + name}, nil
 }
 
 // serveFakeDelegate starts the fake delegate, points the host's plugin loader at it via
@@ -148,40 +137,48 @@ func TestGeneratePackageDelegates(t *testing.T) {
 	assert.Equal(t, schema, string(got))
 }
 
-// Link is the other delegated codegen RPC. This also exercises the wire→interface
-// reconstruction (programInfoFromProto / linkDepsFromProto): the dependency the host
-// receives round-trips losslessly through to the delegate, and the delegate's
-// instructions return to the caller.
-func TestLinkDelegates(t *testing.T) {
-	fake, lang := serveFakeDelegate(t)
-	dir := ociProjectDir(t, lang)
-
+// Link is BUILD-OWNED: with no build.link command, the OCI host does nothing (it never
+// edits a language manifest itself — the program build wires the SDK). A no-op here must
+// not error, since InstallPackage always calls Link. (The command-runs case needs a
+// builder container and is covered by the package-add smoke test.)
+func TestLinkNoCommandIsNoOp(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
 	resp, err := (&ociHost{}).Link(context.Background(), &pulumirpc.LinkRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
 			EntryPoint:       ".",
+			// runtime options present, but no build.link — the common case today.
+			Options: mustStruct(t, map[string]any{"language": "go"}),
 		},
-		LoaderTarget: "127.0.0.1:1",
 		Packages: []*pulumirpc.LinkRequest_LinkDependency{{
-			Path: "sdks/probe",
-			Package: &pulumirpc.PackageDependency{
-				Name:    "probe",
-				Version: "1.0.0",
-				Kind:    "resource",
-			},
+			Path:    "sdks/probe",
+			Package: &pulumirpc.PackageDependency{Name: "probe", Version: "1.0.0", Kind: "resource"},
 		}},
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "delegate-linked: probe", resp.ImportInstructions)
+	assert.Empty(t, resp.ImportInstructions)
+}
 
-	require.NotNil(t, fake.linkReq, "delegate Link was never called")
-	require.Len(t, fake.linkReq.Packages, 1)
-	dep := fake.linkReq.Packages[0]
-	assert.Equal(t, "sdks/probe", dep.Path)
-	assert.Equal(t, "probe", dep.Package.Name)
-	assert.Equal(t, "1.0.0", dep.Package.Version)
-	assert.Equal(t, "resource", dep.Package.Kind)
+// A build.link command needs a build.image (the environment it runs in) — that pairing is
+// the build spec's contract. Catch the misconfiguration with a clear error rather than
+// failing obscurely in the builder.
+func TestLinkRequiresBuildImage(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	_, err := (&ociHost{}).Link(context.Background(), &pulumirpc.LinkRequest{
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    dir,
+			ProgramDirectory: dir,
+			EntryPoint:       ".",
+			Options: mustStruct(t, map[string]any{
+				"build": map[string]any{"link": "do-the-linking"}, // link set, image missing
+			}),
+		},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "build.image")
 }
 
 // A project that declares runtime: oci but no options.language can't have its SDK
@@ -196,4 +193,12 @@ func TestDelegateLanguageMissing(t *testing.T) {
 	_, err := delegateLanguage()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "runtime.options.language")
+}
+
+// mustStruct builds a *structpb.Struct from a map, failing the test on error.
+func mustStruct(t *testing.T, m map[string]any) *structpb.Struct {
+	t.Helper()
+	s, err := structpb.NewStruct(m)
+	require.NoError(t, err)
+	return s
 }
