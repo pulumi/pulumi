@@ -1,0 +1,16 @@
+name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime:
+  name: oci
+  options:
+    # The program's source language. runtime: oci is how the program *runs* (as a
+    # container); `language` is the separate dev axis — the OCI host delegates SDK
+    # generation (`pulumi package add`) to pulumi-language-nodejs.
+    language: nodejs
+    # How to build the PROGRAM image. The build runs in build.image (a builder that
+    # carries the docker CLI), turning the Dockerfile in this directory into a runnable
+    # image. The Dockerfile, its base image, and the bootstrap entrypoint are all yours
+    # to edit — the only contract is that the container runs the program when started.
+    build:
+      image: docker:cli
+      command: docker build -q .
