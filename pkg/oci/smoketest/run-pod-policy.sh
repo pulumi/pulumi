@@ -24,6 +24,15 @@
 # appearing in the violation proves the policy logic ran from its own image. We also
 # assert the engine logged that it started the pack as a container.
 #
+# Refs are the currency, not paths. The host resolves the pack to its image ref
+# BEFORE the engine sees it (here: read straight off the pack's PulumiPolicy.yaml on
+# the host, where the dir lives natively — no mount), and passes the *ref* as
+# --policy-pack. The engine consumes the ref exactly like a provider's image and
+# reads no manifest off a mount. So nothing projects PulumiPolicy.yaml into the
+# engine — we assert that too: a path is a dev-time input, a ref is what crosses the
+# boundary. (A local dir still works for dev convenience; it is just not the form the
+# engine depends on.)
+#
 # The companion program is the dynamic-resource program (reused): it registers a
 # pulumi-nodejs:dynamic:Resource, which the pack flags. Enforcement is advisory, so
 # `up` succeeds and prints the violation.
@@ -58,7 +67,7 @@ EXPECTED_MARKER="oci-policy-ran-from-its-own-image"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
-mkdir -p "$WORK/cli" "$WORK/project/policy"
+mkdir -p "$WORK/cli" "$WORK/project"
 
 cleanup() {
   # The wrapper reclaims each pod (containers, volumes, network) itself; this only
@@ -91,10 +100,17 @@ docker buildx build --builder "$BUILDER" --load \
   -t "$POLICY_IMAGE" -f "$POLICY_DIR/Dockerfile" "$POLICY_DIR"
 
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
-# Only the pack's manifest needs to be reachable in the engine container; its code
-# lives in the policy image. Place it at /workspace/policy and point --policy-pack
-# at it (relative to the engine container's workdir, /workspace).
-cp "$POLICY_DIR/PulumiPolicy.yaml" "$WORK/project/policy/"
+
+# Resolve the pack to its image ref HOST-SIDE, off the pack's PulumiPolicy.yaml where
+# the dir lives natively (no mount, no engine involvement). This is the path->ref
+# boundary: the engine will receive only the ref. Nothing about the pack's manifest
+# is projected into the engine mount.
+POLICY_REF="$(sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$POLICY_DIR/PulumiPolicy.yaml")"
+if [ -z "$POLICY_REF" ]; then
+  echo "!! could not resolve the policy pack image ref from $POLICY_DIR/PulumiPolicy.yaml"
+  exit 1
+fi
+echo "==> resolved policy pack -> image ref (host-side): $POLICY_REF"
 
 # Drive the deployment with the wrapper — it bootstraps the pod (network, engine
 # container, PULUMI_POD_* contract, mounts, teardown) and defaults the backend +
@@ -103,9 +119,16 @@ export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
 export PULUMI_POD_MOUNT_DIR="$WORK/project"
 export PULUMI_POD_PROGRAM_IMAGE="$PROGRAM_IMAGE"
 
-echo "==> pulumi-pod: stack init + up --policy-pack (engine runs the policy pack FROM its image)"
+echo "==> pulumi-pod: stack init + up --policy-pack <ref> (engine consumes the ref, not a path)"
 "$WRAPPER" stack init "$STACK"
-"$WRAPPER" up --yes --skip-preview --policy-pack policy 2>&1 | tee "$WORK/up.log"
+"$WRAPPER" up --yes --skip-preview --policy-pack "$POLICY_REF" 2>&1 | tee "$WORK/up.log"
+
+echo "==> asserting no PulumiPolicy.yaml was projected into the engine mount"
+if find "$WORK/project" -name PulumiPolicy.yaml | grep -q .; then
+  echo "!! a PulumiPolicy.yaml reached the engine mount — the ref form should need none"
+  exit 1
+fi
+echo "    confirmed: the engine ran the pack from a ref alone, no manifest projected"
 
 echo "==> asserting the engine ran the policy pack as a container"
 if ! grep -q 'oci: policy pack' "$WORK/up.log"; then

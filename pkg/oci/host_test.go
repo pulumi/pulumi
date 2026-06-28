@@ -139,6 +139,25 @@ func TestPolicyPackImageOCI(t *testing.T) {
 	require.Equal(t, "my-policy:latest", image)
 }
 
+// The normal form: the engine receives an already-resolved image ref, not a
+// directory. policyPackImage treats anything that is not a local directory as the
+// image itself, so the engine runs the ref and reads no manifest off a mount — the
+// manifest-projection hack removed.
+func TestPolicyPackImageRef(t *testing.T) {
+	t.Parallel()
+	// A ref that does not exist as a directory on disk is taken verbatim.
+	image, ok, err := policyPackImage("oci-smoke-policy:latest")
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, "oci-smoke-policy:latest", image)
+
+	// A registry-qualified ref is likewise passed through untouched.
+	image, ok, err = policyPackImage("ghcr.io/acme/policy:v1.2.3")
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, "ghcr.io/acme/policy:v1.2.3", image)
+}
+
 // A policy pack on a normal language runtime is not an OCI pack: ok is false, so
 // the container host falls back to the base host's spawn path.
 func TestPolicyPackImageNonOCIFallsBack(t *testing.T) {
