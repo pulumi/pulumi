@@ -1,0 +1,7 @@
+# The repo gitignores `pulumi-language-python-exec` (it is normally a build artifact copied
+# next to the CLI). Here it is deliberately VENDORED into the template — Python's run
+# harness ships with the CLI, not the pip package, so a python program image needs its own
+# copy (see the Dockerfile note). Re-include it so it is tracked and `pulumi new` scaffolds
+# it. (The upstream fix is to ship the harness in the pip package, after which this and the
+# vendored copy can go away.)
+!pulumi-language-python-exec
