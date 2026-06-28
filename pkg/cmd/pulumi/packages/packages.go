@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/oci"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -376,6 +377,14 @@ func SchemaFromSchemaSource(
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 	env env.Env, concurrency int,
 ) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+	// An oci:// source is a pre-built provider *image* (the package model's "everything
+	// is a plugin image"): resolve the ref to a running container and read its schema,
+	// rather than installing and spawning a binary at a filesystem path. The image ref —
+	// not a path — is what lands in Pulumi.yaml, so the engine later consumes only a ref.
+	if ref, ok := strings.CutPrefix(packageSource, "oci://"); ok {
+		return schemaFromImage(pctx, packageSource, ref, parameters)
+	}
+
 	var spec schema.PackageSpec
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
 		if !parameters.Empty() {
@@ -448,6 +457,42 @@ func SchemaFromSchemaSource(
 	}
 	setSpecNamespace(&spec, pluginSpec)
 	return &spec, &packageSpec, nil
+}
+
+// schemaFromImage extracts a package schema from a provider *image* (an oci:// source).
+// It runs the image as a one-shot pod container, reads its schema over the attached
+// connection, and returns a package spec whose Source is the oci:// ref — so the package
+// recorded in Pulumi.yaml is an image ref, the form the engine consumes at runtime. This
+// is the dev-time analogue of executing a provider binary to read its schema, mirroring
+// the existing GetSchema/Parameterize path below but sourced from a container.
+func schemaFromImage(
+	pctx *plugin.Context, source, ref string, parameters plugin.ParameterizeParameters,
+) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+	p, stop, err := oci.ProviderFromImage(pctx, ref)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { contract.IgnoreError(stop()) }()
+	defer contract.IgnoreClose(p)
+
+	var request plugin.GetSchemaRequest
+	if !parameters.Empty() {
+		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{Parameters: parameters})
+		if err != nil {
+			return nil, nil, fmt.Errorf("parameterize: %w", err)
+		}
+		request = plugin.GetSchemaRequest{SubpackageName: resp.Name, SubpackageVersion: &resp.Version}
+	}
+
+	schemaResp, err := p.GetSchema(pctx.Request(), request)
+	if err != nil {
+		return nil, nil, err
+	}
+	var spec schema.PackageSpec
+	if err := json.Unmarshal(schemaResp.Schema, &spec); err != nil {
+		return nil, nil, err
+	}
+	return &spec, &workspace.PackageSpec{Source: source}, nil
 }
 
 // ProviderFromSource takes a plugin name or path.
