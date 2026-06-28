@@ -9,7 +9,13 @@ WORKDIR /app
 # cached across program and dependency edits.
 COPY oci-bootstrap.sh ./
 RUN chmod +x oci-bootstrap.sh
+# Deps + any locally-generated SDKs, before the program. `pulumi package add` writes SDKs
+# under sdks/ and a `file:` dependency into package.json; copying sdks/ here lets `npm
+# install` resolve them. sdks/ is shipped (with .gitkeep) so this COPY is a no-op when no
+# SDK has been added. This layer is invalidated only when deps/SDKs change — not on every
+# program edit.
 COPY package.json ./
+COPY sdks ./sdks
 RUN npm install --omit=dev
 COPY index.js ./
 ENTRYPOINT ["/app/oci-bootstrap.sh"]
