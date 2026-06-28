@@ -19,8 +19,79 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// BuildPackage builds a self-describing package directory into a plugin image and returns
+// its convention image ref. The package declares itself in PulumiPlugin.yaml with
+// `runtime: oci` and `options.{name, version, build:{image, command, caches}}`, so a
+// package describes its own build rather than relying on a consumer's declaration. This is
+// the shared implementation behind `pulumi package build` and the language host's
+// local-component build (its InstallDependencies), so the two cannot drift.
+//
+// The build runs in a builder container started from build.image (the toolchain), with the
+// target ref delivered as $PULUMI_PACKAGE_IMAGE so the command stays ref-agnostic; the
+// default command tags the package Dockerfile as that ref. registry, when non-empty,
+// qualifies the ref (so the built image is named where it resolves and where publish pushes).
+// Like every build site it needs pod mode only for --volumes-from the engine (to reach the
+// source), not the engine netns.
+func BuildPackage(ctx context.Context, dir, registry string, stderr io.Writer) (string, error) {
+	proj, err := workspace.LoadPluginProject(filepath.Join(dir, "PulumiPlugin.yaml"))
+	if err != nil {
+		return "", fmt.Errorf("loading PulumiPlugin.yaml in %s: %w", dir, err)
+	}
+	if proj.Runtime.Name() != "oci" {
+		return "", fmt.Errorf("package %s declares runtime %q, want oci", dir, proj.Runtime.Name())
+	}
+	opts := proj.Runtime.Options()
+
+	name, _ := opts["name"].(string)
+	version, _ := opts["version"].(string)
+	if name == "" || version == "" {
+		return "", fmt.Errorf("package %s must declare runtime.options.name and runtime.options.version", dir)
+	}
+	build, _ := opts["build"].(map[string]any)
+	buildImage, _ := build["image"].(string)
+	if buildImage == "" {
+		return "", fmt.Errorf("package %s must declare runtime.options.build.image (the build environment)", name)
+	}
+
+	ref := ProviderImageRef(registry, name, version)
+	command, _ := build["command"].(string)
+	if command == "" {
+		// Build the package's Dockerfile and tag it as the convention ref (delivered via
+		// env so the command stays ref-agnostic).
+		command = `docker build -q -t "$PULUMI_PACKAGE_IMAGE" .`
+	}
+
+	fmt.Fprintf(stderr, "Building %s (v%s) in %s -> %s\n", name, version, buildImage, ref)
+	if _, err := BuildInContainer(
+		ctx, buildImage, command, dir, optStringSlice(build["caches"]),
+		map[string]string{"PULUMI_PACKAGE_IMAGE": ref}, stderr,
+	); err != nil {
+		return "", fmt.Errorf("building package %s: %w", name, err)
+	}
+	return ref, nil
+}
+
+// optStringSlice reads a YAML list-of-strings option (parsed as []any) into []string,
+// skipping non-string/empty entries. nil-safe.
+func optStringSlice(v any) []string {
+	list, ok := v.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(list))
+	for _, e := range list {
+		if s, ok := e.(string); ok && s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
 
 // BuildInContainer runs a build command in a dedicated builder container and returns
 // its stdout (design: "Topology — the build phase"). It is the shared mechanism for

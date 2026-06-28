@@ -120,12 +120,13 @@ echo "==> pulumi-pod: stack init, install (builds the local component), up, outp
 "$WRAPPER" up --yes --skip-preview 2>&1 | tee "$WORK/up.log"
 MESSAGE="$("$WRAPPER" stack output message)"
 
-echo "==> asserting the language host built the local component in the builder container"
-# The "in builder $BUILDER_IMAGE" log line proves the builder-container path was
-# taken; the build itself guards on a marker only the builder image carries, so an
-# in-process build would have failed rather than reach this assertion.
-if ! grep -q "oci: building local component $COMPONENT_PKG.*in builder $BUILDER_IMAGE" "$WORK/install.log"; then
-  echo "!! the language host did not build the local component in the builder container"
+echo "==> asserting install built the local component via the shared package-build mechanism, in the builder"
+# install delegates to oci.BuildPackage (the same path as `pulumi package build`), which
+# logs "Building <name> (...) in <builder> -> <ref>". The build itself guards on a marker
+# only the builder image carries, so an in-process build would have failed rather than
+# reach this assertion.
+if ! grep -q "Building $COMPONENT_PKG .*in $BUILDER_IMAGE" "$WORK/install.log"; then
+  echo "!! install did not build the local component in the builder container"
   exit 1
 fi
 if ! docker image inspect "$COMPONENT_IMAGE" >/dev/null 2>&1; then
