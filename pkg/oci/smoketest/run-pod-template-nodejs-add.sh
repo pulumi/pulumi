@@ -14,8 +14,12 @@
 #      template's DECLARE-ONLY link command (npm pkg set a file: dep) in link.image (node)
 #   5. assert the SDK was generated AND package.json now declares it as a file: dependency
 #
-# This is the link half (declare). Materialize (the program image's `npm install`) + use it
-# at runtime re-exercises the proven program-build path; left as a follow-up.
+# Then it proves MATERIALIZE + USE: the program is rewritten to import the generated SDK and
+# create a resource, and `pulumi up` builds the program image (whose `npm install` installs
+# the file: SDK from the Dockerfile's `COPY sdks ./sdks`) and runs it — the random provider
+# itself runs from the proxy. So: declare at add, materialize at build, use at run. This also
+# settles the SDK-in-build-context Dockerfile decision (COPY sdks/ before install; sdks/ is
+# shipped so the COPY is a no-op until an SDK is added).
 #
 # Usage: run-pod-template-nodejs-add.sh
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).
@@ -135,6 +139,20 @@ docker run --rm -i \
       --stack '"$STACK"' --yes --force
     pulumi package add '"$OCI_SOURCE"'
     echo "--- package.json after add ---"; cat package.json
+
+    # Rewrite the program to USE the generated SDK — proving the build MATERIALIZES the
+    # file: dependency (npm install in the Dockerfile) and the program imports it at run
+    # time. The SDK is the file: dependency the link declared; read its name from
+    # package.json with shell tools (the alpine engine container has no node runtime).
+    SDK=$(sed -nE "s/.*\"([^\"]+)\": *\"file:[^\"]*\".*/\1/p" package.json | head -1)
+    echo "--- using SDK: $SDK ---"
+    cat > index.js <<EOF
+const random = require("$SDK");
+const pet = new random.RandomPet("pet", {});
+exports.petName = pet.id;
+EOF
+    pulumi up --yes --skip-preview --stack '"$STACK"'
+    printf "SMOKE petName=<<%s>>\n" "$(pulumi stack output petName --stack '"$STACK"')"
   ' \
   2>&1 | tee "$WORK/run.log"
 
@@ -160,5 +178,16 @@ if ! grep -q "$OCI_SOURCE" "$WORK/project/Pulumi.yaml"; then
   echo "!! the oci:// ref was not recorded in Pulumi.yaml"
   exit 1
 fi
-echo "==> oci-nodejs package-add smoke test PASS — package add generated a nodejs SDK and the"
-echo "    declare-only link command wrote a file: dependency (declare); the build materializes it"
+
+echo "==> asserting the build MATERIALIZED the SDK and the program USED it (resource created)"
+# The program imported the file: SDK (installed by the Dockerfile's npm install from
+# COPY sdks/) and created a RandomPet via the random provider running from the proxy.
+PET="$(sed -n 's/.*SMOKE petName=<<\(.*\)>>.*/\1/p' "$WORK/run.log" | head -1)"
+if [ -z "$PET" ]; then
+  echo "!! no petName output — the program did not use the generated SDK to create a resource"
+  exit 1
+fi
+echo "    program used the SDK: petName = $PET"
+echo "==> oci-nodejs package-add smoke test PASS — declare at add, materialize at build, use at run:"
+echo "    package add generated + declared the SDK, the build installed it (COPY sdks/), and the"
+echo "    program imported it to create a resource via the proxied provider"

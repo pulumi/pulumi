@@ -1,0 +1,2 @@
+# Generated SDKs land here (`pulumi package add <provider>`). Kept so the Dockerfile's
+# `COPY sdks ./sdks` always has a source even before any SDK is added.
