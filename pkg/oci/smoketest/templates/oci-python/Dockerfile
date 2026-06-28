@@ -14,7 +14,12 @@ WORKDIR /app
 # change), so this layer stays cached across program and dependency edits.
 COPY oci-bootstrap.sh pulumi-language-python-exec ./
 RUN chmod +x oci-bootstrap.sh pulumi-language-python-exec
+# Deps + any locally-generated SDKs, before the program. `pulumi package add` writes SDKs
+# under sdks/ and a local requirement into requirements.txt; copying sdks/ here lets `pip
+# install` resolve them. sdks/ is shipped (with .gitkeep) so this COPY is a no-op until an
+# SDK is added. Invalidated only when deps/SDKs change, not on every program edit.
 COPY requirements.txt ./
+COPY sdks ./sdks
 RUN pip install --no-cache-dir -r requirements.txt
 COPY __main__.py ./
 ENTRYPOINT ["/app/oci-bootstrap.sh"]
