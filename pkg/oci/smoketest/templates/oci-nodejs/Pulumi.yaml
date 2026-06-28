@@ -15,16 +15,13 @@ runtime:
       image: docker:cli
       command: docker build -q .
     # How to wire a generated SDK (`pulumi package add`) into the program. This is
-    # DECLARE-ONLY: it adds a `file:` dependency to package.json; the program image build
-    # (npm install, above) materializes it. Because link only declares — it does not install
-    # — link.image just needs *a* package manager, NOT the exact toolchain the build uses
-    # (that runs at build time). Avoid an *installing* command (`npm add`): it would drag the
-    # build's toolchain and installed state back in. The OCI host runs this once per added
-    # package, with $PULUMI_LINK_SDK_NAME / $PULUMI_LINK_SDK_PATH in the environment.
+    # DECLARE-ONLY: it adds a `file:` dependency to package.json (and the lockfile); the
+    # program image build (npm install, above) MATERIALIZES it. Because link only declares —
+    # `--package-lock-only` skips the node_modules install — link.image just needs *a*
+    # package manager, NOT the exact toolchain the build uses (that runs at build time).
+    # Avoid a plain installing `npm add`: it would drag the build's toolchain/state back in.
+    # The OCI host runs this once per added package, with $PULUMI_LINK_SDK_NAME /
+    # $PULUMI_LINK_SDK_PATH in the environment (npm derives the package name from the SDK).
     link:
       image: node:20-alpine
-      command: |
-        # Use the SDK's own package name (so a scoped name like @scope/pkg works), and add
-        # it as a file: dependency. `npm pkg set` edits package.json without installing.
-        name=$(node -p "require('./$PULUMI_LINK_SDK_PATH/package.json').name")
-        npm pkg set "dependencies.$name=file:./$PULUMI_LINK_SDK_PATH"
+      command: npm add --save --package-lock-only "./$PULUMI_LINK_SDK_PATH"
