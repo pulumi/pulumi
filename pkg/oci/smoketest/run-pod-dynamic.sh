@@ -36,6 +36,7 @@
 set -euo pipefail
 
 SMOKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SMOKE_DIR/lib-engine.sh" # shared dev-harness: cross-compile CLI + build engine image
 PROJECT_DIR="$SMOKE_DIR/project-node-dynamic"
 PROGRAM_DIR="$SMOKE_DIR/program-node-dynamic"
 PKG_DIR="$SMOKE_DIR/../.." # the pkg/ Go module, where the CLI + host live
@@ -67,15 +68,7 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> cross-compiling pulumi + pulumi-language-oci (linux/$GOARCH)"
-( cd "$PKG_DIR" && GOWORK=off GOOS=linux GOARCH="$GOARCH" CGO_ENABLED=0 \
-    go build -o "$WORK/cli/pulumi-cli-linux" ./cmd/pulumi )
-( cd "$PKG_DIR" && GOWORK=off GOOS=linux GOARCH="$GOARCH" CGO_ENABLED=0 \
-    go build -o "$WORK/cli/pulumi-language-oci-linux" ./cmd/pulumi-language-oci )
-
-echo "==> building engine image $ENGINE_IMAGE"
-docker buildx build --builder "$BUILDER" --load \
-  -t "$ENGINE_IMAGE" -f "$SMOKE_DIR/Dockerfile.cli" "$WORK/cli"
+build_engine_image
 
 echo "==> building Node program image $PROGRAM_IMAGE (bakes /program-marker, ships the dynamic-provider shim)"
 docker buildx build --builder "$BUILDER" --load \
