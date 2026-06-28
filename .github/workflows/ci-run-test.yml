@@ -155,7 +155,7 @@ jobs:
           echo "/usr/local/opt/coreutils/libexec/gnubin" | tee -a "$GITHUB_PATH"
           command -v bash
           bash --version
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           ref: ${{ inputs.ref }}
       # Frees ~24GiB; test jobs run out of disk otherwise (#17470). The bulk of
@@ -189,7 +189,7 @@ jobs:
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         id: setup-go
         env:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
@@ -210,12 +210,12 @@ jobs:
         run: |
           go install github.com/go-delve/delve/cmd/dlv@latest
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
           cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
       - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
@@ -226,7 +226,7 @@ jobs:
             dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
             dotnet-quality: ga
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
       - name: Get npm cache directory
@@ -242,7 +242,7 @@ jobs:
             npm-${{ runner.os }}-${{ fromJson(inputs.version-set).nodejs }}-
             npm-${{ runner.os }}-
       - name: Set up JDK 11
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
         with:
           java-version: '11'
           distribution: 'temurin'
