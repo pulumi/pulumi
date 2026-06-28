@@ -77,14 +77,14 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}-target-${{ inputs.os }}-${{ inputs.arch }}-cov-${{ inputs.enable-coverage && inputs.os == 'linux' }}-race-${{ inputs.enable-race-detection }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           check-latest: true
