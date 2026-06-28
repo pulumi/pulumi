@@ -217,7 +217,8 @@ func (h *ociHost) InstallDependencies(
 		fmt.Fprintf(out, "oci: building local component %s (v%s) in builder %s: %s\n", name, version, image, command)
 		// The build tags the image by convention; its stdout (the image id) is not
 		// needed here — the container host resolves the component by that tag.
-		if _, err := buildInContainer(stream.Context(), image, command, cdir, optStringList(buildSpec, "caches"), out); err != nil {
+		if _, err := buildInContainer(
+			stream.Context(), image, command, cdir, optStringList(buildSpec, "caches"), nil, out); err != nil {
 			return fmt.Errorf("oci: building local component %s: %w", name, err)
 		}
 		fmt.Fprintf(out, "oci: built local component %s\n", name)
@@ -406,7 +407,9 @@ func resolveProgramImage(ctx context.Context, opts *structpb.Struct, dir string)
 // Over-sharing every engine mount (incl. PULUMI_HOME) is acceptable for a trusted
 // local builder image but is what must be replaced with explicit, scoped mounts once
 // the builder image is registry-supplied — at which point --volumes-from goes away.
-func buildInContainer(ctx context.Context, image, command, workingDir string, caches []string, stderr io.Writer) (string, error) {
+func buildInContainer(
+	ctx context.Context, image, command, workingDir string, caches []string, env map[string]string, stderr io.Writer,
+) (string, error) {
 	// The builder mounts the engine container's volumes by name; in pod mode the
 	// wrapper sets --hostname to the engine container's name, so our hostname is a
 	// valid --volumes-from reference.
@@ -432,6 +435,7 @@ func buildInContainer(ctx context.Context, image, command, workingDir string, ca
 		WorkingDir:  workingDir,
 		VolumesFrom: []string{engine},
 		Volumes:     volumes,
+		Env:         env,
 		Entrypoint:  []string{"sh", "-c"},
 		Cmd:         []string{command},
 	}, stderr)
@@ -462,7 +466,7 @@ func buildProgramImageInContainer(ctx context.Context, spec *structpb.Struct, di
 		return "", fmt.Errorf("oci: build needs 'image' and 'command' (got image=%q command=%q)", image, command)
 	}
 	fmt.Fprintf(os.Stderr, "oci: building program image in builder %s: %s\n", image, command)
-	stdout, err := buildInContainer(ctx, image, command, dir, optStringList(spec, "caches"), os.Stderr)
+	stdout, err := buildInContainer(ctx, image, command, dir, optStringList(spec, "caches"), nil, os.Stderr)
 	if err != nil {
 		return "", fmt.Errorf("oci: builder %q failed: %w", image, err)
 	}

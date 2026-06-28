@@ -35,13 +35,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 
-	"github.com/blang/semver"
 	hcl "github.com/hashicorp/hcl/v2"
 
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -76,30 +74,47 @@ func (h *ociHost) GeneratePackage(
 	}, nil
 }
 
-// Link records a generated SDK in the program's language-specific project files (e.g.
-// package.json / go.mod) by delegating to the dev-language host. The request is
-// reconstructed into the LanguageRuntime interface's argument shape — lossless, since
-// the gRPC PackageDependency carries exactly the fields the interface re-marshals.
+// Link wires a generated SDK into the program — and it is BUILD-OWNED, not delegated to
+// the language host. Editing the program's manifest to declare the SDK (go.mod replace,
+// package.json `file:`, `pip install -e`, a nix expression) is *package-manager*-specific,
+// a finer axis than language: the same Python host shouldn't have to know pip vs poetry vs
+// uv vs nix. The build controls the package manager, so the build owns linking. The OCI
+// host runs the project's build-spec `link` command in the build environment image (which
+// carries the package manager), handing it the just-generated SDK path(s); templates
+// scaffold the right command per language×package-manager (oci-python-pip, oci-python-nix,
+// …), so supporting a new one is a template, not a core change. See the design doc,
+// "`Link` → build-owned".
 func (h *ociHost) Link(ctx context.Context, req *pulumirpc.LinkRequest) (*pulumirpc.LinkResponse, error) {
-	info, err := programInfoFromProto(req.GetInfo())
-	if err != nil {
-		return nil, err
+	build := req.GetInfo().GetOptions().GetFields()["build"].GetStructValue()
+	linkCmd := optString(build, "link")
+	if linkCmd == "" {
+		// No link command: the SDK is recorded as a ref only, and the program build wires
+		// it when it runs (the degenerate "the build owns all of it" case). Deliberately a
+		// no-op — the OCI host never edits a language manifest itself.
+		fmt.Fprintf(os.Stderr, "oci: no build.link command configured; the program build will wire the SDK\n")
+		return &pulumirpc.LinkResponse{}, nil
 	}
-	deps, err := linkDepsFromProto(req.GetPackages())
-	if err != nil {
-		return nil, err
+	buildImage := optString(build, "image")
+	if buildImage == "" {
+		return nil, fmt.Errorf("oci: build.link is set but build.image (the build environment) is not")
 	}
 
-	var instructions string
-	err = h.withDelegateRuntime(ctx, func(lang plugin.LanguageRuntime) error {
-		s, err := lang.Link(ctx, info, deps, req.LoaderTarget)
-		instructions = s
-		return err
-	})
-	if err != nil {
-		return nil, err
+	var paths []string
+	for _, p := range req.GetPackages() {
+		if p.GetPath() != "" {
+			paths = append(paths, p.GetPath())
+		}
 	}
-	return &pulumirpc.LinkResponse{ImportInstructions: instructions}, nil
+	// The link command runs in the project root (reached via --volumes-from the engine,
+	// like every build step) with the SDK path(s) it should wire, relative to that root.
+	env := map[string]string{"PULUMI_LINK_SDK_PATHS": strings.Join(paths, "\n")}
+	fmt.Fprintf(os.Stderr, "oci: linking SDK via build.link in %s: %s\n", buildImage, linkCmd)
+	if _, err := buildInContainer(
+		ctx, buildImage, linkCmd, req.GetInfo().GetRootDirectory(), optStringList(build, "caches"), env, os.Stderr,
+	); err != nil {
+		return nil, fmt.Errorf("oci: running build.link command: %w", err)
+	}
+	return &pulumirpc.LinkResponse{}, nil
 }
 
 // withDelegateRuntime loads the project's dev-language host and invokes fn with it.
@@ -161,56 +176,3 @@ func delegateLanguage() (string, error) {
 	return lang, nil
 }
 
-// programInfoFromProto rebuilds a plugin.ProgramInfo from its wire form. NewProgramInfo
-// panics on non-absolute root/program paths; the real Link flow always sends absolute
-// paths, but guard so a malformed request is a clean error rather than a host crash.
-func programInfoFromProto(info *pulumirpc.ProgramInfo) (plugin.ProgramInfo, error) {
-	if info == nil {
-		return plugin.ProgramInfo{}, fmt.Errorf("oci: Link request is missing program info")
-	}
-	root, program := info.GetRootDirectory(), info.GetProgramDirectory()
-	if !filepath.IsAbs(root) || !filepath.IsAbs(program) {
-		return plugin.ProgramInfo{}, fmt.Errorf(
-			"oci: Link program info has non-absolute paths (root=%q program=%q)", root, program)
-	}
-	return plugin.NewProgramInfo(root, program, info.GetEntryPoint(), info.GetOptions().AsMap()), nil
-}
-
-// linkDepsFromProto is the inverse of the langhost client's Link marshalling: it rebuilds
-// the descriptors the LanguageRuntime interface expects from the wire PackageDependency.
-// The proto carries exactly Name/Version/Server/Kind/Parameterization, so the round-trip
-// is lossless.
-func linkDepsFromProto(pkgs []*pulumirpc.LinkRequest_LinkDependency) ([]workspace.LinkablePackageDescriptor, error) {
-	deps := make([]workspace.LinkablePackageDescriptor, 0, len(pkgs))
-	for _, dep := range pkgs {
-		pkg := dep.GetPackage()
-		desc := workspace.PackageDescriptor{
-			PluginDescriptor: workspace.PluginDescriptor{
-				Name:              pkg.GetName(),
-				Kind:              apitype.PluginKind(pkg.GetKind()),
-				PluginDownloadURL: pkg.GetServer(),
-			},
-		}
-		if v := pkg.GetVersion(); v != "" {
-			version, err := semver.ParseTolerant(v)
-			if err != nil {
-				return nil, fmt.Errorf("oci: parsing version %q for package %q: %w", v, pkg.GetName(), err)
-			}
-			desc.Version = &version
-		}
-		if p := pkg.GetParameterization(); p != nil {
-			param := &workspace.Parameterization{Name: p.GetName(), Value: p.GetValue()}
-			if v := p.GetVersion(); v != "" {
-				version, err := semver.ParseTolerant(v)
-				if err != nil {
-					return nil, fmt.Errorf("oci: parsing parameterization version %q for package %q: %w",
-						v, pkg.GetName(), err)
-				}
-				param.Version = version
-			}
-			desc.Parameterization = param
-		}
-		deps = append(deps, workspace.LinkablePackageDescriptor{Path: dep.GetPath(), Descriptor: desc})
-	}
-	return deps, nil
-}
