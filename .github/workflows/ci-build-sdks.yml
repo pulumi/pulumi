@@ -41,7 +41,7 @@ jobs:
     name: python
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -50,12 +50,12 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
           cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
       - name: Build Pulumi Python SDK wheel
@@ -77,7 +77,7 @@ jobs:
     name: nodejs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -86,7 +86,7 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: npm
@@ -126,7 +126,7 @@ jobs:
     name: npm cli wrapper
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -135,7 +135,7 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
       - name: Build and test the npm CLI wrapper

@@ -38,11 +38,11 @@ jobs:
     needs: [dev-release, info]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           ref: ${{ github.ref }}
       - name: Install Pulumictl
-        uses: jaxxstorm/action-install-gh-release@v3.0.0
+        uses: jaxxstorm/action-install-gh-release@25e24d2d23ae098373794ef1d6faecb48ee52da8 # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -51,7 +51,7 @@ jobs:
           cache: enable
       - name: Git describe
         id: ghd
-        uses: proudust/gh-describe@v1
+        uses: proudust/gh-describe@3daa57135e204a7dd78a519cbe688d35ae85da19 # v1
       - name: Dispatch event to docs repo
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - name: Tag and push pkg version if necessary
         run: |
           title=$(git show --pretty=format:%s -s HEAD)
