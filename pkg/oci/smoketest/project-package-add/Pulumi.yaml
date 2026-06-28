@@ -1,0 +1,8 @@
+name: oci-package-add
+description: Smoke test for `pulumi package add oci://<ref>` (schema-from-image + codegen delegation)
+runtime:
+  name: oci
+  options:
+    # The dev-language axis: the OCI host delegates SDK generation (GeneratePackage,
+    # Link) to pulumi-language-<language>. runtime: oci is only how the program *runs*.
+    language: go
