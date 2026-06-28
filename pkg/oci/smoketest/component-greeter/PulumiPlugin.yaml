@@ -1,0 +1,13 @@
+# Self-describing build spec for `pulumi package build` — a package describes its own
+# name, version, and build, rather than relying on a consumer's throwaway `components:`
+# block. (runtime: oci options.name/version are a prototype schema, like that block, to be
+# reconciled with real package metadata later.) The build command guards on a marker only
+# the builder image carries, so a build routed anywhere else fails loudly.
+runtime:
+  name: oci
+  options:
+    name: greeting
+    version: "0.1.0"
+    build:
+      image: oci-smoke-builder:latest
+      command: test -e /only-in-builder && docker build -q -t "$PULUMI_PACKAGE_IMAGE" .

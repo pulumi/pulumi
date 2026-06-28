@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package oci
 
 import (
 	"testing"
@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// cacheVolumeName must be stable (so a cache reuses the same volume across builds and
+// CacheVolumeName must be stable (so a cache reuses the same volume across builds and
 // pods) and a valid docker volume name (no slashes), with the recognizable prefix.
 func TestCacheVolumeName(t *testing.T) {
 	t.Parallel()
@@ -31,8 +31,8 @@ func TestCacheVolumeName(t *testing.T) {
 		"nix/store":             "pulumi-oci-buildcache-nix-store",
 	}
 	for path, want := range cases {
-		assert.Equal(t, want, cacheVolumeName(path), "path %q", path)
+		assert.Equal(t, want, CacheVolumeName(path), "path %q", path)
 		// Stability: same input, same output.
-		assert.Equal(t, cacheVolumeName(path), cacheVolumeName(path))
+		assert.Equal(t, CacheVolumeName(path), CacheVolumeName(path))
 	}
 }
