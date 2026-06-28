@@ -249,25 +249,25 @@ func NewRefreshCmd() *cobra.Command {
 			// or when explicitly requested via --skip-config-validation. This allows stacks with
 			// missing or invalid config to be refreshed in scenarios such as ephemeral PR environments
 			// where config may diverge between branches.
-			if runProgram {
-				if skipConfigValidation {
-					// Still apply project config defaults onto the stack config, but skip validation.
-					if configErr := workspace.ApplyProjectConfig(
-						ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
-						return fmt.Errorf("applying stack config: %w", configErr)
-					}
-				} else {
-					configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
-						ctx,
-						stackName,
-						proj,
-						cfg.Environment,
-						cfg.Config,
-						encrypter,
-						decrypter)
-					if configErr != nil {
-						return fmt.Errorf("validating stack config: %w", configErr)
-					}
+			if runProgram && !skipConfigValidation {
+				// Running the program: validate the stack config (and apply project defaults).
+				configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+					ctx,
+					stackName,
+					proj,
+					cfg.Environment,
+					cfg.Config,
+					encrypter,
+					decrypter)
+				if configErr != nil {
+					return fmt.Errorf("validating stack config: %w", configErr)
+				}
+			} else {
+				// The program isn't run, or validation was explicitly skipped: still apply
+				// project config defaults onto the stack config, but skip validation.
+				if configErr := workspace.ApplyProjectConfig(
+					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+					return fmt.Errorf("applying stack config: %w", configErr)
 				}
 			}
 
