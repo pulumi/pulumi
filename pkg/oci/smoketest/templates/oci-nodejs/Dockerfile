@@ -5,8 +5,11 @@
 # `pulumi package add` declared as a file: dependency.
 FROM node:20-alpine
 WORKDIR /app
+# Bootstrap first: it is the most stable file (it rarely changes), so this layer stays
+# cached across program and dependency edits.
+COPY oci-bootstrap.sh ./
+RUN chmod +x oci-bootstrap.sh
 COPY package.json ./
 RUN npm install --omit=dev
-COPY index.js oci-bootstrap.sh ./
-RUN chmod +x oci-bootstrap.sh
+COPY index.js ./
 ENTRYPOINT ["/app/oci-bootstrap.sh"]
