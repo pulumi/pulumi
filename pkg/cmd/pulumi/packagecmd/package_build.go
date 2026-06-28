@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/oci"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -77,46 +76,12 @@ is printed to stdout.`,
 				return fmt.Errorf("pulumi package build must run inside the engine container (pod mode)")
 			}
 
-			proj, err := workspace.LoadPluginProject(filepath.Join(dir, "PulumiPlugin.yaml"))
-			if err != nil {
-				return fmt.Errorf("loading PulumiPlugin.yaml in %s: %w", dir, err)
-			}
-			if proj.Runtime.Name() != "oci" {
-				return fmt.Errorf("package build supports runtime: oci, got %q", proj.Runtime.Name())
-			}
-			opts := proj.Runtime.Options()
-
-			name, _ := opts["name"].(string)
-			version, _ := opts["version"].(string)
-			if name == "" || version == "" {
-				return fmt.Errorf("the package must declare runtime.options.name and runtime.options.version")
-			}
-			build, _ := opts["build"].(map[string]any)
-			buildImage, _ := build["image"].(string)
-			if buildImage == "" {
-				return fmt.Errorf("the package must declare runtime.options.build.image (the build environment)")
-			}
-
-			// One source of truth for the convention, shared with the container host
-			// (resolve) and the language host (local-component tagging), qualified with
-			// the plugin registry when one is configured — so the built ref is named
-			// exactly where it resolves at Construct and where publish will push it.
+			// The same build-from-manifest logic the language host uses for local
+			// components, so a package builds identically however it is reached.
 			registry := os.Getenv("PULUMI_POD_PLUGIN_REGISTRY")
-			ref := oci.ProviderImageRef(registry, name, version)
-
-			command, _ := build["command"].(string)
-			if command == "" {
-				// Default: build the Dockerfile in the package dir and tag it as the
-				// convention ref (delivered via env so the command stays ref-agnostic).
-				command = `docker build -q -t "$PULUMI_PACKAGE_IMAGE" .`
-			}
-
-			fmt.Fprintf(cmd.ErrOrStderr(), "Building %s (v%s) in %s -> %s\n", name, version, buildImage, ref)
-			if _, err := oci.BuildInContainer(
-				cmd.Context(), buildImage, command, dir, optStringSlice(build["caches"]),
-				map[string]string{"PULUMI_PACKAGE_IMAGE": ref}, cmd.ErrOrStderr(),
-			); err != nil {
-				return fmt.Errorf("building package %s: %w", name, err)
+			ref, err := oci.BuildPackage(cmd.Context(), dir, registry, cmd.ErrOrStderr())
+			if err != nil {
+				return err
 			}
 
 			// The ref is the build's product — print it on stdout so a caller (or a
@@ -130,20 +95,4 @@ is printed to stdout.`,
 		Arguments: []constrictor.Argument{{Name: "dir", Usage: "[dir]"}},
 	})
 	return cmd
-}
-
-// optStringSlice reads a YAML list-of-strings option (parsed as []any) into []string,
-// skipping non-string/empty entries. nil-safe.
-func optStringSlice(v any) []string {
-	list, ok := v.([]any)
-	if !ok {
-		return nil
-	}
-	out := make([]string, 0, len(list))
-	for _, e := range list {
-		if s, ok := e.(string); ok && s != "" {
-			out = append(out, s)
-		}
-	}
-	return out
 }

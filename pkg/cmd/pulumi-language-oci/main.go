@@ -149,8 +149,7 @@ func (h *ociHost) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error
 // InstallDependencies builds the program's local component images. In the OCI
 // model the "dependency" that needs installing is a local program-as-component:
 // its image does not exist yet (unlike a published MLC, whose image is pulled by
-// convention), so we build it here (in a dedicated builder container, the same
-// build/run seam as the program image) and tag it by the provider convention
+// convention), so we build it here and tag it by the provider convention
 // (pulumi-provider-<name>:v<version>) — the same ref the container host resolves
 // when it starts the component at Construct time.
 //
@@ -160,12 +159,14 @@ func (h *ociHost) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error
 // daemon), which every process sees. The daemon is the cross-process artifact
 // store; no in-process handoff is needed.
 //
-// Components are declared in runtime options as a `components` list of
-// {name, version, path, build: {image, [command]}}, where build.image is the builder
-// container image and build.command defaults to a convention-tagged `docker build`.
-// This is a throwaway prototype schema — the real version should align with package
-// resolution + the registry (design open questions), not entrench a parallel
-// mechanism.
+// Each component is built by `oci.BuildPackage` — the SAME mechanism behind the
+// `pulumi package build` command. So InstallDependencies is just a *caller* of the
+// build phase, not a hand-roller of it: `pulumi install` triggers the build, the
+// build itself is shared and lives once. The component *describes itself* in its own
+// PulumiPlugin.yaml (runtime: oci + options.{name, version, build}); the program only
+// names the local component *paths* in its `components` runtime option (relative to the
+// program directory). This retires the earlier throwaway components schema that carried
+// name/version/build in the *consumer's* Pulumi.yaml.
 func (h *ociHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest,
 	stream pulumirpc.LanguageRuntime_InstallDependenciesServer,
@@ -175,6 +176,7 @@ func (h *ociHost) InstallDependencies(
 		dir = req.GetDirectory()
 	}
 	components := req.GetInfo().GetOptions().GetFields()["components"].GetListValue().GetValues()
+	registry := os.Getenv("PULUMI_POD_PLUGIN_REGISTRY")
 
 	out := &installStreamWriter{stream: stream}
 	// Log the parsed count so a silent options round-trip failure (the `components`
@@ -184,44 +186,22 @@ func (h *ociHost) InstallDependencies(
 	fmt.Fprintf(out, "oci: %d local component(s) to build\n", len(components))
 
 	for _, v := range components {
-		f := v.GetStructValue().GetFields()
-		name := f["name"].GetStringValue()
-		version := f["version"].GetStringValue()
-		path := f["path"].GetStringValue()
-		if name == "" || path == "" {
-			return fmt.Errorf("oci: each component needs 'name' and 'path' (got name=%q path=%q)", name, path)
-		}
-		// build is a struct {image, [command]}: like the program build, the component
-		// build runs in a dedicated builder container (not in-process), so its
-		// toolchain comes from the builder image rather than the engine. image is the
-		// builder; command is optional.
-		buildSpec := f["build"].GetStructValue()
-		if buildSpec == nil || optString(buildSpec, "image") == "" {
-			return fmt.Errorf("oci: component %q needs a build.image (the builder image)", name)
-		}
-		image := optString(buildSpec, "image")
-		command := optString(buildSpec, "command")
-		if command == "" {
-			// Default: tag by the same convention the container host resolves to —
-			// qualified with the plugin registry when one is configured — so the
-			// just-built image is found at Construct time, and is named exactly where
-			// it would be pushed. oci.ProviderImageRef is the shared source of truth,
-			// so the build tag and the host's resolution cannot drift.
-			registry := os.Getenv("PULUMI_POD_PLUGIN_REGISTRY")
-			command = fmt.Sprintf("docker build -q -t %s .", oci.ProviderImageRef(registry, name, version))
+		path := v.GetStringValue()
+		if path == "" {
+			return fmt.Errorf("oci: each component entry must be a path string (to a self-describing package directory)")
 		}
 		cdir := path
 		if !filepath.IsAbs(cdir) {
 			cdir = filepath.Join(dir, path)
 		}
-		fmt.Fprintf(out, "oci: building local component %s (v%s) in builder %s: %s\n", name, version, image, command)
-		// The build tags the image by convention; its stdout (the image id) is not
-		// needed here — the container host resolves the component by that tag.
-		if _, err := oci.BuildInContainer(
-			stream.Context(), image, command, cdir, optStringList(buildSpec, "caches"), nil, out); err != nil {
-			return fmt.Errorf("oci: building local component %s: %w", name, err)
+		// Build via the shared package-build mechanism: it reads the component's own
+		// PulumiPlugin.yaml and tags the image by convention (so the container host
+		// resolves it at Construct time). The returned ref is not needed here — the
+		// image lands in the shared daemon under that tag.
+		if _, err := oci.BuildPackage(stream.Context(), cdir, registry, out); err != nil {
+			return fmt.Errorf("oci: building local component %s: %w", path, err)
 		}
-		fmt.Fprintf(out, "oci: built local component %s\n", name)
+		fmt.Fprintf(out, "oci: built local component %s\n", path)
 	}
 	return nil
 }
