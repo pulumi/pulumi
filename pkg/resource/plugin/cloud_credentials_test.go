@@ -17,6 +17,7 @@ package plugin
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,14 +30,14 @@ func TestPulumiCloudCredentialEnv(t *testing.T) {
 		assert.Equal(t, map[string]string{
 			"PULUMI_API":          "https://api.example.com",
 			"PULUMI_ACCESS_TOKEN": "secret",
-		}, pulumiCloudCredentialEnv(nil))
+		}, pulumiCloudCredentialEnv(env.Global(), nil))
 	})
 
 	t.Run("diy backend gets nothing", func(t *testing.T) {
 		t.Setenv("PULUMI_BACKEND_URL", "file:///tmp/state")
 		t.Setenv("PULUMI_ACCESS_TOKEN", "secret")
 
-		assert.Nil(t, pulumiCloudCredentialEnv(nil))
+		assert.Nil(t, pulumiCloudCredentialEnv(env.Global(), nil))
 	})
 
 	t.Run("logged out gets nothing", func(t *testing.T) {
@@ -44,6 +45,6 @@ func TestPulumiCloudCredentialEnv(t *testing.T) {
 		t.Setenv("PULUMI_BACKEND_URL", "")
 		t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
-		assert.Nil(t, pulumiCloudCredentialEnv(nil))
+		assert.Nil(t, pulumiCloudCredentialEnv(env.Global(), nil))
 	})
 }

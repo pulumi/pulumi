@@ -41,7 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Command {
+func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env) *cobra.Command {
 	var cloudURL string
 	var defaultOrg string
 	var localMode bool
@@ -121,6 +121,10 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Comman
 				cloudURL = args[0]
 			}
 
+			// Track whether the user explicitly provided a URL, so we can warn below if it conflicts
+			// with PULUMI_BACKEND_URL.
+			userProvidedURL := cloudURL != "" || localMode
+
 			// For local mode, store state by default in the user's home directory.
 			if localMode {
 				if cloudURL != "" {
@@ -159,7 +163,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Comman
 			}
 			if cloudURL == "" {
 				var err error
-				cloudURL, err = pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+				cloudURL, err = pkgWorkspace.GetCurrentCloudURL(ws, store, project)
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
@@ -176,6 +180,14 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Comman
 				// Ensure we have the correct cloudurl type before logging in
 				if err := validateCloudBackendType(cloudURL); err != nil {
 					return err
+				}
+			}
+
+			if userProvidedURL {
+				if envURL := store.GetString(env.BackendURL); envURL != "" && envURL != cloudURL {
+					fmt.Fprintf(cmd.ErrOrStderr(),
+						"Warning: The PULUMI_BACKEND_URL environment variable is set to '%s', "+
+							"which conflicts with the login URL '%s'.\n", envURL, cloudURL)
 				}
 			}
 
