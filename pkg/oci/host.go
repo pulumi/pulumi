@@ -455,11 +455,14 @@ func (h *containerHost) ensureImage(ctx context.Context, name, ref string) error
 // provider there is no Attach RPC to issue — we dial and hand the engine a client.
 //
 // A pack that does not opt into the OCI runtime falls back to the base host's
-// normal spawn path, so non-containerized policy packs keep working unchanged. The
-// path the engine passes is the pack's *manifest* directory (the dir holding
-// PulumiPolicy.yaml); it must be reachable in the engine container (mounted), while
-// the pack's code lives in the image — the same manifest-here / code-in-image split
-// as the program (Pulumi.yaml in the mount, program in its image).
+// normal spawn path, so non-containerized policy packs keep working unchanged.
+//
+// The `path` the engine passes is, in the normal form, an *image ref* the host has
+// already resolved — the engine consumes a ref and never reads a manifest off a
+// mount. A local *directory* still works as a dev-time input (we read its
+// PulumiPolicy.yaml in-place), but that path is the exception, not the currency:
+// refs are what cross into the engine. This is what lets the pod ship the pack's
+// manifest nowhere — only its image ref + its image. See policyPackImage.
 func (h *containerHost) PolicyAnalyzer(
 	ctx *plugin.Context, name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
@@ -513,11 +516,28 @@ func (h *containerHost) PolicyAnalyzer(
 	return plugin.NewAnalyzerWithClient(name, client), nil
 }
 
-// policyPackImage reads a policy pack's PulumiPolicy.yaml and, if it declares the
-// OCI runtime, returns the container image to run it from. ok is false when the
-// pack does not opt into the OCI runtime, so the caller falls back to the base
-// host. An OCI pack that names no image is an error — there is nothing to run.
+// policyPackImage resolves a policy pack reference to the container image to run it
+// from. The reference is one of two things:
+//
+//   - An image ref (the normal form). When path is not a local directory, it *is*
+//     the image — the host resolved the pack to its image before handing it to the
+//     engine, so the engine runs a ref and reads no manifest. This is the currency:
+//     a ref, like a provider's, crosses into the engine.
+//   - A local directory (a dev-time path input). We read its PulumiPolicy.yaml in
+//     place; if it declares `runtime: oci` we take its `image` option, otherwise ok
+//     is false and the caller falls back to the base host's spawn path. An OCI pack
+//     that names no image is an error — there is nothing to run.
+//
+// Distinguishing the two by "is this a directory?" keeps the dev convenience
+// (point at a pack on disk) without making a filesystem path the thing the engine
+// depends on — the manifest-projection hack the ref form removes.
 func policyPackImage(path string) (image string, ok bool, err error) {
+	if info, statErr := os.Stat(path); statErr != nil || !info.IsDir() {
+		// Not a directory we can read a manifest from → an image ref the host
+		// already resolved. The engine consumes it directly.
+		return path, true, nil
+	}
+
 	projPath := filepath.Join(path, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
 	if err != nil {
