@@ -1,0 +1,4 @@
+# Keep Pulumi project/stack state out of the build context (the build only needs source).
+Pulumi.yaml
+Pulumi.*.yaml
+.pulumi
