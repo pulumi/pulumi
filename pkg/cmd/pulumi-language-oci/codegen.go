@@ -40,6 +40,7 @@ import (
 	hcl "github.com/hashicorp/hcl/v2"
 
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/oci"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -109,7 +110,7 @@ func (h *ociHost) Link(ctx context.Context, req *pulumirpc.LinkRequest) (*pulumi
 	// like every build step) with the SDK path(s) it should wire, relative to that root.
 	env := map[string]string{"PULUMI_LINK_SDK_PATHS": strings.Join(paths, "\n")}
 	fmt.Fprintf(os.Stderr, "oci: linking SDK via build.link in %s: %s\n", buildImage, linkCmd)
-	if _, err := buildInContainer(
+	if _, err := oci.BuildInContainer(
 		ctx, buildImage, linkCmd, req.GetInfo().GetRootDirectory(), optStringList(build, "caches"), env, os.Stderr,
 	); err != nil {
 		return nil, fmt.Errorf("oci: running build.link command: %w", err)
