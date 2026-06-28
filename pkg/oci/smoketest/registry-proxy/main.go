@@ -273,6 +273,15 @@ func (p *proxy) buildImage(provider, version string, spec wrapSpec) (v1.Image, e
 	if err := writeTarFile(tw, "plugin/provider", bin, 0o755); err != nil {
 		return nil, err
 	}
+	// Bake the system CA bundle so providers that call cloud HTTPS APIs (cloudflare,
+	// aws, ...) can verify certificates. A scratch image has no trust store, so a
+	// stateless provider running from its own image fails TLS with "certificate signed
+	// by unknown authority". Copy the proxy's own bundle to Go's default Linux path.
+	if ca := caBundle(); ca != nil {
+		if err := writeTarFile(tw, "etc/ssl/certs/ca-certificates.crt", ca, 0o644); err != nil {
+			return nil, err
+		}
+	}
 	for path, contents := range spec.ExtraFiles {
 		if err := writeTarFile(tw, strings.TrimPrefix(path, "/"), contents, 0o644); err != nil {
 			return nil, err
@@ -300,6 +309,30 @@ func (p *proxy) buildImage(provider, version string, spec wrapSpec) (v1.Image, e
 	cf.Architecture = p.arch
 	cf.Config.Entrypoint = []string{"/plugin/provider"}
 	return mutate.ConfigFile(img, cf)
+}
+
+// caBundle returns the system CA certificate bundle from the proxy's own trust store, or
+// nil if none is found. The proxy container installs ca-certificates, so this copies that
+// host trust store into otherwise-bare (scratch) provider images — enough for a stateless
+// provider that runs from its own image to verify cloud HTTPS endpoints. (A workspace-
+// coupled provider synthesized fresh would also want a shell/cp for CopyFromImage, i.e. a
+// real base like alpine — not needed by the stateless providers that hit this path today.)
+func caBundle() []byte {
+	paths := []string{}
+	if f := os.Getenv("SSL_CERT_FILE"); f != "" {
+		paths = append(paths, f)
+	}
+	paths = append(paths,
+		"/etc/ssl/certs/ca-certificates.crt", // Debian/Alpine (with ca-certificates)
+		"/etc/ssl/cert.pem",                  // Alpine/BSD
+		"/etc/pki/tls/certs/ca-bundle.crt",   // RHEL/Fedora
+	)
+	for _, p := range paths {
+		if b, err := os.ReadFile(p); err == nil && len(b) > 0 {
+			return b
+		}
+	}
+	return nil
 }
 
 // fetchProviderBinary downloads a released provider plugin tarball and returns the
