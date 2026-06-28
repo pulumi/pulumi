@@ -35,7 +35,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	hcl "github.com/hashicorp/hcl/v2"
 
@@ -75,45 +74,53 @@ func (h *ociHost) GeneratePackage(
 	}, nil
 }
 
-// Link wires a generated SDK into the program — and it is BUILD-OWNED, not delegated to
-// the language host. Editing the program's manifest to declare the SDK (go.mod replace,
-// package.json `file:`, `pip install -e`, a nix expression) is *package-manager*-specific,
-// a finer axis than language: the same Python host shouldn't have to know pip vs poetry vs
-// uv vs nix. The build controls the package manager, so the build owns linking. The OCI
-// host runs the project's build-spec `link` command in the build environment image (which
-// carries the package manager), handing it the just-generated SDK path(s); templates
-// scaffold the right command per language×package-manager (oci-python-pip, oci-python-nix,
-// …), so supporting a new one is a template, not a core change. See the design doc,
+// Link wires a generated SDK into the program. It is BUILD-OWNED (not delegated to the
+// language host) and, crucially, DECLARE-ONLY: it edits the program's manifest to *declare*
+// a dependency on the SDK (package.json `file:`, go.mod `replace`, a nix input) — it does
+// not *install* it. Installation (materialization) happens at build time, in the program
+// image build, with the build's own toolchain. That declare/materialize split is what frees
+// `link.image` from having to match the build's toolchain: a manifest edit is stable across
+// package-manager versions, so the link environment just needs *a* package manager, not the
+// exact one the build uses. (The mistake to avoid is an *installing* link command — `npm
+// add`, `pip install` — which drags the build's toolchain/installed-state back in.)
+//
+// Editing the manifest is package-manager-specific (a finer axis than language: pip vs poetry
+// vs uv vs nix), so the build owns it: the OCI host runs the project's `link` command in
+// `link.image`, once per added package, handing it the package's name and path. Templates
+// scaffold the declare-only command per language×package-manager. See the design doc,
 // "`Link` → build-owned".
 func (h *ociHost) Link(ctx context.Context, req *pulumirpc.LinkRequest) (*pulumirpc.LinkResponse, error) {
-	build := req.GetInfo().GetOptions().GetFields()["build"].GetStructValue()
-	linkCmd := optString(build, "link")
+	link := req.GetInfo().GetOptions().GetFields()["link"].GetStructValue()
+	linkCmd := optString(link, "command")
 	if linkCmd == "" {
 		// No link command: the SDK is recorded as a ref only, and the program build wires
 		// it when it runs (the degenerate "the build owns all of it" case). Deliberately a
 		// no-op — the OCI host never edits a language manifest itself.
-		fmt.Fprintf(os.Stderr, "oci: no build.link command configured; the program build will wire the SDK\n")
+		fmt.Fprintf(os.Stderr, "oci: no link command configured; the program build will wire the SDK\n")
 		return &pulumirpc.LinkResponse{}, nil
 	}
-	buildImage := optString(build, "image")
-	if buildImage == "" {
-		return nil, fmt.Errorf("oci: build.link is set but build.image (the build environment) is not")
+	linkImage := optString(link, "image")
+	if linkImage == "" {
+		return nil, fmt.Errorf("oci: link.command is set but link.image (the link environment) is not")
 	}
 
-	var paths []string
+	root := req.GetInfo().GetRootDirectory()
+	caches := optStringList(link, "caches")
+	// Run the link command once per added package, in link.image (reached via
+	// --volumes-from the engine, like every build step), handing it the package's name and
+	// path. Passing both means the command can write the manifest entry directly — no need
+	// to shell out to the package manager to *derive* the name, which is what drags install
+	// back in.
 	for _, p := range req.GetPackages() {
-		if p.GetPath() != "" {
-			paths = append(paths, p.GetPath())
+		name, path := p.GetPackage().GetName(), p.GetPath()
+		if path == "" {
+			continue
 		}
-	}
-	// The link command runs in the project root (reached via --volumes-from the engine,
-	// like every build step) with the SDK path(s) it should wire, relative to that root.
-	env := map[string]string{"PULUMI_LINK_SDK_PATHS": strings.Join(paths, "\n")}
-	fmt.Fprintf(os.Stderr, "oci: linking SDK via build.link in %s: %s\n", buildImage, linkCmd)
-	if _, err := oci.BuildInContainer(
-		ctx, buildImage, linkCmd, req.GetInfo().GetRootDirectory(), optStringList(build, "caches"), env, os.Stderr,
-	); err != nil {
-		return nil, fmt.Errorf("oci: running build.link command: %w", err)
+		env := map[string]string{"PULUMI_LINK_SDK_NAME": name, "PULUMI_LINK_SDK_PATH": path}
+		fmt.Fprintf(os.Stderr, "oci: linking SDK %s (%s) via link.command in %s\n", name, path, linkImage)
+		if _, err := oci.BuildInContainer(ctx, linkImage, linkCmd, root, caches, env, os.Stderr); err != nil {
+			return nil, fmt.Errorf("oci: running link command for %s: %w", name, err)
+		}
 	}
 	return &pulumirpc.LinkResponse{}, nil
 }

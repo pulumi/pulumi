@@ -137,10 +137,10 @@ func TestGeneratePackageDelegates(t *testing.T) {
 	assert.Equal(t, schema, string(got))
 }
 
-// Link is BUILD-OWNED: with no build.link command, the OCI host does nothing (it never
-// edits a language manifest itself — the program build wires the SDK). A no-op here must
-// not error, since InstallPackage always calls Link. (The command-runs case needs a
-// builder container and is covered by the package-add smoke test.)
+// Link is BUILD-OWNED and DECLARE-ONLY: with no link command, the OCI host does nothing
+// (it never edits a language manifest itself — the program build wires the SDK). A no-op
+// here must not error, since InstallPackage always calls Link. (The command-runs case needs
+// a builder container and is covered by the package-add smoke test.)
 func TestLinkNoCommandIsNoOp(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -149,7 +149,7 @@ func TestLinkNoCommandIsNoOp(t *testing.T) {
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
 			EntryPoint:       ".",
-			// runtime options present, but no build.link — the common case today.
+			// runtime options present, but no link command — the common case today.
 			Options: mustStruct(t, map[string]any{"language": "go"}),
 		},
 		Packages: []*pulumirpc.LinkRequest_LinkDependency{{
@@ -161,10 +161,10 @@ func TestLinkNoCommandIsNoOp(t *testing.T) {
 	assert.Empty(t, resp.ImportInstructions)
 }
 
-// A build.link command needs a build.image (the environment it runs in) — that pairing is
-// the build spec's contract. Catch the misconfiguration with a clear error rather than
-// failing obscurely in the builder.
-func TestLinkRequiresBuildImage(t *testing.T) {
+// A link command needs a link.image (the environment it runs in) — that pairing is the
+// link spec's contract. Catch the misconfiguration with a clear error rather than failing
+// obscurely in the builder.
+func TestLinkRequiresLinkImage(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	_, err := (&ociHost{}).Link(context.Background(), &pulumirpc.LinkRequest{
@@ -173,12 +173,16 @@ func TestLinkRequiresBuildImage(t *testing.T) {
 			ProgramDirectory: dir,
 			EntryPoint:       ".",
 			Options: mustStruct(t, map[string]any{
-				"build": map[string]any{"link": "do-the-linking"}, // link set, image missing
+				"link": map[string]any{"command": "do-the-linking"}, // command set, image missing
 			}),
 		},
+		Packages: []*pulumirpc.LinkRequest_LinkDependency{{
+			Path:    "sdks/probe",
+			Package: &pulumirpc.PackageDependency{Name: "probe"},
+		}},
 	})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "build.image")
+	assert.Contains(t, err.Error(), "link.image")
 }
 
 // A project that declares runtime: oci but no options.language can't have its SDK
