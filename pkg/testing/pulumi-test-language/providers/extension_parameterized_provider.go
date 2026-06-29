@@ -31,13 +31,9 @@ import (
 // ExtensionParameterizedProvider models a base plugin that accepts extension
 // parameterization arguments. The emitted schema sets Name to the extension
 // identity, leaves Provider nil, and keeps every resource token in the base
-// provider's namespace (matching kubernetes/crd2pulumi semantics).
-//
-// A real parameterized plugin holds its parameter for the lifetime of the
-// process and serves it to every resource and invoke. The conformance harness
-// can ask for the provider more than once, so SharedExtensionParameterizedProvider
-// hands back a single instance to mirror that; the mutex guards concurrent
-// access from the resource, component, and invoke paths.
+// provider's namespace (matching kubernetes/crd2pulumi semantics). The mutex
+// guards the parameter against concurrent access from the resource, component,
+// and invoke paths.
 type ExtensionParameterizedProvider struct {
 	plugin.UnimplementedProvider
 	mu               sync.Mutex
@@ -46,9 +42,9 @@ type ExtensionParameterizedProvider struct {
 	extensionValue   []byte
 }
 
-// SharedExtensionParameterizedProvider is the single instance the conformance
-// test registers, so the parameter set by Parameterize is visible to every
-// resource and invoke regardless of how many times the provider is requested.
+// SharedExtensionParameterizedProvider is the single instance the conformance test
+// registers, so the parameter set by Parameterize is visible however many times
+// the provider is requested.
 var SharedExtensionParameterizedProvider = &ExtensionParameterizedProvider{}
 
 func (p *ExtensionParameterizedProvider) snapshot() (string, string, []byte) {
@@ -115,8 +111,8 @@ func (p *ExtensionParameterizedProvider) GetSchema(
 		version = req.SubpackageVersion.String()
 	}
 
-	// Resource and function live in the base provider's namespace; this is the
-	// defining trait of extension parameterization vs replacement.
+	// Tokens live in the base provider's namespace — the defining trait of
+	// extension parameterization.
 	token := extensionBaseName + ":index:Greeting"
 	componentToken := token + "Component"
 	greetToken := extensionBaseName + ":index:greet"
@@ -132,9 +128,8 @@ func (p *ExtensionParameterizedProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    name,
 		Version: version,
-		// Provider intentionally left nil and the parameterization is declared in
-		// the ExtensionParameterization slot — this is what marks the package as
-		// extension- rather than replacement-parameterized.
+		// Provider left nil; the ExtensionParameterization slot marks this as an
+		// extension rather than a replacement.
 		Resources: map[string]schema.ResourceSpec{
 			token:          {ObjectTypeSpec: greetingSpec},
 			componentToken: {IsComponent: true, ObjectTypeSpec: greetingSpec},

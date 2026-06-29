@@ -275,10 +275,9 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	return pkg, module, member, diagnostics
 }
 
-// functionPackage resolves the schema package that defines the given function
-// token. Extension-parameterized function tokens live in the base provider's
-// namespace, so the token prefix is the base name while the owning package is
-// the extension; fall back to the token prefix otherwise.
+// functionPackage resolves the package that defines the function token. For
+// extensions the token lives in the base namespace but the owner is the
+// extension; fall back to the token prefix.
 func (g *generator) functionPackage(tokenArg model.Expression) string {
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	pkg, _, _, _ := pcl.DecomposeToken(token, tokenArg.SyntaxNode().Range())

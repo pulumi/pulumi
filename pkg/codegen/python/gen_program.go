@@ -702,9 +702,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				if call.Name == pcl.Invoke {
 					pkg, _, _, invokeDiags := functionName(call.Args[0])
 					contract.Assertf(len(invokeDiags) == 0, "unexpected diagnostics reported: %v", invokeDiags)
-					// The function may live in an extension package whose tokens use the
-					// base provider's namespace: import that package (by its real name)
-					// but alias it under the token's base name, matching the resources.
+					// Import an extension by its real package name but alias it under the
+					// token's base name, matching how its resources are imported.
 					packageName := "pulumi_" + makeValidIdentifier(pkg)
 					if def := g.functionPackage(call.Args[0]); def != nil {
 						packageName = PyPack(def.Namespace, def.Name)

@@ -910,8 +910,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 			} else {
 				mod = g.resolveModule(token)
 			}
-			// Extension-parameterized resources keep the base provider's token
-			// namespace but belong to the extension's SDK package; import that.
+			// Extension resources import the extension's SDK package, not the base.
 			if r.Schema != nil && r.Schema.PackageReference != nil {
 				pkg = r.Schema.PackageReference.Name()
 			}
@@ -965,8 +964,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 					contract.Assertf(len(diagnostics) == 0, "Expected no diagnostics, got %d", len(diagnostics))
 
-					// Extension-parameterized function tokens live in the base
-					// provider's namespace but belong to the extension's package.
 					pkg = g.functionPackage(token)
 					vPath, err := g.getVersionPath(program, pkg)
 					if err != nil {
@@ -1562,8 +1559,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	if pkg == "pulumi" && mod == "pulumi" {
 		mod = ""
 	}
-	// Extension-parameterized resources keep the base provider's token namespace
-	// but are emitted from the extension's SDK package.
+	// Extension resources are emitted from the extension's SDK package, not the base.
 	if r.Schema != nil && r.Schema.PackageReference != nil {
 		pkg = r.Schema.PackageReference.Name()
 	}

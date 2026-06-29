@@ -1831,10 +1831,9 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 	return strKey, true
 }
 
-// functionPackage resolves the schema package that defines the given function
-// token. For extension-parameterized packages the function token lives in the
-// base provider's namespace, so the token prefix is the base name while the
-// owning package is the extension; fall back to the token prefix otherwise.
+// functionPackage resolves the package that defines the function token. For
+// extensions the token lives in the base namespace but the owner is the
+// extension; fall back to the token prefix.
 func (g *generator) functionPackage(token string) string {
 	pkg, _, _, _ := pcl.DecomposeToken(token, hcl.Range{})
 	if _, ok := g.packages[pkg]; ok {

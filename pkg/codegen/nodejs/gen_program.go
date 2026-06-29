@@ -615,8 +615,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				packageRef = n.Schema.PackageReference
-				// Extension-parameterized resources keep the base provider's token
-				// namespace but belong to the extension's SDK package; import that.
+				// Extension resources import the extension's SDK package, not the base.
 				pkg = packageRef.Name()
 			}
 			visitPkg(pkg, packageRef)
@@ -625,8 +624,6 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				packageRef = n.Schema.PackageReference
-				// Extension-parameterized resources keep the base provider's token
-				// namespace but belong to the extension's SDK package; import that.
 				pkg = packageRef.Name()
 			}
 			visitPkg(pkg, packageRef)

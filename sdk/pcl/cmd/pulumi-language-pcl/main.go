@@ -389,10 +389,8 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 		return nil, diags
 	}
 
-	// Tokens like "extbase:index:Greeting" belong to the base provider's namespace
-	// even though the SDK is renamed by an extension parameterization. A
-	// parameterized descriptor already covers its base name, so don't add a bare
-	// duplicate for it.
+	// A token in the base provider's namespace is already covered by the extension's
+	// parameterized descriptor, so don't add a bare duplicate for that base name.
 	baseNames := map[string]struct{}{}
 	for _, descriptor := range descriptorMap {
 		if descriptor.Parameterization != nil {

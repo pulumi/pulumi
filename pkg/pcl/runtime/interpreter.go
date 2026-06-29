@@ -82,10 +82,9 @@ type Interpreter struct {
 
 	// packageRefs maps a fully-qualified token (resource, function, or
 	// pulumi:providers:<pkg>) to the package reference RegisterPackage returned.
-	// Extension resources keep the base provider's namespace, so multiple
-	// extensions can share a token's package portion; indexing by the exact token
-	// disambiguates them. Tokens of plain, unregistered packages are absent, which
-	// resolves to the empty ref and so to the default provider.
+	// Keying on the exact token, not package name, keeps extensions that share the
+	// base provider's namespace distinct. A miss resolves to the empty ref, and so
+	// to the default provider.
 	packageRefs map[string]string
 
 	// callbacks is the server that handles resource hook callbacks.
@@ -695,9 +694,8 @@ func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDes
 	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
 		return descriptor
 	}
-	// Tokens like extbase:index:Greeting belong to the base provider's namespace
-	// but the descriptor that actually owns them is the extension parameterization
-	// that is keyed under the extension's name.
+	// A token in the base provider's namespace is owned by the extension
+	// parameterization keyed under the extension's name.
 	for _, descriptor := range i.info.PackageDescriptors {
 		if descriptor != nil && descriptor.Parameterization != nil && descriptor.Name == pkgName {
 			return descriptor
@@ -721,9 +719,6 @@ func PackageNameFromToken(token string) (string, error) {
 }
 
 func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
-	// Every registered package indexes its tokens here (resources, functions, and
-	// its pulumi:providers:<pkg> reference). A miss means a plain, unregistered
-	// package, whose empty ref tells the engine to use the default provider.
 	return i.packageRefs[token], nil
 }
 
@@ -759,9 +754,7 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 			Version: descriptor.Parameterization.Version.String(),
 			Value:   descriptor.Parameterization.Value,
 		}
-		// The schema declares which parameterization flavor this is via the
-		// ExtensionParameterization slot; route the wire field accordingly so the
-		// engine parameterizes the right way.
+		// Route to the wire field matching the schema's parameterization flavor.
 		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
 		if err != nil {
 			return fmt.Errorf("load package %q for register: %w", key, err)
@@ -784,11 +777,7 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 			return fmt.Errorf("register package %q returned empty reference", key)
 		}
 
-		// Extension resources keep the base provider's namespace, so multiple
-		// extensions can share the base name; a single name-keyed entry would
-		// collide. Index every token the package defines by its full token instead,
-		// plus the pulumi:providers:<pkg> reference so explicit provider references
-		// resolve too.
+		// Index every token the package defines, plus its provider ref (see packageRefs).
 		ref := resp.GetRef()
 		i.packageRefs["pulumi:providers:"+descriptor.PackageName()] = ref
 		for _, r := range def.Resources {
