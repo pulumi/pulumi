@@ -103,10 +103,9 @@ func deepCopy(v reflect.Value) reflect.Value {
 	case reflect.Struct:
 		// Special case property.Value and it's ilk as they are made of private fields, but we still want to be able to
 		// copy them. As they are immutable they can be copied by value.
-		switch typ {
-		case reflect.TypeFor[property.Value]():
-		case reflect.TypeFor[property.Array]():
-		case reflect.TypeFor[property.Map]():
+		if typ == reflect.TypeFor[property.Value]() ||
+			typ == reflect.TypeFor[property.Array]() ||
+			typ == reflect.TypeFor[property.Map]() {
 			return v
 		}
 

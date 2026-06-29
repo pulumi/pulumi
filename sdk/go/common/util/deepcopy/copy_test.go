@@ -105,7 +105,7 @@ func TestDeepCopyPropertyValue(t *testing.T) {
 
 		copied, ok := Copy(source).(property.Value)
 		require.True(t, ok)
-		assert.True(t, source.Equals(copied))
+		assert.True(t, source.Equals(copied), "%v != %v", source, copied)
 	})
 }
 
