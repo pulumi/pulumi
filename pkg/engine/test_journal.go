@@ -35,7 +35,7 @@ const (
 	TestJournalEntrySuccess  TestJournalEntryKind = 1
 	TestJournalEntryFailure  TestJournalEntryKind = 2
 	TestJournalEntryOutputs  TestJournalEntryKind = 4
-	TestJournalEntrySnippets TestJournalEntryKind = 8
+	TestJournalEntrySnippets TestJournalEntryKind = 9
 )
 
 type TestJournalEntry struct {
