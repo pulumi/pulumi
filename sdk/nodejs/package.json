@@ -42,7 +42,6 @@
         "@types/node": "14.18.63",
         "@types/normalize-package-data": "2.4.4",
         "@types/sinon": "10.0.20",
-        "@types/split2": "2.1.6",
         "@typescript-eslint/eslint-plugin": "4.33.0",
         "@typescript-eslint/parser": "4.33.0",
         "corepack": "0.34.5",
