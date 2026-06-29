@@ -59,13 +59,26 @@ type containerHost struct {
 	podID          string                                  // pod id; names the shared workspace volume both hosts mount
 	imageFor       func(workspace.PluginDescriptor) string // provider descriptor -> image ref
 
-	// startedMu guards started, which records the containers this host started for each
-	// booting context. ReleaseContext stops a context's containers when the engine releases
-	// it — the OCI analogue of the base host closing the provider processes it booted for a
-	// context. Provider() runs concurrently and (unlike the base host) does not funnel
-	// through a serializing load channel, so the map needs its own lock.
+	// startedMu guards started, which records the provider and policy-pack containers this
+	// host started for each booting context. ReleaseContext stops a context's containers when
+	// the engine releases it, and SignalCancellation forwards a graceful cancel to all of
+	// them — the OCI analogue of the base host closing and cancelling the plugins it booted.
+	// These plugins are attached directly, so the base host has no record of them. Provider()
+	// runs concurrently and (unlike the base host) does not funnel through a serializing load
+	// channel, so the map needs its own lock.
 	startedMu sync.Mutex
-	started   map[*plugin.Context][]Container
+	started   map[*plugin.Context][]podPlugin
+}
+
+// podPlugin is a provider or policy analyzer the container host started as a container for a
+// context and attached to directly. Because it never went through the base host
+// (defaultHost.Provider / PolicyAnalyzer), the base host has no record of it, so the container
+// host tracks it to drive the two lifecycle operations the base host would otherwise handle:
+// ReleaseContext stops the container, and SignalCancellation forwards a graceful cancel via
+// signalCancel — a provider's SignalCancellation or an analyzer's Cancel.
+type podPlugin struct {
+	container    Container
+	signalCancel func(context.Context) error
 }
 
 // WorkspaceMountPath is where the per-pod shared workspace volume is mounted, in both
@@ -107,7 +120,7 @@ func NewContainerHost(base plugin.Host, pod PodManager, engineHost, programImage
 		programImage:   programImage,
 		pluginRegistry: pluginRegistry,
 		podID:          podID,
-		started:        map[*plugin.Context][]Container{},
+		started:        map[*plugin.Context][]podPlugin{},
 		imageFor: func(spec workspace.PluginDescriptor) string {
 			return providerImageRef(pluginRegistry, spec)
 		},
@@ -330,19 +343,20 @@ func uniqueContainerName(base string) string {
 	return fmt.Sprintf("%s-%d", base, containerSeq.Add(1))
 }
 
-// trackContainer records a container started for ctx so ReleaseContext can stop it when the
-// engine releases ctx. Keyed on the lifetime context — the same key the base host uses for
-// the provider plugins it boots (defaultHost.Provider) — and ReleaseContext keys its lookup
-// the same way, so the two cannot drift. The map is lazily initialised so a zero-value host
-// (constructed directly in tests) is safe.
-func (h *containerHost) trackContainer(ctx *plugin.Context, c Container) {
+// trackPlugin records a container the host started for ctx, with the function that forwards a
+// graceful cancellation to it, so ReleaseContext can stop it and SignalCancellation can cancel
+// it. Keyed on the lifetime context — the same key the base host uses for the plugins it boots
+// (defaultHost.Provider) — and the lifecycle methods key their lookups the same way, so the
+// two cannot drift. The map is lazily initialised so a zero-value host (constructed directly in
+// tests) is safe.
+func (h *containerHost) trackPlugin(ctx *plugin.Context, c Container, signalCancel func(context.Context) error) {
 	h.startedMu.Lock()
 	defer h.startedMu.Unlock()
 	if h.started == nil {
-		h.started = map[*plugin.Context][]Container{}
+		h.started = map[*plugin.Context][]podPlugin{}
 	}
 	key := ctx.LifetimeContext()
-	h.started[key] = append(h.started[key], c)
+	h.started[key] = append(h.started[key], podPlugin{container: c, signalCancel: signalCancel})
 }
 
 // Provider starts the provider as a container sharing the engine's network
@@ -376,9 +390,11 @@ func (h *containerHost) Provider(
 		_ = h.pod.StopContainer(context.Background(), c)
 		return nil, err
 	}
-	// Reap this container when the engine releases ctx (at the end of each deployment phase),
-	// the way the base host reaps the provider processes it boots. See ReleaseContext.
-	h.trackContainer(ctx, c)
+	// Track this container so ReleaseContext can reap it (at the end of each deployment phase)
+	// and SignalCancellation can forward a graceful cancel — the base host does neither, since
+	// the provider is attached directly, not booted through defaultHost.Provider. See
+	// ReleaseContext and SignalCancellation.
+	h.trackPlugin(ctx, c, prov.SignalCancellation)
 	return prov, nil
 }
 
@@ -599,11 +615,13 @@ func (h *containerHost) PolicyAnalyzer(
 		_ = h.pod.StopContainer(context.Background(), c)
 		return nil, fmt.Errorf("oci: attaching to policy pack %s: %w", name, err)
 	}
-	// Reap this container when the engine releases ctx, like a provider. A policy pack
-	// analyzes during both preview and apply, so without this its preview-phase container
-	// would linger until the whole pod is torn down. See ReleaseContext.
-	h.trackContainer(ctx, c)
-	return plugin.NewAnalyzerWithClient(name, client), nil
+	// Track this container so ReleaseContext reaps it and SignalCancellation cancels it, as
+	// for a provider. A policy pack analyzes during both preview and apply, so otherwise its
+	// preview-phase container would linger until the pod is torn down and would ignore a
+	// Ctrl-C. See ReleaseContext and SignalCancellation.
+	analyzer := plugin.NewAnalyzerWithClient(name, client)
+	h.trackPlugin(ctx, c, analyzer.Cancel)
+	return analyzer, nil
 }
 
 // policyPackImage resolves a policy pack reference to the container image to run it
@@ -703,26 +721,54 @@ func sanitizeContainerName(s string) string {
 func (h *containerHost) ReleaseContext(ctx *plugin.Context) error {
 	h.startedMu.Lock()
 	key := ctx.LifetimeContext()
-	containers := h.started[key]
+	plugins := h.started[key]
 	delete(h.started, key)
 	h.startedMu.Unlock()
 
 	cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	var errs []error
-	for _, c := range containers {
-		if err := h.pod.StopContainer(cleanupCtx, c); err != nil {
-			errs = append(errs, fmt.Errorf("oci: stopping container %s on context release: %w", c.Name, err))
+	for _, p := range plugins {
+		if err := h.pod.StopContainer(cleanupCtx, p.container); err != nil {
+			errs = append(errs, fmt.Errorf("oci: stopping container %s on context release: %w", p.container.Name, err))
 		}
 	}
 	errs = append(errs, h.Host.ReleaseContext(ctx))
 	return errors.Join(errs...)
 }
 
-// Close tears down the provider containers this host started, then closes the
-// base host. The promoted SignalCancellation never reaches these containers (the
-// base host has no record of them), and ReleaseContext only reaps the containers of
-// contexts the engine has released, so this is the backstop that cleans up the rest.
+// SignalCancellation forwards a graceful cancellation to every provider and policy-pack
+// container this host started, then to the base host. These plugins are attached directly
+// rather than booted through the base host, so the promoted SignalCancellation — which
+// iterates the base host's own plugin set — would skip them, and a Ctrl-C during an OCI
+// deployment would never reach in-flight provider operations. The signal is advisory and
+// best-effort; failures are collected and returned (matching the base host), while the hard
+// stop remains Close/ReleaseContext. The lock is released before the RPCs so a slow plugin
+// does not block Provider() starting another.
+func (h *containerHost) SignalCancellation() error {
+	h.startedMu.Lock()
+	var plugins []podPlugin
+	for _, ps := range h.started {
+		plugins = append(plugins, ps...)
+	}
+	h.startedMu.Unlock()
+
+	cancelCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var errs []error
+	for _, p := range plugins {
+		if err := p.signalCancel(cancelCtx); err != nil {
+			errs = append(errs, fmt.Errorf("oci: signaling cancellation to %s: %w", p.container.Name, err))
+		}
+	}
+	errs = append(errs, h.Host.SignalCancellation())
+	return errors.Join(errs...)
+}
+
+// Close tears down every container this host started (via pod.Cleanup), then closes the base
+// host. ReleaseContext reaps the containers of contexts the engine has released and
+// SignalCancellation cancels in-flight ones, but neither is guaranteed to have run, so this
+// is the backstop that cleans up whatever remains.
 func (h *containerHost) Close() error {
 	cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

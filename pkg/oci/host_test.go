@@ -72,6 +72,18 @@ func containerIDs(cs []Container) []string {
 	return ids
 }
 
+func trackedIDs(ps []podPlugin) []string {
+	ids := make([]string, len(ps))
+	for i, p := range ps {
+		ids[i] = p.container.ID
+	}
+	return ids
+}
+
+// noSignal is a no-op cancellation function for tracking containers in tests that don't
+// exercise SignalCancellation.
+func noSignal(context.Context) error { return nil }
+
 // When a provider image is absent and no registry is configured to install it,
 // ensureImage must bail out with an actionable error rather than letting the
 // downstream docker run/copy fail cryptically.
@@ -164,12 +176,12 @@ func TestReleaseContextReapsTrackedContainers(t *testing.T) {
 	h := &containerHost{
 		Host:    &plugin.MockHost{},
 		pod:     recordingPod{stopped: &stopped},
-		started: map[*plugin.Context][]Container{},
+		started: map[*plugin.Context][]podPlugin{},
 	}
 	ctxA, ctxB := &plugin.Context{}, &plugin.Context{}
-	h.trackContainer(ctxA, Container{ID: "a1", Name: "provider-aws-1"})
-	h.trackContainer(ctxA, Container{ID: "a2", Name: "policy-pack-2"})
-	h.trackContainer(ctxB, Container{ID: "b1", Name: "provider-gcp-3"})
+	h.trackPlugin(ctxA, Container{ID: "a1", Name: "provider-aws-1"}, noSignal)
+	h.trackPlugin(ctxA, Container{ID: "a2", Name: "policy-pack-2"}, noSignal)
+	h.trackPlugin(ctxB, Container{ID: "b1", Name: "provider-gcp-3"}, noSignal)
 
 	// Map lookups go by pointer identity; assert on those and on the StopContainer record
 	// rather than testify's Contains, which compares keys with reflect.DeepEqual (two
@@ -178,7 +190,7 @@ func TestReleaseContextReapsTrackedContainers(t *testing.T) {
 	require.ElementsMatch(t, []string{"a1", "a2"}, containerIDs(stopped),
 		"only the released context's containers are stopped")
 	require.Empty(t, h.started[ctxA], "the released context is forgotten")
-	require.Equal(t, []string{"b1"}, containerIDs(h.started[ctxB]),
+	require.Equal(t, []string{"b1"}, trackedIDs(h.started[ctxB]),
 		"an unreleased context's containers stay tracked")
 	require.Len(t, h.started, 1)
 
@@ -186,6 +198,29 @@ func TestReleaseContextReapsTrackedContainers(t *testing.T) {
 	require.NoError(t, h.ReleaseContext(ctxB))
 	require.ElementsMatch(t, []string{"b1"}, containerIDs(stopped))
 	require.Empty(t, h.started)
+}
+
+// SignalCancellation forwards a graceful cancel to every tracked plugin across all contexts —
+// the providers and policy packs the container host attached directly, which the base host's
+// own SignalCancellation never sees. Without this, a Ctrl-C during an OCI deployment would not
+// reach in-flight provider operations.
+func TestSignalCancellationForwardsToTrackedPlugins(t *testing.T) {
+	t.Parallel()
+	var signaled []string
+	h := &containerHost{
+		Host:    &plugin.MockHost{},
+		started: map[*plugin.Context][]podPlugin{},
+	}
+	rec := func(name string) func(context.Context) error {
+		return func(context.Context) error { signaled = append(signaled, name); return nil }
+	}
+	ctxA, ctxB := &plugin.Context{}, &plugin.Context{}
+	h.trackPlugin(ctxA, Container{Name: "provider-aws-1"}, rec("aws"))
+	h.trackPlugin(ctxB, Container{Name: "policy-pack-2"}, rec("policy"))
+
+	require.NoError(t, h.SignalCancellation())
+	require.ElementsMatch(t, []string{"aws", "policy"}, signaled,
+		"a graceful cancel reaches every tracked plugin across all contexts")
 }
 
 // projectedProviderEnv copies the engine env onto a provider container (spawn
