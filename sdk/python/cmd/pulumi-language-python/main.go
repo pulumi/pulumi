@@ -130,7 +130,14 @@ func main() {
 	}
 
 	args := flag.Args()
-	logging.InitLogging(false, 0, false)
+
+	// Optionally pluck out the engine so we can do logging, etc.
+	var engineAddress string
+	if len(args) > 0 {
+		engineAddress = args[0]
+	}
+
+	logging.InitLogging(false, 0, false, engineAddress)
 
 	// Use OTel when the CLI provides an OTLP endpoint; fall back to
 	// OpenTracing otherwise.  Only one system should be active to avoid
@@ -165,12 +172,6 @@ func main() {
 	} else {
 		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
 		pythonExec = givenExecutor
-	}
-
-	// Optionally pluck out the engine so we can do logging, etc.
-	var engineAddress string
-	if len(args) > 0 {
-		engineAddress = args[0]
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)

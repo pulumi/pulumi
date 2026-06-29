@@ -133,7 +133,13 @@ func main() {
 	}
 
 	args := flag.Args()
-	logging.InitLogging(false, 0, false)
+
+	var engineAddress string
+	if len(args) > 0 {
+		engineAddress = args[0]
+	}
+
+	logging.InitLogging(false, 0, false, engineAddress)
 
 	// Use OTel when the CLI provides an OTLP endpoint; fall back to
 	// OpenTracing otherwise.  Only one system should be active to avoid
@@ -146,12 +152,6 @@ func main() {
 			logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
 		}
 		defer cmdutil.CloseOtelTracing()
-	}
-
-	// Optionally pluck out the engine so we can do logging, etc.
-	var engineAddress string
-	if len(args) > 0 {
-		engineAddress = args[0]
 	}
 
 	if runtimeName != "nodejs" && runtimeName != "bun" {

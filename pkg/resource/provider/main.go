@@ -60,7 +60,7 @@ func MainContext(
 	logging.RegisterExportHandlerWrapper(func(h slog.Handler) slog.Handler {
 		return pkglogging.NewPropertyExportHandler(h)
 	})
-	logging.InitLogging(false, 0, false)
+	logging.InitLogging(false, 0, false, "")
 
 	// When the CLI provides an OTel endpoint, we use OTel as the primary tracing backend and bridge legacy OpenTracing
 	// calls through it so all spans end up in the same OTel trace. Otherwise fall back to legacy OpenTracing/AppDash.

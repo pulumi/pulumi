@@ -28,6 +28,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/user"
@@ -64,6 +65,7 @@ var (
 	exportHandler slog.Handler                    // OTLP export handler, nil when inactive
 	logFilePath   string
 	logFile       *os.File
+	engineLogConn io.Closer // gRPC connection to the engine, nil unless forwarding logs
 )
 
 func init() {
@@ -191,7 +193,7 @@ func fmtAttrs(args []any, extra ...any) []any {
 	return append(out, extra...)
 }
 
-func InitLogging(logToStderr bool, verbose int, logFlow bool) {
+func InitLogging(logToStderr bool, verbose int, logFlow bool, engineAddress string) {
 	LogToStderr = logToStderr
 	Verbose = verbose
 	LogFlow = logFlow
@@ -218,11 +220,20 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 
 	handlerMu.Lock()
 
-	if LogToStderr {
-		primary = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			Level: LevelTrace,
-		})
-	} else if Verbose > 0 {
+	switch {
+	case LogToStderr && engineAddress != "":
+		// Forward logs to the engine over gRPC so they are classified by
+		// severity instead of leaking to stderr. Fall back to JSON if we can't
+		// reach the engine.
+		if h, conn, err := newEngineLogHandler(engineAddress); err == nil {
+			engineLogConn = conn
+			primary = h
+		} else {
+			primary = stderrJSONHandler()
+		}
+	case LogToStderr:
+		primary = stderrJSONHandler()
+	case Verbose > 0:
 		f, err := os.Create(logFileName())
 		if err == nil {
 			logFilePath = f.Name()
@@ -265,6 +276,10 @@ func Flush() {
 	shutdownExportHandler()
 	if logFile != nil {
 		logFile.Sync() //nolint:errcheck
+	}
+	if engineLogConn != nil {
+		engineLogConn.Close() //nolint:errcheck
+		engineLogConn = nil
 	}
 }
 
