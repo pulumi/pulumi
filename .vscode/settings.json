@@ -6,10 +6,13 @@
     },
     "gopls": {
         // A couple of modules get copied as part of builds and this confuse gopls as it sees the module name twice, just ignore the copy in the build folders.
+        // The testdata trees contain many minimal/generated nested go.mod fixtures; excluding them keeps gopls from tidying them in place (which produces spurious go.mod/go.sum diffs) and speeds up loading. These dirs are also excluded from `make tidy` (see scripts/tidy.sh).
         "build.directoryFilters": [
             "-sdk/nodejs/bin",
             "-sdk/nodejs/tests",
-            "-sdk/python/env"
+            "-sdk/python/env",
+            "-sdk/go/pulumi-language-go/testdata",
+            "-tests/testdata"
         ],
         // Uses https://github.com/mvdan/gofumpt for formatting.
         "formatting.gofumpt": true,

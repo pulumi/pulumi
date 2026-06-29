@@ -51,6 +51,12 @@ tests/testdata/codegen/*-pp/*/package.json
 tests/testdata/codegen/*-pp/*/go.sum
 tests/testdata/codegen/*-pp/*/tsconfig.json
 
+# The Go policy pack fixtures are committed as minimal go.mod files and get tidied/built in place
+# when tests (or an editor's Go modules integration) run over them. The resulting go.sum files and
+# compiled policy analyzer binaries are generated, not source, so don't track them.
+sdk/go/pulumi-language-go/testdata/policies/*/go.sum
+sdk/go/pulumi-language-go/testdata/policies/*/pulumi-analyzer-policy-*
+
 # We don't need to keep fuzzing failures around
 pkg/engine/lifecycletest/testdata/rapid/
 

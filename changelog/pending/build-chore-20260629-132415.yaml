@@ -1,0 +1,6 @@
+component: build
+kind: chore
+body: Ignore generated go.sum files and policy analyzer binaries produced when Go testdata fixtures are tidied or built in place
+time: 2026-06-29T13:24:15-07:00
+custom:
+    PR: "23727"

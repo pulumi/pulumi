@@ -29,6 +29,22 @@ Finally, please limit your pull requests to contain only one feature at a time. 
 
 Please see the [developer docs](https://pulumi-developer-docs.readthedocs.io/latest/docs/contributing/development.html) for instructions.
 
+### Editor setup: avoiding testdata go.mod churn
+
+Many Go test fixtures under `sdk/go/pulumi-language-go/testdata` and `tests/testdata` are committed as
+minimal `go.mod` files and are tidied or built in place when tests run. Editors that automatically sync
+Go modules — notably IntelliJ/GoLand's Go modules integration, and gopls — will run `go mod tidy` over
+these nested modules, expanding the `go.mod` files with the full transitive dependency set and generating
+`go.sum` files. The result is large spurious diffs that are easy to commit by accident.
+
+The generated `go.sum` files and policy analyzer binaries are git-ignored, and `make tidy` already skips
+these directories. To also avoid `go.mod` churn, exclude the `testdata` trees from your editor's Go module
+integration:
+
+- **VS Code**: handled automatically via `gopls.build.directoryFilters` in `.vscode/settings.json`.
+- **IntelliJ/GoLand**: mark `sdk/go/pulumi-language-go/testdata` and `tests/testdata` as *Excluded*
+  directories (right-click → Mark Directory as → Excluded).
+
 ## Submitting a Pull Request
 
 For contributors we use the [standard fork based workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962): Fork this repository, create a topic branch, and when ready, open a pull request from your fork.
