@@ -22,7 +22,6 @@
         "@opentelemetry/sdk-trace-node": "^1.30",
         "@types/google-protobuf": "^3.15.5",
         "@types/semver": "^7.5.6",
-        "@types/tmp": "^0.2.6",
         "execa": "^5.1.0",
         "fdir": "^6.5.0",
         "google-protobuf": "^3.21.4",
@@ -34,7 +33,6 @@
         "require-from-string": "^2.0.1",
         "semver": "^7.5.2",
         "source-map-support": "^0.5.6",
-        "tmp": "^0.2.4",
         "upath": "^1.1.0"
     },
     "devDependencies": {
