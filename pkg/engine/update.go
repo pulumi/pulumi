@@ -26,6 +26,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/gofrs/uuid"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
@@ -436,6 +437,89 @@ type UpdateOptions struct {
 	// otherwise happens during engine setup. Missing plugins will still be installed lazily by
 	// the provider registry when they are actually requested.
 	SkipPluginPreInstall bool
+
+	// Snippets updates the PCL snippets stored in the stack snapshot as part of this deployment. Keys are snippet
+	// UUIDs. A new UUID adds a snippet, an existing UUID replaces that snippet when the value is non-nil, and an
+	// existing UUID with a nil value deletes that snippet.
+	Snippets map[uuid.UUID]*resource.Snippet
+}
+
+func applySnippetUpdates(base []resource.Snippet, updates map[uuid.UUID]*resource.Snippet) ([]resource.Snippet, error) {
+	if len(updates) == 0 {
+		return base, nil
+	}
+
+	byUUID := make(map[uuid.UUID]int, len(base))
+	result := make([]resource.Snippet, 0, len(base)+len(updates))
+	for i, snippet := range base {
+		id, err := uuid.FromString(snippet.UUID)
+		if err != nil {
+			return nil, fmt.Errorf("snippet at index %d has invalid uuid %q", i, snippet.UUID)
+		}
+		if other, ok := byUUID[id]; ok {
+			return nil, fmt.Errorf("duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i)
+		}
+		byUUID[id] = len(result)
+		result = append(result, snippet)
+	}
+
+	keys := make([]uuid.UUID, 0, len(updates))
+	for id := range updates {
+		if id == uuid.Nil {
+			return nil, errors.New("snippet update contains nil uuid")
+		}
+		keys = append(keys, id)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].String() < keys[j].String()
+	})
+
+	for _, id := range keys {
+		snippet := updates[id]
+		existing, exists := byUUID[id]
+		if snippet == nil {
+			if !exists {
+				return nil, fmt.Errorf("cannot delete snippet %q: no such snippet in snapshot", id)
+			}
+			result = append(result[:existing], result[existing+1:]...)
+			delete(byUUID, id)
+			for i := existing; i < len(result); i++ {
+				parsed, err := uuid.FromString(result[i].UUID)
+				contract.AssertNoErrorf(err, "validated snippet UUID changed")
+				byUUID[parsed] = i
+			}
+			continue
+		}
+
+		updated := *snippet
+		if updated.UUID != "" && updated.UUID != id.String() {
+			return nil, fmt.Errorf("snippet %q has mismatched uuid %q", id, updated.UUID)
+		}
+		updated.UUID = id.String()
+		if exists {
+			result[existing] = updated
+		} else {
+			byUUID[id] = len(result)
+			result = append(result, updated)
+		}
+	}
+
+	return result, nil
+}
+
+func targetWithSnippets(target *deploy.Target, snippets []resource.Snippet) *deploy.Target {
+	if target == nil {
+		return nil
+	}
+	next := *target
+	if next.Snapshot == nil {
+		next.Snapshot = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, snippets, nil)
+		return &next
+	}
+	snapshot := *next.Snapshot
+	snapshot.Snippets = snippets
+	next.Snapshot = &snapshot
+	return &next
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -458,6 +542,18 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
+	var baseSnippets []resource.Snippet
+	if u.Target != nil && u.Target.Snapshot != nil {
+		baseSnippets = u.Target.Snapshot.Snippets
+	}
+	effectiveSnippets, err := applySnippetUpdates(baseSnippets, opts.Snippets)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(opts.Snippets) > 0 {
+		u.Target = targetWithSnippets(u.Target, effectiveSnippets)
+	}
+
 	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "update", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
@@ -472,6 +568,12 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 
 	logging.V(7).Infof("*** Starting Update(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Update(preview=%v) complete ***", dryRun)
+
+	if len(opts.Snippets) > 0 && !dryRun && ctx.SnapshotManager != nil {
+		if err := ctx.SnapshotManager.SetSnippets(effectiveSnippets); err != nil {
+			return nil, nil, err
+		}
+	}
 
 	// We skip the target check here because the targeted resource may not exist yet.
 

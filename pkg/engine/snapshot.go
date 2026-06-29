@@ -18,6 +18,7 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // SnapshotManager manages an in-memory resource graph.
@@ -31,6 +32,9 @@ type SnapshotManager interface {
 	// RebuiltBaseState is called to inform the SnapshotManager that the engine has rebuilt
 	// the base state after a refresh
 	RebuiltBaseState() error
+
+	// SetSnippets replaces the PCL snippets that should be persisted with the next snapshot.
+	SetSnippets(snippets []resource.Snippet) error
 
 	// BeginMutation signals to the SnapshotManager that the planner intends to mutate the global
 	// snapshot. It provides the step that it intends to execute. Based on that step, BeginMutation
