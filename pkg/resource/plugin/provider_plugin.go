@@ -328,6 +328,96 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	return p, nil
 }
 
+// NewProviderAttached constructs a provider by attaching to an already-running
+// provider listening on 127.0.0.1:port, instead of resolving and spawning a
+// plugin binary. This is the seam a container-mode Host (the OCI pod model) uses:
+// it starts the provider container, discovers the port the provider prints, and
+// attaches directly — without the PULUMI_DEBUG_PROVIDERS backchannel. Mirrors
+// sdk/go/common/resource/plugin.NewProviderAttached for the engine's pkg plugin
+// fork, which is what the OCI container host targets. The provider-construction
+// tail is inlined to match NewProvider above (this fork predates the sdk's
+// newProviderFromPlugin extraction).
+func NewProviderAttached(host Host, ctx *Context, spec workspace.PluginDescriptor,
+	port int, disableProviderPreview bool,
+) (Provider, error) {
+	pkg := tokens.Package(spec.Name)
+	prefix := fmt.Sprintf("%v (resource)", pkg)
+	// Compute these against the plugin *Context before the closure, whose own
+	// ctx parameter is a context.Context that would otherwise shadow it.
+	mapperAddr := mapperTarget(ctx)
+	loaderAddr := loaderTarget(ctx)
+	resolverAddr := resolverTarget(ctx)
+
+	handshake := func(
+		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+	) (*ProviderHandshakeResponse, error) {
+		req := &ProviderHandshakeRequest{
+			EngineAddress: host.ServerAddr(),
+			// If we're attaching then we don't know the root or program directory.
+			RootDirectory:               nil,
+			ProgramDirectory:            nil,
+			ConfigureWithUrn:            true,
+			SupportsViews:               true,
+			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
+			InvokeWithPreview:           true,
+			MapperTarget:                mapperAddr,
+			LoaderTarget:                loaderAddr,
+			ResolverTarget:              resolverAddr,
+		}
+		return handshake(ctx, bin, prefix, conn, req)
+	}
+
+	conn, handshakeRes, err := dialPlugin(ctx.Base(), port, pkg.String(), prefix,
+		handshake, providerPluginDialOptions(ctx, pkg, ""))
+	if err != nil {
+		return nil, err
+	}
+
+	// Done; store the connection. There is no child process to kill.
+	plug := &Plugin{
+		Conn: conn,
+		Kill: func() error { return nil },
+	}
+
+	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
+
+	var overrideVersion *semver.Version
+	if spec.IsGitPlugin() {
+		overrideVersion = spec.Version
+	}
+
+	p := &provider{
+		ctx:                    ctx,
+		plug:                   plug,
+		clientRaw:              pulumirpc.NewResourceProviderClient(plug.Conn),
+		disableProviderPreview: disableProviderPreview,
+		legacyPreview:          legacyPreview,
+		configSource:           &promise.CompletionSource[pluginConfig]{},
+		overrideVersion:        overrideVersion,
+	}
+
+	if handshakeRes != nil {
+		p.protocol = &pluginProtocol{
+			acceptSecrets:                   handshakeRes.AcceptSecrets,
+			acceptResources:                 handshakeRes.AcceptResources,
+			supportsPreview:                 true,
+			acceptOutputs:                   handshakeRes.AcceptOutputs,
+			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+		}
+	}
+
+	// We attached (no child process), so deliver the engine address via Attach.
+	// Tolerate an Unimplemented Attach: the dynamic providers (pulumi-nodejs/python),
+	// which the OCI model also attaches to as containers, predate Attach and do not
+	// consume the engine address that way. This mirrors the tolerance of an
+	// unimplemented Handshake; a provider that needs the address implements Attach.
+	if err := p.Attach(host.ServerAddr()); err != nil && rpcerror.Convert(err).Code() != codes.Unimplemented {
+		return nil, err
+	}
+
+	return p, nil
+}
+
 // mapperTarget returns the context's mapper address as an optional handshake field, nil when the context has no
 // mapper service.
 func mapperTarget(ctx *Context) *string {
