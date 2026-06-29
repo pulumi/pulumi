@@ -296,6 +296,17 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 	}
 	pod := oci.NewDockerPodManager(podID)
 
+	// Shared workspace volume: the program writes its runtime workspace here (build
+	// outputs an asset-consuming provider must read, e.g. cloudflare WorkerVersion's
+	// asset files), and providers mount the same volume at the same path. Creating it
+	// (vs. mounting a bare name) labels it for pod cleanup; Docker seeds the empty volume
+	// from the program image's workspace on first mount, so the program runs with its
+	// baked source/deps and builds into the shared volume providers then read.
+	wsVol, err := pod.CreateVolume(ctx, oci.WorkspaceVolumeLogical)
+	if err != nil {
+		return nil, fmt.Errorf("oci: creating shared workspace volume: %w", err)
+	}
+
 	network := os.Getenv("PULUMI_POD_NETWORK")
 	cfg := oci.ContainerConfig{
 		Image:   image,
@@ -306,6 +317,7 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 		// the host engine through the host-gateway alias. On the pod network
 		// (Option C) it reaches the engine by container DNS and needs no gateway.
 		HostGateway: network == "",
+		Volumes:     []oci.VolumeMount{{Source: wsVol.Name, Target: oci.WorkspaceMountPath}},
 	}
 
 	c, err := pod.RunContainer(ctx, cfg)

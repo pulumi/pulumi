@@ -54,7 +54,26 @@ type containerHost struct {
 	engineHost     string                                  // engine container name; providers share its netns
 	programImage   string                                  // program image; workspace-coupled providers run from it
 	pluginRegistry string                                  // OCI registry to pull absent provider images from ("" = assume present)
+	podID          string                                  // pod id; names the shared workspace volume both hosts mount
 	imageFor       func(workspace.PluginDescriptor) string // provider descriptor -> image ref
+}
+
+// WorkspaceMountPath is where the per-pod shared workspace volume is mounted, in both
+// the program container and provider containers — the program's working directory, so
+// any workspace path the program references (a Pulumi asset, or a provider's file-path
+// property such as cloudflare's asset directory) resolves identically in the provider.
+const WorkspaceMountPath = "/app"
+
+// WorkspaceVolumeLogical is the logical name passed to PodManager.CreateVolume for the
+// shared workspace volume; WorkspaceVolumeName derives the runtime name it resolves to.
+const WorkspaceVolumeLogical = "workspace"
+
+// WorkspaceVolumeName is the runtime name of the per-pod shared workspace volume. It is
+// derived purely from the pod id so the language host (which creates it and mounts it
+// into the program) and the plugin host (which mounts it into providers) agree on one
+// volume without coordinating. It must match dockerPodManager.CreateVolume's naming.
+func WorkspaceVolumeName(podID string) string {
+	return fmt.Sprintf("pulumi-pod-%s-vol-%s", podID, WorkspaceVolumeLogical)
 }
 
 // Assert containerHost still satisfies the full Host interface after wrapping.
@@ -70,13 +89,14 @@ var _ plugin.Host = (*containerHost)(nil)
 // images are pulled (and retagged to the bare convention) before use — the
 // container-model "install" step. Empty preserves the prior behaviour: an absent
 // image is assumed prebuilt/loaded and surfaces at run time if it is not.
-func NewContainerHost(base plugin.Host, pod PodManager, engineHost, programImage, pluginRegistry string) plugin.Host {
+func NewContainerHost(base plugin.Host, pod PodManager, engineHost, programImage, pluginRegistry, podID string) plugin.Host {
 	return &containerHost{
 		Host:           base,
 		pod:            pod,
 		engineHost:     engineHost,
 		programImage:   programImage,
 		pluginRegistry: pluginRegistry,
+		podID:          podID,
 		imageFor: func(spec workspace.PluginDescriptor) string {
 			return providerImageRef(pluginRegistry, spec)
 		},
@@ -104,7 +124,7 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 	programImage := os.Getenv("PULUMI_POD_PROGRAM_IMAGE")
 	// Optional: an OCI registry to pull provider plugin images from on demand.
 	pluginRegistry := os.Getenv("PULUMI_POD_PLUGIN_REGISTRY")
-	return NewContainerHost(base, NewDockerPodManager(podID), engineHost, programImage, pluginRegistry), nil
+	return NewContainerHost(base, NewDockerPodManager(podID), engineHost, programImage, pluginRegistry, podID), nil
 }
 
 // ProviderImageRef returns the OCI image reference for a provider plugin, by
@@ -386,7 +406,17 @@ func (h *containerHost) providerContainer(
 		cfg.Volumes = append(cfg.Volumes, VolumeMount{Source: vol.Name, Target: injectedBinDir})
 		cfg.Entrypoint = []string{injectedBinPath}
 	} else {
+		// A stateless provider runs from its own image, but it may still need to read
+		// the program's workspace: a Pulumi asset, or a provider file-path property
+		// (e.g. cloudflare's WorkerVersion asset directory) points at a path under the
+		// program's working dir. Mount the shared workspace volume at the same path so
+		// those reads resolve. The program populates this volume at runtime (and Docker
+		// seeds it from the program image), so the provider sees the live workspace —
+		// including build outputs the program produced during evaluation. Providers that
+		// do not read files simply ignore the mount.
 		cfg.Image = providerImage
+		cfg.Volumes = append(cfg.Volumes,
+			VolumeMount{Source: WorkspaceVolumeName(h.podID), Target: WorkspaceMountPath})
 	}
 
 	// Project the host capabilities the provider declares it needs (docker socket,
