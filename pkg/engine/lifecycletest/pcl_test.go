@@ -1665,7 +1665,7 @@ func TestPclSnippetAddUpdateDeleteViaOption(t *testing.T) {
 		Options: lt.TestUpdateOptions{
 			SkipDisplayTests: true,
 			T:                t,
-			HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		},
 	}
 
@@ -1727,7 +1727,7 @@ func TestPclSnippetOptionValidation(t *testing.T) {
 			Options: lt.TestUpdateOptions{
 				SkipDisplayTests: true,
 				T:                t,
-				HostF:            deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+				HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 			},
 		}
 	}

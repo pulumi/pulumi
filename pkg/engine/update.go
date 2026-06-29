@@ -513,7 +513,7 @@ func targetWithSnippets(target *deploy.Target, snippets []resource.Snippet) *dep
 	}
 	next := *target
 	if next.Snapshot == nil {
-		next.Snapshot = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, snippets)
+		next.Snapshot = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, snippets, nil)
 		return &next
 	}
 	snapshot := *next.Snapshot
