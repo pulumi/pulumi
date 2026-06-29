@@ -95,11 +95,9 @@ func analyzeResource(
 	return invalidAtomic.Load(), sawErrorAtomic.Load(), nil
 }
 
-// snapshotRootStackURN returns the URN to attribute stack-level policy violations to:
-// the snapshot's root stack resource, or a default root stack URN synthesized from any
-// resource. Only valid URNs are considered, so a malformed URN never reaches consumers
-// that dereference it. Returns an empty URN for a resourceless snapshot; the display
-// layer's policyResourceClause guard tolerates that.
+// snapshotRootStackURN returns the URN that stack-level policy violations are attributed
+// to: the snapshot's root stack resource, or a default synthesized from another resource.
+// Invalid URNs are skipped; a resourceless snapshot yields the empty URN.
 func snapshotRootStackURN(snap *Snapshot) resource.URN {
 	var fallback resource.URN
 	for _, res := range snap.Resources {
@@ -116,11 +114,9 @@ func snapshotRootStackURN(snap *Snapshot) resource.URN {
 	return fallback
 }
 
-// resolveStackPolicyViolationURN returns the URN to attribute a stack-level policy
-// diagnostic to: the diagnostic's own URN when it names a resource currently in the
-// stack, otherwise the root stack URN, since stack-level violations are not tied to a
-// resource. Shared by the deployment path (step_generator.go) and the offline snapshot
-// analyzer so their attribution stays consistent.
+// resolveStackPolicyViolationURN attributes a stack-level policy diagnostic to its own URN
+// when that names a resource in the stack, otherwise to the root stack URN. Shared with the
+// deployment path (step_generator.go) to keep attribution consistent.
 func resolveStackPolicyViolationURN(
 	diagURN, rootStackURN resource.URN,
 	inStack func(resource.URN) bool,
@@ -271,8 +267,7 @@ func AnalyzeSnapshot(
 		})
 	}
 
-	// Inputs for resolveStackPolicyViolationURN: only non-deleted resources are sent to
-	// AnalyzeStack, so only those are valid violation targets; anything else (including a
+	// Only non-deleted resources are valid violation targets; anything else (including a
 	// stack-level violation's empty URN) attributes to the root stack.
 	rootStackURN := snapshotRootStackURN(snap)
 	snapshotURNs := make(map[resource.URN]struct{}, len(snap.Resources))
