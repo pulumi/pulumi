@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -50,6 +51,26 @@ func (f fakePod) CopyFromImage(context.Context, string, string, Volume, string) 
 func (f fakePod) ImageExists(context.Context, string) (bool, error) { return f.imageExists, nil }
 func (f fakePod) PullImage(context.Context, string) error           { panic("unused") }
 func (f fakePod) Cleanup(context.Context) error                     { panic("unused") }
+
+// recordingPod is a fakePod that records the containers StopContainer was called on, so a
+// test can assert which containers ReleaseContext reaped.
+type recordingPod struct {
+	fakePod
+	stopped *[]Container
+}
+
+func (r recordingPod) StopContainer(_ context.Context, c Container) error {
+	*r.stopped = append(*r.stopped, c)
+	return nil
+}
+
+func containerIDs(cs []Container) []string {
+	ids := make([]string, len(cs))
+	for i, c := range cs {
+		ids[i] = c.ID
+	}
+	return ids
+}
 
 // When a provider image is absent and no registry is configured to install it,
 // ensureImage must bail out with an actionable error rather than letting the
@@ -101,6 +122,70 @@ func TestProviderContainerDynamicRequiresProgramImage(t *testing.T) {
 	_, err := h.providerContainer(context.Background(), workspace.PluginDescriptor{Name: "pulumi-python"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "PULUMI_POD_PROGRAM_IMAGE")
+}
+
+// uniqueContainerName appends a process-unique suffix, so two calls with the same base
+// never produce the same name — the property that keeps provider/policy containers from
+// colliding across a `pulumi up`'s preview and apply phases.
+func TestUniqueContainerName(t *testing.T) {
+	t.Parallel()
+	first := uniqueContainerName("provider-aws")
+	second := uniqueContainerName("provider-aws")
+	require.NotEqual(t, first, second)
+	require.Regexp(t, `^provider-aws-\d+$`, first)
+	require.Regexp(t, `^provider-aws-\d+$`, second)
+}
+
+// The engine boots a provider once per deployment phase (preview, then apply) from a fresh
+// host, and a program may use two instances of one provider package; both map to the same
+// descriptor. Each started container must still get a distinct name, or the second start
+// collides with the first (which lives until the pod is torn down). The dynamic-provider
+// path returns early without touching the pod, so fakePod's panicking methods are unused.
+func TestProviderContainerNamesAreUnique(t *testing.T) {
+	t.Parallel()
+	h := &containerHost{pod: fakePod{}, engineHost: "engine", programImage: "my-program:v1"}
+	desc := workspace.PluginDescriptor{Name: "pulumi-nodejs"}
+	first, err := h.providerContainer(t.Context(), desc)
+	require.NoError(t, err)
+	second, err := h.providerContainer(t.Context(), desc)
+	require.NoError(t, err)
+	require.NotEqual(t, first.Name, second.Name,
+		"two starts of the same provider must get distinct container names")
+	require.Regexp(t, `^provider-pulumi-nodejs-\d+$`, first.Name)
+}
+
+// ReleaseContext stops exactly the containers tracked for the released context — the way
+// the engine reaps a deployment phase's providers when it releases that phase's context —
+// and leaves other contexts' containers running. It also delegates to the base host. A
+// zero-value plugin.Context is its own LifetimeContext, so it serves as a distinct key.
+func TestReleaseContextReapsTrackedContainers(t *testing.T) {
+	t.Parallel()
+	var stopped []Container
+	h := &containerHost{
+		Host:    &plugin.MockHost{},
+		pod:     recordingPod{stopped: &stopped},
+		started: map[*plugin.Context][]Container{},
+	}
+	ctxA, ctxB := &plugin.Context{}, &plugin.Context{}
+	h.trackContainer(ctxA, Container{ID: "a1", Name: "provider-aws-1"})
+	h.trackContainer(ctxA, Container{ID: "a2", Name: "policy-pack-2"})
+	h.trackContainer(ctxB, Container{ID: "b1", Name: "provider-gcp-3"})
+
+	// Map lookups go by pointer identity; assert on those and on the StopContainer record
+	// rather than testify's Contains, which compares keys with reflect.DeepEqual (two
+	// zero-value contexts would compare equal).
+	require.NoError(t, h.ReleaseContext(ctxA))
+	require.ElementsMatch(t, []string{"a1", "a2"}, containerIDs(stopped),
+		"only the released context's containers are stopped")
+	require.Empty(t, h.started[ctxA], "the released context is forgotten")
+	require.Equal(t, []string{"b1"}, containerIDs(h.started[ctxB]),
+		"an unreleased context's containers stay tracked")
+	require.Len(t, h.started, 1)
+
+	stopped = nil
+	require.NoError(t, h.ReleaseContext(ctxB))
+	require.ElementsMatch(t, []string{"b1"}, containerIDs(stopped))
+	require.Empty(t, h.started)
 }
 
 // projectedProviderEnv copies the engine env onto a provider container (spawn

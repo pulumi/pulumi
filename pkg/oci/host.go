@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc"
@@ -56,6 +58,14 @@ type containerHost struct {
 	pluginRegistry string                                  // OCI registry to pull absent provider images from ("" = assume present)
 	podID          string                                  // pod id; names the shared workspace volume both hosts mount
 	imageFor       func(workspace.PluginDescriptor) string // provider descriptor -> image ref
+
+	// startedMu guards started, which records the containers this host started for each
+	// booting context. ReleaseContext stops a context's containers when the engine releases
+	// it — the OCI analogue of the base host closing the provider processes it booted for a
+	// context. Provider() runs concurrently and (unlike the base host) does not funnel
+	// through a serializing load channel, so the map needs its own lock.
+	startedMu sync.Mutex
+	started   map[*plugin.Context][]Container
 }
 
 // WorkspaceMountPath is where the per-pod shared workspace volume is mounted, in both
@@ -97,6 +107,7 @@ func NewContainerHost(base plugin.Host, pod PodManager, engineHost, programImage
 		programImage:   programImage,
 		pluginRegistry: pluginRegistry,
 		podID:          podID,
+		started:        map[*plugin.Context][]Container{},
 		imageFor: func(spec workspace.PluginDescriptor) string {
 			return providerImageRef(pluginRegistry, spec)
 		},
@@ -298,6 +309,42 @@ func projectedProviderEnv() map[string]string {
 	return out
 }
 
+// containerSeq makes every provider and policy-pack container name unique within the
+// process. The engine boots a provider (and an analyzer) once per deployment *phase* — a
+// `pulumi up` runs preview and then apply — and it rebuilds the host fresh for each phase,
+// so a per-host counter would reset and still collide. A single program may also use two
+// instances of the same provider package (e.g. two AWS regions). All of those map to the
+// same descriptor name, so a deterministic container name collides: the preview-phase
+// container is still alive (it is reaped only when the whole pod is torn down) when the
+// apply phase starts an identically named one, and two same-package providers collide
+// within a single phase. Stock Pulumi sidesteps this for free because each provider is an
+// ephemeral process with no shared identity; an OCI provider is a named container, so we
+// give every start a process-unique name.
+var containerSeq atomic.Uint64
+
+// uniqueContainerName appends a process-unique sequence number to a base container name so
+// repeated starts for the same provider or analyzer never collide on a Docker name. The
+// pod manager further namespaces this per pod (see dockerPodManager.resourceName), so the
+// suffix only needs to be unique within one engine process.
+func uniqueContainerName(base string) string {
+	return fmt.Sprintf("%s-%d", base, containerSeq.Add(1))
+}
+
+// trackContainer records a container started for ctx so ReleaseContext can stop it when the
+// engine releases ctx. Keyed on the lifetime context — the same key the base host uses for
+// the provider plugins it boots (defaultHost.Provider) — and ReleaseContext keys its lookup
+// the same way, so the two cannot drift. The map is lazily initialised so a zero-value host
+// (constructed directly in tests) is safe.
+func (h *containerHost) trackContainer(ctx *plugin.Context, c Container) {
+	h.startedMu.Lock()
+	defer h.startedMu.Unlock()
+	if h.started == nil {
+		h.started = map[*plugin.Context][]Container{}
+	}
+	key := ctx.LifetimeContext()
+	h.started[key] = append(h.started[key], c)
+}
+
 // Provider starts the provider as a container sharing the engine's network
 // namespace and attaches to it, rather than spawning a plugin binary. Stateless
 // providers run from their own image; workspace-coupled providers run from the
@@ -323,7 +370,16 @@ func (h *containerHost) Provider(
 
 	fmt.Fprintf(os.Stderr, "oci: provider %s running as container %s, attaching at 127.0.0.1:%d\n",
 		descriptor.Name, c.Name, port)
-	return plugin.NewProviderAttached(h, ctx, descriptor, port, ctx.DisableProviderPreview())
+	prov, err := plugin.NewProviderAttached(h, ctx, descriptor, port, ctx.DisableProviderPreview())
+	if err != nil {
+		// The container is running but we could not attach; stop it now rather than leak it.
+		_ = h.pod.StopContainer(context.Background(), c)
+		return nil, err
+	}
+	// Reap this container when the engine releases ctx (at the end of each deployment phase),
+	// the way the base host reaps the provider processes it boots. See ReleaseContext.
+	h.trackContainer(ctx, c)
+	return prov, nil
 }
 
 // providerContainer builds the spec for a provider container, on the engine's
@@ -337,7 +393,7 @@ func (h *containerHost) providerContainer(
 	ctx context.Context, descriptor workspace.PluginDescriptor,
 ) (ContainerConfig, error) {
 	cfg := ContainerConfig{
-		Name:    "provider-" + descriptor.Name,
+		Name:    uniqueContainerName("provider-" + descriptor.Name),
 		Network: "container:" + h.engineHost,
 		// Project the engine's environment onto every provider — the container
 		// analogue of a spawned provider inheriting os.Environ(). This is how a
@@ -510,7 +566,7 @@ func (h *containerHost) PolicyAnalyzer(
 	}
 
 	cfg := ContainerConfig{
-		Name:    "policy-" + sanitizeContainerName(filepath.Base(path)),
+		Name:    uniqueContainerName("policy-" + sanitizeContainerName(filepath.Base(path))),
 		Network: "container:" + h.engineHost,
 		Image:   image,
 		// Project the engine's environment (credentials and so on), as for any pod
@@ -543,6 +599,10 @@ func (h *containerHost) PolicyAnalyzer(
 		_ = h.pod.StopContainer(context.Background(), c)
 		return nil, fmt.Errorf("oci: attaching to policy pack %s: %w", name, err)
 	}
+	// Reap this container when the engine releases ctx, like a provider. A policy pack
+	// analyzes during both preview and apply, so without this its preview-phase container
+	// would linger until the whole pod is torn down. See ReleaseContext.
+	h.trackContainer(ctx, c)
 	return plugin.NewAnalyzerWithClient(name, client), nil
 }
 
@@ -630,9 +690,39 @@ func sanitizeContainerName(s string) string {
 	}, s)
 }
 
+// ReleaseContext stops the provider and policy-pack containers this host started for ctx,
+// then delegates to the base host to release the language runtime, analyzers, and the
+// loader/mapper servers it booted for ctx. The engine releases a context at the end of each
+// deployment phase — a `pulumi up` runs preview, releases its context, then runs apply — so
+// reaping here stops a phase's containers promptly instead of leaving them idle until the
+// whole pod is torn down at Close. This is the OCI analogue of the base host closing a
+// context's provider processes: the containers are not in the base host's resourcePlugins
+// (Provider attaches them directly rather than going through defaultHost.Provider), so the
+// base ReleaseContext alone would never reap them. Close/pod.Cleanup remains the backstop,
+// and StopContainer is idempotent, so a container removed here and again at Close is fine.
+func (h *containerHost) ReleaseContext(ctx *plugin.Context) error {
+	h.startedMu.Lock()
+	key := ctx.LifetimeContext()
+	containers := h.started[key]
+	delete(h.started, key)
+	h.startedMu.Unlock()
+
+	cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var errs []error
+	for _, c := range containers {
+		if err := h.pod.StopContainer(cleanupCtx, c); err != nil {
+			errs = append(errs, fmt.Errorf("oci: stopping container %s on context release: %w", c.Name, err))
+		}
+	}
+	errs = append(errs, h.Host.ReleaseContext(ctx))
+	return errors.Join(errs...)
+}
+
 // Close tears down the provider containers this host started, then closes the
-// base host. The promoted SignalCancellation/ReleaseContext never reach these
-// containers (the base host has no record of them), so this is the cleanup hook.
+// base host. The promoted SignalCancellation never reaches these containers (the
+// base host has no record of them), and ReleaseContext only reaps the containers of
+// contexts the engine has released, so this is the backstop that cleans up the rest.
 func (h *containerHost) Close() error {
 	cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
