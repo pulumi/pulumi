@@ -74,6 +74,7 @@ env:
   PULUMI_VERSION: ${{ inputs.version }}
   PULUMI_TEST_OWNER: "moolumi"
   PULUMI_TEST_ORG: "moolumi"
+  PULUMI_TEST_USE_NPM: "true"
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   # Release builds use the service, PR checks and snapshots will use the local backend if possible.
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
@@ -228,8 +229,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
       - name: Get npm cache directory
         id: npm-cache
         shell: bash
@@ -238,7 +237,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ steps.npm-cache.outputs.dir }}
-          key: npm-${{ runner.os }}-${{ fromJson(inputs.version-set).nodejs }}-${{ hashFiles('sdk/nodejs/yarn.lock') }}
+          key: npm-${{ runner.os }}-${{ fromJson(inputs.version-set).nodejs }}-${{ hashFiles('sdk/nodejs/package-lock.json') }}
           restore-keys: |
             npm-${{ runner.os }}-${{ fromJson(inputs.version-set).nodejs }}-
             npm-${{ runner.os }}-
@@ -381,6 +380,7 @@ jobs:
           cd sdk/nodejs
           make build_package
           cd bin
+          npm link
           yarn link
           bun link
       - name: Ensure dependencies for the Python SDK
@@ -424,7 +424,7 @@ jobs:
           if [ -e .nyc_output ]; then
             UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
             COVERAGE_PATH="${PULUMI_TEST_COVERAGE_PATH:-./coverage}"
-            yarn run nyc report -r cobertura --report-dir "$COVERAGE_PATH"
+            npx nyc report -r cobertura --report-dir "$COVERAGE_PATH"
             mv "$COVERAGE_PATH/cobertura-coverage.xml" "$COVERAGE_PATH/cobertura-coverage-$UUID.xml"
           fi
       - name: Merge integration test code coverage

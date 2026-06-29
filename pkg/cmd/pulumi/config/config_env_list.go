@@ -16,15 +16,24 @@ package config
 
 import (
 	"context"
+	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
-func newConfigEnvListCmd(parent *configEnvCmd) *cobra.Command {
-	var jsonOut bool
+type stackEnvironmentsRenderFunc func(w io.Writer, imports []string) error
 
-	impl := configEnvLsCmd{parent: parent, jsonOut: &jsonOut}
+func newConfigEnvListCmd(parent *configEnvCmd) *cobra.Command {
+	output := outputflag.OutputFlag[stackEnvironmentsRenderFunc]{
+		RenderForTerminal: formatStackEnvironmentsConsole,
+		RenderJSON:        formatStackEnvironmentsJSON,
+	}
+
+	impl := configEnvLsCmd{parent: parent, output: &output}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -39,9 +48,7 @@ func newConfigEnvListCmd(parent *configEnvCmd) *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.Flags().BoolVarP(
-		&jsonOut, "json", "j", false,
-		"Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.Flags(), &output)
 
 	return cmd
 }
@@ -49,9 +56,36 @@ func newConfigEnvListCmd(parent *configEnvCmd) *cobra.Command {
 type configEnvLsCmd struct {
 	parent *configEnvCmd
 
-	jsonOut *bool
+	output *outputflag.OutputFlag[stackEnvironmentsRenderFunc]
 }
 
 func (cmd *configEnvLsCmd) run(ctx context.Context, _ []string) error {
-	return cmd.parent.listStackEnvironments(ctx, *cmd.jsonOut)
+	return cmd.parent.listStackEnvironments(ctx, cmd.output.Get())
+}
+
+func formatStackEnvironmentsConsole(w io.Writer, imports []string) error {
+	if len(imports) == 0 {
+		ui.Fprintf(w, "This stack configuration has no environments listed. "+
+			"Try adding one with `pulumi config env add <projectName>/<envName>`.\n")
+		return nil
+	}
+
+	rows := []cmdutil.TableRow{}
+	for _, imp := range imports {
+		rows = append(rows, cmdutil.TableRow{Columns: []string{imp}})
+	}
+
+	ui.FprintTable(w, cmdutil.Table{
+		Headers: []string{"ENVIRONMENTS"},
+		Rows:    rows,
+	}, nil)
+	return nil
+}
+
+func formatStackEnvironmentsJSON(w io.Writer, imports []string) error {
+	if len(imports) == 0 {
+		ui.Fprintf(w, "[]\n")
+		return nil
+	}
+	return ui.FprintJSON(w, imports)
 }

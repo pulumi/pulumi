@@ -39,8 +39,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs/tstypes"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -2589,8 +2589,17 @@ func genNPMPackageMetadata(
 		npminfo.Scripts["postinstall"] = "node ./scripts/postinstall.js"
 	}
 
+	// For local SDKs we pin typescript and @types/node ourselves in dependencies above. Ignore any schema-provided
+	// versions of these.
+	ownedByLocalSDK := func(dep string) bool {
+		return localSDK && (dep == "typescript" || dep == "@types/node")
+	}
+
 	// Copy the overlay dependencies, if any.
 	for depk, depv := range info.Dependencies {
+		if ownedByLocalSDK(depk) {
+			continue
+		}
 		if npminfo.Dependencies == nil {
 			npminfo.Dependencies = make(map[string]string)
 		}
@@ -2601,6 +2610,9 @@ func genNPMPackageMetadata(
 		}
 	}
 	for depk, depv := range info.DevDependencies {
+		if ownedByLocalSDK(depk) {
+			continue
+		}
 		if npminfo.DevDependencies == nil {
 			npminfo.DevDependencies = make(map[string]string)
 		}

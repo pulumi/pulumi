@@ -87,6 +87,12 @@ linters:
           deny:
             - pkg: github.com/golang/protobuf
               desc: Use google.golang.org/protobuf instead
+        pkg-no-sdk-plugin:
+          files:
+            - '**/pkg/**/*.go'
+          deny:
+            - pkg: github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin
+              desc: The pkg module must not import sdk/go/common/resource/plugin
     goheader:
       values:
         regexp:

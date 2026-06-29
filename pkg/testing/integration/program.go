@@ -1120,6 +1120,26 @@ func (pt *ProgramTester) runCommand(name string, args []string, wd string) error
 	return RunCommandPulumiHome(pt.t, name, args, wd, pt.opts, pt.pulumiHome)
 }
 
+// runCommandWithRetries runs a command, retrying up to maxTries on failure to absorb transient
+// errors such as network blips and shared-cache races.
+func (pt *ProgramTester) runCommandWithRetries(name string, args []string, wd string) error {
+	maxTries := 3
+	_, _, err := retry.Until(context.Background(), retry.Acceptor{
+		Accept: func(try int, _ time.Duration) (bool, any, error) {
+			runerr := pt.runCommand(name, args, wd)
+			if runerr == nil {
+				return true, nil, nil
+			}
+			if try+1 >= maxTries {
+				return false, nil, runerr
+			}
+			pt.t.Logf("%v failed: %v; retrying...", strings.Join(args, " "), runerr)
+			return false, nil, nil
+		},
+	})
+	return err
+}
+
 // RunPulumiCommand runs a Pulumi command in the project directory.
 // For example:
 //
@@ -2281,7 +2301,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	// Until that's been fixed, this environment variable can be set by a test, which results in
 	// a package.json being emitted in the project directory with the locally-built @pulumi/pulumi linked in.
 	// When the underlying issue has been fixed, the use of this environment variable should be removed.
-	linkPulumi := slices.Contains(pt.opts.Env, "PULUMI_TEST_YARN_LINK_PULUMI=true")
+	linkPulumi := slices.Contains(pt.opts.Env, "PULUMI_TEST_LINK_PULUMI=true")
 	if linkPulumi {
 		if pt.useNpm() {
 			const packageJSON = `{
@@ -2728,7 +2748,7 @@ func (pt *ProgramTester) preparePythonProjectWithUv(projinfo *engine.Projinfo, c
 	if pt.opts.InstallDevReleases {
 		syncArgs = append(syncArgs, "--prerelease=allow")
 	}
-	if err := pt.runCommand("uv-sync", syncArgs, cwd); err != nil {
+	if err := pt.runCommandWithRetries("uv-sync", syncArgs, cwd); err != nil {
 		return err
 	}
 
@@ -2751,7 +2771,7 @@ func (pt *ProgramTester) preparePythonProjectWithUv(projinfo *engine.Projinfo, c
 			}
 			dep = abs
 		}
-		if err := pt.runCommand("uv-add", []string{uvBin, "add", "--editable", dep}, cwd); err != nil {
+		if err := pt.runCommandWithRetries("uv-add", []string{uvBin, "add", "--editable", dep}, cwd); err != nil {
 			return err
 		}
 	}

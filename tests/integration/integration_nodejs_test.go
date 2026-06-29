@@ -62,6 +62,31 @@ func TestPrintfNodeJS(t *testing.T) {
 	})
 }
 
+// TestYarnNodeJS exercises ProgramTest's yarn path
+//
+//nolint:paralleltest // t.Setenv requires a serial test.
+func TestYarnNodeJS(t *testing.T) {
+	t.Setenv("PULUMI_TEST_USE_NPM", "false")
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("empty", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		NoParallel:   true,
+	})
+}
+
+// TestNpmNodeJS exercises ProgramTest's npm path
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNpmNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("empty", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		UseNpm:       true,
+	})
+}
+
 // Tests emitting many engine events doesn't result in a performance problem.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()

@@ -2029,7 +2029,7 @@ func (b *cloudBackend) runEngineAction(
 		displayEvents, displayDone, op.Opts.Display, dryRun)
 
 	if err := pkgLogging.RenameCurrentLogger(string(stackRef.FullyQualifiedName()), update.UpdateID); err != nil {
-		return nil, nil, err
+		logging.V(3).Infof("encrypted log failed to rename: %v", err)
 	}
 
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
