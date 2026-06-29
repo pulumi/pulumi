@@ -30,7 +30,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
-	pkglogging "github.com/pulumi/pulumi/pkg/v3/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -58,7 +58,7 @@ func MainContext(
 
 	// Initialize loggers before going any further.
 	logging.RegisterExportHandlerWrapper(func(h slog.Handler) slog.Handler {
-		return pkglogging.NewPropertyExportHandler(h)
+		return plugin.NewPropertyExportHandler(h)
 	})
 	logging.InitLogging(false, 0, false)
 

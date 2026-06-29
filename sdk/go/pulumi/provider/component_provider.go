@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/grpc/codes"
@@ -33,16 +32,16 @@ type componentProvider struct {
 	name      string
 	version   string
 	schema    []byte
-	construct provider.ConstructFunc
-	call      provider.CallFunc
+	construct ConstructFunc
+	call      CallFunc
 }
 
 type Options struct {
 	Name      string
 	Version   string
 	Schema    []byte
-	Construct provider.ConstructFunc
-	Call      provider.CallFunc
+	Construct ConstructFunc
+	Call      CallFunc
 }
 
 // MainWithOptions is an entrypoint for a resource provider plugin that implements `Construct` and optionally also
@@ -66,7 +65,7 @@ func MainWithOptions(opts Options) error {
 // ComponentMain is an entrypoint for a resource provider plugin that implements `Construct` for component resources.
 // Using it isn't required but can cut down significantly on the amount of boilerplate necessary to fire up a new
 // resource provider for components.
-func ComponentMain(name, version string, schema []byte, construct provider.ConstructFunc) error {
+func ComponentMain(name, version string, schema []byte, construct ConstructFunc) error {
 	return Main(name, func(host *HostClient) (pulumirpc.ResourceProviderServer, error) {
 		return &componentProvider{
 			host:      host,
@@ -116,7 +115,7 @@ func (p *componentProvider) Construct(ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
 	if p.construct != nil {
-		return provider.Construct(ctx, req, p.host.conn, p.construct)
+		return Construct(ctx, req, p.host.conn, p.construct)
 	}
 	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
@@ -126,7 +125,7 @@ func (p *componentProvider) Call(ctx context.Context,
 	req *pulumirpc.CallRequest,
 ) (*pulumirpc.CallResponse, error) {
 	if p.call != nil {
-		return provider.Call(ctx, req, p.host.conn, p.call)
+		return Call(ctx, req, p.host.conn, p.call)
 	}
 	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
