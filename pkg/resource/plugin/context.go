@@ -249,7 +249,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		disableProviderPreview: disableProviderPreview,
 		config:                 config,
 		projectName:            projectName,
-		CloudCredentialEnv:     pulumiCloudCredentialEnv(project),
+		CloudCredentialEnv:     pulumiCloudCredentialEnv(env.Global(), project),
 	}
 
 	projectPlugins, err := projectPluginsFromProject(pctx, plugins, packages)

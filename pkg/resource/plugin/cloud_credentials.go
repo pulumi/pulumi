@@ -25,13 +25,13 @@ import (
 // plugins launched with this context, so trusted providers can reach the cloud on the user's
 // behalf. It returns nil for non-cloud logins and when logged out, so plugins only ever receive
 // credentials they can actually use.
-func pulumiCloudCredentialEnv(project *workspace.Project) map[string]string {
-	url := currentCloudURL(project)
+func pulumiCloudCredentialEnv(store env.Env, project *workspace.Project) map[string]string {
+	url := currentCloudURL(store, project)
 	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
 		return nil
 	}
 
-	token := env.AccessToken.Value()
+	token := store.GetString(env.AccessToken)
 	if token == "" {
 		if account, _, err := workspace.GetAccountWithAgentFallback(url); err == nil {
 			token = account.AccessToken
@@ -49,8 +49,8 @@ func pulumiCloudCredentialEnv(project *workspace.Project) map[string]string {
 
 // currentCloudURL mirrors the CLI's backend selection: PULUMI_BACKEND_URL wins, then the project's
 // backend, then the active stored login, falling back to shared agent credentials.
-func currentCloudURL(project *workspace.Project) string {
-	if url := env.BackendURL.Value(); url != "" {
+func currentCloudURL(store env.Env, project *workspace.Project) string {
+	if url := store.GetString(env.BackendURL); url != "" {
 		return url
 	}
 	if project != nil && project.Backend != nil && project.Backend.URL != "" {
