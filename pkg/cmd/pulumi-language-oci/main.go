@@ -86,6 +86,7 @@ func main() {
 	}
 
 	// Print the port so the engine knows how to reach us.
+	//nolint:forbidigo // plugin handshake: the engine reads the port from this binary's stdout
 	fmt.Printf("%d\n", handle.Port)
 
 	if err := <-handle.Done; err != nil {
@@ -173,6 +174,7 @@ func (h *ociHost) InstallDependencies(
 ) error {
 	dir := req.GetInfo().GetProgramDirectory()
 	if dir == "" {
+		//nolint:staticcheck // GetDirectory is the pre-ProgramInfo fallback for older engines
 		dir = req.GetDirectory()
 	}
 	components := req.GetInfo().GetOptions().GetFields()["components"].GetListValue().GetValues()
@@ -188,7 +190,7 @@ func (h *ociHost) InstallDependencies(
 	for _, v := range components {
 		path := v.GetStringValue()
 		if path == "" {
-			return fmt.Errorf("oci: each component entry must be a path string (to a self-describing package directory)")
+			return errors.New("oci: each component entry must be a path string (to a self-describing package directory)")
 		}
 		cdir := path
 		if !filepath.IsAbs(cdir) {
@@ -225,6 +227,7 @@ func (h *ociHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirp
 		}
 		monitor = rewriteHost(monitor, advertiseHost)
 		engine = rewriteHost(engine, advertiseHost)
+		//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
 		fmt.Fprintf(os.Stderr, "oci: pod mode — advertising monitor=%s engine=%s\n", monitor, engine)
 	}
 
@@ -268,6 +271,7 @@ func (h *ociHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirp
 	cmd.Env = append(os.Environ(), envSlice(env)...)
 	// The program's output goes to stderr; stdout is reserved for the language
 	// host's port-line protocol with the engine.
+	//nolint:forbidigo // deliberately route the child's stdio to this binary's stderr
 	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
 	if err := cmd.Run(); err != nil {
 		var exitErr *exec.ExitError
@@ -337,6 +341,7 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 	copied := make(chan struct{})
 	go func() {
 		defer close(copied)
+		//nolint:forbidigo // stream the container's logs to this binary's stderr for the engine
 		_, _ = io.Copy(os.Stderr, logs)
 	}()
 
@@ -383,7 +388,9 @@ func buildProgramImageInContainer(ctx context.Context, spec *structpb.Struct, di
 	if image == "" || command == "" {
 		return "", fmt.Errorf("oci: build needs 'image' and 'command' (got image=%q command=%q)", image, command)
 	}
+	//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
 	fmt.Fprintf(os.Stderr, "oci: building program image in builder %s: %s\n", image, command)
+	//nolint:forbidigo // the build container streams its output to the engine-attached stderr
 	stdout, err := oci.BuildInContainer(ctx, image, command, dir, optStringList(spec, "caches"), nil, os.Stderr)
 	if err != nil {
 		return "", fmt.Errorf("oci: builder %q failed: %w", image, err)
@@ -392,6 +399,7 @@ func buildProgramImageInContainer(ctx context.Context, spec *structpb.Struct, di
 	if ref == "" {
 		return "", fmt.Errorf("oci: builder %q produced no image ref on stdout", image)
 	}
+	//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
 	fmt.Fprintf(os.Stderr, "oci: built program image %s\n", ref)
 	return ref, nil
 }

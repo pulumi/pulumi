@@ -33,6 +33,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -96,12 +97,13 @@ func (h *ociHost) Link(ctx context.Context, req *pulumirpc.LinkRequest) (*pulumi
 		// No link command: the SDK is recorded as a ref only, and the program build wires
 		// it when it runs (the degenerate "the build owns all of it" case). Deliberately a
 		// no-op — the OCI host never edits a language manifest itself.
+		//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
 		fmt.Fprintf(os.Stderr, "oci: no link command configured; the program build will wire the SDK\n")
 		return &pulumirpc.LinkResponse{}, nil
 	}
 	linkImage := optString(link, "image")
 	if linkImage == "" {
-		return nil, fmt.Errorf("oci: link.command is set but link.image (the link environment) is not")
+		return nil, errors.New("oci: link.command is set but link.image (the link environment) is not")
 	}
 
 	root := req.GetInfo().GetRootDirectory()
@@ -117,7 +119,9 @@ func (h *ociHost) Link(ctx context.Context, req *pulumirpc.LinkRequest) (*pulumi
 			continue
 		}
 		env := map[string]string{"PULUMI_LINK_SDK_NAME": name, "PULUMI_LINK_SDK_PATH": path}
+		//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
 		fmt.Fprintf(os.Stderr, "oci: linking SDK %s (%s) via link.command in %s\n", name, path, linkImage)
+		//nolint:forbidigo // the build container streams its output to the engine-attached stderr
 		if _, err := oci.BuildInContainer(ctx, linkImage, linkCmd, root, caches, env, os.Stderr); err != nil {
 			return nil, fmt.Errorf("oci: running link command for %s: %w", name, err)
 		}
@@ -135,8 +139,10 @@ func (h *ociHost) withDelegateRuntime(ctx context.Context, fn func(plugin.Langua
 		return err
 	}
 
+	//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{Color: colors.Never})
-	host, err := pkghost.New(ctx, sink, sink, nil /*debug*/, nil /*installLang*/, nil /*loader*/, nil /*mapper*/, nil /*resolver*/)
+	host, err := pkghost.New(
+		ctx, sink, sink, nil /*debug*/, nil /*installLang*/, nil /*loader*/, nil /*mapper*/, nil /*resolver*/)
 	if err != nil {
 		return fmt.Errorf("oci: creating plugin host for codegen delegation: %w", err)
 	}
@@ -169,7 +175,7 @@ func delegateLanguage() (string, error) {
 		return "", fmt.Errorf("oci: locating the project to determine the SDK language: %w", err)
 	}
 	if projPath == "" {
-		return "", fmt.Errorf("oci: no project found in the working directory to determine the SDK language")
+		return "", errors.New("oci: no project found in the working directory to determine the SDK language")
 	}
 	proj, err := workspace.LoadProject(projPath)
 	if err != nil {
@@ -183,4 +189,3 @@ func delegateLanguage() (string, error) {
 	}
 	return lang, nil
 }
-

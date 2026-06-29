@@ -65,7 +65,7 @@ func (f *fakeDelegate) GeneratePackage(
 	if err := os.MkdirAll(req.Directory, 0o755); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(filepath.Join(req.Directory, "generated.txt"), []byte(req.Schema), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(req.Directory, "generated.txt"), []byte(req.Schema), 0o600); err != nil {
 		return nil, err
 	}
 	return &pulumirpc.GeneratePackageResponse{}, nil
@@ -100,7 +100,7 @@ func ociProjectDir(t *testing.T, lang string) string {
 	t.Helper()
 	dir := t.TempDir()
 	yaml := fmt.Sprintf("name: oci-deleg-test\nruntime:\n  name: oci\n  options:\n    language: %s\n", lang)
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(yaml), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(yaml), 0o600))
 	t.Chdir(dir)
 	return dir
 }
@@ -110,6 +110,8 @@ func ociProjectDir(t *testing.T, lang string) string {
 // pulumi-language-<runtime.options.language> with the request intact, and its output
 // lands where the caller asked — i.e. the OCI host delegated rather than silently
 // no-op'd (the failure mode if it inherited UnimplementedLanguageRuntimeServer).
+//
+//nolint:paralleltest // uses t.Setenv and t.Chdir, which are incompatible with t.Parallel
 func TestGeneratePackageDelegates(t *testing.T) {
 	fake, lang := serveFakeDelegate(t)
 	dir := ociProjectDir(t, lang)
@@ -117,7 +119,7 @@ func TestGeneratePackageDelegates(t *testing.T) {
 	outDir := filepath.Join(dir, "sdks", "probe")
 	schema := `{"name":"probe","version":"1.0.0"}`
 	h := &ociHost{}
-	_, err := h.GeneratePackage(context.Background(), &pulumirpc.GeneratePackageRequest{
+	_, err := h.GeneratePackage(t.Context(), &pulumirpc.GeneratePackageRequest{
 		Directory:    outDir,
 		Schema:       schema,
 		LoaderTarget: "127.0.0.1:1", // unused by the fake; a real host would dial it
@@ -144,7 +146,7 @@ func TestGeneratePackageDelegates(t *testing.T) {
 func TestLinkNoCommandIsNoOp(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	resp, err := (&ociHost{}).Link(context.Background(), &pulumirpc.LinkRequest{
+	resp, err := (&ociHost{}).Link(t.Context(), &pulumirpc.LinkRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
@@ -167,7 +169,7 @@ func TestLinkNoCommandIsNoOp(t *testing.T) {
 func TestLinkRequiresLinkImage(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	_, err := (&ociHost{}).Link(context.Background(), &pulumirpc.LinkRequest{
+	_, err := (&ociHost{}).Link(t.Context(), &pulumirpc.LinkRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
@@ -188,10 +190,12 @@ func TestLinkRequiresLinkImage(t *testing.T) {
 // A project that declares runtime: oci but no options.language can't have its SDK
 // generated — the host has nothing to delegate to. Fail with an actionable message
 // rather than spawning a bogus `pulumi-language-` plugin.
+//
+//nolint:paralleltest // uses t.Chdir, which is incompatible with t.Parallel
 func TestDelegateLanguageMissing(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"),
-		[]byte("name: oci-deleg-test\nruntime: oci\n"), 0o644))
+		[]byte("name: oci-deleg-test\nruntime: oci\n"), 0o600))
 	t.Chdir(dir)
 
 	_, err := delegateLanguage()

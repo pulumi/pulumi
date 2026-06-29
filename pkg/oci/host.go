@@ -55,7 +55,7 @@ type containerHost struct {
 	pod            PodManager
 	engineHost     string                                  // engine container name; providers share its netns
 	programImage   string                                  // program image; workspace-coupled providers run from it
-	pluginRegistry string                                  // OCI registry to pull absent provider images from ("" = assume present)
+	pluginRegistry string                                  // OCI registry for absent provider images ("" = assume present)
 	podID          string                                  // pod id; names the shared workspace volume both hosts mount
 	imageFor       func(workspace.PluginDescriptor) string // provider descriptor -> image ref
 
@@ -112,7 +112,9 @@ var _ plugin.Host = (*containerHost)(nil)
 // images are pulled (and retagged to the bare convention) before use — the
 // container-model "install" step. Empty preserves the prior behaviour: an absent
 // image is assumed prebuilt/loaded and surfaces at run time if it is not.
-func NewContainerHost(base plugin.Host, pod PodManager, engineHost, programImage, pluginRegistry, podID string) plugin.Host {
+func NewContainerHost(
+	base plugin.Host, pod PodManager, engineHost, programImage, pluginRegistry, podID string,
+) plugin.Host {
 	return &containerHost{
 		Host:           base,
 		pod:            pod,

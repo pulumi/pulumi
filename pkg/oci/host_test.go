@@ -90,7 +90,7 @@ func noSignal(context.Context) error { return nil }
 func TestEnsureImageBailsActionablyWhenAbsentAndNoRegistry(t *testing.T) {
 	t.Parallel()
 	h := &containerHost{pod: fakePod{imageExists: false}}
-	err := h.ensureImage(context.Background(), "random", "pulumi-provider-random:v4.21.0")
+	err := h.ensureImage(t.Context(), "random", "pulumi-provider-random:v4.21.0")
 	require.Error(t, err)
 	// Names the provider and the missing ref, and points at both fixes.
 	require.Contains(t, err.Error(), `provider "random"`)
@@ -103,7 +103,7 @@ func TestEnsureImageBailsActionablyWhenAbsentAndNoRegistry(t *testing.T) {
 func TestEnsureImageNoopWhenPresent(t *testing.T) {
 	t.Parallel()
 	h := &containerHost{pod: fakePod{imageExists: true}}
-	require.NoError(t, h.ensureImage(context.Background(), "random", "anything:v1"))
+	require.NoError(t, h.ensureImage(t.Context(), "random", "anything:v1"))
 }
 
 // A dynamic provider runs from the program image with the SDK's own entrypoint,
@@ -117,7 +117,7 @@ func TestProviderContainerDynamicRunsFromProgramImage(t *testing.T) {
 		engineHost:   "engine",
 		programImage: "my-program:v1",
 	}
-	cfg, err := h.providerContainer(context.Background(), workspace.PluginDescriptor{Name: "pulumi-nodejs"})
+	cfg, err := h.providerContainer(t.Context(), workspace.PluginDescriptor{Name: "pulumi-nodejs"})
 	require.NoError(t, err)
 	require.Equal(t, "my-program:v1", cfg.Image)
 	require.Equal(t, "container:engine", cfg.Network)
@@ -131,7 +131,7 @@ func TestProviderContainerDynamicRunsFromProgramImage(t *testing.T) {
 func TestProviderContainerDynamicRequiresProgramImage(t *testing.T) {
 	t.Parallel()
 	h := &containerHost{pod: fakePod{}, engineHost: "engine"}
-	_, err := h.providerContainer(context.Background(), workspace.PluginDescriptor{Name: "pulumi-python"})
+	_, err := h.providerContainer(t.Context(), workspace.PluginDescriptor{Name: "pulumi-python"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "PULUMI_POD_PROGRAM_IMAGE")
 }

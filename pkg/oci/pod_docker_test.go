@@ -52,7 +52,7 @@ func TestRunContainerArgs(t *testing.T) {
 	fake := &fakeRunner{respond: func([]string) (string, string, error) { return "container-abc", "", nil }}
 	pm := NewDockerPodManager("p1", withRunner(fake.run))
 
-	c, err := pm.RunContainer(context.Background(), ContainerConfig{
+	c, err := pm.RunContainer(t.Context(), ContainerConfig{
 		Image:   "pulumi/python:3.12",
 		Name:    "program",
 		Network: "pulumi-pod-p1-net",
@@ -86,7 +86,7 @@ func TestRunContainerNoEntrypoint(t *testing.T) {
 	fake := &fakeRunner{respond: func([]string) (string, string, error) { return "cid", "", nil }}
 	pm := NewDockerPodManager("p1", withRunner(fake.run))
 
-	_, err := pm.RunContainer(context.Background(), ContainerConfig{
+	_, err := pm.RunContainer(t.Context(), ContainerConfig{
 		Image: "alpine:3",
 		Name:  "x",
 		Cmd:   []string{"echo", "hi"},
@@ -102,9 +102,9 @@ func TestRunContainerNoEntrypoint(t *testing.T) {
 func TestRunContainerValidation(t *testing.T) {
 	t.Parallel()
 	pm := NewDockerPodManager("p1", withRunner((&fakeRunner{}).run))
-	_, err := pm.RunContainer(context.Background(), ContainerConfig{Image: "alpine:3"})
+	_, err := pm.RunContainer(t.Context(), ContainerConfig{Image: "alpine:3"})
 	assert.ErrorContains(t, err, "Name")
-	_, err = pm.RunContainer(context.Background(), ContainerConfig{Name: "x"})
+	_, err = pm.RunContainer(t.Context(), ContainerConfig{Name: "x"})
 	assert.ErrorContains(t, err, "Image")
 }
 
@@ -138,7 +138,7 @@ func TestRunToCompletionValidation(t *testing.T) {
 	t.Parallel()
 	pm := NewDockerPodManager("p1")
 	// Missing Image returns before any exec, so no daemon is needed.
-	_, err := pm.RunToCompletion(context.Background(), ContainerConfig{}, io.Discard)
+	_, err := pm.RunToCompletion(t.Context(), ContainerConfig{}, io.Discard)
 	assert.ErrorContains(t, err, "Image")
 }
 
@@ -147,7 +147,7 @@ func TestCreateNetworkArgs(t *testing.T) {
 	fake := &fakeRunner{respond: func([]string) (string, string, error) { return "net-xyz", "", nil }}
 	pm := NewDockerPodManager("p1", withRunner(fake.run))
 
-	net, err := pm.CreateNetwork(context.Background())
+	net, err := pm.CreateNetwork(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, Network{ID: "net-xyz", Name: "pulumi-pod-p1-net"}, net)
 	assert.Equal(t, []string{
@@ -160,7 +160,7 @@ func TestCreateVolumeArgs(t *testing.T) {
 	fake := &fakeRunner{}
 	pm := NewDockerPodManager("p1", withRunner(fake.run))
 
-	vol, err := pm.CreateVolume(context.Background(), "workspace")
+	vol, err := pm.CreateVolume(t.Context(), "workspace")
 	require.NoError(t, err)
 	assert.Equal(t, Volume{Name: "pulumi-pod-p1-vol-workspace"}, vol)
 	assert.Equal(t, []string{
@@ -173,7 +173,7 @@ func TestCopyFromImageArgs(t *testing.T) {
 	fake := &fakeRunner{}
 	pm := NewDockerPodManager("p1", withRunner(fake.run))
 
-	err := pm.CopyFromImage(context.Background(), "img:1", "/app/", Volume{Name: "pulumi-pod-p1-vol-workspace"}, "/workspace")
+	err := pm.CopyFromImage(t.Context(), "img:1", "/app/", Volume{Name: "pulumi-pod-p1-vol-workspace"}, "/workspace")
 	require.NoError(t, err)
 	assert.Equal(t, []string{
 		"run", "--rm",
@@ -189,7 +189,7 @@ func TestWaitContainer(t *testing.T) {
 	for _, code := range []string{"0", "17"} {
 		fake := &fakeRunner{respond: func([]string) (string, string, error) { return code, "", nil }}
 		pm := NewDockerPodManager("p1", withRunner(fake.run))
-		got, err := pm.WaitContainer(context.Background(), Container{ID: "cid"})
+		got, err := pm.WaitContainer(t.Context(), Container{ID: "cid"})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"wait", "cid"}, fake.calls[0])
 		switch code {
@@ -208,16 +208,16 @@ func TestStopContainerIgnoresMissing(t *testing.T) {
 	}}
 	pm := NewDockerPodManager("p1", withRunner(fake.run))
 	// "No such container" is treated as success — the container is already gone.
-	assert.NoError(t, pm.StopContainer(context.Background(), Container{ID: "cid"}))
+	require.NoError(t, pm.StopContainer(t.Context(), Container{ID: "cid"}))
 }
 
 func TestCleanupOrderAndTracking(t *testing.T) {
 	t.Parallel()
 	fake := &fakeRunner{respond: func(args []string) (string, string, error) {
-		switch {
-		case args[0] == "network":
+		switch args[0] {
+		case "network":
 			return "netid", "", nil
-		case args[0] == "run":
+		case "run":
 			return "cid", "", nil
 		default:
 			return "", "", nil
@@ -225,7 +225,7 @@ func TestCleanupOrderAndTracking(t *testing.T) {
 	}}
 	pm := NewDockerPodManager("p1", withRunner(fake.run))
 
-	ctx := context.Background()
+	ctx := t.Context()
 	net, err := pm.CreateNetwork(ctx)
 	require.NoError(t, err)
 	_, err = pm.RunContainer(ctx, ContainerConfig{Image: "alpine:3", Name: "c", Network: net.Name})
@@ -262,7 +262,7 @@ func TestCleanupJoinsErrorsAndContinues(t *testing.T) {
 	}}
 	pm := NewDockerPodManager("p1", withRunner(fake.run))
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := pm.CreateNetwork(ctx)
 	require.NoError(t, err)
 	_, err = pm.RunContainer(ctx, ContainerConfig{Image: "alpine:3", Name: "c"})
@@ -315,7 +315,8 @@ func newIntegrationPodManager(t *testing.T) PodManager {
 	// crashed prior run's (labeled) leftovers don't collide with fresh names.
 	pm := NewDockerPodManager(fmt.Sprintf("it%d", os.Getpid()))
 	t.Cleanup(func() {
-		if err := pm.Cleanup(context.Background()); err != nil {
+		// t.Context() is canceled before cleanup functions run, so use a fresh context.
+		if err := pm.Cleanup(context.Background()); err != nil { //nolint:usetesting
 			t.Logf("pod cleanup: %v", err)
 		}
 	})
@@ -334,9 +335,11 @@ func readLogs(t *testing.T, ctx context.Context, pm PodManager, c Container) str
 
 // TestPodNetworkingIntegration is the Phase 1 milestone: two containers on the
 // pod network reach each other by DNS name.
+//
+//nolint:paralleltest // shares a process-scoped pod id; parallel runs would collide on resource names
 func TestPodNetworkingIntegration(t *testing.T) {
 	requireDocker(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	pm := newIntegrationPodManager(t)
 
 	net, err := pm.CreateNetwork(ctx)
@@ -368,9 +371,11 @@ func TestPodNetworkingIntegration(t *testing.T) {
 
 // TestWorkspaceVolumeIntegration is the Phase 5 building block: seed a named
 // volume from an image's filesystem, then read it back from another container.
+//
+//nolint:paralleltest // shares a process-scoped pod id; parallel runs would collide on resource names
 func TestWorkspaceVolumeIntegration(t *testing.T) {
 	requireDocker(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	pm := newIntegrationPodManager(t)
 
 	vol, err := pm.CreateVolume(ctx, "workspace")

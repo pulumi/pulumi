@@ -15,6 +15,7 @@
 package packagecmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -73,7 +74,7 @@ is printed to stdout.`,
 			// --volumes-from the engine container, so this must run inside the engine
 			// (pod mode). Unlike `package add`'s schema fetch, it needs no engine netns.
 			if os.Getenv("PULUMI_POD_MODE") != "true" {
-				return fmt.Errorf("pulumi package build must run inside the engine container (pod mode)")
+				return errors.New("pulumi package build must run inside the engine container (pod mode)")
 			}
 
 			// The same build-from-manifest logic the language host uses for local

@@ -36,7 +36,9 @@ const podLabel = "com.pulumi.pod"
 // single seam through which the Docker implementation touches the OS for buffered
 // commands, which lets tests assert on the exact argv constructed without a
 // running daemon.
-type commandRunner func(ctx context.Context, stdin io.Reader, name string, args ...string) (stdout, stderr string, err error)
+type commandRunner func(
+	ctx context.Context, stdin io.Reader, name string, args ...string,
+) (stdout, stderr string, err error)
 
 // execRunner is the default commandRunner; it shells out for real.
 func execRunner(ctx context.Context, stdin io.Reader, name string, args ...string) (string, string, error) {
