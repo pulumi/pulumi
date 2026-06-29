@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"gopkg.in/yaml.v3"
 )
 
 // A ProviderLoader provides the environment evaluator the capability to load providers.
@@ -394,6 +395,9 @@ func declare[Expr exprNode](e *evalContext, path string, x Expr, base *value) *e
 	case *ast.ToJSONExpr:
 		repr := &toJSONExpr{node: x, value: declare(e, "", x.Value, nil)}
 		return newExpr(path, repr, schema.String().Schema(), base)
+	case *ast.ToYAMLExpr:
+		repr := &toYAMLExpr{node: x, value: declare(e, "", x.Value, nil)}
+		return newExpr(path, repr, schema.String().Schema(), base)
 	case *ast.ToStringExpr:
 		repr := &toStringExpr{node: x, value: declare(e, "", x.Value, nil)}
 		return newExpr(path, repr, schema.String().Schema(), base)
@@ -646,6 +650,8 @@ func (e *evalContext) evaluateExpr(x *expr, accept *schema.Schema) *value {
 		val = e.evaluateBuiltinToBase64(x, repr)
 	case *toJSONExpr:
 		val = e.evaluateBuiltinToJSON(x, repr)
+	case *toYAMLExpr:
+		val = e.evaluateBuiltinToYAML(x, repr)
 	case *toStringExpr:
 		val = e.evaluateBuiltinToString(x, repr)
 	case *arrayExpr:
@@ -1519,6 +1525,28 @@ func (e *evalContext) evaluateBuiltinToJSON(x *expr, repr *toJSONExpr) *value {
 		b, err := json.Marshal(valueV.ToJSON(false))
 		if err != nil {
 			e.errorf(repr.syntax(), "failed to encode JSON: %v", err)
+			v.unknown = true
+			return v
+		}
+		v.repr = string(b)
+	}
+	return v
+}
+
+// evaluateBuiltinToYAML evaluates a call to the fn::toYAML builtin.
+func (e *evalContext) evaluateBuiltinToYAML(x *expr, repr *toYAMLExpr) *value {
+	v := &value{def: x, schema: x.schema}
+
+	value := e.evaluateExpr(repr.value, schema.Always())
+
+	v.combine(value)
+	if !v.unknown {
+		valueV, exportDiags := value.export("")
+		e.diags.Extend(exportDiags...)
+
+		b, err := yaml.Marshal(valueV.ToJSON(false))
+		if err != nil {
+			e.errorf(repr.syntax(), "failed to encode YAML: %v", err)
 			v.unknown = true
 			return v
 		}

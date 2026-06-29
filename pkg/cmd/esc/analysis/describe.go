@@ -71,6 +71,8 @@ func (a *Analysis) describeBuiltin(builtin *esc.BuiltinExpr) (string, bool) {
 		return "Encodes a string into its Base64 representation.", true
 	case "fn::toJSON":
 		return "Encodes a value into its JSON representation.", true
+	case "fn::toYAML":
+		return "Encodes a value into its YAML representation.", true
 	case "fn::toString":
 		return "Encodes a value into its string representation.", true
 	default:
