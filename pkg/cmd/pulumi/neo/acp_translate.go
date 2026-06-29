@@ -94,16 +94,35 @@ func (t *toolTracker) translate(evt UIEvent) (acp.SessionUpdate, bool) {
 	return nil, false
 }
 
-// promptText concatenates the text content blocks of a prompt; non-text blocks
-// are ignored (we advertise text-only prompt capabilities).
+// promptText renders a prompt's content blocks into the plain text forwarded to
+// Neo. Text blocks pass through verbatim. Resource links — which a client may
+// send regardless of prompt capabilities, typically for an @-mentioned file —
+// are materialized inline as their URI so the reference reaches the model rather
+// than being silently dropped. Capability-gated blocks (image/audio/embedded
+// resource) are ignored, since we don't advertise those capabilities.
 func promptText(blocks []acp.ContentBlock) string {
 	var b strings.Builder
 	for _, blk := range blocks {
-		if blk.Type == "text" {
+		switch blk.Type {
+		case "text":
 			b.WriteString(blk.Text)
+		case "resource_link":
+			b.WriteString(resourceLinkText(blk))
 		}
 	}
 	return b.String()
+}
+
+// resourceLinkText renders a resource_link block as text. The URI is what lets
+// the model (and its tools) locate the resource, so it always appears. The
+// optional Title — a human-readable description distinct from the file path — is
+// appended for context when set; Name is intentionally not appended, as it's
+// typically just the basename already present in the URI.
+func resourceLinkText(blk acp.ContentBlock) string {
+	if blk.Title == "" || blk.Title == blk.URI {
+		return "@" + blk.URI
+	}
+	return fmt.Sprintf("@%s (%s)", blk.URI, blk.Title)
 }
 
 // textContent wraps a non-empty string as a single ACP tool-call content block.

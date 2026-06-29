@@ -168,12 +168,24 @@ type SetConfigOptionResult struct {
 	ConfigOptions []ConfigOption `json:"configOptions"`
 }
 
-// ContentBlock is a single piece of prompt or message content. We only produce
-// and consume text blocks for now; non-text blocks (image/audio/resource) are
-// gated by prompt capabilities we don't yet advertise.
+// ContentBlock is a single piece of prompt or message content. We produce text
+// blocks and consume "text" and "resource_link" blocks: text and resource links
+// are baseline content a client may send regardless of prompt capabilities (an
+// editor emits a resource_link when the user @-mentions a file). The capability-
+// gated blocks (image/audio and the embedded "resource") are not yet advertised,
+// so a conforming client won't send them.
 type ContentBlock struct {
-	Type string `json:"type"` // "text"
+	Type string `json:"type"` // "text" | "resource_link"
 	Text string `json:"text,omitempty"`
+
+	// Resource link fields, set when Type == "resource_link". URI and Name are
+	// required by the spec for that type; the rest are optional metadata we keep
+	// so the reference survives translation to Neo's text-only prompt input.
+	URI         string `json:"uri,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Title       string `json:"title,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 // PromptParams is the client→agent `session/prompt` request: the user's message
