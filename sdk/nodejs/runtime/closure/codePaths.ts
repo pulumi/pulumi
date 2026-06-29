@@ -13,11 +13,7 @@
 // limitations under the License.
 
 import * as fs from "fs";
-import { fdir } from "fdir";
-// Picomatch is not used in this file, but the dependency is required for fdir
-// to support globbing. The import here serves as a marker so that we don't
-// accidentally remove the dependency from the package.json.
-import * as picomatch from "picomatch";
+import { glob } from "fs/promises";
 import normalize from "normalize-package-data";
 import * as arborist from "@npmcli/arborist";
 import * as upath from "upath";
@@ -214,11 +210,12 @@ export async function findWorkspaceRoot(startingPath: string): Promise<string | 
         }
         const workspaces = parseWorkspaces(p);
         for (const workspace of workspaces) {
-            const globber = new fdir().withBasePath().glob(upath.join(currentDir, workspace, "package.json"));
-            const files = await globber.crawl(currentDir).withPromise();
+            const pattern = upath.join(currentDir, workspace, "package.json");
             const normalized = upath.normalizeTrim(upath.join(packageJSONDir, "package.json"));
-            if (files.map((f) => upath.normalizeTrim(f)).includes(normalized)) {
-                return currentDir;
+            for await (const f of glob(pattern)) {
+                if (upath.normalizeTrim(f) === normalized) {
+                    return currentDir;
+                }
             }
         }
         currentDir = nextDir;
