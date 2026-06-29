@@ -23,13 +23,11 @@
         "@types/google-protobuf": "^3.15.5",
         "@types/semver": "^7.5.6",
         "execa": "^5.1.0",
-        "fdir": "^6.5.0",
         "google-protobuf": "^3.21.4",
         "ini": "^2.0.0",
         "js-yaml": "^4.0.0",
         "minimist": "^1.2.6",
         "normalize-package-data": "^6.0.0",
-        "picomatch": "^4.0.0",
         "require-from-string": "^2.0.1",
         "semver": "^7.5.2",
         "source-map-support": "^0.5.6",
@@ -43,7 +41,6 @@
         "@types/mocha": "10.0.10",
         "@types/node": "14.18.63",
         "@types/normalize-package-data": "2.4.4",
-        "@types/picomatch": "2.3.4",
         "@types/sinon": "10.0.20",
         "@types/split2": "2.1.6",
         "@typescript-eslint/eslint-plugin": "4.33.0",
@@ -75,7 +72,7 @@
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
     },
     "engines": {
-        "node": ">=20"
+        "node": ">=22"
     },
     "mocha": {
         "require": ["source-map-support/register"],

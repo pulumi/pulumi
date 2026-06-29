@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: improvement
+body: Remove the `fdir` and `picomatch` dependencies; the Node.js SDK now requires Node.js 22 or later
+time: 2026-06-29T12:08:08.017992+02:00
