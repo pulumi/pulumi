@@ -211,10 +211,8 @@ func (props PropertyMap) diff(other PropertyMap, opts diffOptions, path Property
 		}
 
 		if new, has := other[k]; has {
-			// If a new exists, use it; for output properties, however, ignore differences.
-			if new.IsOutput() {
-				sames[k] = old
-			} else if diff := old.diff(new, opts, append(path, string(k))); diff != nil {
+			// If a new exists, use it;
+			if diff := old.diff(new, opts, append(path, string(k))); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
 				} else if !new.HasValue() {
@@ -492,10 +490,8 @@ func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap, ignoreKeys ...Ig
 		}
 
 		if new, has := other[k]; has {
-			// If a new exists, use it; for output properties, however, ignore differences.
-			if new.IsOutput() {
-				sames[k] = new
-			} else if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
+			// If a new exists, use it;
+			if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
 				} else if !new.HasValue() {

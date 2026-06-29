@@ -35,60 +35,6 @@ func Copy(i any) any {
 	return deepCopy(reflect.ValueOf(i)).Interface()
 }
 
-func copyPropertyMap(m property.Map) property.Map {
-	values := m.AsMap()
-	for k, v := range values {
-		values[k] = copyPropertyValue(v)
-	}
-	return property.NewMap(values)
-}
-
-func copyPropertyArray(a property.Array) property.Array {
-	values := a.AsSlice()
-	for i, v := range values {
-		values[i] = copyPropertyValue(v)
-	}
-	return property.NewArray(values)
-}
-
-func copyPropertyValue(v property.Value) property.Value {
-	var result property.Value
-	switch {
-	case v.IsBool():
-		result = property.New(v.AsBool())
-	case v.IsNumber():
-		result = property.New(v.AsNumber())
-	case v.IsString():
-		result = property.New(v.AsString())
-	case v.IsArray():
-		result = property.New(copyPropertyArray(v.AsArray()))
-	case v.IsMap():
-		result = property.New(copyPropertyMap(v.AsMap()))
-	case v.IsAsset():
-		result = property.New(v.AsAsset())
-	case v.IsArchive():
-		result = property.New(v.AsArchive())
-	case v.IsResourceReference():
-		ref := v.AsResourceReference()
-		ref.ID = copyPropertyValue(ref.ID)
-		result = property.New(ref)
-	case v.IsComputed():
-		result = property.New(property.Computed)
-	case v.IsNull():
-		result = property.New(property.Null)
-	default:
-		contract.Failf("unknown property value type %T", v)
-	}
-
-	if v.Secret() {
-		result = result.WithSecret(true)
-	}
-	if deps := v.Dependencies(); len(deps) > 0 {
-		result = result.WithDependencies(deps)
-	}
-	return result
-}
-
 func deepCopy(v reflect.Value) reflect.Value {
 	if !v.IsValid() {
 		return v

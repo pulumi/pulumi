@@ -23,9 +23,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
@@ -230,13 +230,13 @@ func TestAnalyzeSnapshot_RemediationReportedNotApplied(t *testing.T) {
 					PolicyName:     "fix-key",
 					PolicyPackName: "test-pack",
 					Description:    "sets key to good",
-					Properties:     resource.ToResourcePropertyMap(remediated),
+					Properties:     remediated,
 				}},
 			}, nil
 		},
 		// Analysis still sees the original properties (remediation was not applied).
 		AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
-			assert.Equal(t, original, resource.FromResourcePropertyMap(r.Properties),
+			assert.Equal(t, original, r.Properties,
 				"analysis should see original properties, not remediated ones")
 			return plugin.AnalyzeResponse{}, nil
 		},

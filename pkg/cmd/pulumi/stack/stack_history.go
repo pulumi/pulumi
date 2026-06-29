@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -40,13 +41,22 @@ import (
 
 const errorDecryptingValue = "ERROR_UNABLE_TO_DECRYPT"
 
+type stackHistoryRenderFunc func(w io.Writer, updates []backend.UpdateInfo, decrypter config.Decrypter) error
+
 func newStackHistoryCmd() *cobra.Command {
 	var stack string
-	var jsonOut bool
 	var showSecrets bool
 	var pageSize int
 	var page int
 	var showFullDates bool
+
+	output := outputflag.OutputFlag[stackHistoryRenderFunc]{
+		RenderForTerminal: func(w io.Writer, updates []backend.UpdateInfo, _ config.Decrypter) error {
+			return displayUpdatesConsole(w, updates, page,
+				display.Options{Color: cmdutil.GetGlobalColorization()}, showFullDates)
+		},
+		RenderJSON: displayUpdatesJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:        "history",
@@ -107,11 +117,7 @@ This command displays data about previous updates for a stack.`,
 				Log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack history")
 			}
 
-			if jsonOut {
-				return displayUpdatesJSON(cmd.OutOrStdout(), updates, decrypter)
-			}
-
-			return displayUpdatesConsole(cmd.OutOrStdout(), updates, page, opts, showFullDates)
+			return output.Get()(cmd.OutOrStdout(), updates, decrypter)
 		},
 	}
 
@@ -123,8 +129,7 @@ This command displays data about previous updates for a stack.`,
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show secret values when listing config instead of displaying blinded values")
-	cmd.Flags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.Flags(), &output)
 	cmd.Flags().BoolVar(
 		&showFullDates, "full-dates", false, "Show full dates, instead of relative dates")
 	cmd.Flags().IntVar(

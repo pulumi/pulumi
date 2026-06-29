@@ -443,3 +443,51 @@ func TestCreateDiffDoesNotIndentBeneathHiddenParent(t *testing.T) {
 `
 	assert.Equal(t, strings.TrimSuffix(expected, "\n"), diff)
 }
+
+func TestRenderDiffPolicyViolationEventUsesDisplayResourceTypeName(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket")
+
+	payload := engine.PolicyViolationEventPayload{
+		ResourceURN:       urn,
+		Message:           "S3 buckets should have cross-region replication.",
+		PolicyName:        "s3-bucket-replication-enabled",
+		PolicyPackName:    "foo-policy-pack",
+		PolicyPackVersion: "0.0.6",
+		EnforcementLevel:  apitype.Advisory,
+	}
+
+	output := renderDiffPolicyViolationEvent(payload, "", "", Options{
+		Color: colors.Never,
+	})
+
+	assert.Contains(t, output, "(aws:s3:Bucket: my-bucket)")
+	assert.NotContains(t, output, "aws:s3/bucket:Bucket")
+}
+
+func TestRenderDiffPolicyViolationEventUsesDisplayResourceTypeNameWithURNs(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket")
+
+	payload := engine.PolicyViolationEventPayload{
+		ResourceURN:       urn,
+		Message:           "S3 buckets should have cross-region replication.",
+		PolicyName:        "s3-bucket-replication-enabled",
+		PolicyPackName:    "foo-policy-pack",
+		PolicyPackVersion: "0.0.6",
+		EnforcementLevel:  apitype.Advisory,
+	}
+
+	output := renderDiffPolicyViolationEvent(payload, "", "", Options{
+		Color:    colors.Never,
+		ShowURNs: true,
+	})
+
+	assert.Contains(
+		t,
+		output,
+		"(aws:s3:Bucket: urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket)",
+	)
+}

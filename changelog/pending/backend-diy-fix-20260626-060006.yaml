@@ -1,0 +1,6 @@
+component: backend/diy
+kind: fix
+body: Fix `pulumi stack tag rm` not removing the last tag on self-managed (diy) backends
+time: 2026-06-26T06:00:06-04:00
+custom:
+    PR: "23702"

@@ -31,13 +31,13 @@ import (
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -1359,7 +1359,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 			URN:        new.URN,
 			Type:       new.Type,
 			Name:       new.URN.Name(),
-			Properties: inputs,
+			Properties: resource.FromResourcePropertyMap(inputs),
 			Options: plugin.AnalyzerResourceOptions{
 				Protect:                 new.Protect,
 				IgnoreChanges:           goal.IgnoreChanges,
@@ -1376,7 +1376,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 				URN:        providerResource.URN,
 				Type:       providerResource.Type,
 				Name:       providerResource.URN.Name(),
-				Properties: providerResource.Inputs,
+				Properties: resource.FromResourcePropertyMap(providerResource.Inputs),
 			}
 		}
 
@@ -1401,14 +1401,13 @@ func (sg *stepGenerator) continueStepsFromImport(
 					EnforcementLevel:  apitype.Advisory,
 					URN:               new.URN,
 				})
-			} else if tresult.Properties != nil {
+			} else {
 				// Emit a nice message so users know what was remediated.
 				sg.deployment.events.OnPolicyRemediation(new.URN, tresult,
-					resource.FromResourcePropertyMap(inputs),
-					resource.FromResourcePropertyMap(tresult.Properties))
+					resource.FromResourcePropertyMap(inputs), tresult.Properties)
 				// Use the transformed inputs rather than the old ones from this point onwards.
-				inputs = tresult.Properties
-				new.Inputs = tresult.Properties
+				inputs = resource.ToResourcePropertyMap(tresult.Properties)
+				new.Inputs = resource.ToResourcePropertyMap(tresult.Properties)
 			}
 		}
 		summary := resourceanalyzer.NewRemediatePolicySummary(new.URN, response, info)
@@ -3266,7 +3265,7 @@ func (sg *stepGenerator) analyzeAll(
 		URN:        new.URN,
 		Type:       new.Type,
 		Name:       new.URN.Name(),
-		Properties: inputs,
+		Properties: resource.FromResourcePropertyMap(inputs),
 		Options: plugin.AnalyzerResourceOptions{
 			Protect:                 new.Protect,
 			IgnoreChanges:           goal.IgnoreChanges,
@@ -3283,7 +3282,7 @@ func (sg *stepGenerator) analyzeAll(
 			URN:        providerResource.URN,
 			Type:       providerResource.Type,
 			Name:       providerResource.URN.Name(),
-			Properties: providerResource.Inputs,
+			Properties: resource.FromResourcePropertyMap(providerResource.Inputs),
 		}
 	}
 
@@ -3321,7 +3320,7 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 					Name: v.URN.Name(),
 					// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
 					// to verify the final stack is in a compliant state.
-					Properties: v.Outputs,
+					Properties: resource.FromResourcePropertyMap(v.Outputs),
 					Options: plugin.AnalyzerResourceOptions{
 						Protect:                 v.Protect,
 						IgnoreChanges:           v.IgnoreChanges,
@@ -3373,7 +3372,7 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 					URN:        providerResource.URN,
 					Type:       providerResource.Type,
 					Name:       providerResource.URN.Name(),
-					Properties: providerResource.Inputs,
+					Properties: resource.FromResourcePropertyMap(providerResource.Inputs),
 				}
 			}
 			resources = append(resources, res)
