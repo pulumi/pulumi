@@ -28,6 +28,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	slicesfx "github.com/pgavlin/fx/v2/slices"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -768,7 +769,7 @@ func (sg *stepGenerator) generateResourceSteps(
 		Custom:                  goal.Custom,
 		Delete:                  false,
 		ID:                      "",
-		Inputs:                  goal.Properties,
+		Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 		Outputs:                 nil,
 		Parent:                  goal.Parent,
 		Protect:                 protectState,
@@ -792,9 +793,9 @@ func (sg *stepGenerator) generateResourceSteps(
 		SourcePosition:          goal.SourcePosition,
 		StackTrace:              goal.StackTrace,
 		IgnoreChanges:           goal.IgnoreChanges,
-		HideDiff:                goal.HideDiff,
+		HideDiff:                slices.Collect(slicesfx.Map(goal.HideDiff, resource.ToResourcePropertyPath)),
 		ReplaceOnChanges:        goal.ReplaceOnChanges,
-		ReplacementTrigger:      goal.ReplacementTrigger,
+		ReplacementTrigger:      resource.ToResourcePropertyValue(goal.ReplacementTrigger),
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
@@ -1100,7 +1101,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					Custom:                  goal.Custom,
 					Delete:                  false,
 					ID:                      "",
-					Inputs:                  goal.Properties,
+					Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 					Outputs:                 nil,
 					Parent:                  goal.Parent,
 					Protect:                 new.Protect,
@@ -1123,7 +1124,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					SourcePosition:          goal.SourcePosition,
 					StackTrace:              goal.StackTrace,
 					IgnoreChanges:           goal.IgnoreChanges,
-					HideDiff:                goal.HideDiff,
+					HideDiff:                slices.Collect(slicesfx.Map(goal.HideDiff, resource.ToResourcePropertyPath)),
 					ReplaceOnChanges:        goal.ReplaceOnChanges,
 					ReplacementTrigger:      resource.NewNullProperty(),
 					RefreshBeforeUpdate:     new.RefreshBeforeUpdate,
@@ -1280,7 +1281,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
-				News:          goal.Properties,
+				News:          resource.ToResourcePropertyMap(goal.Properties),
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
@@ -1953,7 +1954,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			if prov != nil && !sg.isTargetedReplace(urn, old) {
 				resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
 					URN:           urn,
-					News:          goal.Properties,
+					News:          resource.ToResourcePropertyMap(goal.Properties),
 					AllowUnknowns: allowUnknowns,
 					RandomSeed:    randomSeed,
 					Autonaming:    autonaming,

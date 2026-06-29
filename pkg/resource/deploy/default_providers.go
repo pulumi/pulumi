@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // defaultProviders manages the registration of default providers. The default provider for a package is the provider
@@ -165,7 +166,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			Type:                    sdkproviders.MakeProviderType(req.Package()),
 			Name:                    req.DefaultName(),
 			Custom:                  true,
-			Properties:              inputs,
+			Properties:              resource.FromResourcePropertyMap(inputs),
 			Parent:                  "",
 			Protect:                 nil,
 			Dependencies:            nil,
@@ -179,7 +180,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			ID:                      "",
 			CustomTimeouts:          nil,
 			ReplaceOnChanges:        nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.New(property.Null),
 			RetainOnDelete:          nil,
 			HideDiff:                nil,
 			DeletedWith:             "",

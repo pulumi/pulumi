@@ -17,6 +17,7 @@ package resource
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Goal is a desired state for a resource object. Normally it represents a subset of the resource's state expressed by
@@ -29,7 +30,7 @@ type Goal struct {
 	// true if this resource is custom, managed by a plugin.
 	Custom bool
 	// the resource's property state.
-	Properties resource.PropertyMap
+	Properties property.Map
 	// an optional parent URN for this resource.
 	Parent resource.URN
 	// true to protect this resource from deletion.
@@ -47,7 +48,7 @@ type Goal struct {
 	// a list of property paths to ignore when diffing.
 	IgnoreChanges []string
 	// a list of property paths to hide the diffs of.
-	HideDiff []resource.PropertyPath
+	HideDiff []property.Path
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey
 	// additional structured Aliases that should be assigned.
@@ -59,7 +60,7 @@ type Goal struct {
 	// a list of property paths that if changed should force a replacement.
 	ReplaceOnChanges []string
 	// if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
-	ReplacementTrigger resource.PropertyValue
+	ReplacementTrigger property.Value
 	// if set to True, the providers Delete method will not be called for this resource.
 	RetainOnDelete *bool
 	// if set, the providers Delete method will not be called for this resource.
@@ -88,7 +89,7 @@ type NewGoal struct {
 	Custom bool // required
 
 	// the resource's property state.
-	Properties resource.PropertyMap // required
+	Properties property.Map // required
 
 	// an optional parent URN for this resource.
 	Parent resource.URN // required
@@ -130,7 +131,7 @@ type NewGoal struct {
 	ReplaceOnChanges []string // required
 
 	// if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
-	ReplacementTrigger resource.PropertyValue // required
+	ReplacementTrigger property.Value // required
 
 	// if set to True, the providers Delete method will not be called for this resource.
 	// required
@@ -153,7 +154,7 @@ type NewGoal struct {
 	ResourceHooks map[resource.HookType][]string // required
 
 	// If set, the list of property paths to hide the diff output of.
-	HideDiff []resource.PropertyPath // required
+	HideDiff []property.Path // required
 }
 
 // Make consumes the NewGoal to create a *Goal.

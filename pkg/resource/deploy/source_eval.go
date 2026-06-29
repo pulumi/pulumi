@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,6 +34,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
+	slicesfx "github.com/pgavlin/fx/v2/slices"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -311,7 +313,7 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 		contract.Assertf(reg != nil, "received a nil registerResourceEvent")
 		goal := reg.Goal()
 		logging.V(5).Infof("EvalSourceIterator produced a registration: t=%v,name=%v,#props=%v",
-			goal.Type, goal.Name, len(goal.Properties))
+			goal.Type, goal.Name, goal.Properties.Len())
 		return reg, nil
 	case regOut := <-iter.regOutChan:
 		contract.Assertf(regOut != nil, "received a nil registerResourceOutputsEvent")
@@ -2786,7 +2788,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Type:                    t,
 			Name:                    name,
 			Custom:                  custom,
-			Properties:              props,
+			Properties:              resource.FromResourcePropertyMap(props),
 			Parent:                  parent,
 			Protect:                 protect,
 			Dependencies:            rawDependencies,
@@ -2800,11 +2802,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			ID:                      id,
 			CustomTimeouts:          &timeouts,
 			ReplaceOnChanges:        replaceOnChanges,
-			ReplacementTrigger:      replacementTrigger,
+			ReplacementTrigger:      resource.FromResourcePropertyValue(replacementTrigger),
 			RetainOnDelete:          retainOnDelete,
 			DeletedWith:             deletedWith,
 			ReplaceWith:             replaceWith,
-			HideDiff:                hiddenDiffs,
+			HideDiff:                slices.Collect(slicesfx.Map(hiddenDiffs, resource.FromResourcePropertyPath)),
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
