@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -312,6 +313,58 @@ func TestCreateDiffRequiresColor(t *testing.T) {
 	_, err := CreateDiff([]engine.Event{}, Options{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "color must be specified")
+}
+
+func TestRenderDiffPolicyRemediationEventFromPropertyMaps(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+	events := []engine.Event{
+		engine.NewEvent(engine.PolicyRemediationEventPayload{
+			ResourceURN:       urn,
+			PolicyName:        "ignored",
+			PolicyPackName:    "analyzerA",
+			PolicyPackVersion: "1.0.0",
+			Before:            property.Map{},
+			After: property.NewMap(map[string]property.Value{
+				"a":   property.New("nope"),
+				"ggg": property.New(true),
+			}),
+		}),
+		engine.NewEvent(engine.PolicyRemediationEventPayload{
+			ResourceURN:       urn,
+			PolicyName:        "real-deal",
+			PolicyPackName:    "analyzerA",
+			PolicyPackVersion: "1.0.0",
+			Before: property.NewMap(map[string]property.Value{
+				"a":   property.New("nope"),
+				"ggg": property.New(true),
+			}),
+			After: property.NewMap(map[string]property.Value{
+				"a":   property.New("foo"),
+				"fff": property.New(true),
+				"z":   property.New("bar"),
+			}),
+		}),
+	}
+
+	var actual strings.Builder
+	for _, event := range events {
+		actual.WriteString(RenderDiffEvent(event, 0, nil, Options{Color: colors.Never}))
+	}
+
+	expected := "" +
+		"    analyzerA@v1.0.0 [remediate]  ignored  (pkgA:m:typA: resA)\n" +
+		"      + a  : \"nope\"\n" +
+		"      + ggg: true\n" +
+		"\n" +
+		"    analyzerA@v1.0.0 [remediate]  real-deal  (pkgA:m:typA: resA)\n" +
+		"      ~ a  : \"nope\" => \"foo\"\n" +
+		"      + fff: true\n" +
+		"      - ggg: true\n" +
+		"      + z  : \"bar\"\n" +
+		"\n"
+	assert.Equal(t, expected, actual.String())
 }
 
 func TestCreateDiffDoesNotIndentBeneathHiddenParent(t *testing.T) {

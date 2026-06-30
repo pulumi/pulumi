@@ -27,8 +27,8 @@ func Value(maxDepth int) *rapid.Generator[property.Value] {
 	}
 	return rapid.OneOf(
 		Primitive(),
-		Array(maxDepth),
-		Map(maxDepth),
+		rapid.Map(Array(maxDepth), property.New),
+		rapid.Map(Map(maxDepth), property.New),
 		Secret(maxDepth),
 		Dependencies(maxDepth),
 	)
@@ -58,9 +58,9 @@ func Null() *rapid.Generator[property.Value] { return rapid.Just(property.Value{
 
 func Computed() *rapid.Generator[property.Value] { return rapid.Just(property.New(property.Computed)) }
 
-func Array(maxDepth int) *rapid.Generator[property.Value] { return ArrayOf(Value(maxDepth - 1)) }
+func Array(maxDepth int) *rapid.Generator[property.Array] { return ArrayOf(Value(maxDepth - 1)) }
 
-func Map(maxDepth int) *rapid.Generator[property.Value] { return MapOf(Value(maxDepth - 1)) }
+func Map(maxDepth int) *rapid.Generator[property.Map] { return MapOf(Value(maxDepth - 1)) }
 
 func Secret(maxDepth int) *rapid.Generator[property.Value] { return SecretOf(Value(maxDepth - 1)) }
 
@@ -68,15 +68,15 @@ func Dependencies(maxDepth int) *rapid.Generator[property.Value] {
 	return DependenciesOf(Value(maxDepth - 1))
 }
 
-func ArrayOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
-	return rapid.Custom(func(t *rapid.T) property.Value {
-		return property.New(rapid.SliceOf(value).Draw(t, "V"))
+func ArrayOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Array] {
+	return rapid.Custom(func(t *rapid.T) property.Array {
+		return property.NewArray(rapid.SliceOf(value).Draw(t, "V"))
 	})
 }
 
-func MapOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
-	return rapid.Custom(func(t *rapid.T) property.Value {
-		return property.New(rapid.MapOf(
+func MapOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Map] {
+	return rapid.Custom(func(t *rapid.T) property.Map {
+		return property.NewMap(rapid.MapOf(
 			rapid.String(),
 			value,
 		).Draw(t, "V"))

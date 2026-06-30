@@ -202,12 +202,12 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	// a short diff summary similar to what is show for an update row is emitted.
 	if detailed {
 		var b bytes.Buffer
-		PrintObjectDiff(&b, *diff, nil,
+		PrintObjectDiff(&b, *resource.ToResourceObjectDiff(diff), nil,
 			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets, nil)
 		remediationLine = fmt.Sprintf("%s\n%s", remediationLine, b.String())
 	} else {
 		var b bytes.Buffer
-		writeShortDiff(&b, diff, nil)
+		writeShortDiff(&b, resource.ToResourceObjectDiff(diff), nil)
 		remediationLine = fmt.Sprintf("%s [%s]", remediationLine, b.String())
 	}
 
