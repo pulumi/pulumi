@@ -165,6 +165,9 @@ func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	if res.ExtensionRef != "" {
 		features[extensionParameterizationFeature] = true
 	}
+	if res.SnippetID != "" {
+		features[snippetsFeature] = true
+	}
 }
 
 // ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.
@@ -658,6 +661,7 @@ func SerializeResource(
 		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 		ViewOf:                  res.ViewOf,
 		ResourceHooks:           res.ResourceHooks,
+		SnippetID:               res.SnippetID,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -890,6 +894,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
+			SnippetID:               res.SnippetID,
 		}.Make(),
 		nil
 }

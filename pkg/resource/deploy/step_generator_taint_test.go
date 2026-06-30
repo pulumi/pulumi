@@ -153,6 +153,7 @@ func TestTaintedResourceDiff(t *testing.T) {
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
+		SnippetID:               "",
 	}.Make()
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
@@ -182,6 +183,7 @@ func TestTaintedResourceDiff(t *testing.T) {
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make(),
 		done: done,
 	}
@@ -387,6 +389,7 @@ func TestDiffWithTaintedResource(t *testing.T) {
 				RefreshBeforeUpdate:     false,
 				ViewOf:                  "",
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make()
 			done := make(chan *RegisterResult)
 			event := &registerResourceEvent{
@@ -416,6 +419,7 @@ func TestDiffWithTaintedResource(t *testing.T) {
 					SourcePosition:          "",
 					StackTrace:              nil,
 					ResourceHooks:           nil,
+					SnippetID:               "",
 				}.Make(),
 				done: done,
 			}

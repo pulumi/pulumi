@@ -2041,6 +2041,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,
 		ViewOf:                  s.new.ViewOf,
 		ResourceHooks:           nil,
+		SnippetID:               s.new.SnippetID,
 	}.Make()
 
 	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
