@@ -188,7 +188,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int, sho
 
 func getResourcePropertiesDetails(
 	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool,
-	debug bool, showSecrets bool,
+	debug bool, showSecrets bool, replaceKeys []resource.PropertyKey,
 ) string {
 	var b bytes.Buffer
 
@@ -218,10 +218,10 @@ func getResourcePropertiesDetails(
 		}
 	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
 		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets, hideDiff)
+			summary, truncateOutput, debug, showSecrets, hideDiff, replaceKeys)
 	} else {
 		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets, hideDiff)
+			summary, truncateOutput, debug, showSecrets, hideDiff, replaceKeys)
 	}
 
 	return b.String()
@@ -585,13 +585,26 @@ type propertyPrinter struct {
 	truncateOutput bool
 	showSecrets    bool
 
-	indent int
+	indent       int
+	replacePaths []resource.PropertyPath
+	currentPath  resource.PropertyPath
 }
 
 func (p *propertyPrinter) indented(amt int) *propertyPrinter {
 	new := *p
 	new.indent += amt
 	return &new
+}
+
+// forcesReplacement reports whether path is one of the provider's replace paths. Paths are
+// compared element-by-element so keys containing `.` or `[` don't collide.
+func (p *propertyPrinter) forcesReplacement(path resource.PropertyPath) bool {
+	for _, rp := range p.replacePaths {
+		if slices.Equal(rp, path) {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *propertyPrinter) withOp(op display.StepOp) *propertyPrinter {
@@ -758,7 +771,7 @@ func shortHash(hash string) string {
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
 	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
-	hidePaths []resource.PropertyPath,
+	hidePaths []resource.PropertyPath, replaceKeys []resource.PropertyKey,
 ) {
 	var hiddenDiffs []resource.PropertyPath
 
@@ -790,7 +803,14 @@ func printOldNewDiffs(
 	}
 
 	if diff != nil {
-		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets, hiddenDiffs)
+		// Legacy path: the engine only reports top-level replace keys here. Nested annotations
+		// need the detailed diff path (see engine.TranslateDetailedDiff).
+		replacePaths := make([]resource.PropertyPath, 0, len(replaceKeys))
+		for _, k := range replaceKeys {
+			replacePaths = append(replacePaths, resource.PropertyPath{string(k)})
+		}
+		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput,
+			debug, showSecrets, hiddenDiffs, replacePaths)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
@@ -800,7 +820,7 @@ func printOldNewDiffs(
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
 	planning bool, indent int, summary bool, truncateOutput bool, debug bool, showSecrets bool,
-	hidden []resource.PropertyPath,
+	hidden []resource.PropertyPath, replacePaths []resource.PropertyPath,
 ) {
 	p := propertyPrinter{
 		dest:           b,
@@ -811,6 +831,7 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 		summary:        summary,
 		truncateOutput: truncateOutput,
 		showSecrets:    showSecrets,
+		replacePaths:   replacePaths,
 	}
 	p.printHiddenPaths(hidden)
 	p.printObjectDiff(diff, include)
@@ -850,17 +871,52 @@ func (p *propertyPrinter) printHiddenPaths(paths []resource.PropertyPath) {
 	}
 }
 
+// appendReplaceAnnotation adds " # forces replacement" to the property's change line: the end
+// of a single-line diff, or the opening line of a multiline diff (not the closing brace).
+func appendReplaceAnnotation(s string) string {
+	suffix := "\n" + colors.Reset
+	first := strings.Index(s, suffix)
+	if first == -1 {
+		return s
+	}
+
+	annotation := colors.Reset + colors.SpecReplace + " # forces replacement"
+	last := strings.LastIndex(s, suffix)
+	if first != last {
+		return s[:first] + annotation + s[first:]
+	}
+
+	return s[:last] + annotation + s[last:]
+}
+
 func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxkey int, diff resource.ObjectDiff) {
 	titleFunc := propertyTitlePrinter(string(key), maxkey)
+
+	// Full path to this property, carried into nested diffs and used for replacement detection.
+	childPath := append(append(resource.PropertyPath{}, p.currentPath...), string(key))
+	forces := p.forcesReplacement(childPath)
+
+	// Capture output so we can append the annotation when this property forces replacement.
+	capture := &bytes.Buffer{}
+	pp := *p
+	pp.dest = capture
+	pp.currentPath = childPath
+
 	if add, isadd := diff.Adds[key]; isadd {
-		p.printAdd(add, titleFunc)
+		pp.printAdd(add, titleFunc)
 	} else if del, isdelete := diff.Deletes[key]; isdelete {
-		p.printDelete(del, titleFunc)
+		pp.printDelete(del, titleFunc)
 	} else if update, isupdate := diff.Updates[key]; isupdate {
-		p.printPropertyValueDiff(titleFunc, update)
-	} else if same := diff.Sames[key]; !p.summary && shouldPrintPropertyValue(same, p.planning) {
-		p.withOp(deploy.OpSame).withPrefix(false).printObjectProperty(key, same, maxkey)
+		pp.printPropertyValueDiff(titleFunc, update)
+	} else if same := diff.Sames[key]; !pp.summary && shouldPrintPropertyValue(same, pp.planning) {
+		pp.withOp(deploy.OpSame).withPrefix(false).printObjectProperty(key, same, maxkey)
 	}
+
+	out := capture.String()
+	if forces {
+		out = appendReplaceAnnotation(out)
+	}
+	writeString(p.dest, out)
 }
 
 func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter), diff resource.ValueDiff) {
@@ -874,6 +930,7 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 		a := diff.Array
 		for i := 0; i < a.Len(); i++ {
 			elemPrinter := p.indented(2)
+			elemPrinter.currentPath = append(append(resource.PropertyPath{}, p.currentPath...), i)
 			elemTitleFunc := func(p *propertyPrinter) {
 				p.indented(-1).writeIndentedf("[%d]: ", i)
 			}

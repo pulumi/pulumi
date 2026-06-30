@@ -150,7 +150,10 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 // for display.
 //
 // The second returned argument is the list of hidden diffs.
-func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.ObjectDiff, []resource.PropertyPath) {
+// The third returned argument is the list of property paths that force replacement.
+func TranslateDetailedDiff(
+	step *StepEventMetadata, refresh bool,
+) (*resource.ObjectDiff, []resource.PropertyPath, []resource.PropertyPath) {
 	contract.Assertf(step.DetailedDiff != nil, "%v step has no detailed diff", step.Op)
 
 	// The rich diff is presented as a list of simple JS property paths and corresponding diffs. We translate this to
@@ -159,6 +162,7 @@ func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.Obj
 
 	var hiddenPaths []resource.PropertyPath
 	var hiddenDiffs []resource.PropertyPath
+	var replacePaths []resource.PropertyPath
 	if step.New != nil {
 		hiddenPaths = step.New.HideDiffs
 	} else if step.Old != nil {
@@ -191,6 +195,11 @@ diffs:
 		}
 
 		addDiff(elements, pdiff.Kind, &diff, olds, news)
+
+		switch pdiff.Kind { //nolint:exhaustive // Only *Replace kinds are relevant here.
+		case plugin.DiffAddReplace, plugin.DiffDeleteReplace, plugin.DiffUpdateReplace:
+			replacePaths = append(replacePaths, elements)
+		}
 	}
 
 	// Ensure that our paths are unique and sorted
@@ -200,6 +209,12 @@ diffs:
 	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
 		return a.String() == b.String()
 	})
+	slices.SortFunc(replacePaths, func(a, b resource.PropertyPath) int {
+		return cmp.Compare(a.String(), b.String())
+	})
+	replacePaths = slices.CompactFunc(replacePaths, func(a, b resource.PropertyPath) bool {
+		return a.String() == b.String()
+	})
 
-	return diff.Object, hiddenDiffs
+	return diff.Object, hiddenDiffs, replacePaths
 }

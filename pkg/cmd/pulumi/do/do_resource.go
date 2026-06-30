@@ -544,9 +544,13 @@ func formatPatchSummary(
 	}
 
 	var diffBuf bytes.Buffer
+	replacePaths := make([]resource.PropertyPath, 0, len(providerDiff.ReplaceKeys))
+	for _, k := range providerDiff.ReplaceKeys {
+		replacePaths = append(replacePaths, resource.PropertyPath{string(k)})
+	}
 	display.PrintObjectDiff(&diffBuf, *objDiff, nil, /*include*/
 		true /*planning*/, 1 /*indent*/, false /*summary*/, false, /*truncateOutput*/
-		false /*debug*/, showSecrets, nil /*hidden*/)
+		false /*debug*/, showSecrets, nil /*hidden*/, replacePaths)
 	b.WriteString(color.Colorize(diffBuf.String()))
 
 	if len(providerDiff.ReplaceKeys) > 0 {
