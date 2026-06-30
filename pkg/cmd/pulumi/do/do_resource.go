@@ -107,7 +107,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	cmd.PersistentFlags().StringVar(&pc.providerURN, "provider", "",
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
 			"base of the provider configuration (requires a stack context)")
-	addPersistentInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties)
+	addPersistentInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
 	cmd.AddCommand(pc.newResourceCreateCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))

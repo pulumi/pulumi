@@ -619,8 +619,8 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 
 	config, err := evaluateResourceFile(
 		ctx, pc.providerFile, "provider", pc.format,
-		pc.spec.Provider, ec, pc.converter, pc.loaderTarget, pc.packageDescriptor,
-		collectInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties))
+		pc.providerDef, ec, pc.converter, pc.loaderTarget, pc.packageDescriptor,
+		collectInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties))
 	if err != nil {
 		return fmt.Errorf("parse provider file: %w", err)
 	}
@@ -633,7 +633,7 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 		config = merged
 	}
 
-	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+pc.spec.Name), "")
+	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+pc.spec.Name()), "")
 	name := urn.Name()
 	typ := urn.Type()
 	uuid, err := uuid.NewV4()
@@ -693,7 +693,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 		// The provider package must also match: AWS provider inputs handed to an Azure
 		// Configure call would either fail with a confusing schema mismatch or — worse — silently
 		// authenticate against the wrong cloud. Reject early with a clear message.
-		expectedType := tokens.Type("pulumi:providers:" + pc.spec.Name)
+		expectedType := tokens.Type("pulumi:providers:" + pc.spec.Name())
 		if res.Type != expectedType {
 			return nil, fmt.Errorf(
 				"resource %s is a provider for a different package (type=%s); --provider must name a %s resource",
