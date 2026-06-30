@@ -1,0 +1,4 @@
+component: cli/import
+kind: improvement
+body: Error when running `pulumi import --from terraform` in a Pulumi HCL project
+time: 2026-06-30T17:44:33.25819+02:00
