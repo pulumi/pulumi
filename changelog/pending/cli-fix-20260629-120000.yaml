@@ -1,6 +1,0 @@
-component: cli
-kind: fix
-body: Forward file references from `pulumi neo acp` prompts to Neo instead of dropping them, so resource links (such as `@`-mentioned files) reach the agent
-time: 2026-06-29T12:00:00.000000+00:00
-custom:
-    PR: ""
