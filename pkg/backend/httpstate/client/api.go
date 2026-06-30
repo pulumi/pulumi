@@ -605,6 +605,16 @@ func pulumiAPICall(ctx context.Context,
 						}
 						return "", nil, capErr
 					}
+					if e.ErrorType == apitype.NeoMemberCapExhaustedErrorType {
+						capErr := backenderr.NeoCapExhaustedError{
+							Scope:   backenderr.NeoCapScopeMember,
+							Message: errResp.Message,
+						}
+						if e.Attribute != nil {
+							capErr.OrgLogin = *e.Attribute
+						}
+						return "", nil, capErr
+					}
 				}
 			}
 		}
