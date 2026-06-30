@@ -227,7 +227,7 @@ linters:
         text: 'use (cmd\.OutOrStdout|cmd\.ErrOrStderr|fmt\.Fprint\*)'
       - linters:
           - forbidigo
-        path-except: ^NO_MIGRATED_PACKAGES_YET$
+        path-except: ^pkg/util/nosleep/
         text: 'logging wrapper \(slog migration\)'
       - linters:
           - forbidigo

@@ -17,11 +17,10 @@
 package nosleep
 
 import (
+	"log/slog"
 	"os"
 	"os/exec"
 	"strconv"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 func keepRunning() DoneFunc {
@@ -31,12 +30,12 @@ func keepRunning() DoneFunc {
 	// we intentionally ignore the error here.  If we can't keep the system awake we still want to continue.
 	err := cmd.Start()
 	if err != nil {
-		logging.V(5).Infof("Failed to get wake lock: %v", err)
+		slog.Info("Failed to get wake lock", "err", err)
 		return func() {}
 	}
-	logging.V(5).Infof("Got wake lock (caffeinate with pid %d)", cmd.Process.Pid)
+	slog.Info("Got wake lock", "mechanism", "caffeinate", "pid", cmd.Process.Pid)
 	return func() {
 		_ = cmd.Process.Kill()
-		logging.V(5).Infof("Released wake lock (caffeinate with pid %d)", cmd.Process.Pid)
+		slog.Info("Released wake lock", "mechanism", "caffeinate", "pid", cmd.Process.Pid)
 	}
 }
