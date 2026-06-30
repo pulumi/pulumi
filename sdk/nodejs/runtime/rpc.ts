@@ -327,58 +327,28 @@ export function resolveProperties(
     }
 }
 
-/**
- * Unknown values are encoded as a distinguished string value.
- */
-export const unknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
+// Wire-protocol marker constants live in `./sigs`, a leaf module with no
+// runtime side-imports. Re-exported here for backward compatibility with
+// external consumers that import them from `@pulumi/pulumi/runtime/rpc`.
+export {
+    unknownValue,
+    specialSigKey,
+    specialAssetSig,
+    specialArchiveSig,
+    specialSecretSig,
+    specialResourceSig,
+    specialOutputValueSig,
+} from "./sigs";
 
-/**
- * {@link specialSigKey} is sometimes used to encode type identity inside of a
- * map.
- *
- * @see sdk/go/common/resource/properties.go.
- */
-export const specialSigKey = "4dabf18193072939515e22adb298388d";
-
-/**
- * {@link specialAssetSig} is a randomly assigned hash used to identify assets
- * in maps.
- *
- * @see sdk/go/common/resource/asset.go.
- */
-export const specialAssetSig = "c44067f5952c0a294b673a41bacd8c17";
-
-/**
- * {@link specialArchiveSig} is a randomly assigned hash used to identify
- * archives in maps.
- *
- * @see sdk/go/common/resource/asset.go.
- */
-export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
-
-/**
- * {@link specialSecretSig} is a randomly assigned hash used to identify secrets
- * in maps.
- *
- * @see sdk/go/common/resource/properties.go.
- */
-export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
-
-/**
- * {@link specialResourceSig} is a randomly assigned hash used to identify
- * resources in maps.
- *
- * @see sdk/go/common/resource/properties.go.
- */
-export const specialResourceSig = "5cf8f73096256a8f31e491e813e4eb8e";
-
-/**
- * {@link specialOutputValueSig} is a randomly assigned hash used to identify
- * outputs in maps.
- *
- * @see sdk/go/common/resource/properties.go.
- */
-export const specialOutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4";
+import {
+    unknownValue,
+    specialSigKey,
+    specialAssetSig,
+    specialArchiveSig,
+    specialSecretSig,
+    specialResourceSig,
+    specialOutputValueSig,
+} from "./sigs";
 
 /** @internal */
 export function serializeSecretValue(value: any): any {
