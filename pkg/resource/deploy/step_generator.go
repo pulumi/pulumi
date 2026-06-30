@@ -28,6 +28,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	slicesfx "github.com/pgavlin/fx/v2/slices"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -767,7 +769,7 @@ func (sg *stepGenerator) generateResourceSteps(
 		Custom:                  goal.Custom,
 		Delete:                  false,
 		ID:                      "",
-		Inputs:                  goal.Properties,
+		Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 		Outputs:                 nil,
 		Parent:                  goal.Parent,
 		Protect:                 protectState,
@@ -791,9 +793,9 @@ func (sg *stepGenerator) generateResourceSteps(
 		SourcePosition:          goal.SourcePosition,
 		StackTrace:              goal.StackTrace,
 		IgnoreChanges:           goal.IgnoreChanges,
-		HideDiff:                goal.HideDiff,
+		HideDiff:                slices.Collect(slicesfx.Map(goal.HideDiff, resource.ToResourcePropertyPath)),
 		ReplaceOnChanges:        goal.ReplaceOnChanges,
-		ReplacementTrigger:      goal.ReplacementTrigger,
+		ReplacementTrigger:      resource.ToResourcePropertyValue(goal.ReplacementTrigger),
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
@@ -1099,7 +1101,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					Custom:                  goal.Custom,
 					Delete:                  false,
 					ID:                      "",
-					Inputs:                  goal.Properties,
+					Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 					Outputs:                 nil,
 					Parent:                  goal.Parent,
 					Protect:                 new.Protect,
@@ -1122,7 +1124,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					SourcePosition:          goal.SourcePosition,
 					StackTrace:              goal.StackTrace,
 					IgnoreChanges:           goal.IgnoreChanges,
-					HideDiff:                goal.HideDiff,
+					HideDiff:                slices.Collect(slicesfx.Map(goal.HideDiff, resource.ToResourcePropertyPath)),
 					ReplaceOnChanges:        goal.ReplaceOnChanges,
 					ReplacementTrigger:      resource.NewNullProperty(),
 					RefreshBeforeUpdate:     new.RefreshBeforeUpdate,
@@ -1279,7 +1281,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
-				News:          goal.Properties,
+				News:          resource.ToResourcePropertyMap(goal.Properties),
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
@@ -1736,7 +1738,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
-	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
+	prov plugin.Provider, goal *pkgresource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
 	// Unknowns in replacement triggers are fine during preview, but they should raise an error during the actual
@@ -1952,7 +1954,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			if prov != nil && !sg.isTargetedReplace(urn, old) {
 				resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
 					URN:           urn,
-					News:          goal.Properties,
+					News:          resource.ToResourcePropertyMap(goal.Properties),
 					AllowUnknowns: allowUnknowns,
 					RandomSeed:    randomSeed,
 					Autonaming:    autonaming,
@@ -2765,7 +2767,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 // with a DiffResult. If diff returns the completion source the step generator will yield a DiffStep.
 func (sg *stepGenerator) diff(
 	event RegisterResourceEvent,
-	goal *resource.Goal, autonaming *plugin.AutonamingOptions, randomSeed []byte,
+	goal *pkgresource.Goal, autonaming *plugin.AutonamingOptions, randomSeed []byte,
 	urn resource.URN, old, new *resource.State, oldInputs,
 	newInputs resource.PropertyMap, prov plugin.Provider,
 ) (plugin.DiffResult, *promise.CompletionSource[plugin.DiffResult], error) {
@@ -3255,7 +3257,7 @@ func (sg *stepGenerator) analyzeAll(
 	analyzers []plugin.Analyzer,
 	new *resource.State,
 	inputs resource.PropertyMap,
-	goal *resource.Goal,
+	goal *pkgresource.Goal,
 ) (bool, error) {
 	if len(analyzers) == 0 {
 		return false, nil

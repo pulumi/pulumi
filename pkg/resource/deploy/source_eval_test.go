@@ -38,6 +38,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -149,7 +150,7 @@ func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
 }
 
 type testRegEvent struct {
-	goal         *resource.Goal
+	goal         *pkgresource.Goal
 	result       *RegisterResult
 	extension    *apitype.Extension
 	extensionRef apitype.ExtensionRef
@@ -159,7 +160,7 @@ var _ RegisterResourceEvent = (*testRegEvent)(nil)
 
 func (g *testRegEvent) event() {}
 
-func (g *testRegEvent) Goal() *resource.Goal {
+func (g *testRegEvent) Goal() *pkgresource.Goal {
 	return g.goal
 }
 
@@ -180,7 +181,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 				Protect:      g.Protect,
 				Dependencies: g.Dependencies,
 				Provider:     g.Provider,
-				Inputs:       g.Properties,
+				Inputs:       resource.ToResourcePropertyMap(g.Properties),
 				PropertyDeps: g.PropertyDependencies,
 			})
 			if err != nil {
@@ -197,7 +198,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 					Custom:                  g.Custom,
 					Delete:                  false,
 					ID:                      resp.ID,
-					Inputs:                  g.Properties,
+					Inputs:                  resource.ToResourcePropertyMap(g.Properties),
 					Outputs:                 resp.Outputs,
 					Parent:                  g.Parent,
 					Protect:                 protect,
@@ -271,12 +272,12 @@ func newProviderEvent(pkg, name string, inputs resource.PropertyMap, parent reso
 	if inputs == nil {
 		inputs = resource.PropertyMap{}
 	}
-	goal := &resource.Goal{
+	goal := &pkgresource.Goal{
 		Type:       sdkproviders.MakeProviderType(tokens.Package(pkg)),
 		ID:         "id",
 		Name:       name,
 		Custom:     true,
-		Properties: inputs,
+		Properties: resource.FromResourcePropertyMap(inputs),
 		Parent:     parent,
 	}
 	return &testRegEvent{goal: goal}
@@ -343,11 +344,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		newProviderEvent("pkgA", "providerA", nil, ""),
 		// Register a component resource.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    componentURN.Type(),
 				Name:                    componentURN.Name(),
 				Custom:                  false,
-				Properties:              resource.PropertyMap{},
+				Properties:              property.Map{},
 				Parent:                  "",
 				Protect:                 nil,
 				Dependencies:            nil,
@@ -361,7 +362,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
+				ReplacementTrigger:      property.Value{},
 				RetainOnDelete:          nil,
 				HideDiff:                nil,
 				DeletedWith:             "",
@@ -373,11 +374,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		},
 		// Register a couple resources using provider A.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgA:index:typA",
 				Name:                    "res1",
 				Custom:                  true,
-				Properties:              resource.PropertyMap{},
+				Properties:              property.Map{},
 				Parent:                  componentURN,
 				Protect:                 nil,
 				Dependencies:            nil,
@@ -391,7 +392,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
+				ReplacementTrigger:      property.Value{},
 				HideDiff:                nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
@@ -402,11 +403,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgA:index:typA",
 				Name:                    "res2",
 				Custom:                  true,
-				Properties:              resource.PropertyMap{},
+				Properties:              property.Map{},
 				Parent:                  componentURN,
 				Protect:                 nil,
 				Dependencies:            nil,
@@ -420,7 +421,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
+				ReplacementTrigger:      property.Value{},
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				ReplaceWith:             nil,
@@ -435,11 +436,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		newProviderEvent("pkgC", "providerC", nil, componentURN),
 		// Register a few resources that use the new providers.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgB:index:typB",
 				Name:                    "res3",
 				Custom:                  true,
-				Properties:              resource.PropertyMap{},
+				Properties:              property.Map{},
 				Parent:                  "",
 				Protect:                 nil,
 				Dependencies:            nil,
@@ -453,7 +454,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
+				ReplacementTrigger:      property.Value{},
 				RetainOnDelete:          nil,
 				HideDiff:                nil,
 				DeletedWith:             "",
@@ -464,11 +465,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgB:index:typC",
 				Name:                    "res4",
 				Custom:                  true,
-				Properties:              resource.PropertyMap{},
+				Properties:              property.Map{},
 				Parent:                  "",
 				Protect:                 nil,
 				Dependencies:            nil,
@@ -483,7 +484,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				CustomTimeouts:          nil,
 				HideDiff:                nil,
 				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
+				ReplacementTrigger:      property.Value{},
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				ReplaceWith:             nil,
@@ -541,7 +542,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				Custom:                  goal.Custom,
 				Delete:                  false,
 				ID:                      id,
-				Inputs:                  goal.Properties,
+				Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 				Outputs:                 resource.PropertyMap{},
 				Parent:                  goal.Parent,
 				Protect:                 protect,
@@ -606,11 +607,11 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	steps := []RegisterResourceEvent{
 		// Register a component resource.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    componentURN.Type(),
 				Name:                    componentURN.Name(),
 				Custom:                  false,
-				Properties:              resource.PropertyMap{},
+				Properties:              property.Map{},
 				Parent:                  "",
 				Protect:                 nil,
 				Dependencies:            nil,
@@ -624,7 +625,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
+				ReplacementTrigger:      property.Value{},
 				HideDiff:                nil,
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
@@ -636,11 +637,11 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		},
 		// Register a couple resources from package A.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgA:m:typA",
 				Name:                    "res1",
 				Custom:                  true,
-				Properties:              resource.PropertyMap{},
+				Properties:              property.Map{},
 				Parent:                  componentURN,
 				Protect:                 nil,
 				Dependencies:            nil,
@@ -655,7 +656,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				HideDiff:                nil,
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
+				ReplacementTrigger:      property.Value{},
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				ReplaceWith:             nil,
@@ -665,11 +666,11 @@ func TestRegisterDefaultProviders(t *testing.T) {
 			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgA:m:typA",
 				Name:                    "res2",
 				Custom:                  true,
-				Properties:              resource.PropertyMap{},
+				Properties:              property.Map{},
 				Parent:                  componentURN,
 				Protect:                 nil,
 				Dependencies:            nil,
@@ -684,7 +685,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				HideDiff:                nil,
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
+				ReplacementTrigger:      property.Value{},
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				ReplaceWith:             nil,
@@ -695,11 +696,11 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		},
 		// Register a few resources from other packages.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgB:m:typB",
 				Name:                    "res3",
 				Custom:                  true,
-				Properties:              resource.PropertyMap{},
+				Properties:              property.Map{},
 				Parent:                  "",
 				Protect:                 nil,
 				Dependencies:            nil,
@@ -714,7 +715,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
+				ReplacementTrigger:      property.Value{},
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				ReplaceWith:             nil,
@@ -724,11 +725,11 @@ func TestRegisterDefaultProviders(t *testing.T) {
 			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgB:m:typC",
 				Name:                    "res4",
 				Custom:                  true,
-				Properties:              resource.PropertyMap{},
+				Properties:              property.Map{},
 				Parent:                  "",
 				Protect:                 nil,
 				Dependencies:            nil,
@@ -743,7 +744,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				ID:                      "",
 				CustomTimeouts:          nil,
 				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
+				ReplacementTrigger:      property.Value{},
 				RetainOnDelete:          nil,
 				DeletedWith:             "",
 				ReplaceWith:             nil,
@@ -812,7 +813,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				Custom:                  goal.Custom,
 				Delete:                  false,
 				ID:                      id,
-				Inputs:                  goal.Properties,
+				Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 				Outputs:                 resource.PropertyMap{},
 				Parent:                  goal.Parent,
 				Protect:                 protect,
@@ -873,13 +874,13 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 	steps := []RegisterResourceEvent{
 		// A single custom resource whose outputs we control via the iter-side reg.Done call below.
 		&testRegEvent{
-			goal: resource.NewGoal{ //nolint:requiredfield
+			goal: pkgresource.NewGoal{ //nolint:requiredfield
 				Type:               "pkgA:index:res",
 				Name:               "res1",
 				Custom:             true,
-				Properties:         resource.PropertyMap{},
+				Properties:         property.Map{},
 				InitErrors:         []string{},
-				ReplacementTrigger: resource.NewNullProperty(),
+				ReplacementTrigger: property.Value{},
 			}.Make(),
 		},
 	}
@@ -928,7 +929,7 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 				URN:                urn,
 				Custom:             goal.Custom,
 				ID:                 "id1",
-				Inputs:             goal.Properties,
+				Inputs:             resource.ToResourcePropertyMap(goal.Properties),
 				Outputs:            expectedOutputs,
 				ReplacementTrigger: resource.NewNullProperty(),
 			}.Make(),
@@ -1005,7 +1006,7 @@ func TestRegistrationObserverNotResolvedForUnsuccessfulRegisterResource(t *testi
 						URN:                urn,
 						Custom:             goal.Custom,
 						ID:                 "id1",
-						Inputs:             goal.Properties,
+						Inputs:             resource.ToResourcePropertyMap(goal.Properties),
 						Outputs:            resource.PropertyMap{"k": resource.NewProperty("v")},
 						ReplacementTrigger: resource.NewNullProperty(),
 					}.Make(),
@@ -1043,13 +1044,13 @@ func TestRegistrationObserverNotResolvedForLocalComponentOnRegister(t *testing.T
 	steps := []RegisterResourceEvent{
 		// A local component resource — Custom=false, Remote=false.
 		&testRegEvent{
-			goal: resource.NewGoal{ //nolint:requiredfield
+			goal: pkgresource.NewGoal{ //nolint:requiredfield
 				Type:               "pkgA:index:Comp",
 				Name:               "comp",
 				Custom:             false,
-				Properties:         resource.PropertyMap{},
+				Properties:         property.Map{},
 				InitErrors:         []string{},
-				ReplacementTrigger: resource.NewNullProperty(),
+				ReplacementTrigger: property.Value{},
 			}.Make(),
 		},
 	}
@@ -1086,7 +1087,7 @@ func TestRegistrationObserverNotResolvedForLocalComponentOnRegister(t *testing.T
 				Type:               goal.Type,
 				URN:                urn,
 				Custom:             goal.Custom,
-				Inputs:             goal.Properties,
+				Inputs:             resource.ToResourcePropertyMap(goal.Properties),
 				Outputs:            resource.PropertyMap{"k": resource.NewProperty("v")},
 				ReplacementTrigger: resource.NewNullProperty(),
 			}.Make(),
@@ -1144,7 +1145,7 @@ func driveIter(t *testing.T, iter SourceIterator, runInfo *EvalRunInfo) {
 					URN:                urn,
 					Custom:             goal.Custom,
 					ID:                 id,
-					Inputs:             goal.Properties,
+					Inputs:             resource.ToResourcePropertyMap(goal.Properties),
 					Outputs:            resource.PropertyMap{},
 					ReplacementTrigger: resource.NewNullProperty(),
 				}.Make(),
@@ -1344,7 +1345,7 @@ func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
 				URN:                urn,
 				Custom:             goal.Custom,
 				ID:                 id,
-				Inputs:             goal.Properties,
+				Inputs:             resource.ToResourcePropertyMap(goal.Properties),
 				Outputs:            outputs,
 				ReplacementTrigger: resource.NewNullProperty(),
 			}.Make(),
@@ -1643,7 +1644,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 					Custom:                  goal.Custom,
 					Delete:                  false,
 					ID:                      id,
-					Inputs:                  goal.Properties,
+					Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 					Outputs:                 resource.PropertyMap{},
 					Parent:                  goal.Parent,
 					Protect:                 protect,
@@ -1921,7 +1922,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 							Custom:                  true,
 							Delete:                  false,
 							ID:                      "id",
-							Inputs:                  event.Goal().Properties,
+							Inputs:                  resource.ToResourcePropertyMap(event.Goal().Properties),
 							Outputs:                 resource.PropertyMap{},
 							Parent:                  event.Goal().Parent,
 							Protect:                 false,
@@ -2185,7 +2186,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 							URN:          newURN(goal.Type, goal.Name, goal.Parent),
 							Custom:       goal.Custom,
 							ID:           id,
-							Inputs:       goal.Properties,
+							Inputs:       resource.ToResourcePropertyMap(goal.Properties),
 							Parent:       goal.Parent,
 							Dependencies: goal.Dependencies,
 							Provider:     goal.Provider,
@@ -2432,7 +2433,7 @@ func TestResourceInheritsOptionsFromParent(t *testing.T) {
 			t.Parallel()
 
 			parentURN := resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent")
-			parentGoal := &resource.Goal{
+			parentGoal := &pkgresource.Goal{
 				Parent:      "",
 				Type:        parentURN.Type(),
 				DeletedWith: test.parentDeletedWith,
