@@ -72,6 +72,7 @@ class Settings:
         self.dry_run = dry_run
         self.legacy_apply_enabled = legacy_apply_enabled
         self.feature_support = {}
+        self.package_refs = {}
         self.organization = organization
         # Caches package references returned by `RegisterPackage` for
         # parameterized providers. Scoped to the deployment so concurrent inline
@@ -388,8 +389,16 @@ def _sync_monitor_supports_invoke_transforms() -> bool:
     return SETTINGS.feature_support.get("invokeTransforms", False)
 
 
-def _sync_monitor_supports_parameterization() -> bool:
-    return SETTINGS.feature_support.get("parameterization", False)
+async def get_package_ref(key: tuple) -> Any:
+    if not await monitor_supports_feature("parameterization"):
+        return None
+    return SETTINGS.package_refs.get(key, ...)
+
+
+async def set_package_ref(key: tuple, ref: str):
+    if not await monitor_supports_feature("parameterization"):
+        return
+    SETTINGS.package_refs[key] = ref
 
 
 async def register_package(
