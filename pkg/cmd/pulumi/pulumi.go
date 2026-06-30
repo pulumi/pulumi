@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
@@ -75,6 +76,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/show"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templatecmd"
@@ -483,6 +485,11 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				operations.NewRefreshCmd(),
 				state.NewStateCmd(),
 				install.NewInstallCmd(pkgWorkspace.Instance),
+				show.NewShowCmd(show.ShowCmdOpts{
+					LoginManager:     cmdBackend.DefaultLoginManager,
+					Worspace:         pkgWorkspace.Instance,
+					SecretesProvider: secrets.DefaultProvider,
+				}),
 			},
 		},
 		{
