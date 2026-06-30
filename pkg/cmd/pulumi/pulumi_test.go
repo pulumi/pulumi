@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -970,6 +971,60 @@ func TestDiffVersions(t *testing.T) {
 			minorDiff := diffMinorVersions(v1, v2)
 
 			require.Equal(t, c.minorDiff, minorDiff)
+		})
+	}
+}
+
+// TestParseRootPersistentFlags guards against a --help / -h token causing pflag to drop the root
+// flags that follow it (e.g. --otel-traces), which left tracing silently disabled for `pulumi do`.
+func TestParseRootPersistentFlags(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		args      []string
+		wantOtel  string
+		wantColor string
+	}{
+		{
+			name:     "otel flag, no help",
+			args:     []string{"random:index:RandomString", "create", "--otel-traces", "grpc://localhost:4317"},
+			wantOtel: "grpc://localhost:4317",
+		},
+		{
+			name:     "help before otel flag",
+			args:     []string{"random:index:RandomString", "create", "--help", "--otel-traces", "grpc://localhost:4317"},
+			wantOtel: "grpc://localhost:4317",
+		},
+		{
+			name:     "short help before otel flag",
+			args:     []string{"random:index:RandomString", "create", "-h", "--otel-traces", "grpc://localhost:4317"},
+			wantOtel: "grpc://localhost:4317",
+		},
+		{
+			name: "help between two root flags, with unknown provider flags",
+			args: []string{
+				"random:index:RandomString", "create", "--length", "8",
+				"--help", "--otel-traces", "file:///tmp/t.json", "--color", "never",
+			},
+			wantOtel:  "file:///tmp/t.json",
+			wantColor: "never",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			var otelTraces, color string
+			root := pflag.NewFlagSet("pulumi", pflag.ContinueOnError)
+			root.StringVar(&otelTraces, "otel-traces", "", "")
+			root.StringVar(&color, "color", "", "")
+
+			parseRootPersistentFlags(root, c.args)
+
+			assert.Equal(t, c.wantOtel, otelTraces)
+			assert.Equal(t, c.wantColor, color)
 		})
 	}
 }

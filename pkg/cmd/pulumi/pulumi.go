@@ -189,6 +189,18 @@ func (loggingWriter) Write(bytes []byte) (int, error) {
 	return len(bytes), nil
 }
 
+func parseRootPersistentFlags(rootPersistent *pflag.FlagSet, args []string) {
+	pf := pflag.NewFlagSet("", pflag.ContinueOnError)
+	pf.ParseErrorsAllowlist.UnknownFlags = true
+	pf.AddFlagSet(rootPersistent)
+	// pflag aborts Parse with ErrHelp on an undeclared --help/-h, dropping every flag after it.
+	// Declaring help keeps parsing going so e.g. `--help --otel-traces ...` still sees --otel-traces.
+	if pf.Lookup("help") == nil {
+		pf.BoolP("help", "h", false, "")
+	}
+	_ = pf.Parse(args)
+}
+
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() (*cobra.Command, func()) {
 	var cwd string
@@ -281,9 +293,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// when this PersistentPreRunE runs, so all the flag-dependent init below is
 			// skipped. Parse what we can ourselves before continuing.
 			if cmd.DisableFlagParsing {
-				pf := cmd.Root().PersistentFlags()
-				pf.ParseErrorsAllowlist.UnknownFlags = true
-				_ = pf.Parse(args)
+				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
 			}
 
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
