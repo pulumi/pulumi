@@ -32,7 +32,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
+
+// resolverTracer instruments the package-resolution steps so the cost of
+// installing a plugin versus generating its schema is visible in traces.
+var resolverTracer = otel.Tracer("pulumi-cli")
 
 // NewResolverServer returns a [plugin.NewResolverFunc] that builds a package resolver service bound
 // to a context's workspace view. The resolver runs a spec through the standard package installation
@@ -68,8 +74,18 @@ func (s *resolverServer) ResolvePackage(
 		PluginDownloadURL: req.Server,
 	}
 
+	ctx, span := resolverTracer.Start(ctx, "ResolvePackage")
+	span.SetAttributes(
+		attribute.String("source", req.Source),
+		attribute.String("version", req.Version),
+		attribute.String("server", req.Server),
+		attribute.StringSlice("parameters", req.Parameters),
+	)
+	defer span.End()
+
 	s.m.Lock()
-	run, resolved, state, err := packageinstallation.InstallPlugin(ctx, spec, nil, "", packageinstallation.Options{
+	installCtx, installSpan := resolverTracer.Start(ctx, "InstallPlugin")
+	run, resolved, state, err := packageinstallation.InstallPlugin(installCtx, spec, nil, "", packageinstallation.Options{
 		PriorState: s.state,
 		Options: packageresolution.Options{
 			ResolveWithRegistry:                        true,
@@ -77,6 +93,7 @@ func (s *resolverServer) ResolvePackage(
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
 	}, s.reg, s.w)
+	installSpan.End()
 	if err != nil {
 		s.m.Unlock()
 		return nil, fmt.Errorf("resolving package %q: %w", spec.Source, err)
@@ -84,13 +101,17 @@ func (s *resolverServer) ResolvePackage(
 	s.state = state
 	s.m.Unlock()
 
-	prov, err := run(ctx, s.w.pctx.Pwd)
+	runCtx, runSpan := resolverTracer.Start(ctx, "run-plugin")
+	prov, err := run(runCtx, s.w.pctx.Pwd)
+	runSpan.End()
 	if err != nil {
 		return nil, err
 	}
 	defer contract.IgnoreClose(prov)
 
-	resp, err := prov.GetSchema(ctx, plugin.GetSchemaRequest{})
+	schemaCtx, schemaSpan := resolverTracer.Start(ctx, "GetSchema")
+	resp, err := prov.GetSchema(schemaCtx, plugin.GetSchemaRequest{})
+	schemaSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("getting schema: %w", err)
 	}
