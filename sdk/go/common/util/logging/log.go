@@ -114,6 +114,17 @@ func sinkEnabled(level slog.Level) bool {
 
 const LevelTrace = slog.LevelDebug - 4
 
+func verbosityLevel(verbose int) slog.Level {
+	switch {
+	case verbose >= 11:
+		return LevelTrace
+	case verbose >= 10:
+		return slog.LevelDebug
+	default:
+		return slog.LevelInfo
+	}
+}
+
 // VerboseLogger logs messages only if verbosity matches the level it was built with.
 type VerboseLogger struct{ level int32 }
 
@@ -220,7 +231,7 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 
 	if LogToStderr {
 		primary = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			Level: LevelTrace,
+			Level: verbosityLevel(Verbose),
 		})
 	} else if Verbose > 0 {
 		f, err := os.Create(logFileName())
@@ -228,7 +239,7 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 			logFilePath = f.Name()
 			logFile = f
 			primary = slog.NewJSONHandler(f, &slog.HandlerOptions{
-				Level: LevelTrace,
+				Level: verbosityLevel(Verbose),
 			})
 		}
 	}
