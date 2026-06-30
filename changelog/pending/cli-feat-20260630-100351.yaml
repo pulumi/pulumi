@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Enable automatic logging for every command by default
+time: 2026-06-30T10:03:51.384651612+02:00

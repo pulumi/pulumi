@@ -54,10 +54,6 @@ func TestPluginLoggingDecrypt(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.Env = append(e.Env,
-		"PULUMI_ENABLE_AUTOMATIC_LOGGING=true",
-	)
-
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 	pulumiYAML := fmt.Sprintf(`name: test-plugin-logging
