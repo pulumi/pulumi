@@ -46,10 +46,10 @@ lenPublicSubnets = invoke("std:index:max", {
   input = [1, 2, 3]
 }).result
 
-resource "currentVpc" "aws:ec2/vpc:Vpc" {}
+resource "currentVpc" "infra:index:Vpc" {}
 
 createPublicSubnets = true
-resource "publicSubnet" "aws:ec2/subnet:Subnet" {
+resource "publicSubnet" "infra:index:Subnet" {
   options {
     range = createPublicSubnets && (!oneNatGatewayPerAz || lenPublicSubnets >= length(azs)) ? lenPublicSubnets : 0
   }

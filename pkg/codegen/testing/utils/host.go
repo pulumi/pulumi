@@ -99,10 +99,10 @@ func NewContext(schemaDirectoryPath string) *plugin.Context {
 		SchemaProvider{"tls", "4.10.0"},
 		SchemaProvider{"random", "4.11.2"},
 		SchemaProvider{"std", "1.0.0"},
-		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
-		SchemaProvider{"aws", "5.4.0"},
 
 		SchemaProvider{"component", "13.3.7"},
+		SchemaProvider{"importer", "1.0.0"},
+		SchemaProvider{"infra", "1.0.0"},
 		SchemaProvider{"other", "0.1.0"},
 		SchemaProvider{"synthetic", "1.0.0"},
 		SchemaProvider{"range", "1.0.0"},

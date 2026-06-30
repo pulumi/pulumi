@@ -20,7 +20,8 @@ package codegen_test
 
 import (
 	"encoding/json"
-	"os"
+	"io"
+	"net/http"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -754,11 +755,22 @@ func testDocsGenHelper(
 	})
 }
 
-func BenchmarkGetPropertyNames(b *testing.B) {
-	// Benchmark against a large real-provider schema so the timings are meaningful. This is one of
-	// the heavy schemas slated for removal; repoint it when aws-5.4.0.json is removed.
-	schemaBytes, err := os.ReadFile("../../tests/testdata/codegen/aws-5.4.0.json")
+// benchmarkSchemaBytes fetches a large real-provider schema so the bind timings below stay
+// meaningful. The schema is too large to store in-repo, so it is downloaded during setup.
+func benchmarkSchemaBytes(b *testing.B) []byte {
+	const url = "https://raw.githubusercontent.com/pulumi/pulumi-aws/v5.4.0/" +
+		"provider/cmd/pulumi-resource-aws/schema.json"
+	resp, err := http.Get(url)
 	require.NoError(b, err)
+	defer resp.Body.Close()
+	require.Equal(b, http.StatusOK, resp.StatusCode)
+	bytes, err := io.ReadAll(resp.Body)
+	require.NoError(b, err)
+	return bytes
+}
+
+func BenchmarkGetPropertyNames(b *testing.B) {
+	schemaBytes := benchmarkSchemaBytes(b)
 	b.Run("full-bind", func(b *testing.B) {
 		for range b.N {
 			var spec schema.PackageSpec
