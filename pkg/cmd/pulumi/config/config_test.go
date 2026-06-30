@@ -448,6 +448,7 @@ func prepareConfig(
 					org string,
 					yaml []byte,
 					duration time.Duration,
+					_ map[string]string,
 				) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 					return env, apitype.EnvironmentDiagnostics{}, nil
 				},

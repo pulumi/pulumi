@@ -1076,7 +1076,7 @@ func listConfig(
 	var diags []apitype.EnvironmentDiagnostic
 	var err error
 	if openEnvironment {
-		env, diags, err = openStackEnv(ctx, stack, ps)
+		env, diags, err = openStackEnv(ctx, stack, ps, nil)
 	} else {
 		env, diags, err = checkStackEnv(ctx, stack, ps)
 	}
@@ -1259,7 +1259,7 @@ func getConfig(
 	var env *esc.Environment
 	var diags []apitype.EnvironmentDiagnostic
 	if openEnvironment {
-		env, diags, err = openStackEnv(ctx, stack, ps)
+		env, diags, err = openStackEnv(ctx, stack, ps, nil)
 	} else {
 		env, diags, err = checkStackEnv(ctx, stack, ps)
 	}
