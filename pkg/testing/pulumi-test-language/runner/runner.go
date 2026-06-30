@@ -417,7 +417,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		}
 	}
 
-	p, err := schema.ImportPartialSpec(spec, nil, l)
+	p, err := schema.ImportPartialSpecWithContext(ctx, spec, nil, l)
 	if err != nil {
 		return nil, err
 	}

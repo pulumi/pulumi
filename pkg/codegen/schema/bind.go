@@ -158,15 +158,20 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 //     diagnostic. Until we have line/column information, we use JSON pointers to the offending entities. These pointers
 //     are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
 //     diagnostic error that is appropriately tagged with a JSON pointer.
-func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
+func bindSpec(ctx context.Context, spec PackageSpec, languages map[string]Language, loader Loader,
 	validate bool,
 	options ValidationOptions,
 ) (*Package, hcl.Diagnostics, error) {
+	ctx, span := schemaTracer.Start(ctx, "schema.BindSpec")
+	defer span.End()
+
 	var diags hcl.Diagnostics
 
 	// Validate the package against the metaschema.
 	if validate {
+		_, vspan := schemaTracer.Start(ctx, "schema.validateSpec")
 		validationDiags, err := validateSpec(spec)
+		vspan.End()
 		diags = diags.Extend(validationDiags)
 		if err != nil {
 			return nil, diags, fmt.Errorf("validating spec: %w", err)
@@ -194,19 +199,25 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		return nil, diags, err
 	}
 
+	_, rspan := schemaTracer.Start(ctx, "schema.bindResources")
 	provider, resources, resourceDiags, err := types.finishResources(sortedKeys(spec.Resources), options)
+	rspan.End()
 	diags = diags.Extend(resourceDiags)
 	if err != nil {
 		return nil, diags, err
 	}
 
+	_, fspan := schemaTracer.Start(ctx, "schema.bindFunctions")
 	functions, functionDiags, err := types.finishFunctions(sortedKeys(spec.Functions), options)
+	fspan.End()
 	diags = diags.Extend(functionDiags)
 	if err != nil {
 		return nil, diags, err
 	}
 
+	_, tspan := schemaTracer.Start(ctx, "schema.bindTypes")
 	typeList, typeDiags, err := types.finishTypes(sortedKeys(spec.Types), options)
+	tspan.End()
 	diags = diags.Extend(typeDiags)
 	if err != nil {
 		return nil, diags, err
@@ -380,7 +391,15 @@ type ValidationOptions struct {
 // BindSpec converts a serializable PackageSpec into a Package. Any semantic errors encountered during binding are
 // contained in the returned diagnostics. The returned error is only non-nil if a fatal error was encountered.
 func BindSpec(spec PackageSpec, loader Loader, options ValidationOptions) (*Package, hcl.Diagnostics, error) {
-	return bindSpec(spec, nil, loader, true, options)
+	return BindSpecWithContext(context.Background(), spec, loader, options)
+}
+
+// BindSpecWithContext is [BindSpec] with an explicit context that parents the OpenTelemetry spans emitted while
+// binding the package.
+func BindSpecWithContext(
+	ctx context.Context, spec PackageSpec, loader Loader, options ValidationOptions,
+) (*Package, hcl.Diagnostics, error) {
+	return bindSpec(ctx, spec, nil, loader, true, options)
 }
 
 // ImportSpec converts a serializable PackageSpec into a Package. Unlike BindSpec, ImportSpec does not validate its
@@ -390,7 +409,7 @@ func BindSpec(spec PackageSpec, loader Loader, options ValidationOptions) (*Pack
 func ImportSpec(
 	spec PackageSpec, languages map[string]Language, loader Loader, options ValidationOptions,
 ) (*Package, error) {
-	pkg, diags, err := bindSpec(spec, languages, loader, false, options)
+	pkg, diags, err := bindSpec(context.Background(), spec, languages, loader, false, options)
 	if err != nil {
 		return nil, err
 	}
@@ -404,9 +423,19 @@ func ImportSpec(
 // PartialPackage loads and binds its members on-demand rather than at import time. This is useful when the entire
 // contents of a package are not needed (e.g. for referenced packages).
 func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language, loader Loader) (*PartialPackage, error) {
+	return ImportPartialSpecWithContext(context.Background(), spec, languages, loader)
+}
+
+func ImportPartialSpecWithContext(
+	ctx context.Context, spec PartialPackageSpec, languages map[string]Language, loader Loader,
+) (*PartialPackage, error) {
+	_, span := schemaTracer.Start(ctx, "schema.ImportPartialSpec")
+	defer span.End()
+
 	pkg := &PartialPackage{
 		spec:      &spec,
 		languages: languages,
+		ctx:       ctx,
 	}
 	types, diags, err := newBinder(spec.PackageInfoSpec, partialPackageSpecSource{&spec}, loader, pkg)
 	if err != nil {

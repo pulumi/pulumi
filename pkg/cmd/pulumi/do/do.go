@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"go.opentelemetry.io/otel"
 )
 
 func NewDoCmd(
@@ -152,6 +153,7 @@ func NewDoCmd(
 		}
 
 		ctx := cmd.Context()
+		tracer := otel.Tracer("pulumi-cli")
 
 		host, err := newHost(ctx, sink, sink)
 		if err != nil {
@@ -215,8 +217,10 @@ func NewDoCmd(
 			cleanup()
 			return nil, nil, fmt.Errorf("get schema: %w", err)
 		}
+		_, unmarshalSpan := tracer.Start(ctx, "pulumi-do.unmarshal-schema")
 		var spec schema.PackageSpec
 		err = json.Unmarshal(getSchema.Schema, &spec)
+		unmarshalSpan.End()
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("unmarshal schema: %w", err)
@@ -230,7 +234,7 @@ func NewDoCmd(
 			packageDescriptor.Parameterization.Value = spec.Parameterization.Parameter
 		}
 
-		boundpkg, err := packages.BindSpec(spec, schema.NewPluginLoader(pctx))
+		boundpkg, err := packages.BindSpecWithContext(ctx, spec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("bind schema: %w", err)
