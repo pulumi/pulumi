@@ -1,2 +1,4 @@
 * @pulumi/platform
 /pkg/cmd/pulumi/neo/ @pulumi/ai
+/pkg/cmd/esc/ @pulumi/iac-cloud
+/sdk/go/common/esc/ @pulumi/iac-cloud

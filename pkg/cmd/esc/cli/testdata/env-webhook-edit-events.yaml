@@ -1,0 +1,44 @@
+run: |
+  esc env webhook get test-user/default/src deploy
+  esc env webhook edit test-user/default/src deploy --add-event rotated --remove-event created
+  esc env webhook get test-user/default/src deploy
+environments:
+  test-user/default/src:
+    yaml:
+      values: {}
+    webhooks:
+      - name: deploy
+        display-name: deploy
+        payload-url: https://example.invalid/hook
+        active: true
+        format: raw
+        filters:
+          - created
+          - updated
+
+---
+> esc env webhook get test-user/default/src deploy
+Name: deploy
+Display name: deploy
+URL: https://example.invalid/hook
+Active: true
+Format: raw
+Events: created, updated
+Event groups: -
+Has secret: false
+> esc env webhook edit test-user/default/src deploy --add-event rotated --remove-event created
+Updated webhook deploy for test-user/default/src
+> esc env webhook get test-user/default/src deploy
+Name: deploy
+Display name: deploy
+URL: https://example.invalid/hook
+Active: true
+Format: raw
+Events: updated, rotated
+Event groups: -
+Has secret: false
+
+---
+> esc env webhook get test-user/default/src deploy
+> esc env webhook edit test-user/default/src deploy --add-event rotated --remove-event created
+> esc env webhook get test-user/default/src deploy

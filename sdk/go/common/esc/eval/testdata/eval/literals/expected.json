@@ -1,0 +1,1414 @@
+{
+    "check": {
+        "exprs": {
+            "some_bool": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 3,
+                        "column": 14,
+                        "byte": 39
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 18,
+                        "byte": 43
+                    }
+                },
+                "schema": {
+                    "type": "boolean",
+                    "const": true
+                },
+                "literal": true
+            },
+            "some_list": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 100
+                    },
+                    "end": {
+                        "line": 8,
+                        "column": 12,
+                        "byte": 119
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 102
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 12,
+                                "byte": 107
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "literal": "hello"
+                    },
+                    {
+                        "range": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 114
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 12,
+                                "byte": 119
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "literal": "world"
+                    }
+                ]
+            },
+            "some_null": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 2,
+                        "column": 14,
+                        "byte": 21
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 18,
+                        "byte": 25
+                    }
+                },
+                "schema": {
+                    "type": "null"
+                }
+            },
+            "some_number": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 4,
+                        "column": 16,
+                        "byte": 59
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 18,
+                        "byte": 61
+                    }
+                },
+                "schema": {
+                    "type": "number",
+                    "const": 42
+                },
+                "literal": 42
+            },
+            "some_object": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 10,
+                        "column": 5,
+                        "byte": 139
+                    },
+                    "end": {
+                        "line": 11,
+                        "column": 21,
+                        "byte": 172
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "goodbye": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "goodbye",
+                        "hello"
+                    ]
+                },
+                "keyRanges": {
+                    "goodbye": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 156
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 12,
+                            "byte": 163
+                        }
+                    },
+                    "hello": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 139
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 10,
+                            "byte": 144
+                        }
+                    }
+                },
+                "object": {
+                    "goodbye": {
+                        "range": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 11,
+                                "column": 14,
+                                "byte": 165
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 21,
+                                "byte": 172
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "literal": "for now"
+                    },
+                    "hello": {
+                        "range": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 10,
+                                "column": 12,
+                                "byte": 146
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 17,
+                                "byte": 151
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "literal": "world"
+                    }
+                }
+            },
+            "some_string": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 5,
+                        "column": 16,
+                        "byte": 77
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 21,
+                        "byte": 82
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "hello"
+                },
+                "literal": "hello"
+            }
+        },
+        "properties": {
+            "some_bool": {
+                "value": true,
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 3,
+                            "column": 14,
+                            "byte": 39
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 18,
+                            "byte": 43
+                        }
+                    }
+                }
+            },
+            "some_list": {
+                "value": [
+                    {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "literals",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 102
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 12,
+                                    "byte": 107
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "literals",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 114
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 12,
+                                    "byte": 119
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 100
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 12,
+                            "byte": 119
+                        }
+                    }
+                }
+            },
+            "some_null": {
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 2,
+                            "column": 14,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 18,
+                            "byte": 25
+                        }
+                    }
+                }
+            },
+            "some_number": {
+                "value": 42,
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 4,
+                            "column": 16,
+                            "byte": 59
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 18,
+                            "byte": 61
+                        }
+                    }
+                }
+            },
+            "some_object": {
+                "value": {
+                    "goodbye": {
+                        "value": "for now",
+                        "trace": {
+                            "def": {
+                                "environment": "literals",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 14,
+                                    "byte": 165
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 21,
+                                    "byte": 172
+                                }
+                            }
+                        }
+                    },
+                    "hello": {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "literals",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 12,
+                                    "byte": 146
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 17,
+                                    "byte": 151
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 139
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 21,
+                            "byte": 172
+                        }
+                    }
+                }
+            },
+            "some_string": {
+                "value": "hello",
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 5,
+                            "column": 16,
+                            "byte": 77
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 21,
+                            "byte": 82
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "some_bool": {
+                    "type": "boolean",
+                    "const": true
+                },
+                "some_list": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "some_null": {
+                    "type": "null"
+                },
+                "some_number": {
+                    "type": "number",
+                    "const": 42
+                },
+                "some_object": {
+                    "properties": {
+                        "goodbye": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "goodbye",
+                        "hello"
+                    ]
+                },
+                "some_string": {
+                    "type": "string",
+                    "const": "hello"
+                }
+            },
+            "type": "object",
+            "required": [
+                "some_bool",
+                "some_list",
+                "some_null",
+                "some_number",
+                "some_object",
+                "some_string"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "literals",
+                            "trace": {
+                                "def": {
+                                    "environment": "literals",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "literals",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "literals",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "literals",
+                            "trace": {
+                                "def": {
+                                    "environment": "literals",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "literals"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "literals"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "some_bool": true,
+        "some_list": [
+            "hello",
+            "world"
+        ],
+        "some_null": null,
+        "some_number": 42,
+        "some_object": {
+            "goodbye": "for now",
+            "hello": "world"
+        },
+        "some_string": "hello"
+    },
+    "eval": {
+        "exprs": {
+            "some_bool": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 3,
+                        "column": 14,
+                        "byte": 39
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 18,
+                        "byte": 43
+                    }
+                },
+                "schema": {
+                    "type": "boolean",
+                    "const": true
+                },
+                "literal": true
+            },
+            "some_list": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 100
+                    },
+                    "end": {
+                        "line": 8,
+                        "column": 12,
+                        "byte": 119
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 102
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 12,
+                                "byte": 107
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "literal": "hello"
+                    },
+                    {
+                        "range": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 114
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 12,
+                                "byte": 119
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "literal": "world"
+                    }
+                ]
+            },
+            "some_null": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 2,
+                        "column": 14,
+                        "byte": 21
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 18,
+                        "byte": 25
+                    }
+                },
+                "schema": {
+                    "type": "null"
+                }
+            },
+            "some_number": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 4,
+                        "column": 16,
+                        "byte": 59
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 18,
+                        "byte": 61
+                    }
+                },
+                "schema": {
+                    "type": "number",
+                    "const": 42
+                },
+                "literal": 42
+            },
+            "some_object": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 10,
+                        "column": 5,
+                        "byte": 139
+                    },
+                    "end": {
+                        "line": 11,
+                        "column": 21,
+                        "byte": 172
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "goodbye": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "goodbye",
+                        "hello"
+                    ]
+                },
+                "keyRanges": {
+                    "goodbye": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 156
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 12,
+                            "byte": 163
+                        }
+                    },
+                    "hello": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 139
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 10,
+                            "byte": 144
+                        }
+                    }
+                },
+                "object": {
+                    "goodbye": {
+                        "range": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 11,
+                                "column": 14,
+                                "byte": 165
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 21,
+                                "byte": 172
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "literal": "for now"
+                    },
+                    "hello": {
+                        "range": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 10,
+                                "column": 12,
+                                "byte": 146
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 17,
+                                "byte": 151
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "literal": "world"
+                    }
+                }
+            },
+            "some_string": {
+                "range": {
+                    "environment": "literals",
+                    "begin": {
+                        "line": 5,
+                        "column": 16,
+                        "byte": 77
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 21,
+                        "byte": 82
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "hello"
+                },
+                "literal": "hello"
+            }
+        },
+        "properties": {
+            "some_bool": {
+                "value": true,
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 3,
+                            "column": 14,
+                            "byte": 39
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 18,
+                            "byte": 43
+                        }
+                    }
+                }
+            },
+            "some_list": {
+                "value": [
+                    {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "literals",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 102
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 12,
+                                    "byte": 107
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "literals",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 114
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 12,
+                                    "byte": 119
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 100
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 12,
+                            "byte": 119
+                        }
+                    }
+                }
+            },
+            "some_null": {
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 2,
+                            "column": 14,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 18,
+                            "byte": 25
+                        }
+                    }
+                }
+            },
+            "some_number": {
+                "value": 42,
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 4,
+                            "column": 16,
+                            "byte": 59
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 18,
+                            "byte": 61
+                        }
+                    }
+                }
+            },
+            "some_object": {
+                "value": {
+                    "goodbye": {
+                        "value": "for now",
+                        "trace": {
+                            "def": {
+                                "environment": "literals",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 14,
+                                    "byte": 165
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 21,
+                                    "byte": 172
+                                }
+                            }
+                        }
+                    },
+                    "hello": {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "literals",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 12,
+                                    "byte": 146
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 17,
+                                    "byte": 151
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 139
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 21,
+                            "byte": 172
+                        }
+                    }
+                }
+            },
+            "some_string": {
+                "value": "hello",
+                "trace": {
+                    "def": {
+                        "environment": "literals",
+                        "begin": {
+                            "line": 5,
+                            "column": 16,
+                            "byte": 77
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 21,
+                            "byte": 82
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "some_bool": {
+                    "type": "boolean",
+                    "const": true
+                },
+                "some_list": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "some_null": {
+                    "type": "null"
+                },
+                "some_number": {
+                    "type": "number",
+                    "const": 42
+                },
+                "some_object": {
+                    "properties": {
+                        "goodbye": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "goodbye",
+                        "hello"
+                    ]
+                },
+                "some_string": {
+                    "type": "string",
+                    "const": "hello"
+                }
+            },
+            "type": "object",
+            "required": [
+                "some_bool",
+                "some_list",
+                "some_null",
+                "some_number",
+                "some_object",
+                "some_string"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "literals",
+                            "trace": {
+                                "def": {
+                                    "environment": "literals",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "literals",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "literals",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "literals",
+                            "trace": {
+                                "def": {
+                                    "environment": "literals",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "literals",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "literals"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "literals"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "some_bool": true,
+        "some_list": [
+            "hello",
+            "world"
+        ],
+        "some_null": null,
+        "some_number": 42,
+        "some_object": {
+            "goodbye": "for now",
+            "hello": "world"
+        },
+        "some_string": "hello"
+    },
+    "evalJSONRevealed": {
+        "some_bool": true,
+        "some_list": [
+            "hello",
+            "world"
+        ],
+        "some_null": null,
+        "some_number": 42,
+        "some_object": {
+            "goodbye": "for now",
+            "hello": "world"
+        },
+        "some_string": "hello"
+    }
+}
