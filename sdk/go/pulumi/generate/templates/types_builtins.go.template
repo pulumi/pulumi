@@ -133,9 +133,20 @@ func (o {{$builtin.Name}}Output) To{{$t.Name}}Output() {{$t.Name}}Output {
 }
 
 func (o {{$builtin.Name}}Output) To{{$t.Name}}OutputWithContext(ctx context.Context) {{$t.Name}}Output {
+	{{if $builtin.NeedsStructuralImplementsConversion}}
+	return o.ApplyTWithContext(ctx,	func(_ context.Context, v {{$builtin.ElementType}}) ({{$t.ElementType}}, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*{{$t.ElementType}})(nil)).Elem())
+		if err != nil {
+			var zero {{$t.ElementType}}
+			return zero, err
+		}
+		return coerced.({{$t.ElementType}}), nil
+	}).({{$t.Name}}Output)
+	{{else}}
 	return o.ApplyTWithContext(ctx,	func(_ context.Context, v {{$builtin.ElementType}}) {{$t.ElementType}} {
 		return ({{$t.ElementType}})(v)
 	}).({{$t.Name}}Output)
+	{{end}}
 }
 {{end}}
 {{if .ImplementsPtrType}}

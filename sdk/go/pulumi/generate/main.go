@@ -176,6 +176,22 @@ func (b builtin) ElemExample() string {
 	return b.Example
 }
 
+func (b builtin) NeedsStructuralImplementsConversion() bool {
+	elementType := b.ElementType()
+	return strings.HasPrefix(elementType, "[]") || strings.HasPrefix(elementType, "map[")
+}
+
+func deriveImplements(fromName string, from *builtin) []string {
+	// Preserve the container shape when deriving compatibility.
+	// Example: IDArray from ID + String => StringArray.
+	suffix := strings.TrimPrefix(fromName, from.Name)
+	impls := make([]string, 0, len(from.implements))
+	for _, i := range from.implements {
+		impls = append(impls, i+suffix)
+	}
+	return impls
+}
+
 var builtins = makeBuiltins([]*builtin{
 	{Name: "Archive", Type: "Archive", inputType: "*archive", implements: []string{AssetOrArchiveType}, Example: "NewFileArchive(\"foo.zip\")"},
 	{Name: "Asset", Type: "Asset", inputType: "*asset", implements: []string{AssetOrArchiveType}, Example: "NewFileAsset(\"foo.txt\")"},
@@ -239,6 +255,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "Input",
 			elementType:   "[]" + p.Type,
 			item:          p,
+			implements:    deriveImplements(name+"Array", p),
 			Example:       fmt.Sprintf("%sArray{%s}", name, p.Example),
 			RegisterInput: true,
 
@@ -251,6 +268,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "Input",
 			elementType:   "map[string]" + p.Type,
 			item:          p,
+			implements:    deriveImplements(name+"Map", p),
 			Example:       fmt.Sprintf("%sMap{\"baz\": %s}", name, p.Example),
 			RegisterInput: true,
 		}
@@ -261,6 +279,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "ArrayInput",
 			elementType:   "map[string][]" + p.Type,
 			item:          arrType,
+			implements:    deriveImplements(name+"ArrayMap", arrType),
 			Example:       fmt.Sprintf("%sArrayMap{\"baz\": %sArray{%s}}", name, name, p.Example),
 			RegisterInput: true,
 		}
@@ -271,6 +290,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "MapInput",
 			elementType:   "[]map[string]" + p.Type,
 			item:          mapType,
+			implements:    deriveImplements(name+"MapArray", mapType),
 			Example:       fmt.Sprintf("%sMapArray{%sMap{\"baz\": %s}}", name, name, p.Example),
 			RegisterInput: true,
 		}
@@ -281,6 +301,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "MapInput",
 			elementType:   "map[string]map[string]" + p.Type,
 			item:          mapType,
+			implements:    deriveImplements(name+"MapMap", mapType),
 			Example:       fmt.Sprintf("%sMapMap{\"baz\": %sMap{\"baz\": %s}}", name, name, p.Example),
 			RegisterInput: true,
 		}
@@ -291,6 +312,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "ArrayInput",
 			elementType:   "[][]" + p.Type,
 			item:          arrType,
+			implements:    deriveImplements(name+"ArrayArray", arrType),
 			Example:       fmt.Sprintf("%sArrayArray{%sArray{%s}}", name, name, p.Example),
 			RegisterInput: true,
 		}
@@ -307,6 +329,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "ArrayMapInput",
 			elementType:   "map[string]map[string][]" + p.Type,
 			item:          arrayMapType,
+			implements:    deriveImplements(name+"ArrayMapMap", arrayMapType),
 			Example:       fmt.Sprintf("%sArrayMapMap{\"baz\": %sArrayMap{\"baz\": %sArray{%s}}}", name, name, name, p.Example),
 			RegisterInput: true,
 		})
@@ -318,6 +341,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "MapArrayInput",
 			elementType:   "map[string][]map[string]" + p.Type,
 			item:          mapArrayType,
+			implements:    deriveImplements(name+"MapArrayMap", mapArrayType),
 			Example:       fmt.Sprintf("%sMapArrayMap{\"baz\": %sMapArray{%sMap{\"baz\": %s}}}", name, name, name, p.Example),
 			RegisterInput: true,
 		})
@@ -329,6 +353,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "MapMapInput",
 			elementType:   "[]map[string]map[string]" + p.Type,
 			item:          mapMapType,
+			implements:    deriveImplements(name+"MapMapArray", mapMapType),
 			Example:       fmt.Sprintf("%sMapMapArray{%sMapMap{\"baz\": %sMap{\"baz\": %s}}}", name, name, name, p.Example),
 			RegisterInput: true,
 		})
@@ -340,6 +365,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "ArrayMapInput",
 			elementType:   "[]map[string][]" + p.Type,
 			item:          arrayMapType,
+			implements:    deriveImplements(name+"ArrayMapArray", arrayMapType),
 			Example:       fmt.Sprintf("%sArrayMapArray{%sArrayMap{\"baz\": %sArray{%s}}}", name, name, name, p.Example),
 			RegisterInput: true,
 		})
@@ -351,6 +377,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "ArrayArrayInput",
 			elementType:   "map[string][][]" + p.Type,
 			item:          arrayArrayType,
+			implements:    deriveImplements(name+"ArrayArrayMap", arrayArrayType),
 			Example:       fmt.Sprintf("%sArrayArrayMap{\"baz\": %sArrayArray{%sArray{%s}}}", name, name, name, p.Example),
 			RegisterInput: true,
 		})
@@ -362,6 +389,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "ArrayArrayInput",
 			elementType:   "[][][]" + p.Type,
 			item:          arrayArrayType,
+			implements:    deriveImplements(name+"ArrayArrayArray", arrayArrayType),
 			Example:       fmt.Sprintf("%sArrayArrayArray{%sArrayArray{%sArray{%s}}}", name, name, name, p.Example),
 			RegisterInput: true,
 		})
@@ -373,6 +401,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			ItemType:      name + "MapMapInput",
 			elementType:   "map[string]map[string]map[string]" + p.Type,
 			item:          mapMapType,
+			implements:    deriveImplements(name+"MapMapMap", mapMapType),
 			Example:       fmt.Sprintf("%sMapMapMap{\"baz\": %sMapMap{\"baz\": %sMap{\"baz\": %s}}}", name, name, name, p.Example),
 			RegisterInput: true,
 		})
