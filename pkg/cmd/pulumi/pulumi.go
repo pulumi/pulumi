@@ -313,13 +313,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// or secrets manager, so logs will be gzip-compressed (not
 			// encrypted). Engine operations may upgrade to encrypted logging
 			// when a secrets manager becomes available.
-			if env.EnableAutomaticLogging.Value() {
-				var logErr error
-				autoLogger, logErr = backendlogging.StartLogging(
-					cmd.Context(), nil /* sm */)
-				if logErr != nil {
-					logging.V(3).Infof("automatic logging unavailable: %v", logErr)
-				}
+			var logErr error
+			autoLogger, logErr = backendlogging.StartLogging(cmd.Context(), nil /* sm */)
+			if logErr != nil {
+				logging.V(3).Infof("automatic logging unavailable: %v", logErr)
 			}
 
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
