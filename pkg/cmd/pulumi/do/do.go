@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"go.opentelemetry.io/otel"
 )
 
 func NewDoCmd(
@@ -152,6 +153,7 @@ func NewDoCmd(
 		}
 
 		ctx := cmd.Context()
+		tracer := otel.Tracer("pulumi-cli")
 
 		host, err := newHost(ctx, sink, sink)
 		if err != nil {
@@ -166,7 +168,9 @@ func NewDoCmd(
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}
 
-		p, err := pluginFromSource(ctx, pctx, wd, pkgargs[0])
+		loadCtx, loadSpan := tracer.Start(ctx, "pulumi-do.load-provider")
+		p, err := pluginFromSource(loadCtx, pctx, wd, pkgargs[0])
+		loadSpan.End()
 		if err != nil {
 			// Close the plugin context we opened above since we're not returning it to the caller.
 			contract.IgnoreClose(pctx)
@@ -210,13 +214,17 @@ func NewDoCmd(
 			}
 		}
 
-		getSchema, err := p.GetSchema(ctx, schemaRequest)
+		schemaCtx, schemaSpan := tracer.Start(ctx, "pulumi-do.get-schema")
+		getSchema, err := p.GetSchema(schemaCtx, schemaRequest)
+		schemaSpan.End()
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("get schema: %w", err)
 		}
+		_, unmarshalSpan := tracer.Start(ctx, "pulumi-do.unmarshal-schema")
 		var spec schema.PackageSpec
 		err = json.Unmarshal(getSchema.Schema, &spec)
+		unmarshalSpan.End()
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("unmarshal schema: %w", err)
@@ -230,7 +238,9 @@ func NewDoCmd(
 			packageDescriptor.Parameterization.Value = spec.Parameterization.Parameter
 		}
 
+		_, bindSpan := tracer.Start(ctx, "pulumi-do.bind-schema")
 		boundpkg, err := packages.BindSpec(spec, schema.NewPluginLoader(pctx))
+		bindSpan.End()
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("bind schema: %w", err)
