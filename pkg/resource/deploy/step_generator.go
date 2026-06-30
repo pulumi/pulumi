@@ -28,6 +28,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -1736,7 +1737,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
-	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
+	prov plugin.Provider, goal *pkgresource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
 	// Unknowns in replacement triggers are fine during preview, but they should raise an error during the actual
@@ -2765,7 +2766,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 // with a DiffResult. If diff returns the completion source the step generator will yield a DiffStep.
 func (sg *stepGenerator) diff(
 	event RegisterResourceEvent,
-	goal *resource.Goal, autonaming *plugin.AutonamingOptions, randomSeed []byte,
+	goal *pkgresource.Goal, autonaming *plugin.AutonamingOptions, randomSeed []byte,
 	urn resource.URN, old, new *resource.State, oldInputs,
 	newInputs resource.PropertyMap, prov plugin.Provider,
 ) (plugin.DiffResult, *promise.CompletionSource[plugin.DiffResult], error) {
@@ -3255,7 +3256,7 @@ func (sg *stepGenerator) analyzeAll(
 	analyzers []plugin.Analyzer,
 	new *resource.State,
 	inputs resource.PropertyMap,
-	goal *resource.Goal,
+	goal *pkgresource.Goal,
 ) (bool, error) {
 	if len(analyzers) == 0 {
 		return false, nil

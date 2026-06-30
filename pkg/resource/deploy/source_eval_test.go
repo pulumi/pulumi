@@ -38,6 +38,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -149,7 +150,7 @@ func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
 }
 
 type testRegEvent struct {
-	goal         *resource.Goal
+	goal         *pkgresource.Goal
 	result       *RegisterResult
 	extension    *apitype.Extension
 	extensionRef apitype.ExtensionRef
@@ -159,7 +160,7 @@ var _ RegisterResourceEvent = (*testRegEvent)(nil)
 
 func (g *testRegEvent) event() {}
 
-func (g *testRegEvent) Goal() *resource.Goal {
+func (g *testRegEvent) Goal() *pkgresource.Goal {
 	return g.goal
 }
 
@@ -271,7 +272,7 @@ func newProviderEvent(pkg, name string, inputs resource.PropertyMap, parent reso
 	if inputs == nil {
 		inputs = resource.PropertyMap{}
 	}
-	goal := &resource.Goal{
+	goal := &pkgresource.Goal{
 		Type:       sdkproviders.MakeProviderType(tokens.Package(pkg)),
 		ID:         "id",
 		Name:       name,
@@ -343,7 +344,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		newProviderEvent("pkgA", "providerA", nil, ""),
 		// Register a component resource.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    componentURN.Type(),
 				Name:                    componentURN.Name(),
 				Custom:                  false,
@@ -373,7 +374,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		},
 		// Register a couple resources using provider A.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgA:index:typA",
 				Name:                    "res1",
 				Custom:                  true,
@@ -402,7 +403,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgA:index:typA",
 				Name:                    "res2",
 				Custom:                  true,
@@ -435,7 +436,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		newProviderEvent("pkgC", "providerC", nil, componentURN),
 		// Register a few resources that use the new providers.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgB:index:typB",
 				Name:                    "res3",
 				Custom:                  true,
@@ -464,7 +465,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgB:index:typC",
 				Name:                    "res4",
 				Custom:                  true,
@@ -606,7 +607,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	steps := []RegisterResourceEvent{
 		// Register a component resource.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    componentURN.Type(),
 				Name:                    componentURN.Name(),
 				Custom:                  false,
@@ -636,7 +637,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		},
 		// Register a couple resources from package A.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgA:m:typA",
 				Name:                    "res1",
 				Custom:                  true,
@@ -665,7 +666,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgA:m:typA",
 				Name:                    "res2",
 				Custom:                  true,
@@ -695,7 +696,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		},
 		// Register a few resources from other packages.
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgB:m:typB",
 				Name:                    "res3",
 				Custom:                  true,
@@ -724,7 +725,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 			}.Make(),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal{
+			goal: pkgresource.NewGoal{
 				Type:                    "pkgB:m:typC",
 				Name:                    "res4",
 				Custom:                  true,
@@ -873,7 +874,7 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 	steps := []RegisterResourceEvent{
 		// A single custom resource whose outputs we control via the iter-side reg.Done call below.
 		&testRegEvent{
-			goal: resource.NewGoal{ //nolint:requiredfield
+			goal: pkgresource.NewGoal{ //nolint:requiredfield
 				Type:               "pkgA:index:res",
 				Name:               "res1",
 				Custom:             true,
@@ -1043,7 +1044,7 @@ func TestRegistrationObserverNotResolvedForLocalComponentOnRegister(t *testing.T
 	steps := []RegisterResourceEvent{
 		// A local component resource — Custom=false, Remote=false.
 		&testRegEvent{
-			goal: resource.NewGoal{ //nolint:requiredfield
+			goal: pkgresource.NewGoal{ //nolint:requiredfield
 				Type:               "pkgA:index:Comp",
 				Name:               "comp",
 				Custom:             false,
@@ -2432,7 +2433,7 @@ func TestResourceInheritsOptionsFromParent(t *testing.T) {
 			t.Parallel()
 
 			parentURN := resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent")
-			parentGoal := &resource.Goal{
+			parentGoal := &pkgresource.Goal{
 				Parent:      "",
 				Type:        parentURN.Type(),
 				DeletedWith: test.parentDeletedWith,

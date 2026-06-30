@@ -45,6 +45,7 @@ import (
 	pconvert "github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -414,7 +415,7 @@ type resmon struct {
 	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
 	parentsLock sync.Mutex
 
-	resGoals               map[resource.URN]resource.Goal     // map of seen URNs and their goals.
+	resGoals               map[resource.URN]pkgresource.Goal  // map of seen URNs and their goals.
 	resGoalsLock           sync.Mutex                         // locks the resGoals map.
 	diagnostics            diag.Sink                          // logger for user-facing messages
 	providers              ProviderSource                     // the provider source itself.
@@ -517,7 +518,7 @@ func newResourceMonitor(
 		sourcePositions:         newSourcePositions(src.runinfo.ProjectRoot),
 		pendingTransforms:       map[string][]TransformFunction{},
 		parents:                 map[resource.URN]resource.URN{},
-		resGoals:                map[resource.URN]resource.Goal{},
+		resGoals:                map[resource.URN]pkgresource.Goal{},
 		componentProviders:      map[resource.URN]map[string]string{},
 		regChan:                 regChan,
 		regOutChan:              regOutChan,
@@ -1171,7 +1172,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 				return nil, errors.New("missing __self__.urn for method call")
 			}
 
-			goal, has := func() (resource.Goal, bool) {
+			goal, has := func() (pkgresource.Goal, bool) {
 				rm.resGoalsLock.Lock()
 				defer rm.resGoalsLock.Unlock()
 				g, ok := rm.resGoals[resource.URN(urn.GetStringValue())]
@@ -1843,7 +1844,7 @@ func (rm *resmon) RegisterErrorHook(
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
 // Currently only inherits DeletedWith, Protect, RetainOnDelete, and Provider from parent.
-func inheritFromParent(child *pulumirpc.RegisterResourceRequest, parent resource.Goal) {
+func inheritFromParent(child *pulumirpc.RegisterResourceRequest, parent pkgresource.Goal) {
 	if child.DeletedWith == "" {
 		child.DeletedWith = string(parent.DeletedWith)
 	}
@@ -2781,7 +2782,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 
 		sourcePosition, stackTrace := rm.sourcePositions.getFromRequest(req)
-		goal := resource.NewGoal{
+		goal := pkgresource.NewGoal{
 			Type:                    t,
 			Name:                    name,
 			Custom:                  custom,
@@ -3101,7 +3102,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 }
 
 type registerResourceEvent struct {
-	goal         *resource.Goal       // the resource goal state produced by the iterator.
+	goal         *pkgresource.Goal    // the resource goal state produced by the iterator.
 	done         chan *RegisterResult // the channel to communicate with after the resource state is available.
 	extension    *apitype.Extension   // optional extension data if this came from an extension package
 	extensionRef apitype.ExtensionRef // extension reference
@@ -3111,7 +3112,7 @@ var _ RegisterResourceEvent = (*registerResourceEvent)(nil)
 
 func (g *registerResourceEvent) event() {}
 
-func (g *registerResourceEvent) Goal() *resource.Goal {
+func (g *registerResourceEvent) Goal() *pkgresource.Goal {
 	return g.goal
 }
 
