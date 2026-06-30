@@ -372,7 +372,35 @@ func TestMismatchedPropertyValueDiff(t *testing.T) {
 	assert.True(t, s1.DeepEquals(s2))
 }
 
-func TestComputedProperyValueDiff(t *testing.T) {
+func TestSecretWrappedObjectDiffRecurses(t *testing.T) {
+	t.Parallel()
+
+	a := MakeSecret(NewObjectProperty(PropertyMap{"k": NewProperty("v1")}))
+	b := MakeSecret(NewObjectProperty(PropertyMap{"k": NewProperty("v2")}))
+
+	vd := a.Diff(b)
+	require.NotNil(t, vd)
+	require.NotNil(t, vd.Object, "expected diff to recurse into secret-wrapped object")
+	assert.Contains(t, vd.Object.Updates, PropertyKey("k"))
+	assert.Equal(t, NewProperty("v1"), vd.Object.Updates["k"].Old)
+	assert.Equal(t, NewProperty("v2"), vd.Object.Updates["k"].New)
+}
+
+func TestSecretWrappedArrayDiffRecurses(t *testing.T) {
+	t.Parallel()
+
+	a := MakeSecret(NewArrayProperty([]PropertyValue{NewProperty("a"), NewProperty("b")}))
+	b := MakeSecret(NewArrayProperty([]PropertyValue{NewProperty("a"), NewProperty("c")}))
+
+	vd := a.Diff(b)
+	require.NotNil(t, vd)
+	require.NotNil(t, vd.Array, "expected diff to recurse into secret-wrapped array")
+	assert.Contains(t, vd.Array.Updates, 1)
+	assert.Equal(t, NewProperty("b"), vd.Array.Updates[1].Old)
+	assert.Equal(t, NewProperty("c"), vd.Array.Updates[1].New)
+}
+
+func TestComputedPropertyValueDiff(t *testing.T) {
 	t.Parallel()
 
 	a1 := MakeComputed(NewPropertyValue("a"))
