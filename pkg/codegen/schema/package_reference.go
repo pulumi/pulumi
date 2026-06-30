@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -25,7 +26,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/segmentio/encoding/json"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var schemaTracer = otel.Tracer("github.com/pulumi/pulumi/pkg/v3/codegen/schema")
+
+func (p *PartialPackage) traceCtx() context.Context {
+	if p.ctx != nil {
+		return p.ctx
+	}
+	return context.Background()
+}
 
 // A PackageReference represents a references Pulumi Package. Applications that do not need access to the entire
 // definition of a Pulumi Package should use PackageReference rather than Package, as the former uses memory more
@@ -381,6 +394,8 @@ type PartialPackage struct {
 	languages map[string]Language
 	types     *types
 
+	ctx context.Context
+
 	config []*Property
 
 	def *Package
@@ -532,6 +547,9 @@ func (p *PartialPackage) Provider() (*Resource, error) {
 		return p.def.Provider, nil
 	}
 
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindProvider")
+	defer span.End()
+
 	provider, diags, err := p.types.bindResourceDef("pulumi:providers:"+p.spec.Name, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -668,6 +686,9 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	if p.def != nil {
 		return p.def, nil
 	}
+
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindDefinition")
+	defer span.End()
 
 	config, err := p.bindConfig()
 	if err != nil {
@@ -901,6 +922,9 @@ func (p partialPackageResources) Get(token string) (*Resource, bool, error) {
 	if token != "pulumi:providers:"+p.spec.Name {
 		token = resolveSpecToken(p.spec.Resources, token, p.resourceAliases)
 	}
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindResource",
+		trace.WithAttributes(attribute.String("schema.token", token)))
+	defer span.End()
 	res, diags, err := p.types.bindResourceDef(token, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -966,6 +990,9 @@ func (p partialPackageFunctions) Get(token string) (*Function, bool, error) {
 	defer p.m.Unlock()
 
 	token = resolveSpecToken(p.spec.Functions, token, p.functionAliases)
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindFunction",
+		trace.WithAttributes(attribute.String("schema.token", token)))
+	defer span.End()
 	fn, diags, err := p.types.bindFunctionDef(token, ValidationOptions{
 		AllowDanglingReferences: true,
 	})

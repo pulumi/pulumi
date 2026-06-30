@@ -168,9 +168,7 @@ func NewDoCmd(
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}
 
-		loadCtx, loadSpan := tracer.Start(ctx, "pulumi-do.load-provider")
-		p, err := pluginFromSource(loadCtx, pctx, wd, pkgargs[0])
-		loadSpan.End()
+		p, err := pluginFromSource(ctx, pctx, wd, pkgargs[0])
 		if err != nil {
 			// Close the plugin context we opened above since we're not returning it to the caller.
 			contract.IgnoreClose(pctx)
@@ -214,9 +212,7 @@ func NewDoCmd(
 			}
 		}
 
-		schemaCtx, schemaSpan := tracer.Start(ctx, "pulumi-do.get-schema")
-		getSchema, err := p.GetSchema(schemaCtx, schemaRequest)
-		schemaSpan.End()
+		getSchema, err := p.GetSchema(ctx, schemaRequest)
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("get schema: %w", err)
@@ -238,9 +234,7 @@ func NewDoCmd(
 			packageDescriptor.Parameterization.Value = spec.Parameterization.Parameter
 		}
 
-		_, bindSpan := tracer.Start(ctx, "pulumi-do.bind-schema")
-		boundpkg, err := packages.BindSpec(spec, schema.NewPluginLoader(pctx))
-		bindSpan.End()
+		boundpkg, err := packages.BindSpecWithContext(ctx, spec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("bind schema: %w", err)
