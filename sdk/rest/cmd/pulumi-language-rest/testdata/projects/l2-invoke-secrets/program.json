@@ -1,0 +1,17 @@
+{
+  "resources": [
+    {
+      "name": "res",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    }
+  ],
+  "outputs": {
+    "firstSecret": "${main.pp:15,13-18,7.response}",
+    "nonSecret": "${main.pp:6,13-9,7.response}",
+    "secondSecret": "${main.pp:23,13-26,7.response}"
+  }
+}
