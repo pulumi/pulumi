@@ -141,6 +141,14 @@ func TestApplyRewriter(t *testing.T) {
 			input:  `resource.boolOutput ? "yes" : "no"`,
 			output: `__apply(resource.boolOutput, eval(boolOutput, boolOutput ? "yes" : "no"))`,
 		},
+		{
+			input:  `can(resource.stringOutput)`,
+			output: `can(resource.stringOutput)`,
+		},
+		{
+			input:  `try(resource.boolOutput, false) ? "yes" : "no"`,
+			output: `__apply(try(resource.boolOutput, false), eval(try, try ? "yes" : "no"))`,
+		},
 	}
 
 	resourceType := model.NewObjectType(map[string]model.Type{
@@ -174,8 +182,9 @@ func TestApplyRewriter(t *testing.T) {
 		VariableType: model.NewOutputType(model.NewListType(resourceType)),
 	})
 	functions := pulumiBuiltins(bindOptions{})
-	scope.DefineFunction("element", functions["element"])
-	scope.DefineFunction("toJSON", functions["toJSON"])
+	for name, function := range functions {
+		scope.DefineFunction(name, function)
+	}
 	scope.DefineFunction("getPromise", model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
 			Name: "p",
