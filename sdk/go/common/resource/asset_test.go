@@ -595,8 +595,7 @@ func TestNestedArchive(t *testing.T) {
 	files := zipReader.File
 	require.Len(t, files, 3)
 
-	// Archive member names must always use forward slashes, even on Windows (do not normalize
-	// the actual value with ToSlash here, otherwise the assertion would mask backslashes).
+	// Archive member names must always use forward slashes, even on Windows
 	assert.Equal(t, "foo/a.txt", files[0].Name)
 	assert.Equal(t, "foo/bar/b.txt", files[1].Name)
 	assert.Equal(t, "fake.txt", files[2].Name)
@@ -636,8 +635,7 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	require.NoError(t, err)
 	files := zipReader.File
 	require.Len(t, files, 1)
-	// Archive member names must always use forward slashes, even on Windows (do not normalize
-	// the actual value with ToSlash here, otherwise the assertion would mask backslashes).
+	// Archive member names must always use forward slashes, even on Windows
 	assert.Equal(t, "foo/bar/b.txt", files[0].Name)
 }
 

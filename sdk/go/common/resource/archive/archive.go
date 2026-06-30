@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -373,9 +374,8 @@ func (r *assetsArchiveReader) Next() (string, *asset.Blob, error) {
 				// The subarchive produced a legitimate error; return it.
 				return "", nil, err
 			default:
-				// The subarchive produced a valid blob. Return it. Use ToSlash to ensure archive member
-				// names always use forward slashes, even on Windows (filepath.Join would use backslashes).
-				return filepath.ToSlash(filepath.Join(r.archiveRoot, name)), blob, nil
+				// The subarchive produced a valid blob. Return it.
+				return path.Join(r.archiveRoot, name), blob, nil
 			}
 		}
 
