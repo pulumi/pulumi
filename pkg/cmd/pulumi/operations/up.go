@@ -113,6 +113,7 @@ func NewUpCmd() *cobra.Command {
 	var parallel int32
 	var refresh string
 	var runProgram bool
+	var skipConfigValidation bool
 	var showConfig bool
 	var showPolicyRemediations bool
 	var showReplacementSteps bool
@@ -192,16 +193,24 @@ func NewUpCmd() *cobra.Command {
 		encrypter := sm.Encrypter()
 
 		stackName := s.Ref().Name().String()
-		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
-			ctx,
-			stackName,
-			proj,
-			cfg.Environment,
-			cfg.Config,
-			encrypter,
-			decrypter)
-		if configErr != nil {
-			return fmt.Errorf("validating stack config: %w", configErr)
+		if skipConfigValidation {
+			// Still apply project config defaults onto the stack config, but skip validation.
+			if configErr := workspace.ApplyProjectConfig(
+				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+				return fmt.Errorf("applying stack config: %w", configErr)
+			}
+		} else {
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
+				stackName,
+				proj,
+				cfg.Environment,
+				cfg.Config,
+				encrypter,
+				decrypter)
+			if configErr != nil {
+				return fmt.Errorf("validating stack config: %w", configErr)
+			}
 		}
 
 		targetURNs := slice.Prealloc[string](len(targets) + len(targetReplaces))
@@ -479,16 +488,24 @@ func NewUpCmd() *cobra.Command {
 		encrypter := sm.Encrypter()
 
 		stackName := s.Ref().String()
-		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
-			ctx,
-			stackName,
-			proj,
-			cfg.Environment,
-			cfg.Config,
-			encrypter,
-			decrypter)
-		if configErr != nil {
-			return fmt.Errorf("validating stack config: %w", configErr)
+		if skipConfigValidation {
+			// Still apply project config defaults onto the stack config, but skip validation.
+			if configErr := workspace.ApplyProjectConfig(
+				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+				return fmt.Errorf("applying stack config: %w", configErr)
+			}
+		} else {
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
+				stackName,
+				proj,
+				cfg.Environment,
+				cfg.Config,
+				encrypter,
+				decrypter)
+			if configErr != nil {
+				return fmt.Errorf("validating stack config: %w", configErr)
+			}
 		}
 
 		refreshOption, err := getRefreshOption(proj, refresh)
@@ -808,6 +825,9 @@ func NewUpCmd() *cobra.Command {
 		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to refresh resources,"+
 			" this only applies if --refresh is set")
+	cmd.PersistentFlags().BoolVar(
+		&skipConfigValidation, "skip-config-validation", false,
+		"Skip validation of stack config values against the project config schema")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
