@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 )
 
 type EnvironmentDiagnostic struct {

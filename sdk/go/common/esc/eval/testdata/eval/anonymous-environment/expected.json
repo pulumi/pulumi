@@ -1,0 +1,1152 @@
+{
+    "check": {
+        "exprs": {
+            "root": {
+                "range": {
+                    "environment": "\u003cyaml\u003e",
+                    "begin": {
+                        "line": 4,
+                        "column": 9,
+                        "byte": 31
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 101,
+                        "byte": 123
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "interpolate": [
+                    {
+                        "value": [
+                            {
+                                "key": "context",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 11,
+                                        "byte": 33
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 18,
+                                        "byte": 40
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "currentEnvironment",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 18,
+                                        "byte": 40
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 37,
+                                        "byte": 59
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "name",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 37,
+                                        "byte": 59
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 42,
+                                        "byte": 64
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "text": "-",
+                        "value": [
+                            {
+                                "key": "context",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 46,
+                                        "byte": 68
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 53,
+                                        "byte": 75
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "rootEnvironment",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 53,
+                                        "byte": 75
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 69,
+                                        "byte": 91
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "name",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 69,
+                                        "byte": 91
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 74,
+                                        "byte": 96
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "text": "-",
+                        "value": [
+                            {
+                                "key": "context",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 78,
+                                        "byte": 100
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 85,
+                                        "byte": 107
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "pulumi",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 85,
+                                        "byte": 107
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 92,
+                                        "byte": 114
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "user",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 92,
+                                        "byte": 114
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 97,
+                                        "byte": 119
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "id",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 97,
+                                        "byte": 119
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 100,
+                                        "byte": 122
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "imported": {
+                "value": "a-a-USER_123",
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 2,
+                            "column": 13,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 105,
+                            "byte": 112
+                        }
+                    }
+                }
+            },
+            "root": {
+                "value": "\u003cyaml\u003e-\u003cyaml\u003e-USER_123",
+                "trace": {
+                    "def": {
+                        "environment": "\u003cyaml\u003e",
+                        "begin": {
+                            "line": 4,
+                            "column": 9,
+                            "byte": 31
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 101,
+                            "byte": 123
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "imported": {
+                    "type": "string"
+                },
+                "root": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "imported",
+                "root"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "\u003cyaml\u003e",
+                            "trace": {
+                                "def": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "\u003cyaml\u003e",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "\u003cyaml\u003e",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "\u003cyaml\u003e",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "\u003cyaml\u003e",
+                            "trace": {
+                                "def": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "\u003cyaml\u003e",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "\u003cyaml\u003e"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "\u003cyaml\u003e"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "imported": "a-a-USER_123",
+        "root": "\u003cyaml\u003e-\u003cyaml\u003e-USER_123"
+    },
+    "eval": {
+        "exprs": {
+            "root": {
+                "range": {
+                    "environment": "\u003cyaml\u003e",
+                    "begin": {
+                        "line": 4,
+                        "column": 9,
+                        "byte": 31
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 101,
+                        "byte": 123
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "interpolate": [
+                    {
+                        "value": [
+                            {
+                                "key": "context",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 11,
+                                        "byte": 33
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 18,
+                                        "byte": 40
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "currentEnvironment",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 18,
+                                        "byte": 40
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 37,
+                                        "byte": 59
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "name",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 37,
+                                        "byte": 59
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 42,
+                                        "byte": 64
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "text": "-",
+                        "value": [
+                            {
+                                "key": "context",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 46,
+                                        "byte": 68
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 53,
+                                        "byte": 75
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "rootEnvironment",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 53,
+                                        "byte": 75
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 69,
+                                        "byte": 91
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "name",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 69,
+                                        "byte": 91
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 74,
+                                        "byte": 96
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "text": "-",
+                        "value": [
+                            {
+                                "key": "context",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 78,
+                                        "byte": 100
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 85,
+                                        "byte": 107
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "pulumi",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 85,
+                                        "byte": 107
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 92,
+                                        "byte": 114
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "user",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 92,
+                                        "byte": 114
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 97,
+                                        "byte": 119
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "id",
+                                "range": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 97,
+                                        "byte": 119
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 100,
+                                        "byte": 122
+                                    }
+                                },
+                                "value": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "imported": {
+                "value": "a-a-USER_123",
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 2,
+                            "column": 13,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 105,
+                            "byte": 112
+                        }
+                    }
+                }
+            },
+            "root": {
+                "value": "\u003cyaml\u003e-\u003cyaml\u003e-USER_123",
+                "trace": {
+                    "def": {
+                        "environment": "\u003cyaml\u003e",
+                        "begin": {
+                            "line": 4,
+                            "column": 9,
+                            "byte": 31
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 101,
+                            "byte": 123
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "imported": {
+                    "type": "string"
+                },
+                "root": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "imported",
+                "root"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "\u003cyaml\u003e",
+                            "trace": {
+                                "def": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "\u003cyaml\u003e",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "\u003cyaml\u003e",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "\u003cyaml\u003e",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "\u003cyaml\u003e",
+                            "trace": {
+                                "def": {
+                                    "environment": "\u003cyaml\u003e",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "\u003cyaml\u003e",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "\u003cyaml\u003e"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "\u003cyaml\u003e"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "imported": "a-a-USER_123",
+        "root": "\u003cyaml\u003e-\u003cyaml\u003e-USER_123"
+    },
+    "evalJSONRevealed": {
+        "imported": "a-a-USER_123",
+        "root": "\u003cyaml\u003e-\u003cyaml\u003e-USER_123"
+    }
+}
