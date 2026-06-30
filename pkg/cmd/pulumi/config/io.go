@@ -24,6 +24,8 @@ import (
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli"
+	"github.com/spf13/cobra"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -37,8 +39,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-const OverrideEnvFlagUsage = "Override an imported environment for this run only, as <env>=<replacement>; " +
-	"repeatable. Sent to ESC and never written to the stack config"
+// OverrideEnvFlag registers the --override-env flag on cmd, binding it to overrides.
+func OverrideEnvFlag(cmd *cobra.Command, overrides *[]string) {
+	cmd.PersistentFlags().StringArrayVar(
+		overrides, "override-env", nil,
+		"Override an imported environment for this run only, as <env>=<replacement>; repeatable")
+}
 
 // Attempts to load configuration for the given stack.
 func GetStackConfiguration(
