@@ -595,9 +595,11 @@ func TestNestedArchive(t *testing.T) {
 	files := zipReader.File
 	require.Len(t, files, 3)
 
-	assert.Equal(t, "foo/a.txt", filepath.ToSlash(files[0].Name))
-	assert.Equal(t, "foo/bar/b.txt", filepath.ToSlash(files[1].Name))
-	assert.Equal(t, "fake.txt", filepath.ToSlash(files[2].Name))
+	// Archive member names must always use forward slashes, even on Windows (do not normalize
+	// the actual value with ToSlash here, otherwise the assertion would mask backslashes).
+	assert.Equal(t, "foo/a.txt", files[0].Name)
+	assert.Equal(t, "foo/bar/b.txt", files[1].Name)
+	assert.Equal(t, "fake.txt", files[2].Name)
 }
 
 //nolint:gosec
@@ -634,7 +636,9 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	require.NoError(t, err)
 	files := zipReader.File
 	require.Len(t, files, 1)
-	assert.Equal(t, "foo/bar/b.txt", filepath.ToSlash(files[0].Name))
+	// Archive member names must always use forward slashes, even on Windows (do not normalize
+	// the actual value with ToSlash here, otherwise the assertion would mask backslashes).
+	assert.Equal(t, "foo/bar/b.txt", files[0].Name)
 }
 
 func TestEmptyArchiveRoundTrip(t *testing.T) {
