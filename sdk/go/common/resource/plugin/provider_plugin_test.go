@@ -1469,3 +1469,39 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 	assert.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"update issue"}, initErr.Reasons)
 }
+
+func TestProvider_CreateAlreadyExistsIncludesGuidance(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux")
+
+	client := &stubClient{
+		ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{}, nil
+		},
+		CreateF: func(req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
+			return nil, rpcerror.New(codes.AlreadyExists, "provider reported a naming conflict")
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+
+	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	require.NoError(t, err)
+
+	_, err = p.Create(t.Context(), CreateRequest{
+		URN:        urn,
+		Name:       urn.Name(),
+		Type:       urn.Type(),
+		Properties: resource.PropertyMap{},
+	})
+	require.Error(t, err)
+
+	var alreadyExistsErr *AlreadyExistsError
+	assert.ErrorAs(t, err, &alreadyExistsErr)
+	assert.Equal(t, tokens.Type("bar:baz"), alreadyExistsErr.ResourceType)
+	assert.Equal(t, "qux", alreadyExistsErr.ResourceName)
+	assert.ErrorContains(t, err, "provider reported a naming conflict")
+	assert.ErrorContains(t, err, "pulumi import bar:baz qux <id>")
+	assert.ErrorContains(t, err, "rename it in your program")
+}
