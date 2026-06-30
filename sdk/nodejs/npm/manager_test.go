@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/sha1" //nolint:gosec // this is what NPM wants
 	"encoding/hex"
 	"fmt"
@@ -63,6 +64,36 @@ func TestGetLinkPackageProperty(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := getLinkPackageProperty(tt.packageName, tt.path)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestGetPnpmLinkPackageProperty(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		packageName string
+		path        string
+		want        string
+	}{
+		{
+			name:        "scoped package",
+			packageName: "@pulumi/aap",
+			path:        "sdks/aap",
+			want:        `dependencies["@pulumi/aap"]=file:sdks/aap`,
+		},
+		{
+			name:        "unscoped package",
+			packageName: "pulumi-aap",
+			path:        "sdks/aap",
+			want:        `dependencies["pulumi-aap"]=file:sdks/aap`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := getPnpmLinkPackageProperty(tt.packageName, tt.path)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -573,4 +604,48 @@ func writeFile(t testing.TB, path, contents string) {
 
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
 	require.NoError(t, os.WriteFile(path, []byte(contents), 0o600))
+}
+
+func TestLinkScopedPackage(t *testing.T) {
+	t.Parallel()
+
+	// Tests that Link correctly adds scoped packages (with @) to package.json
+	// for each supported package manager that is available locally.
+	managers := []struct {
+		name       string
+		pmType     PackageManagerType
+		executable string
+	}{
+		{"npm", NpmPackageManager, "npm"},
+		{"pnpm", PnpmPackageManager, "pnpm"},
+		{"bun", BunPackageManager, "bun"},
+	}
+
+	for _, mgr := range managers {
+		mgr := mgr
+		t.Run(mgr.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Skip if the package manager is not installed.
+			if _, err := exec.LookPath(mgr.executable); err != nil {
+				t.Skipf("%s not found on PATH, skipping", mgr.executable)
+			}
+
+			dir := t.TempDir()
+			writeFile(t, filepath.Join(dir, "package.json"), `{"name":"test","version":"1.0.0"}`)
+
+			pm, err := ResolvePackageManager(mgr.pmType, dir)
+			require.NoError(t, err)
+
+			ctx := context.Background()
+			err = pm.Link(ctx, dir, "@pulumi/authentik", "sdks/authentik")
+			require.NoError(t, err, "%s Link failed for scoped package", mgr.name)
+
+			// Verify package.json was updated correctly.
+			data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+			require.NoError(t, err)
+			assert.Contains(t, string(data), `"@pulumi/authentik"`)
+			assert.Contains(t, string(data), `file:sdks/authentik`)
+		})
+	}
 }

@@ -94,7 +94,7 @@ func (pnpm *pnpmManager) installCmd(ctx context.Context, production bool) *exec.
 }
 
 func (pnpm *pnpmManager) Link(ctx context.Context, dir, packageName, path string) error {
-	packageSpecifier := getLinkPackageProperty(packageName, path)
+	packageSpecifier := getPnpmLinkPackageProperty(packageName, path)
 	cmd := exec.CommandContext(ctx, "pnpm", "pkg", "set", packageSpecifier)
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {

@@ -1,0 +1,6 @@
+component: sdk/nodejs
+kind: fix
+body: Fix `pulumi install` failing with pnpm >= 11 for scoped packages by using quoted bracket notation in `pkg set` property paths
+time: 2026-06-30T20:33:00.000000+02:00
+custom:
+  PR: 23748

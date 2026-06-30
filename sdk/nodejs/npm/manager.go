@@ -282,3 +282,11 @@ func preferYarn() bool {
 func getLinkPackageProperty(packageName, path string) string {
 	return fmt.Sprintf("dependencies[%s]=file:%s", packageName, path)
 }
+
+// getPnpmLinkPackageProperty returns the property specifier for pnpm's `pkg set` command.
+// pnpm >= 11 requires quoted keys inside brackets (e.g. dependencies["@pulumi/aap"]=file:sdks/aap),
+// otherwise it rejects special characters like '@' and '-' in property paths.
+// npm/bun/yarn interpret quotes literally, so this format is pnpm-specific.
+func getPnpmLinkPackageProperty(packageName, path string) string {
+	return fmt.Sprintf(`dependencies["%s"]=file:%s`, packageName, path)
+}
