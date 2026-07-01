@@ -1,0 +1,21 @@
+# Here's a comment
+"null-value": null
+boolean-value: true
+integer-value: 42
+number-value: 3.14
+string-value: hello, world
+array-value:
+  - some
+  - array
+  - entries
+# object-value comment
+object-value:
+  foo: bar
+  baz: qux
+  nested-object:
+    alpha: beta
+    gamma:
+      - delta # line comment here
+      - epslion
+flow-array: [1, 2, 3]
+flow-object: {hello: world}

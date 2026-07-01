@@ -1,0 +1,60 @@
+run: |
+  esc env referrer list default/src
+  esc env referrer ls default/src
+  esc env referrer list default/src --count 100 --all-revisions --latest-stack-version-only
+environments:
+  test-user/default/src:
+    revisions:
+      - yaml:
+          values: {}
+    referrers:
+      latest:
+        - environment:
+            project: shared
+            name: dev
+            revision: 7
+        - stack:
+            project: my-iac
+            stack: prod
+            version: 42
+        - insights-account:
+            account-name: insights-acct
+      "3":
+        - stack:
+            project: my-iac
+            stack: prod
+            version: 41
+
+---
+> esc env referrer list default/src
+┌──────────┬─────────────┬────────────────┐
+│ REVISION │ KIND        │ REFERRER       │
+├──────────┼─────────────┼────────────────┤
+│ latest   │ environment │ shared/dev@7   │
+│ latest   │ insights    │ insights-acct  │
+│ latest   │ stack       │ my-iac/prod@42 │
+│ 3        │ stack       │ my-iac/prod@41 │
+└──────────┴─────────────┴────────────────┘
+> esc env referrer ls default/src
+┌──────────┬─────────────┬────────────────┐
+│ REVISION │ KIND        │ REFERRER       │
+├──────────┼─────────────┼────────────────┤
+│ latest   │ environment │ shared/dev@7   │
+│ latest   │ insights    │ insights-acct  │
+│ latest   │ stack       │ my-iac/prod@42 │
+│ 3        │ stack       │ my-iac/prod@41 │
+└──────────┴─────────────┴────────────────┘
+> esc env referrer list default/src --count 100 --all-revisions --latest-stack-version-only
+┌──────────┬─────────────┬────────────────┐
+│ REVISION │ KIND        │ REFERRER       │
+├──────────┼─────────────┼────────────────┤
+│ latest   │ environment │ shared/dev@7   │
+│ latest   │ insights    │ insights-acct  │
+│ latest   │ stack       │ my-iac/prod@42 │
+│ 3        │ stack       │ my-iac/prod@41 │
+└──────────┴─────────────┴────────────────┘
+
+---
+> esc env referrer list default/src
+> esc env referrer ls default/src
+> esc env referrer list default/src --count 100 --all-revisions --latest-stack-version-only

@@ -1,0 +1,15 @@
+{
+    "loadDiags": [
+        {
+            "Severity": 1,
+            "Summary": "yaml: line 1: did not find expected ',' or ']'",
+            "Detail": "",
+            "Subject": null,
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": ""
+        }
+    ]
+}
