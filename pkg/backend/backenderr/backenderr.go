@@ -215,6 +215,49 @@ func (err LoginRequiredError) Error() string {
 	return "this command requires logging in; try running `pulumi login` first"
 }
 
+// NeoCapScope identifies which Neo usage cap was exhausted — the
+// organization-wide cap or an individual member's per-member cap.
+type NeoCapScope int
+
+const (
+	// NeoCapScopeOrg is the organization-wide Neo usage cap. It is the zero
+	// value so a NeoCapExhaustedError constructed without an explicit scope
+	// defaults to org, matching the original org-only decode.
+	NeoCapScopeOrg NeoCapScope = iota
+	// NeoCapScopeMember is an individual member's per-member Neo usage cap.
+	NeoCapScopeMember
+)
+
+// NeoCapExhaustedError represents a 402 from the Pulumi Service indicating a
+// Neo usage cap has been reached — either the organization-wide cap or a
+// member's per-member cap, distinguished by Scope. The CLI renders a "raise
+// the limit" pointer when this error surfaces; the decode in
+// pkg/backend/httpstate/client/api.go constructs it from an ErrorResponse
+// carrying ErrorType "neo_org_cap_exhausted" or "neo_member_cap_exhausted".
+type NeoCapExhaustedError struct {
+	// Scope is which cap was exhausted (org-wide vs per-member).
+	Scope NeoCapScope
+	// OrgLogin is the organization whose cap was exhausted, if the
+	// service-side response carried it on RequestError.Attribute.
+	OrgLogin string
+	// Message is the human-readable text from ErrorResponse.Message —
+	// includes the consumed-vs-cap numbers and reset window when relevant.
+	Message string
+}
+
+func (e NeoCapExhaustedError) Error() string {
+	if e.Message != "" {
+		return e.Message
+	}
+	if e.Scope == NeoCapScopeMember {
+		return "Neo usage limit reached for you; ask the org admin to raise your per-member limit"
+	}
+	if e.OrgLogin != "" {
+		return fmt.Sprintf("Neo usage limit reached for %s; ask the org admin to raise the limit", e.OrgLogin)
+	}
+	return "Neo usage limit reached for this organization; ask the org admin to raise the limit"
+}
+
 // CancelledError represents a user-initiated cancellation of an operation
 // such as an update or destroy.
 type CancelledError struct {
