@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -384,7 +385,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 		}
 
 		_, declared := b.packageDescriptors[name]
-		if extDescriptors := b.extensionDescriptorsForBase(name); !declared && len(extDescriptors) > 0 {
+		if extDescriptors := b.extensionDescriptorsForBase(tokens.PackageName(name)); !declared && len(extDescriptors) > 0 {
 			// name is a base plugin; record each extension that layers on it under the
 			// extension's own name (what dependency checks expect), found via the base.
 			for _, extDescriptor := range extDescriptors {

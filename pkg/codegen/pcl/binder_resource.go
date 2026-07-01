@@ -121,6 +121,9 @@ func (b *binder) resolveSchemaResourceForBind(
 			}
 			if found {
 				res = resource
+				if _, ok := b.referencedPackages[candidate.schema.Name()]; !ok {
+					b.referencedPackages[candidate.schema.Name()] = candidate.schema
+				}
 				// For pulumi built-in resources (e.g. pulumi:pulumi:StackReference), canonicalizeToken
 				// strips the module to produce "pulumi::StackReference" because TokenToModule returns ""
 				// for the pulumi:pulumi module. Reconstruct the full token from the decomposed parts.

@@ -149,6 +149,9 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		}
 		if found {
 			fn, canonicalToken = function, tk
+			if _, ok := b.referencedPackages[candidate.schema.Name()]; !ok {
+				b.referencedPackages[candidate.schema.Name()] = candidate.schema
+			}
 			break
 		}
 	}

@@ -516,7 +516,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if module != "" {
 			module = "." + module
 		}
-		name := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, PyName(fn))
+		schemaPkg := pkg
+		if def := g.functionPackage(expr.Args[0]); def != nil {
+			schemaPkg = def.Name
+		}
+		name := fmt.Sprintf("%s%s.%s", g.packageAlias(schemaPkg), module, PyName(fn))
 
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		if isOut {
