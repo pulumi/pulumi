@@ -1,0 +1,3584 @@
+{
+  "name": "importer",
+  "version": "1.0.0",
+  "//": "Synthetic schema for pkg/importer tests. Mirrors the shapes of the aws-5.4.0 resources that the import round-trip cases exercise; derived mechanically from that schema, restricted to the input properties the cases use.",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "config": {},
+  "provider": {
+    "inputProperties": {
+      "region": {
+        "type": "string",
+        "$ref": "#/types/importer:index/region:Region",
+        "defaultInfo": {
+          "environment": [
+            "AWS_REGION",
+            "AWS_DEFAULT_REGION"
+          ]
+        }
+      }
+    },
+    "requiredInputs": []
+  },
+  "resources": {
+    "importer:acm/certificate:Certificate": {
+      "inputProperties": {},
+      "requiredInputs": []
+    },
+    "importer:autoscaling/group:Group": {
+      "inputProperties": {
+        "availabilityZones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forceDelete": {
+          "type": "boolean"
+        },
+        "healthCheckGracePeriod": {
+          "type": "integer"
+        },
+        "launchConfiguration": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:ec2/launchConfiguration:LaunchConfiguration"
+            }
+          ]
+        },
+        "maxSize": {
+          "type": "integer"
+        },
+        "metricsGranularity": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:autoscaling/MetricsGranularity:MetricsGranularity"
+            }
+          ]
+        },
+        "minSize": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "protectFromScaleIn": {
+          "type": "boolean"
+        },
+        "vpcZoneIdentifiers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "waitForCapacityTimeout": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "maxSize",
+        "minSize"
+      ]
+    },
+    "importer:cloudformation/stack:Stack": {
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "templateBody": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:cloudwatch/dashboard:Dashboard": {
+      "inputProperties": {
+        "dashboardBody": {
+          "type": "string"
+        },
+        "dashboardName": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "dashboardBody",
+        "dashboardName"
+      ]
+    },
+    "importer:cloudwatch/eventRule:EventRule": {
+      "inputProperties": {
+        "description": {
+          "type": "string"
+        },
+        "isEnabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "scheduleExpression": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:cloudwatch/eventTarget:EventTarget": {
+      "inputProperties": {
+        "arn": {
+          "type": "string"
+        },
+        "ecsTarget": {
+          "$ref": "#/types/importer:cloudwatch/EventTargetEcsTarget:EventTargetEcsTarget"
+        },
+        "roleArn": {
+          "type": "string"
+        },
+        "rule": {
+          "type": "string"
+        },
+        "targetId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "arn",
+        "rule"
+      ]
+    },
+    "importer:cloudwatch/logGroup:LogGroup": {
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "retentionInDays": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:cloudwatch/logMetricFilter:LogMetricFilter": {
+      "inputProperties": {
+        "logGroupName": {
+          "type": "string"
+        },
+        "metricTransformation": {
+          "$ref": "#/types/importer:cloudwatch/LogMetricFilterMetricTransformation:LogMetricFilterMetricTransformation"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "logGroupName",
+        "metricTransformation",
+        "pattern"
+      ]
+    },
+    "importer:cloudwatch/metricAlarm:MetricAlarm": {
+      "inputProperties": {
+        "actionsEnabled": {
+          "type": "boolean"
+        },
+        "alarmActions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/importer:sns/topic:Topic"
+              }
+            ]
+          }
+        },
+        "alarmDescription": {
+          "type": "string"
+        },
+        "comparisonOperator": {
+          "type": "string"
+        },
+        "dimensions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "evaluationPeriods": {
+          "type": "integer"
+        },
+        "metricName": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "period": {
+          "type": "integer"
+        },
+        "statistic": {
+          "type": "string"
+        },
+        "threshold": {
+          "type": "number"
+        },
+        "treatMissingData": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "comparisonOperator",
+        "evaluationPeriods"
+      ]
+    },
+    "importer:ec2/eip:Eip": {
+      "inputProperties": {
+        "vpc": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:ec2/flowLog:FlowLog": {
+      "inputProperties": {
+        "iamRoleArn": {
+          "type": "string"
+        },
+        "logDestination": {
+          "type": "string"
+        },
+        "logDestinationType": {
+          "type": "string"
+        },
+        "maxAggregationInterval": {
+          "type": "integer"
+        },
+        "trafficType": {
+          "type": "string"
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "trafficType"
+      ]
+    },
+    "importer:ec2/internetGateway:InternetGateway": {
+      "inputProperties": {
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:ec2/launchConfiguration:LaunchConfiguration": {
+      "inputProperties": {
+        "associatePublicIpAddress": {
+          "type": "boolean"
+        },
+        "ebsBlockDevices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:ec2/LaunchConfigurationEbsBlockDevice:LaunchConfigurationEbsBlockDevice"
+          }
+        },
+        "enableMonitoring": {
+          "type": "boolean"
+        },
+        "iamInstanceProfile": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:iam/instanceProfile:InstanceProfile"
+            }
+          ]
+        },
+        "imageId": {
+          "type": "string"
+        },
+        "instanceType": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namePrefix": {
+          "type": "string"
+        },
+        "placementTenancy": {
+          "type": "string"
+        },
+        "rootBlockDevice": {
+          "$ref": "#/types/importer:ec2/LaunchConfigurationRootBlockDevice:LaunchConfigurationRootBlockDevice"
+        },
+        "securityGroups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "userData": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "imageId",
+        "instanceType"
+      ]
+    },
+    "importer:ec2/natGateway:NatGateway": {
+      "inputProperties": {
+        "allocationId": {
+          "type": "string"
+        },
+        "subnetId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "subnetId"
+      ]
+    },
+    "importer:ec2/routeTable:RouteTable": {
+      "inputProperties": {
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:ec2/RouteTableRoute:RouteTableRoute"
+          }
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "vpcId"
+      ]
+    },
+    "importer:ec2/routeTableAssociation:RouteTableAssociation": {
+      "inputProperties": {
+        "routeTableId": {
+          "type": "string"
+        },
+        "subnetId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "routeTableId"
+      ]
+    },
+    "importer:ec2/securityGroup:SecurityGroup": {
+      "inputProperties": {
+        "description": {
+          "type": "string",
+          "default": "Managed by Pulumi"
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:ec2/SecurityGroupEgress:SecurityGroupEgress"
+          }
+        },
+        "ingress": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:ec2/SecurityGroupIngress:SecurityGroupIngress"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "revokeRulesOnDelete": {
+          "type": "boolean"
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:ec2/securityGroupRule:SecurityGroupRule": {
+      "inputProperties": {
+        "cidrBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "fromPort": {
+          "type": "integer"
+        },
+        "protocol": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:ec2/ProtocolType:ProtocolType"
+            }
+          ]
+        },
+        "securityGroupId": {
+          "type": "string"
+        },
+        "self": {
+          "type": "boolean"
+        },
+        "toPort": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "fromPort",
+        "protocol",
+        "securityGroupId",
+        "toPort",
+        "type"
+      ]
+    },
+    "importer:ec2/subnet:Subnet": {
+      "inputProperties": {
+        "assignIpv6AddressOnCreation": {
+          "type": "boolean"
+        },
+        "availabilityZone": {
+          "type": "string"
+        },
+        "cidrBlock": {
+          "type": "string"
+        },
+        "mapPublicIpOnLaunch": {
+          "type": "boolean"
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "vpcId"
+      ]
+    },
+    "importer:ec2/vpc:Vpc": {
+      "inputProperties": {
+        "assignGeneratedIpv6CidrBlock": {
+          "type": "boolean"
+        },
+        "cidrBlock": {
+          "type": "string"
+        },
+        "enableDnsHostnames": {
+          "type": "boolean"
+        },
+        "enableDnsSupport": {
+          "type": "boolean"
+        },
+        "instanceTenancy": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:ecr/lifecyclePolicy:LifecyclePolicy": {
+      "inputProperties": {
+        "policy": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:ecr/lifecyclePolicyDocument:LifecyclePolicyDocument"
+            }
+          ]
+        },
+        "repository": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "policy",
+        "repository"
+      ]
+    },
+    "importer:ecr/repository:Repository": {
+      "inputProperties": {
+        "imageTagMutability": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:ecs/cluster:Cluster": {
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:ecs/service:Service": {
+      "inputProperties": {
+        "cluster": {
+          "type": "string"
+        },
+        "deploymentMaximumPercent": {
+          "type": "integer"
+        },
+        "deploymentMinimumHealthyPercent": {
+          "type": "integer"
+        },
+        "desiredCount": {
+          "type": "integer"
+        },
+        "enableEcsManagedTags": {
+          "type": "boolean"
+        },
+        "iamRole": {
+          "type": "string"
+        },
+        "launchType": {
+          "type": "string"
+        },
+        "loadBalancers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:ecs/ServiceLoadBalancer:ServiceLoadBalancer"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "networkConfiguration": {
+          "$ref": "#/types/importer:ecs/ServiceNetworkConfiguration:ServiceNetworkConfiguration"
+        },
+        "orderedPlacementStrategies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:ecs/ServiceOrderedPlacementStrategy:ServiceOrderedPlacementStrategy"
+          }
+        },
+        "schedulingStrategy": {
+          "type": "string"
+        },
+        "taskDefinition": {
+          "type": "string"
+        },
+        "waitForSteadyState": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:ecs/taskDefinition:TaskDefinition": {
+      "inputProperties": {
+        "containerDefinitions": {
+          "type": "string"
+        },
+        "cpu": {
+          "type": "string"
+        },
+        "executionRoleArn": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        },
+        "networkMode": {
+          "type": "string"
+        },
+        "requiresCompatibilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "taskRoleArn": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "containerDefinitions",
+        "family"
+      ]
+    },
+    "importer:elasticloadbalancingv2/listener:Listener": {
+      "inputProperties": {
+        "certificateArn": {
+          "type": "string"
+        },
+        "defaultActions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:elasticloadbalancingv2/ListenerDefaultAction:ListenerDefaultAction"
+          }
+        },
+        "loadBalancerArn": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "sslPolicy": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "defaultActions",
+        "loadBalancerArn"
+      ]
+    },
+    "importer:elasticloadbalancingv2/listenerRule:ListenerRule": {
+      "inputProperties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleAction:ListenerRuleAction"
+          }
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleCondition:ListenerRuleCondition"
+          }
+        },
+        "listenerArn": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": [
+        "actions",
+        "conditions",
+        "listenerArn"
+      ]
+    },
+    "importer:elasticloadbalancingv2/loadBalancer:LoadBalancer": {
+      "inputProperties": {
+        "accessLogs": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/LoadBalancerAccessLogs:LoadBalancerAccessLogs"
+        },
+        "dropInvalidHeaderFields": {
+          "type": "boolean"
+        },
+        "enableCrossZoneLoadBalancing": {
+          "type": "boolean"
+        },
+        "enableDeletionProtection": {
+          "type": "boolean"
+        },
+        "enableHttp2": {
+          "type": "boolean"
+        },
+        "idleTimeout": {
+          "type": "integer"
+        },
+        "internal": {
+          "type": "boolean"
+        },
+        "loadBalancerType": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "securityGroups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:elasticloadbalancingv2/targetGroup:TargetGroup": {
+      "inputProperties": {
+        "deregistrationDelay": {
+          "type": "integer"
+        },
+        "healthCheck": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/TargetGroupHealthCheck:TargetGroupHealthCheck"
+        },
+        "lambdaMultiValueHeadersEnabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "proxyProtocolV2": {
+          "type": "boolean"
+        },
+        "slowStart": {
+          "type": "integer"
+        },
+        "targetType": {
+          "type": "string"
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:elasticsearch/domain:Domain": {
+      "inputProperties": {
+        "accessPolicies": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:iam/documents:PolicyDocument"
+            }
+          ]
+        },
+        "clusterConfig": {
+          "$ref": "#/types/importer:elasticsearch/DomainClusterConfig:DomainClusterConfig"
+        },
+        "domainName": {
+          "type": "string"
+        },
+        "ebsOptions": {
+          "$ref": "#/types/importer:elasticsearch/DomainEbsOptions:DomainEbsOptions"
+        },
+        "elasticsearchVersion": {
+          "type": "string"
+        },
+        "encryptAtRest": {
+          "$ref": "#/types/importer:elasticsearch/DomainEncryptAtRest:DomainEncryptAtRest"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "vpcOptions": {
+          "$ref": "#/types/importer:elasticsearch/DomainVpcOptions:DomainVpcOptions"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:iam/instanceProfile:InstanceProfile": {
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:iam/role:Role"
+            }
+          ]
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:iam/policy:Policy": {
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:iam/documents:PolicyDocument"
+            }
+          ]
+        }
+      },
+      "requiredInputs": [
+        "policy"
+      ]
+    },
+    "importer:iam/policyAttachment:PolicyAttachment": {
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "policyArn": {
+          "type": "string",
+          "$ref": "#/types/importer:index/aRN:ARN"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "$ref": "#/types/importer:iam/role:Role"
+              }
+            ]
+          }
+        }
+      },
+      "requiredInputs": [
+        "policyArn"
+      ]
+    },
+    "importer:iam/role:Role": {
+      "inputProperties": {
+        "assumeRolePolicy": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:iam/documents:PolicyDocument"
+            }
+          ]
+        },
+        "forceDetachPolicies": {
+          "type": "boolean"
+        },
+        "maxSessionDuration": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "assumeRolePolicy"
+      ]
+    },
+    "importer:iam/rolePolicy:RolePolicy": {
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:iam/documents:PolicyDocument"
+            }
+          ]
+        },
+        "role": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:iam/role:Role"
+            }
+          ]
+        }
+      },
+      "requiredInputs": [
+        "policy",
+        "role"
+      ]
+    },
+    "importer:iam/rolePolicyAttachment:RolePolicyAttachment": {
+      "inputProperties": {
+        "policyArn": {
+          "type": "string",
+          "$ref": "#/types/importer:index/aRN:ARN"
+        },
+        "role": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:iam/role:Role"
+            }
+          ]
+        }
+      },
+      "requiredInputs": [
+        "policyArn",
+        "role"
+      ]
+    },
+    "importer:iam/serviceLinkedRole:ServiceLinkedRole": {
+      "inputProperties": {
+        "awsServiceName": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "awsServiceName"
+      ]
+    },
+    "importer:kms/key:Key": {
+      "inputProperties": {
+        "customerMasterKeySpec": {
+          "type": "string"
+        },
+        "enableKeyRotation": {
+          "type": "boolean"
+        },
+        "isEnabled": {
+          "type": "boolean"
+        },
+        "keyUsage": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:lambda/function:Function": {
+      "inputProperties": {
+        "code": {
+          "$ref": "pulumi.json#/Archive"
+        },
+        "handler": {
+          "type": "string"
+        },
+        "memorySize": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "publish": {
+          "type": "boolean"
+        },
+        "reservedConcurrentExecutions": {
+          "type": "integer"
+        },
+        "role": {
+          "type": "string",
+          "$ref": "#/types/importer:index/aRN:ARN"
+        },
+        "runtime": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:lambda/Runtime:Runtime"
+            }
+          ]
+        },
+        "timeout": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": [
+        "role"
+      ]
+    },
+    "importer:lambda/permission:Permission": {
+      "inputProperties": {
+        "action": {
+          "type": "string"
+        },
+        "function": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:lambda/function:Function"
+            }
+          ]
+        },
+        "principal": {
+          "type": "string"
+        },
+        "sourceArn": {
+          "type": "string"
+        },
+        "statementId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "action",
+        "function",
+        "principal"
+      ]
+    },
+    "importer:lb/listener:Listener": {
+      "inputProperties": {
+        "certificateArn": {
+          "type": "string"
+        },
+        "defaultActions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:lb/ListenerDefaultAction:ListenerDefaultAction"
+          }
+        },
+        "loadBalancerArn": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "sslPolicy": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "defaultActions",
+        "loadBalancerArn"
+      ]
+    },
+    "importer:lb/loadBalancer:LoadBalancer": {
+      "inputProperties": {
+        "dropInvalidHeaderFields": {
+          "type": "boolean"
+        },
+        "enableCrossZoneLoadBalancing": {
+          "type": "boolean"
+        },
+        "enableDeletionProtection": {
+          "type": "boolean"
+        },
+        "enableHttp2": {
+          "type": "boolean"
+        },
+        "idleTimeout": {
+          "type": "integer"
+        },
+        "internal": {
+          "type": "boolean"
+        },
+        "loadBalancerType": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "securityGroups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:lb/targetGroup:TargetGroup": {
+      "inputProperties": {
+        "deregistrationDelay": {
+          "type": "integer"
+        },
+        "healthCheck": {
+          "$ref": "#/types/importer:lb/TargetGroupHealthCheck:TargetGroupHealthCheck"
+        },
+        "lambdaMultiValueHeadersEnabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "proxyProtocolV2": {
+          "type": "boolean"
+        },
+        "slowStart": {
+          "type": "integer"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "targetType": {
+          "type": "string"
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:rds/cluster:Cluster": {
+      "inputProperties": {
+        "backupRetentionPeriod": {
+          "type": "integer"
+        },
+        "copyTagsToSnapshot": {
+          "type": "boolean"
+        },
+        "databaseName": {
+          "type": "string"
+        },
+        "dbSubnetGroupName": {
+          "type": "string"
+        },
+        "deletionProtection": {
+          "type": "boolean"
+        },
+        "enableHttpEndpoint": {
+          "type": "boolean"
+        },
+        "engine": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:rds/EngineType:EngineType"
+            }
+          ]
+        },
+        "engineMode": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:rds/EngineMode:EngineMode"
+            }
+          ]
+        },
+        "finalSnapshotIdentifier": {
+          "type": "string"
+        },
+        "masterPassword": {
+          "type": "string"
+        },
+        "masterUsername": {
+          "type": "string"
+        },
+        "skipFinalSnapshot": {
+          "type": "boolean"
+        },
+        "storageEncrypted": {
+          "type": "boolean"
+        },
+        "vpcSecurityGroupIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:rds/clusterInstance:ClusterInstance": {
+      "inputProperties": {
+        "autoMinorVersionUpgrade": {
+          "type": "boolean"
+        },
+        "clusterIdentifier": {
+          "type": "string"
+        },
+        "copyTagsToSnapshot": {
+          "type": "boolean"
+        },
+        "dbParameterGroupName": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string",
+          "$ref": "#/types/importer:rds/engineType:EngineType"
+        },
+        "instanceClass": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:rds/InstanceType:InstanceType"
+            }
+          ]
+        },
+        "monitoringInterval": {
+          "type": "integer"
+        },
+        "monitoringRoleArn": {
+          "type": "string"
+        },
+        "promotionTier": {
+          "type": "integer"
+        },
+        "publiclyAccessible": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": [
+        "clusterIdentifier",
+        "instanceClass"
+      ]
+    },
+    "importer:rds/parameterGroup:ParameterGroup": {
+      "inputProperties": {
+        "description": {
+          "type": "string",
+          "default": "Managed by Pulumi"
+        },
+        "family": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:rds/ParameterGroupParameter:ParameterGroupParameter"
+          }
+        }
+      },
+      "requiredInputs": [
+        "family"
+      ]
+    },
+    "importer:rds/subnetGroup:SubnetGroup": {
+      "inputProperties": {
+        "description": {
+          "type": "string",
+          "default": "Managed by Pulumi"
+        },
+        "name": {
+          "type": "string"
+        },
+        "subnetIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": [
+        "subnetIds"
+      ]
+    },
+    "importer:route53/record:Record": {
+      "inputProperties": {
+        "aliases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:route53/RecordAlias:RecordAlias"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ttl": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:route53/RecordType:RecordType"
+            }
+          ]
+        },
+        "zoneId": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "name",
+        "type",
+        "zoneId"
+      ]
+    },
+    "importer:route53/zone:Zone": {
+      "inputProperties": {},
+      "requiredInputs": []
+    },
+    "importer:s3/bucket:Bucket": {
+      "inputProperties": {
+        "acl": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:s3/CannedAcl:CannedAcl"
+            }
+          ]
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "forceDestroy": {
+          "type": "boolean"
+        },
+        "replicationConfiguration": {
+          "$ref": "#/types/importer:s3/BucketReplicationConfiguration:BucketReplicationConfiguration"
+        },
+        "versioning": {
+          "$ref": "#/types/importer:s3/BucketVersioning:BucketVersioning"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:s3/bucketObject:BucketObject": {
+      "inputProperties": {
+        "bucket": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:s3/bucket:Bucket"
+            }
+          ]
+        },
+        "storageClass": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "bucket"
+      ]
+    },
+    "importer:s3/bucketPolicy:BucketPolicy": {
+      "inputProperties": {
+        "bucket": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:iam/documents:PolicyDocument"
+            }
+          ]
+        }
+      },
+      "requiredInputs": [
+        "bucket",
+        "policy"
+      ]
+    },
+    "importer:sns/topic:Topic": {
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": []
+    },
+    "importer:sns/topicSubscription:TopicSubscription": {
+      "inputProperties": {
+        "confirmationTimeoutInMinutes": {
+          "type": "integer"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "endpointAutoConfirms": {
+          "type": "boolean"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "rawMessageDelivery": {
+          "type": "boolean"
+        },
+        "topic": {
+          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string",
+              "$ref": "#/types/importer:sns/topic:Topic"
+            }
+          ]
+        }
+      },
+      "requiredInputs": [
+        "endpoint",
+        "protocol",
+        "topic"
+      ]
+    }
+  },
+  "types": {
+    "importer:autoscaling/MetricsGranularity:MetricsGranularity": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "OneMinute",
+          "value": "1Minute"
+        }
+      ]
+    },
+    "importer:cloudwatch/EventTargetEcsTarget:EventTargetEcsTarget": {
+      "properties": {
+        "enableEcsManagedTags": {
+          "type": "boolean"
+        },
+        "enableExecuteCommand": {
+          "type": "boolean"
+        },
+        "group": {
+          "type": "string"
+        },
+        "launchType": {
+          "type": "string"
+        },
+        "networkConfiguration": {
+          "$ref": "#/types/importer:cloudwatch/EventTargetEcsTargetNetworkConfiguration:EventTargetEcsTargetNetworkConfiguration"
+        },
+        "placementConstraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:cloudwatch/EventTargetEcsTargetPlacementConstraint:EventTargetEcsTargetPlacementConstraint"
+          }
+        },
+        "platformVersion": {
+          "type": "string"
+        },
+        "propagateTags": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "taskCount": {
+          "type": "integer"
+        },
+        "taskDefinitionArn": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "taskDefinitionArn"
+      ]
+    },
+    "importer:cloudwatch/EventTargetEcsTargetNetworkConfiguration:EventTargetEcsTargetNetworkConfiguration": {
+      "properties": {
+        "assignPublicIp": {
+          "type": "boolean"
+        },
+        "securityGroups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "subnets"
+      ]
+    },
+    "importer:cloudwatch/EventTargetEcsTargetPlacementConstraint:EventTargetEcsTargetPlacementConstraint": {
+      "properties": {
+        "expression": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "importer:cloudwatch/LogMetricFilterMetricTransformation:LogMetricFilterMetricTransformation": {
+      "properties": {
+        "defaultValue": {
+          "type": "string"
+        },
+        "dimensions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "namespace",
+        "value"
+      ]
+    },
+    "importer:ec2/LaunchConfigurationEbsBlockDevice:LaunchConfigurationEbsBlockDevice": {
+      "properties": {
+        "deleteOnTermination": {
+          "type": "boolean"
+        },
+        "deviceName": {
+          "type": "string"
+        },
+        "encrypted": {
+          "type": "boolean"
+        },
+        "iops": {
+          "type": "integer"
+        },
+        "noDevice": {
+          "type": "boolean"
+        },
+        "snapshotId": {
+          "type": "string"
+        },
+        "throughput": {
+          "type": "integer"
+        },
+        "volumeSize": {
+          "type": "integer"
+        },
+        "volumeType": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "deviceName"
+      ]
+    },
+    "importer:ec2/LaunchConfigurationRootBlockDevice:LaunchConfigurationRootBlockDevice": {
+      "properties": {
+        "deleteOnTermination": {
+          "type": "boolean"
+        },
+        "encrypted": {
+          "type": "boolean"
+        },
+        "iops": {
+          "type": "integer"
+        },
+        "throughput": {
+          "type": "integer"
+        },
+        "volumeSize": {
+          "type": "integer"
+        },
+        "volumeType": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "importer:ec2/ProtocolType:ProtocolType": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "All",
+          "value": "all"
+        },
+        {
+          "name": "TCP",
+          "value": "tcp"
+        },
+        {
+          "name": "UDP",
+          "value": "udp"
+        },
+        {
+          "name": "ICMP",
+          "value": "icmp"
+        }
+      ]
+    },
+    "importer:ec2/RouteTableRoute:RouteTableRoute": {
+      "properties": {
+        "carrierGatewayId": {
+          "type": "string"
+        },
+        "cidrBlock": {
+          "type": "string"
+        },
+        "coreNetworkArn": {
+          "type": "string"
+        },
+        "destinationPrefixListId": {
+          "type": "string"
+        },
+        "egressOnlyGatewayId": {
+          "type": "string"
+        },
+        "gatewayId": {
+          "type": "string"
+        },
+        "instanceId": {
+          "type": "string"
+        },
+        "ipv6CidrBlock": {
+          "type": "string"
+        },
+        "localGatewayId": {
+          "type": "string"
+        },
+        "natGatewayId": {
+          "type": "string"
+        },
+        "networkInterfaceId": {
+          "type": "string"
+        },
+        "transitGatewayId": {
+          "type": "string"
+        },
+        "vpcEndpointId": {
+          "type": "string"
+        },
+        "vpcPeeringConnectionId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "importer:ec2/SecurityGroupEgress:SecurityGroupEgress": {
+      "properties": {
+        "cidrBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "fromPort": {
+          "type": "integer"
+        },
+        "ipv6CidrBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "prefixListIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "securityGroups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "self": {
+          "type": "boolean"
+        },
+        "toPort": {
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "required": [
+        "fromPort",
+        "protocol",
+        "toPort"
+      ]
+    },
+    "importer:ec2/SecurityGroupIngress:SecurityGroupIngress": {
+      "properties": {
+        "cidrBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "fromPort": {
+          "type": "integer"
+        },
+        "ipv6CidrBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "prefixListIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "securityGroups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "self": {
+          "type": "boolean"
+        },
+        "toPort": {
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "required": [
+        "fromPort",
+        "protocol",
+        "toPort"
+      ]
+    },
+    "importer:ecs/ServiceLoadBalancer:ServiceLoadBalancer": {
+      "properties": {
+        "containerName": {
+          "type": "string"
+        },
+        "containerPort": {
+          "type": "integer"
+        },
+        "elbName": {
+          "type": "string"
+        },
+        "targetGroupArn": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "containerName",
+        "containerPort"
+      ]
+    },
+    "importer:ecs/ServiceNetworkConfiguration:ServiceNetworkConfiguration": {
+      "properties": {
+        "assignPublicIp": {
+          "type": "boolean"
+        },
+        "securityGroups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "subnets"
+      ]
+    },
+    "importer:ecs/ServiceOrderedPlacementStrategy:ServiceOrderedPlacementStrategy": {
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerDefaultAction:ListenerDefaultAction": {
+      "properties": {
+        "authenticateCognito": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerDefaultActionAuthenticateCognito:ListenerDefaultActionAuthenticateCognito"
+        },
+        "authenticateOidc": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerDefaultActionAuthenticateOidc:ListenerDefaultActionAuthenticateOidc"
+        },
+        "fixedResponse": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerDefaultActionFixedResponse:ListenerDefaultActionFixedResponse"
+        },
+        "forward": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerDefaultActionForward:ListenerDefaultActionForward"
+        },
+        "order": {
+          "type": "integer"
+        },
+        "redirect": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerDefaultActionRedirect:ListenerDefaultActionRedirect"
+        },
+        "targetGroupArn": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerDefaultActionAuthenticateCognito:ListenerDefaultActionAuthenticateCognito": {
+      "properties": {
+        "authenticationRequestExtraParams": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "onUnauthenticatedRequest": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "sessionCookieName": {
+          "type": "string"
+        },
+        "sessionTimeout": {
+          "type": "integer"
+        },
+        "userPoolArn": {
+          "type": "string"
+        },
+        "userPoolClientId": {
+          "type": "string"
+        },
+        "userPoolDomain": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "userPoolArn",
+        "userPoolClientId",
+        "userPoolDomain"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerDefaultActionAuthenticateOidc:ListenerDefaultActionAuthenticateOidc": {
+      "properties": {
+        "authenticationRequestExtraParams": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "authorizationEndpoint": {
+          "type": "string"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "clientSecret": {
+          "type": "string"
+        },
+        "issuer": {
+          "type": "string"
+        },
+        "onUnauthenticatedRequest": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "sessionCookieName": {
+          "type": "string"
+        },
+        "sessionTimeout": {
+          "type": "integer"
+        },
+        "tokenEndpoint": {
+          "type": "string"
+        },
+        "userInfoEndpoint": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "authorizationEndpoint",
+        "clientId",
+        "clientSecret",
+        "issuer",
+        "tokenEndpoint",
+        "userInfoEndpoint"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerDefaultActionFixedResponse:ListenerDefaultActionFixedResponse": {
+      "properties": {
+        "contentType": {
+          "type": "string"
+        },
+        "messageBody": {
+          "type": "string"
+        },
+        "statusCode": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "contentType"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerDefaultActionForward:ListenerDefaultActionForward": {
+      "properties": {
+        "stickiness": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerDefaultActionForwardStickiness:ListenerDefaultActionForwardStickiness"
+        },
+        "targetGroups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:elasticloadbalancingv2/ListenerDefaultActionForwardTargetGroup:ListenerDefaultActionForwardTargetGroup"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "targetGroups"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerDefaultActionForwardStickiness:ListenerDefaultActionForwardStickiness": {
+      "properties": {
+        "duration": {
+          "type": "integer"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "type": "object",
+      "required": [
+        "duration"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerDefaultActionForwardTargetGroup:ListenerDefaultActionForwardTargetGroup": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "required": [
+        "arn"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerDefaultActionRedirect:ListenerDefaultActionRedirect": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "port": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "statusCode": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "statusCode"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleAction:ListenerRuleAction": {
+      "properties": {
+        "authenticateCognito": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleActionAuthenticateCognito:ListenerRuleActionAuthenticateCognito"
+        },
+        "authenticateOidc": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleActionAuthenticateOidc:ListenerRuleActionAuthenticateOidc"
+        },
+        "fixedResponse": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleActionFixedResponse:ListenerRuleActionFixedResponse"
+        },
+        "forward": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleActionForward:ListenerRuleActionForward"
+        },
+        "order": {
+          "type": "integer"
+        },
+        "redirect": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleActionRedirect:ListenerRuleActionRedirect"
+        },
+        "targetGroupArn": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleActionAuthenticateCognito:ListenerRuleActionAuthenticateCognito": {
+      "properties": {
+        "authenticationRequestExtraParams": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "onUnauthenticatedRequest": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "sessionCookieName": {
+          "type": "string"
+        },
+        "sessionTimeout": {
+          "type": "integer"
+        },
+        "userPoolArn": {
+          "type": "string"
+        },
+        "userPoolClientId": {
+          "type": "string"
+        },
+        "userPoolDomain": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "userPoolArn",
+        "userPoolClientId",
+        "userPoolDomain"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleActionAuthenticateOidc:ListenerRuleActionAuthenticateOidc": {
+      "properties": {
+        "authenticationRequestExtraParams": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "authorizationEndpoint": {
+          "type": "string"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "clientSecret": {
+          "type": "string"
+        },
+        "issuer": {
+          "type": "string"
+        },
+        "onUnauthenticatedRequest": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "sessionCookieName": {
+          "type": "string"
+        },
+        "sessionTimeout": {
+          "type": "integer"
+        },
+        "tokenEndpoint": {
+          "type": "string"
+        },
+        "userInfoEndpoint": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "authorizationEndpoint",
+        "clientId",
+        "clientSecret",
+        "issuer",
+        "tokenEndpoint",
+        "userInfoEndpoint"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleActionFixedResponse:ListenerRuleActionFixedResponse": {
+      "properties": {
+        "contentType": {
+          "type": "string"
+        },
+        "messageBody": {
+          "type": "string"
+        },
+        "statusCode": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "contentType"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleActionForward:ListenerRuleActionForward": {
+      "properties": {
+        "stickiness": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleActionForwardStickiness:ListenerRuleActionForwardStickiness"
+        },
+        "targetGroups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleActionForwardTargetGroup:ListenerRuleActionForwardTargetGroup"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "targetGroups"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleActionForwardStickiness:ListenerRuleActionForwardStickiness": {
+      "properties": {
+        "duration": {
+          "type": "integer"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "type": "object",
+      "required": [
+        "duration"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleActionForwardTargetGroup:ListenerRuleActionForwardTargetGroup": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "required": [
+        "arn"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleActionRedirect:ListenerRuleActionRedirect": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "port": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "statusCode": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "statusCode"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleCondition:ListenerRuleCondition": {
+      "properties": {
+        "hostHeader": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleConditionHostHeader:ListenerRuleConditionHostHeader"
+        },
+        "httpHeader": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleConditionHttpHeader:ListenerRuleConditionHttpHeader"
+        },
+        "httpRequestMethod": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleConditionHttpRequestMethod:ListenerRuleConditionHttpRequestMethod"
+        },
+        "pathPattern": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleConditionPathPattern:ListenerRuleConditionPathPattern"
+        },
+        "queryStrings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleConditionQueryString:ListenerRuleConditionQueryString"
+          }
+        },
+        "sourceIp": {
+          "$ref": "#/types/importer:elasticloadbalancingv2/ListenerRuleConditionSourceIp:ListenerRuleConditionSourceIp"
+        }
+      },
+      "type": "object"
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleConditionHostHeader:ListenerRuleConditionHostHeader": {
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "values"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleConditionHttpHeader:ListenerRuleConditionHttpHeader": {
+      "properties": {
+        "httpHeaderName": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "httpHeaderName",
+        "values"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleConditionHttpRequestMethod:ListenerRuleConditionHttpRequestMethod": {
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "values"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleConditionPathPattern:ListenerRuleConditionPathPattern": {
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "values"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleConditionQueryString:ListenerRuleConditionQueryString": {
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "value"
+      ]
+    },
+    "importer:elasticloadbalancingv2/ListenerRuleConditionSourceIp:ListenerRuleConditionSourceIp": {
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "values"
+      ]
+    },
+    "importer:elasticloadbalancingv2/LoadBalancerAccessLogs:LoadBalancerAccessLogs": {
+      "properties": {
+        "bucket": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "prefix": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "bucket"
+      ]
+    },
+    "importer:elasticloadbalancingv2/TargetGroupHealthCheck:TargetGroupHealthCheck": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "healthyThreshold": {
+          "type": "integer"
+        },
+        "interval": {
+          "type": "integer"
+        },
+        "matcher": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "port": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "integer"
+        },
+        "unhealthyThreshold": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "importer:elasticsearch/DomainClusterConfig:DomainClusterConfig": {
+      "properties": {
+        "coldStorageOptions": {
+          "$ref": "#/types/importer:elasticsearch/DomainClusterConfigColdStorageOptions:DomainClusterConfigColdStorageOptions"
+        },
+        "dedicatedMasterCount": {
+          "type": "integer"
+        },
+        "dedicatedMasterEnabled": {
+          "type": "boolean"
+        },
+        "dedicatedMasterType": {
+          "type": "string"
+        },
+        "instanceCount": {
+          "type": "integer"
+        },
+        "instanceType": {
+          "type": "string"
+        },
+        "warmCount": {
+          "type": "integer"
+        },
+        "warmEnabled": {
+          "type": "boolean"
+        },
+        "warmType": {
+          "type": "string"
+        },
+        "zoneAwarenessConfig": {
+          "$ref": "#/types/importer:elasticsearch/DomainClusterConfigZoneAwarenessConfig:DomainClusterConfigZoneAwarenessConfig"
+        },
+        "zoneAwarenessEnabled": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "importer:elasticsearch/DomainClusterConfigColdStorageOptions:DomainClusterConfigColdStorageOptions": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "importer:elasticsearch/DomainClusterConfigZoneAwarenessConfig:DomainClusterConfigZoneAwarenessConfig": {
+      "properties": {
+        "availabilityZoneCount": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "importer:elasticsearch/DomainEbsOptions:DomainEbsOptions": {
+      "properties": {
+        "ebsEnabled": {
+          "type": "boolean"
+        },
+        "iops": {
+          "type": "integer"
+        },
+        "volumeSize": {
+          "type": "integer"
+        },
+        "volumeType": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "ebsEnabled"
+      ]
+    },
+    "importer:elasticsearch/DomainEncryptAtRest:DomainEncryptAtRest": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "kmsKeyId": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "enabled"
+      ]
+    },
+    "importer:elasticsearch/DomainVpcOptions:DomainVpcOptions": {
+      "properties": {
+        "availabilityZones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "securityGroupIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subnetIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "importer:lambda/Runtime:Runtime": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "DotnetCore2d1",
+          "value": "dotnetcore2.1"
+        },
+        {
+          "name": "DotnetCore3d1",
+          "value": "dotnetcore3.1"
+        },
+        {
+          "name": "Dotnet6",
+          "value": "dotnet6"
+        },
+        {
+          "name": "Go1dx",
+          "value": "go1.x"
+        },
+        {
+          "name": "Java8",
+          "value": "java8"
+        },
+        {
+          "name": "Java8AL2",
+          "value": "java8.al2"
+        },
+        {
+          "name": "Java11",
+          "value": "java11"
+        },
+        {
+          "name": "Ruby2d5",
+          "value": "ruby2.5"
+        },
+        {
+          "name": "Ruby2d7",
+          "value": "ruby2.7"
+        },
+        {
+          "name": "NodeJS10dX",
+          "value": "nodejs10.x"
+        },
+        {
+          "name": "NodeJS12dX",
+          "value": "nodejs12.x"
+        },
+        {
+          "name": "NodeJS14dX",
+          "value": "nodejs14.x"
+        },
+        {
+          "name": "Python2d7",
+          "value": "python2.7"
+        },
+        {
+          "name": "Python3d6",
+          "value": "python3.6"
+        },
+        {
+          "name": "Python3d7",
+          "value": "python3.7"
+        },
+        {
+          "name": "Python3d8",
+          "value": "python3.8"
+        },
+        {
+          "name": "Custom",
+          "value": "provided"
+        },
+        {
+          "name": "CustomAL2",
+          "value": "provided.al2"
+        }
+      ]
+    },
+    "importer:lb/ListenerDefaultAction:ListenerDefaultAction": {
+      "properties": {
+        "authenticateCognito": {
+          "$ref": "#/types/importer:lb/ListenerDefaultActionAuthenticateCognito:ListenerDefaultActionAuthenticateCognito"
+        },
+        "authenticateOidc": {
+          "$ref": "#/types/importer:lb/ListenerDefaultActionAuthenticateOidc:ListenerDefaultActionAuthenticateOidc"
+        },
+        "fixedResponse": {
+          "$ref": "#/types/importer:lb/ListenerDefaultActionFixedResponse:ListenerDefaultActionFixedResponse"
+        },
+        "forward": {
+          "$ref": "#/types/importer:lb/ListenerDefaultActionForward:ListenerDefaultActionForward"
+        },
+        "order": {
+          "type": "integer"
+        },
+        "redirect": {
+          "$ref": "#/types/importer:lb/ListenerDefaultActionRedirect:ListenerDefaultActionRedirect"
+        },
+        "targetGroupArn": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "importer:lb/ListenerDefaultActionAuthenticateCognito:ListenerDefaultActionAuthenticateCognito": {
+      "properties": {
+        "authenticationRequestExtraParams": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "onUnauthenticatedRequest": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "sessionCookieName": {
+          "type": "string"
+        },
+        "sessionTimeout": {
+          "type": "integer"
+        },
+        "userPoolArn": {
+          "type": "string"
+        },
+        "userPoolClientId": {
+          "type": "string"
+        },
+        "userPoolDomain": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "userPoolArn",
+        "userPoolClientId",
+        "userPoolDomain"
+      ]
+    },
+    "importer:lb/ListenerDefaultActionAuthenticateOidc:ListenerDefaultActionAuthenticateOidc": {
+      "properties": {
+        "authenticationRequestExtraParams": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "authorizationEndpoint": {
+          "type": "string"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "clientSecret": {
+          "type": "string"
+        },
+        "issuer": {
+          "type": "string"
+        },
+        "onUnauthenticatedRequest": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "sessionCookieName": {
+          "type": "string"
+        },
+        "sessionTimeout": {
+          "type": "integer"
+        },
+        "tokenEndpoint": {
+          "type": "string"
+        },
+        "userInfoEndpoint": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "authorizationEndpoint",
+        "clientId",
+        "clientSecret",
+        "issuer",
+        "tokenEndpoint",
+        "userInfoEndpoint"
+      ]
+    },
+    "importer:lb/ListenerDefaultActionFixedResponse:ListenerDefaultActionFixedResponse": {
+      "properties": {
+        "contentType": {
+          "type": "string"
+        },
+        "messageBody": {
+          "type": "string"
+        },
+        "statusCode": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "contentType"
+      ]
+    },
+    "importer:lb/ListenerDefaultActionForward:ListenerDefaultActionForward": {
+      "properties": {
+        "stickiness": {
+          "$ref": "#/types/importer:lb/ListenerDefaultActionForwardStickiness:ListenerDefaultActionForwardStickiness"
+        },
+        "targetGroups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:lb/ListenerDefaultActionForwardTargetGroup:ListenerDefaultActionForwardTargetGroup"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "targetGroups"
+      ]
+    },
+    "importer:lb/ListenerDefaultActionForwardStickiness:ListenerDefaultActionForwardStickiness": {
+      "properties": {
+        "duration": {
+          "type": "integer"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "type": "object",
+      "required": [
+        "duration"
+      ]
+    },
+    "importer:lb/ListenerDefaultActionForwardTargetGroup:ListenerDefaultActionForwardTargetGroup": {
+      "properties": {
+        "arn": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "required": [
+        "arn"
+      ]
+    },
+    "importer:lb/ListenerDefaultActionRedirect:ListenerDefaultActionRedirect": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "port": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "statusCode": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "statusCode"
+      ]
+    },
+    "importer:lb/TargetGroupHealthCheck:TargetGroupHealthCheck": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "healthyThreshold": {
+          "type": "integer"
+        },
+        "interval": {
+          "type": "integer"
+        },
+        "matcher": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "port": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "integer"
+        },
+        "unhealthyThreshold": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "importer:rds/EngineMode:EngineMode": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "Provisioned",
+          "value": "provisioned"
+        },
+        {
+          "name": "Serverless",
+          "value": "serverless"
+        },
+        {
+          "name": "ParallelQuery",
+          "value": "parallelquery"
+        },
+        {
+          "name": "Global",
+          "value": "global"
+        }
+      ]
+    },
+    "importer:rds/EngineType:EngineType": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "Aurora",
+          "value": "aurora"
+        },
+        {
+          "name": "AuroraMysql",
+          "value": "aurora-mysql"
+        },
+        {
+          "name": "AuroraPostgresql",
+          "value": "aurora-postgresql"
+        }
+      ]
+    },
+    "importer:rds/InstanceType:InstanceType": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "T4G_Micro",
+          "value": "db.t4g.micro"
+        },
+        {
+          "name": "T4G_Small",
+          "value": "db.t4g.small"
+        },
+        {
+          "name": "T4G_Medium",
+          "value": "db.t4g.medium"
+        },
+        {
+          "name": "T4G_Large",
+          "value": "db.t4g.large"
+        },
+        {
+          "name": "T4G_XLarge",
+          "value": "db.t4g.xlarge"
+        },
+        {
+          "name": "T4G_2XLarge",
+          "value": "db.t4g.2xlarge"
+        },
+        {
+          "name": "T3_Micro",
+          "value": "db.t3.micro"
+        },
+        {
+          "name": "T3_Small",
+          "value": "db.t3.small"
+        },
+        {
+          "name": "T3_Medium",
+          "value": "db.t3.medium"
+        },
+        {
+          "name": "T3_Large",
+          "value": "db.t3.large"
+        },
+        {
+          "name": "T3_XLarge",
+          "value": "db.t3.xlarge"
+        },
+        {
+          "name": "T3_2XLarge",
+          "value": "db.t3.2xlarge"
+        },
+        {
+          "name": "T2_Micro",
+          "value": "db.t2.micro"
+        },
+        {
+          "name": "T2_Small",
+          "value": "db.t2.small"
+        },
+        {
+          "name": "T2_Medium",
+          "value": "db.t2.medium"
+        },
+        {
+          "name": "T2_Large",
+          "value": "db.t2.large"
+        },
+        {
+          "name": "T2_XLarge",
+          "value": "db.t2.xlarge"
+        },
+        {
+          "name": "T2_2XLarge",
+          "value": "db.t2.2xlarge"
+        },
+        {
+          "name": "M1_Small",
+          "value": "db.m1.small"
+        },
+        {
+          "name": "M1_Medium",
+          "value": "db.m1.medium"
+        },
+        {
+          "name": "M1_Large",
+          "value": "db.m1.large"
+        },
+        {
+          "name": "M1_XLarge",
+          "value": "db.m1.xlarge"
+        },
+        {
+          "name": "M2_XLarge",
+          "value": "db.m2.xlarge"
+        },
+        {
+          "name": "M2_2XLarge",
+          "value": "db.m2.2xlarge"
+        },
+        {
+          "name": "M2_4XLarge",
+          "value": "db.m2.4xlarge"
+        },
+        {
+          "name": "M3_Medium",
+          "value": "db.m3.medium"
+        },
+        {
+          "name": "M3_Large",
+          "value": "db.m3.large"
+        },
+        {
+          "name": "M3_XLarge",
+          "value": "db.m3.xlarge"
+        },
+        {
+          "name": "M3_2XLarge",
+          "value": "db.m3.2xlarge"
+        },
+        {
+          "name": "M4_Large",
+          "value": "db.m4.large"
+        },
+        {
+          "name": "M4_XLarge",
+          "value": "db.m4.xlarge"
+        },
+        {
+          "name": "M4_2XLarge",
+          "value": "db.m4.2xlarge"
+        },
+        {
+          "name": "M4_4XLarge",
+          "value": "db.m4.4xlarge"
+        },
+        {
+          "name": "M4_10XLarge",
+          "value": "db.m4.10xlarge"
+        },
+        {
+          "name": "M4_16XLarge",
+          "value": "db.m4.10xlarge"
+        },
+        {
+          "name": "M5_Large",
+          "value": "db.m5.large"
+        },
+        {
+          "name": "M5_XLarge",
+          "value": "db.m5.xlarge"
+        },
+        {
+          "name": "M5_2XLarge",
+          "value": "db.m5.2xlarge"
+        },
+        {
+          "name": "M5_4XLarge",
+          "value": "db.m5.4xlarge"
+        },
+        {
+          "name": "M5_12XLarge",
+          "value": "db.m5.12xlarge"
+        },
+        {
+          "name": "M5_24XLarge",
+          "value": "db.m5.24xlarge"
+        },
+        {
+          "name": "M6G_Large",
+          "value": "db.m6g.large"
+        },
+        {
+          "name": "M6G_XLarge",
+          "value": "db.m6g.xlarge"
+        },
+        {
+          "name": "M6G_2XLarge",
+          "value": "db.m6g.2xlarge"
+        },
+        {
+          "name": "M6G_4XLarge",
+          "value": "db.m6g.4xlarge"
+        },
+        {
+          "name": "M6G_8XLarge",
+          "value": "db.m6g.8xlarge"
+        },
+        {
+          "name": "M6G_12XLarge",
+          "value": "db.m6g.12xlarge"
+        },
+        {
+          "name": "M6G_16XLarge",
+          "value": "db.m6g.16xlarge"
+        },
+        {
+          "name": "R3_Large",
+          "value": "db.r3.large"
+        },
+        {
+          "name": "R3_XLarge",
+          "value": "db.r3.xlarge"
+        },
+        {
+          "name": "R3_2XLarge",
+          "value": "db.r3.2xlarge"
+        },
+        {
+          "name": "R3_4XLarge",
+          "value": "db.r3.4xlarge"
+        },
+        {
+          "name": "R3_8XLarge",
+          "value": "db.r3.8xlarge"
+        },
+        {
+          "name": "R4_Large",
+          "value": "db.r4.large"
+        },
+        {
+          "name": "R4_XLarge",
+          "value": "db.r4.xlarge"
+        },
+        {
+          "name": "R4_2XLarge",
+          "value": "db.r4.2xlarge"
+        },
+        {
+          "name": "R4_4XLarge",
+          "value": "db.r4.4xlarge"
+        },
+        {
+          "name": "R4_8XLarge",
+          "value": "db.r4.8xlarge"
+        },
+        {
+          "name": "R4_16XLarge",
+          "value": "db.r4.16xlarge"
+        },
+        {
+          "name": "R5_Large",
+          "value": "db.r5.large"
+        },
+        {
+          "name": "R5_XLarge",
+          "value": "db.r5.xlarge"
+        },
+        {
+          "name": "R5_2XLarge",
+          "value": "db.r5.2xlarge"
+        },
+        {
+          "name": "R5_4XLarge",
+          "value": "db.r5.4xlarge"
+        },
+        {
+          "name": "R5_12XLarge",
+          "value": "db.r5.12xlarge"
+        },
+        {
+          "name": "R5_24XLarge",
+          "value": "db.r5.24xlarge"
+        },
+        {
+          "name": "R6G_Large",
+          "value": "db.r6g.large"
+        },
+        {
+          "name": "R6G_XLarge",
+          "value": "db.r6g.xlarge"
+        },
+        {
+          "name": "R6G_2XLarge",
+          "value": "db.r6g.2xlarge"
+        },
+        {
+          "name": "R6G_4XLarge",
+          "value": "db.r6g.4xlarge"
+        },
+        {
+          "name": "R6G_8XLarge",
+          "value": "db.r6g.8xlarge"
+        },
+        {
+          "name": "R6G_12XLarge",
+          "value": "db.r6g.12xlarge"
+        },
+        {
+          "name": "R6G_16XLarge",
+          "value": "db.r6g.16xlarge"
+        },
+        {
+          "name": "X1_16XLarge",
+          "value": "db.x1.16xlarge"
+        },
+        {
+          "name": "X1_32XLarge",
+          "value": "db.x1.32xlarge"
+        },
+        {
+          "name": "X1E_XLarge",
+          "value": "db.x1e.xlarge"
+        },
+        {
+          "name": "X1E_2XLarge",
+          "value": "db.x1e.2xlarge"
+        },
+        {
+          "name": "X1E_4XLarge",
+          "value": "db.x1e.4xlarge"
+        },
+        {
+          "name": "X1E_8XLarge",
+          "value": "db.x1e.8xlarge"
+        },
+        {
+          "name": "X1E_32XLarge",
+          "value": "db.x1e.32xlarge"
+        }
+      ]
+    },
+    "importer:rds/ParameterGroupParameter:ParameterGroupParameter": {
+      "properties": {
+        "applyMethod": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ]
+    },
+    "importer:route53/RecordAlias:RecordAlias": {
+      "properties": {
+        "evaluateTargetHealth": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "zoneId": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "evaluateTargetHealth",
+        "name",
+        "zoneId"
+      ]
+    },
+    "importer:route53/RecordType:RecordType": {
+      "type": "string",
+      "enum": [
+        {
+          "value": "A"
+        },
+        {
+          "value": "AAAA"
+        },
+        {
+          "value": "CNAME"
+        },
+        {
+          "value": "CAA"
+        },
+        {
+          "value": "MX"
+        },
+        {
+          "value": "NAPTR"
+        },
+        {
+          "value": "NS"
+        },
+        {
+          "value": "PTR"
+        },
+        {
+          "value": "SOA"
+        },
+        {
+          "value": "SPF"
+        },
+        {
+          "value": "SRV"
+        },
+        {
+          "value": "TXT"
+        }
+      ]
+    },
+    "importer:s3/BucketReplicationConfiguration:BucketReplicationConfiguration": {
+      "properties": {
+        "role": {
+          "type": "string"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/importer:s3/BucketReplicationConfigurationRule:BucketReplicationConfigurationRule"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "role",
+        "rules"
+      ]
+    },
+    "importer:s3/BucketReplicationConfigurationRule:BucketReplicationConfigurationRule": {
+      "properties": {
+        "deleteMarkerReplicationStatus": {
+          "type": "string"
+        },
+        "destination": {
+          "$ref": "#/types/importer:s3/BucketReplicationConfigurationRuleDestination:BucketReplicationConfigurationRuleDestination"
+        },
+        "filter": {
+          "$ref": "#/types/importer:s3/BucketReplicationConfigurationRuleFilter:BucketReplicationConfigurationRuleFilter"
+        },
+        "id": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "sourceSelectionCriteria": {
+          "$ref": "#/types/importer:s3/BucketReplicationConfigurationRuleSourceSelectionCriteria:BucketReplicationConfigurationRuleSourceSelectionCriteria"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "destination",
+        "status"
+      ]
+    },
+    "importer:s3/BucketReplicationConfigurationRuleDestination:BucketReplicationConfigurationRuleDestination": {
+      "properties": {
+        "accessControlTranslation": {
+          "$ref": "#/types/importer:s3/BucketReplicationConfigurationRuleDestinationAccessControlTranslation:BucketReplicationConfigurationRuleDestinationAccessControlTranslation"
+        },
+        "accountId": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "metrics": {
+          "$ref": "#/types/importer:s3/BucketReplicationConfigurationRuleDestinationMetrics:BucketReplicationConfigurationRuleDestinationMetrics"
+        },
+        "replicaKmsKeyId": {
+          "type": "string"
+        },
+        "replicationTime": {
+          "$ref": "#/types/importer:s3/BucketReplicationConfigurationRuleDestinationReplicationTime:BucketReplicationConfigurationRuleDestinationReplicationTime"
+        },
+        "storageClass": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "bucket"
+      ]
+    },
+    "importer:s3/BucketReplicationConfigurationRuleDestinationAccessControlTranslation:BucketReplicationConfigurationRuleDestinationAccessControlTranslation": {
+      "properties": {
+        "owner": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "owner"
+      ]
+    },
+    "importer:s3/BucketReplicationConfigurationRuleDestinationMetrics:BucketReplicationConfigurationRuleDestinationMetrics": {
+      "properties": {
+        "minutes": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "importer:s3/BucketReplicationConfigurationRuleDestinationReplicationTime:BucketReplicationConfigurationRuleDestinationReplicationTime": {
+      "properties": {
+        "minutes": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "importer:s3/BucketReplicationConfigurationRuleFilter:BucketReplicationConfigurationRuleFilter": {
+      "properties": {
+        "prefix": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "importer:s3/BucketReplicationConfigurationRuleSourceSelectionCriteria:BucketReplicationConfigurationRuleSourceSelectionCriteria": {
+      "properties": {
+        "sseKmsEncryptedObjects": {
+          "$ref": "#/types/importer:s3/BucketReplicationConfigurationRuleSourceSelectionCriteriaSseKmsEncryptedObjects:BucketReplicationConfigurationRuleSourceSelectionCriteriaSseKmsEncryptedObjects"
+        }
+      },
+      "type": "object"
+    },
+    "importer:s3/BucketReplicationConfigurationRuleSourceSelectionCriteriaSseKmsEncryptedObjects:BucketReplicationConfigurationRuleSourceSelectionCriteriaSseKmsEncryptedObjects": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "type": "object",
+      "required": [
+        "enabled"
+      ]
+    },
+    "importer:s3/BucketVersioning:BucketVersioning": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "mfaDelete": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "importer:s3/CannedAcl:CannedAcl": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "Private",
+          "value": "private"
+        },
+        {
+          "name": "PublicRead",
+          "value": "public-read"
+        },
+        {
+          "name": "PublicReadWrite",
+          "value": "public-read-write"
+        },
+        {
+          "name": "AwsExecRead",
+          "value": "aws-exec-read"
+        },
+        {
+          "name": "AuthenticatedRead",
+          "value": "authenticated-read"
+        },
+        {
+          "name": "BucketOwnerRead",
+          "value": "bucket-owner-read"
+        },
+        {
+          "name": "BucketOwnerFullControl",
+          "value": "bucket-owner-full-control"
+        },
+        {
+          "name": "LogDeliveryWrite",
+          "value": "log-delivery-write"
+        }
+      ]
+    }
+  }
+}

@@ -490,13 +490,8 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	pluginLoader := deploytest.NewProviderLoader(pkg, semver.MustParse(requestVersion), func() (plugin.Provider, error) {
 		return &deploytest.Provider{
 			GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
-				path := filepath.Join(testdataPath, fmt.Sprintf("%s-%s.json", pkg, loadVersion))
-				data, err := os.ReadFile(path)
-				if err != nil {
-					return plugin.GetSchemaResponse{}, err
-				}
 				return plugin.GetSchemaResponse{
-					Schema: data,
+					Schema: utils.ReadSchema(t, string(pkg), loadVersion),
 				}, nil
 			},
 		}, nil
