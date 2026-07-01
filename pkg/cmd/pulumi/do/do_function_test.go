@@ -117,13 +117,15 @@ func TestDoCmdWithFunctionHelpArgPrintsHelp(t *testing.T) {
 This is the other function in this package.
 
 Inputs:
-  param1 (string, required) - To set param1 things
-  param2 (Array<number>, optional) - Optional values.
+ - param1 (string*): To set param1 things
+ - param2 (Array<number>): Optional values.
+Inputs marked with '*' are required
 
 Outputs:
-  output1 (string, required) - The first output.
-  output2 (number, optional) - The second output.
-  output3 (boolean, required) - Whether it worked.
+ - output1 (string*): The first output.
+ - output2 (number): The second output.
+ - output3 (boolean*): Whether it worked.
+Outputs marked with '*' are always present
 
 Usage:
   do azure:myModule:myOtherFunction [flags]
@@ -141,7 +143,7 @@ Flags:
       --show-secrets           Show secret values in output
       --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
 `
-	assert.Equal(t, expected, stdout.String())
+	assert.Equal(t, expected, stripANSI(stdout.String()))
 }
 
 func TestDoCmdFunctionInvoke(t *testing.T) {

@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -41,39 +42,18 @@ import (
 
 func resourceSchemaHelp(res *schema.Resource) string {
 	var b strings.Builder
-	writeProperties := func(title string, properties []*schema.Property, includeRequired bool) {
-		if len(properties) == 0 {
-			return
-		}
+	writeSection := func(title string, properties []*schema.Property, kind schemainfo.Kind) {
 		if b.Len() > 0 {
-			trimmed := strings.TrimSuffix(b.String(), "\n")
-			b.Reset()
-			b.WriteString(trimmed)
-			b.WriteString("\n\n")
+			// WriteProperties output ends in a newline; add one more to separate sections.
+			b.WriteByte('\n')
 		}
-		b.WriteString(title)
-		b.WriteString(":\n")
-		for _, property := range properties {
-			fmt.Fprintf(&b, "  %s (%s", property.Name, unwrapType(property.Type))
-			if includeRequired {
-				if property.IsRequired() {
-					b.WriteString(", required")
-				} else {
-					b.WriteString(", optional")
-				}
-			}
-			b.WriteString(")")
-			if property.Comment != "" {
-				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(cleanComment(property.Comment), "\n", " "))
-			}
-			b.WriteString("\n")
-		}
+		schemainfo.WriteProperties(&b, title, schemainfo.BoundProperties(properties), kind)
 	}
 
-	writeProperties("Inputs", res.InputProperties, true)
-	writeProperties("Outputs", res.Properties, false)
-	if res.ListInputs != nil {
-		writeProperties("List Inputs", res.ListInputs.Properties, true)
+	writeSection("Inputs", res.InputProperties, schemainfo.Inputs)
+	writeSection("Outputs", res.Properties, schemainfo.Outputs)
+	if res.ListInputs != nil && len(res.ListInputs.Properties) > 0 {
+		writeSection("List Inputs", res.ListInputs.Properties, schemainfo.ListInputs)
 	}
 	return strings.TrimSuffix(b.String(), "\n")
 }
