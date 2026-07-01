@@ -15,11 +15,14 @@
 package workspace
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 )
 
 func TestValidateStackConfigValues(t *testing.T) {
@@ -131,5 +134,39 @@ func TestValidateStackConfigValues(t *testing.T) {
 		err := validateStackConfigValue("stackX", projectConfigKey, pct, stackVal, "not-a-number")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "must be of type")
+	})
+
+	t.Run("Secret Default Is Encrypted", func(t *testing.T) {
+		t.Parallel()
+		stringType := stringTypeName
+		// Regression test for #21865: a secret config key with a default value that is not
+		// set on the stack must validate, with the default applied as an encrypted value
+		// rather than rejected for not being encrypted.
+		project := &Project{
+			Name: "testProject",
+			Config: map[string]ProjectConfigType{
+				"top-secret": {
+					Type:    &stringType,
+					Secret:  true,
+					Default: "",
+				},
+			},
+		}
+
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		// Empty stack config, exactly like the issue's reproduction.
+		stack, err := loadProjectStackFromText(t, sink, project, "config: {}\n")
+		require.NoError(t, err, "Should be able to read the stack")
+
+		err = ValidateStackConfigAndApplyProjectConfig(
+			t.Context(), project.Name.String(), project, esc.Value{}, stack.Config, config.Base64Crypter, config.Base64Crypter)
+		require.NoError(t, err, "a defaulted secret config must not be mis-validated")
+
+		// The default must have been applied as an encrypted (secure) value.
+		value, ok, err := stack.Config.Get(config.MustMakeKey(project.Name.String(), "top-secret"), true)
+		require.NoError(t, err)
+		require.True(t, ok, "the defaulted secret key should be present on the stack")
+		require.True(t, value.Secure(), "the applied secret default must be encrypted")
 	})
 }
