@@ -217,6 +217,11 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 	prefix string, linePrefix string, opts Options,
 ) string {
+	const (
+		defaultPolicyPrefix = "    "
+		messageIndent       = "  "
+	)
+
 	// Colorize mandatory and warning violations differently.
 	c := colors.SpecWarning
 	if payload.EnforcementLevel == apitype.Mandatory {
@@ -233,23 +238,28 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
 		payload.ResourceURN.Type().DisplayName(), resourceText(payload.ResourceURN, opts))
 
-	// If there is already a prefix string requested, use it, otherwise fall back to a default.
+	// If there is no prefix, use the default diff-view indentation and include the policy pack name.
 	if prefix == "" {
-		policyLine = fmt.Sprintf("    %s%s@v%s %s%s",
-			colors.SpecInfo, payload.PolicyPackName, payload.PolicyPackVersion, colors.Reset, policyLine)
-	} else {
-		policyLine = fmt.Sprintf("%s%s", prefix, policyLine)
+		prefix = defaultPolicyPrefix
+		policyLine = fmt.Sprintf("%s%s@v%s %s%s", colors.SpecInfo, payload.PolicyPackName,
+			payload.PolicyPackVersion, colors.Reset, policyLine,
+		)
 	}
 
-	// If there is a line prefix, separate the heading and lines with a newline.
-	if linePrefix != "" {
-		policyLine += "\n"
+	// If there is no explicit line prefix, indent message lines relative to the policy line.
+	if linePrefix == "" {
+		linePrefix = prefix + messageIndent
 	}
+
+	policyLine = prefix + policyLine
 
 	// The message may span multiple lines, so we massage it so it will be indented properly.
 	message := strings.TrimSuffix(payload.Message, "\n")
-	message = strings.ReplaceAll(message, "\n", "\n"+linePrefix)
-	policyLine = fmt.Sprintf("%s%s%s", policyLine, linePrefix, message)
+	if message != "" {
+		message = strings.ReplaceAll(message, "\n", "\n"+linePrefix)
+		policyLine = fmt.Sprintf("%s\n%s%s", policyLine, linePrefix, message)
+	}
+
 	return opts.Color.Colorize(policyLine + "\n")
 }
 

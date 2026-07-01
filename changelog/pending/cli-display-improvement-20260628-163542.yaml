@@ -1,0 +1,6 @@
+component: cli/display
+kind: improvement
+body: Fix policy violation message indentation in diff output
+time: 2026-06-28T16:35:42.231167+03:00
+custom:
+  PR: 23715
