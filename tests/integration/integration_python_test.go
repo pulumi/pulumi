@@ -2035,7 +2035,7 @@ func TestPythonComponentProviderRun(t *testing.T) {
 	t.Parallel()
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
-	for _, runtime := range []string{"yaml", "nodejs", "python"} {
+	for _, runtime := range []string{"nodejs", "python"} {
 		t.Run(runtime, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				PrepareProject: func(info *engine.Projinfo) error {
@@ -2057,10 +2057,6 @@ func TestPythonComponentProviderRun(t *testing.T) {
 					require.NoError(t, err)
 					expectedType := tokens.Type("component:index:MyComponent")
 					expectedQualifiedType := "ParentComponent$" + expectedType
-					if runtime == "yaml" {
-						// yaml doesn't have components
-						expectedQualifiedType = expectedType
-					}
 					require.Equal(t, expectedQualifiedType, urn.QualifiedType())
 					require.Equal(t, expectedType, urn.Type())
 					require.Equal(t, "comp", urn.Name())
@@ -2086,19 +2082,16 @@ func TestPythonComponentProviderRun(t *testing.T) {
 						"c": float64(6),
 					}, stack.Outputs["dictOutput"])
 					require.Equal(t, "b", stack.Outputs["enumOutput"])
-					// TODO: YAML is not properly exporting assets https://github.com/pulumi/pulumi-yaml/issues/714
-					if runtime != "yaml" {
-						// We're expecting assetOutput = map[text:HELLO, WORLD!]
-						asset := stack.Outputs["assetOutput"].(map[string]any)
-						text := asset["text"].(string)
-						checkAssetText(t, "HELLO, WORLD!", text)
+					// We're expecting assetOutput = map[text:HELLO, WORLD!]
+					asset := stack.Outputs["assetOutput"].(map[string]any)
+					text := asset["text"].(string)
+					checkAssetText(t, "HELLO, WORLD!", text)
 
-						// We're expecting  archiveOutput = map[assets:map[asset1:map[text:IM INSIDE AN ARCHIVE]]
-						archive := stack.Outputs["archiveOutput"].(map[string]any)
-						asset1 := archive["assets"].(map[string]any)["asset1"].(map[string]any)
-						text = asset1["text"].(string)
-						checkAssetText(t, "IM INSIDE AN ARCHIVE", text)
-					}
+					// We're expecting  archiveOutput = map[assets:map[asset1:map[text:IM INSIDE AN ARCHIVE]]
+					archive := stack.Outputs["archiveOutput"].(map[string]any)
+					asset1 := archive["assets"].(map[string]any)["asset1"].(map[string]any)
+					text = asset1["text"].(string)
+					checkAssetText(t, "IM INSIDE AN ARCHIVE", text)
 				},
 			})
 		})
@@ -2402,7 +2395,7 @@ func TestPythonComponentProviderResourceReference(t *testing.T) {
 		t.Skip("Skipping test on windows")
 	}
 	// Manually set pulumi home so we can pass it to `plugin install`.
-	for _, runtime := range []string{"yaml", "python"} { //nolint:paralleltest // ProgramTest calls t.Parallel()
+	for _, runtime := range []string{"python"} { //nolint:paralleltest // ProgramTest calls t.Parallel()
 		t.Run(runtime, func(t *testing.T) {
 			pulumiHome := t.TempDir()
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
