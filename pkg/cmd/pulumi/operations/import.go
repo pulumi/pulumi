@@ -726,6 +726,13 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
+			if from == "terraform" && importFilePath == "" && proj.Runtime.Name() == "hcl" {
+				return errors.New("cannot run `pulumi import --from terraform` in a Pulumi HCL project: " +
+					"it would import resources under statically bridged providers, but pulumi-hcl runs them " +
+					"through the dynamic Terraform bridge, so the next preview would show a delete and create " +
+					"for every resource")
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			cwd, err := os.Getwd()
