@@ -22,9 +22,14 @@ import (
 )
 
 func init() {
+	// One shared instance: the parameter set by Parameterize must be visible to
+	// later Create/Invoke on this provider. The harness calls the factory per
+	// plugin load, and the engine assumes one cached provider per ref, so a fresh
+	// instance per call would leave some calls unparameterized.
+	shared := &providers.ExtensionParameterizedProvider{}
 	LanguageTests["l2-extension-parameterized-resource"] = LanguageTest{
 		Providers: []func() plugin.Provider{
-			func() plugin.Provider { return providers.SharedExtensionParameterizedProvider },
+			func() plugin.Provider { return shared },
 		},
 		Runs: []TestRun{
 			{
@@ -35,31 +40,17 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					require.Equal(l,
-						resource.NewProperty("Hello"),
-						stack.Outputs["parameterValue"],
-						"parameter value should be the extension's parameter")
-					require.Equal(l,
-						resource.NewProperty("HelloComponent"),
-						stack.Outputs["parameterValueFromComponent"],
-						"component parameter value should be the extension's parameter + Component")
-					require.Equal(l,
-						resource.NewProperty("Hello, Pulumi"),
-						stack.Outputs["invokeGreeting"],
-						"invoke should resolve through the extension and combine the parameter with the argument")
+					AssertPropertyMapMember(l, stack.Outputs, "parameterValue", resource.NewProperty("Hello"))
+					AssertPropertyMapMember(l, stack.Outputs, "parameterValueFromComponent",
+						resource.NewProperty("HelloComponent"))
+					AssertPropertyMapMember(l, stack.Outputs, "invokeGreeting",
+						resource.NewProperty("Hello, Pulumi"))
 
 					// The Greeting custom resource lives under the BASE provider's
 					// namespace, not the extension's. Its state must carry an
 					// ExtensionRef so the engine can re-hydrate the extension on
 					// subsequent runs.
-					var greeting *resource.State
-					for _, r := range snap.Resources {
-						if r.URN.Type() == "extbase:index:Greeting" {
-							greeting = r
-							break
-						}
-					}
-					require.NotNil(l, greeting, "expected an extbase:index:Greeting resource")
+					greeting := RequireSingleResource(l, snap.Resources, "extbase:index:Greeting")
 					require.NotEmpty(l, greeting.ExtensionRef,
 						"extension resource state must carry an ExtensionRef")
 					require.Contains(l, greeting.Provider, "pulumi:providers:extbase::",

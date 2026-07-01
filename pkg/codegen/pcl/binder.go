@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
@@ -1070,10 +1071,10 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 
 // extensionDescriptorsForBase returns the descriptors that extend the given base
 // package name.
-func (b *binder) extensionDescriptorsForBase(base string) []*schema.PackageDescriptor {
+func (b *binder) extensionDescriptorsForBase(base tokens.PackageName) []*schema.PackageDescriptor {
 	var descriptors []*schema.PackageDescriptor
 	for _, descriptor := range b.packageDescriptors {
-		if descriptor.Parameterization != nil && descriptor.Name == base {
+		if descriptor.Parameterization != nil && tokens.PackageName(descriptor.Name) == base {
 			descriptors = append(descriptors, descriptor)
 		}
 	}
@@ -1110,7 +1111,7 @@ func (b *binder) candidateSchemasForToken(ctx context.Context, pkg string) ([]*p
 		schemas = append(schemas, s)
 	}
 	add(b.loadDeclaredOrBarePackageSchema(ctx, pkg, "", ""))
-	for _, descriptor := range b.extensionDescriptorsForBase(pkg) {
+	for _, descriptor := range b.extensionDescriptorsForBase(tokens.PackageName(pkg)) {
 		add(b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, descriptor))
 	}
 	return schemas, firstErr

@@ -1,8 +1,8 @@
 import pulumi
-import pulumi_myext as extbase
+import pulumi_myext as myext
 
-greeting = extbase.Greeting("greeting")
-greeting_comp = extbase.GreetingComponent("greetingComp")
+greeting = myext.Greeting("greeting")
+greeting_comp = myext.GreetingComponent("greetingComp")
 pulumi.export("parameterValue", greeting.parameter_value)
 pulumi.export("parameterValueFromComponent", greeting_comp.parameter_value)
-pulumi.export("invokeGreeting", extbase.greet_output(name="Pulumi").apply(lambda invoke: invoke.greeting))
+pulumi.export("invokeGreeting", myext.greet_output(name="Pulumi").apply(lambda invoke: invoke.greeting))

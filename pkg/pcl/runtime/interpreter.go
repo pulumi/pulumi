@@ -649,23 +649,28 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		pkgName = typ
 	}
 
-	descriptor := i.lookupPackageDescriptor(pkgName)
-	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-	if err != nil {
-		return nil, fmt.Errorf("load package for token %s: %w", token, err)
+	var loadErr error
+	for _, descriptor := range i.lookupPackageDescriptors(pkgName) {
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
+			continue
+		}
+		if pkg == "pulumi" && mod == "providers" {
+			return pkgref.Provider()
+		}
+		schemaResource, ok, err := pkgref.Resources().Get(token)
+		if err != nil {
+			return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
+		}
+		if ok {
+			return schemaResource, nil
+		}
 	}
-	if pkg == "pulumi" && mod == "providers" {
-		return pkgref.Provider()
+	if loadErr != nil {
+		return nil, loadErr
 	}
-	resources := pkgref.Resources()
-	schemaResource, ok, err := resources.Get(token)
-	if err != nil {
-		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
-	}
-	if !ok {
-		return nil, fmt.Errorf("get resource from package for token %s", token)
-	}
-	return schemaResource, nil
+	return nil, fmt.Errorf("get resource from package for token %s", token)
 }
 
 func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema.Function, error) {
@@ -674,34 +679,42 @@ func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema
 
 	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 
-	descriptor := i.lookupPackageDescriptor(pkg)
-	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-	if err != nil {
-		return nil, fmt.Errorf("load package for token %s: %w", token, err)
-	}
-	functions := pkgref.Functions()
-	schemaFunction, ok, err := functions.Get(token)
-	if err != nil {
-		return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
-	}
-	if !ok {
-		return nil, fmt.Errorf("get function from package for token %s", token)
-	}
-	return schemaFunction, nil
-}
-
-func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDescriptor {
-	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
-		return descriptor
-	}
-	// A token in the base provider's namespace is owned by the extension
-	// parameterization keyed under the extension's name.
-	for _, descriptor := range i.info.PackageDescriptors {
-		if descriptor != nil && descriptor.Parameterization != nil && descriptor.Name == pkgName {
-			return descriptor
+	var loadErr error
+	for _, descriptor := range i.lookupPackageDescriptors(pkg) {
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
+			continue
+		}
+		schemaFunction, ok, err := pkgref.Functions().Get(token)
+		if err != nil {
+			return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
+		}
+		if ok {
+			return schemaFunction, nil
 		}
 	}
-	return &schema.PackageDescriptor{Name: pkgName}
+	if loadErr != nil {
+		return nil, loadErr
+	}
+	return nil, fmt.Errorf("get function from package for token %s", token)
+}
+
+// lookupPackageDescriptors returns the packages a pkgName-namespaced token could
+// resolve to: pkgName itself plus every extension layered on it.
+func (i *Interpreter) lookupPackageDescriptors(pkgName string) []*schema.PackageDescriptor {
+	var candidates []*schema.PackageDescriptor
+	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
+		candidates = append(candidates, descriptor)
+	} else {
+		candidates = append(candidates, &schema.PackageDescriptor{Name: pkgName})
+	}
+	for _, descriptor := range i.info.PackageDescriptors {
+		if descriptor != nil && descriptor.Parameterization != nil && descriptor.Name == pkgName {
+			candidates = append(candidates, descriptor)
+		}
+	}
+	return candidates
 }
 
 func PackageNameFromToken(token string) (string, error) {

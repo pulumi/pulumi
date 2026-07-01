@@ -86,12 +86,6 @@ func extensionSpecFor(name, token string) schema.PackageSpec {
 	}
 }
 
-// TestBindMultiExtensionAndBaseOverSameBase binds a program that uses two
-// extensions over the same base provider AND a resource from the bare base. All
-// three tokens share the "extbase:" prefix, so resolving them correctly requires
-// considering {bare base} ∪ {every extension over it} and picking by token
-// ownership. The bare-base resource is the one that exposes the bug: the
-// extension branch intercepts "extbase:" tokens and never falls back to the base.
 func TestBindMultiExtensionAndBaseOverSameBase(t *testing.T) {
 	t.Parallel()
 
