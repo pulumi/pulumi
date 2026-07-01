@@ -1,4 +1,0 @@
-component: cli/plugin
-kind: improvement
-body: Add `--output $format` to `pulumi plugin list`
-time: 2026-06-24T16:31:55.615492+02:00

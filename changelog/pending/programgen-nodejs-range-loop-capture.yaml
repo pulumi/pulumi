@@ -1,6 +1,0 @@
-component: programgen
-kind: fix
-body: Generate numeric `range` loops in NodeJS with a per-iteration binding so deferred applies in the loop body observe the correct index
-time: 2026-06-24T00:00:00.000000+00:00
-custom:
-    PR: ""
