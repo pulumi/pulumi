@@ -123,8 +123,22 @@ func TestProviderContainerDynamicRunsFromProgramImage(t *testing.T) {
 	require.Equal(t, "container:engine", cfg.Network)
 	require.Equal(t, roleDynamicProvider, cfg.Env[roleEnvVar])
 	require.Equal(t, WorkspaceMountPath, cfg.WorkingDir, "every provider runs at the shared workspace path")
-	require.Empty(t, cfg.Volumes, "dynamic providers inject nothing")
+	require.Equal(t, []VolumeMount{{Source: WorkspaceVolumeName(h.podID), Target: WorkspaceMountPath}}, cfg.Volumes,
+		"a dynamic provider mounts the shared workspace (for asset resolution) and nothing else — no injected binary")
 	require.Empty(t, cfg.Entrypoint, "the image's bootstrap shim selects the entrypoint via the role env")
+}
+
+// workspaceCoupled — the "runs from the program image" archetype — is now exactly the set
+// of providers that exec arbitrary user toolchain: just `command`. docker and docker-build
+// carry their own tooling in their own image and reach the workspace through the shared
+// mount, so they are NOT workspace-coupled (they run from their own image).
+func TestWorkspaceCoupledIsOnlyCommand(t *testing.T) {
+	t.Parallel()
+	require.True(t, workspaceCoupled("command"))
+	require.False(t, workspaceCoupled("docker"))
+	require.False(t, workspaceCoupled("docker-build"))
+	require.False(t, workspaceCoupled("aws"))
+	require.False(t, workspaceCoupled("cloudflare"))
 }
 
 // A stateless provider runs from its own image but must still resolve the program's

@@ -210,18 +210,17 @@ const (
 	pluginVolumePrfx = "plugin-"
 )
 
-// workspaceCoupled reports whether a provider must run rooted in the program's
-// filesystem — for its workspace and toolchain — rather than its own image. The
-// `command` provider shells out to the user's toolchain; `docker-build` resolves
-// a build context from the workspace. This is the prototype's convention table;
-// pre-start image labels are the generalizing layer (see the design doc). Cloud
-// providers are not workspace-coupled — they run from their own image.
+// workspaceCoupled reports whether a provider must run from the *program* image —
+// rooted in the program's filesystem for its *ambient toolchain* — rather than from
+// its own image. Only `command` qualifies: it execs arbitrary shell (`make`, ...)
+// that needs the binaries on the program's PATH, which the shared workspace mount
+// (files, not a toolchain) can't supply. Every other provider runs from its own image
+// and reaches the workspace through that shared mount — including docker-build
+// (embedded buildkit) and docker (which carries its own CLI in its own image), both of
+// which need the workspace *files*, not the program's toolchain. This is the
+// prototype's convention table; pre-start image labels are the generalizing layer.
 func workspaceCoupled(name string) bool {
-	switch name {
-	case "command", "docker", "docker-build":
-		return true
-	}
-	return false
+	return name == "command"
 }
 
 // roleEnvVar selects which entrypoint a program image boots into. The program
@@ -425,13 +424,18 @@ func (h *containerHost) providerContainer(
 	cfg := ContainerConfig{
 		Name:    uniqueContainerName("provider-" + descriptor.Name),
 		Network: "container:" + h.engineHost,
-		// Run every provider with its working directory at the shared workspace path,
-		// regardless of its own image's WORKDIR. A provider that reads a relative asset
-		// path or file-path property resolves it against getwd; pinning getwd here (and
-		// mounting the workspace volume at the same path below) is what makes those reads
-		// resolve to the program's workspace. Without this a stateless provider ran at its
-		// own image's default WORKDIR and only resolved workspace paths by coincidence.
+		// Run EVERY provider rooted in the shared workspace: working directory at
+		// WorkspaceMountPath and the shared workspace volume mounted there. Any provider
+		// can receive an Asset — or a file-path property like cloudflare's WorkerVersion
+		// asset dir — whose relative path resolves against getwd at read time, so every
+		// provider (not just the "stateless" ones) needs the program's workspace visible
+		// at the same path with the same CWD. This is safe because a plugin's own code
+		// lives at /plugin (providerBinDir), so the workspace mount never shadows it;
+		// providers that read no files simply ignore it. The program seeds this volume on
+		// first mount and writes runtime outputs into it, so a provider sees the live
+		// workspace — including build outputs the program produced during evaluation.
 		WorkingDir: WorkspaceMountPath,
+		Volumes:    []VolumeMount{{Source: WorkspaceVolumeName(h.podID), Target: WorkspaceMountPath}},
 		// Project the engine's environment onto every provider — the container
 		// analogue of a spawned provider inheriting os.Environ(). This is how a
 		// provider's credentials reach it; see projectedProviderEnv.
@@ -499,17 +503,15 @@ func (h *containerHost) providerContainer(
 		cfg.Volumes = append(cfg.Volumes, VolumeMount{Source: vol.Name, Target: injectedBinDir})
 		cfg.Entrypoint = []string{injectedBinPath}
 	} else {
-		// A stateless provider runs from its own image, but it may still need to read
-		// the program's workspace: a Pulumi asset, or a provider file-path property
-		// (e.g. cloudflare's WorkerVersion asset directory) points at a path under the
-		// program's working dir. Mount the shared workspace volume at the same path so
-		// those reads resolve. The program populates this volume at runtime (and Docker
-		// seeds it from the program image), so the provider sees the live workspace —
-		// including build outputs the program produced during evaluation. Providers that
-		// do not read files simply ignore the mount.
+		// Every other provider runs from its own image (carrying its own tooling), with
+		// the shared workspace already mounted above — nothing to inject. This is the
+		// default: cloud providers (aws, random), asset-reading providers (cloudflare),
+		// and docker/docker-build, whose CLI/buildkit rides in the provider image rather
+		// than being baked into the program's.
 		cfg.Image = providerImage
-		cfg.Volumes = append(cfg.Volumes,
-			VolumeMount{Source: WorkspaceVolumeName(h.podID), Target: WorkspaceMountPath})
+		fmt.Fprintf(os.Stderr,
+			"oci: provider %s runs from its own image %s (shared workspace mounted)\n",
+			descriptor.Name, providerImage)
 	}
 
 	// Project the host capabilities the provider declares it needs (docker socket,

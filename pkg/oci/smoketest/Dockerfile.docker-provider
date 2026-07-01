@@ -1,0 +1,12 @@
+# Provider image for the classic `docker` provider. Unlike the generic
+# Dockerfile.provider (a bare wrapped binary), this bakes the docker CLI (+ buildx)
+# alongside the provider binary — because the `docker` provider shells out to
+# `docker build`, and that CLI is the PROVIDER's own dependency, not the program's.
+# (The daemon, reached over the projected socket, is what gates features — not the
+# client.) So the provider carries its CLI and runs from its OWN image; the program
+# image no longer installs docker. The build context reaches the provider through the
+# shared /workspace mount, seeded from the program image.
+FROM alpine:3
+RUN apk add --no-cache ca-certificates docker-cli docker-cli-buildx
+COPY provider-bin /plugin/provider
+ENTRYPOINT ["/plugin/provider"]

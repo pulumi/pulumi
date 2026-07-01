@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 #
-# Image-build smoke test (design Phase 5, the workspace-coupled "real prize").
-# Proves a provider that both needs the program's filesystem AND a host capability
-# works in the pod model: the `docker` provider builds an image from a context
-# baked into the program image, reaching the daemon over a projected docker socket.
+# Image-build smoke test (design Phase 5): a provider that needs both the program's
+# workspace files AND a host capability works in the pod model. The `docker` provider
+# builds an image from a context baked into the program image, reaching the daemon
+# over a projected docker socket.
 #
-# The engine (pod mode) sees `docker` is workspace-coupled, so it runs the docker
-# provider FROM the program image (which carries the build context + docker CLI),
-# and — because docker declares the `docker-socket` capability — mounts the pod's
-# /var/run/docker.sock into it. The provider runs `docker build /workspace/app`
-# against that socket. None of the build context, the CLI, or the socket lives in
-# the provider's own image: context + CLI come from the program image, the socket
-# from the pod.
+# The docker provider runs from its OWN image (which carries the docker CLI + buildx),
+# with the shared /workspace volume mounted — so it resolves the build context from
+# /workspace/app (seeded into the volume by the program) and finds its CLI on PATH from
+# its own image. Because docker declares the `docker-socket` capability, the pod mounts
+# /var/run/docker.sock into it, and the provider runs `docker build /workspace/app`
+# against that socket. The CLI travels with the provider, not the program; the context
+# travels through the shared volume; the socket comes from the pod.
 #
 # The classic `docker` provider is used rather than `docker-build` only because the
 # latter's Go SDK isn't cleanly consumable via go modules right now; the pod
@@ -77,17 +77,17 @@ echo "==> cross-compiling demo program (linux/$GOARCH)"
 ( cd "$PROGRAM_DIR" && GOWORK=off GOOS=linux GOARCH="$GOARCH" CGO_ENABLED=0 \
     go build -o "$SMOKE_DIR/program-linux" . )
 
-echo "==> building program image $PROGRAM_IMAGE (bakes /workspace/app + docker CLI)"
+echo "==> building program image $PROGRAM_IMAGE (bakes /workspace/app; docker CLI now lives in the provider image)"
 docker buildx build --builder "$BUILDER" --load \
   -t "$PROGRAM_IMAGE" -f "$SMOKE_DIR/Dockerfile.docker" "$SMOKE_DIR"
 
-echo "==> downloading stock $PROVIDER_PKG provider v$PROVIDER_VERSION (linux/$GOARCH) and wrapping it"
+echo "==> downloading stock $PROVIDER_PKG provider v$PROVIDER_VERSION (linux/$GOARCH) and wrapping it (with the docker CLI) into its own image"
 PROVIDER_URL="https://get.pulumi.com/releases/plugins/pulumi-resource-$PROVIDER_PKG-v$PROVIDER_VERSION-linux-$GOARCH.tar.gz"
 curl -fsSL "$PROVIDER_URL" -o "$WORK/provider.tar.gz"
 tar -xzf "$WORK/provider.tar.gz" -C "$WORK/provctx" "pulumi-resource-$PROVIDER_PKG"
 mv "$WORK/provctx/pulumi-resource-$PROVIDER_PKG" "$WORK/provctx/provider-bin"
 docker buildx build --builder "$BUILDER" --load \
-  -t "$PROVIDER_IMAGE" -f "$SMOKE_DIR/Dockerfile.provider" "$WORK/provctx"
+  -t "$PROVIDER_IMAGE" -f "$SMOKE_DIR/Dockerfile.docker-provider" "$WORK/provctx"
 
 echo "==> creating pod network $NET"
 docker network create "$NET" >/dev/null
@@ -124,9 +124,9 @@ docker run --rm -i \
   ' \
   2>&1 | tee "$WORK/engine.log"
 
-echo "==> asserting the docker provider ran from the program image, got the socket, and built the image"
-if ! grep -q 'oci: provider docker is workspace-coupled' "$WORK/engine.log"; then
-  echo "!! the engine did not run docker from the program image"
+echo "==> asserting the docker provider ran from its own image, got the socket, and built the image"
+if ! grep -q 'oci: provider docker runs from its own image' "$WORK/engine.log"; then
+  echo "!! the engine did not run docker from its own image"
   exit 1
 fi
 if ! grep -q 'oci: provider docker gets capability "docker-socket"' "$WORK/engine.log"; then

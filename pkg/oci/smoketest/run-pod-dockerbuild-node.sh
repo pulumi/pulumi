@@ -137,9 +137,9 @@ docker run --rm -i \
   ' \
   2>&1 | tee "$WORK/engine.log"
 
-echo "==> asserting the docker-build provider ran from the program image, got the socket, and built a real image"
-if ! grep -q "oci: provider $PROVIDER_PKG is workspace-coupled" "$WORK/engine.log"; then
-  echo "!! the engine did not run docker-build from the program image"
+echo "==> asserting the docker-build provider ran from its own image, got the socket, and built a real image"
+if ! grep -q "oci: provider $PROVIDER_PKG runs from its own image" "$WORK/engine.log"; then
+  echo "!! the engine did not run docker-build from its own image"
   exit 1
 fi
 if ! grep -q "oci: provider $PROVIDER_PKG gets capability \"docker-socket\"" "$WORK/engine.log"; then
