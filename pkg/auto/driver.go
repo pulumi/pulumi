@@ -87,6 +87,13 @@ func Select(ctx context.Context, opts Options) (*Stack, error) {
 	if opts.WorkDir == "" || opts.Stack == "" {
 		return nil, fmt.Errorf("WorkDir and Stack are both required")
 	}
+	// The engine requires an absolute program root (ProgramInfo panics on a relative one), so
+	// resolve WorkDir up front, as the CLI resolves a project directory.
+	workDir, err := filepath.Abs(opts.WorkDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolving WorkDir %q: %w", opts.WorkDir, err)
+	}
+	opts.WorkDir = workDir
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 
 	proj, err := workspace.LoadProject(filepath.Join(opts.WorkDir, "Pulumi.yaml"))
