@@ -1,0 +1,6 @@
+component: cli
+kind: feat
+body: Install extension packages declared in `Pulumi.yaml` during `pulumi install`
+time: 2026-06-29T00:00:00+00:00
+custom:
+  PR: ""

@@ -299,6 +299,13 @@
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "extensions":{
+                    "type":"array",
+                    "items":{
+                        "type":"string"
+                    },
+                    "description":"For an extension package, the parameters that extend the base provider"
                 }
             }
         },

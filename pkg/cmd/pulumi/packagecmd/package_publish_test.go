@@ -375,7 +375,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				extractSchema: func(
 					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-					registry registry.Registry, _ env.Env, _ int,
+					registry registry.Registry, _ env.Env, _ int, _ bool,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
 						return nil, nil, errors.New("mock schema extraction failed")
@@ -473,7 +473,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 				extractSchema: func(
 					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-					registry registry.Registry, _ env.Env, _ int,
+					registry registry.Registry, _ env.Env, _ int, _ bool,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					return tt.mockSchema, nil, nil
 				},
@@ -533,7 +533,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				extractSchema: func(
 					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-					registry registry.Registry, _ env.Env, _ int,
+					registry registry.Registry, _ env.Env, _ int, _ bool,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					return validSchema, nil, nil
 				},
@@ -569,7 +569,7 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 			packageSource string,
 			parameters plugin.ParameterizeParameters,
 			registry registry.Registry,
-			_ env.Env, _ int,
+			_ env.Env, _ int, _ bool,
 		) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 			pkg := &schema.PackageSpec{
 				Name:    "test-package",
