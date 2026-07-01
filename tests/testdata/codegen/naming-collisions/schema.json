@@ -79,6 +79,32 @@
           "type": "string"
         }
       }
+    },
+    "example::Foo": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "stateInputs": {
+        "properties": {
+          "bar": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "example::FooState": {
+      "properties": {
+        "baz": {
+          "type": "string"
+        }
+      }
     }
   },
   "functions": {},
