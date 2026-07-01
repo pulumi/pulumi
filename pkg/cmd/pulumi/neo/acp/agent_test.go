@@ -25,6 +25,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testAuthMethod is the auth-method id advertised by testIdentity. The package
+// itself carries no auth-method constant — identity is injected — so tests
+// supply their own.
+const testAuthMethod = "test-login"
+
+// testIdentity is the agent identity used across these tests, standing in for
+// whatever an embedding application (e.g. neo) injects via NewAgent.
+var testIdentity = Identity{
+	Name:        "test-agent",
+	Title:       "Test Agent",
+	AuthMethods: []AuthMethod{{ID: testAuthMethod, Name: "Test login"}},
+}
+
 // newTestPeers wires an agent connection to a client connection over an
 // in-memory pipe, returning the client side to drive requests against. Both
 // connections are closed via t.Cleanup.
@@ -65,7 +78,7 @@ func (noopHandler) Handle(context.Context, *jsonrpc2.Conn, *jsonrpc2.Request) {}
 func TestInitializeNegotiatesAndCapturesCapabilities(t *testing.T) {
 	t.Parallel()
 
-	agent := NewAgent("v3.999.0")
+	agent := NewAgent(testIdentity, "v3.999.0")
 	client := newTestPeers(t, agent)
 
 	var res InitializeResult
@@ -83,7 +96,7 @@ func TestInitializeNegotiatesAndCapturesCapabilities(t *testing.T) {
 	require.NotNil(t, res.AgentInfo)
 	assert.Equal(t, "v3.999.0", res.AgentInfo.Version)
 	require.Len(t, res.AuthMethods, 1)
-	assert.Equal(t, authMethodPulumiLogin, res.AuthMethods[0].ID)
+	assert.Equal(t, testAuthMethod, res.AuthMethods[0].ID)
 
 	// The editor's capabilities are captured for later tool routing.
 	caps := agent.ClientCapabilities()
@@ -95,22 +108,22 @@ func TestInitializeNegotiatesAndCapturesCapabilities(t *testing.T) {
 func TestAuthenticateAcknowledgesWhenLoggedIn(t *testing.T) {
 	t.Parallel()
 
-	agent := NewAgent("v3.0.0")
-	agent.SetDelegate(&fakeDelegate{}) // authErr nil: a Pulumi Cloud session exists.
+	agent := NewAgent(testIdentity, "v3.0.0")
+	agent.SetDelegate(&fakeDelegate{}) // authErr nil: a usable session exists.
 	client := newTestPeers(t, agent)
 
-	err := client.Call(t.Context(), "authenticate", AuthenticateParams{MethodID: authMethodPulumiLogin}, nil)
+	err := client.Call(t.Context(), "authenticate", AuthenticateParams{MethodID: testAuthMethod}, nil)
 	require.NoError(t, err)
 }
 
 func TestAuthenticateAuthRequiredMapsToCode(t *testing.T) {
 	t.Parallel()
 
-	agent := NewAgent("v3.0.0")
+	agent := NewAgent(testIdentity, "v3.0.0")
 	agent.SetDelegate(&fakeDelegate{authErr: ErrAuthRequired})
 	client := newTestPeers(t, agent)
 
-	err := client.Call(t.Context(), "authenticate", AuthenticateParams{MethodID: authMethodPulumiLogin}, nil)
+	err := client.Call(t.Context(), "authenticate", AuthenticateParams{MethodID: testAuthMethod}, nil)
 	var rpcErr *jsonrpc2.Error
 	require.ErrorAs(t, err, &rpcErr)
 	assert.EqualValues(t, codeAuthRequired, rpcErr.Code)
@@ -119,9 +132,9 @@ func TestAuthenticateAuthRequiredMapsToCode(t *testing.T) {
 func TestAuthenticateWithoutDelegateIsNotImplemented(t *testing.T) {
 	t.Parallel()
 
-	client := newTestPeers(t, NewAgent("v3.0.0"))
+	client := newTestPeers(t, NewAgent(testIdentity, "v3.0.0"))
 
-	err := client.Call(t.Context(), "authenticate", AuthenticateParams{MethodID: authMethodPulumiLogin}, nil)
+	err := client.Call(t.Context(), "authenticate", AuthenticateParams{MethodID: testAuthMethod}, nil)
 	var rpcErr *jsonrpc2.Error
 	require.ErrorAs(t, err, &rpcErr)
 	assert.EqualValues(t, jsonrpc2.CodeInternalError, rpcErr.Code)
@@ -130,7 +143,7 @@ func TestAuthenticateWithoutDelegateIsNotImplemented(t *testing.T) {
 func TestUnknownMethodIsMethodNotFound(t *testing.T) {
 	t.Parallel()
 
-	client := newTestPeers(t, NewAgent("v3.0.0"))
+	client := newTestPeers(t, NewAgent(testIdentity, "v3.0.0"))
 
 	err := client.Call(t.Context(), "does/not/exist", nil, nil)
 	var rpcErr *jsonrpc2.Error
@@ -141,7 +154,7 @@ func TestUnknownMethodIsMethodNotFound(t *testing.T) {
 func TestCallerWiredBySetup(t *testing.T) {
 	t.Parallel()
 
-	agent := NewAgent("v3.0.0")
+	agent := NewAgent(testIdentity, "v3.0.0")
 	newTestPeers(t, agent)
 	require.NotNil(t, agent.Client())
 }
@@ -194,7 +207,7 @@ func (f *fakeDelegate) SetConfigOption(
 func TestNewSessionDelegatesWithCapturedCapabilities(t *testing.T) {
 	t.Parallel()
 
-	agent := NewAgent("v3.0.0")
+	agent := NewAgent(testIdentity, "v3.0.0")
 	fd := &fakeDelegate{result: NewSessionResult{SessionID: "sess_42"}}
 	agent.SetDelegate(fd)
 	client := newTestPeers(t, agent)
@@ -271,7 +284,7 @@ func (c replyingClient) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *js
 func TestPromptCanReadFileBackThroughClient(t *testing.T) {
 	t.Parallel()
 
-	agent := NewAgent("v3.0.0")
+	agent := NewAgent(testIdentity, "v3.0.0")
 	fd := &readingDelegate{readPath: "/abs/file.txt"}
 	agent.SetDelegate(fd)
 	client := newTestPeersWithClient(t, agent, replyingClient{content: "hello"})
@@ -291,7 +304,7 @@ func TestPromptCanReadFileBackThroughClient(t *testing.T) {
 func TestSetConfigOptionDelegates(t *testing.T) {
 	t.Parallel()
 
-	agent := NewAgent("v3.0.0")
+	agent := NewAgent(testIdentity, "v3.0.0")
 	fd := &fakeDelegate{configResult: SetConfigOptionResult{
 		ConfigOptions: []ConfigOption{{ID: "permission", Type: ConfigOptionTypeSelect, CurrentValue: "read-only"}},
 	}}
@@ -314,7 +327,7 @@ func TestSetConfigOptionDelegates(t *testing.T) {
 func TestNewSessionAuthRequiredMapsToCode(t *testing.T) {
 	t.Parallel()
 
-	agent := NewAgent("v3.0.0")
+	agent := NewAgent(testIdentity, "v3.0.0")
 	agent.SetDelegate(&fakeDelegate{err: ErrAuthRequired})
 	client := newTestPeers(t, agent)
 
@@ -327,7 +340,7 @@ func TestNewSessionAuthRequiredMapsToCode(t *testing.T) {
 func TestNewSessionWithoutDelegateIsNotImplemented(t *testing.T) {
 	t.Parallel()
 
-	client := newTestPeers(t, NewAgent("v3.0.0"))
+	client := newTestPeers(t, NewAgent(testIdentity, "v3.0.0"))
 
 	err := client.Call(t.Context(), "session/new", NewSessionParams{Cwd: "/work"}, nil)
 	var rpcErr *jsonrpc2.Error

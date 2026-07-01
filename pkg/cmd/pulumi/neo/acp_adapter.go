@@ -37,6 +37,29 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// neoACPIdentity is how the adapter introduces itself to the editor on the ACP
+// initialize handshake: the agent name/title and the single auth method we
+// advertise. Authentication cannot run an interactive browser login over the
+// stdio JSON-RPC channel, so it only verifies that a prior `pulumi login`
+// session exists (see acpDelegate.CheckAuth).
+var neoACPIdentity = acp.Identity{
+	Name:  "pulumi-neo",
+	Title: "Pulumi Neo",
+	AuthMethods: []acp.AuthMethod{{
+		ID:   "pulumi-login",
+		Name: "Pulumi login",
+		Description: "Authenticate by running `pulumi login` in a terminal. " +
+			"Neo uses your existing Pulumi Cloud session.",
+	}},
+}
+
+// errNeoAuthRequired wraps acp.ErrAuthRequired with the Pulumi-specific message
+// the editor surfaces to the user. Wrapping keeps errors.Is(err,
+// acp.ErrAuthRequired) true so the agent still maps it to the ACP
+// "Authentication required" code, while err.Error() carries the login hint.
+var errNeoAuthRequired = fmt.Errorf(
+	"not authenticated with Pulumi Cloud; run `pulumi login`: %w", acp.ErrAuthRequired)
+
 // newNeoACPCmd is the hidden `pulumi neo acp` subcommand. It speaks the Agent
 // Client Protocol (https://agentclientprotocol.com) over stdio so ACP-capable
 // editors can drive Neo as a subprocess. It is hidden because it is launched by
@@ -54,7 +77,7 @@ func newNeoACPCmd() *cobra.Command {
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			agent := acp.NewAgent(version.Version)
+			agent := acp.NewAgent(neoACPIdentity, version.Version)
 			agent.SetDelegate(&acpDelegate{
 				ws:       pkgWorkspace.Instance,
 				baseCtx:  ctx,
@@ -83,10 +106,10 @@ type acpDelegate struct {
 }
 
 // currentBackend resolves the Pulumi Cloud backend from the stored CLI
-// credentials, returning acp.ErrAuthRequired when the user is not logged in. It
-// never prompts, so it is safe to call on the JSON-RPC channel. The project (if
-// any) is returned alongside so callers needing it for target resolution don't
-// re-read it.
+// credentials, returning errNeoAuthRequired (which wraps acp.ErrAuthRequired)
+// when the user is not logged in. It never prompts, so it is safe to call on the
+// JSON-RPC channel. The project (if any) is returned alongside so callers needing
+// it for target resolution don't re-read it.
 func (d *acpDelegate) currentBackend(ctx context.Context) (backend.Backend, *workspace.Project, error) {
 	project, _, err := d.ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
@@ -99,7 +122,7 @@ func (d *acpDelegate) currentBackend(ctx context.Context) (backend.Backend, *wor
 		return nil, nil, err
 	}
 	if be == nil {
-		return nil, nil, acp.ErrAuthRequired
+		return nil, nil, errNeoAuthRequired
 	}
 	return be, project, nil
 }
@@ -304,6 +327,47 @@ func buildACPHandlers(
 		}
 	}
 	return lt.handlers, nil
+}
+
+// acpTerminalOutputLimit caps the output captured from an editor terminal,
+// matching the local shell tool's 1 MiB capture.
+const acpTerminalOutputLimit = 1 << 20
+
+// runInEditorTerminal runs a shell command in the editor's terminal and shapes
+// the result like the local shell tool, through the shared tools.ShellResult so
+// the wire shape stays identical. The editor merges stdout and stderr, so the
+// combined stream is reported as stdout and stderr is left empty. It is wired
+// into tools.Shell.OnExec by buildACPHandlers.
+func runInEditorTerminal(
+	ctx context.Context, ct *acp.ClientTerminal, command, dir string, timeout time.Duration,
+) (tools.ShellResult, error) {
+	program, args := tools.ShellInvocation(command)
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	res, err := ct.Run(tctx, program, args, dir, acpTerminalOutputLimit)
+
+	exitCode := res.ExitCode
+	if res.Signal != "" {
+		// A signal-terminated process carries no exit code (the editor reports
+		// null, which decodes to 0). Surface it as -1 to match the local shell
+		// tool, so a signal-killed command isn't reported as a clean exit 0.
+		exitCode = -1
+	}
+	out := tools.ShellResult{
+		Stdout:    res.Output,
+		ExitCode:  exitCode,
+		Truncated: res.Truncated,
+		TimedOut:  res.TimedOut,
+	}
+	if res.TimedOut {
+		return out, fmt.Errorf("shell command timed out after %s", timeout)
+	}
+	if err != nil {
+		// A non-timeout transport error means we can't trust the result.
+		return tools.ShellResult{}, err
+	}
+	return out, nil
 }
 
 // newACPSessionID returns a random, opaque ACP session id.

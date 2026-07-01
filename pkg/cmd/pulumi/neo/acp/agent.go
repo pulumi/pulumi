@@ -22,35 +22,37 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-// ErrAuthRequired is returned by a Delegate when there is no usable Pulumi Cloud
-// session. The agent maps it to the ACP "Authentication required" error
-// (code -32000) so the editor can prompt the user to authenticate — for Neo,
-// by running `pulumi login`.
-var ErrAuthRequired = errors.New("not authenticated with Pulumi Cloud; run `pulumi login`")
+// ErrAuthRequired is the sentinel a Delegate returns (directly or wrapped) when
+// there is no usable session. The agent maps it to the ACP "Authentication
+// required" error (code -32000) so the editor can prompt the user to
+// authenticate. A Delegate may wrap it with an application-specific message
+// (e.g. "run `pulumi login`") that the editor then surfaces.
+var ErrAuthRequired = errors.New("authentication required")
 
 // codeAuthRequired is the JSON-RPC error code ACP uses for "Authentication
 // required". It lies in the implementation-defined server-error range.
 const codeAuthRequired int64 = -32000
 
-// Delegate supplies the Pulumi-specific behavior behind the ACP session methods.
-// The neo package implements it over the Pulumi Cloud backend and the Neo
-// Session event loop, keeping this package free of Pulumi dependencies. A nil
-// Delegate makes the session methods report "not implemented".
+// Delegate supplies the application-specific behavior behind the ACP session
+// methods, keeping this package free of application dependencies. The neo
+// package implements it over the Pulumi Cloud backend and the Neo Session event
+// loop. A nil Delegate makes the session methods report "not implemented".
 type Delegate interface {
-	// CheckAuth reports whether a usable Pulumi Cloud session is available from
-	// the existing CLI credentials, returning ErrAuthRequired when none is. It
-	// never prompts. The agent calls it from the `authenticate` handler so the
-	// editor learns at that point whether the user still needs to run
-	// `pulumi login`, rather than only when the first session is created.
+	// CheckAuth reports whether a usable session is available from the existing
+	// credentials, returning ErrAuthRequired when none is. It never prompts. The
+	// agent calls it from the `authenticate` handler so the editor learns at that
+	// point whether the user still needs to authenticate, rather than only when
+	// the first session is created. (For Neo this checks the CLI's Pulumi Cloud
+	// login.)
 	CheckAuth(ctx context.Context) error
 
-	// NewSession resolves Pulumi Cloud auth from existing CLI credentials and
-	// the org/stack target for a session rooted at params.Cwd, builds the
-	// session's tool handlers — routing filesystem writes through client (as an
-	// editor fs/write_text_file request) when caps advertises fs.writeTextFile —
-	// and returns the new session id. It returns ErrAuthRequired when no CLI
-	// login is available. client is retained for the session's lifetime to push
-	// session/update notifications and request permissions.
+	// NewSession resolves auth and the session target for a session rooted at
+	// params.Cwd, builds the session's tool handlers — routing filesystem writes
+	// through client (as an editor fs/write_text_file request) when caps
+	// advertises fs.writeTextFile — and returns the new session id. It returns
+	// ErrAuthRequired when no usable credentials are available. client is retained
+	// for the session's lifetime to push session/update notifications and request
+	// permissions.
 	NewSession(
 		ctx context.Context, params NewSessionParams, caps ClientCapabilities, client Client,
 	) (NewSessionResult, error)
@@ -72,16 +74,28 @@ type Delegate interface {
 	SetConfigOption(ctx context.Context, params SetConfigOptionParams) (SetConfigOptionResult, error)
 }
 
-// Agent is the ACP agent side of the Pulumi Neo adapter. It holds the state that
-// spans the connection's lifetime — the negotiated client capabilities and the
-// Caller used to reach back to the editor — and implements the client→agent
-// methods dispatched by handle.
+// Identity is the agent's self-description, advertised to the editor on
+// initialize. The embedding application supplies it so this package carries no
+// application-specific branding.
+type Identity struct {
+	Name        string       // agentInfo.name (e.g. "pulumi-neo")
+	Title       string       // agentInfo.title (e.g. "Pulumi Neo")
+	AuthMethods []AuthMethod // advertised authenticate methods
+}
+
+// Agent is the ACP agent side of the adapter. It holds the state that spans the
+// connection's lifetime — the negotiated client capabilities and the Caller used
+// to reach back to the editor — and implements the client→agent methods
+// dispatched by handle.
 //
 // Agent owns only the protocol handshake (initialize/authenticate) and request
-// routing; the Pulumi-specific session behavior (Cloud client, org/stack
-// resolution, the Neo Session event loop) lives behind the Delegate, which the
-// neo package installs via SetDelegate.
+// routing; the application-specific session behavior (for Neo: the Cloud client,
+// org/stack resolution, and the Neo Session event loop) lives behind the
+// Delegate, which the embedding package installs via SetDelegate.
 type Agent struct {
+	// identity is reported as agentInfo and the advertised auth methods on
+	// initialize.
+	identity Identity
 	// version is reported as agentInfo.version on initialize.
 	version string
 
@@ -98,10 +112,11 @@ type Agent struct {
 	delegate Delegate
 }
 
-// NewAgent constructs an Agent. version is surfaced to the editor as
-// agentInfo.version during initialize.
-func NewAgent(version string) *Agent {
-	return &Agent{version: version}
+// NewAgent constructs an Agent. identity is advertised to the editor as agentInfo
+// and the available auth methods, and version is surfaced as agentInfo.version,
+// both during initialize.
+func NewAgent(identity Identity, version string) *Agent {
+	return &Agent{identity: identity, version: version}
 }
 
 // setClient records the connection-backed Client. Called once by Serve before
@@ -112,7 +127,7 @@ func (a *Agent) setClient(c Client) {
 	a.client = c
 }
 
-// SetDelegate installs the Pulumi-specific session behavior. Call before Serve.
+// SetDelegate installs the application-specific session behavior. Call before Serve.
 func (a *Agent) SetDelegate(d Delegate) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -159,25 +174,20 @@ func (a *Agent) initialize(req *jsonrpc2.Request) (any, error) {
 			PromptCapabilities: PromptCapabilities{},
 		},
 		AgentInfo: &Implementation{
-			Name:    "pulumi-neo",
-			Title:   "Pulumi Neo",
+			Name:    a.identity.Name,
+			Title:   a.identity.Title,
 			Version: a.version,
 		},
-		AuthMethods: []AuthMethod{{
-			ID:   authMethodPulumiLogin,
-			Name: "Pulumi login",
-			Description: "Authenticate by running `pulumi login` in a terminal. " +
-				"Neo uses your existing Pulumi Cloud session.",
-		}},
+		AuthMethods: a.identity.AuthMethods,
 	}, nil
 }
 
 // authenticate handles the `authenticate` request. Interactive browser login
 // cannot run over the stdio JSON-RPC channel, so authenticate cannot perform a
-// login itself; instead it verifies via the Delegate that a Pulumi Cloud session
-// already exists (from a prior `pulumi login`), mapping its absence to the ACP
-// "Authentication required" error so the editor can tell the user to run
-// `pulumi login` at the point it asked. session/new performs the same check, so
+// login itself; instead it verifies via the Delegate that a usable session
+// already exists, mapping its absence to the ACP "Authentication required" error
+// so the editor can tell the user how to authenticate at the point it asked. (For
+// Neo this is a prior `pulumi login`.) session/new performs the same check, so
 // auth stays gated even if credentials lapse between calls. Returns null on
 // success.
 func (a *Agent) authenticate(ctx context.Context, req *jsonrpc2.Request) (any, error) {

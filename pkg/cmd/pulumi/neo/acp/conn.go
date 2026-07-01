@@ -24,9 +24,9 @@ import (
 )
 
 // Serve runs the ACP agent over the given stdio streams, speaking newline-framed
-// JSON-RPC 2.0, until the peer disconnects or ctx is cancelled. The `pulumi neo
-// acp` command calls this with os.Stdin/os.Stdout; nothing else may write to the
-// output stream or it will corrupt the protocol.
+// JSON-RPC 2.0, until the peer disconnects or ctx is cancelled. The embedding
+// command calls this with its stdin/stdout (for Neo, `pulumi neo acp`); nothing
+// else may write to the output stream or it will corrupt the protocol.
 func Serve(ctx context.Context, a *Agent, in io.Reader, out io.Writer) error {
 	stream := jsonrpc2.NewPlainObjectStream(stdio{Reader: in, Writer: out})
 	// AsyncHandler runs each inbound request in its own goroutine. This is

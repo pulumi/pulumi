@@ -12,6 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package acp is a self-contained implementation of the Agent Client Protocol
+// (ACP) wire layer: the JSON-RPC plumbing, the method router, the protocol
+// types, and the fs/terminal callback hooks an agent exposes to its editor.
+//
+// It has no dependencies on Pulumi or Neo — its only external dependency is the
+// jsonrpc2 transport. The Neo-specific glue that wires this protocol to Neo's
+// session, config, and backend lives in the parent neo package (the acp_*.go
+// files), which imports this package; the dependency only ever points inward.
+// Keep it that way: nothing here should import anything under pkg/cmd/pulumi/neo.
 package acp
 
 import "encoding/json"
@@ -22,12 +31,6 @@ import "encoding/json"
 //
 // https://agentclientprotocol.com/protocol/initialization
 const ProtocolVersion = 1
-
-// authMethodPulumiLogin is the id of the only auth method we advertise: the user
-// must have an active Pulumi Cloud session (`pulumi login`). We cannot run an
-// interactive browser login over the stdio JSON-RPC channel, so authentication
-// happens out of band.
-const authMethodPulumiLogin = "pulumi-login"
 
 // Implementation identifies a client or agent: free-form name/title/version
 // metadata exchanged on initialize.

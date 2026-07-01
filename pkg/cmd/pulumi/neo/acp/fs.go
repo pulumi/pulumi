@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package acp adapts a Pulumi Neo CLI session to the Agent Client Protocol
-// (https://agentclientprotocol.com), letting ACP-capable editors drive Neo as a
-// subprocess over JSON-RPC. This file maps Neo's filesystem writes onto the ACP
-// client's fs/write_text_file method so they surface as native editor diffs.
+// Package acp implements the agent side of the Agent Client Protocol
+// (https://agentclientprotocol.com), letting ACP-capable editors drive a CLI
+// agent as a subprocess over JSON-RPC. It is application-neutral: the embedding
+// package supplies its identity (see NewAgent) and behavior (see Delegate). The
+// Pulumi Neo CLI is its first consumer. This file maps an agent's filesystem
+// writes onto the ACP client's fs/write_text_file method so they surface as
+// native editor diffs.
 package acp
 
 import "context"

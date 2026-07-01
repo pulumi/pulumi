@@ -15,15 +15,12 @@
 package neo
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 )
 
 // toolTracker assigns synthetic tool-call ids and carries the "current" id used
@@ -306,45 +303,4 @@ func toolKind(name string) string {
 		}
 	}
 	return acp.ToolKindOther
-}
-
-// acpTerminalOutputLimit caps the output captured from an editor terminal,
-// matching the local shell tool's 1 MiB capture.
-const acpTerminalOutputLimit = 1 << 20
-
-// runInEditorTerminal runs a shell command in the editor's terminal and shapes
-// the result like the local shell tool, through the shared tools.ShellResult so
-// the wire shape stays identical. The editor merges stdout and stderr, so the
-// combined stream is reported as stdout and stderr is left empty. It is wired
-// into tools.Shell.OnExec.
-func runInEditorTerminal(
-	ctx context.Context, ct *acp.ClientTerminal, command, dir string, timeout time.Duration,
-) (tools.ShellResult, error) {
-	program, args := tools.ShellInvocation(command)
-	tctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	res, err := ct.Run(tctx, program, args, dir, acpTerminalOutputLimit)
-
-	exitCode := res.ExitCode
-	if res.Signal != "" {
-		// A signal-terminated process carries no exit code (the editor reports
-		// null, which decodes to 0). Surface it as -1 to match the local shell
-		// tool, so a signal-killed command isn't reported as a clean exit 0.
-		exitCode = -1
-	}
-	out := tools.ShellResult{
-		Stdout:    res.Output,
-		ExitCode:  exitCode,
-		Truncated: res.Truncated,
-		TimedOut:  res.TimedOut,
-	}
-	if res.TimedOut {
-		return out, fmt.Errorf("shell command timed out after %s", timeout)
-	}
-	if err != nil {
-		// A non-timeout transport error means we can't trust the result.
-		return tools.ShellResult{}, err
-	}
-	return out, nil
 }
