@@ -108,18 +108,19 @@ func TestDoCmdResourceHelpListsOperations(t *testing.T) {
 A test resource.
 
 Inputs:
-  enabled (boolean, optional)
-  name (string, required) - The resource name.
-  size (integer, optional)
+ - enabled (boolean)
+ - name (string*): The resource name.
+ - size (integer)
+Inputs marked with '*' are required
 
 Outputs:
-  enabled (boolean)
-  extra (string)
-  name (string)
-  size (integer)
+ - enabled (boolean)
+ - extra (string)
+ - name (string)
+ - size (integer)
 
 List Inputs:
-  prefix (string, optional)
+ - prefix (string)
 
 Usage:
   do azure:index:myResource [flags]
@@ -144,7 +145,7 @@ Flags:
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
-	assert.Equal(t, expected, stdout.String())
+	assert.Equal(t, expected, stripANSI(stdout.String()))
 }
 
 func TestDoCmdResourceHelpOmitsListWithoutListInputs(t *testing.T) {
@@ -161,15 +162,16 @@ func TestDoCmdResourceHelpOmitsListWithoutListInputs(t *testing.T) {
 A test resource.
 
 Inputs:
-  enabled (boolean, optional)
-  name (string, required) - The resource name.
-  size (integer, optional)
+ - enabled (boolean)
+ - name (string*): The resource name.
+ - size (integer)
+Inputs marked with '*' are required
 
 Outputs:
-  enabled (boolean)
-  extra (string)
-  name (string)
-  size (integer)
+ - enabled (boolean)
+ - extra (string)
+ - name (string)
+ - size (integer)
 
 Usage:
   do azure:index:myResource [flags]
@@ -193,7 +195,7 @@ Flags:
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
-	assert.Equal(t, expected, stdout.String())
+	assert.Equal(t, expected, stripANSI(stdout.String()))
 }
 
 func TestDoCmdResourceCreate(t *testing.T) {

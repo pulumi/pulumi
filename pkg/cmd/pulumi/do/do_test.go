@@ -21,6 +21,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/blang/semver"
@@ -1185,4 +1186,11 @@ func TestFlagUsage(t *testing.T) {
 			assert.NotContains(t, got, "`", "usage strings must not contain backticks")
 		})
 	}
+}
+
+var ansiEscapeRegexp = regexp.MustCompile("\x1b\\[[0-9;]*m")
+
+// stripANSI removes ANSI color escapes so help output can be compared as plain text.
+func stripANSI(s string) string {
+	return ansiEscapeRegexp.ReplaceAllString(s, "")
 }
