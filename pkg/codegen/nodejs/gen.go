@@ -366,12 +366,10 @@ func sanitizeComment(str string) string {
 	return strings.ReplaceAll(str, "*/", "*&#47;")
 }
 
-func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, indent string, selfRef schema.DocRef) error {
-	if comment == "" && deprecationMessage == "" {
-		return nil
-	}
-
-	comment, err := mod.pkg.InterpretPulumiRefs(comment, func(ref schema.DocRef) (string, bool) {
+// docRefResolver returns a resolver for `{{% ref %}}` shortcodes that produces NodeJS names. If
+// selfRef is set, refs within the same scope are returned unqualified.
+func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef) (string, bool) {
+	return func(ref schema.DocRef) (string, bool) {
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
@@ -411,7 +409,15 @@ func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, in
 		}
 
 		return fmt.Sprintf("%s.%s", base, property), true
-	})
+	}
+}
+
+func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, indent string, selfRef schema.DocRef) error {
+	if comment == "" && deprecationMessage == "" {
+		return nil
+	}
+
+	comment, err := mod.pkg.InterpretPulumiRefs(comment, mod.docRefResolver(selfRef))
 	if err != nil {
 		return fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
 	}
