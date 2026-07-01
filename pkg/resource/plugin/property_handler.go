@@ -28,6 +28,9 @@ var propertyLogMarshalOpts = MarshalOptions{
 	KeepSecrets:      true,
 	KeepUnknowns:     true,
 	KeepOutputValues: true,
+	// Suppress verbose marshal logging: this marshal runs *inside* the logging path (to build a log
+	// attribute), and logging here would re-enter and recurse.
+	skipLogging: true,
 }
 
 // PropertyExportHandler wraps the OTLP export handler, converting
