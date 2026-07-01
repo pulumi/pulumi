@@ -82,3 +82,91 @@ type PreviewDiagnostic struct {
 	Message  string        `json:"message,omitempty"`
 	Severity diag.Severity `json:"severity,omitempty"`
 }
+
+// EventSummary is a JSON-serialisable digest of an engine event stream produced by
+// `pulumi preview`, `pulumi up`, `pulumi refresh`, or `pulumi destroy`. It captures the same
+// information a human would see printed by these commands: the configuration, per-resource
+// steps, final stack outputs, policy results, diagnostics, and aggregate counts.
+//
+// The document is emitted by `pulumi events summary` as a single JSON object, the terminal
+// reduction of the JSONL event stream.
+type EventSummary struct {
+	// Version is the schema version. Starts at 1 and will only increase on
+	// backwards-incompatible changes; additive changes keep the same version.
+	Version int `json:"version"`
+
+	// IsPreview is true when the stream came from `pulumi preview`. Taken directly from
+	// SummaryEvent.IsPreview — if no SummaryEvent was seen (an interrupted run) it stays false.
+	IsPreview bool `json:"isPreview"`
+
+	// StartTime is the timestamp of the first event seen, as seconds since the Unix epoch.
+	StartTime int `json:"startTime,omitempty"`
+	// EndTime is the timestamp of the last event seen.
+	EndTime int `json:"endTime,omitempty"`
+
+	// Config contains the stack configuration keys and values for the update, taken from
+	// PreludeEvent. Secrets are blinded by the emitter.
+	Config map[string]string `json:"config,omitempty"`
+
+	// Steps is the list of resource steps excluding `OpSame`. Each URN appears at most once:
+	// the final observed step (ResOutputsEvent preferred over ResourcePreEvent) wins.
+	Steps []*SummaryStep `json:"steps,omitempty"`
+
+	// Outputs is the root stack's final outputs, taken from the last ResOutputsEvent with
+	// type `pulumi:pulumi:Stack`. Empty for previews — outputs aren't applied in a preview.
+	Outputs map[string]any `json:"outputs,omitempty"`
+
+	// ChangeSummary is the per-op resource change count from the final SummaryEvent.
+	ChangeSummary ResourceChanges `json:"changeSummary,omitempty"`
+
+	// Duration is how long the update took, as reported by SummaryEvent.DurationSeconds.
+	// Zero for previews (no duration is reported for a preview).
+	Duration time.Duration `json:"duration,omitempty"`
+
+	// Diagnostics lists non-ephemeral DiagnosticEvents observed in the stream, in the order
+	// they arrived. Ephemeral diagnostics (intended for live display only) are filtered out,
+	// as are debug-level messages.
+	Diagnostics []PreviewDiagnostic `json:"diagnostics,omitempty"`
+
+	// PolicyPacks lists the policy packs that ran during the update, as name → version.
+	// Sourced verbatim from SummaryEvent.PolicyPacks; encoding/json sorts map keys so the
+	// output is deterministic.
+	PolicyPacks map[string]string `json:"policyPacks,omitempty"`
+
+	// PolicyViolations collects PolicyEvents (plain violations) in arrival order.
+	PolicyViolations []apitype.PolicyEvent `json:"policyViolations,omitempty"`
+
+	// PolicyRemediations collects PolicyRemediationEvents (transformed resources) in arrival
+	// order, preserving the `before`/`after` payloads.
+	PolicyRemediations []apitype.PolicyRemediationEvent `json:"policyRemediations,omitempty"`
+
+	// MaybeCorrupt is true if the engine reported that one or more resources may be corrupt.
+	// Sourced from SummaryEvent.MaybeCorrupt.
+	MaybeCorrupt bool `json:"maybeCorrupt,omitempty"`
+
+	// Completed is true iff a `SummaryEvent` was observed in the stream — the engine's
+	// end-of-update handshake. This distinguishes a cleanly-finished run from an interrupted
+	// one (Ctrl-C, pipe broken, wrapper crashed): both can leave `Failed` false, but only a
+	// completed run has `Completed == true`. Always present in the JSON output so consumers
+	// can rely on it unconditionally.
+	Completed bool `json:"completed"`
+
+	// Failed is true if any `ResOpFailedEvent` was seen, or the engine reported an internal
+	// error. A successful preview/up leaves this false.
+	Failed bool `json:"failed,omitempty"`
+
+	// Error is set to the message of the last `ErrorEvent` in the stream, if any. These are
+	// emitted for engine-internal errors, not user-facing ones — user errors arrive as
+	// DiagnosticEvents with severity=error.
+	Error string `json:"error,omitempty"`
+}
+
+// SummaryStep is the reduced form of a resource step carried in the summary. It embeds the
+// engine's `StepEventMetadata` verbatim and adds a `Failed` flag surfaced from
+// `ResOpFailedEvent`. `Old` and `New` are zeroed before storage — the summary stays compact by
+// design, so consumers that need full per-step state should read the raw event stream.
+type SummaryStep struct {
+	apitype.StepEventMetadata
+	// Failed is true iff a `ResOpFailedEvent` was emitted for this URN.
+	Failed bool `json:"failed,omitempty"`
+}
