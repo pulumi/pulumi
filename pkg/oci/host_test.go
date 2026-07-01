@@ -122,8 +122,35 @@ func TestProviderContainerDynamicRunsFromProgramImage(t *testing.T) {
 	require.Equal(t, "my-program:v1", cfg.Image)
 	require.Equal(t, "container:engine", cfg.Network)
 	require.Equal(t, roleDynamicProvider, cfg.Env[roleEnvVar])
+	require.Equal(t, WorkspaceMountPath, cfg.WorkingDir, "every provider runs at the shared workspace path")
 	require.Empty(t, cfg.Volumes, "dynamic providers inject nothing")
 	require.Empty(t, cfg.Entrypoint, "the image's bootstrap shim selects the entrypoint via the role env")
+}
+
+// A stateless provider runs from its own image but must still resolve the program's
+// workspace: a relative asset path or a provider file-path property (e.g. cloudflare's
+// WorkerVersion asset dir) resolves against getwd at read time. So its working directory
+// is pinned to the shared workspace path and the shared volume is mounted there — not at
+// the provider image's own WORKDIR. This is the fix for the /app shadowing: the workspace
+// path (/workspace) is deliberately distinct from where plugin code lives (/plugin), so
+// Docker's empty-volume seeding never replaces a plugin's own files with the program's.
+func TestProviderContainerStatelessMountsWorkspaceAtWorkingDir(t *testing.T) {
+	t.Parallel()
+	h := &containerHost{
+		pod:        fakePod{imageExists: true},
+		engineHost: "engine",
+		podID:      "testpod",
+		imageFor:   func(workspace.PluginDescriptor) string { return "pulumi-provider-random:v4.21.0" },
+	}
+	cfg, err := h.providerContainer(t.Context(), workspace.PluginDescriptor{Name: "random"})
+	require.NoError(t, err)
+	require.Equal(t, "pulumi-provider-random:v4.21.0", cfg.Image, "a stateless provider runs from its own image")
+	require.Equal(t, WorkspaceMountPath, cfg.WorkingDir, "its working directory is the shared workspace path")
+	require.Contains(t, cfg.Volumes,
+		VolumeMount{Source: WorkspaceVolumeName(h.podID), Target: WorkspaceMountPath},
+		"the shared workspace volume is mounted at the working directory")
+	// The workspace path must never be where a plugin's own code lives, or seeding shadows it.
+	require.NotEqual(t, WorkspaceMountPath, "/plugin", "workspace and plugin-code paths must be distinct")
 }
 
 // Without a program image there is nothing to run the dynamic provider from, so it

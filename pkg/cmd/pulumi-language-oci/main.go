@@ -305,7 +305,9 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 	// asset files), and providers mount the same volume at the same path. Creating it
 	// (vs. mounting a bare name) labels it for pod cleanup; Docker seeds the empty volume
 	// from the program image's workspace on first mount, so the program runs with its
-	// baked source/deps and builds into the shared volume providers then read.
+	// baked source/deps and builds into the shared volume providers then read. This is
+	// why the program image must build its workspace INTO WorkspaceMountPath: the seed
+	// comes from the image's contents at exactly the mount path.
 	wsVol, err := pod.CreateVolume(ctx, oci.WorkspaceVolumeLogical)
 	if err != nil {
 		return nil, fmt.Errorf("oci: creating shared workspace volume: %w", err)
@@ -317,6 +319,11 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 		Name:    "program",
 		Network: network,
 		Env:     env,
+		// Pin the working directory to the shared workspace path, matching every
+		// provider (see containerHost.providerContainer). The program is the workspace
+		// root: it runs here, its image seeds this volume, and it builds runtime outputs
+		// into it that guest providers read back at the same path.
+		WorkingDir: oci.WorkspaceMountPath,
 		// Engine-on-host mode (Option A) has no pod network; the program reaches
 		// the host engine through the host-gateway alias. On the pod network
 		// (Option C) it reaches the engine by container DNS and needs no gateway.

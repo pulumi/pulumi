@@ -81,11 +81,23 @@ type podPlugin struct {
 	signalCancel func(context.Context) error
 }
 
-// WorkspaceMountPath is where the per-pod shared workspace volume is mounted, in both
-// the program container and provider containers — the program's working directory, so
-// any workspace path the program references (a Pulumi asset, or a provider's file-path
-// property such as cloudflare's asset directory) resolves identically in the provider.
-const WorkspaceMountPath = "/app"
+// WorkspaceMountPath is where the per-pod shared workspace volume is mounted, and the
+// working directory, in EVERY pod member — program, MLCs, and providers. It is the one
+// canonical working directory (the container analogue of stock Pulumi's single ctx.Pwd,
+// which the program, every provider plugin, and every MLC's Construct all share). A
+// relative asset path or a provider file-path property travels verbatim and resolves
+// against whoever reads it via filepath.Join(getwd, path); mounting the same volume at
+// this same path with this same CWD everywhere is what makes those reads agree.
+//
+// It is deliberately DISTINCT from where a plugin's own code lives (providers stage their
+// binary at /plugin; an MLC image bakes its code at /plugin too). If the workspace were
+// mounted over a plugin's own code path, Docker's empty-volume seeding would shadow that
+// code — the program seeds the volume first, so a later-mounting MLC would find its own
+// files replaced by the program's. Keeping workspace (/workspace) and own-code (/plugin)
+// on separate paths is what lets program and MLC run under one uniform primitive without
+// stepping on each other. The program is the workspace root: its image seeds /workspace;
+// MLCs and providers are guests that mount it.
+const WorkspaceMountPath = "/workspace"
 
 // WorkspaceVolumeLogical is the logical name passed to PodManager.CreateVolume for the
 // shared workspace volume; WorkspaceVolumeName derives the runtime name it resolves to.
@@ -413,6 +425,13 @@ func (h *containerHost) providerContainer(
 	cfg := ContainerConfig{
 		Name:    uniqueContainerName("provider-" + descriptor.Name),
 		Network: "container:" + h.engineHost,
+		// Run every provider with its working directory at the shared workspace path,
+		// regardless of its own image's WORKDIR. A provider that reads a relative asset
+		// path or file-path property resolves it against getwd; pinning getwd here (and
+		// mounting the workspace volume at the same path below) is what makes those reads
+		// resolve to the program's workspace. Without this a stateless provider ran at its
+		// own image's default WORKDIR and only resolved workspace paths by coincidence.
+		WorkingDir: WorkspaceMountPath,
 		// Project the engine's environment onto every provider — the container
 		// analogue of a spawned provider inheriting os.Environ(). This is how a
 		// provider's credentials reach it; see projectedProviderEnv.
