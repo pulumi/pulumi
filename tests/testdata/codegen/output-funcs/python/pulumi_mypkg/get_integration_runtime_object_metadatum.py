@@ -45,7 +45,7 @@ class GetIntegrationRuntimeObjectMetadatumResult:
 
     @_builtins.property
     @pulumi.getter
-    def value(self) -> Optional[Sequence[Any]]:
+    def value(self) -> Optional[Sequence[Union['outputs.SsisEnvironmentResponse', 'outputs.SsisFolderResponse', 'outputs.SsisPackageResponse', 'outputs.SsisProjectResponse']]]:
         """
         List of SSIS object metadata.
         """

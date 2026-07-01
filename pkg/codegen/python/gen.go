@@ -2789,10 +2789,6 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 					return mod.typeString(typ.ElementType, opts)
 				}
 			}
-			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, opts)
-			}
-			return "Any"
 		}
 
 		elementTypeSet := codegen.NewStringSet()
