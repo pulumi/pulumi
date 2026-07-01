@@ -267,6 +267,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
+		SnippetID:               "",
 	}.Make()
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
@@ -430,6 +431,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
@@ -519,6 +521,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
 		if issueCheckErrors(i.deployment, state, providerURN, resp.Failures) {
 			return nil, fmt.Errorf("explicit provider check failed for %s", providerURN)
@@ -648,6 +651,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &pkgresource.Goal{})
