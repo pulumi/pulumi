@@ -22,6 +22,7 @@ import (
 	"io"
 	"maps"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -508,25 +509,26 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		var flagFunc func(string, string)
 
 		typ := unwrapType(input.Type)
+		comment := flagUsage(input.Comment)
 
 		if typ == schema.StringType {
 			flagFunc = func(name, extraHelp string) {
-				flags.String(name, "", input.Comment+extraHelp)
+				flags.String(name, "", comment+extraHelp)
 			}
 		}
 		if typ == schema.BoolType {
 			flagFunc = func(name, extraHelp string) {
-				flags.Bool(name, false, input.Comment+extraHelp)
+				flags.Bool(name, false, comment+extraHelp)
 			}
 		}
 		if typ == schema.IntType {
 			flagFunc = func(name, extraHelp string) {
-				flags.Int(name, 0, input.Comment+extraHelp)
+				flags.Int(name, 0, comment+extraHelp)
 			}
 		}
 		if typ == schema.NumberType {
 			flagFunc = func(name, extraHelp string) {
-				flags.Float64(name, 0, input.Comment+extraHelp)
+				flags.Float64(name, 0, comment+extraHelp)
 			}
 		}
 
@@ -542,6 +544,19 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 			}
 		}
 	}
+}
+
+var langChoiceSpanRegexp = regexp.MustCompile(`(?s)<span\b[^>]*>(.*?)</span>`)
+
+var envVarChoiceRegexp = regexp.MustCompile("(?s)(`[A-Z][A-Z0-9_]*`) or <span\\b[^>]*>.*?</span> environment variables")
+
+func cleanComment(comment string) string {
+	comment = envVarChoiceRegexp.ReplaceAllString(comment, "$1 environment variable")
+	return langChoiceSpanRegexp.ReplaceAllString(comment, "$1")
+}
+
+func flagUsage(comment string) string {
+	return strings.ReplaceAll(cleanComment(comment), "`", "")
 }
 
 func inputFlagName(name string) string {
