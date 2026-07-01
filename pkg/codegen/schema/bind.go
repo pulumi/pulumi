@@ -622,7 +622,13 @@ func (spec *PackageSpec) validateTypeToken(
 
 	modules, ok := allowedNameSpecs[parts[0]]
 	if !ok {
-		err := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
+		// Extension tokens must use the base provider's namespace, not the
+		// extension's own name, so point the author at the base.
+		expectedName := spec.Name
+		if spec.ExtensionParameterization != nil {
+			expectedName = spec.ExtensionParameterization.BaseProvider.Name
+		}
+		err := errorf(path, "invalid token '%s' (must have package name '%s')", token, expectedName)
 		diags = diags.Append(err)
 	}
 	if (parts[1] == "" || strings.EqualFold(parts[1], "index")) && strings.EqualFold(parts[2], "provider") {
@@ -663,16 +669,18 @@ func (spec *PackageSpec) validateTypeToken(
 // This is for validating non-reference type tokens.
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	allowedNameSpecs := map[string][]string{spec.Name: nil}
+	allowedNameSpecs := map[string][]string{}
+	if spec.ExtensionParameterization != nil {
+		// Extension resources are served at runtime by the base provider, and the
+		// whole base->extension resolution path is keyed on the base namespace, so
+		// their tokens must use the base provider's name — not the extension's own
+		// (renamed-SDK) name.
+		allowedNameSpecs[spec.ExtensionParameterization.BaseProvider.Name] = nil
+	} else {
+		allowedNameSpecs[spec.Name] = nil
+	}
 	for _, prefix := range spec.AllowedPackageNames {
 		allowedNameSpecs[prefix] = nil
-	}
-	// An extension parameterization's resource tokens may use either the
-	// extension's own name (already allowed above) or the base provider's
-	// namespace (the SDK is renamed, but the tokens need not be), so allow the
-	// base provider's name too.
-	if spec.ExtensionParameterization != nil {
-		allowedNameSpecs[spec.ExtensionParameterization.BaseProvider.Name] = nil
 	}
 	for t := range spec.Resources {
 		diags = diags.Extend(spec.validateTypeToken(allowedNameSpecs, "resources", t))
