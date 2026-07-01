@@ -71,6 +71,33 @@ outputs:
 	assert.Equal(t, 0, nonSame, "second up should be a no-op, got changes: %v", res2.Changes)
 }
 
+// TestDriver_PreviewProjectsOutputs proves Preview returns the stack's projected outputs --
+// what its outputs would be if the plan were applied -- before anything is created. A known
+// (static) output is projected as known, which is what lets a delivery rollout's cascaded
+// preview thread one stack's result into the next stack's previewed inputs.
+func TestDriver_PreviewProjectsOutputs(t *testing.T) {
+	t.Parallel()
+	requireYAMLHost(t)
+
+	root := t.TempDir()
+	backendURL := "file://" + filepath.Join(root, "state")
+	dir := writeProject(t, root, "projected", `name: auto-projected
+runtime: yaml
+outputs:
+  message: hello, preview
+`)
+
+	ctx := context.Background()
+	s, err := Select(ctx, Options{BackendURL: backendURL, WorkDir: dir, Stack: "dev"})
+	require.NoError(t, err)
+
+	res, _, err := s.Preview(ctx)
+	require.NoError(t, err)
+	msg, ok := res.Outputs.GetOk("message")
+	require.True(t, ok, "preview should project the static stack output")
+	assert.Equal(t, "hello, preview", msg.AsString(), "a known output is projected as known in preview")
+}
+
 // TestDriver_DefaultsToCurrentBackend proves Select resolves the ambient backend when no
 // BackendURL is given -- the same one the CLI would use -- so a caller need not restate the
 // backend it is already logged into. PULUMI_BACKEND_URL stands in for the current login.

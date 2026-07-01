@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -147,11 +148,15 @@ func Select(ctx context.Context, opts Options) (*Stack, error) {
 	return &Stack{be: be, stack: stack, proj: proj, opts: opts, sm: sm}, nil
 }
 
-// Preview computes the operation's plan and resource changes without applying them.
-func (s *Stack) Preview(ctx context.Context) (display.ResourceChanges, *deploy.Plan, error) {
+// Preview computes the operation's plan and resource changes without applying them, and
+// returns the stack's PROJECTED outputs -- what its outputs would be if the plan were applied,
+// known where computable and absent where they depend on not-yet-created resources. The
+// projected outputs are what let a delivery rollout's cascaded preview thread one stack's
+// result into the next stack's previewed inputs.
+func (s *Stack) Preview(ctx context.Context) (Result, *deploy.Plan, error) {
 	op, err := s.operation(true /*preview*/)
 	if err != nil {
-		return nil, nil, err
+		return Result{}, nil, err
 	}
 	var plan *deploy.Plan
 	var changes display.ResourceChanges
@@ -160,7 +165,26 @@ func (s *Stack) Preview(ctx context.Context) (display.ResourceChanges, *deploy.P
 		plan, changes, e = backend.PreviewStack(ctx, s.stack, op, events)
 		return e
 	})
-	return changes, plan, err
+	if err != nil {
+		return Result{}, nil, err
+	}
+	return Result{Changes: changes, Outputs: projectedStackOutputs(plan)}, plan, nil
+}
+
+// projectedStackOutputs extracts the root stack's projected outputs from a preview plan: the
+// outputs the program registered, evaluated against the previewed state, with known values
+// where computable. It returns an empty map when the plan has no root-stack entry (nothing to
+// do). The plan carries these only because Preview enables GeneratePlan.
+func projectedStackOutputs(plan *deploy.Plan) property.Map {
+	if plan == nil {
+		return property.Map{}
+	}
+	for u, rp := range plan.ResourcePlans {
+		if u.Type() == resource.RootStackType && rp != nil && rp.Outputs != nil {
+			return resource.FromResourcePropertyMap(rp.Outputs)
+		}
+	}
+	return property.Map{}
 }
 
 // Up applies the operation, converging the stack to its program's desired state, and
@@ -207,6 +231,12 @@ func (s *Stack) operation(preview bool) (backend.UpdateOperation, error) {
 	if err != nil {
 		return backend.UpdateOperation{}, err
 	}
+	eng := s.opts.Engine
+	if preview {
+		// Generate a plan so the previewed per-resource outputs (the root stack's among them)
+		// are available to the caller -- the basis of cascaded rollout preview.
+		eng.GeneratePlan = true
+	}
 	return backend.UpdateOperation{
 		Proj: s.proj,
 		Root: s.opts.WorkDir,
@@ -216,7 +246,7 @@ func (s *Stack) operation(preview bool) (backend.UpdateOperation, error) {
 			SkipPreview: true,
 			PreviewOnly: preview,
 			Display:     backenddisplay.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard},
-			Engine:      s.opts.Engine,
+			Engine:      eng,
 		},
 		StackConfiguration: backend.StackConfiguration{Config: cfg, Decrypter: s.sm.Decrypter()},
 		SecretsManager:     s.sm,
