@@ -546,12 +546,21 @@ func (a *Archive) readPath(wd string) (Reader, error) {
 			if f.Mode()&os.ModeSymlink != 0 {
 				fileInfo, statErr := os.Stat(filePath)
 				if statErr != nil {
+					// A dangling symlink has no bytes to archive; skip it, as a symlink to a
+					// directory already is.
+					if os.IsNotExist(statErr) {
+						return nil
+					}
 					return statErr
 				}
 
-				if fileInfo.IsDir() {
+				if !fileInfo.Mode().IsRegular() {
 					return nil
 				}
+			} else if !f.Mode().IsRegular() {
+				// Sockets, FIFOs, and devices have no archivable contents; including one would
+				// fail the read later, so skip it here.
+				return nil
 			}
 
 			// Otherwise, add this asset to the list of paths and keep going.

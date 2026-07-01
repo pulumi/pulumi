@@ -15,9 +15,15 @@
 package archive
 
 import (
+	"io"
+	"net"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFileExtentionSniffing(t *testing.T) {
@@ -38,4 +44,46 @@ func TestFileExtentionSniffing(t *testing.T) {
 	assert.Equal(t, Format(TarGZIPArchive), detectArchiveFormat("./some/path/my.file.tgz"))
 	assert.Equal(t, Format(JARArchive), detectArchiveFormat("./some/path/my.file.jar"))
 	assert.Equal(t, Format(NotArchive), detectArchiveFormat("./some/path/who.even.knows"))
+}
+
+// A directory archive must skip entries that have no archivable bytes -- dangling symlinks
+// and irregular files like sockets -- the same way it already skips symlinks to directories,
+// rather than failing the whole archive over them. Build-input trees (a dev checkout with a
+// dead mysql.sock link, say) hit this routinely.
+func TestDirectoryArchiveSkipsUnarchivableEntries(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks and unix sockets need elevated support on Windows")
+	}
+
+	// The socket must live in the archived tree, but unix socket paths are length-limited
+	// (104 bytes on macOS) and t.TempDir's path can exceed that -- so archive a short-path
+	// directory instead.
+	dir, err := os.MkdirTemp("/tmp", "arch")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "real.txt"), []byte("hello"), 0o600))
+	require.NoError(t, os.Symlink(filepath.Join(dir, "missing"), filepath.Join(dir, "dangling")))
+	ln, err := net.Listen("unix", filepath.Join(dir, "live.sock"))
+	require.NoError(t, err)
+	defer ln.Close()
+
+	arch, err := FromPath(dir)
+	require.NoError(t, err)
+	require.NoError(t, arch.EnsureHash())
+
+	reader, err := arch.Open()
+	require.NoError(t, err)
+	defer reader.Close()
+	names := []string{}
+	for {
+		name, blob, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		require.NoError(t, blob.Close())
+		names = append(names, name)
+	}
+	assert.Equal(t, []string{"real.txt"}, names)
 }
