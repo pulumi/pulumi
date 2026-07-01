@@ -27,6 +27,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	segmentiojson "github.com/segmentio/encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
@@ -455,6 +457,74 @@ func SchemaFromSchemaSource(
 	}
 	setSpecNamespace(&spec, pluginSpec)
 	return &spec, &packageSpec, nil
+}
+
+// PartialPackageFromSchemaSource loads a schema source into a lazily-bound *schema.PartialPackage.
+// Unlike SchemaFromSchemaSource it does not parse or bind the whole schema up front, so commands
+// that only need a few members (e.g. `pulumi package info --resource`) avoid the cost of binding
+// the entire package.
+func PartialPackageFromSchemaSource(
+	ctx context.Context,
+	ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string,
+	parameters plugin.ParameterizeParameters, reg registry.Registry, env env.Env, concurrency int,
+) (*schema.PartialPackage, error) {
+	raw, err := schemaJSONBytes(ws, pctx, packageSource, parameters, reg, env, concurrency)
+	if err != nil {
+		return nil, err
+	}
+	var spec schema.PartialPackageSpec
+	if _, err := segmentiojson.Parse(raw, &spec, segmentiojson.ZeroCopy); err != nil {
+		return nil, fmt.Errorf("unmarshal schema: %w", err)
+	}
+	return schema.ImportPartialSpecWithContext(ctx, spec, nil, schema.NewPluginLoader(pctx))
+}
+
+// schemaJSONBytes returns the raw JSON bytes of a schema source (a YAML or JSON file, or a
+// provider's schema).
+func schemaJSONBytes(
+	ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string,
+	parameters plugin.ParameterizeParameters, reg registry.Registry, env env.Env, concurrency int,
+) ([]byte, error) {
+	switch filepath.Ext(packageSource) {
+	case ".yaml", ".yml":
+		if !parameters.Empty() {
+			return nil, errors.New("parameterization arguments are not supported for yaml files")
+		}
+		f, err := os.ReadFile(packageSource)
+		if err != nil {
+			return nil, err
+		}
+		var spec schema.PackageSpec
+		if err := yaml.Unmarshal(f, &spec); err != nil {
+			return nil, err
+		}
+		return json.Marshal(spec)
+	case ".json":
+		if !parameters.Empty() {
+			return nil, errors.New("parameterization arguments are not supported for json files")
+		}
+		return os.ReadFile(packageSource)
+	}
+
+	p, _, err := ProviderFromSource(ws, pctx, packageSource, reg, env, concurrency)
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(p)
+
+	var request plugin.GetSchemaRequest
+	if !parameters.Empty() {
+		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{Parameters: parameters})
+		if err != nil {
+			return nil, fmt.Errorf("parameterize: %w", err)
+		}
+		request = plugin.GetSchemaRequest{SubpackageName: resp.Name, SubpackageVersion: &resp.Version}
+	}
+	getSchema, err := p.GetSchema(pctx.Request(), request)
+	if err != nil {
+		return nil, err
+	}
+	return getSchema.Schema, nil
 }
 
 // ProviderFromSource takes a plugin name or path.
