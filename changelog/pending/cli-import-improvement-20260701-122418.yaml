@@ -1,0 +1,4 @@
+component: cli/import
+kind: improvement
+body: Support importing resources under parameterized providers from a converter or import file
+time: 2026-07-01T12:24:18.963887+02:00

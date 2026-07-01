@@ -33,6 +33,21 @@ type ResourceImport struct {
 
 	Version           string
 	PluginDownloadURL string
+
+	// Parameterization is set when the resource should be imported under a parameterized (e.g.
+	// dynamically bridged) provider rather than a plain one.
+	Parameterization *ResourceParameterization
+}
+
+// ResourceParameterization describes the base plugin that a resource's parameterized provider is built
+// from. The parameterized package name and version are taken from the resource's own type and version.
+type ResourceParameterization struct {
+	// PluginName is the name of the base plugin to parameterize (e.g. "terraform-provider").
+	PluginName string
+	// PluginVersion is the version of the base plugin to parameterize.
+	PluginVersion string
+	// Value is the parameter value to apply to the base plugin.
+	Value []byte
 }
 
 type ConvertStateRequest struct {
