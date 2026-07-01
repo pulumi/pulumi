@@ -20,8 +20,14 @@ COPY go.mod ./
 COPY sdks ./sdks
 RUN go mod download
 COPY . .
+# Bake a best-effort required-packages manifest from the module cache's Pulumi plugin
+# metadata (the standalone pulumi-plugin.json files Go SDKs carry). Written to a
+# well-known path outside /workspace; carried into the final image below. The engine
+# reads it to pre-fetch provider images; lazy discovery stays authoritative.
+RUN go run ./ocigen AUTO /pulumi/required-packages.json
 RUN CGO_ENABLED=0 go build -o /program .
 
 FROM alpine:3
 COPY --from=build /program /program
+COPY --from=build /pulumi/required-packages.json /pulumi/required-packages.json
 ENTRYPOINT ["/program"]

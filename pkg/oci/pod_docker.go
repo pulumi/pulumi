@@ -15,6 +15,7 @@
 package oci
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
@@ -295,6 +296,56 @@ func (m *dockerPodManager) CopyFromImage(ctx context.Context, image, srcPath str
 		"--entrypoint", "sh",
 		image, "-c", script)
 	return err
+}
+
+func (m *dockerPodManager) ReadImageFile(ctx context.Context, image, path string) ([]byte, error) {
+	// Create a container from the image WITHOUT starting it, `docker cp` the file
+	// out of its filesystem, then remove it. `docker cp` reads the layer filesystem
+	// directly through the daemon, so — unlike a `cat` entrypoint — no process runs
+	// and the image needs no shell or coreutils. That matters because this also
+	// reads manifests out of arbitrary provider/component images (potentially
+	// distroless/scratch) we did not build.
+	cid, err := m.docker(ctx, "create", "--label", m.label(), image)
+	if err != nil {
+		return nil, fmt.Errorf("oci: creating container to read %s from %s: %w", path, image, err)
+	}
+	// WithoutCancel so a cancelled ctx still reaps the throwaway container.
+	defer func() { _, _ = m.docker(context.WithoutCancel(ctx), "rm", "-f", cid) }()
+
+	// `docker cp <cid>:<path> -` streams a tar archive of the file to stdout. Call
+	// the runner directly (not m.docker) so the binary tar is returned untrimmed and
+	// stderr is available to distinguish "file absent".
+	stdout, stderr, err := m.run(ctx, nil, m.bin, "cp", cid+":"+path, "-")
+	if err != nil {
+		// A missing file is normal for the manifest's best-effort consumer, so report
+		// it as absence (nil), not an error. docker phrases this as either "Could not
+		// find the file ... in container" or an "lstat ...: no such file" — match both.
+		low := strings.ToLower(stderr)
+		if strings.Contains(low, "could not find the file") || strings.Contains(low, "no such file") {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("docker cp %s:%s: %w: %s", cid, path, err, strings.TrimSpace(stderr))
+	}
+	return singleFileFromTar([]byte(stdout))
+}
+
+// singleFileFromTar returns the contents of the first regular file in a tar
+// archive — the shape `docker cp <container>:<file> -` produces for a single file.
+// An archive with no regular file (e.g. the path was a directory) yields nil.
+func singleFileFromTar(archive []byte) ([]byte, error) {
+	tr := tar.NewReader(bytes.NewReader(archive))
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("reading docker cp tar stream: %w", err)
+		}
+		if hdr.Typeflag == tar.TypeReg {
+			return io.ReadAll(tr)
+		}
+	}
 }
 
 func (m *dockerPodManager) ImageExists(ctx context.Context, ref string) (bool, error) {

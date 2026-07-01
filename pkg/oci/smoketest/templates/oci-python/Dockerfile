@@ -25,5 +25,11 @@ RUN chmod +x oci-bootstrap.sh pulumi-language-python-exec
 COPY requirements.txt ./
 COPY sdks ./sdks
 RUN pip install --no-cache-dir -r requirements.txt
+# Bake a best-effort required-packages manifest from the installed deps' Pulumi plugin
+# metadata (the standalone pulumi-plugin.json files Python SDKs carry) to a well-known
+# path outside /workspace. The engine reads it to pre-fetch provider images; lazy
+# discovery stays authoritative. Sits with the deps layer, before the program copy.
+COPY oci-required-packages.py ./
+RUN python3 oci-required-packages.py AUTO /pulumi/required-packages.json
 COPY __main__.py ./
 ENTRYPOINT ["/workspace/oci-bootstrap.sh"]

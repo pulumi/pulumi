@@ -300,6 +300,21 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 	}
 	pod := oci.NewDockerPodManager(podID)
 
+	// Surface the program's declared required packages (baked into the image at build
+	// time by the template's manifest step). Best-effort and log-only for now: a
+	// missing or unreadable manifest is not an error, and lazy discovery at
+	// RegisterResource time stays authoritative. This is the site where pre-fetching
+	// the provider images will hook in once a container-aware plugin-ensure path
+	// exists — reading the manifest here is deliberately decoupled from that.
+	if manifest, err := oci.ReadRequiredPackagesFromImage(ctx, pod, image); err != nil {
+		//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
+		fmt.Fprintf(os.Stderr, "oci: could not read required-packages manifest from %s: %v\n", image, err)
+	} else if len(manifest.Plugins) > 0 {
+		//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
+		fmt.Fprintf(os.Stderr, "oci: program declares %d required package(s): %s\n",
+			len(manifest.Plugins), manifest.Summary())
+	}
+
 	// Shared workspace volume: the program writes its runtime workspace here (build
 	// outputs an asset-consuming provider must read, e.g. cloudflare WorkerVersion's
 	// asset files), and providers mount the same volume at the same path. Creating it

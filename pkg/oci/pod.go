@@ -88,6 +88,18 @@ type PodManager interface {
 	// only moves data between a container and the host.
 	CopyFromImage(ctx context.Context, image, srcPath string, vol Volume, dstPath string) error
 
+	// ReadImageFile returns the contents of the file at path inside image's
+	// filesystem, or nil (and no error) if no such file exists. It is the
+	// read-side counterpart to CopyFromImage: where CopyFromImage seeds a volume
+	// from an image, ReadImageFile pulls a single small file's bytes back to the
+	// caller — used to read the required-packages manifest baked into a program or
+	// plugin image (see ReadRequiredPackagesFromImage) without starting the pod.
+	//
+	// The image must contain `cat` (the Pulumi program/plugin base images do). A
+	// missing file is reported as a nil slice rather than an error, because its
+	// consumer (a best-effort pre-pull hint) treats "no manifest" as normal.
+	ReadImageFile(ctx context.Context, image, path string) ([]byte, error)
+
 	// ImageExists reports whether an image reference is present in the local image
 	// store. It is the "is this plugin installed?" check for the container model:
 	// a plugin's installation state is "is its image in the daemon", not "is its

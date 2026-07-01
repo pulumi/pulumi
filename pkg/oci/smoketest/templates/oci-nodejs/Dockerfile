@@ -21,5 +21,13 @@ RUN chmod +x oci-bootstrap.sh
 COPY package.json ./
 COPY sdks ./sdks
 RUN npm install --omit=dev
+# Bake a best-effort manifest of the Pulumi provider packages these deps require,
+# read from their installed Pulumi plugin metadata, to a well-known path OUTSIDE
+# /workspace (which the pod shadows with the shared volume at runtime). The OCI
+# engine reads it to pre-fetch provider images; lazy discovery stays authoritative,
+# so this is an optimization, never a gate. Sits with the deps layer (before the
+# program copy) so it is not rebuilt on every program edit.
+COPY oci-required-packages.cjs ./
+RUN node oci-required-packages.cjs /workspace/node_modules /pulumi/required-packages.json
 COPY index.js ./
 ENTRYPOINT ["/workspace/oci-bootstrap.sh"]
