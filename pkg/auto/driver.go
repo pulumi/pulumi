@@ -30,8 +30,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -39,9 +41,11 @@ import (
 
 // Options selects and configures a stack to drive.
 type Options struct {
-	// BackendURL is the state backend, e.g. "file:///abs/path/to/state". Required. Only
-	// the DIY backends (file/s3/gs/azblob) are supported today; the cloud backend is a
-	// follow-on.
+	// BackendURL is the state backend, e.g. "file:///abs/path/to/state". When empty it
+	// defaults to the backend the CLI would use -- PULUMI_BACKEND_URL, the project's
+	// configured backend, or the logged-in backend -- so a caller need not restate the
+	// backend it is already logged into. Only the DIY backends (file/s3/gs/azblob) are
+	// supported today; the cloud backend is the named-reference (server-side) path.
 	BackendURL string
 	// WorkDir is the stack's project directory -- it must contain a Pulumi.yaml. Required.
 	WorkDir string
@@ -79,8 +83,8 @@ type Result struct {
 
 // Select opens the backend, ensures the stack exists, and returns a handle to drive it.
 func Select(ctx context.Context, opts Options) (*Stack, error) {
-	if opts.BackendURL == "" || opts.WorkDir == "" || opts.Stack == "" {
-		return nil, fmt.Errorf("BackendURL, WorkDir, and Stack are all required")
+	if opts.WorkDir == "" || opts.Stack == "" {
+		return nil, fmt.Errorf("WorkDir and Stack are both required")
 	}
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 
@@ -89,17 +93,35 @@ func Select(ctx context.Context, opts Options) (*Stack, error) {
 		return nil, fmt.Errorf("loading project at %s: %w", opts.WorkDir, err)
 	}
 
+	// Resolve the backend: an explicit URL wins, otherwise default to the backend the CLI
+	// would use, so a caller need not restate the backend it is already logged into.
+	backendURL := opts.BackendURL
+	if backendURL == "" {
+		backendURL, err = pkgWorkspace.GetCurrentCloudURL(pkgWorkspace.Instance, env.Global(), proj)
+		if err != nil {
+			return nil, fmt.Errorf("resolving the current backend: %w", err)
+		}
+		if backendURL == "" {
+			return nil, fmt.Errorf("no backend selected: run `pulumi login` or set PULUMI_BACKEND_URL")
+		}
+	}
+	if !diy.IsDIYBackendURL(backendURL) {
+		return nil, fmt.Errorf(
+			"the in-process driver converges DIY backends only; %q is a cloud backend "+
+				"(use a named reference for the server-side path)", backendURL)
+	}
+
 	// A file:// backend expects its state directory to exist (the CLI creates it on
 	// login); create it here so the driver is self-contained.
-	if path, ok := strings.CutPrefix(opts.BackendURL, "file://"); ok {
+	if path, ok := strings.CutPrefix(backendURL, "file://"); ok {
 		if err := os.MkdirAll(path, 0o700); err != nil {
 			return nil, fmt.Errorf("creating backend directory %s: %w", path, err)
 		}
 	}
 
-	be, err := diy.New(ctx, sink, opts.BackendURL, proj)
+	be, err := diy.New(ctx, sink, backendURL, proj)
 	if err != nil {
-		return nil, fmt.Errorf("opening backend %s: %w", opts.BackendURL, err)
+		return nil, fmt.Errorf("opening backend %s: %w", backendURL, err)
 	}
 	be.SetCurrentProject(proj)
 

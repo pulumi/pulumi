@@ -71,6 +71,32 @@ outputs:
 	assert.Equal(t, 0, nonSame, "second up should be a no-op, got changes: %v", res2.Changes)
 }
 
+// TestDriver_DefaultsToCurrentBackend proves Select resolves the ambient backend when no
+// BackendURL is given -- the same one the CLI would use -- so a caller need not restate the
+// backend it is already logged into. PULUMI_BACKEND_URL stands in for the current login.
+func TestDriver_DefaultsToCurrentBackend(t *testing.T) {
+	requireYAMLHost(t)
+
+	root := t.TempDir()
+	backendURL := "file://" + filepath.Join(root, "state")
+	t.Setenv("PULUMI_BACKEND_URL", backendURL)
+
+	dir := writeProject(t, root, "ambient", `name: auto-ambient
+runtime: yaml
+outputs:
+  message: from the ambient backend
+`)
+
+	ctx := context.Background()
+	s, err := Select(ctx, Options{WorkDir: dir, Stack: "dev"}) // no BackendURL
+	require.NoError(t, err)
+	res, err := s.Up(ctx)
+	require.NoError(t, err)
+	msg, ok := res.Outputs.GetOk("message")
+	require.True(t, ok, "expected a message output")
+	assert.Equal(t, "from the ambient backend", msg.AsString())
+}
+
 // TestDriver_CrossStackReference proves that a stack driven in-process resolves another
 // stack's outputs through a StackReference -- the capability Pulumi Delivery's Stage relies
 // on -- with both stacks living on the same file:// backend.
