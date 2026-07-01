@@ -156,7 +156,7 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
 			"base of the provider configuration (requires a stack context)")
 
-	addInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties)
+	addInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
 	if fn.Inputs != nil {
 		addInputFlags(cmd, "input", fn.Inputs.Properties)
 	}
