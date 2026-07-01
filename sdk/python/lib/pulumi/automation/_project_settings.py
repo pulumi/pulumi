@@ -186,6 +186,8 @@ class ProjectSettings:
             "python",
             "go",
             "dotnet",
+            "yaml",
+            "java"
         ]:
             raise ValueError(
                 f"Invalid value {runtime!r} for runtime. "
