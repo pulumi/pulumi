@@ -15,6 +15,7 @@
 package tools
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -26,6 +27,44 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestFilesystem_OnWriteHookDivertsWrites verifies that, when OnWrite is set,
+// the mutating methods commit through the hook instead of touching disk. This
+// is the seam the Neo ACP adapter uses to forward writes to the editor.
+func TestFilesystem_OnWriteHookDivertsWrites(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	type captured struct {
+		path    string
+		content string
+	}
+	var writes []captured
+	fs.OnWrite = func(_ context.Context, path, content string) error {
+		writes = append(writes, captured{path: path, content: content})
+		return nil
+	}
+
+	target := filepath.Join(root, "new.txt")
+	_, err = fs.Invoke(t.Context(), "write",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"content":"hello"}`, target)))
+	require.NoError(t, err)
+
+	// resolve canonicalizes the path (symlink-evaluated root), so the hook sees
+	// the resolved absolute path rather than the raw temp path.
+	realRoot, err := filepath.EvalSymlinks(root)
+	require.NoError(t, err)
+	require.Len(t, writes, 1)
+	assert.Equal(t, filepath.Join(realRoot, "new.txt"), writes[0].path)
+	assert.Equal(t, "hello", writes[0].content)
+
+	// The hook owns the write; nothing was created on disk.
+	_, statErr := os.Stat(target)
+	assert.True(t, os.IsNotExist(statErr), "expected no file on disk, stat err: %v", statErr)
+}
 
 func TestFilesystem_WriteThenReadAbsolutePath(t *testing.T) {
 	t.Parallel()
