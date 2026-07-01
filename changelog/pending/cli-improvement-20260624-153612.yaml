@@ -1,4 +1,0 @@
-component: cli
-kind: improvement
-body: Add `--output $format` flag to `pulumi stack {list,history,tag list}`
-time: 2026-06-24T15:36:12.642705+02:00

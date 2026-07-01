@@ -1,6 +1,0 @@
-component: sdk/go
-kind: fix
-body: Fix FileArchive nested in an AssetArchive producing zip/tar entries with backslashes on Windows
-time: 2026-06-13T00:00:00.000000+00:00
-custom:
-    PR: "23750"

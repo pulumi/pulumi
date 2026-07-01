@@ -1,6 +1,0 @@
-component: sdk/python
-kind: fix
-body: Fix `deletedWith` and `replaceWith` resource options in Python component resource providers
-time: 2026-06-26T12:59:20.000000-05:00
-custom:
-    PR: "23710"
