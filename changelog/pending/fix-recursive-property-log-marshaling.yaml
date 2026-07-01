@@ -1,0 +1,4 @@
+component: cli/engine
+kind: fix
+body: Fix recursive property log marshaling
+time: 2026-07-01T18:59:38+02:00
