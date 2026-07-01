@@ -542,6 +542,7 @@ type MockEnvironmentsBackend struct {
 		org string,
 		yaml []byte,
 		duration time.Duration,
+		environmentOverrides map[string]string,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
@@ -574,9 +575,10 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 	org string,
 	yaml []byte,
 	duration time.Duration,
+	environmentOverrides map[string]string,
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 	if be.OpenYAMLEnvironmentF != nil {
-		return be.OpenYAMLEnvironmentF(ctx, org, yaml, duration)
+		return be.OpenYAMLEnvironmentF(ctx, org, yaml, duration, environmentOverrides)
 	}
 	panic("not implemented")
 }

@@ -60,6 +60,7 @@ func NewRefreshCmd() *cobra.Command {
 	var stackName string
 	var configArray []string
 	var configFile string
+	var envOverrides []string
 	var path bool
 	var client string
 
@@ -230,7 +231,7 @@ func NewRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -398,6 +399,7 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	config.OverrideEnvFlag(cmd, &envOverrides)
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the refresh and save to the stack config file")

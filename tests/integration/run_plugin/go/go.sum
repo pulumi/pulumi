@@ -170,8 +170,8 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 h1:vkHw5I/plNdTr435cARxCW6q9gc0S/Yxz7Mkd38pOb0=
 github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231/go.mod h1:murToZ2N9hNJzewjHBgfFdXhZKjY3z5cYC1VXk+lbFE=
-github.com/pulumi/esc v0.25.0 h1:U31tSec7ikQuj4RG3Nhm3mqBz/dp+2MQDLA3bY6/v3w=
-github.com/pulumi/esc v0.25.0/go.mod h1:A6rZBVCQBZepaOyt+xoZjPHtC4kKqxapkJ8wKB5VT7k=
+github.com/pulumi/esc v0.25.1-0.20260630190507-6443a40dbf68 h1:vf8iPT+uWXODPbU7uCIunMQncWW2NCqDpBrKSUXmAV4=
+github.com/pulumi/esc v0.25.1-0.20260630190507-6443a40dbf68/go.mod h1:A6rZBVCQBZepaOyt+xoZjPHtC4kKqxapkJ8wKB5VT7k=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
 github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
