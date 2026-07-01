@@ -17,6 +17,7 @@ package stack
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -33,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -311,7 +311,7 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 
 	fqn := string(s.Ref().FullyQualifiedName())
 	if err := pkgLogging.UpgradeCurrentLogger(ctx, fqn, "", bsm); err != nil {
-		logging.V(3).Infof("encrypted log upgrade failed: %v", err)
+		slog.InfoContext(ctx, "encrypted log upgrade failed", "err", err)
 	}
 
 	return bsm, state, nil

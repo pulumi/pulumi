@@ -17,6 +17,7 @@ package agentauth
 import (
 	"context"
 	"io"
+	"log/slog"
 	"os"
 	"time"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -42,7 +42,7 @@ func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
 	now := time.Now()
 	deleted, err := workspace.DeleteExpiredAgentCredentials(now)
 	if err != nil {
-		logging.V(7).Infof("Could not delete expired agent credentials: %v", err)
+		slog.InfoContext(ctx, "Could not delete expired agent credentials", "err", err)
 		return
 	}
 	if deleted {
@@ -58,7 +58,7 @@ func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
 	}
 	account, err := workspace.GetAgentAccount(claim.CloudURL)
 	if err != nil {
-		logging.V(7).Infof("Could not read agent account credentials: %v", err)
+		slog.InfoContext(ctx, "Could not read agent account credentials", "err", err)
 		return
 	}
 	var accessTokenExpiresAt *time.Time
@@ -100,10 +100,10 @@ func AuthRequiredMessage(now time.Time) string {
 	if claim.ClaimToken != "" {
 		claimable, err := validateAgentClaim(context.Background(), claim.CloudURL, claim.ClaimToken)
 		if err != nil {
-			logging.V(7).Infof("Could not validate agent claim token for %q: %v", claim.CloudURL, err)
+			slog.Info("Could not validate agent claim token", "cloud-url", claim.CloudURL, "err", err)
 		} else if !claimable {
 			if err = workspace.MarkAgentClaimUnavailable(now); err != nil {
-				logging.V(7).Infof("Could not mark agent claim unavailable for %q: %v", claim.CloudURL, err)
+				slog.Info("Could not mark agent claim unavailable", "cloud-url", claim.CloudURL, "err", err)
 			}
 			return workspace.FormatAgentLoginRequiredInstruction(
 				workspace.AgentLoginClaimUnavailable, expiresAt, now)
