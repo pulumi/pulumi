@@ -1,10 +1,13 @@
 # The program image: compile the Go program and run the binary directly. A Go Pulumi
 # program needs NO bootstrap shim — the Go SDK reads the monitor/engine address from the
 # PULUMI_* environment the OCI host sets, so the compiled binary is the entrypoint. This
-# is yours to edit — use any Go/base images you like; the only contract is that the
-# container runs the program when started.
+# is yours to edit — use any Go/base images you like; the contract is that the container
+# runs the program when started, and it runs rooted at /workspace: the pod mounts the one
+# shared workspace volume there and sets it as the working directory — where a provider
+# reads the assets and file paths your program produces at runtime. (The compiled binary
+# lives at /program; only its runtime working directory is /workspace.)
 FROM golang:1.25-alpine AS build
-WORKDIR /app
+WORKDIR /workspace
 # -mod=mod lets go resolve and record dependencies (incl. any SDK declared as a local
 # `replace` by `pulumi package add`) without a pre-existing go.sum.
 ENV GOFLAGS=-mod=mod

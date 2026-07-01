@@ -26,7 +26,7 @@ set --
 [ -n "$PULUMI_PROJECT" ]      && set -- "$@" --project "$PULUMI_PROJECT"
 [ -n "$PULUMI_STACK" ]        && set -- "$@" --stack "$PULUMI_STACK"
 [ -n "$PULUMI_ORGANIZATION" ] && set -- "$@" --organization "$PULUMI_ORGANIZATION"
-set -- "$@" --pwd /app --dry_run "${PULUMI_DRY_RUN:-false}" --parallel "${PULUMI_PARALLEL:-1}" ./__main__.py
+set -- "$@" --pwd /workspace --dry_run "${PULUMI_DRY_RUN:-false}" --parallel "${PULUMI_PARALLEL:-1}" ./__main__.py
 
 echo "oci-python-bootstrap: monitor=$PULUMI_MONITOR engine=$PULUMI_ENGINE -> exec pulumi-language-python-exec $*" >&2
-exec python3 /app/pulumi-language-python-exec "$@"
+exec python3 /workspace/pulumi-language-python-exec "$@"

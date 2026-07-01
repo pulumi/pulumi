@@ -5,10 +5,10 @@
 # to the program image. The one shim serves both roles, program and dynamic
 # provider, selected by PULUMI_OCI_ROLE.
 FROM node:20-alpine
-WORKDIR /app
+WORKDIR /workspace
 COPY package.json ./
 RUN npm install --omit=dev
 COPY index.js oci-bootstrap.sh ./
 RUN chmod +x oci-bootstrap.sh
 RUN echo "oci-dynamic-welded-to-program-image" > /program-marker
-ENTRYPOINT ["/app/oci-bootstrap.sh"]
+ENTRYPOINT ["/workspace/oci-bootstrap.sh"]

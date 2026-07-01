@@ -6,10 +6,10 @@
 # marker is baked at /program-marker so the dynamic provider, running from this
 # image, can read it to prove it ran welded to the program image.
 FROM python:3.12-slim
-WORKDIR /app
+WORKDIR /workspace
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY __main__.py oci-bootstrap.sh pulumi-language-python-exec ./
 RUN chmod +x oci-bootstrap.sh pulumi-language-python-exec
 RUN echo "oci-dynamic-welded-to-python-image" > /program-marker
-ENTRYPOINT ["/app/oci-bootstrap.sh"]
+ENTRYPOINT ["/workspace/oci-bootstrap.sh"]

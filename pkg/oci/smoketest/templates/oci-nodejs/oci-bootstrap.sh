@@ -25,7 +25,7 @@ fi
 # Program role: invoke the @pulumi/pulumi run harness with the arguments
 # pulumi-language-nodejs's constructArguments would pass (skip empty optional flags).
 # Config rides PULUMI_CONFIG / PULUMI_CONFIG_SECRET_KEYS in the environment.
-RUN_HARNESS=/app/node_modules/@pulumi/pulumi/cmd/run
+RUN_HARNESS=/workspace/node_modules/@pulumi/pulumi/cmd/run
 
 set -- "$RUN_HARNESS"
 [ -n "$PULUMI_MONITOR" ]      && set -- "$@" --monitor "$PULUMI_MONITOR"
@@ -33,7 +33,7 @@ set -- "$RUN_HARNESS"
 [ -n "$PULUMI_ORGANIZATION" ] && set -- "$@" --organization "$PULUMI_ORGANIZATION"
 [ -n "$PULUMI_PROJECT" ]      && set -- "$@" --project "$PULUMI_PROJECT"
 [ -n "$PULUMI_STACK" ]        && set -- "$@" --stack "$PULUMI_STACK"
-set -- "$@" --pwd /app
+set -- "$@" --pwd /workspace
 [ "$PULUMI_DRY_RUN" = "true" ] && set -- "$@" --dry-run
 set -- "$@" --parallel "${PULUMI_PARALLEL:-1}"
 set -- "$@" .  # entry point: the program directory

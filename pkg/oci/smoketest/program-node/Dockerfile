@@ -6,9 +6,9 @@
 # image carries the toolchain (node) and deps, and the contract is just "does the
 # container run the program?"
 FROM node:20-alpine
-WORKDIR /app
+WORKDIR /workspace
 COPY package.json ./
 RUN npm install --omit=dev
 COPY index.js oci-bootstrap.sh ./
 RUN chmod +x oci-bootstrap.sh
-ENTRYPOINT ["/app/oci-bootstrap.sh"]
+ENTRYPOINT ["/workspace/oci-bootstrap.sh"]
