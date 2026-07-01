@@ -12,7 +12,7 @@ Prefer [language conformance tests](language-conformance-tests) over integration
 
 :::{attention}
 
-Integration tests should have a TestMain which calls the `testutils.SetupPulumiBinary()` method to set an explicit path to the binaries under test to avoid reliance on the `$PATH` which can cause the wrong binary to be used in tests, resulting in incorrect test results.
+Integration tests should have a TestMain which calls the `testutil.SetupPulumiBinary()` method to set an explicit path to the binaries under test to avoid reliance on the `$PATH` which can cause the wrong binary to be used in tests, resulting in incorrect test results.
 
 :::
 
