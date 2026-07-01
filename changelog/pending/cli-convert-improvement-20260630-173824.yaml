@@ -1,0 +1,6 @@
+component: cli/convert
+kind: improvement
+body: Error when converting a Terraform program to the `hcl` language
+time: 2026-06-30T17:38:24.603534+02:00
+custom:
+    PR: "23742"
