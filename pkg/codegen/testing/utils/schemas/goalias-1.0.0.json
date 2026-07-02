@@ -1,0 +1,121 @@
+{
+  "name": "goalias",
+  "version": "1.0.0",
+  "resources": {
+    "goalias:mod1/v1:Res": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "enabled"
+      ],
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": [
+        "name"
+      ]
+    },
+    "goalias:mod2/v1:Res": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "active"
+      ],
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": [
+        "name"
+      ]
+    }
+  },
+  "types": {
+    "goalias:mod1/v1:Config": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string"
+        }
+      }
+    },
+    "goalias:mod1/v1:ConfigResponse": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "service"
+      ]
+    },
+    "goalias:mod2/v1:Spec": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        }
+      }
+    },
+    "goalias:mod2/v1:SpecResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key"
+      ]
+    },
+    "goalias:mod3/v1:MyEnum": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "Active",
+          "value": "ACTIVE"
+        },
+        {
+          "name": "Inactive",
+          "value": "INACTIVE"
+        }
+      ]
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi-goalias/sdk/go/goalias",
+      "packageImportAliases": {
+        "github.com/pulumi/pulumi-goalias/sdk/go/goalias/mod1/v1": "mod1alias",
+        "github.com/pulumi/pulumi-goalias/sdk/go/goalias/mod2/v1": "mod2alias",
+        "github.com/pulumi/pulumi-goalias/sdk/go/goalias/mod3/v1": "mod3alias"
+      }
+    }
+  }
+}

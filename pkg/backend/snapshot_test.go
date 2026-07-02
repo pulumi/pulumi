@@ -23,16 +23,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
@@ -41,7 +42,7 @@ type MockRegisterResourceEvent struct {
 	deploy.SourceEvent
 }
 
-func (m MockRegisterResourceEvent) Goal() *resource.Goal               { return nil }
+func (m MockRegisterResourceEvent) Goal() *pkgresource.Goal            { return nil }
 func (m MockRegisterResourceEvent) Done(result *deploy.RegisterResult) {}
 func (m MockRegisterResourceEvent) Extension() *apitype.Extension      { return nil }
 func (m MockRegisterResourceEvent) ExtensionRef() apitype.ExtensionRef { return "" }

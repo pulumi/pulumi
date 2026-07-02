@@ -16,7 +16,6 @@ package do
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -27,6 +26,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pgavlin/fx/v2/maps"
+	json "github.com/segmentio/encoding/json"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"go.opentelemetry.io/otel"
 )
 
 func NewDoCmd(
@@ -152,6 +153,7 @@ func NewDoCmd(
 		}
 
 		ctx := cmd.Context()
+		tracer := otel.Tracer("pulumi-cli")
 
 		host, err := newHost(ctx, sink, sink)
 		if err != nil {
@@ -215,8 +217,10 @@ func NewDoCmd(
 			cleanup()
 			return nil, nil, fmt.Errorf("get schema: %w", err)
 		}
-		var spec schema.PackageSpec
-		err = json.Unmarshal(getSchema.Schema, &spec)
+		_, unmarshalSpan := tracer.Start(ctx, "pulumi-do.unmarshal-schema")
+		var spec schema.PartialPackageSpec
+		_, err = json.Parse(getSchema.Schema, &spec, json.ZeroCopy)
+		unmarshalSpan.End()
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("unmarshal schema: %w", err)
@@ -230,10 +234,17 @@ func NewDoCmd(
 			packageDescriptor.Parameterization.Value = spec.Parameterization.Parameter
 		}
 
-		boundpkg, err := packages.BindSpec(spec, schema.NewPluginLoader(pctx))
+		boundpkg, err := schema.ImportPartialSpecWithContext(ctx, spec, nil, schema.NewPluginLoader(pctx))
 		if err != nil {
 			cleanup()
-			return nil, nil, fmt.Errorf("bind schema: %w", err)
+			return nil, nil, fmt.Errorf("import schema: %w", err)
+		}
+
+		// This is needed in every subcommand, so bind it now.
+		providerDef, err := boundpkg.Provider()
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("bind provider schema: %w", err)
 		}
 
 		loadConverter := func(name string) (plugin.Converter, error) {
@@ -251,6 +262,7 @@ func NewDoCmd(
 			packageDescriptor: packageDescriptor,
 			provider:          p,
 			spec:              boundpkg,
+			providerDef:       providerDef,
 			dryrun:            dryrun,
 			showSecrets:       showSecrets,
 			stateless:         stateless,
@@ -475,7 +487,8 @@ type packageCommand struct {
 	providerFile      string
 	providerURN       string
 	format            string
-	spec              *schema.Package
+	spec              schema.PackageReference
+	providerDef       *schema.Resource
 	dryrun            bool
 	showSecrets       bool
 	stateless         bool
@@ -520,10 +533,14 @@ func (pc *packageCommand) newCommand() (*cobra.Command, error) {
 	}
 
 	// Try and look it up, it's either a module, resource, or function.
-	if fun, ok := pc.spec.GetFunction(pc.args[0]); ok {
+	if fun, ok, err := pc.spec.Functions().Get(pc.args[0]); err != nil {
+		return nil, err
+	} else if ok {
 		return pc.newFunctionCommand(fun), nil
 	}
-	if res, ok := pc.spec.GetResource(pc.args[0]); ok {
+	if res, ok, err := pc.spec.Resources().Get(pc.args[0]); err != nil {
+		return nil, err
+	} else if ok {
 		return pc.newResourceCommand(res), nil
 	}
 	if pc.isKnownModule(pc.args[0]) {
@@ -531,6 +548,20 @@ func (pc *packageCommand) newCommand() (*cobra.Command, error) {
 	}
 
 	return nil, pc.unknownTokenError(pc.args[0])
+}
+
+// memberTokens returns the resource and function tokens defined in the schema, excluding method
+// functions, without binding any package members.
+func (pc *packageCommand) memberTokens() (resources, functions []string) {
+	for it := pc.spec.Resources().Range(); it.Next(); {
+		resources = append(resources, it.Token())
+	}
+	for it := pc.spec.Functions().Range(); it.Next(); {
+		if !it.IsMethod() {
+			functions = append(functions, it.Token())
+		}
+	}
+	return resources, functions
 }
 
 // isKnownModule checks whether `typed` (e.g. "aws:s3" or "pkg:mod1/mod2") matches a module in the schema.
@@ -545,13 +576,14 @@ func (pc *packageCommand) isKnownModule(typed string) bool {
 		mod := pc.spec.TokenToModule(token)
 		return mod == name || strings.HasPrefix(mod, name+"/")
 	}
-	for _, fn := range pc.spec.Functions {
-		if !fn.IsMethod && inModule(fn.Token) {
+	resources, functions := pc.memberTokens()
+	for _, tok := range functions {
+		if inModule(tok) {
 			return true
 		}
 	}
-	for _, res := range pc.spec.Resources {
-		if inModule(res.Token) {
+	for _, tok := range resources {
+		if inModule(tok) {
 			return true
 		}
 	}
@@ -567,7 +599,7 @@ func (pc *packageCommand) moduleToken(token string) string {
 }
 
 func (pc *packageCommand) unknownTokenError(typed string) error {
-	msg := fmt.Sprintf("unknown function, resource, or module %q in package %q", typed, pc.spec.Name)
+	msg := fmt.Sprintf("unknown function, resource, or module %q in package %q", typed, pc.spec.Name())
 	suggestions := pc.suggestTokens(typed)
 	if len(suggestions) == 0 {
 		return cmdCmd.ConfigurationError{Message: msg}
@@ -588,6 +620,7 @@ func (pc *packageCommand) suggestTokens(typed string) []string {
 	if diags.HasErrors() {
 		return nil
 	}
+	resources, functions := pc.memberTokens()
 
 	op := levenshtein.DefaultOptionsWithSub
 	op.Matches = func(r1, r2 rune) bool {
@@ -632,14 +665,11 @@ func (pc *packageCommand) suggestTokens(typed string) []string {
 		seen[display] = struct{}{}
 		suggestions = append(suggestions, display)
 	}
-	for _, fn := range pc.spec.Functions {
-		if fn.IsMethod {
-			continue
-		}
-		consider(fn.Token)
+	for _, tok := range functions {
+		consider(tok)
 	}
-	for _, res := range pc.spec.Resources {
-		consider(res.Token)
+	for _, tok := range resources {
+		consider(tok)
 	}
 
 	// If the user typed a 2-segment value (pkg:something), the second segment may have been intended as a module name,
@@ -657,13 +687,11 @@ func (pc *packageCommand) suggestTokens(typed string) []string {
 			seen[display] = struct{}{}
 			suggestions = append(suggestions, display)
 		}
-		for _, fn := range pc.spec.Functions {
-			if !fn.IsMethod {
-				considerModule(fn.Token)
-			}
+		for _, tok := range functions {
+			considerModule(tok)
 		}
-		for _, res := range pc.spec.Resources {
-			considerModule(res.Token)
+		for _, tok := range resources {
+			considerModule(tok)
 		}
 	}
 
@@ -672,10 +700,10 @@ func (pc *packageCommand) suggestTokens(typed string) []string {
 }
 
 func (pc *packageCommand) newPackageCommand() *cobra.Command {
-	shorthelp := fmt.Sprintf("Interact with %s resources and functions", pc.spec.Name)
+	shorthelp := fmt.Sprintf("Interact with %s resources and functions", pc.spec.Name())
 	longhelp := shorthelp + "."
-	if pc.spec.Description != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, pc.spec.Description)
+	if pc.spec.Description() != "" {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, pc.spec.Description())
 	}
 
 	// If the package can't be inferred from the token then add --package to the help text.
@@ -693,27 +721,25 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 		"%s\n\nRun 'pulumi do%s <module/resource/function> --help' for more details on usage.",
 		longhelp, flag)
 
+	resTokens, fnTokens := pc.memberTokens()
 	modules := map[string]struct{}{}
-	functions := map[string]*schema.Function{}
-	resources := map[string]*schema.Resource{}
-	for _, fn := range pc.spec.Functions {
-		if fn.IsMethod {
-			continue
-		}
-
-		if mod := pc.moduleToken(fn.Token); mod == "" {
-			functions[fn.Token] = fn
+	var functions, resources []string
+	for _, tok := range fnTokens {
+		if mod := pc.moduleToken(tok); mod == "" {
+			functions = append(functions, tok)
 		} else {
 			modules[mod] = struct{}{}
 		}
 	}
-	for _, res := range pc.spec.Resources {
-		if mod := pc.moduleToken(res.Token); mod == "" {
-			resources[res.Token] = res
+	for _, tok := range resTokens {
+		if mod := pc.moduleToken(tok); mod == "" {
+			resources = append(resources, tok)
 		} else {
 			modules[mod] = struct{}{}
 		}
 	}
+	slices.Sort(functions)
+	slices.Sort(resources)
 
 	var help strings.Builder
 	if len(modules) > 0 {
@@ -725,36 +751,32 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 	}
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
-		for _, fn := range maps.Sorted(functions) {
-			tok := pc.spec.CanonicalizeToken(fn.Token)
-			fmt.Fprintf(&help, "  %s\n", tok)
+		for _, tok := range functions {
+			fmt.Fprintf(&help, "  %s\n", pc.spec.CanonicalizeToken(tok))
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
-		for _, res := range maps.Sorted(resources) {
-			tok := pc.spec.CanonicalizeToken(res.Token)
-			fmt.Fprintf(&help, "  %s\n", tok)
+		for _, tok := range resources {
+			fmt.Fprintf(&help, "  %s\n", pc.spec.CanonicalizeToken(tok))
 		}
 		fmt.Fprintln(&help, "")
 	}
 
 	longhelp = fmt.Sprintf("%s\n\n%s", longhelp, help.String())
 
-	use := pc.spec.Name
+	use := pc.spec.Name()
 	if len(pc.args) > 0 {
 		use = pc.args[0]
 	}
 
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   use,
 		Short: shorthelp,
 		Long:  longhelp,
 		Args:  cobra.NoArgs,
 	}
-
-	return cmd
 }
 
 func (pc *packageCommand) newModuleCommand() *cobra.Command {
@@ -778,29 +800,27 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 		"%s\n\nRun 'pulumi do%s <module/resource/function> --help' for more details on usage.",
 		longhelp, flag)
 
+	resTokens, fnTokens := pc.memberTokens()
 	modules := map[string]struct{}{}
-	functions := map[string]*schema.Function{}
-	resources := map[string]*schema.Resource{}
-	for _, fn := range pc.spec.Functions {
-		if fn.IsMethod {
-			continue
-		}
-
-		mod := pc.spec.TokenToModule(fn.Token)
+	var functions, resources []string
+	for _, tok := range fnTokens {
+		mod := pc.spec.TokenToModule(tok)
 		if mod == name {
-			functions[pc.spec.CanonicalizeToken(fn.Token)] = fn
+			functions = append(functions, pc.spec.CanonicalizeToken(tok))
 		} else if strings.HasPrefix(mod, name+"/") {
-			modules[pc.moduleToken(fn.Token)] = struct{}{}
+			modules[pc.moduleToken(tok)] = struct{}{}
 		}
 	}
-	for _, res := range pc.spec.Resources {
-		mod := pc.spec.TokenToModule(res.Token)
+	for _, tok := range resTokens {
+		mod := pc.spec.TokenToModule(tok)
 		if mod == name {
-			resources[res.Token] = res
+			resources = append(resources, tok)
 		} else if strings.HasPrefix(mod, name+"/") {
-			modules[pc.moduleToken(res.Token)] = struct{}{}
+			modules[pc.moduleToken(tok)] = struct{}{}
 		}
 	}
+	slices.Sort(functions)
+	slices.Sort(resources)
 
 	var help strings.Builder
 	if len(modules) > 0 {
@@ -812,34 +832,30 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 	}
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
-		for _, fn := range maps.Sorted(functions) {
-			tok := pc.spec.CanonicalizeToken(fn.Token)
+		for _, tok := range functions {
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
-		for _, res := range maps.Sorted(resources) {
-			tok := pc.spec.CanonicalizeToken(res.Token)
-			fmt.Fprintf(&help, "  %s\n", tok)
+		for _, tok := range resources {
+			fmt.Fprintf(&help, "  %s\n", pc.spec.CanonicalizeToken(tok))
 		}
 		fmt.Fprintln(&help, "")
 	}
 
 	longhelp = fmt.Sprintf("%s\n\n%s", longhelp, help.String())
 
-	use := pc.spec.Name
+	use := pc.spec.Name()
 	if len(pc.args) > 0 {
 		use = pc.args[0]
 	}
 
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   use,
 		Short: shorthelp,
 		Long:  longhelp,
 		Args:  cobra.NoArgs,
 	}
-
-	return cmd
 }

@@ -239,7 +239,7 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 		spec.Version = pluginVersion.String()
 	}
 
-	p, err := ImportPartialSpec(spec, nil, l)
+	p, err := ImportPartialSpecWithContext(ctx, spec, nil, l)
 	if err != nil {
 		return nil, err
 	}

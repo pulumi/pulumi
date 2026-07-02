@@ -16,46 +16,22 @@ package codegen
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
-
-func readSchemaFile(file string) (pkgSpec schema.PackageSpec) {
-	// Read in, decode, and import the schema.
-	schemaBytes, err := os.ReadFile(filepath.Join("testing", "test", "testdata", file))
-	if err != nil {
-		panic(err)
-	}
-
-	if strings.HasSuffix(file, ".json") {
-		if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
-			panic(err)
-		}
-	} else if strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml") {
-		if err = yaml.Unmarshal(schemaBytes, &pkgSpec); err != nil {
-			panic(err)
-		}
-	} else {
-		panic("unknown schema file extension while parsing " + file)
-	}
-
-	return pkgSpec
-}
 
 func TestResolvingPackageReferences(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("testing", "test", "testdata")
 	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("remoteref-1.0.0.json")
+	var pkgSpec schema.PackageSpec
+	require.NoError(t, json.Unmarshal(utils.ReadSchema(t, "remoteref", "1.0.0"), &pkgSpec))
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})

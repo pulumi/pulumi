@@ -999,6 +999,17 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		rootName = "__item"
 	}
 
+	// Inside a numeric `range` loop, `range` is a plain number, so `range.value`
+	// and `range.key` both render as `range`.
+	if g.rangeValueIsScalar && expr.RootName == "range" {
+		if rel := expr.Traversal.SimpleSplit().Rel; len(rel) == 1 {
+			if attr, ok := rel[0].(hcl.TraverseAttr); ok && (attr.Name == "value" || attr.Name == "key") {
+				g.Fgen(w, "range")
+				return
+			}
+		}
+	}
+
 	g.Fgen(w, rootName)
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts)
 }

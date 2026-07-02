@@ -1,0 +1,16 @@
+name: aliases
+version: 1.0.0
+meta:
+  moduleFormat: (.*)
+config: {}
+provider: 
+  type: object
+resources:
+  aliases:index:First:
+    aliases:
+      - aliases:index:OldFirst
+    type: object
+  aliases:index:Second:
+    aliases:
+      - type: aliases:index:OldSecond
+    type: object

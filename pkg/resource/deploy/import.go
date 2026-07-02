@@ -23,6 +23,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -133,7 +134,7 @@ func NewImportDeployment(
 	}
 
 	// Create a goal map for the deployment.
-	newGoals := &gsync.Map[resource.URN, *resource.Goal]{}
+	newGoals := &gsync.Map[resource.URN, *pkgresource.Goal]{}
 
 	builtins := newBuiltinProvider(
 		nil, /*backendClient*/
@@ -171,7 +172,7 @@ func NewImportDeployment(
 type noopEvent int
 
 func (noopEvent) event()                             {}
-func (noopEvent) Goal() *resource.Goal               { return nil }
+func (noopEvent) Goal() *pkgresource.Goal            { return nil }
 func (noopEvent) Done(result *RegisterResult)        {}
 func (noopEvent) Extension() *apitype.Extension      { return nil }
 func (noopEvent) ExtensionRef() apitype.ExtensionRef { return "" }
@@ -214,7 +215,7 @@ func (i *importer) registerExistingResources(ctx context.Context) bool {
 			new := r.Copy()
 			new.ID = ""
 			// Set a dummy goal so the resource is tracked as managed.
-			i.deployment.goals.Store(r.URN, &resource.Goal{})
+			i.deployment.goals.Store(r.URN, &pkgresource.Goal{})
 			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, new)) {
 				return false
 			}
@@ -271,6 +272,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
+		SnippetID:               "",
 	}.Make()
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
@@ -434,6 +436,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
@@ -441,7 +444,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		// Set a dummy goal so the resource is tracked as managed.
-		i.deployment.goals.Store(urn, &resource.Goal{})
+		i.deployment.goals.Store(urn, &pkgresource.Goal{})
 		steps = append(steps, NewCreateStep(i.deployment, noopEvent(0), state))
 	}
 
@@ -523,12 +526,13 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
 		if issueCheckErrors(i.deployment, state, providerURN, resp.Failures) {
 			return nil, fmt.Errorf("explicit provider check failed for %s", providerURN)
 		}
 
-		i.deployment.goals.Store(providerURN, &resource.Goal{})
+		i.deployment.goals.Store(providerURN, &pkgresource.Goal{})
 		steps = append(steps, NewCreateStep(i.deployment, noopEvent(0), state))
 	}
 
@@ -711,12 +715,13 @@ func (i *importer) importResources(ctx context.Context) error {
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
 		if imp.Extension != nil {
 			new.ExtensionRef = resource.ExtensionRef(hashExtension(*imp.Extension))
 		}
 		// Set a dummy goal so the resource is tracked as managed.
-		i.deployment.goals.Store(urn, &resource.Goal{})
+		i.deployment.goals.Store(urn, &pkgresource.Goal{})
 
 		if imp.Component {
 			if imp.Remote {

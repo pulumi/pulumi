@@ -27,9 +27,9 @@ import (
 func TestLowerPropertyAccess(t *testing.T) {
 	t.Parallel()
 
-	const source = `zones = invoke("aws:index:getAvailabilityZones", {})
+	const source = `zones = invoke("infra:index:getZones", {})
 
-resource vpcSubnet "aws:ec2:Subnet" {
+resource vpcSubnet "infra:index:Subnet" {
 	options { range = zones.names }
 
 	cidrBlock = "10.100.${range.key}.0/24"
@@ -37,7 +37,7 @@ resource vpcSubnet "aws:ec2:Subnet" {
 	vpcId = 1
 }
 
-resource rta "aws:ec2:RouteTableAssociation" {
+resource rta "infra:index:RouteTableAssociation" {
 	options { range = zones.names }
 
 	subnetId = vpcSubnet[range.key].id

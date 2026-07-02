@@ -1,4 +1,0 @@
-component: backend/service
-kind: fix
-body: Don't fail a operation due to a logging failure
-time: 2026-06-26T13:56:17.67228+02:00
