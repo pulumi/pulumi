@@ -95,9 +95,6 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		Short: shorthelp,
 		Long:  longhelp,
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
 	}
 	// Provider configuration applies to all sub-operations, so register here as persistent flags.
 	cmd.PersistentFlags().StringVar(&pc.providerFile, "provider-file", "",
