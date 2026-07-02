@@ -55,13 +55,6 @@ func (c *converterServer) ConvertState(ctx context.Context,
 			IsRemote:          resource.IsRemote,
 			IsComponent:       resource.IsComponent,
 		}
-		if p := resource.Parameterization; p != nil {
-			resources[i].Parameterization = &pulumirpc.ResourceParameterization{
-				PluginName:    p.PluginName,
-				PluginVersion: p.PluginVersion,
-				Value:         p.Value,
-			}
-		}
 	}
 
 	// Translate the hcl.Diagnostics into rpc diagnostics.
