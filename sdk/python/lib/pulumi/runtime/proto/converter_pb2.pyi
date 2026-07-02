@@ -66,6 +66,7 @@ class ResourceImport(google.protobuf.message.Message):
     IS_COMPONENT_FIELD_NUMBER: builtins.int
     IS_REMOTE_FIELD_NUMBER: builtins.int
     PARAMETERIZATION_FIELD_NUMBER: builtins.int
+    EXTENSION_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type token for the resource."""
     name: builtins.str
@@ -84,8 +85,15 @@ class ResourceImport(google.protobuf.message.Message):
     """true if this is a remote resource. Ignored if is_component is false."""
     @property
     def parameterization(self) -> global___ResourceParameterization:
-        """the parameterization to use for the resource's provider, if any. Set when the resource should be
-        imported under a parameterized (e.g. dynamically bridged) provider rather than a plain one.
+        """the replacement parameterization to use for the resource's provider, if any. Set when the resource
+        should be imported under a parameterized (e.g. dynamically bridged) provider rather than a plain one.
+        """
+
+    @property
+    def extension(self) -> global___ResourceExtension:
+        """the extension parameterization to apply to the resource's provider, if any. Unlike a replacement
+        parameterization, the resource's own type is in the base provider's package; the extension is a blob
+        applied on top of that provider. Mutually exclusive with parameterization.
         """
 
     def __init__(
@@ -100,9 +108,10 @@ class ResourceImport(google.protobuf.message.Message):
         is_component: builtins.bool = ...,
         is_remote: builtins.bool = ...,
         parameterization: global___ResourceParameterization | None = ...,
+        extension: global___ResourceExtension | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "parameterization", b"parameterization", "pluginDownloadURL", b"pluginDownloadURL", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["extension", b"extension", "parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["extension", b"extension", "id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "parameterization", b"parameterization", "pluginDownloadURL", b"pluginDownloadURL", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ResourceImport = ResourceImport
 
@@ -133,6 +142,32 @@ class ResourceParameterization(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["plugin_name", b"plugin_name", "plugin_version", b"plugin_version", "value", b"value"]) -> None: ...
 
 global___ResourceParameterization = ResourceParameterization
+
+@typing.final
+class ResourceExtension(google.protobuf.message.Message):
+    """A ResourceExtension describes an extension parameterization to apply to a resource's (base) provider."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    VALUE_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """the name of the extension package."""
+    version: builtins.str
+    """the version of the extension package."""
+    value: builtins.bytes
+    """the parameter value for the extension."""
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str = ...,
+        value: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
+
+global___ResourceExtension = ResourceExtension
 
 @typing.final
 class ConvertStateResponse(google.protobuf.message.Message):

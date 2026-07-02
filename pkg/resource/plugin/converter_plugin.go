@@ -143,6 +143,13 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 				Value:         p.Value,
 			}
 		}
+		if e := resource.Extension; e != nil {
+			resources[i].Extension = &ResourceExtension{
+				Name:    e.Name,
+				Version: e.Version,
+				Value:   e.Value,
+			}
+		}
 	}
 
 	// Translate the rpc diagnostics into hcl.Diagnostics.

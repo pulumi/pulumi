@@ -112,6 +112,13 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 				Value:         p.Value,
 			}
 		}
+		if e := res.Extension; e != nil {
+			specs[i].Extension = &importExtension{
+				Name:    e.Name,
+				Version: e.Version,
+				Value:   e.Value,
+			}
+		}
 	}
 
 	return importFile{
@@ -181,18 +188,30 @@ type importSpec struct {
 	// LogicalName is the resources Pulumi name (i.e. the first argument to `new Resource`).
 	LogicalName string `json:"logicalName,omitempty"`
 
-	// Parameterization is set when the resource should be imported under a parameterized (e.g.
-	// dynamically bridged) provider rather than a plain one.
+	// Parameterization is set when the resource should be imported under a replacement-parameterized
+	// (e.g. dynamically bridged) provider rather than a plain one.
 	Parameterization *importParameterization `json:"parameterization,omitempty"`
+
+	// Extension is set when an extension parameterization should be applied to the resource's (base)
+	// provider. Mutually exclusive with Parameterization.
+	Extension *importExtension `json:"extension,omitempty"`
 }
 
-// importParameterization is the JSON representation of a resource's provider parameterization. The
+// importParameterization is the JSON representation of a resource's replacement parameterization. The
 // parameterized package name and version are taken from the resource's own type and version; these
 // fields describe the base plugin the parameterization is applied to.
 type importParameterization struct {
 	PluginName    string `json:"pluginName"`
 	PluginVersion string `json:"pluginVersion"`
 	Value         []byte `json:"value"`
+}
+
+// importExtension is the JSON representation of an extension parameterization applied to a resource's
+// (base) provider.
+type importExtension struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Value   []byte `json:"value"`
 }
 
 type importFile struct {
@@ -539,6 +558,18 @@ func parseImportFile(
 					PluginVersion: v,
 					Value:         spec.Parameterization.Value,
 				}
+			}
+		}
+
+		if spec.Extension != nil {
+			if spec.Parameterization != nil {
+				pusherrf("%v has both a parameterization and an extension, which are mutually exclusive",
+					describeResource(i, spec))
+			}
+			imp.Extension = &apitype.Extension{
+				Name:    spec.Extension.Name,
+				Version: spec.Extension.Version,
+				Value:   spec.Extension.Value,
 			}
 		}
 
