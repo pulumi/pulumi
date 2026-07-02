@@ -345,7 +345,14 @@ func (s *Stack) cloudOperation(
 	ctx context.Context, preview bool, overlay config.Map,
 ) (backend.UpdateOperation, error) {
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, s.sink, ssml, s.stack, s.proj, "")
+	// Name the settings file from the stack's own WorkDir: the fallback detection walks the
+	// PROCESS working directory, which for an embedded driver is the parent program's
+	// project, not this stack's.
+	configFile := ""
+	if p := filepath.Join(s.opts.WorkDir, "Pulumi."+s.stack.Ref().Name().String()+".yaml"); fileExists(p) {
+		configFile = p
+	}
+	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, s.sink, ssml, s.stack, s.proj, configFile)
 	if err != nil {
 		return backend.UpdateOperation{}, fmt.Errorf("assembling stack configuration: %w", err)
 	}
@@ -399,6 +406,11 @@ func (s *Stack) withEvents(ctx context.Context, run func(chan<- engine.Event) er
 	close(events)
 	<-done
 	return err
+}
+
+func fileExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }
 
 func parseConfig(in map[string]string) (config.Map, error) {
