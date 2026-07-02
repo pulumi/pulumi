@@ -121,6 +121,77 @@ func TestAwaitingSuspendAndResume(t *testing.T) {
 	}
 }
 
+// TestAwaitingSkippedComponentOutputs proves that a component held behind an awaiting
+// resource can still complete its registration. When a component's step is skipped because
+// it depends on an awaiting resource, the program (or a remote provider's construct) still
+// calls RegisterResourceOutputs on it -- that must be a no-op for a resource that was never
+// persisted this run, not an error that turns an honest suspension into a failure. This is
+// the delivery train's promote-behind-approval shape: Stage(production-base) depends on an
+// unresolved gate, gets skipped, and registers its outputs on unwind.
+func TestAwaitingSkippedComponentOutputs(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgGate", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						Status:         resource.StatusOK,
+						Awaiting:       true,
+						AwaitingReason: "gate held",
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		gate, err := monitor.RegisterResource("pkgGate:m:typGate", "gate", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		require.NoError(t, err)
+
+		comp, err := monitor.RegisterResource("my:mod:Comp", "comp", false, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Dependencies:            []resource.URN{gate.URN},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Parent:                  comp.URN,
+			Dependencies:            []resource.URN{gate.URN},
+		})
+		require.NoError(t, err)
+
+		// The component completes its registration on unwind, exactly as a language SDK or a
+		// remote construct does. A skipped component's outputs are a no-op, never an error.
+		err = monitor.RegisterResourceOutputs(comp.URN, resource.PropertyMap{
+			"summary": resource.NewStringProperty("skipped this run"),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, SkipDisplayTests: true, HostF: hostF},
+	}
+	project := p.GetProject()
+
+	// The run suspends (awaiting), and the suspension is the ONLY abnormality: the skipped
+	// component's RegisterResourceOutputs must not surface as a deployment error.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	var awaitErr *deploy.AwaitingError
+	require.True(t, errors.As(err, &awaitErr), "expected an AwaitingError, got %v", err)
+	require.NotNil(t, snap)
+	urns := snapshotURNs(snap)
+	assert.NotContains(t, urns, resource.URN("urn:pulumi:test::test::pkgGate:m:typGate::gate"))
+}
+
 func snapshotURNs(snap *deploy.Snapshot) []resource.URN {
 	urns := make([]resource.URN, 0, len(snap.Resources))
 	for _, r := range snap.Resources {

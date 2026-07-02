@@ -631,6 +631,7 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		if doesStepDependOn(step, ex.skipped) {
 			step.Skip()
 			ex.skipped.Add(step.Res().URN)
+			ex.stepExec.MarkSkipResolved(step.Res().URN)
 			continue
 		}
 		newSteps = append(newSteps, step)

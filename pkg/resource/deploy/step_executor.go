@@ -128,6 +128,13 @@ type stepExecutor struct {
 	awaitingStepLock sync.RWMutex
 	awaitingSteps    []Step
 
+	// Resources whose registration was resolved by skipping rather than executing: the
+	// step went awaiting, errored under ContinueOnError, or depended on one that did. A
+	// later RegisterResourceOutputs for such a resource is a no-op (nothing was persisted
+	// this run), never an error -- components complete their registration on unwind
+	// regardless of whether their members ran.
+	skipResolved gsync.Map[resource.URN, struct{}]
+
 	// Channel to collect panic errors from goroutines in this step executor
 	panicErrs chan error
 
@@ -220,6 +227,13 @@ func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
 	return completionToken{channel: done}
 }
 
+// MarkSkipResolved records that a resource's registration was resolved by skipping it (it
+// depended on an awaiting or errored step), so a later RegisterResourceOutputs for it is a
+// no-op rather than an error.
+func (se *stepExecutor) MarkSkipResolved(urn resource.URN) {
+	se.skipResolved.Store(urn, struct{}{})
+}
+
 // ExecuteRegisterResourceOutputs services a RegisterResourceOutputsEvent synchronously on the calling goroutine.
 func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) error {
 	return se.executeRegisterResourceOutputs(e, false /* errored */, false /* finalizingStackOutputs */)
@@ -249,6 +263,14 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	// Look up the final state in the pending registration list.
 	reg, has := se.pendingNews.Load(urn)
 	if !has {
+		// A skip-resolved resource (awaiting, errored under ContinueOnError, or dependent
+		// on one) has no pending registration because nothing ran; its outputs cannot be
+		// recorded and need not be -- the whole resource retries on a later update.
+		if _, skipped := se.skipResolved.Load(urn); skipped {
+			se.log(synchronousWorkerID, "ignoring outputs for skip-resolved resource: %s", urn)
+			e.Done()
+			return nil
+		}
 		return fmt.Errorf("cannot complete a resource '%v' whose registration isn't pending", urn)
 	}
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
@@ -478,6 +500,7 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 		se.erroredStepLock.Lock()
 		defer se.erroredStepLock.Unlock()
 		se.erroredSteps = append(se.erroredSteps, step)
+		se.skipResolved.Store(step.URN(), struct{}{})
 	} else {
 		se.cancel()
 	}
@@ -543,6 +566,7 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 			se.awaitingStepLock.Lock()
 			se.awaitingSteps = append(se.awaitingSteps, step)
 			se.awaitingStepLock.Unlock()
+			se.skipResolved.Store(step.URN(), struct{}{})
 			step.Skip()
 			if mut, ok := payload.(snapshotMutation); ok {
 				if endErr := mut.End(step, false /*successful*/); endErr != nil {
