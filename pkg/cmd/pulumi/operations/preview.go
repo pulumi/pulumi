@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"time"
@@ -57,7 +58,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -441,7 +441,7 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
-			logging.V(7).Infof("PULUMI_SUPPRESS_NEO_LINK=%v", env.SuppressNeoLink.Value())
+			slog.InfoContext(ctx, "PULUMI_SUPPRESS_NEO_LINK", "value", env.SuppressNeoLink.Value())
 			displayOpts.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
 			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
@@ -570,9 +570,9 @@ func NewPreviewCmd() *cobra.Command {
 
 			start := time.Now()
 			metadata, err := meta.Result(ctx)
-			logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+			slog.InfoContext(ctx, "Waiting for language runtime metadata", "duration", time.Since(start))
 			if err != nil {
-				logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+				slog.InfoContext(ctx, "Could not retrieve language runtime metadata", "err", err)
 			} else {
 				maps.Copy(m.Environment, metadata)
 			}
