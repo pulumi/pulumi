@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -168,17 +168,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "interpolated-string-keys",
 		Description: "Tests that interpolated string keys are supported in maps. ",
 		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestPython),
-	},
-	{
-		Directory:   "regress-node-12507",
-		Description: "Regression test for https://github.com/pulumi/pulumi/issues/12507",
-		Skip:        allProgLanguages.Except(TestNodeJS),
-		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
-	},
-	{
-		Directory:   "python-regress-14037",
-		Description: "Regression test for rewriting qoutes in python",
-		Skip:        allProgLanguages.Except(TestPython),
 	},
 }
 

@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"math"
 	"os"
@@ -50,17 +51,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -76,7 +76,7 @@ func defaultParallel() int32 {
 	if p := env.Parallel.Value(); p > 0 {
 		if p > math.MaxInt32 {
 			// Log a warning and cap at MaxInt32
-			logging.Warningf("Parallel value %d exceeds maximum allowed value, capping at %d", p, math.MaxInt32)
+			slog.Warn("Parallel value exceeds maximum allowed value, capping", "value", p, "max", math.MaxInt32)
 			defaultParallel = math.MaxInt32
 		} else {
 			defaultParallel = int32(p) //nolint:gosec
@@ -113,6 +113,7 @@ func NewUpCmd() *cobra.Command {
 	var parallel int32
 	var refresh string
 	var runProgram bool
+	var skipConfigValidation bool
 	var showConfig bool
 	var showPolicyRemediations bool
 	var showReplacementSteps bool
@@ -192,16 +193,24 @@ func NewUpCmd() *cobra.Command {
 		encrypter := sm.Encrypter()
 
 		stackName := s.Ref().Name().String()
-		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
-			ctx,
-			stackName,
-			proj,
-			cfg.Environment,
-			cfg.Config,
-			encrypter,
-			decrypter)
-		if configErr != nil {
-			return fmt.Errorf("validating stack config: %w", configErr)
+		if skipConfigValidation {
+			// Still apply project config defaults onto the stack config, but skip validation.
+			if configErr := workspace.ApplyProjectConfig(
+				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+				return fmt.Errorf("applying stack config: %w", configErr)
+			}
+		} else {
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
+				stackName,
+				proj,
+				cfg.Environment,
+				cfg.Config,
+				encrypter,
+				decrypter)
+			if configErr != nil {
+				return fmt.Errorf("validating stack config: %w", configErr)
+			}
 		}
 
 		targetURNs := slice.Prealloc[string](len(targets) + len(targetReplaces))
@@ -266,9 +275,9 @@ func NewUpCmd() *cobra.Command {
 
 		start := time.Now()
 		metadata, err := meta.Result(ctx)
-		logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+		slog.InfoContext(ctx, "Waiting for language runtime metadata", "duration", time.Since(start))
 		if err != nil {
-			logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+			slog.InfoContext(ctx, "Could not retrieve language runtime metadata", "err", err)
 		} else {
 			maps.Copy(m.Environment, metadata)
 		}
@@ -479,16 +488,24 @@ func NewUpCmd() *cobra.Command {
 		encrypter := sm.Encrypter()
 
 		stackName := s.Ref().String()
-		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
-			ctx,
-			stackName,
-			proj,
-			cfg.Environment,
-			cfg.Config,
-			encrypter,
-			decrypter)
-		if configErr != nil {
-			return fmt.Errorf("validating stack config: %w", configErr)
+		if skipConfigValidation {
+			// Still apply project config defaults onto the stack config, but skip validation.
+			if configErr := workspace.ApplyProjectConfig(
+				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+				return fmt.Errorf("applying stack config: %w", configErr)
+			}
+		} else {
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				ctx,
+				stackName,
+				proj,
+				cfg.Environment,
+				cfg.Config,
+				encrypter,
+				decrypter)
+			if configErr != nil {
+				return fmt.Errorf("validating stack config: %w", configErr)
+			}
 		}
 
 		refreshOption, err := getRefreshOption(proj, refresh)
@@ -518,9 +535,9 @@ func NewUpCmd() *cobra.Command {
 
 		start := time.Now()
 		metadata, err := meta.Result(ctx)
-		logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+		slog.InfoContext(ctx, "Waiting for language runtime metadata", "duration", time.Since(start))
 		if err != nil {
-			logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+			slog.InfoContext(ctx, "Could not retrieve language runtime metadata", "err", err)
 		} else {
 			maps.Copy(m.Environment, metadata)
 		}
@@ -685,7 +702,7 @@ func NewUpCmd() *cobra.Command {
 			}
 
 			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
-			logging.V(7).Infof("PULUMI_SUPPRESS_NEO_LINK=%v", env.SuppressNeoLink.Value())
+			slog.InfoContext(ctx, "PULUMI_SUPPRESS_NEO_LINK", "value", env.SuppressNeoLink.Value())
 			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
@@ -808,6 +825,9 @@ func NewUpCmd() *cobra.Command {
 		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to refresh resources,"+
 			" this only applies if --refresh is set")
+	cmd.PersistentFlags().BoolVar(
+		&skipConfigValidation, "skip-config-validation", false,
+		"Skip validation of stack config values against the project config schema")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

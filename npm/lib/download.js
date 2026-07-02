@@ -56,9 +56,9 @@ async function installCLI(
 
 // fetchLatestVersion returns the latest stable Pulumi release version string.
 async function fetchLatestVersion(fetchText = defaultFetchText) {
-    const text = await fetchText("https://api.github.com/repos/pulumi/pulumi/releases/latest");
-    const { tag_name } = JSON.parse(text);
-    return tag_name.replace(/^v/, "");
+    const text = await fetchText("https://api.pulumi.com/api/cli/version");
+    const { latestVersion } = JSON.parse(text);
+    return latestVersion.replace(/^v/, "");
 }
 
 module.exports = { installCLI, fetchLatestVersion };

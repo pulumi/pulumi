@@ -1,4 +1,0 @@
-component: cli
-kind: improvement
-body: Add --output $format to `pulumi project list`
-time: 2026-06-25T13:17:33.166619+02:00

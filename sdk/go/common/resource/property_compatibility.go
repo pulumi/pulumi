@@ -174,3 +174,23 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		return property.Value{}
 	}
 }
+
+func FromResourcePropertyPath(v PropertyPath) property.Path {
+	str, err := v.MarshalText()
+	contract.AssertNoErrorf(err, "Failed to marshal PropertyPath %v", v)
+	var p property.Path
+	if err := p.UnmarshalText(str); err != nil {
+		contract.Failf("Failed to unmarshal property.Path %v: %v", v, err)
+	}
+	return p
+}
+
+func ToResourcePropertyPath(v property.Path) PropertyPath {
+	str, err := v.MarshalText()
+	contract.AssertNoErrorf(err, "Failed to marshal property.Path %v", v)
+	var p PropertyPath
+	if err := p.UnmarshalText(str); err != nil {
+		contract.Failf("Failed to unmarshal PropertyPath %v: %v", v, err)
+	}
+	return p
+}

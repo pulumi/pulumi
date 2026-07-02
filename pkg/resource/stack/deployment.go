@@ -28,9 +28,9 @@ import (
 
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/migrate"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -164,6 +164,9 @@ func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	}
 	if res.ExtensionRef != "" {
 		features[extensionParameterizationFeature] = true
+	}
+	if res.SnippetID != "" {
+		features[snippetsFeature] = true
 	}
 }
 
@@ -658,6 +661,7 @@ func SerializeResource(
 		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 		ViewOf:                  res.ViewOf,
 		ResourceHooks:           res.ResourceHooks,
+		SnippetID:               res.SnippetID,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -890,6 +894,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
+			SnippetID:               res.SnippetID,
 		}.Make(),
 		nil
 }

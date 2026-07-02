@@ -15,9 +15,9 @@
 import { randomInt } from "crypto";
 import execa from "execa";
 import * as fs from "fs/promises";
+import * as os from "os";
 import * as path from "path";
 import * as process from "process";
-import * as tmp from "tmp";
 import { pack } from "./pack";
 
 // Write a package.json that installs the local pulumi package and ensures we
@@ -71,26 +71,26 @@ async function copyDir(src: string, dest: string) {
 }
 
 async function run(typescriptVersion: string, nodeTypesVersion: string) {
-    const tmpDir = tmp.dirSync({ prefix: "closure-test-", unsafeCleanup: true });
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "closure-test-"));
     const sdkRoot = path.join(__dirname, "..", "..", "..");
     const sdkRootBin = path.join(sdkRoot, "bin");
     // Add a random suffix to the package name to avoid any issues with npm caching the tgz.
     const packageName = `pulumi-${randomInt(10000, 99999)}.tgz`;
-    const pulumiPackagePath = path.join(tmpDir.name, packageName);
+    const pulumiPackagePath = path.join(tmpDir, packageName);
     await pack(sdkRootBin, pulumiPackagePath);
-    await writePackageJSON(tmpDir.name, pulumiPackagePath, typescriptVersion, nodeTypesVersion);
-    await copyDir(path.join(sdkRoot, "tests", "runtime", "testdata", "closure-tests"), tmpDir.name);
+    await writePackageJSON(tmpDir, pulumiPackagePath, typescriptVersion, nodeTypesVersion);
+    await copyDir(path.join(sdkRoot, "tests", "runtime", "testdata", "closure-tests"), tmpDir);
 
-    await execa("npm", ["install", "--install-links"], { cwd: tmpDir.name });
+    await execa("npm", ["install", "--install-links"], { cwd: tmpDir });
 
-    await execa("npx", ["--no-install", "tsc"], { cwd: tmpDir.name });
+    await execa("npx", ["--no-install", "tsc"], { cwd: tmpDir });
 
     await execa("npx", ["--no-install", "mocha", "--timeout", "30000", "test.js"], {
-        cwd: tmpDir.name,
+        cwd: tmpDir,
         stdio: "inherit",
     });
 
-    tmpDir.removeCallback();
+    await fs.rm(tmpDir, { recursive: true, force: true });
 }
 
 async function main() {

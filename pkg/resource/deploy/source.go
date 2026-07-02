@@ -18,10 +18,11 @@ import (
 	"context"
 	"io"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -90,7 +91,7 @@ type SourceEvent interface {
 type RegisterResourceEvent interface {
 	SourceEvent
 	// Goal returns the goal state for the resource object that was allocated by the program.
-	Goal() *resource.Goal
+	Goal() *pkgresource.Goal
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
 	Done(result *RegisterResult)
 	// Extension returns the extension parameterization, if any. A non-nil value

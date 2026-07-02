@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -39,12 +40,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	cmdEnv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -52,7 +53,6 @@ import (
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/hgutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -65,7 +65,7 @@ func GetPolicyPublishMetadata(root string) map[string]string {
 	}
 
 	if err := addVCSMetadata(root, m); err != nil {
-		logging.V(3).Infof("errors detecting VCS metadata: %s", err)
+		slog.Info("errors detecting VCS metadata", "err", err)
 	}
 
 	addCIMetadataToEnvironment(m.Environment)
@@ -141,7 +141,7 @@ func GetUpdateMetadata(
 	addPulumiCLIMetadataToEnvironment(m.Environment, flags, os.Environ)
 
 	if err := addVCSMetadata(root, m); err != nil {
-		logging.V(3).Infof("errors detecting VCS metadata: %s", err)
+		slog.Info("errors detecting VCS metadata", "err", err)
 	}
 
 	addCIMetadataToEnvironment(m.Environment)

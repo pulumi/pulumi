@@ -231,7 +231,7 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 	// Print the individual policy's name and target resource type/name.
 	policyLine := fmt.Sprintf("%s[%s]%s  %s%s  (%s: %s)",
 		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
-		payload.ResourceURN.Type(), resourceText(payload.ResourceURN, opts))
+		payload.ResourceURN.Type().DisplayName(), resourceText(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {

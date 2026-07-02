@@ -20,20 +20,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -679,7 +679,8 @@ func (host *defaultHost) Close() (err error) {
 			wg.Go(func() {
 				contract.IgnoreError(plug.Plugin.SignalCancellation(cancelCtx))
 				if err := plug.Plugin.Close(); err != nil {
-					logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Name, err)
+					slog.InfoContext(cancelCtx, "Error closing plugin during shutdown; ignoring",
+						"kind", "resource", "name", plug.Name, "err", err)
 				}
 			})
 		}
@@ -687,7 +688,8 @@ func (host *defaultHost) Close() (err error) {
 			wg.Go(func() {
 				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
 				if err := plug.Plugin.Close(); err != nil {
-					logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Name, err)
+					slog.InfoContext(cancelCtx, "Error closing plugin during shutdown; ignoring",
+						"kind", "analyzer", "name", plug.Name, "err", err)
 				}
 			})
 		}
@@ -697,7 +699,8 @@ func (host *defaultHost) Close() (err error) {
 			wg.Go(func() {
 				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
 				if err := plug.Plugin.Close(); err != nil {
-					logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Name, err)
+					slog.InfoContext(cancelCtx, "Error closing plugin during shutdown; ignoring",
+						"kind", "language", "name", plug.Name, "err", err)
 				}
 			})
 		}

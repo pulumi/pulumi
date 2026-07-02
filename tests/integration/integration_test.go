@@ -1134,7 +1134,8 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults(
-		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack")
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack",
+	)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
 }
@@ -1160,7 +1161,8 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults(
-		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack")
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack",
+	)
 	assert.Error(t, err)
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
@@ -1187,7 +1189,8 @@ func TestBunMandatoryPolicyPack(t *testing.T) {
 	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults(
-		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "bun_mandatory_policy_pack")
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "bun_mandatory_policy_pack",
+	)
 	assert.Error(t, err)
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ bun@v0.0.1 (local: bun_mandatory_policy_pack)")
@@ -1776,7 +1779,8 @@ func TestConfigFlag(t *testing.T) {
 
 	e.RunCommand("pulumi", "stack", "init", "config-flag-test")
 	stdout, _ := e.RunCommand(
-		"pulumi", "up", "--skip-preview", "--yes", "--config", "config-flag:example=an-example")
+		"pulumi", "up", "--skip-preview", "--yes", "--config", "config-flag:example=an-example",
+	)
 	require.Contains(t, stdout, "an-example")
 
 	configPath := filepath.Join(e.CWD, "Pulumi.config-flag-test.yaml")
@@ -1803,6 +1807,71 @@ func TestConfigFlag(t *testing.T) {
 	configContent, err = os.ReadFile(configPath)
 	require.NoError(t, err)
 	require.Contains(t, string(configContent), "config-flag:example: an-example")
+}
+
+// TestRefreshDestroySkipConfigValidationByDefault verifies that refresh and destroy no longer
+// validate stack config against the project config schema unless the program is being run.
+// This allows stacks with missing or invalid config to be refreshed and destroyed, e.g. in
+// ephemeral PR environments where config may diverge between branches.
+func TestRefreshDestroySkipConfigValidationByDefault(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("config_flag")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "stack", "init", "config-flag-test")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes", "--config", "config-flag:example=an-example")
+
+	// Remove the stack config so the required `config-flag:example` key is missing.
+	e.RunCommand("rm", "Pulumi.config-flag-test.yaml")
+
+	// Without --run-program, refresh and destroy must not validate config and should succeed.
+	e.RunCommand("pulumi", "refresh", "--yes")
+	e.RunCommand("pulumi", "destroy", "--yes")
+
+	// With --run-program, config validation runs again and the missing key is reported.
+	e.RunCommandExpectError("pulumi", "refresh", "--run-program", "--yes")
+}
+
+// TestSkipConfigValidation verifies the --skip-config-validation flag (and its
+// PULUMI_SKIP_CONFIG_VALIDATION env var equivalent) on preview, up, refresh, and destroy.
+// It uses a project whose config schema declares a required key that the program never reads,
+// so config validation fails when the key is unset, but the program itself runs successfully
+// once validation is skipped.
+func TestSkipConfigValidation(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("config_skip_validation")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "stack", "init", "skip-validation-test")
+
+	// The required `config-skip-validation:example` key is unset, so the default behavior
+	// is to fail config validation for preview and up.
+	_, stderr := e.RunCommandExpectError("pulumi", "preview")
+	require.Contains(t, stderr, "validating stack config")
+	_, stderr = e.RunCommandExpectError("pulumi", "up", "--skip-preview", "--yes")
+	require.Contains(t, stderr, "validating stack config")
+
+	// --skip-config-validation lets both proceed; the program does not read the key.
+	e.RunCommand("pulumi", "preview", "--skip-config-validation")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes", "--skip-config-validation")
+
+	// --skip-config-validation also overrides --run-program, where validation would otherwise
+	// run for refresh and destroy. The program runs but does not read the missing key.
+	e.RunCommand("pulumi", "refresh", "--run-program", "--skip-config-validation", "--yes")
+
+	// The flag is also exposed automatically as an env var (PULUMI_OPTION_<FLAG>).
+	e.Env = append(e.Env, "PULUMI_OPTION_SKIP_CONFIG_VALIDATION=true")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+	e.Env = e.Env[:len(e.Env)-1]
+
+	// Tear the stack down, skipping validation so the missing key does not block destroy.
+	e.RunCommand("pulumi", "destroy", "--run-program", "--yes", "--skip-config-validation")
 }
 
 func TestValidatePulumiVersionRange(t *testing.T) {

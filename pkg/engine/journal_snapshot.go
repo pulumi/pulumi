@@ -103,6 +103,7 @@ const (
 	JournalEntrySecretsManager        JournalEntryKind = 6
 	JournalEntryRebuiltBaseState      JournalEntryKind = 7
 	JournalEntryExtensionParameterize JournalEntryKind = 8
+	JournalEntrySnippets              JournalEntryKind = 9
 )
 
 func (k JournalEntryKind) String() string {
@@ -125,6 +126,8 @@ func (k JournalEntryKind) String() string {
 		return "RebuiltBaseState"
 	case JournalEntryExtensionParameterize:
 		return "ExtensionParameterize"
+	case JournalEntrySnippets:
+		return "Snippets"
 	default:
 		return "Unknown"
 	}
@@ -171,6 +174,9 @@ type JournalEntry struct {
 	// map on replay. Only set for JournalEntryExtensionParameterize entries.
 	ExtensionRef *apitype.ExtensionRef
 	Extension    *apitype.Extension
+
+	// Snippets is the complete snippet list to persist when Kind is JournalEntrySnippets.
+	Snippets []resource.Snippet
 }
 
 func hasNewResource(entry JournalEntry) bool {
@@ -228,6 +234,12 @@ func (sm *JournalSnapshotManager) RegisterSecretsManager(secretsManager secrets.
 	journalEntry := sm.newJournalEntry(JournalEntrySecretsManager, 0)
 	journalEntry.SecretsManager = secretsManager
 	journalEntry.ElideWrite = true
+	return sm.addJournalEntry(journalEntry)
+}
+
+func (sm *JournalSnapshotManager) SetSnippets(snippets []resource.Snippet) error {
+	journalEntry := sm.newJournalEntry(JournalEntrySnippets, 0)
+	journalEntry.Snippets = snippets
 	return sm.addJournalEntry(journalEntry)
 }
 
@@ -334,6 +346,7 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 		PendingOperations: make([]resource.Operation, 0, len(base.PendingOperations)),
 		Metadata:          base.Metadata,
 		Extensions:        base.Extensions,
+		Snippets:          slices.Clone(base.Snippets),
 	}
 
 	// Copy the resources from the base snapshot to the new snapshot.

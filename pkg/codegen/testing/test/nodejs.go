@@ -128,8 +128,6 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 			result[pkgName] = "^" + pkgVersion
 		}
 		switch d {
-		case "aws":
-			set(AwsSchema)
 		case "random":
 			set(RandomSchema)
 		default:

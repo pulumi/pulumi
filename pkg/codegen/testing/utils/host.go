@@ -18,12 +18,13 @@ package utils
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -58,10 +59,17 @@ func NewContextWithProviders(schemaDirectoryPath string, providers ...SchemaProv
 					}, nil
 				},
 				GetSchemaF: func(_ context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
-					path := filepath.Join(schemaDirectoryPath, fmt.Sprintf("%s-%s.json", name, version))
-					data, err := os.ReadFile(path)
+					// Provider schemas resolve from the embedded canonical set;
+					// schemaDirectoryPath is a fallback for schemas supplied on
+					// disk by downstream consumers (e.g. pulumi-yaml's downloaded
+					// real-provider schemas).
+					filename := fmt.Sprintf("%s-%s.json", name, version)
+					data, err := fs.ReadFile(SchemaFS(), filename)
 					if err != nil {
-						return plugin.GetSchemaResponse{}, err
+						data, err = os.ReadFile(filepath.Join(schemaDirectoryPath, filename))
+						if err != nil {
+							return plugin.GetSchemaResponse{}, err
+						}
 					}
 					return plugin.GetSchemaResponse{
 						Schema: data,
@@ -99,10 +107,10 @@ func NewContext(schemaDirectoryPath string) *plugin.Context {
 		SchemaProvider{"tls", "4.10.0"},
 		SchemaProvider{"random", "4.11.2"},
 		SchemaProvider{"std", "1.0.0"},
-		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
-		SchemaProvider{"aws", "5.4.0"},
 
 		SchemaProvider{"component", "13.3.7"},
+		SchemaProvider{"importer", "1.0.0"},
+		SchemaProvider{"infra", "1.0.0"},
 		SchemaProvider{"other", "0.1.0"},
 		SchemaProvider{"synthetic", "1.0.0"},
 		SchemaProvider{"range", "1.0.0"},

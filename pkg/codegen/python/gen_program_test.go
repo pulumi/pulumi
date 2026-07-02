@@ -27,7 +27,7 @@ import (
 func TestFunctionInvokeBindsArgumentObjectType(t *testing.T) {
 	t.Parallel()
 
-	const source = `zones = invoke("aws:index:getAvailabilityZones", {})`
+	const source = `zones = invoke("infra:index:getZones", {})`
 
 	program, diags := parseAndBindProgram(t, source, "bind_func_invoke_args.pp")
 	contract.Ignore(diags)

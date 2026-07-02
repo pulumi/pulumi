@@ -37,9 +37,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -91,6 +91,10 @@ type Interpreter struct {
 	callbacks     *pclCallbackServer
 	callbacksOnce sync.Once
 	callbacksErr  error
+
+	// snippetID is the UUID of the snippet driving this interpreter, if any. When set, it is
+	// propagated onto every RegisterResourceRequest emitted by the interpreter.
+	snippetID string
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
@@ -496,9 +500,11 @@ func (i *Interpreter) RunEmbedded(
 	monitor pulumirpc.ResourceMonitorClient,
 	loader schema.ReferenceLoader,
 	scopeVars map[string]resource.PropertyValue,
+	snippetID string,
 ) error {
 	i.monitor = monitor
 	i.loader = loader
+	i.snippetID = snippetID
 
 	i.evalContext = NewEvalContext(
 		i.info.WorkingDir,
@@ -1293,6 +1299,7 @@ func (i *Interpreter) registerResourceWith(
 		AcceptSecrets:           true,
 		AcceptResources:         true,
 		SupportsResultReporting: true,
+		SnippetId:               i.snippetID,
 	}
 	packageRef, err := i.getPackageRefFromToken(token)
 	if err != nil {
@@ -1970,6 +1977,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		AcceptSecrets:        true,
 		AcceptResources:      true,
 		Parent:               i.stackURN,
+		SnippetId:            i.snippetID,
 	}
 	if component.Options != nil && component.Options.Parent != nil {
 		parent, poison, diags := i.evalContext.Evaluate(component.Options.Parent)

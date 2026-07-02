@@ -301,11 +301,11 @@ version=$(word 2,$(subst !, ,$@))
 schema-%: .make/ensure/curl .make/ensure/jq
 	@echo "Ensuring schema ${name}, ${version}"
 	@# Download the package from github, then stamp in the correct version.
-	@[ -f pkg/codegen/testing/test/testdata/${name}-${version}.json ] || \
+	@[ -f pkg/codegen/testing/utils/schemas/${name}-${version}.json ] || \
 		curl "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/provider/cmd/pulumi-resource-${name}/schema.json" \
-		| jq '.version = "${version}"' >  pkg/codegen/testing/test/testdata/${name}-${version}.json
+		| jq '.version = "${version}"' >  pkg/codegen/testing/utils/schemas/${name}-${version}.json
 	@# Confirm that the correct version is present. If not, error out.
-	@FOUND="$$(jq -r '.version' pkg/codegen/testing/test/testdata/${name}-${version}.json)" &&        \
+	@FOUND="$$(jq -r '.version' pkg/codegen/testing/utils/schemas/${name}-${version}.json)" &&        \
 		if ! [ "$$FOUND" = "${version}" ]; then									           \
 			echo "${name} required version ${version} but found existing version $$FOUND"; \
 			exit 1;																		   \
@@ -321,7 +321,6 @@ schema-%: .make/ensure/curl .make/ensure/jq
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
 # separate commit from other changes, as online code review tools may balk at rendering these diffs.
 get_schemas: \
-			schema-aws!5.4.0            \
 			schema-random!4.11.2        \
 			schema-tls!4.10.0
 

@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"math"
 	"net/url"
 	"os"
@@ -39,8 +40,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -68,13 +69,19 @@ func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	return pkgSpec
 }
 
+// readSchema decodes an embedded provider schema (the canonical "<name>-<version>.json").
+func readSchema(t *testing.T, name, version string) (pkgSpec PackageSpec) {
+	require.NoError(t, json.Unmarshal(utils.ReadSchema(t, name, version), &pkgSpec))
+	return pkgSpec
+}
+
 func TestRoundtripRemoteTypeRef(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/13000
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("remoteref-1.0.0.json")
+	pkgSpec := readSchema(t, "remoteref", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -98,7 +105,7 @@ func TestRoundtripLocalTypeRef(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("localref-1.0.0.json")
+	pkgSpec := readSchema(t, "localref", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -135,7 +142,7 @@ func TestRoundtripEnum(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("enum-1.0.0.json")
+	pkgSpec := readSchema(t, "enum", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -247,7 +254,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("plain-properties-1.0.0.json")
+	pkgSpec := readSchema(t, "plain-properties", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -274,7 +281,7 @@ func TestImportSpec(t *testing.T) {
 	t.Parallel()
 
 	// Read in, decode, and import the schema.
-	pkgSpec := readSchemaFile("random-4.11.2.json")
+	pkgSpec := readSchema(t, "random", "4.11.2")
 
 	pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 		AllowDanglingReferences: true,
@@ -2868,7 +2875,9 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("aliases-1.0.0.json")
+	schemaBytes := utils.ReadSchema(t, "aliases", "1.0.0")
+	var pkgSpec PackageSpec
+	require.NoError(t, json.Unmarshal(schemaBytes, &pkgSpec))
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -2881,9 +2890,6 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 	jsonData, err := json.Marshal(&newSpec)
 	require.NoError(t, err)
 
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.json"))
-	require.NoError(t, err)
-
 	assert.JSONEq(t, string(schemaBytes), string(jsonData))
 }
 
@@ -2892,7 +2898,10 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("aliases-1.0.0.yaml")
+	schemaBytes, err := fs.ReadFile(utils.SchemaFS(), "aliases-1.0.0.yaml")
+	require.NoError(t, err)
+	var pkgSpec PackageSpec
+	require.NoError(t, yaml.Unmarshal(schemaBytes, &pkgSpec))
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -2905,9 +2914,6 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 	yamlData, err := yaml.Marshal(&newSpec)
 	require.NoError(t, err)
 
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.yaml"))
-	require.NoError(t, err)
-
 	assert.YAMLEq(t, string(schemaBytes), string(yamlData))
 }
 
@@ -2916,7 +2922,7 @@ func TestDanglingReferences(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("dangling-reference-bad-0.1.0.json")
+	pkgSpec := readSchema(t, "dangling-reference-bad", "0.1.0")
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
 
 	require.Len(t, diags, 1)
@@ -2932,7 +2938,7 @@ func TestNoDanglingReferences(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("dangling-reference-good-0.1.0.json")
+	pkgSpec := readSchema(t, "dangling-reference-good", "0.1.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
 	require.NoError(t, err)
 	assert.Empty(t, diags)

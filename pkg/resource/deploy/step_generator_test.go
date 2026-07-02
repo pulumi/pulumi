@@ -25,15 +25,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -541,7 +542,7 @@ func TestGenerateAliases(t *testing.T) {
 			t.Parallel()
 
 			parentURN := resource.CreateURN("myres", "test:resource:type", "", project, stack.String())
-			goal := &resource.Goal{
+			goal := &pkgresource.Goal{
 				Parent:  parentURN,
 				Name:    "myres-child",
 				Type:    "test:resource:child",
@@ -900,7 +901,7 @@ func TestStepGenerator(t *testing.T) {
 				},
 			}
 			_, _, err := sg.generateSteps(t.Context(), &registerResourceEvent{
-				goal: &resource.Goal{
+				goal: &pkgresource.Goal{
 					Parent: "does-not-exist",
 				},
 			})
@@ -1042,7 +1043,7 @@ func TestStepGenerator(t *testing.T) {
 		}
 
 		event := &testRegEvent{
-			goal: &resource.Goal{
+			goal: &pkgresource.Goal{
 				Type:     "k8s:apiextensions.k8s.io/v1:CustomResource",
 				Name:     "my-cr",
 				Provider: providerRef.String(),

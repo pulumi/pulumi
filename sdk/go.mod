@@ -25,6 +25,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/texttheater/golang-levenshtein v1.0.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
+	go.opentelemetry.io/otel/bridge/opentracing v1.33.0
 	golang.org/x/crypto v0.52.0
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.55.0
@@ -42,7 +43,6 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/git-pkgs/manifests v0.4.1
 	github.com/go-git/go-git/v6 v6.0.0-alpha.4
-	github.com/go-test/deep v1.1.1
 	github.com/golang/glog v1.2.5
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.22.0

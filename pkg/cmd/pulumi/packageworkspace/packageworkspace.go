@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -31,16 +32,15 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	diagutils "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"go.opentelemetry.io/otel"
@@ -186,13 +186,13 @@ func (w Workspace) DownloadPlugin(
 			"Will retry in %v [%d/%d]", err, delay, attempt, limit)
 	}
 
-	logging.V(1).Infof("downloading provider %s", pluginSpec.Name)
+	slog.InfoContext(ctx, "downloading provider", "provider", pluginSpec.Name)
 	downloadedFile, err := workspace.DownloadToFile(ctx, pluginSpec, wrapper, retry)
 	if err != nil {
 		return "", nil, err
 	}
 
-	logging.V(1).Infof("unpacking provider %s", pluginSpec.Name)
+	slog.InfoContext(ctx, "unpacking provider", "provider", pluginSpec.Name)
 	// Wrap the downloaded tarball with a progress bar sized by the downloaded tarball, so extraction shows progress
 	// during unpacking. [pluginstorage.UnpackContents] closes the content (and thus this stream) when it returns, which
 	// is what finishes the bar.
