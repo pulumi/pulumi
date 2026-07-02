@@ -129,36 +129,18 @@ type pkgCtx struct {
 func drawPackageSpec(t *rapid.T) schema.PackageSpec {
 	name := drawPackageName(t, "pkgName")
 
-	ctx := &pkgCtx{
-		name:             name,
-		enumTokensByBase: map[string][]string{},
-		typeDefs:         map[string]schema.ComplexTypeSpec{},
-	}
-
-	nResources := rapid.IntRange(0, 4).Draw(t, "nResources")
-	resourceTokens := make([]string, nResources)
-	for i := 0; i < nResources; i++ {
-		module := drawModule(t, ctx, fmt.Sprintf("res%d:module", i))
-		resourceTokens[i] = fmt.Sprintf("%s:%s:Res%d", name, module, i)
-	}
-
-	resources := make(map[string]schema.ResourceSpec, nResources)
-	for _, tok := range resourceTokens {
-		resources[tok] = drawResourceSpec(t, ctx, tok)
-	}
-
-	spec := schema.PackageSpec{
-		Name:      name,
-		Version:   Version().Draw(t, "version").String(),
-		Types:     ctx.typeDefs,
-		Resources: resources,
-	}
-
 	emptyProvider := func() *schema.ResourceSpec {
 		// Provider is required by the binder; an empty object satisfies it
 		// without contributing any properties.
 		return &schema.ResourceSpec{ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"}}
 	}
+
+	// Settle the parameterization before drawing any tokens: extension
+	// parameterized packages must namespace their tokens under the base
+	// provider rather than their own name, so the token namespace has to be
+	// known up front.
+	var spec schema.PackageSpec
+	tokenNamespace := name
 	switch rapid.IntRange(0, 2).Draw(t, "parameterization") {
 	case 0:
 		spec.Provider = emptyProvider()
@@ -169,7 +151,31 @@ func drawPackageSpec(t *rapid.T) schema.PackageSpec {
 	case 2:
 		e := drawExtensionParameterizationSpec(t, "extensionParameterization")
 		spec.ExtensionParameterization = &e
+		tokenNamespace = e.BaseProvider.Name
 	}
+
+	ctx := &pkgCtx{
+		name:             tokenNamespace,
+		enumTokensByBase: map[string][]string{},
+		typeDefs:         map[string]schema.ComplexTypeSpec{},
+	}
+
+	nResources := rapid.IntRange(0, 4).Draw(t, "nResources")
+	resourceTokens := make([]string, nResources)
+	for i := 0; i < nResources; i++ {
+		module := drawModule(t, ctx, fmt.Sprintf("res%d:module", i))
+		resourceTokens[i] = fmt.Sprintf("%s:%s:Res%d", tokenNamespace, module, i)
+	}
+
+	resources := make(map[string]schema.ResourceSpec, nResources)
+	for _, tok := range resourceTokens {
+		resources[tok] = drawResourceSpec(t, ctx, tok)
+	}
+
+	spec.Name = name
+	spec.Version = Version().Draw(t, "version").String()
+	spec.Types = ctx.typeDefs
+	spec.Resources = resources
 
 	return spec
 }

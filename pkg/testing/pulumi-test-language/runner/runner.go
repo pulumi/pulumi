@@ -1428,8 +1428,30 @@ func runLanguageTests(
 					return makeTestResponse(fmt.Sprintf("get package definition: %v", err)), nil
 				}
 
+				// Replacement and extension parameterization keep their base plugin
+				// in different slots, but both resolve to the same base-plugin +
+				// parameterization descriptor a program depends on.
+				var baseName string
+				var baseVersion semver.Version
+				var parameter []byte
+				var parameterized bool
+				var isExtension bool
+				switch {
+				case pkgDef.Parameterization != nil:
+					baseName = pkgDef.Parameterization.BasePlugin.Name
+					baseVersion = pkgDef.Parameterization.BasePlugin.Version
+					parameter = pkgDef.Parameterization.Parameter
+					parameterized = true
+				case pkgDef.ExtensionParameterization != nil:
+					baseName = pkgDef.ExtensionParameterization.BaseProvider.Name
+					baseVersion = pkgDef.ExtensionParameterization.BaseProvider.Version
+					parameter = pkgDef.ExtensionParameterization.Parameter
+					parameterized = true
+					isExtension = true
+				}
+
 				var desc workspace.PackageDescriptor
-				if pkgDef.Parameterization == nil {
+				if !parameterized {
 					desc = workspace.PackageDescriptor{
 						PluginDescriptor: workspace.PluginDescriptor{
 							Name:    pkgDef.Name,
@@ -1439,14 +1461,22 @@ func runLanguageTests(
 				} else {
 					desc = workspace.PackageDescriptor{
 						PluginDescriptor: workspace.PluginDescriptor{
-							Name:    pkgDef.Parameterization.BasePlugin.Name,
-							Version: &pkgDef.Parameterization.BasePlugin.Version,
+							Name:    baseName,
+							Version: &baseVersion,
 						},
-						Parameterization: &workspace.Parameterization{
-							Name:    pkgDef.Name,
-							Version: *pkgDef.Version,
-							Value:   pkgDef.Parameterization.Parameter,
-						},
+					}
+					param := &workspace.Parameterization{
+						Name:    pkgDef.Name,
+						Version: *pkgDef.Version,
+						Value:   parameter,
+					}
+					// Replacement and extension parameterization live in different
+					// descriptor slots; the real language hosts report extensions via
+					// the extension slot, so the expectation must match.
+					if isExtension {
+						desc.ExtensionParameterization = param
+					} else {
+						desc.Parameterization = param
 					}
 				}
 
@@ -1473,12 +1503,22 @@ func runLanguageTests(
 					versionsMatch(&expected.Version, &actual.Version) &&
 					slices.Equal(expected.Value, actual.Value)
 			}
+			// Replacement and extension parameterization both carry base+name+value.
+			// SDK language hosts report an extension in the extension slot while the
+			// PCL host reports it in the parameterization slot, so compare whichever
+			// slot holds the parameterization.
+			effectiveParam := func(d workspace.PackageDescriptor) *workspace.Parameterization {
+				if d.ExtensionParameterization != nil {
+					return d.ExtensionParameterization
+				}
+				return d.Parameterization
+			}
 			for _, expectedPackage := range expectedPackages {
 				var found bool
 				for _, actual := range packages {
 					if actual.Name == expectedPackage.Name &&
 						versionsMatch(expectedPackage.Version, actual.Version) &&
-						parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+						parameterizationsMatch(effectiveParam(expectedPackage), effectiveParam(actual)) {
 						found = true
 						break
 					}
@@ -1494,7 +1534,7 @@ func runLanguageTests(
 				for _, expectedPackage := range expectedPackages {
 					if actual.Name == expectedPackage.Name &&
 						versionsMatch(expectedPackage.Version, actual.Version) &&
-						parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+						parameterizationsMatch(effectiveParam(expectedPackage), effectiveParam(actual)) {
 						found = true
 						break
 					}
