@@ -2,3 +2,5 @@ component: cli/import
 kind: improvement
 body: Support importing resources under extension-parameterized providers
 time: 2026-07-02T10:22:22.105576+02:00
+custom:
+    PR: "23779"
