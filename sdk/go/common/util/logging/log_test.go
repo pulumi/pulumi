@@ -38,6 +38,31 @@ func TestInitLogging(t *testing.T) {
 	assert.Equal(t, prevFlow, LogFlow)
 }
 
+// TestInitLoggingIgnoresLogToStderrWithOTel verifies that --logtostderr is
+// ignored when logs are exported over OTel: records already reach the engine
+// through the OTLP export handler, so writing JSON to stderr would only leak
+// them into the engine's display of our output.
+func TestInitLoggingIgnoresLogToStderrWithOTel(t *testing.T) {
+	t.Setenv("PULUMI_LOG_OTLP_ENDPOINT", "127.0.0.1:1")
+
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		shutdownExportHandler()
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	InitLogging(true, 0, false)
+
+	handlerMu.RLock()
+	defer handlerMu.RUnlock()
+	require.NotNil(t, exportHandler)
+	assert.Equal(t, discardHandler{}, primary)
+}
+
 func TestFilter(t *testing.T) {
 	t.Parallel()
 
