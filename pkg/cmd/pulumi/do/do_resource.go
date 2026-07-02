@@ -63,7 +63,7 @@ func resourceSchemaHelp(res *schema.Resource) string {
 			}
 			b.WriteString(")")
 			if property.Comment != "" {
-				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(property.Comment, "\n", " "))
+				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(cleanComment(property.Comment), "\n", " "))
 			}
 			b.WriteString("\n")
 		}
@@ -84,7 +84,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	shorthelp := fmt.Sprintf("Operate on the %s resource", name)
 	longhelp := shorthelp + "."
 	if res.Comment != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, res.Comment)
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, cleanComment(res.Comment))
 	}
 	if schemaHelp := resourceSchemaHelp(res); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
