@@ -182,6 +182,7 @@ type PackageFunctions interface {
 type FunctionsIter interface {
 	Token() string
 	Function() (*Function, error)
+	IsMethod() bool
 	Next() bool
 }
 
@@ -373,6 +374,10 @@ func (i *packageDefFunctionsIter) Function() (*Function, error) {
 	return i.f, nil
 }
 
+func (i *packageDefFunctionsIter) IsMethod() bool {
+	return i.f.IsMethod
+}
+
 func (i *packageDefFunctionsIter) Next() bool {
 	if len(i.functions) == 0 {
 		return false
@@ -407,6 +412,13 @@ type PartialPackage struct {
 		types     map[string]string
 		resources map[string]string
 		functions map[string]string
+	}
+
+	// methodTokens is the set of function tokens that implement resource methods, read straight
+	// out of the spec's `methods` maps. Built lazily on first use of FunctionsIter.IsMethod.
+	methodTokens struct {
+		once   sync.Once
+		tokens map[string]struct{}
 	}
 }
 
@@ -668,6 +680,32 @@ func (p *PartialPackage) resourceAliases() map[string]string {
 func (p *PartialPackage) functionAliases() map[string]string {
 	p.specAliases.once.Do(p.buildSpecAliases)
 	return p.specAliases.functions
+}
+
+// methodTokenSet returns the set of function tokens that implement resource methods, without
+// binding any package members. Malformed member specs are skipped; they fail with a proper error
+// when the member is bound.
+func (p *PartialPackage) methodTokenSet() map[string]struct{} {
+	p.methodTokens.once.Do(func() {
+		tokens := map[string]struct{}{}
+		collect := func(raw json.RawMessage) {
+			var res struct {
+				Methods map[string]string `json:"methods"`
+			}
+			if err := parseJSONPropertyValue(raw, &res); err != nil {
+				return
+			}
+			for _, tok := range res.Methods {
+				tokens[tok] = struct{}{}
+			}
+		}
+		collect(p.spec.Provider)
+		for _, raw := range p.spec.Resources {
+			collect(raw)
+		}
+		p.methodTokens.tokens = tokens
+	})
+	return p.methodTokens.tokens
 }
 
 // buildSpecAliases builds normalized→source-form alias maps over the spec's token keys.
@@ -1017,6 +1055,11 @@ func (i *partialPackageFunctionsIter) Token() string {
 func (i *partialPackageFunctionsIter) Function() (*Function, error) {
 	fn, _, err := i.functions.Get(i.Token())
 	return fn, err
+}
+
+func (i *partialPackageFunctionsIter) IsMethod() bool {
+	_, ok := i.functions.methodTokenSet()[i.Token()]
+	return ok
 }
 
 func (i *partialPackageFunctionsIter) Next() bool {
