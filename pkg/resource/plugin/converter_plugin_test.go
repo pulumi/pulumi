@@ -54,6 +54,11 @@ func (c *testConverterClient) ConvertState(
 				LogicalName:       "test:logicalName",
 				IsRemote:          true,
 				IsComponent:       true,
+				Parameterization: &pulumirpc.ResourceParameterization{
+					PluginName:    "test:pluginName",
+					PluginVersion: "1.2.3",
+					Value:         []byte("test:value"),
+				},
 			},
 		},
 		Diagnostics: c.diagnostics,
@@ -136,6 +141,10 @@ func TestConverterPlugin_State(t *testing.T) {
 	assert.Equal(t, "test:logicalName", res.LogicalName)
 	assert.True(t, res.IsRemote)
 	assert.True(t, res.IsComponent)
+	require.NotNil(t, res.Parameterization)
+	assert.Equal(t, "test:pluginName", res.Parameterization.PluginName)
+	assert.Equal(t, "1.2.3", res.Parameterization.PluginVersion)
+	assert.Equal(t, []byte("test:value"), res.Parameterization.Value)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, hcl.DiagError, diag.Severity)

@@ -51,6 +51,11 @@ export class ResourceImport extends jspb.Message {
     getIsRemote(): boolean;
     setIsRemote(value: boolean): ResourceImport;
 
+    hasParameterization(): boolean;
+    clearParameterization(): void;
+    getParameterization(): ResourceParameterization | undefined;
+    setParameterization(value?: ResourceParameterization): ResourceImport;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceImport.AsObject;
     static toObject(includeInstance: boolean, msg: ResourceImport): ResourceImport.AsObject;
@@ -71,6 +76,35 @@ export namespace ResourceImport {
         logicalName: string,
         isComponent: boolean,
         isRemote: boolean,
+        parameterization?: ResourceParameterization.AsObject,
+    }
+}
+
+export class ResourceParameterization extends jspb.Message { 
+    getPluginName(): string;
+    setPluginName(value: string): ResourceParameterization;
+    getPluginVersion(): string;
+    setPluginVersion(value: string): ResourceParameterization;
+    getValue(): Uint8Array | string;
+    getValue_asU8(): Uint8Array;
+    getValue_asB64(): string;
+    setValue(value: Uint8Array | string): ResourceParameterization;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResourceParameterization.AsObject;
+    static toObject(includeInstance: boolean, msg: ResourceParameterization): ResourceParameterization.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResourceParameterization, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResourceParameterization;
+    static deserializeBinaryFromReader(message: ResourceParameterization, reader: jspb.BinaryReader): ResourceParameterization;
+}
+
+export namespace ResourceParameterization {
+    export type AsObject = {
+        pluginName: string,
+        pluginVersion: string,
+        value: Uint8Array | string,
     }
 }
 
