@@ -603,10 +603,9 @@ func TestImportExtensionParameterizedResource(t *testing.T) {
 	}}).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
-	// The base provider was parameterized with the extension.
-	paramLock.Lock()
+	// The base provider was parameterized with the extension. Run has returned, so the import and all
+	// its Parameterize calls have completed; there is no concurrent writer left to guard against.
 	assert.Equal(t, []string{"ext-a"}, paramNames)
-	paramLock.Unlock()
 
 	// The snapshot carries the extension blob, keyed by a ref that the imported resource references.
 	require.Len(t, snap.Extensions, 1)
