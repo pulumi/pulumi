@@ -1389,7 +1389,15 @@ async function getOrCreateEntryAsync(
         const moduleParts = normalizedModuleName.split("/");
 
         const nodeModulesSegment = "node_modules";
-        const nodeModulesSegmentIndex = moduleParts.findIndex((v) => v === nodeModulesSegment);
+        // pnpm installs packages into a store keyed with version numbers
+        // `node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg>/…`, and adds a symlink to this in `node_modules/<pkg>`
+        // so Node.js can resolve the package. We see the real path here, not the symlink. In that layout the real
+        // package name follows the *last* `node_modules` segment. For npm/yarn (and pnpm's hoisted node-linker) the
+        // package name follows the *first* `node_modules` segment.
+        const isPnpmStore = moduleParts.includes(".pnpm");
+        const nodeModulesSegmentIndex = isPnpmStore
+            ? moduleParts.lastIndexOf(nodeModulesSegment)
+            : moduleParts.indexOf(nodeModulesSegment);
         const isInNodeModules = nodeModulesSegmentIndex >= 0;
 
         const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
