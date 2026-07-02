@@ -62,6 +62,13 @@ func (c *converterServer) ConvertState(ctx context.Context,
 				Value:         p.Value,
 			}
 		}
+		if e := resource.Extension; e != nil {
+			resources[i].Extension = &pulumirpc.ResourceExtension{
+				Name:    e.Name,
+				Version: e.Version,
+				Value:   e.Value,
+			}
+		}
 	}
 
 	// Translate the hcl.Diagnostics into rpc diagnostics.

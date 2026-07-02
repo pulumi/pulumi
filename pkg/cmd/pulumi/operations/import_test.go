@@ -23,6 +23,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -188,6 +189,30 @@ func TestParseImportFile_errors(t *testing.T) {
 			wantErrs: []string{
 				"1 error occurred",
 				"could not parse parameterization version 'not-a-semver' for resource 'thing' of type 'foo:bar:baz'",
+			},
+		},
+		{
+			desc: "parameterization and extension together",
+			give: importFile{
+				Resources: []importSpec{
+					{
+						Name: "thing",
+						ID:   "thing",
+						Type: "foo:bar:baz",
+						Parameterization: &importParameterization{
+							PluginName:    "base",
+							PluginVersion: "1.0.0",
+						},
+						Extension: &importExtension{
+							Name:    "ext",
+							Version: "1.0.0",
+						},
+					},
+				},
+			},
+			wantErrs: []string{
+				"1 error occurred",
+				"resource 'thing' of type 'foo:bar:baz' has both a parameterization and an extension",
 			},
 		},
 		{
@@ -365,6 +390,35 @@ func TestParseImportFileParameterization(t *testing.T) {
 		PluginVersion: pv,
 		Value:         []byte("params"),
 	}, imports[0].Parameterization)
+}
+
+// Shows that a resource's extension parameterization is carried through to the engine import, so
+// resources can be imported under an extension-parameterized (base) provider.
+func TestParseImportFileExtension(t *testing.T) {
+	t.Parallel()
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name:    "thing",
+				ID:      "thing",
+				Type:    "k8s:apiextensions.k8s.io/v1:CustomResource",
+				Version: "4.0.0",
+				Extension: &importExtension{
+					Name:    "gateway-api",
+					Version: "1.0.0",
+					Value:   []byte("blob"),
+				},
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 1)
+	assert.Equal(t, &apitype.Extension{
+		Name:    "gateway-api",
+		Version: "1.0.0",
+		Value:   []byte("blob"),
+	}, imports[0].Extension)
 }
 
 func TestParseImportFileSameName(t *testing.T) {

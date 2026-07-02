@@ -34,9 +34,13 @@ type ResourceImport struct {
 	Version           string
 	PluginDownloadURL string
 
-	// Parameterization is set when the resource should be imported under a parameterized (e.g.
-	// dynamically bridged) provider rather than a plain one.
+	// Parameterization is set when the resource should be imported under a replacement-parameterized
+	// (e.g. dynamically bridged) provider rather than a plain one.
 	Parameterization *ResourceParameterization
+
+	// Extension is set when an extension parameterization should be applied to the resource's (base)
+	// provider. Mutually exclusive with Parameterization.
+	Extension *ResourceExtension
 }
 
 // ResourceParameterization describes the base plugin that a resource's parameterized provider is built
@@ -47,6 +51,16 @@ type ResourceParameterization struct {
 	// PluginVersion is the version of the base plugin to parameterize.
 	PluginVersion string
 	// Value is the parameter value to apply to the base plugin.
+	Value []byte
+}
+
+// ResourceExtension describes an extension parameterization to apply to a resource's (base) provider.
+type ResourceExtension struct {
+	// Name is the name of the extension package.
+	Name string
+	// Version is the version of the extension package.
+	Version string
+	// Value is the parameter value for the extension.
 	Value []byte
 }
 

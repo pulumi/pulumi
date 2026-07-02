@@ -59,6 +59,11 @@ func (c *testConverterClient) ConvertState(
 					PluginVersion: "1.2.3",
 					Value:         []byte("test:value"),
 				},
+				Extension: &pulumirpc.ResourceExtension{
+					Name:    "test:extension",
+					Version: "4.5.6",
+					Value:   []byte("test:extValue"),
+				},
 			},
 		},
 		Diagnostics: c.diagnostics,
@@ -145,6 +150,10 @@ func TestConverterPlugin_State(t *testing.T) {
 	assert.Equal(t, "test:pluginName", res.Parameterization.PluginName)
 	assert.Equal(t, "1.2.3", res.Parameterization.PluginVersion)
 	assert.Equal(t, []byte("test:value"), res.Parameterization.Value)
+	require.NotNil(t, res.Extension)
+	assert.Equal(t, "test:extension", res.Extension.Name)
+	assert.Equal(t, "4.5.6", res.Extension.Version)
+	assert.Equal(t, []byte("test:extValue"), res.Extension.Value)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, hcl.DiagError, diag.Severity)
