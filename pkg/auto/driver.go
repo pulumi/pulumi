@@ -26,6 +26,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backenddisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	backendsecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -75,6 +79,10 @@ type Stack struct {
 	proj  *workspace.Project
 	opts  Options
 	sm    secrets.Manager
+	// cloud marks a stack on a cloud backend: config (including ESC environments) and the
+	// secrets manager resolve per-operation through the CLI's own assembly.
+	cloud bool
+	sink  diag.Sink
 	// stackCfg is the config loaded from the stack's own Pulumi.<stack>.yaml settings
 	// file; the operation merges project defaults beneath it and the driver's Config
 	// overlay above it (the CLI's -c semantics).
@@ -118,25 +126,31 @@ func Select(ctx context.Context, opts Options) (*Stack, error) {
 			return nil, fmt.Errorf("no backend selected: run `pulumi login` or set PULUMI_BACKEND_URL")
 		}
 	}
-	if !diy.IsDIYBackendURL(backendURL) {
-		return nil, fmt.Errorf(
-			"the in-process driver converges DIY backends only; %q is a cloud backend "+
-				"(use a named reference for the server-side path)", backendURL)
-	}
-
-	// A file:// backend expects its state directory to exist (the CLI creates it on
-	// login); create it here so the driver is self-contained.
-	if path, ok := strings.CutPrefix(backendURL, "file://"); ok {
-		if err := os.MkdirAll(path, 0o700); err != nil {
-			return nil, fmt.Errorf("creating backend directory %s: %w", path, err)
+	// A DIY URL opens the file/object-store backend; anything else is a cloud backend
+	// (app.pulumi.com or self-hosted), reached with the ambient login's credentials.
+	cloud := !diy.IsDIYBackendURL(backendURL)
+	var be backend.Backend
+	if cloud {
+		cb, err := httpstate.New(ctx, sink, backendURL, proj, false /*insecure*/)
+		if err != nil {
+			return nil, fmt.Errorf("opening cloud backend %s: %w", backendURL, err)
 		}
+		be = cb
+	} else {
+		// A file:// backend expects its state directory to exist (the CLI creates it on
+		// login); create it here so the driver is self-contained.
+		if path, ok := strings.CutPrefix(backendURL, "file://"); ok {
+			if err := os.MkdirAll(path, 0o700); err != nil {
+				return nil, fmt.Errorf("creating backend directory %s: %w", path, err)
+			}
+		}
+		db, err := diy.New(ctx, sink, backendURL, proj)
+		if err != nil {
+			return nil, fmt.Errorf("opening backend %s: %w", backendURL, err)
+		}
+		db.SetCurrentProject(proj)
+		be = db
 	}
-
-	be, err := diy.New(ctx, sink, backendURL, proj)
-	if err != nil {
-		return nil, fmt.Errorf("opening backend %s: %w", backendURL, err)
-	}
-	be.SetCurrentProject(proj)
 
 	ref, err := be.ParseStackReference(opts.Stack)
 	if err != nil {
@@ -160,8 +174,13 @@ func Select(ctx context.Context, opts Options) (*Stack, error) {
 
 	// Load the stack's own settings file (Pulumi.<stack>.yaml): the per-stack config --
 	// regions, sizes, endpoints -- that the program depends on exactly as the CLI would
-	// resolve it. No file simply means no stack-level config.
+	// resolve it. No file simply means no stack-level config. Cloud stacks skip this:
+	// their configuration (settings file, service secrets manager, ESC environments)
+	// assembles per-operation through the CLI's own helper.
 	stackCfg := config.Map{}
+	if cloud {
+		return &Stack{be: be, stack: stack, proj: proj, opts: opts, sm: nil, cloud: true, sink: sink}, nil
+	}
 	settingsPath := filepath.Join(opts.WorkDir, "Pulumi."+ref.Name().String()+".yaml")
 	if _, statErr := os.Stat(settingsPath); statErr == nil {
 		ps, err := workspace.LoadProjectStack(sink, proj, settingsPath)
@@ -263,7 +282,11 @@ func (s *Stack) Destroy(ctx context.Context) (display.ResourceChanges, error) {
 
 // Outputs reads the stack's current outputs from its latest snapshot.
 func (s *Stack) Outputs(ctx context.Context) (property.Map, error) {
-	return s.stack.SnapshotStackOutputs(ctx, b64secrets.Base64SecretsProvider)
+	provider := secrets.Provider(b64secrets.Base64SecretsProvider)
+	if s.cloud {
+		provider = backendsecrets.DefaultProvider
+	}
+	return s.stack.SnapshotStackOutputs(ctx, provider)
 }
 
 // operation assembles the backend update operation shared by preview/up/destroy.
@@ -271,6 +294,9 @@ func (s *Stack) operation(ctx context.Context, preview bool) (backend.UpdateOper
 	overlay, err := parseConfig(s.opts.Config)
 	if err != nil {
 		return backend.UpdateOperation{}, err
+	}
+	if s.cloud {
+		return s.cloudOperation(ctx, preview, overlay)
 	}
 	// Config resolves in three layers, lowest first: project defaults (Pulumi.yaml config
 	// blocks), the stack's settings file, then the driver's overlay -- the same precedence
@@ -307,6 +333,51 @@ func (s *Stack) operation(ctx context.Context, preview bool) (backend.UpdateOper
 		StackConfiguration: backend.StackConfiguration{Config: cfg, Decrypter: s.sm.Decrypter()},
 		SecretsManager:     s.sm,
 		SecretsProvider:    b64secrets.Base64SecretsProvider,
+		Scopes:             contextScopes,
+	}, nil
+}
+
+// cloudOperation assembles an operation for a cloud-backed stack. Configuration resolves
+// exactly as the CLI resolves it -- the stack settings file, the stack's own secrets
+// manager (the service's, for cloud stacks), and any ESC environments the stack imports --
+// then the driver's Config overlays on top with -c semantics.
+func (s *Stack) cloudOperation(
+	ctx context.Context, preview bool, overlay config.Map,
+) (backend.UpdateOperation, error) {
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, s.sink, ssml, s.stack, s.proj, "")
+	if err != nil {
+		return backend.UpdateOperation{}, fmt.Errorf("assembling stack configuration: %w", err)
+	}
+	// Fold the ESC environment's pulumiConfig and the project's config defaults into the
+	// stack config -- the same application the CLI performs before every operation.
+	if err := workspace.ValidateStackConfigAndApplyProjectConfig(
+		ctx, s.stack.Ref().Name().String(), s.proj, cfg.Environment, cfg.Config,
+		sm.Encrypter(), sm.Decrypter(),
+	); err != nil {
+		return backend.UpdateOperation{}, fmt.Errorf("validating stack config: %w", err)
+	}
+	for k, v := range overlay {
+		cfg.Config[k] = v
+	}
+	eng := s.opts.Engine
+	if preview {
+		eng.GeneratePlan = true
+	}
+	return backend.UpdateOperation{
+		Proj: s.proj,
+		Root: s.opts.WorkDir,
+		M:    &backend.UpdateMetadata{},
+		Opts: backend.UpdateOptions{
+			AutoApprove: true,
+			SkipPreview: true,
+			PreviewOnly: preview,
+			Display:     backenddisplay.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard},
+			Engine:      eng,
+		},
+		StackConfiguration: cfg,
+		SecretsManager:     sm,
+		SecretsProvider:    backendsecrets.DefaultProvider,
 		Scopes:             contextScopes,
 	}, nil
 }
