@@ -271,6 +271,40 @@ func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *V
 
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
 func (v PropertyValue) diff(other PropertyValue, opts diffOptions, path PropertyPath) *ValueDiff {
+	// If both sides are wrapped the same way (secret, or output with matching
+	// known/secret/dependencies), recurse into the wrapped element so that
+	// array/object diffs surface their structural detail. We restore the
+	// original wrapped values as Old/New on the returned ValueDiff.
+	if v.IsSecret() && other.IsSecret() {
+		if inner := v.SecretValue().Element.diff(other.SecretValue().Element, opts, path); inner != nil {
+			inner.Old = v
+			inner.New = other
+			return inner
+		}
+		return nil
+	}
+	if v.IsOutput() && other.IsOutput() {
+		vo, oo := v.OutputValue(), other.OutputValue()
+		sameWrapping := vo.Known == oo.Known && vo.Secret == oo.Secret &&
+			len(vo.Dependencies) == len(oo.Dependencies)
+		if sameWrapping {
+			for i, dep := range vo.Dependencies {
+				if dep != oo.Dependencies[i] {
+					sameWrapping = false
+					break
+				}
+			}
+		}
+		if sameWrapping {
+			if inner := vo.Element.diff(oo.Element, opts, path); inner != nil {
+				inner.Old = v
+				inner.New = other
+				return inner
+			}
+			return nil
+		}
+	}
+
 	if v.IsArray() && other.IsArray() {
 		old := v.ArrayValue()
 		new := other.ArrayValue()

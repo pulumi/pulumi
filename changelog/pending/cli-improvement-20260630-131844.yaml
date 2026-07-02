@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Recursivly diff through secret maps and arrays.
+time: 2026-06-30T13:18:44.64252+01:00
