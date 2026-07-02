@@ -106,10 +106,10 @@ func TestRenderMarkdownStyled(t *testing.T) {
 	const description = "Provides a bucket.\n\n" +
 		"> **Note:** manage locking with the `aws.s3.BucketObjectLockConfiguration` resource, " +
 		"or see [S3 on Outposts](https://example.com/outposts) for details. " +
-		"This sentence pads the paragraph well past eighty columns to prove no hard wrapping happens.\n\n" +
+		"This sentence pads the quoted paragraph well past a single line of eighty columns.\n\n" +
 		"## Notes\n\nDone."
 
-	out := tidyRendered(renderMarkdown(descriptionMarkdown(description), true))
+	out := renderMarkdown(descriptionMarkdown(description), true)
 
 	// No colors — only bold (1), italic (3), underline (4), and resets.
 	for _, seq := range ansiEscapeRegexp.FindAllString(out, -1) {
@@ -126,13 +126,20 @@ func TestRenderMarkdownStyled(t *testing.T) {
 	// Link text is bold; the URL follows in parentheses, underlined but not bold.
 	assert.Contains(t, out, "\x1b[1mS3 on Outposts\x1b[0m")
 	assert.Contains(t, out, "(\x1b[4mhttps://example.com/outposts\x1b[0m)")
-	// Paragraphs are not hard-wrapped: the long paragraph stays on a single line.
+
+	// Text is wrapped at eighty columns, a link and its URL always share a line, and continuation
+	// lines of a blockquote keep the rail.
+	quoteLines := 0
 	for _, line := range strings.Split(stripANSI(out), "\n") {
-		if strings.Contains(line, "pads the paragraph") {
-			assert.Contains(t, line, "This sentence pads the paragraph well past eighty columns")
-			assert.Contains(t, line, "https://example.com/outposts")
+		assert.LessOrEqual(t, len([]rune(line)), 80)
+		if strings.Contains(line, "S3 on Outposts") {
+			assert.Contains(t, line, "S3 on Outposts (https://example.com/outposts)")
+		}
+		if strings.HasPrefix(line, "│ ") {
+			quoteLines++
 		}
 	}
+	assert.Greater(t, quoteLines, 1, "the wrapped blockquote should keep its rail on every line")
 }
 
 func TestRenderMarkdownPlain(t *testing.T) {
@@ -142,7 +149,7 @@ func TestRenderMarkdownPlain(t *testing.T) {
 		"> **Note:** manage locking with the `aws.s3.BucketObjectLockConfiguration` resource, " +
 		"or see [S3 on Outposts](https://example.com/outposts) for details."
 
-	out := tidyRendered(renderMarkdown(descriptionMarkdown(description), false))
+	out := renderMarkdown(descriptionMarkdown(description), false)
 
 	// Piped or redirected output carries no escape sequences but keeps the same layout, including
 	// the blockquote rail; inline code keeps its backticks so references still stand out.

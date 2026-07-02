@@ -28,6 +28,20 @@ import (
 
 func ptr[T any](v T) *T { return &v }
 
+// helpWrapWidth is the column at which description text is wrapped.
+const helpWrapWidth = 80
+
+// linkStartMarker and linkEndMarker are emitted by the style around a link's text and URL so
+// tidyRendered can keep the whole link on one line when wrapping; wordJoiner temporarily replaces
+// the spaces between them.
+const (
+	linkStartMarker = "\x02"
+	linkEndMarker   = "\x03"
+	wordJoiner      = "\x01"
+)
+
+var linkRegexp = regexp.MustCompile(linkStartMarker + "[^" + linkEndMarker + "]*" + linkEndMarker)
+
 // helpMarkdownStyle returns the glamour style for description Markdown: default text color, bold
 // and underline only. When styled is false the same layout renders without escape sequences, so
 // nothing leaks into pipes or files.
@@ -38,8 +52,9 @@ func helpMarkdownStyle(styled bool) ansi.StyleConfig {
 		Paragraph:  ansi.StyleBlock{},
 		List:       ansi.StyleList{LevelIndent: 2},
 		// glamour only applies the URL's block prefix and suffix when the link has separate text,
-		// so bare URLs render without the parentheses.
-		Link:        ansi.StylePrimitive{BlockPrefix: "(", BlockSuffix: ")"},
+		// so bare URLs render without the parentheses (and without the wrap markers).
+		Link:        ansi.StylePrimitive{BlockPrefix: "(", BlockSuffix: ")" + linkEndMarker},
+		LinkText:    ansi.StylePrimitive{BlockPrefix: linkStartMarker},
 		Item:        ansi.StylePrimitive{BlockPrefix: "• "},
 		Enumeration: ansi.StylePrimitive{BlockPrefix: ". "},
 	}
@@ -51,7 +66,7 @@ func helpMarkdownStyle(styled bool) ansi.StyleConfig {
 	style.Strong = ansi.StylePrimitive{Bold: ptr(true)}
 	style.Emph = ansi.StylePrimitive{Italic: ptr(true)}
 	style.Link.Underline = ptr(true)
-	style.LinkText = ansi.StylePrimitive{Bold: ptr(true)}
+	style.LinkText.Bold = ptr(true)
 	style.Code = ansi.StyleBlock{StylePrimitive: ansi.StylePrimitive{Bold: ptr(true), Italic: ptr(true)}}
 	return style
 }
@@ -74,37 +89,68 @@ func renderDescription(comment string) string {
 	if md == "" {
 		return ""
 	}
-	return tidyRendered(renderMarkdown(md, cmdutil.InteractiveTerminal()))
+	return renderMarkdown(md, cmdutil.InteractiveTerminal())
 }
 
-// tidyRendered drops the trailing whitespace glamour pads each line with, removes the common left
-// margin, and trims surrounding blank lines.
+// tidyRendered wraps glamour's output to helpWrapWidth without splitting links, drops the trailing
+// whitespace glamour pads each line with, and trims surrounding blank lines.
 func tidyRendered(s string) string {
+	// Join each link into a single unbreakable word for wrapLine; the joiners become spaces again
+	// after wrapping.
+	s = linkRegexp.ReplaceAllStringFunc(s, func(link string) string {
+		return strings.ReplaceAll(link, " ", wordJoiner)
+	})
+	s = strings.NewReplacer(linkStartMarker, "", linkEndMarker, "").Replace(s)
+
 	lines := strings.Split(s, "\n")
-
-	margin := -1
+	wrapped := make([]string, 0, len(lines))
 	for _, line := range lines {
-		trimmed := strings.TrimRight(line, " \t")
-		if trimmed == "" {
-			continue
-		}
-		indent := len(trimmed) - len(strings.TrimLeft(trimmed, " "))
-		if margin < 0 || indent < margin {
-			margin = indent
-		}
+		wrapped = append(wrapped, wrapLine(strings.TrimRight(line, " \t"), helpWrapWidth)...)
 	}
-	if margin < 0 {
-		margin = 0
+	s = strings.Trim(strings.Join(wrapped, "\n"), "\n")
+	return strings.ReplaceAll(s, wordJoiner, " ")
+}
+
+// wrapLine wraps a line at width columns, breaking only at spaces. Continuation lines of a
+// blockquote keep the `│ ` rail.
+func wrapLine(line string, width int) []string {
+	if visibleWidth(line) <= width {
+		return []string{line}
 	}
 
-	for i, line := range lines {
-		line = strings.TrimRight(line, " \t")
-		if len(line) >= margin {
-			line = line[margin:]
-		}
-		lines[i] = line
+	prefix := ""
+	if strings.HasPrefix(stripEscapes(line), "│ ") {
+		prefix = "│ "
 	}
-	return strings.Trim(strings.Join(lines, "\n"), "\n")
+
+	var out []string
+	var current string
+	currentWidth := 0
+	for _, word := range strings.Split(line, " ") {
+		w := visibleWidth(word)
+		switch {
+		case current == "":
+			current, currentWidth = word, w
+		case currentWidth+1+w <= width:
+			current += " " + word
+			currentWidth += 1 + w
+		default:
+			out = append(out, current)
+			current = prefix + word
+			currentWidth = visibleWidth(prefix) + w
+		}
+	}
+	return append(out, current)
+}
+
+var ansiEscapeRegexp = regexp.MustCompile("\x1b\\[[0-9;]*m")
+
+func stripEscapes(s string) string {
+	return ansiEscapeRegexp.ReplaceAllString(s, "")
+}
+
+func visibleWidth(s string) int {
+	return len([]rune(stripEscapes(s)))
 }
 
 // descriptionMarkdown returns the cleaned Markdown of a schema description, before any terminal
@@ -199,7 +245,8 @@ func docRefName(destination string) string {
 func renderMarkdown(md string, styled bool) string {
 	renderer, err := glamour.NewTermRenderer(
 		glamour.WithStyles(helpMarkdownStyle(styled)),
-		// 0 disables hard wrapping, leaving line breaks to the terminal so links never break mid-word.
+		// Disable glamour's own wrapping, which breaks between a link's text and its URL;
+		// tidyRendered wraps instead, keeping links whole.
 		glamour.WithWordWrap(0),
 	)
 	if err != nil {
@@ -209,5 +256,5 @@ func renderMarkdown(md string, styled bool) string {
 	if err != nil {
 		return md
 	}
-	return rendered
+	return tidyRendered(rendered)
 }
