@@ -88,6 +88,9 @@ type Options struct {
 	DestroyProgram bool
 	// if specified, only operate on the specified resources.
 	Targets UrnTargets
+	// if specified, only operate on resources registered by the listed snippet UUIDs. This is
+	// applied in addition to (i.e. logically OR'd with) Targets.
+	TargetSnippets []string
 	// if specified, mark the specified resources for replacement.
 	ReplaceTargets UrnTargets
 	// true if target dependents should be computed automatically.

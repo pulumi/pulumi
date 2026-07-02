@@ -275,6 +275,7 @@ func newDeployment(
 		DestroyProgram:            opts.DestroyProgram,
 		ReplaceTargets:            opts.ReplaceTargets,
 		Targets:                   opts.Targets,
+		TargetSnippets:            opts.TargetSnippets,
 		Excludes:                  opts.Excludes,
 		TargetDependents:          opts.TargetDependents,
 		ExcludeDependents:         opts.ExcludeDependents,

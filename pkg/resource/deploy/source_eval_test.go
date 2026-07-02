@@ -227,6 +227,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 					RefreshBeforeUpdate:     false,
 					ViewOf:                  "",
 					ResourceHooks:           nil,
+					SnippetID:               "",
 				}.Make(),
 			})
 		}
@@ -370,6 +371,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		},
 		// Register a couple resources using provider A.
@@ -400,6 +402,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		},
 		&testRegEvent{
@@ -429,6 +432,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		},
 		// Register two more providers.
@@ -462,6 +466,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		},
 		&testRegEvent{
@@ -491,6 +496,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		},
 	}
@@ -571,6 +577,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 				RefreshBeforeUpdate:     false,
 				ViewOf:                  "",
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		})
 
@@ -633,6 +640,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		},
 		// Register a couple resources from package A.
@@ -663,6 +671,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		},
 		&testRegEvent{
@@ -692,6 +701,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		},
 		// Register a few resources from other packages.
@@ -722,6 +732,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		},
 		&testRegEvent{
@@ -751,6 +762,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				SourcePosition:          "",
 				StackTrace:              nil,
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		},
 	}
@@ -842,6 +854,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 				RefreshBeforeUpdate:     false,
 				ViewOf:                  "",
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		})
 
@@ -1540,6 +1553,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 				RefreshBeforeUpdate:     false,
 				ViewOf:                  "",
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make(),
 		})
 		reads++
@@ -1673,6 +1687,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 					RefreshBeforeUpdate:     false,
 					ViewOf:                  "",
 					ResourceHooks:           nil,
+					SnippetID:               "",
 				}.Make(),
 			})
 			registers++
@@ -1715,6 +1730,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 					RefreshBeforeUpdate:     false,
 					ViewOf:                  "",
 					ResourceHooks:           nil,
+					SnippetID:               "",
 				}.Make(),
 			})
 			reads++
@@ -1910,6 +1926,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 							RefreshBeforeUpdate:     false,
 							ViewOf:                  "",
 							ResourceHooks:           nil,
+							SnippetID:               "",
 						}.Make(),
 					})
 					reads++
@@ -1951,6 +1968,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 							RefreshBeforeUpdate:     false,
 							ViewOf:                  "",
 							ResourceHooks:           nil,
+							SnippetID:               "",
 						}.Make(),
 					})
 					registers++

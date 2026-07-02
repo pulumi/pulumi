@@ -248,6 +248,7 @@ message RegisterResourceRequest {
     optional ResourceHooksBinding hooks = 34;
     repeated string hideDiffs = 37;
     map<string, string> envVarMappings = 41;   // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
+    string snippetId = 40;                     // if set, the UUID of the snippet that issued this registration.
 }
 
 enum Result {

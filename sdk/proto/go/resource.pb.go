@@ -646,6 +646,7 @@ type RegisterResourceRequest struct {
 	Hooks          *RegisterResourceRequest_ResourceHooksBinding `protobuf:"bytes,34,opt,name=hooks,proto3,oneof" json:"hooks,omitempty"`
 	HideDiffs      []string                                      `protobuf:"bytes,37,rep,name=hideDiffs,proto3" json:"hideDiffs,omitempty"`
 	EnvVarMappings map[string]string                             `protobuf:"bytes,41,rep,name=envVarMappings,proto3" json:"envVarMappings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
+	SnippetId      string                                        `protobuf:"bytes,40,opt,name=snippetId,proto3" json:"snippetId,omitempty"`                                                                                     // if set, the UUID of the snippet that issued this registration.
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -958,6 +959,13 @@ func (x *RegisterResourceRequest) GetEnvVarMappings() map[string]string {
 		return x.EnvVarMappings
 	}
 	return nil
+}
+
+func (x *RegisterResourceRequest) GetSnippetId() string {
+	if x != nil {
+		return x.SnippetId
+	}
+	return ""
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
@@ -3084,7 +3092,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\xd1\x15\n" +
+	"properties\"\xef\x15\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -3134,7 +3142,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"packageRef\x12R\n" +
 	"\x05hooks\x18\" \x01(\v27.pulumirpc.RegisterResourceRequest.ResourceHooksBindingH\x02R\x05hooks\x88\x01\x01\x12\x1c\n" +
 	"\thideDiffs\x18% \x03(\tR\thideDiffs\x12^\n" +
-	"\x0eenvVarMappings\x18) \x03(\v26.pulumirpc.RegisterResourceRequest.EnvVarMappingsEntryR\x0eenvVarMappings\x1a*\n" +
+	"\x0eenvVarMappings\x18) \x03(\v26.pulumirpc.RegisterResourceRequest.EnvVarMappingsEntryR\x0eenvVarMappings\x12\x1c\n" +
+	"\tsnippetId\x18( \x01(\tR\tsnippetId\x1a*\n" +
 	"\x14PropertyDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\x1al\n" +
 	"\x0eCustomTimeouts\x12\x16\n" +
