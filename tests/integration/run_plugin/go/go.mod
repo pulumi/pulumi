@@ -2,7 +2,7 @@ module github.com/pulumi/pulumi/tests/run_plugin
 
 go 1.25.11
 
-require github.com/pulumi/pulumi/sdk/v3 v3.249.0
+require github.com/pulumi/pulumi/sdk/v3 v3.250.0
 
 require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect

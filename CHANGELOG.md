@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.250.0 (2026-07-02)
+
+### Bug Fixes
+
+- [cli/engine] Fix recursive property log marshaling [#23773](https://github.com/pulumi/pulumi/pull/23773)
 ## 3.249.0 (2026-07-01)
 
 ### Bug Fixes
