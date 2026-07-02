@@ -71,6 +71,67 @@ outputs:
 	assert.Equal(t, 0, nonSame, "second up should be a no-op, got changes: %v", res2.Changes)
 }
 
+// TestDriver_StackSettingsConfig proves Select loads the stack's own Pulumi.<stack>.yaml:
+// its config resolves in the program (the per-stack region/size settings real stacks carry),
+// project-level defaults apply beneath it, and the driver's Config overlay wins over both --
+// the CLI's -c semantics. A secure: value without a caller-supplied secrets manager is a
+// loud error, not a silent misread.
+func TestDriver_StackSettingsConfig(t *testing.T) {
+	t.Parallel()
+	requireYAMLHost(t)
+
+	root := t.TempDir()
+	backendURL := "file://" + filepath.Join(root, "state")
+	dir := writeProject(t, root, "settings", `name: auto-settings
+runtime: yaml
+config:
+  region:
+    type: string
+  tier:
+    type: string
+    default: free
+outputs:
+  echoRegion: ${region}
+  echoTier: ${tier}
+`)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.staging.yaml"), []byte(`config:
+  auto-settings:region: us-test-1
+`), 0o600))
+
+	ctx := context.Background()
+	s, err := Select(ctx, Options{BackendURL: backendURL, WorkDir: dir, Stack: "staging"})
+	require.NoError(t, err)
+	res, err := s.Up(ctx)
+	require.NoError(t, err)
+	region, ok := res.Outputs.GetOk("echoRegion")
+	require.True(t, ok)
+	assert.Equal(t, "us-test-1", region.AsString(), "stack settings config must resolve")
+	tier, ok := res.Outputs.GetOk("echoTier")
+	require.True(t, ok)
+	assert.Equal(t, "free", tier.AsString(), "project defaults apply beneath the stack file")
+
+	// The driver's own Config overlay wins over the stack file (CLI -c semantics).
+	s2, err := Select(ctx, Options{
+		BackendURL: backendURL, WorkDir: dir, Stack: "staging",
+		Config: map[string]string{"auto-settings:region": "eu-override-1"},
+	})
+	require.NoError(t, err)
+	res, err = s2.Up(ctx)
+	require.NoError(t, err)
+	region, ok = res.Outputs.GetOk("echoRegion")
+	require.True(t, ok)
+	assert.Equal(t, "eu-override-1", region.AsString(), "driver overlay wins over the stack file")
+
+	// A secure: value the driver cannot decrypt is a loud, early error.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.sec.yaml"), []byte(`config:
+  auto-settings:region:
+    secure: AAABAJ7fZ9mQ==
+`), 0o600))
+	_, err = Select(ctx, Options{BackendURL: backendURL, WorkDir: dir, Stack: "sec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "secure", "the error must name the secure-config gap")
+}
+
 // TestDriver_PreviewProjectsOutputs proves Preview returns the stack's projected outputs --
 // what its outputs would be if the plan were applied -- before anything is created. A known
 // (static) output is projected as known, which is what lets a delivery rollout's cascaded

@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -81,33 +82,55 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 		}
 	}
 
-	if len(lockKeys) > 0 {
-		var errorString strings.Builder
-		fmt.Fprintf(&errorString, "the stack is currently locked by %v lock(s). Either wait for the other "+
-			"process(es) to end or delete the lock file with `pulumi cancel`.", len(lockKeys))
-
-		for _, lock := range lockKeys {
-			content, err := b.bucket.ReadAll(ctx, lock)
-			if err != nil {
-				return err
-			}
-			l := &lockContent{}
-			err = json.Unmarshal(content, &l)
-			if err != nil {
-				return err
-			}
-
-			fmt.Fprintf(&errorString, "\n  %v: created by %v@%v (pid %v) at %v",
-				b.lockURLForError(lock),
-				l.Username,
-				l.Hostname,
-				l.Pid,
-				l.Timestamp.Format(time.RFC3339))
-		}
-
-		return errors.New(errorString.String())
+	if len(lockKeys) == 0 {
+		return nil
 	}
-	return nil
+
+	// Partition the locks into live and provably stale. A lock left by a process on THIS
+	// host that is no longer running cannot be protecting anything -- its engine died --
+	// so it is stolen (deleted) rather than demanding a manual `pulumi cancel`. Locks from
+	// other hosts cannot be probed and always count as live.
+	hostname, hostErr := os.Hostname()
+	var liveLocks []string
+	lockContents := make(map[string]*lockContent, len(lockKeys))
+	for _, lock := range lockKeys {
+		content, err := b.bucket.ReadAll(ctx, lock)
+		if err != nil {
+			return err
+		}
+		l := &lockContent{}
+		if err := json.Unmarshal(content, &l); err != nil {
+			return err
+		}
+		lockContents[lock] = l
+		if hostErr == nil && l.Hostname == hostname && !processAlive(l.Pid) {
+			logging.V(7).Infof("checkForLock(): removing stale lock %v left by dead pid %v", lock, l.Pid)
+			if err := b.bucket.Delete(ctx, lock); err != nil {
+				return fmt.Errorf("removing stale lock %v: %w", b.lockURLForError(lock), err)
+			}
+			continue
+		}
+		liveLocks = append(liveLocks, lock)
+	}
+	if len(liveLocks) == 0 {
+		return nil
+	}
+
+	var errorString strings.Builder
+	fmt.Fprintf(&errorString, "the stack is currently locked by %v lock(s). Either wait for the other "+
+		"process(es) to end or delete the lock file with `pulumi cancel`.", len(liveLocks))
+
+	for _, lock := range liveLocks {
+		l := lockContents[lock]
+		fmt.Fprintf(&errorString, "\n  %v: created by %v@%v (pid %v) at %v",
+			b.lockURLForError(lock),
+			l.Username,
+			l.Hostname,
+			l.Pid,
+			l.Timestamp.Format(time.RFC3339))
+	}
+
+	return errors.New(errorString.String())
 }
 
 // lockURLForError returns a URL that can be used in error messages to help users find the lock file.

@@ -15,9 +15,17 @@
 package diy
 
 import (
+	"context"
+	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLockURLForError(t *testing.T) {
@@ -91,4 +99,50 @@ func TestLockURLForError(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+// TestCheckForLock_StealsDeadLock proves crash recovery: a lock left by a process on THIS
+// host that is no longer running is provably stale, so checkForLock removes it and proceeds
+// instead of demanding a manual `pulumi cancel`. A lock whose owner is alive still blocks.
+func TestCheckForLock_StealsDeadLock(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+	ref, err := b.ParseStackReference("organization/proj/locked")
+	require.NoError(t, err)
+
+	hostname, err := os.Hostname()
+	require.NoError(t, err)
+	writeLock := func(name string, pid int) string {
+		content, merr := json.Marshal(lockContent{
+			Pid: pid, Username: "tester", Hostname: hostname, Timestamp: time.Now(),
+		})
+		require.NoError(t, merr)
+		path := filepath.ToSlash(filepath.Join(stackLockDir(ref.FullyQualifiedName()), name))
+		require.NoError(t, b.(*diyBackend).bucket.WriteAll(ctx, path, content, nil))
+		return path
+	}
+
+	// A dead pid: spawn and reap a real process so the pid existed but is gone.
+	cmd := exec.Command("true")
+	require.NoError(t, cmd.Start())
+	deadPid := cmd.Process.Pid
+	require.NoError(t, cmd.Wait())
+
+	writeLock("dead.json", deadPid)
+	err = b.(*diyBackend).checkForLock(ctx, ref)
+	require.NoError(t, err, "a same-host lock with a dead owner must be stolen, not block")
+
+	// The stale lock file itself must be gone, so nothing re-trips on it.
+	files, err := listBucket(ctx, b.(*diyBackend).bucket, stackLockDir(ref.FullyQualifiedName()))
+	require.NoError(t, err)
+	assert.Empty(t, files)
+
+	// A live owner (this test process) still blocks.
+	writeLock("live.json", os.Getpid())
+	err = b.(*diyBackend).checkForLock(ctx, ref)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "currently locked")
 }

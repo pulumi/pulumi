@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backenddisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -74,6 +75,10 @@ type Stack struct {
 	proj  *workspace.Project
 	opts  Options
 	sm    secrets.Manager
+	// stackCfg is the config loaded from the stack's own Pulumi.<stack>.yaml settings
+	// file; the operation merges project defaults beneath it and the driver's Config
+	// overlay above it (the CLI's -c semantics).
+	stackCfg config.Map
 }
 
 // Result is the outcome of an Up.
@@ -152,7 +157,36 @@ func Select(ctx context.Context, opts Options) (*Stack, error) {
 	if sm == nil {
 		sm = b64secrets.NewBase64SecretsManager()
 	}
-	return &Stack{be: be, stack: stack, proj: proj, opts: opts, sm: sm}, nil
+
+	// Load the stack's own settings file (Pulumi.<stack>.yaml): the per-stack config --
+	// regions, sizes, endpoints -- that the program depends on exactly as the CLI would
+	// resolve it. No file simply means no stack-level config.
+	stackCfg := config.Map{}
+	settingsPath := filepath.Join(opts.WorkDir, "Pulumi."+ref.Name().String()+".yaml")
+	if _, statErr := os.Stat(settingsPath); statErr == nil {
+		ps, err := workspace.LoadProjectStack(sink, proj, settingsPath)
+		if err != nil {
+			return nil, fmt.Errorf("loading stack settings %s: %w", settingsPath, err)
+		}
+		// Two gaps are loud rather than silent: an ESC environment the driver cannot
+		// resolve, and secure: values it cannot decrypt without the matching secrets
+		// manager. Both are the seam markers for driving cloud-managed stacks later.
+		if ps.Environment != nil {
+			return nil, fmt.Errorf(
+				"stack settings %s use ESC environments, which the in-process driver does not resolve yet",
+				settingsPath)
+		}
+		for k, v := range ps.Config {
+			if v.Secure() && opts.SecretsManager == nil {
+				return nil, fmt.Errorf(
+					"stack settings %s carry a secure value for %q; supply the stack's secrets manager "+
+						"via Options.SecretsManager to decrypt it", settingsPath, k)
+			}
+		}
+		stackCfg = ps.Config
+	}
+
+	return &Stack{be: be, stack: stack, proj: proj, opts: opts, sm: sm, stackCfg: stackCfg}, nil
 }
 
 // Preview computes the operation's plan and resource changes without applying them, and
@@ -161,7 +195,7 @@ func Select(ctx context.Context, opts Options) (*Stack, error) {
 // projected outputs are what let a delivery rollout's cascaded preview thread one stack's
 // result into the next stack's previewed inputs.
 func (s *Stack) Preview(ctx context.Context) (Result, *deploy.Plan, error) {
-	op, err := s.operation(true /*preview*/)
+	op, err := s.operation(ctx, true /*preview*/)
 	if err != nil {
 		return Result{}, nil, err
 	}
@@ -197,7 +231,7 @@ func projectedStackOutputs(plan *deploy.Plan) property.Map {
 // Up applies the operation, converging the stack to its program's desired state, and
 // returns the resource changes and the stack's outputs.
 func (s *Stack) Up(ctx context.Context) (Result, error) {
-	op, err := s.operation(false /*preview*/)
+	op, err := s.operation(ctx, false /*preview*/)
 	if err != nil {
 		return Result{}, err
 	}
@@ -220,7 +254,7 @@ func (s *Stack) Up(ctx context.Context) (Result, error) {
 // Destroy tears down all of the stack's resources. (The backend's destroy path does not
 // surface a streaming event channel, so OnEvent does not fire for Destroy.)
 func (s *Stack) Destroy(ctx context.Context) (display.ResourceChanges, error) {
-	op, err := s.operation(false /*preview*/)
+	op, err := s.operation(ctx, false /*preview*/)
 	if err != nil {
 		return nil, err
 	}
@@ -233,10 +267,25 @@ func (s *Stack) Outputs(ctx context.Context) (property.Map, error) {
 }
 
 // operation assembles the backend update operation shared by preview/up/destroy.
-func (s *Stack) operation(preview bool) (backend.UpdateOperation, error) {
-	cfg, err := parseConfig(s.opts.Config)
+func (s *Stack) operation(ctx context.Context, preview bool) (backend.UpdateOperation, error) {
+	overlay, err := parseConfig(s.opts.Config)
 	if err != nil {
 		return backend.UpdateOperation{}, err
+	}
+	// Config resolves in three layers, lowest first: project defaults (Pulumi.yaml config
+	// blocks), the stack's settings file, then the driver's overlay -- the same precedence
+	// the CLI gives -c flags over `pulumi config`.
+	cfg := config.Map{}
+	for k, v := range s.stackCfg {
+		cfg[k] = v
+	}
+	if err := workspace.ApplyProjectConfig(
+		ctx, s.stack.Ref().Name().String(), s.proj, esc.Value{}, cfg, s.sm.Encrypter(),
+	); err != nil {
+		return backend.UpdateOperation{}, fmt.Errorf("applying project config defaults: %w", err)
+	}
+	for k, v := range overlay {
+		cfg[k] = v
 	}
 	eng := s.opts.Engine
 	if preview {
