@@ -105,6 +105,13 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			Remote:            res.IsRemote,
 			LogicalName:       res.LogicalName,
 		}
+		if p := res.Parameterization; p != nil {
+			specs[i].Parameterization = &importParameterization{
+				PluginName:    p.PluginName,
+				PluginVersion: p.PluginVersion,
+				Value:         p.Value,
+			}
+		}
 	}
 
 	return importFile{
@@ -173,6 +180,19 @@ type importSpec struct {
 
 	// LogicalName is the resources Pulumi name (i.e. the first argument to `new Resource`).
 	LogicalName string `json:"logicalName,omitempty"`
+
+	// Parameterization is set when the resource should be imported under a parameterized (e.g.
+	// dynamically bridged) provider rather than a plain one.
+	Parameterization *importParameterization `json:"parameterization,omitempty"`
+}
+
+// importParameterization is the JSON representation of a resource's provider parameterization. The
+// parameterized package name and version are taken from the resource's own type and version; these
+// fields describe the base plugin the parameterization is applied to.
+type importParameterization struct {
+	PluginName    string `json:"pluginName"`
+	PluginVersion string `json:"pluginVersion"`
+	Value         []byte `json:"value"`
 }
 
 type importFile struct {
@@ -505,6 +525,20 @@ func parseImportFile(
 					spec.Version, describeResource(i, spec), err)
 			} else {
 				imp.Version = &v
+			}
+		}
+
+		if spec.Parameterization != nil {
+			v, err := semver.ParseTolerant(spec.Parameterization.PluginVersion)
+			if err != nil {
+				pusherrf("could not parse parameterization version '%v' for %v: %w",
+					spec.Parameterization.PluginVersion, describeResource(i, spec), err)
+			} else {
+				imp.Parameterization = &deploy.Parameterization{
+					PluginName:    tokens.Package(spec.Parameterization.PluginName),
+					PluginVersion: v,
+					Value:         spec.Parameterization.Value,
+				}
 			}
 		}
 

@@ -65,6 +65,7 @@ class ResourceImport(google.protobuf.message.Message):
     LOGICAL_NAME_FIELD_NUMBER: builtins.int
     IS_COMPONENT_FIELD_NUMBER: builtins.int
     IS_REMOTE_FIELD_NUMBER: builtins.int
+    PARAMETERIZATION_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type token for the resource."""
     name: builtins.str
@@ -81,6 +82,12 @@ class ResourceImport(google.protobuf.message.Message):
     """true if this is a component resource."""
     is_remote: builtins.bool
     """true if this is a remote resource. Ignored if is_component is false."""
+    @property
+    def parameterization(self) -> global___ResourceParameterization:
+        """the parameterization to use for the resource's provider, if any. Set when the resource should be
+        imported under a parameterized (e.g. dynamically bridged) provider rather than a plain one.
+        """
+
     def __init__(
         self,
         *,
@@ -92,10 +99,40 @@ class ResourceImport(google.protobuf.message.Message):
         logical_name: builtins.str = ...,
         is_component: builtins.bool = ...,
         is_remote: builtins.bool = ...,
+        parameterization: global___ResourceParameterization | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "pluginDownloadURL", b"pluginDownloadURL", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "parameterization", b"parameterization", "pluginDownloadURL", b"pluginDownloadURL", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ResourceImport = ResourceImport
+
+@typing.final
+class ResourceParameterization(google.protobuf.message.Message):
+    """A ResourceParameterization describes the base plugin that a resource's parameterized provider is built
+    from. The parameterized package name and version are taken from the resource's own type and version.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PLUGIN_NAME_FIELD_NUMBER: builtins.int
+    PLUGIN_VERSION_FIELD_NUMBER: builtins.int
+    VALUE_FIELD_NUMBER: builtins.int
+    plugin_name: builtins.str
+    """the name of the base plugin to parameterize (e.g. "terraform-provider")."""
+    plugin_version: builtins.str
+    """the version of the base plugin to parameterize."""
+    value: builtins.bytes
+    """the parameter value to apply to the base plugin."""
+    def __init__(
+        self,
+        *,
+        plugin_name: builtins.str = ...,
+        plugin_version: builtins.str = ...,
+        value: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["plugin_name", b"plugin_name", "plugin_version", b"plugin_version", "value", b"value"]) -> None: ...
+
+global___ResourceParameterization = ResourceParameterization
 
 @typing.final
 class ConvertStateResponse(google.protobuf.message.Message):
