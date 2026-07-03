@@ -17,13 +17,13 @@ package needle
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 func RequireBackend(backend *backend.Backend) Stitch {
@@ -40,7 +40,7 @@ var requireBackend = &value{
 		if err != nil {
 			return fmt.Errorf("could not get cloud url: %w", err)
 		}
-		logging.V(7).Infof("Current cloud URL: %q", url)
+		slog.Info("Current cloud URL", slog.String("url", url))
 		insecure := pkgWorkspace.GetCloudInsecure(state.WS, url)
 
 		// Only set current if we don't currently have a cloud URL set.
@@ -61,7 +61,7 @@ var optionBackend = &value{
 		if err != nil {
 			return fmt.Errorf("could not get cloud url: %w", err)
 		}
-		logging.V(7).Infof("Current cloud URL: %q", url)
+		slog.Info("Current cloud URL", slog.String("url", url))
 
 		// Only set current if we don't currently have a cloud URL set.
 		b, err := state.LM.Current(cmd.Context(), state.WS, state.DiagSink, url, state.project, url == "")
