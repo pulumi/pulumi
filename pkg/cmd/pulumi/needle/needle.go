@@ -144,9 +144,9 @@ func (r requestOrValue) prepare(cmd *cobra.Command, s *state) {
 		if prepare := r.request.self().prepare; prepare != nil {
 			prepare(cmd, s, r.request.getPayload())
 		}
-		return
+	} else if prepare := r.value.prepare; prepare != nil {
+		prepare(cmd, s, nil)
 	}
-	r.value.prepare(cmd, s, nil)
 }
 
 func (r requestOrValue) get(cmd *cobra.Command, s *state) error {
