@@ -15,8 +15,6 @@
 package deployment
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -35,64 +33,7 @@ func verifyInteractiveMode(yes bool) error {
 	return nil
 }
 
-func newDeploymentSettingsUpdateCmd(configFile *string) *cobra.Command {
-	var stack string
-	var yes bool
-
-	cmd := &cobra.Command{
-		Hidden:     true,
-		Use:        "push",
-		Aliases:    []string{"update", "up"},
-		SuggestFor: []string{"apply", "deploy", "push"},
-		Short:      "Update stack deployment settings from deployment.yaml",
-		Long:       "",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-
-			if err := verifyInteractiveMode(yes); err != nil {
-				return err
-			}
-
-			d, err := initializeDeploymentSettingsCmd(
-				cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack, *configFile)
-			if err != nil {
-				return err
-			}
-
-			if d.Deployment == nil {
-				return errors.New("Deployment file not initialized, please run `pulumi deployment settings init` instead")
-			}
-
-			confirm := askForConfirmation("This action will override the stack's deployment settings, "+
-				"do you want to continue?", d.DisplayOptions.Color, true, yes)
-
-			if !confirm {
-				return nil
-			}
-
-			err = d.Backend.UpdateStackDeploymentSettings(ctx, d.Stack, d.Deployment.DeploymentSettings)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
-		"Automatically confirm every confirmation prompt")
-
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}
-
-func newDeploymentSettingsDestroyCmd(configFile *string) *cobra.Command {
+func newDeploymentSettingsDestroyCmd() *cobra.Command {
 	var stack string
 	var yes bool
 
@@ -111,7 +52,7 @@ func newDeploymentSettingsDestroyCmd(configFile *string) *cobra.Command {
 			}
 
 			d, err := initializeDeploymentSettingsCmd(
-				cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack, *configFile)
+				cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}

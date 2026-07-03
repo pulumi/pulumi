@@ -1,6 +1,6 @@
 component: cli/deployment
 kind: improvement
-body: '`pulumi deployment settings` no longer writes the local `Pulumi.<stack>.deploy.yaml` file: the experimental `init`, `pull`, `configure`, and `env` subcommands have been removed, and the CLI no longer calls the deployment-settings encrypt endpoint. Existing deploy files can still be pushed, and `get`/`edit`/`destroy` continue to manage settings directly in Pulumi Cloud'
+body: '`pulumi deployment settings` no longer writes the local `Pulumi.<stack>.deploy.yaml` file: the experimental `init`, `pull`, `configure`, and `env` subcommands have been removed, and the CLI no longer calls the deployment-settings encrypt endpoint. `get`/`edit`/`destroy` continue to manage settings directly in Pulumi Cloud'
 time: 2026-06-08T00:00:00.000000+00:00
 custom:
     PR: "23480"

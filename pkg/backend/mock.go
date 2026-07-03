@@ -80,7 +80,6 @@ type MockBackend struct {
 	UpdateStackTagsF                func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF               func(context.Context, Stack) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF               func(context.Context, Stack, *apitype.UntypedDeployment) error
-	UpdateStackDeploymentSettingsF  func(context.Context, Stack, apitype.DeploymentSettings) error
 	DestroyStackDeploymentSettingsF func(ctx context.Context, stack Stack) error
 	GetGHAppIntegrationF            func(ctx context.Context, stack Stack) (*apitype.GitHubAppIntegration, error)
 	GetStackDeploymentSettingsF     func(context.Context, Stack) (*apitype.DeploymentSettings, error)
@@ -429,15 +428,6 @@ func (be *MockBackend) CurrentUser() (string, []string, *workspace.TokenInformat
 func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error {
 	if be.CancelCurrentUpdateF != nil {
 		return be.CancelCurrentUpdateF(ctx, stackRef)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) UpdateStackDeploymentSettings(ctx context.Context, stack Stack,
-	deployment apitype.DeploymentSettings,
-) error {
-	if be.UpdateStackDeploymentSettingsF != nil {
-		return be.UpdateStackDeploymentSettingsF(ctx, stack, deployment)
 	}
 	panic("not implemented")
 }

@@ -233,8 +233,6 @@ type Backend interface {
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 
-	// UpdateStackDeploymentSettings updates the stacks's deployment settings.
-	UpdateStackDeploymentSettings(ctx context.Context, stack Stack, deployment apitype.DeploymentSettings) error
 	// Fetch deployment settings
 	GetStackDeploymentSettings(ctx context.Context, stack Stack) (*apitype.DeploymentSettings, error)
 	// Deletes the stach deployment settings

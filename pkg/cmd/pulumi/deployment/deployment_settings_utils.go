@@ -15,22 +15,9 @@
 package deployment
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-// loadProjectStackDeployment reads an existing `Pulumi.<stack>.deploy.yaml` file so it can be pushed
-// to Pulumi Cloud. The CLI no longer writes this file; it is maintained by hand (or by older CLIs).
-func loadProjectStackDeployment(
-	stack backend.Stack, configFile string,
-) (*workspace.ProjectStackDeployment, error) {
-	if configFile == "" {
-		return workspace.DetectProjectStackDeployment(stack.Ref().Name().Q())
-	}
-	return workspace.LoadProjectStackDeployment(configFile)
-}
 
 func askForConfirmation(prompt string, color colors.Colorization, defaultValue bool, yes bool) bool {
 	def := optNo

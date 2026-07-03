@@ -38,15 +38,14 @@ const (
 	optNo  = "No"
 )
 
-func newDeploymentSettingsCmd(configFile *string) *cobra.Command {
+func newDeploymentSettingsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "settings",
 		Short: "Manage stack deployment settings",
 		Long: "Manage stack deployment settings\n" +
 			"\n" +
-			"Use this command to manage a stack's deployment settings like\n" +
-			"generating the deployment file, updating secrets or pushing the\n" +
-			"updated settings to Pulumi Cloud.",
+			"Use this command to manage a stack's deployment settings\n" +
+			"directly in Pulumi Cloud.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -54,13 +53,8 @@ func newDeploymentSettingsCmd(configFile *string) *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	// Push a local `Pulumi.<stack>.deploy.yaml` file to Pulumi Cloud, or delete the
-	// stack's settings. The CLI no longer writes the local file; edit it by hand or
-	// use the cloud-direct `edit` command below.
-	cmd.AddCommand(newDeploymentSettingsUpdateCmd(configFile))
-	cmd.AddCommand(newDeploymentSettingsDestroyCmd(configFile))
-
-	// Edit the settings in cloud
+	// Manage the stack's deployment settings directly in Pulumi Cloud.
+	cmd.AddCommand(newDeploymentSettingsDestroyCmd())
 	cmd.AddCommand(newDeploymentSettingsGetCmd())
 	cmd.AddCommand(newDeploymentSettingsEditCmd())
 
@@ -70,16 +64,14 @@ func newDeploymentSettingsCmd(configFile *string) *cobra.Command {
 type deploymentSettingsCommandDependencies struct {
 	DisplayOptions *display.Options
 	Stack          backend.Stack
-	Deployment     *workspace.ProjectStackDeployment
 	Backend        backend.Backend
 	Interactive    bool
 	Ctx            context.Context
 	WorkDir        string
-	ConfigFile     string
 }
 
 func initializeDeploymentSettingsCmd(
-	ctx context.Context, stdout io.Writer, ws pkgWorkspace.Context, stack string, configFile string,
+	ctx context.Context, stdout io.Writer, ws pkgWorkspace.Context, stack string,
 ) (*deploymentSettingsCommandDependencies, error) {
 	interactive := cmdutil.Interactive()
 
@@ -133,11 +125,6 @@ func initializeDeploymentSettingsCmd(
 		return nil, err
 	}
 
-	sd, err := loadProjectStackDeployment(s, configFile)
-	if err != nil {
-		return nil, err
-	}
-
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -146,11 +133,9 @@ func initializeDeploymentSettingsCmd(
 	return &deploymentSettingsCommandDependencies{
 		DisplayOptions: &displayOpts,
 		Stack:          s,
-		Deployment:     sd,
 		Backend:        be,
 		Interactive:    interactive,
 		Ctx:            ctx,
 		WorkDir:        wd,
-		ConfigFile:     configFile,
 	}, nil
 }

@@ -1531,13 +1531,6 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 	return nil
 }
 
-func (b *diyBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
-	deployment apitype.DeploymentSettings,
-) error {
-	// The local backend does not support managing deployments.
-	return errors.New("stack deployments not supported with diy backends")
-}
-
 func (b *diyBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {
 	// The local backend does not support managing deployments.
 	return errors.New("stack deployments not supported with diy backends")

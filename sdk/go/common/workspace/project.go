@@ -1247,10 +1247,6 @@ type ProjectRuntimeInfo struct {
 	options map[string]any
 }
 
-type ProjectStackDeployment struct {
-	DeploymentSettings apitype.DeploymentSettings `json:"settings" yaml:"settings"`
-}
-
 func NewProjectRuntimeInfo(name string, options map[string]any) ProjectRuntimeInfo {
 	contract.Requiref(name != "", "name", "must not be empty")
 	return ProjectRuntimeInfo{

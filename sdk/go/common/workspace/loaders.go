@@ -169,24 +169,6 @@ func LoadProjectStack(sink diag.Sink, project *Project, path string) (*ProjectSt
 	return LoadProjectStackBytes(sink, project, b, path, marshaller)
 }
 
-func LoadProjectStackDeployment(path string) (*ProjectStackDeployment, error) {
-	contract.Requiref(path != "", "path", "must not be empty")
-
-	marshaller, err := marshallerForPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := readFileStripUTF8BOM(path)
-	if os.IsNotExist(err) {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	return LoadProjectStackDeploymentBytes(b, path, marshaller)
-}
-
 // LoadProjectStack reads a stack definition from a byte slice.
 func LoadProjectStackBytes(
 	diags diag.Sink,
@@ -248,20 +230,6 @@ func LoadProjectStackBytes(
 
 	projectStack.raw = b
 	return &projectStack, nil
-}
-
-func LoadProjectStackDeploymentBytes(
-	b []byte,
-	path string,
-	marshaller encoding.Marshaler,
-) (*ProjectStackDeployment, error) {
-	var projectStackDeployment ProjectStackDeployment
-	err := marshaller.Unmarshal(b, &projectStackDeployment)
-	if err != nil {
-		return nil, err
-	}
-
-	return &projectStackDeployment, nil
 }
 
 // LoadPluginProject reads a plugin project definition from a file.

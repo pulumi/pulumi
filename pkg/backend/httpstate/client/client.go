@@ -2367,12 +2367,6 @@ func (pc *Client) UpdateStackConfig(
 	return pc.restCall(ctx, "PUT", getStackPath(stack, "config"), nil, config, nil)
 }
 
-func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
-	deployment apitype.DeploymentSettings,
-) error {
-	return pc.restCall(ctx, "PUT", getStackPath(stack, "deployments", "settings"), nil, deployment, nil)
-}
-
 // PatchStackDeploymentSettings merges the supplied patch into the stack's
 // existing deployment settings. Wraps the `PatchDeploymentSettings` Pulumi
 // Cloud REST endpoint (POST /api/stacks/{org}/{project}/{stack}/deployments/settings).

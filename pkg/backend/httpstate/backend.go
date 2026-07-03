@@ -2648,17 +2648,6 @@ func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 	return b.client.UpdateStackTags(ctx, stackID, tags)
 }
 
-func (b *cloudBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
-	deployment apitype.DeploymentSettings,
-) error {
-	stackID, err := b.getCloudStackIdentifier(stack.Ref())
-	if err != nil {
-		return err
-	}
-
-	return b.client.UpdateStackDeploymentSettings(ctx, stackID, deployment)
-}
-
 func (b *cloudBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
