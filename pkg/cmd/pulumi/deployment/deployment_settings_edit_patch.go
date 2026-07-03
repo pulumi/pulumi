@@ -111,8 +111,7 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 }
 
 // buildSecretEnvVars converts each "KEY=VALUE" --secret-env entry into the plaintext-secret
-// wire form ({"secret": VALUE}). The service encrypts these server-side when handling the PATCH,
-// so the CLI no longer needs to pre-encrypt them via a separate endpoint.
+// wire form ({"secret": VALUE}), which the server encrypts when handling the PATCH.
 func buildSecretEnvVars(specs []string) map[string]map[string]any {
 	if len(specs) == 0 {
 		return nil

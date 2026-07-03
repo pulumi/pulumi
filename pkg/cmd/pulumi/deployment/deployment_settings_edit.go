@@ -331,8 +331,7 @@ func runDeploymentSettingsEdit(
 		return err
 	}
 
-	// Secret env vars are sent in plaintext-secret wire form; the PATCH endpoint encrypts them
-	// server-side, so no separate /settings/encrypt round-trip is needed.
+	// Secret env vars are sent in plaintext-secret wire form; the server encrypts them on PATCH.
 	secretValues := buildSecretEnvVars(args.secretEnvVars)
 
 	patch := buildEditFlagPatch(args, secretValues)

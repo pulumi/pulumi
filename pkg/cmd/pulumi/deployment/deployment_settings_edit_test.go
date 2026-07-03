@@ -509,7 +509,7 @@ func TestDeploymentSettingsEdit_AdvancedToggles(t *testing.T) {
 func TestDeploymentSettingsEdit_SecretEnvWireForm(t *testing.T) {
 	t.Parallel()
 	// Secret env vars are sent in plaintext-secret wire form ({"secret": ...}); the server
-	// encrypts them on PATCH, so the CLI no longer calls the /settings/encrypt endpoint.
+	// encrypts them on PATCH.
 	got := captureEditPatch(t, deploymentSettingsEditArgs{
 		secretEnvVars: []string{"API=foo"},
 		flagsChanged:  flagsSet(flagSecretEnv),
