@@ -110,10 +110,9 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 	return nil
 }
 
-// buildSecretEnvVars converts each "KEY=VALUE" --secret-env entry into the wire form for a
-// plaintext secret value ({"secret": VALUE}). The PATCH /deployments/settings endpoint encrypts
-// these server-side with the stack's deployment-settings key (see UpsertSettings/encryptSettings in
-// pulumi-service), so the CLI no longer needs to pre-encrypt them via the /settings/encrypt endpoint.
+// buildSecretEnvVars converts each "KEY=VALUE" --secret-env entry into the plaintext-secret
+// wire form ({"secret": VALUE}). The service encrypts these server-side when handling the PATCH,
+// so the CLI no longer needs to pre-encrypt them via a separate endpoint.
 func buildSecretEnvVars(specs []string) map[string]map[string]any {
 	if len(specs) == 0 {
 		return nil
