@@ -1,7 +1,7 @@
 import pulumi
-import pulumi_aws as aws
+import pulumi_infra as infra
 
-test = aws.fsx.OpenZfsFileSystem("test",
+test = infra.FileSystem("test",
     storage_capacity=64,
     subnet_ids=[aws_subnet["test1"]["id"]],
     deployment_type="SINGLE_AZ_1",

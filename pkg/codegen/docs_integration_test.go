@@ -20,7 +20,8 @@ package codegen_test
 
 import (
 	"encoding/json"
-	"os"
+	"io"
+	"net/http"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -576,7 +577,7 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 		},
 	}
 
-	pkg, err := schema.ImportSpec(schemaSpec, nil, schema.ValidationOptions{
+	pkg, err := schema.ImportSpec(schemaSpec, nil, schema.NewNullLoader(), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
@@ -754,19 +755,32 @@ func testDocsGenHelper(
 	})
 }
 
-func BenchmarkGetPropertyNames(b *testing.B) {
-	schemaBytes, err := os.ReadFile("../../tests/testdata/codegen/azure-native-2.41.0.json")
+// benchmarkSchemaBytes fetches a large real-provider schema so the bind timings below stay
+// meaningful. The schema is too large to store in-repo, so it is downloaded during setup.
+func benchmarkSchemaBytes(b *testing.B) []byte {
+	const url = "https://raw.githubusercontent.com/pulumi/pulumi-aws/v5.4.0/" +
+		"provider/cmd/pulumi-resource-aws/schema.json"
+	resp, err := http.Get(url)
 	require.NoError(b, err)
+	defer resp.Body.Close()
+	require.Equal(b, http.StatusOK, resp.StatusCode)
+	bytes, err := io.ReadAll(resp.Body)
+	require.NoError(b, err)
+	return bytes
+}
+
+func BenchmarkGetPropertyNames(b *testing.B) {
+	schemaBytes := benchmarkSchemaBytes(b)
 	b.Run("full-bind", func(b *testing.B) {
 		for range b.N {
 			var spec schema.PackageSpec
 			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
 			partial, err := schema.ImportSpec(spec, map[string]schema.Language{
 				"nodejs": nodejs_codegen.Importer,
-			}, schema.ValidationOptions{})
+			}, schema.NewNullLoader(), schema.ValidationOptions{AllowDanglingReferences: true})
 			require.NoError(b, err)
 
-			res, ok := partial.GetResource("azure-native:eventgrid/v20220615:DomainTopicEventSubscription")
+			res, ok := partial.GetResource("aws:ec2/instance:Instance")
 			require.True(b, ok)
 
 			var helper nodejs_codegen.DocLanguageHelper
@@ -782,10 +796,10 @@ func BenchmarkGetPropertyNames(b *testing.B) {
 			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
 			partial, err := schema.ImportPartialSpec(spec, map[string]schema.Language{
 				"nodejs": nodejs_codegen.Importer,
-			}, nil)
+			}, schema.NewNullLoader())
 			require.NoError(b, err)
 
-			res, ok, err := partial.Resources().Get("azure-native:eventgrid/v20220615:DomainTopicEventSubscription")
+			res, ok, err := partial.Resources().Get("aws:ec2/instance:Instance")
 			require.NoError(b, err)
 			require.True(b, ok)
 
@@ -802,7 +816,7 @@ func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {
 		"go":     golang_codegen.Importer,
 		"nodejs": nodejs_codegen.Importer,
 		"python": python_codegen.Importer,
-	}, schema.ValidationOptions{
+	}, schema.NewNullLoader(), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)

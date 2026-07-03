@@ -29,9 +29,9 @@ import (
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -63,7 +63,7 @@ func resourceSchemaHelp(res *schema.Resource) string {
 			}
 			b.WriteString(")")
 			if property.Comment != "" {
-				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(property.Comment, "\n", " "))
+				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(cleanComment(property.Comment), "\n", " "))
 			}
 			b.WriteString("\n")
 		}
@@ -84,7 +84,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	shorthelp := fmt.Sprintf("Operate on the %s resource", name)
 	longhelp := shorthelp + "."
 	if res.Comment != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, res.Comment)
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, cleanComment(res.Comment))
 	}
 	if schemaHelp := resourceSchemaHelp(res); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
@@ -104,7 +104,10 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		"Path to a file containing provider configuration")
 	cmd.PersistentFlags().StringVar(&pc.format, "input", "pcl",
 		"Format of the provider configuration file")
-	addPersistentInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties)
+	cmd.PersistentFlags().StringVar(&pc.providerURN, "provider", "",
+		"The URN of a provider resource in the current stack whose inputs to use as the "+
+			"base of the provider configuration (requires a stack context)")
+	addPersistentInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
 	cmd.AddCommand(pc.newResourceCreateCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))
@@ -123,6 +126,9 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 		Short: "Create a resource",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !pc.stateless {
+				return errStatefulNotImplemented("create")
+			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
@@ -132,7 +138,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 			}
 			urn := resourceURN(res)
 			inputs, err := evaluateResourceFile(
-				ctx, inputFile, "input", pc.format, res, pc.evalContext,
+				ctx, inputFile, "input", pc.format, res, pc.evalContext(),
 				pc.converter, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", res.InputProperties))
 			if err != nil {
@@ -216,6 +222,9 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 		Short: "Patch a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !pc.stateless {
+				return errStatefulNotImplemented("patch")
+			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
@@ -242,7 +251,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			// AllowMissingProperties because a patch typically only specifies the fields being changed; the binder
 			// would otherwise reject any partial patch that omits a required input.
 			patch, err := evaluateResourceFile(
-				ctx, inputFile, "input", inputFormat, res, pc.evalContext,
+				ctx, inputFile, "input", inputFormat, res, pc.evalContext(),
 				pc.converter, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", res.InputProperties), pcl.AllowMissingProperties)
 			if err != nil {
@@ -309,6 +318,9 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 		Short: "Delete a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !pc.stateless {
+				return errStatefulNotImplemented("delete")
+			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
@@ -357,7 +369,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 			}
 
 			query, err := evaluateResourceListFile(
-				ctx, inputFile, "input", inputFormat, res, pc.evalContext,
+				ctx, inputFile, "input", inputFormat, res, pc.evalContext(),
 				pc.converter, pc.loaderTarget, pc.packageDescriptor,
 				collectInputFlags(cmd, "input", res.ListInputs.Properties))
 			if err != nil {
@@ -490,6 +502,14 @@ func (pc *packageCommand) printListResults(cmd *cobra.Command, results []plugin.
 	}
 	fmt.Fprint(cmd.OutOrStdout(), output)
 	return nil
+}
+
+// errStatefulNotImplemented is returned from create/patch/delete when the user did not pass
+// --stateless. The stateful (engine-driven) implementation of these operations is the planned
+// default but isn't built yet, so for now the only working path is opting in to the stateless one.
+func errStatefulNotImplemented(op string) error {
+	return fmt.Errorf("`%s` is not yet implemented in stateful mode; pass --stateless to use the "+
+		"direct-provider implementation", op)
 }
 
 func formatCreateSummary(res *schema.Resource, inputs resource.PropertyMap, showSecrets bool) (string, error) {

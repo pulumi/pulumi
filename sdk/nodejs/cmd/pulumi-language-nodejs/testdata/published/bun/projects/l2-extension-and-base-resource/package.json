@@ -1,0 +1,16 @@
+{
+	"name": "l2-extension-and-base-resource",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/extbase": "ROOT/artifacts/pulumi-extbase-45.0.0.tgz",
+		"@pulumi/myext": "ROOT/artifacts/pulumi-myext-2.0.0.tgz"
+	}
+}

@@ -104,9 +104,14 @@ func TestGoModEdits(t *testing.T) {
 	require.NoError(t, err)
 
 	repoRoot := filepath.Clean(filepath.Join(cwd, "../../.."))
-	depRoot := filepath.Clean(filepath.Join(repoRoot, ".."))
-	// NOTE: this path may not point to the directory that contains the current worktree.
+
+	depRoot := t.TempDir()
 	pulumiRepo := filepath.Join(depRoot, "pulumi")
+	require.NoError(t, os.MkdirAll(filepath.Join(pulumiRepo, "sdk"), 0o700))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(pulumiRepo, "sdk", "go.mod"),
+		[]byte("module github.com/pulumi/pulumi/sdk/v3\n"),
+		0o600))
 
 	gopath, err := GoPath()
 	require.NoError(t, err)

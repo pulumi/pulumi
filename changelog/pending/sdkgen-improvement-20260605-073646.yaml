@@ -1,6 +1,0 @@
-component: sdkgen
-kind: improvement
-body: Allow provider objects to have string enumerations on their outputs
-time: 2026-06-05T07:36:46.216099+01:00
-custom:
-    PR: "23461"

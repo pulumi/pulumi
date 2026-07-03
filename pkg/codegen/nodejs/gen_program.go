@@ -43,6 +43,11 @@ import (
 
 const PulumiToken = "pulumi"
 
+// rangeLoopFmt renders a `range`-over-count loop. `range` is a `let`-bound
+// number, so each iteration has its own binding and deferred applies in the loop
+// body capture the value for their own iteration rather than the final one.
+const rangeLoopFmt = "%sfor (let range = 0; range < %.12o; range++) {\n"
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -60,6 +65,11 @@ type generator struct {
 	packageImportAliases    map[string]string
 	importIdentifiers       codegen.StringSet
 	deferredOutputVariables []*pcl.DeferredOutputVariable
+
+	// rangeValueIsScalar is true while generating the body of a numeric `range`
+	// loop, where `range` is a plain number. References to `range.value` and
+	// `range.key` are then rendered as `range`.
+	rangeValueIsScalar bool
 }
 
 // ProgramOptions controls optional code generation behaviour for GenerateProgramWithOptions.
@@ -615,6 +625,8 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				packageRef = n.Schema.PackageReference
+				// Extension resources import the extension's SDK package, not the base.
+				pkg = packageRef.Name()
 			}
 			visitPkg(pkg, packageRef)
 		case *pcl.ReadResource:
@@ -622,6 +634,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				packageRef = n.Schema.PackageReference
+				pkg = packageRef.Name()
 			}
 			visitPkg(pkg, packageRef)
 		case *pcl.Component:
@@ -1108,6 +1121,9 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.PackageReference)
+		if r.Schema.PackageReference != nil {
+			pkg = r.Schema.PackageReference.Name()
+		}
 	}
 
 	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
@@ -1118,6 +1134,9 @@ func readResourceTypeName(r *pcl.ReadResource) (string, string, string, hcl.Diag
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.PackageReference)
+		if r.Schema.PackageReference != nil {
+			pkg = r.Schema.PackageReference.Name()
+		}
 	}
 
 	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
@@ -1382,6 +1401,36 @@ func (g *generator) genHookDeclarations(r *pcl.Resource) map[string][]string {
 	return hookVars
 }
 
+// genMapRangedCollection emits an object-typed collection, keyed by the map key
+// and strongly typed by valueType, for a resource or component that ranges over a
+// map. Indexing such a collection by key (e.g. `r["k"]`) is then well-typed,
+// unlike the array used for numeric and list ranges. preInstantiate, when
+// non-nil, runs inside the loop before each resource is instantiated.
+func (g *generator) genMapRangedCollection(
+	w io.Writer, variableName, valueType, name string, rangeExpr model.Expression,
+	needsDefinition bool, preInstantiate func(), instantiate func(string),
+) {
+	if needsDefinition {
+		g.Fgenf(w, "%sconst %s: {[key: string]: %s} = {};\n", g.Indent, variableName, valueType)
+	}
+	entries := &model.FunctionCallExpression{Name: "entries", Args: []model.Expression{rangeExpr}}
+	g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, entries)
+	resName := g.makeResourceName(name, "range.key")
+	// `range` here is the {key, value} entry object, not a numeric index.
+	prevScalar := g.rangeValueIsScalar
+	defer func() { g.rangeValueIsScalar = prevScalar }()
+	g.rangeValueIsScalar = false
+	g.Indented(func() {
+		if preInstantiate != nil {
+			preInstantiate()
+		}
+		g.Fgenf(w, "%s%s[range.key] = ", g.Indent, variableName)
+		instantiate(resName)
+		g.Fgenf(w, ";\n")
+	})
+	g.Fgenf(w, "%s}\n", g.Indent)
+}
+
 // genResourceDeclaration handles the generation of instantiations of resources.
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
@@ -1459,6 +1508,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			rangeExpr = g.lowerExpression(rangeExpr, rangeType)
 			if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
 				g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
+			} else if _, isMap := pcl.UnwrapOption(model.ResolveOutputs(rangeType)).(*model.MapType); isMap {
+				g.Fgenf(w, "%sconst %s: {[key: string]: %s} = {};\n", g.Indent, variableName, qualifiedMemberName)
 			} else {
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 			}
@@ -1564,14 +1615,17 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, variableName, qualifiedMemberName, name, rangeExpr, needsDefinition, nil, instantiate)
 		} else {
 			if needsDefinition {
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 			}
-			resKey := "key"
-			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
-				resKey = "value"
+			scalar := model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion
+			countRef := "range.key"
+			if scalar {
+				g.Fgenf(w, rangeLoopFmt, g.Indent, rangeExpr)
+				countRef = "range"
 			} else {
 				rangeExpr := &model.FunctionCallExpression{
 					Name: "entries",
@@ -1580,12 +1634,15 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, "range."+resKey)
+			resName := g.makeResourceName(name, countRef)
+			prevScalar := g.rangeValueIsScalar
+			g.rangeValueIsScalar = scalar
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
 				instantiate(resName)
 				g.Fgenf(w, ");\n")
 			})
+			g.rangeValueIsScalar = prevScalar
 			g.Fgenf(w, "%s}\n", g.Indent)
 		}
 	} else {
@@ -1686,24 +1743,30 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, variableName, qualifiedMemberName, name, rangeExpr, needsDefinition, nil, instantiate)
 		} else {
 			if needsDefinition {
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 			}
-			resKey := "key"
-			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
-				resKey = "value"
+			scalar := model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion
+			countRef := "range.key"
+			if scalar {
+				g.Fgenf(w, rangeLoopFmt, g.Indent, rangeExpr)
+				countRef = "range"
 			} else {
 				entries := &model.FunctionCallExpression{Name: "entries", Args: []model.Expression{rangeExpr}}
 				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, entries)
 			}
-			resName := g.makeResourceName(name, "range."+resKey)
+			resName := g.makeResourceName(name, countRef)
+			prevScalar := g.rangeValueIsScalar
+			g.rangeValueIsScalar = scalar
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
 				instantiate(resName)
 				g.Fgenf(w, ");\n")
 			})
+			g.rangeValueIsScalar = prevScalar
 			g.Fgenf(w, "%s}\n", g.Indent)
 		}
 	} else {
@@ -1813,13 +1876,17 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, variableName, componentName, name, rangeExpr, true,
+				declareDeferredOutputVariables, instantiate)
 		} else {
 			g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, componentName)
 
-			resKey := "key"
-			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
-				resKey = "value"
+			scalar := model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion
+			countRef := "range.key"
+			if scalar {
+				g.Fgenf(w, rangeLoopFmt, g.Indent, rangeExpr)
+				countRef = "range"
 			} else {
 				rangeExpr := &model.FunctionCallExpression{
 					Name: "entries",
@@ -1828,13 +1895,16 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, "range."+resKey)
+			resName := g.makeResourceName(name, countRef)
+			prevScalar := g.rangeValueIsScalar
+			g.rangeValueIsScalar = scalar
 			g.Indented(func() {
 				declareDeferredOutputVariables()
 				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
 				instantiate(resName)
 				g.Fgenf(w, ");\n")
 			})
+			g.rangeValueIsScalar = prevScalar
 			g.Fgenf(w, "%s}\n", g.Indent)
 		}
 	} else {

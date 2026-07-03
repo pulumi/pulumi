@@ -16,56 +16,32 @@ package codegen
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
-
-func readSchemaFile(file string) (pkgSpec schema.PackageSpec) {
-	// Read in, decode, and import the schema.
-	schemaBytes, err := os.ReadFile(filepath.Join("testing", "test", "testdata", file))
-	if err != nil {
-		panic(err)
-	}
-
-	if strings.HasSuffix(file, ".json") {
-		if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
-			panic(err)
-		}
-	} else if strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml") {
-		if err = yaml.Unmarshal(schemaBytes, &pkgSpec); err != nil {
-			panic(err)
-		}
-	} else {
-		panic("unknown schema file extension while parsing " + file)
-	}
-
-	return pkgSpec
-}
 
 func TestResolvingPackageReferences(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("testing", "test", "testdata")
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("awsx-1.0.0-beta.5.json")
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
+	var pkgSpec schema.PackageSpec
+	require.NoError(t, json.Unmarshal(utils.ReadSchema(t, "remoteref", "1.0.0"), &pkgSpec))
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NotNil(t, pkg)
 	require.NoError(t, err)
 	require.Empty(t, diags)
-	// ensure that package references return aws because awsx depends on aws
+	// ensure that package references return goalias because remoteref depends on goalias
 	references := PackageReferences(pkg)
 	require.Len(t, references, 1)
-	assert.Equal(t, "aws", references[0].Name())
+	assert.Equal(t, "goalias", references[0].Name())
 }
 
 func TestStringSetContains(t *testing.T) {

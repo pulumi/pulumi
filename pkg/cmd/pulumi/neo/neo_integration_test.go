@@ -38,6 +38,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// testWaitTimeout bounds every wait in these integration tests. Generous on
+// purpose: the tests guard against permanent hangs, so a long deadline loses
+// no detection power, while tight ones flake on starved CI runners
+// (pulumi/pulumi#23541).
+const testWaitTimeout = 30 * time.Second
+
 // neoFakeServer fakes the four Pulumi Cloud HTTP endpoints runNeo touches
 // (account details, create-task, SSE event stream, and post-user-event) over
 // httptest. The handlers record the requests they observe so the test can
@@ -207,7 +213,7 @@ func (s *neoFakeServer) sawStreamConnect() bool {
 // (interactive path) against an in-process httptest.Server with a real
 // *client.Client — exercising HTTP marshalling, SSE parsing, and the real
 // Session.Run loop — then triggers the TUI to quit and asserts runNeo
-// returns within 5s. Pre-fix, p.Run returned nil from tea.Quit, errgroup
+// returns promptly. Pre-fix, p.Run returned nil from tea.Quit, errgroup
 // kept gctx alive, Session.Run blocked on `<-ctx.Done` forever, and g.Wait
 // hung — this test would time out instead of completing.
 //
@@ -270,23 +276,31 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	// Drive shutdown once the SSE stream is established. This is the moment
 	// equivalent to "user pressed Ctrl+C twice and the TUI called tea.Quit".
 	go func() {
-		// Wait briefly for runNeo to call CreateNeoTask and open the SSE
-		// stream. 100ms is generous on local hardware; if the test ever
-		// flakes here, switch to polling srv.sawStreamConnect().
-		deadline := time.Now().Add(2 * time.Second)
+		// Wait for runNeo to construct the tea.Program, then for the SSE
+		// stream to open. Once the program exists, always Quit — bailing out
+		// here would leave the TUI running and turn a slow run into a
+		// guaranteed timeout below.
+		var p *tea.Program
+		deadline := time.Now().Add(testWaitTimeout)
+		for time.Now().Before(deadline) {
+			programMu.Lock()
+			p = program
+			programMu.Unlock()
+			if p != nil {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if p == nil {
+			return // runNeo never got there; the main timeout will report it.
+		}
 		for time.Now().Before(deadline) {
 			if srv.sawStreamConnect() {
 				break
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
-
-		programMu.Lock()
-		p := program
-		programMu.Unlock()
-		if p != nil {
-			p.Quit()
-		}
+		p.Quit()
 	}()
 
 	// runNeo on its own goroutine so the test can enforce a hard timeout
@@ -294,7 +308,7 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	}()
 
 	select {
@@ -307,8 +321,8 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 			require.ErrorIs(t, err, context.Canceled,
 				"unexpected error from runNeo: %v", err)
 		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("runNeo did not return within 5s — the cancel-on-TUI-exit fix has regressed " +
+	case <-time.After(testWaitTimeout):
+		t.Fatal("runNeo did not return in time — the cancel-on-TUI-exit fix has regressed " +
 			"(real *client.Client + real Session.Run hung after tea.Quit)")
 	}
 
@@ -370,7 +384,7 @@ func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 	// and close the stream so Session.Run sees the channel close and returns
 	// nil. Without this nudge the handler would block forever on streamSend.
 	go func() {
-		if !srv.awaitStreamConnect(t, 2*time.Second) {
+		if !srv.awaitStreamConnect(t, testWaitTimeout) {
 			return
 		}
 		srv.sendFinalAssistantMessage(t)
@@ -380,14 +394,14 @@ func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	}()
 
 	select {
 	case err := <-done:
 		require.NoError(t, err)
-	case <-time.After(5 * time.Second):
-		t.Fatal("non-interactive runNeo did not return within 5s")
+	case <-time.After(testWaitTimeout):
+		t.Fatal("non-interactive runNeo did not return in time")
 	}
 
 	posts := srv.recordedPosts()
@@ -408,7 +422,7 @@ func TestRunNeoIntegration_NonInteractiveRequiresPrompt(t *testing.T) {
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "" /*prompt*/, "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt argument is required")
 
@@ -434,7 +448,7 @@ func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
 	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Pulumi Cloud backend",
 		"non-cloud backends must surface a clear error rather than panic on the type assertion")
@@ -452,7 +466,7 @@ func TestRunNeoIntegration_ResolvesCwdWhenEmpty(t *testing.T) {
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
 	go func() {
-		if !srv.awaitStreamConnect(t, 2*time.Second) {
+		if !srv.awaitStreamConnect(t, testWaitTimeout) {
 			return
 		}
 		srv.sendFinalAssistantMessage(t)
@@ -465,14 +479,14 @@ func TestRunNeoIntegration_ResolvesCwdWhenEmpty(t *testing.T) {
 		// directory is always a real, readable path, so the tools constructors
 		// accept it and runNeo proceeds.
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", "", /*cwd*/
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	}()
 
 	select {
 	case err := <-done:
 		require.NoError(t, err)
-	case <-time.After(5 * time.Second):
-		t.Fatal("runNeo with empty cwd did not return within 5s")
+	case <-time.After(testWaitTimeout):
+		t.Fatal("runNeo with empty cwd did not return in time")
 	}
 }
 
@@ -489,7 +503,7 @@ func TestRunNeoIntegration_RejectsNonexistentCwd(t *testing.T) {
 
 	missing := t.TempDir() + "/does-not-exist"
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", missing,
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	require.Error(t, err)
 	// The exact wrapping is internal to tools.NewFilesystem, but the missing
 	// path should be referenced so the user can see what went wrong.
@@ -518,7 +532,7 @@ func TestRunNeoIntegration_PropagatesReadProjectError(t *testing.T) {
 	}
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "synthetic ReadProject failure")
 	assert.Empty(t, srv.recordedPosts(),
@@ -563,7 +577,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	t.Cleanup(func() { isInteractive = prevInteractive })
 
 	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "creating Neo task")
 }
@@ -636,7 +650,7 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/)
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
 	}()
 
 	select {
@@ -646,8 +660,8 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "creating Neo task",
 			"CreateNeoTask error must propagate, not be replaced by tear-down state")
-	case <-time.After(5 * time.Second):
-		t.Fatal("runNeo did not return within 5s after CreateNeoTask failure — " +
+	case <-time.After(testWaitTimeout):
+		t.Fatal("runNeo did not return in time after CreateNeoTask failure — " +
 			"the gctx.Done → p.Quit goroutine must tear the TUI down on worker error")
 	}
 }
@@ -666,7 +680,7 @@ func TestRunNeoIntegration_NewNeoCmdRunE(t *testing.T) {
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
 	go func() {
-		if !srv.awaitStreamConnect(t, 2*time.Second) {
+		if !srv.awaitStreamConnect(t, testWaitTimeout) {
 			return
 		}
 		srv.sendFinalAssistantMessage(t)
@@ -686,12 +700,56 @@ func TestRunNeoIntegration_NewNeoCmdRunE(t *testing.T) {
 	select {
 	case err := <-done:
 		require.NoError(t, err)
-	case <-time.After(5 * time.Second):
-		t.Fatal("cmd.RunE did not return within 5s")
+	case <-time.After(testWaitTimeout):
+		t.Fatal("cmd.RunE did not return in time")
 	}
 
 	posts := srv.recordedPosts()
 	require.NotEmpty(t, posts, "RunE did not reach CreateNeoTask")
 	assert.Contains(t, string(posts[0].body), "my prompt",
 		"prompt from positional args must reach CreateNeoTask")
+}
+
+//nolint:paralleltest // mutates package globals
+func TestRunNeoIntegration_DisableIntegrationsSendsEmptyList(t *testing.T) {
+	isolateWorkspace(t)
+
+	srv := newNeoFakeServer(t)
+	installNeoTestEnv(t, srv, false /*interactive*/)
+
+	go func() {
+		if !srv.awaitStreamConnect(t, 2*time.Second) {
+			return
+		}
+		srv.sendFinalAssistantMessage(t)
+		srv.endStream()
+	}()
+
+	cmd := NewNeoCmd()
+	cmd.SetContext(t.Context())
+	require.NoError(t, cmd.Flags().Set("org", "test-org"))
+	require.NoError(t, cmd.Flags().Set("cwd", t.TempDir()))
+	require.NoError(t, cmd.Flags().Set("disable-integrations", "true"))
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.RunE(cmd, []string{"my prompt"})
+	}()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("cmd.RunE did not return within 5s")
+	}
+
+	posts := srv.recordedPosts()
+	require.NotEmpty(t, posts, "RunE did not reach CreateNeoTask")
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(posts[0].body, &body))
+	require.Contains(t, body, "enabledIntegrations",
+		"--disable-integrations must send an explicit enabledIntegrations field")
+	assert.Equal(t, []any{}, body["enabledIntegrations"],
+		"--disable-integrations must send an empty enabledIntegrations array")
 }

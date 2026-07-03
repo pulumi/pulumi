@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -49,7 +50,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
@@ -186,8 +186,20 @@ func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
 type loggingWriter struct{}
 
 func (loggingWriter) Write(bytes []byte) (int, error) {
-	logging.Infof("%s", string(bytes))
+	slog.Info(string(bytes))
 	return len(bytes), nil
+}
+
+func parseRootPersistentFlags(rootPersistent *pflag.FlagSet, args []string) {
+	pf := pflag.NewFlagSet("", pflag.ContinueOnError)
+	pf.ParseErrorsAllowlist.UnknownFlags = true
+	pf.AddFlagSet(rootPersistent)
+	// pflag aborts Parse with ErrHelp on an undeclared --help/-h, dropping every flag after it.
+	// Declaring help keeps parsing going so e.g. `--help --otel-traces ...` still sees --otel-traces.
+	if pf.Lookup("help") == nil {
+		pf.BoolP("help", "h", false, "")
+	}
+	_ = pf.Parse(args)
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
@@ -213,7 +225,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	cleanup := func() {
 		// Logger.Close is a no-op when autoLogger is nil.
 		if err := autoLogger.Close(); err != nil {
-			logging.V(3).Infof("automatic log close error: %v", err)
+			slog.Info("automatic log close error", "err", err)
 		}
 		logging.Flush()
 		cmdutil.CloseTracing()
@@ -226,7 +238,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		if logging.Verbose > 0 && !logging.LogToStderr {
 			logFile, err := logging.GetLogfilePath()
 			if err != nil {
-				logging.Warningf("could not find the log file: %s", err)
+				slog.Warn("could not find the log file", "err", err)
 				logging.Flush()
 			} else {
 				fmt.Fprintf(cmd.ErrOrStderr(), "The log file for this run is at %s\n", logFile)
@@ -235,7 +247,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 		if profiling != "" {
 			if err := cmdutil.CloseProfiling(profiling); err != nil {
-				logging.Warningf("could not close profiling: %v", err)
+				slog.Warn("could not close profiling", "err", err)
 			}
 		}
 	}
@@ -282,9 +294,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// when this PersistentPreRunE runs, so all the flag-dependent init below is
 			// skipped. Parse what we can ourselves before continuing.
 			if cmd.DisableFlagParsing {
-				pf := cmd.Root().PersistentFlags()
-				pf.ParseErrorsAllowlist.UnknownFlags = true
-				_ = pf.Parse(args)
+				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
 			}
 
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
@@ -314,19 +324,16 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// or secrets manager, so logs will be gzip-compressed (not
 			// encrypted). Engine operations may upgrade to encrypted logging
 			// when a secrets manager becomes available.
-			if env.EnableAutomaticLogging.Value() {
-				var logErr error
-				autoLogger, logErr = backendlogging.StartLogging(
-					cmd.Context(), nil /* sm */)
-				if logErr != nil {
-					logging.V(3).Infof("automatic logging unavailable: %v", logErr)
-				}
+			var logErr error
+			autoLogger, logErr = backendlogging.StartLogging(cmd.Context(), nil /* sm */)
+			if logErr != nil {
+				slog.Info("automatic logging unavailable", "err", logErr)
 			}
 
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
-			if err := cmdutil.InitOtelReceiver(otelTracesFlag, nil); err != nil {
-				logging.V(3).Infof("failed to initialize OTLP receiver: %v", err)
+			if err := cmdutil.InitOtelReceiver(otelTracesFlag, &backendlogging.SlogLogExporter{}); err != nil {
+				slog.Info("failed to initialize OTLP receiver", "err", err)
 			}
 
 			ctx := cmd.Context()
@@ -349,7 +356,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 
 			metadata := getCLIMetadata(cmd, os.Environ(), args)
-			logging.V(9).Infof("CLI Metadata: %v", metadata)
+			slog.InfoContext(ctx, "CLI Metadata", "metadata", metadata)
 
 			if cmdutil.IsOTelEnabled() {
 				tracer := otel.Tracer("pulumi-cli")
@@ -377,7 +384,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			cmdutil.InitPprofServer(ctx)
 
 			if logging.Verbose >= 11 {
-				logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
+				slog.Warn("log level 11 will print sensitive information such as api tokens and request headers")
 			}
 
 			// The gocloud drivers use the log package to write logs, which by default just writes to stdout. This overrides
@@ -387,19 +394,19 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			ver, err := semver.ParseTolerant(version.Version)
 			if err != nil {
-				logging.V(3).Infof("error parsing current version: %s", err)
+				slog.InfoContext(ctx, "error parsing current version", "err", err)
 			} else {
-				logging.V(3).Info("Pulumi " + ver.String())
+				slog.Info("Pulumi", "version", ver.String())
 			}
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling, memProfileRate); err != nil {
-					logging.Warningf("could not initialize profiling: %v", err)
+					slog.WarnContext(ctx, "could not initialize profiling", "err", err)
 				}
 			}
 
 			if env.SkipUpdateCheck.Value() {
-				logging.V(5).Infof("skipping update check")
+				slog.InfoContext(ctx, "skipping update check")
 			} else {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
@@ -426,7 +433,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 						cmdutil.Diag().Warningf(result.diag)
 						err := cacheVersionInfo(result.versionInfo)
 						if err != nil {
-							logging.V(3).Infof("failed to cache version info: %s", err)
+							slog.Info("failed to cache version info", "err", err)
 						}
 					}
 				default:
@@ -497,7 +504,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
-				auth.NewLoginCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
+				auth.NewLoginCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global()),
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
 				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				org.NewOrgCmd(),
@@ -562,12 +569,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				clispec.NewGenCLISpecCmd(cmd),
 			},
 		},
-		// AI Commands relating to specifically the Pulumi AI service
-		//     and its related features
 		{
 			Name: "AI Commands",
 			Commands: []*cobra.Command{
-				ai.NewAICommand(),
 				neo.NewNeoCmd(),
 			},
 		},
@@ -592,7 +596,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	return cmd, cleanup
 }
 
-// haveNewerDevVersion checks whethere we have a newer dev version available.
+// haveNewerDevVersion checks whether we have a newer dev version available.
 func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) bool {
 	if devVersion.Major != curVersion.Major {
 		return devVersion.Major > curVersion.Major
@@ -640,7 +644,7 @@ type updateCheckResult struct {
 func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *updateCheckResult {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
-		logging.V(3).Infof("error parsing current version: %s", err)
+		slog.InfoContext(ctx, "error parsing current version", "err", err)
 	}
 
 	// We don't care about warning about updates if this is a locally-compiled version
@@ -653,8 +657,8 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 
 	latestVer, oldestAllowedVer, devVer, err := getCLIVersionInfo(ctx, cloudURL, metadata)
 	if err != nil {
-		logging.V(3).Infof("error fetching latest version information "+
-			"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
+		slog.InfoContext(ctx, fmt.Sprintf("error fetching latest version information; set %s to true to skip update checks",
+			env.SkipUpdateCheck.Var().Name()), "err", err)
 	}
 
 	willPrompt := canPrompt &&
@@ -797,7 +801,7 @@ func getCLIVersionInfo(
 
 	brewLatest, isBrew, err := getLatestBrewFormulaVersion()
 	if err != nil {
-		logging.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
+		slog.InfoContext(ctx, "error determining if the running executable was installed with brew", "err", err)
 	}
 	if isBrew {
 		// When consulting Homebrew for version info, we just use the latest version as the oldest allowed.
@@ -947,7 +951,7 @@ func getUpgradeCommand(isDevVersion bool) string {
 
 	isBrew, err := isBrewInstall(exe)
 	if err != nil {
-		logging.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
+		slog.Info("error determining if the running executable was installed with brew", "err", err)
 	}
 	if isBrew {
 		return "$ brew update && brew upgrade pulumi"

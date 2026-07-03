@@ -1,4 +1,5 @@
 import pulumi
+import json
 
 config = pulumi.Config()
 a_map = config.require_object("aMap")
@@ -16,3 +17,15 @@ if optional_untyped_object is None:
         "key": "value",
     }
 pulumi.export("defaultUntypedObject", optional_untyped_object)
+optional_list = config.get_object("optionalList")
+if optional_list is None:
+    optional_list = None
+optional_map = config.get_object("optionalMap")
+if optional_map is None:
+    optional_map = None
+optional_object = config.get_object("optionalObject")
+if optional_object is None:
+    optional_object = None
+pulumi.export("optionalList", "null" if optional_list is None else json.dumps(optional_list))
+pulumi.export("optionalMap", "null" if optional_map is None else json.dumps(optional_map))
+pulumi.export("optionalObject", "null" if optional_object is None else json.dumps(optional_object))

@@ -82,7 +82,7 @@ jobs:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
         env:
-          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
+          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}-target-${{ inputs.os }}-${{ inputs.arch }}-cov-${{ inputs.enable-coverage && inputs.os == 'linux' }}-race-${{ inputs.enable-race-detection }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
       - uses: actions/setup-go@v6
         with:

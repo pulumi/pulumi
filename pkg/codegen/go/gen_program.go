@@ -910,6 +910,10 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 			} else {
 				mod = g.resolveModule(token)
 			}
+			// Extension resources import the extension's SDK package, not the base.
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				pkg = r.Schema.PackageReference.Name()
+			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
 				if r.Schema != nil {
@@ -926,6 +930,9 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 				continue
 			}
 			mod := g.resolveModule(token)
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				pkg = r.Schema.PackageReference.Name()
+			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
 				if r.Schema != nil {
@@ -957,6 +964,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 					contract.Assertf(len(diagnostics) == 0, "Expected no diagnostics, got %d", len(diagnostics))
 
+					pkg = g.functionPackage(token)
 					vPath, err := g.getVersionPath(program, pkg)
 					if err != nil {
 						panic(err)
@@ -1550,6 +1558,10 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	}
 	if pkg == "pulumi" && mod == "pulumi" {
 		mod = ""
+	}
+	// Extension resources are emitted from the extension's SDK package, not the base.
+	if r.Schema != nil && r.Schema.PackageReference != nil {
+		pkg = r.Schema.PackageReference.Name()
 	}
 	if mod == "" || strings.HasPrefix(mod, "/") || mod == IndexToken {
 		originalMod = mod
@@ -2289,6 +2301,20 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
 		case pcl.Invoke:
+			// Nested plain invokes return (T, error) so they cannot be used as inline
+			// expressions; spill them to temporary variables first.
+			if len(expr.Args) >= 2 {
+				args, invokeTemps := g.rewriteInlineInvokes(expr.Args[1])
+				expr.Args[1] = args
+				if len(invokeTemps) > 0 {
+					temps := slice.Prealloc[any](len(invokeTemps))
+					for _, t := range invokeTemps {
+						temps = append(temps, t)
+					}
+					g.genTemps(w, temps)
+				}
+			}
+
 			// OutputVersionedInvoke does not return an error
 			noError, _, _ := pcl.RecognizeOutputVersionedInvoke(expr)
 			if noError {

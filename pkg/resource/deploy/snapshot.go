@@ -17,14 +17,16 @@ package deploy
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/go-test/deep"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -38,6 +40,9 @@ type Snapshot struct {
 	Resources         []*resource.State    // fetches all resources and their associated states.
 	PendingOperations []resource.Operation // all currently pending resource operations.
 	Metadata          SnapshotMetadata     // metadata associated with the snapshot.
+	Snippets          []resource.Snippet   // any PCL snippets associated with the snapshot.
+	// Extension-parameterization blobs keyed by content hash.
+	Extensions map[apitype.ExtensionRef]apitype.Extension
 }
 
 // SnapshotMetadata contains metadata about a snapshot.
@@ -61,7 +66,8 @@ type SnapshotIntegrityErrorMetadata struct {
 // This property is not checked; for verification, please refer to the VerifyIntegrity function below.
 func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 	resources []*resource.State, ops []resource.Operation,
-	metadata SnapshotMetadata,
+	metadata SnapshotMetadata, snippets []resource.Snippet,
+	extensions map[apitype.ExtensionRef]apitype.Extension,
 ) *Snapshot {
 	return &Snapshot{
 		Manifest:          manifest,
@@ -69,7 +75,40 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 		Resources:         resources,
 		PendingOperations: ops,
 		Metadata:          metadata,
+		Snippets:          snippets,
+		Extensions:        extensions,
 	}
+}
+
+// MapExtensions builds the Extensions map for a snapshot. Any referenced
+// ExtensionRef that resolves to no blob is returned in missing.
+func MapExtensions(
+	resources []*resource.State,
+	live map[apitype.ExtensionRef]apitype.Extension,
+	base *Snapshot,
+) (extensions map[apitype.ExtensionRef]apitype.Extension, missing []apitype.ExtensionRef) {
+	for _, res := range resources {
+		if res.ExtensionRef == "" {
+			continue
+		}
+		ref := res.ExtensionRef
+		if _, seen := extensions[ref]; seen {
+			continue
+		}
+		blob, ok := live[ref]
+		if !ok && base != nil {
+			blob, ok = base.Extensions[ref]
+		}
+		if !ok {
+			missing = append(missing, ref)
+			continue
+		}
+		if extensions == nil {
+			extensions = map[apitype.ExtensionRef]apitype.Extension{}
+		}
+		extensions[ref] = blob
+	}
+	return extensions, missing
 }
 
 // Prune removes all dangling dependencies from this snapshot, *which is assumed to be topologically sorted with respect
@@ -574,7 +613,37 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 			build()
 	}
 
-	return snap.withUpdatedResources(fixResource), nil
+	newSnap := snap.withUpdatedResources(fixResource)
+
+	// Rewrite References on every snippet. Each value is a URN that may have been an alias for a resource that
+	// is now stored under its canonical URN; updating in place keeps future updates resolving cleanly through
+	// the registration observer.
+	if len(newSnap.Snippets) > 0 {
+		snippets := make([]resource.Snippet, len(newSnap.Snippets))
+		edited := false
+		for i, s := range newSnap.Snippets {
+			snippets[i] = s
+			newRefs := maps.Clone(s.References)
+			for k, v := range s.References {
+				fixed := string(fixUrn(resource.URN(v)))
+				if fixed == v {
+					continue
+				}
+				newRefs[k] = fixed
+			}
+			if newRefs != nil {
+				snippets[i].References = newRefs
+				edited = true
+			}
+		}
+		if edited {
+			out := *newSnap // shallow copy
+			out.Snippets = snippets
+			newSnap = &out
+		}
+	}
+
+	return newSnap, nil
 }
 
 // VerifyIntegrity checks a snapshot to ensure it is well-formed.  Because of the cost of this operation,
@@ -586,7 +655,8 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 //  3. Parents must precede children in the resource list
 //  4. Dependents must precede their dependencies in the resource list
 //  5. For every URN in the snapshot, there must be at most one resource with that URN that is not pending deletion
-//  6. The magic manifest number should change every time the snapshot is mutated
+//  6. Every snippet must have a non-empty, unique UUID
+//  7. The magic manifest number should change every time the snapshot is mutated
 //
 // N.B. Constraints 2 does NOT apply for resources that are pending deletion. This is because they may have
 // had their provider replaced but not yet be replaced themselves yet (due to a partial update). Pending
@@ -756,6 +826,18 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			if deletes != len(states)-1 && deletes != len(states) {
 				return snapshot.SnapshotIntegrityErrorf("duplicate resource %s (not marked for deletion)", urn)
 			}
+		}
+
+		snippetUUIDs := make(map[string]int, len(snap.Snippets))
+		for i, snippet := range snap.Snippets {
+			if snippet.UUID == "" {
+				return snapshot.SnapshotIntegrityErrorf("snippet at index %d missing required 'uuid' field", i)
+			}
+			if other, has := snippetUUIDs[snippet.UUID]; has {
+				return snapshot.SnapshotIntegrityErrorf(
+					"duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i)
+			}
+			snippetUUIDs[snippet.UUID] = i
 		}
 	}
 

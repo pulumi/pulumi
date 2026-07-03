@@ -17,7 +17,6 @@ package org
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 
@@ -27,28 +26,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func newOrgRoleRemoveCmd() *cobra.Command {
-	return newOrgRoleRemoveCmdWith(defaultOrgRoleClientFactory, defaultConfirmFunc)
-}
-
-// confirmFunc abstracts the interactive confirmation prompt so tests can stub
-// it out without standing up a TTY. It is expected to also reject non-interactive
-// sessions by returning (false, an error explaining --yes is required).
-type confirmFunc func(prompt, name string) (bool, error)
-
-// defaultConfirmFunc uses cmdutil.Interactive + ui.ConfirmPrompt and returns an
-// error when the session is non-interactive (so callers must pass --yes).
-func defaultConfirmFunc(prompt, name string) (bool, error) {
-	if !cmdutil.Interactive() {
-		return false, errors.New(
-			"--yes is required when not running in a terminal (non-interactive)")
-	}
-	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-	return ui.ConfirmPrompt(prompt, name, opts), nil
+	return newOrgRoleRemoveCmdWith(defaultOrgRoleClientFactory)
 }
 
 // roleRemoveRender renders the outcome of a remove operation.
@@ -61,9 +45,8 @@ func defaultRoleRemoveOutput() outputflag.OutputFlag[roleRemoveRender] {
 	}
 }
 
-func newOrgRoleRemoveCmdWith(factory orgRoleClientFactory, confirm confirmFunc) *cobra.Command {
+func newOrgRoleRemoveCmdWith(factory orgRoleClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "factory must not be nil")
-	contract.Assertf(confirm != nil, "confirm must not be nil")
 
 	var (
 		org   string
@@ -90,8 +73,9 @@ func newOrgRoleRemoveCmdWith(factory orgRoleClientFactory, confirm confirmFunc) 
 			"  # Delete a role non-interactively, even if it is assigned\n" +
 			"  pulumi org role remove role-123 --force --yes",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			yes = yes || env.SkipConfirmations.Value()
 			return runOrgRoleRemove(
-				cmd.Context(), cmd.OutOrStdout(), factory, confirm,
+				cmd.Context(), cmd.OutOrStdout(), factory,
 				org, args[0], force, yes, output.Get())
 		},
 	}
@@ -118,7 +102,6 @@ func runOrgRoleRemove(
 	ctx context.Context,
 	w io.Writer,
 	factory orgRoleClientFactory,
-	confirm confirmFunc,
 	orgFlag, roleID string,
 	force, yes bool,
 	render roleRemoveRender,
@@ -128,16 +111,11 @@ func runOrgRoleRemove(
 		return err
 	}
 
-	if !yes {
-		prompt := fmt.Sprintf(
-			"This will permanently delete role %q from organization %q.", roleID, orgName)
-		ok, err := confirm(prompt, roleID)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return errors.New("confirmation declined")
-		}
+	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	prompt := fmt.Sprintf(
+		"This will permanently delete role %q from organization %q.", roleID, orgName)
+	if err := ui.ConfirmDeletion(yes, cmdutil.Interactive(), prompt, roleID, w, opts); err != nil {
+		return err
 	}
 
 	if err := c.DeleteOrgRole(ctx, orgName, roleID, force); err != nil {

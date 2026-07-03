@@ -248,6 +248,7 @@ message RegisterResourceRequest {
     optional ResourceHooksBinding hooks = 34;
     repeated string hideDiffs = 37;
     map<string, string> envVarMappings = 41;   // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
+    string snippetId = 40;                     // if set, the UUID of the snippet that issued this registration.
 }
 
 enum Result {
@@ -453,6 +454,7 @@ message RegisterPackageRequest {
     string download_url = 3; // the optional plugin download url.
     map<string, bytes> checksums = 4; // the optional plugin checksums.
     Parameterization parameterization = 5; // the optional parameterization for this package.
+    Parameterization extension = 6; // the optional extension parameterization for this package.
 }
 
 message RegisterPackageResponse {

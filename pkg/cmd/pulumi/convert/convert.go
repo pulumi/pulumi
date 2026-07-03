@@ -35,7 +35,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -44,12 +47,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -212,14 +215,19 @@ func runConvert(
 		name = filepath.Base(cwd)
 	}
 
+	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
+
 	// the plugin context uses the output directory as the working directory
 	// of the generated program because in general, where Pulumi.yaml lives is
 	// the root of the project.
-	pCtx, err := packages.NewPluginContext(outDir)
+	pCtx, err := packages.NewPluginContext(outDir, reg)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
+	// The context owns its loader/mapper servers; the host is caller-owned. Close the context
+	// first, then the host.
 	defer contract.IgnoreClose(pCtx.Host)
+	defer contract.IgnoreClose(pCtx)
 
 	// Translate well known sources to plugins
 	switch strings.ToLower(from) {
@@ -230,6 +238,12 @@ func runConvert(
 	}
 
 	language = cmdCmd.NormalizeRuntimeName(language)
+
+	if from == "terraform" && language == "hcl" {
+		return errors.New("cannot convert a Terraform program to the \"hcl\" language: " +
+			"pulumi-hcl runs Terraform directly, so no conversion is needed; converting would re-home " +
+			"every resource onto a different provider and show a delete and create for each one on the next preview")
+	}
 
 	var projectGenerator projectGeneratorFunction
 	switch language {
@@ -246,7 +260,7 @@ func runConvert(
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-			languagePlugin, err := pCtx.Host.LanguageRuntime(language)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(pCtx, language)
 			if err != nil {
 				return nil, err
 			}
@@ -331,32 +345,41 @@ func runConvert(
 		pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 	}
 
+	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx, stderr, stderr,
+		nil, packageworkspace.Options{})
+
 	installPlugin := func(pluginName string) *semver.Version {
 		// If auto plugin installs are disabled just return nil, the mapper will still carry on
 		if env.DisableAutomaticPluginAcquisition.Value() {
 			return nil
 		}
 
-		pluginSpec, err := workspace.NewPluginDescriptor(ctx, pluginName, apitype.ResourcePlugin, nil, "", nil)
-		if err != nil {
-			pCtx.Diag.Errorf(diag.Message("", "failed to create plugin spec for %q: %v"), pluginName, err)
-			return nil
-		}
-
-		version, err := pkgWorkspace.InstallPlugin(pCtx.Base(), pluginSpec, log, schema.NewLoaderServerFromHost)
+		// Resolve and install the provider plugin without running it; the mapper launches
+		// its own instance via the provider factory once the plugin is on disk.
+		_, spec, _, err := packageinstallation.InstallPlugin(ctx,
+			workspace.PackageSpec{Source: pluginName}, nil, "",
+			packageinstallation.Options{
+				Options: packageresolution.Options{
+					ResolveWithRegistry: !e.GetBool(env.DisableRegistryResolve),
+				},
+			}, reg, installCtx)
 		if err != nil {
 			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 			return nil
 		}
-		return version
+		version, err := semver.ParseTolerant(spec.Version)
+		if err != nil {
+			return nil
+		}
+		return &version
 	}
 
-	loader := schema.NewPluginLoader(pCtx.Host)
+	loader := schema.NewPluginLoader(pCtx)
 
 	baseMapper, err := convert.NewBasePluginMapper(
 		pluginstorage.Instance,
 		from, /*conversionKey*/
-		convert.ProviderFactoryFromHost(ctx, pCtx.Host),
+		convert.ProviderFactoryFromHost(ctx, pCtx),
 		installPlugin,
 		mappings,
 	)
@@ -487,8 +510,16 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		pluginHost, err := pkghost.New(
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServer(reg))
+		if err != nil {
+			return err
+		}
+		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		_, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -576,13 +607,14 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		pkgSchema, err := packages.BindSpec(*pkgSpec)
+		pkgSchema, err := packages.BindSpec(*pkgSpec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			return fmt.Errorf("binding package schema: %w", err)
 		}
 
 		diags, err := packages.GenSDK(
 			pctx.Request(),
+			registry,
 			language,
 			tempOut,
 			pkgSchema,

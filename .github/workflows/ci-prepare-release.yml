@@ -95,6 +95,11 @@ jobs:
         run: |
           mkdir -p ./artifacts
           mv ./artifacts.tmp/artifacts-*/* ./artifacts
+      - name: Write release notes
+        env:
+          RELEASE_NOTES: ${{ inputs.release-notes }}
+        run: |
+          printf '%s\n' "$RELEASE_NOTES" > release-notes.md
       - uses: ./.github/actions/retry
         with:
           action: ncipollo/release-action@3d2de22e3d0beab188d8129c27f103d8e91bf13a
@@ -106,10 +111,7 @@ jobs:
             draft: ${{ inputs.draft }}
             prerelease: ${{ inputs.prerelease }}
             allowUpdates: true
-
-            body: |
-              ${{ inputs.release-notes }}
-
+            bodyFile: release-notes.md
             removeArtifacts: true
             replacesArtifacts: true
             artifactErrorsFailBuild: true

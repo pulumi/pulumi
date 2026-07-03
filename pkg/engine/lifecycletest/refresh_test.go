@@ -34,10 +34,10 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -76,7 +76,7 @@ func TestParallelRefresh(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -137,7 +137,7 @@ func TestExternalRefresh(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []lt.TestStep{{Op: Update}},
@@ -215,7 +215,7 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []lt.TestStep{{Op: Update}},
@@ -294,7 +294,7 @@ func TestRefreshInitFailure(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options.HostF = hostF
 	p.Options.T = t
@@ -402,7 +402,7 @@ func TestRefreshWithDelete(t *testing.T) {
 				return err
 			})
 
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 			p := &lt.TestPlan{
 				Options: lt.TestUpdateOptions{
 					T: t,
@@ -482,7 +482,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
@@ -545,7 +545,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
@@ -655,7 +655,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		}),
 	}
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...)
 	p.Options.T = t
 
 	p.Steps = []lt.TestStep{
@@ -840,7 +840,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		}),
 	}
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...)
 	p.Options.T = t
 
 	p.Steps = []lt.TestStep{{
@@ -1030,7 +1030,7 @@ func TestCanceledRefresh(t *testing.T) {
 	op := lt.TestOp(Refresh)
 	options := lt.TestUpdateOptions{
 		T:     t,
-		HostF: deploytest.NewPluginHostF(nil, nil, nil, loaders...),
+		HostF: deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...),
 		UpdateOptions: UpdateOptions{
 			Parallel: 1,
 		},
@@ -1159,7 +1159,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options.HostF = hostF
 	p.Options.T = t
@@ -1217,7 +1217,7 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options.HostF = hostF
 	p.Options.Refresh = true
@@ -1320,7 +1320,7 @@ func TestRefreshWithProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1430,7 +1430,7 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1562,7 +1562,7 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1691,7 +1691,7 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1825,7 +1825,7 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1967,7 +1967,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2080,7 +2080,7 @@ func TestRefreshWithBigProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2206,7 +2206,7 @@ func TestRefreshWithAlias(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2305,7 +2305,7 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2428,7 +2428,7 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2542,7 +2542,7 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2614,7 +2614,7 @@ func TestRefreshDeleteParent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
 			T:     t,
@@ -2744,7 +2744,7 @@ func TestRefreshV2Targeted(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -2830,7 +2830,7 @@ func TestRefreshV2FailedRead(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -2927,7 +2927,7 @@ func TestRefreshDeletedResourceWithChild(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:             t,
 		HostF:         hostF,
@@ -3033,7 +3033,7 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 		return nil
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Steps = []lt.TestStep{
 		{Op: Update},
@@ -3141,7 +3141,7 @@ func TestRefreshV2TargetedWithPropertyDependencies(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -3237,7 +3237,7 @@ func TestRefreshV2TargetNotInProgram(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -3329,7 +3329,7 @@ func TestRefreshV2ParentChildOrdering(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: reproHostF,
@@ -3393,7 +3393,7 @@ func TestRefreshV2DependencyNotInOriginalSnapshot(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:             t,
 		HostF:         reproHostF,
@@ -3468,7 +3468,7 @@ func TestRefreshV2ExcludesChildWithExcludedParent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loader)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loader)
 	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 
 	_, err = lt.TestOp(engine.RefreshV2).
@@ -3517,7 +3517,7 @@ func TestRefreshV2ExcludeTarget(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 
 	// First, create all resources with a normal update.
@@ -3598,7 +3598,7 @@ func TestRefreshV2IncludeTarget(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 
 	// First, create all resources with a normal update.
@@ -3693,7 +3693,7 @@ func TestRefreshV2DeletedWithOrdering(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:                t,
 		HostF:            reproHostF,
@@ -3755,7 +3755,7 @@ func TestRefreshV2PropertyDependencyOrdering(t *testing.T) {
 		}),
 	}
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	_, err := lt.TestOp(engine.RefreshV2).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), lt.TestUpdateOptions{T: t, HostF: hostF}, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)

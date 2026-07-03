@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -122,7 +122,7 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Parallel()
 		expectedVersion := semver.MustParse("1.0.0")
 		host := &pluginHost{}
-		_, err := host.Provider(workspace.PluginDescriptor{
+		_, err := host.Provider(nil, workspace.PluginDescriptor{
 			Name:    "pkgA",
 			Version: &expectedVersion,
 		}, nil)
@@ -133,7 +133,7 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Run("Provider", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.Provider(workspace.PluginDescriptor{
+			_, err := host.Provider(nil, workspace.PluginDescriptor{
 				Name:    "pkgA",
 				Version: &semver.Version{},
 			}, nil)
@@ -142,7 +142,7 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Run("LanguageRuntime", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.LanguageRuntime("")
+			_, err := host.LanguageRuntime(nil, "")
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 		t.Run("SignalCancellation", func(t *testing.T) {
@@ -154,13 +154,13 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Run("Analyzer", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.Analyzer("")
+			_, err := host.Analyzer(nil, "")
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 		t.Run("PolicyAnalyzer", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.PolicyAnalyzer("", "", nil)
+			_, err := host.PolicyAnalyzer(nil, "", "", nil)
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 	})

@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -120,6 +121,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			resource.BeforeCreate: {"hook1"},
 			resource.AfterDelete:  {"hook2"},
 		},
+		SnippetID: "",
 	}.Make()
 	dep, err := SerializeResource(t.Context(), res, config.NopEncrypter, false /* showSecrets */)
 	require.NoError(t, err)
@@ -222,6 +224,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 	tests := []struct {
 		name             string
 		resources        []*resource.State
+		snippets         []resource.Snippet
 		expectedVersion  int
 		expectedFeatures []string
 	}{
@@ -234,6 +237,24 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 			},
 			expectedVersion:  3,
 			expectedFeatures: nil,
+		},
+		{
+			name: "v4 deployment with snippets",
+			resources: []*resource.State{
+				{
+					URN: "urn1",
+				},
+			},
+			snippets: []resource.Snippet{
+				{
+					UUID: "f32e0379-9985-5781-b5cb-9c053a8bb890",
+					Name: "r", Type: "pkgA:index:res",
+					Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+					Code:       `propA = true`,
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{snippetsFeature},
 		},
 		{
 			name: "v4 deployment with refreshBeforeUpdate",
@@ -285,6 +306,17 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 			expectedVersion:  4,
 			expectedFeatures: []string{"taint"},
 		},
+		{
+			name: "v4 deployment with extension parameterization",
+			resources: []*resource.State{
+				{
+					URN:          "urn1",
+					ExtensionRef: "ref-1",
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{"extensionParameterization"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -292,6 +324,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 
 			snap := &deploy.Snapshot{
 				Resources: tt.resources,
+				Snippets:  tt.snippets,
 			}
 			deployment, version, features, err := SerializeDeploymentWithMetadata(ctx, snap, false)
 			require.NoError(t, err)
@@ -363,6 +396,90 @@ func TestUnsupportedFeature(t *testing.T) {
 	var expectedErr *ErrDeploymentUnsupportedFeatures
 	require.ErrorAs(t, err, &expectedErr)
 	require.Equal(t, []string{"unsupported-feature"}, expectedErr.Features)
+}
+
+// TestSnippetRoundTrip verifies that snippets attached to a snapshot survive an untyped-deployment
+// round trip and that the resulting deployment is gated by the "snippets" feature.
+func TestSnippetRoundTrip(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	version := semver.MustParse("1.2.3")
+	snap := &deploy.Snapshot{
+		Snippets: []resource.Snippet{
+			{
+				UUID: "89ed2ff3-1139-54c2-b53b-c3d9fb860da6",
+				Name: "r1", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       `propA = true`,
+			},
+			{
+				UUID: "02c76a6b-a0d6-52bd-888e-ebdc7e44ce99",
+				Name: "r2", Type: "pkgB:index:res",
+				Descriptor: resource.PackageDescriptor{
+					Name:        "pkgB",
+					Version:     &version,
+					DownloadURL: "https://example/pkgB",
+					Parameterization: &resource.ParameterizationDescriptor{
+						Name:    "child",
+						Version: version,
+						Value:   []byte("hello"),
+					},
+				},
+				Code: `propB = "x"`,
+				References: map[string]string{
+					"comp": "urn:pulumi:dev::proj::pkgA:index:Comp::comp",
+				},
+			},
+		},
+	}
+
+	untyped, err := SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+	require.Equal(t, DeploymentSchemaVersionLatest, untyped.Version)
+	require.Equal(t, []string{snippetsFeature}, untyped.Features)
+	require.NoError(t, ValidateUntypedDeployment(untyped))
+
+	roundTripped, err := DeserializeUntypedDeployment(ctx, untyped, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	require.Equal(t, snap.Snippets, roundTripped.Snippets)
+}
+
+// TestResourceSnippetIDRoundTrip verifies that a resource carrying a SnippetID round-trips through
+// an untyped deployment, passes schema validation, and triggers the "snippets" feature flag even
+// when the snapshot has no Snippets attached (the resource is orphaned from a deleted snippet).
+func TestResourceSnippetIDRoundTrip(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	const snippetID = "89ed2ff3-1139-54c2-b53b-c3d9fb860da6"
+	res := &resource.State{
+		Type:      tokens.Type("pkgA:index:res"),
+		URN:       resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
+		Custom:    true,
+		Inputs:    resource.PropertyMap{"propA": resource.NewProperty(true)},
+		Outputs:   resource.PropertyMap{},
+		SnippetID: snippetID,
+	}
+
+	snap := &deploy.Snapshot{Resources: []*resource.State{res}}
+
+	untyped, err := SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+	require.Equal(t, DeploymentSchemaVersionLatest, untyped.Version,
+		"presence of SnippetID on a resource should trigger the latest schema version")
+	require.Equal(t, []string{snippetsFeature}, untyped.Features,
+		"presence of SnippetID on a resource should advertise the snippets feature")
+	require.NoError(t, ValidateUntypedDeployment(untyped),
+		"resource carrying snippetID must pass schema validation")
+
+	// Make sure the serialized JSON actually contains the field — guards against silent omission.
+	require.Contains(t, string(untyped.Deployment), `"snippetID":"`+snippetID+`"`)
+
+	roundTripped, err := DeserializeUntypedDeployment(ctx, untyped, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	require.Len(t, roundTripped.Resources, 1)
+	require.Equal(t, snippetID, roundTripped.Resources[0].SnippetID)
 }
 
 // TestDeserializeUntypedDeploymentFeatures tests that the deserializer does not error for features that are supported.

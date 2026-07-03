@@ -25,6 +25,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -200,28 +201,7 @@ func clearAIAgentEnv(t *testing.T) {
 	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
 	t.Setenv(env.Home.Var().Name(), "")
 
-	for _, name := range []string{
-		"AI_AGENT",
-		"CURSOR_TRACE_ID",
-		"CURSOR_AGENT",
-		"GEMINI_CLI",
-		"CODEX_SANDBOX",
-		"CODEX_CI",
-		"CODEX_THREAD_ID",
-		"ANTIGRAVITY_AGENT",
-		"AUGMENT_AGENT",
-		"OPENCODE",
-		"OPENCODE_CALLER",
-		"OPENCODE_CLIENT",
-		"CLAUDE_CODE_IS_COWORK",
-		"CLAUDECODE",
-		"CLAUDE_CODE",
-		"REPL_ID",
-		"COPILOT_MODEL",
-		"COPILOT_ALLOW_ALL",
-		"COPILOT_GITHUB_TOKEN",
-		"GOOSE_PROVIDER",
-	} {
+	for _, name := range agentdetect.DetectionEnvVars() {
 		t.Setenv(name, "")
 	}
 }

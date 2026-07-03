@@ -62,10 +62,13 @@ func TGZ(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, erro
 }
 
 func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
-	// TODO: check the name to ensure that it does not contain path traversal characters.
-	//
-	//nolint:gosec
-	path := filepath.Join(dir, header.Name)
+	// Guard against ZipSlip path traversal: ensure the resolved target stays inside dir.
+	cleanDir := filepath.Clean(dir)
+	//nolint:gosec // G305: path traversal is explicitly checked immediately below.
+	path := filepath.Join(cleanDir, header.Name)
+	if path != cleanDir && !strings.HasPrefix(path, cleanDir+string(os.PathSeparator)) {
+		return fmt.Errorf("tar entry %q escapes destination directory", header.Name)
+	}
 
 	switch header.Typeflag {
 	case tar.TypeDir:
@@ -102,6 +105,33 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		if _, err = io.Copy(dst, r); err != nil {
 			return fmt.Errorf("untarring file %s: %w", path, err)
 		}
+	case tar.TypeSymlink:
+		// Guard against symlinks that point outside the extraction directory.
+		target := header.Linkname
+		if !filepath.IsAbs(target) {
+			//nolint:gosec // The resolved target is checked against the destination directory below.
+			target = filepath.Join(filepath.Dir(path), target)
+		}
+		target = filepath.Clean(target)
+		if target != cleanDir && !strings.HasPrefix(target, cleanDir+string(os.PathSeparator)) {
+			return fmt.Errorf("symlink %s points outside the extraction directory", header.Name)
+		}
+
+		linkDir := filepath.Dir(path)
+		if _, err := os.Stat(linkDir); err != nil {
+			if err = os.MkdirAll(linkDir, 0o0700); err != nil {
+				return fmt.Errorf("extracting dir %s: %w", linkDir, err)
+			}
+		}
+
+		if _, err := os.Lstat(path); err == nil {
+			if err = os.Remove(path); err != nil {
+				return fmt.Errorf("removing existing file %s before creating symlink: %w", path, err)
+			}
+		}
+		if err := os.Symlink(header.Linkname, path); err != nil {
+			return fmt.Errorf("extracting symlink %s: %w", path, err)
+		}
 	default:
 		return fmt.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
 	}
@@ -111,6 +141,12 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 
 // ExtractTGZ uncompresses a .tar.gz/.tgz file into a specific directory.
 func ExtractTGZ(r io.Reader, dir string) error {
+	// Convert to absolute path so that path traversal checks in extractFile are reliable.
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("resolving destination path: %w", err)
+	}
+
 	gzr, err := gzip.NewReader(r)
 	if err != nil {
 		return fmt.Errorf("uncompressing: %w", err)
@@ -126,7 +162,7 @@ func ExtractTGZ(r io.Reader, dir string) error {
 			return fmt.Errorf("extracting: %w", err)
 		}
 
-		if err = extractFile(tr, header, dir); err != nil {
+		if err = extractFile(tr, header, absDir); err != nil {
 			return err
 		}
 	}

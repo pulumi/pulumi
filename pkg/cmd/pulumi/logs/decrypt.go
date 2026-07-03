@@ -29,35 +29,37 @@ import (
 	"strings"
 	"time"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine/encryptedlog"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newDecryptCmd(ws pkgWorkspace.Context) *cobra.Command {
-	cmd := &cobra.Command{
+	var latest bool
+	command := &cobra.Command{
 		Use:   "decrypt [filename]",
 		Short: "Decrypt and display automatic logs",
 		Long: "Decrypt and display the contents of an automatic log file.\n" +
 			"\n" +
-			"If no filename is provided, the most recent log file is\n" +
-			"decrypted. When a current stack is selected (or --stack is\n" +
-			"given), logs for that stack are preferred.\n" +
-			"\n" +
-			"For encrypted logs, the stack's secrets provider is used\n" +
-			"for decryption (parsed from the filename, or overridden\n" +
-			"with --stack). Gzip-compressed logs are decompressed\n" +
-			"without needing a stack.",
+			"If no filename is provided, a list of available log files is\n" +
+			"displayed and the user is prompted to choose one. Pass\n" +
+			"--latest to skip the prompt and decrypt the most recent log\n" +
+			"file instead",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			stackName, _ := cmd.Flags().GetString("stack")
@@ -66,17 +68,23 @@ func newDecryptCmd(ws pkgWorkspace.Context) *cobra.Command {
 			if len(args) > 0 {
 				filename = args[0]
 			} else {
-				filterName := stackName
-				if filterName == "" {
-					filterName = currentStackName(ws)
-				}
-
 				var err error
-				filename, err = findLatestLog(filterName)
-				if err != nil {
-					return err
+				if latest {
+					filterName := stackName
+					if filterName == "" {
+						filterName = currentStackName(ws)
+					}
+					filename, err = findLatestLog(filterName)
+					if err != nil {
+						return err
+					}
+					fmt.Fprintf(cmd.ErrOrStderr(), "Decrypting %s\n", filename)
+				} else {
+					filename, err = chooseLog(stackName)
+					if err != nil {
+						return err
+					}
 				}
-				fmt.Fprintf(cmd.ErrOrStderr(), "Decrypting %s\n", filename)
 			}
 
 			f, err := os.Open(filename)
@@ -110,7 +118,10 @@ func newDecryptCmd(ws pkgWorkspace.Context) *cobra.Command {
 		},
 	}
 
-	return cmd
+	command.Flags().BoolVar(&latest, "latest", false,
+		"Decrypt the most recent log file without prompting")
+
+	return command
 }
 
 // decryptPLOG decrypts an encrypted PLOG log file. The stack name is
@@ -210,77 +221,130 @@ func findLatestLog(stackName string) (string, error) {
 		return "", fmt.Errorf("getting log directory: %w", err)
 	}
 
-	entries, err := os.ReadDir(logsDir)
+	entries, err := listLogs(logsDir)
 	if err != nil {
-		return "", fmt.Errorf("reading log directory %s: %w", logsDir, err)
+		return "", err
 	}
-
-	var all []logCandidate
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".log") {
-			continue
-		}
-		ts, ok := parseLogTimestamp(e.Name())
-		if !ok {
-			continue
-		}
-		all = append(all, logCandidate{
-			path: filepath.Join(logsDir, e.Name()),
-			ts:   ts,
-		})
-	}
-
-	if len(all) == 0 {
+	if len(entries) == 0 {
 		return "", fmt.Errorf("no log files found in %s", logsDir)
 	}
 
 	if stackName != "" {
-		safe := strings.ReplaceAll(stackName, "/", "+")
-		if best := latestMatching(all, func(path string) bool {
-			return strings.Contains(filepath.Base(path), safe)
-		}); best != "" {
-			return best, nil
+		for _, e := range entries {
+			if e.stack == stackName {
+				return e.path, nil
+			}
 		}
 	} else {
-		// Without a stack, prefer CLI-level logs (pulumi- prefix).
-		if best := latestMatching(all, func(path string) bool {
-			return strings.HasPrefix(filepath.Base(path), "pulumi-")
-		}); best != "" {
-			return best, nil
+		for _, e := range entries {
+			if e.cliLevel {
+				return e.path, nil
+			}
 		}
 	}
 
-	return latestByTimestamp(all), nil
+	return entries[0].path, nil
 }
 
-type logCandidate struct {
-	path string
-	ts   time.Time
+// chooseLog prompts the user to pick a log file from ~/.pulumi/logs/.
+// If stackName is non-empty, the list is filtered to logs for that
+// stack.
+func chooseLog(stackName string) (string, error) {
+	logsDir, err := workspace.GetPulumiPath("logs")
+	if err != nil {
+		return "", fmt.Errorf("getting log directory: %w", err)
+	}
+
+	entries, err := listLogs(logsDir)
+	if err != nil {
+		return "", err
+	}
+
+	if stackName != "" {
+		var filtered []logEntry
+		for _, e := range entries {
+			if e.stack == stackName {
+				filtered = append(filtered, e)
+			}
+		}
+		entries = filtered
+	}
+
+	if len(entries) == 0 {
+		if stackName != "" {
+			return "", fmt.Errorf("no log files found for stack %q in %s", stackName, logsDir)
+		}
+		return "", fmt.Errorf("no log files found in %s", logsDir)
+	}
+
+	if !cmdutil.Interactive() {
+		return "", errors.New(
+			"cannot prompt for a log file in non-interactive mode; " +
+				"pass --latest or a filename argument")
+	}
+
+	options, optionMap := formatLogChoices(entries)
+
+	var choice string
+	if err := survey.AskOne(&survey.Select{
+		Message:  "Select a log file to decrypt:",
+		Options:  options,
+		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
+	}, &choice, ui.SurveyIcons(cmdutil.GetGlobalColorization())); err != nil {
+		return "", errors.New("no log file selected")
+	}
+
+	return optionMap[choice], nil
 }
 
-func latestMatching(candidates []logCandidate, match func(path string) bool) string {
-	var best *logCandidate
-	for i := range candidates {
-		c := &candidates[i]
-		if match(c.path) && (best == nil || c.ts.After(best.ts)) {
-			best = c
+// formatLogChoices builds aligned "STACK  CREATED  UPDATE ID" rows for
+// the chooser and returns the rows alongside a map from row back to log
+// path.
+func formatLogChoices(entries []logEntry) ([]string, map[string]string) {
+	type row struct {
+		stack, created, updateID, path string
+	}
+
+	rows := make([]row, len(entries))
+	stackWidth, createdWidth := 0, 0
+	for i, e := range entries {
+		stack := e.stack
+		if stack == "" {
+			stack = "(cli)"
+		}
+		updateID := e.updateID
+		if updateID == "" {
+			updateID = "—"
+		}
+		created := humanize.Time(e.timestamp)
+
+		rows[i] = row{
+			stack:    stack,
+			created:  created,
+			updateID: updateID,
+			path:     e.path,
+		}
+		if l := len(stack); l > stackWidth {
+			stackWidth = l
+		}
+		if l := len(created); l > createdWidth {
+			createdWidth = l
 		}
 	}
-	if best != nil {
-		return best.path
-	}
-	return ""
-}
 
-func latestByTimestamp(candidates []logCandidate) string {
-	var best *logCandidate
-	for i := range candidates {
-		c := &candidates[i]
-		if best == nil || c.ts.After(best.ts) {
-			best = c
+	options := make([]string, len(rows))
+	optionMap := make(map[string]string, len(rows))
+	for i, r := range rows {
+		// Append the index to disambiguate identical (stack, created,
+		// updateID) rows that map to different files.
+		line := fmt.Sprintf("%-*s  %-*s  %s", stackWidth, r.stack, createdWidth, r.created, r.updateID)
+		if _, dup := optionMap[line]; dup {
+			line = fmt.Sprintf("%s  [%d]", line, i+1)
 		}
+		options[i] = line
+		optionMap[line] = r.path
 	}
-	return best.path
+	return options, optionMap
 }
 
 func parseLogTimestamp(name string) (time.Time, bool) {
@@ -288,7 +352,7 @@ func parseLogTimestamp(name string) (time.Time, bool) {
 	if m == "" {
 		return time.Time{}, false
 	}
-	t, err := time.Parse("20060102T150405", m)
+	t, err := time.ParseInLocation("20060102T150405", m, time.Local)
 	if err != nil {
 		return time.Time{}, false
 	}
@@ -326,7 +390,7 @@ func formatLogRecords(r io.Reader, w io.Writer) error {
 			sort.Strings(argKeys)
 			args := make([]any, len(argKeys))
 			for i, k := range argKeys {
-				args[i] = rec[k]
+				args[i] = decodePropertyArg(rec[k])
 				delete(rec, k)
 			}
 			if msg, ok := rec["msg"].(string); ok {
@@ -339,4 +403,15 @@ func formatLogRecords(r io.Reader, w io.Writer) error {
 		}
 	}
 	return scanner.Err()
+}
+
+func decodePropertyArg(v any) any {
+	s, ok := v.(string)
+	if !ok {
+		return v
+	}
+	if sv, err := logging.DecodeStructValueFromLog([]byte(s)); err == nil {
+		return sv.AsInterface()
+	}
+	return v
 }

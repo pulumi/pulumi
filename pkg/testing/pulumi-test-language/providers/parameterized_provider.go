@@ -24,8 +24,8 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 type ParameterizedProvider struct {
@@ -95,7 +95,7 @@ func (p *ParameterizedProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    subpackage,
 		Version: version,
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			InputProperties: map[string]schema.PropertySpec{
 				"text": {
 					TypeSpec: schema.TypeSpec{

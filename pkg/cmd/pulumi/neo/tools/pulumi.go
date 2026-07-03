@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -67,8 +68,6 @@ type Pulumi struct {
 	Cwd string
 	// Workspace is used to read the project file from the working directory.
 	Workspace pkgWorkspace.Context
-	// Backend is the (cloud) backend used to resolve stacks and execute operations.
-	Backend backend.Backend
 	// Sink, when non-nil, receives structured events that power the Neo TUI's
 	// live preview/up block. See PulumiSink for the callback surface. All
 	// fields are optional: a nil callback on any one method is silently skipped.
@@ -102,24 +101,20 @@ type PulumiSink struct {
 	OnEnd func(toolName, err string, counts display.ResourceChanges, elapsed string)
 }
 
-// NewPulumi creates a Pulumi handler sandboxed under cwd. The workspace and backend
-// are captured at construction so tests can inject fakes. Sink may be nil when
-// running outside the interactive TUI (non-interactive mode); in that case progress
-// is silently dropped and the final result is still returned to the caller.
-func NewPulumi(cwd string, ws pkgWorkspace.Context, be backend.Backend,
-	sink *PulumiSink,
-) (*Pulumi, error) {
+// NewPulumi creates a Pulumi handler sandboxed under cwd. The workspace is captured
+// at construction so tests can inject a fake; the backend is resolved fresh on each
+// tool call (see run). Sink may be nil when running outside the interactive TUI
+// (non-interactive mode); in that case progress is silently dropped and the final
+// result is still returned to the caller.
+func NewPulumi(cwd string, ws pkgWorkspace.Context, sink *PulumiSink) (*Pulumi, error) {
 	if ws == nil {
 		return nil, errors.New("workspace is required")
-	}
-	if be == nil {
-		return nil, errors.New("backend is required")
 	}
 	abs, err := canonicalRoot(cwd)
 	if err != nil {
 		return nil, fmt.Errorf("resolving pulumi cwd: %w", err)
 	}
-	return &Pulumi{Cwd: abs, Workspace: ws, Backend: be, Sink: sink}, nil
+	return &Pulumi{Cwd: abs, Workspace: ws, Sink: sink}, nil
 }
 
 // pulumiArgs matches pulumi-service:cmd/agents/src/agents_py/mcp/pulumi_mcp.py's
@@ -242,11 +237,23 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("reading project: %w", err))
 	}
 
-	stackRef, err := p.Backend.ParseStackReference(a.StackName)
+	// Resolve the backend fresh per tool call, the same way `pulumi preview`/`pulumi up`
+	// do (stack.RequireStack -> cmdBackend.CurrentBackend -> Login). Reusing the backend
+	// frozen at `pulumi neo` startup would pin the access token resolved back then, so the
+	// tool could authenticate — and decrypt service-managed secrets — as a different
+	// identity than the user's own `pulumi preview`. Resolving here, after applyEnvVars and
+	// the chdir into the project dir, keeps the two paths in lockstep.
+	be, err := cmdBackend.CurrentBackend(
+		ctx, p.Workspace, cmdBackend.DefaultLoginManager, proj, backendDisplay.Options{Color: colors.Never})
+	if err != nil {
+		return failedResult(a, "", fmt.Errorf("resolving backend: %w", err))
+	}
+
+	stackRef, err := be.ParseStackReference(a.StackName)
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("parsing stack reference: %w", err))
 	}
-	s, err := p.Backend.GetStack(ctx, stackRef)
+	s, err := be.GetStack(ctx, stackRef)
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("getting stack: %w", err))
 	}

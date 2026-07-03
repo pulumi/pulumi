@@ -25,13 +25,15 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -71,10 +73,32 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 	log func(sev diag.Severity, msg string),
 	newLoader plugin.NewLoaderFunc,
 ) (*semver.Version, error) {
-	util.SetKnownPluginDownloadURL(&pluginSpec)
+	downloadedFile, err := downloadPlugin(ctx, &pluginSpec, log)
+	if err != nil {
+		return nil, err
+	}
+
+	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
+	err = InstallPluginContent(ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false, newLoader)
+	if err != nil {
+		return nil, &InstallPluginError{
+			Spec: pluginSpec,
+			Err:  fmt.Errorf("error installing provider %s: %w", pluginSpec.Name, err),
+		}
+	}
+
+	return pluginSpec.Version, nil
+}
+
+// downloadPlugin resolves the plugin's version, if unset, and downloads its archive to a file,
+// retrying and logging progress along the way.
+func downloadPlugin(
+	ctx context.Context, pluginSpec *workspace.PluginDescriptor, log func(sev diag.Severity, msg string),
+) (*os.File, error) {
+	util.SetKnownPluginDownloadURL(pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
-		pluginSpec.Version, err = pluginstorage.Instance.GetLatestVersion(ctx, pluginSpec)
+		pluginSpec.Version, err = pluginstorage.Instance.GetLatestVersion(ctx, *pluginSpec)
 		if err != nil {
 			return nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
 		}
@@ -92,24 +116,14 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 	}
 
 	logging.V(1).Infof("Automatically downloading provider %s", pluginSpec.Name)
-	downloadedFile, err := workspace.DownloadToFile(ctx, pluginSpec, wrapper, retry)
+	downloadedFile, err := workspace.DownloadToFile(ctx, *pluginSpec, wrapper, retry)
 	if err != nil {
 		return nil, &InstallPluginError{
-			Spec: pluginSpec,
+			Spec: *pluginSpec,
 			Err:  fmt.Errorf("error downloading provider %s to file: %w", pluginSpec.Name, err),
 		}
 	}
-
-	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
-	err = InstallPluginContent(ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false, newLoader)
-	if err != nil {
-		return nil, &InstallPluginError{
-			Spec: pluginSpec,
-			Err:  fmt.Errorf("error installing provider %s: %w", pluginSpec.Name, err),
-		}
-	}
-
-	return pluginSpec.Version, nil
+	return downloadedFile, nil
 }
 
 // EnsureLanguageInstalled downloads and installs the named language runtime if it is not
@@ -120,7 +134,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 // It satisfies plugin.LanguageInstaller and is wired into the plugin host at construction so
 // that every load of a language runtime through a default host triggers the install, rather
 // than each caller of Host.LanguageRuntime having to ensure the plugin is present.
-func EnsureLanguageInstalled(ctx context.Context, runtime string, newLoader plugin.NewLoaderFunc) error {
+func EnsureLanguageInstalled(ctx context.Context, runtime string) error {
 	if runtime == "" {
 		return nil
 	}
@@ -143,8 +157,29 @@ func EnsureLanguageInstalled(ctx context.Context, runtime string, newLoader plug
 	log := func(sev diag.Severity, msg string) {
 		logging.V(7).Infof("EnsureLanguageInstalled(%s): %s", runtime, msg)
 	}
-	_, err := InstallPlugin(ctx, spec, log, newLoader)
-	return err
+
+	// Language hosts are self-contained executables, shared across workspaces and never run with
+	// the support of another language runtime (which would be a bootstrapping cycle). Installing
+	// one is therefore a plain download-and-unpack with no dependency-install step.
+	downloadedFile, err := downloadPlugin(ctx, &spec, log)
+	if err != nil {
+		return err
+	}
+	logging.V(1).Infof("Automatically installing language runtime %s", runtime)
+	done, err := pluginstorage.UnpackContents(ctx, spec, pluginstorage.TarPlugin(downloadedFile), false)
+	if err != nil {
+		return &InstallPluginError{Spec: spec, Err: fmt.Errorf("error installing language runtime %s: %w", runtime, err)}
+	}
+	done(true)
+
+	if dir, err := spec.DirPath(); err == nil {
+		pluginYaml := filepath.Join(dir, spec.SubDir(), "PulumiPlugin.yaml")
+		if _, err := os.Stat(pluginYaml); err == nil {
+			logging.Warningf("language runtime %s ships a PulumiPlugin.yaml; language hosts must be "+
+				"self-contained executables, so its dependencies will not be installed", runtime)
+		}
+	}
+	return nil
 }
 
 // InstallPluginContent installs a plugin's tarball into the cache, then installs it's
@@ -186,34 +221,39 @@ func installDependenciesForPluginSpec(
 		return nil
 	}
 
+	pluginHost, err := pkghost.New(
+		context.WithoutCancel(ctx), diagutil.Diag(), diagutil.Diag(), nil, EnsureLanguageInstalled,
+		newLoader, convert.NewMapperServerFromContext, nil)
+	if err != nil {
+		return err
+	}
+
 	pctx, err := plugin.NewContextWithRoot(ctx,
 		diagutil.Diag(),
 		diagutil.Diag(),
-		nil,    // host
-		subdir, // pwd
-		subdir, // root
+		pluginHost, // host
+		subdir,     // pwd
+		subdir,     // root
 		proj.RuntimeInfo().Options(),
 		false, // disableProviderPreview
 		nil,   // tracingSpan
 		nil,   // Plugins
 		proj.GetPackageSpecs(),
 		nil, // config
-		nil, // debugging
-		newLoader,
-		EnsureLanguageInstalled,
 	)
 	if err != nil {
-		return err
+		return errors.Join(err, pluginHost.Close())
 	}
 
-	return errors.Join(InstallPluginAtPath(pctx, proj, stdout, stderr), pctx.Close())
+	// The host is owned here, not by the context, so close it after the context.
+	return errors.Join(InstallPluginAtPath(pctx, proj, stdout, stderr), pctx.Close(), pluginHost.Close())
 }
 
 func InstallPluginAtPath(pctx *plugin.Context, proj *workspace.PluginProject, stdout, stderr io.Writer) error {
 	if err := proj.Validate(); err != nil {
 		return err
 	}
-	runtime, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
+	runtime, err := pctx.Host.LanguageRuntime(pctx, proj.Runtime.Name())
 	if err != nil {
 		return err
 	}

@@ -113,7 +113,7 @@ func TestStartTemplatePublish(t *testing.T) {
 
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: newHTTPClient(),
@@ -197,7 +197,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: newHTTPClient(),
@@ -403,7 +403,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			// Create a mock cloud registry that uses the HTTP client methods
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: httpClient,

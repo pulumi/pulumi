@@ -43,8 +43,9 @@ type EvalContext struct {
 	call        func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error)
 
-	// we write variables to the hcl.EvalContext in parallel during execution, so we need to synchronize access to it
-	evalLock    sync.Mutex
+	// We read and write variables to the hcl.EvalContext + children in parallel during
+	// execution, so we synchronize access to it.
+	evalLock    *sync.Mutex
 	evalContext *hcl.EvalContext
 }
 
@@ -67,6 +68,7 @@ func NewEvalContext(
 		getResource:      getResource,
 		invoke:           invoke,
 		call:             call,
+		evalLock:         new(sync.Mutex),
 	}
 
 	ctx.evalContext = &hcl.EvalContext{
@@ -91,6 +93,7 @@ func (ectx *EvalContext) NewChild() *EvalContext {
 		getResource:      ectx.getResource,
 		invoke:           ectx.invoke,
 		call:             ectx.call,
+		evalLock:         ectx.evalLock,
 		evalContext:      child,
 	}
 }
@@ -102,6 +105,14 @@ func (ectx *EvalContext) SetVariable(name string, value cty.Value) {
 		ectx.evalContext.Variables = make(map[string]cty.Value)
 	}
 	ectx.evalContext.Variables[name] = value
+}
+
+// HasVariable reports whether a variable with the given name has been set.
+func (ectx *EvalContext) HasVariable(name string) bool {
+	ectx.evalLock.Lock()
+	defer ectx.evalLock.Unlock()
+	_, ok := ectx.evalContext.Variables[name]
+	return ok
 }
 
 // Evaluate evaluates an expression in the context of the interpreter's evalContext and returns a PropertyValue. If the

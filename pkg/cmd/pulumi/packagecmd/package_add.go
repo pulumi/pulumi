@@ -28,11 +28,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -126,13 +129,24 @@ from the parameters, as in:
 			}
 
 			sink := cmdutil.Diag()
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(target.reg))
+			if err != nil {
+				return err
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(cmd.Context(),
-				sink, sink, nil, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromHost,
-				pkgWorkspace.EnsureLanguageInstalled)
+				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil)
 			if err != nil {
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
+
+			if target.proj.RuntimeInfo().Name() == "" {
+				return errors.New("cannot add a package to a project without a runtime")
+			}
 
 			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
@@ -185,8 +199,8 @@ from the parameters, as in:
 							packageSpec.Version = pkg.Version.String()
 						}
 					} else {
-						packageSpec.Source = pkg.Parameterization.BaseProvider.Name
-						packageSpec.Version = pkg.Parameterization.BaseProvider.Version.String()
+						packageSpec.Source = pkg.Parameterization.BasePlugin.Name
+						packageSpec.Version = pkg.Parameterization.BasePlugin.Version.String()
 					}
 				}
 			}

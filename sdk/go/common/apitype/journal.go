@@ -22,14 +22,16 @@ import (
 type JournalEntryKind int
 
 const (
-	JournalEntryKindBegin            JournalEntryKind = 0
-	JournalEntryKindSuccess          JournalEntryKind = 1
-	JournalEntryKindFailure          JournalEntryKind = 2
-	JournalEntryKindRefreshSuccess   JournalEntryKind = 3
-	JournalEntryKindOutputs          JournalEntryKind = 4
-	JournalEntryKindWrite            JournalEntryKind = 5
-	JournalEntryKindSecretsManager   JournalEntryKind = 6
-	JournalEntryKindRebuiltBaseState JournalEntryKind = 7
+	JournalEntryKindBegin                 JournalEntryKind = 0
+	JournalEntryKindSuccess               JournalEntryKind = 1
+	JournalEntryKindFailure               JournalEntryKind = 2
+	JournalEntryKindRefreshSuccess        JournalEntryKind = 3
+	JournalEntryKindOutputs               JournalEntryKind = 4
+	JournalEntryKindWrite                 JournalEntryKind = 5
+	JournalEntryKindSecretsManager        JournalEntryKind = 6
+	JournalEntryKindRebuiltBaseState      JournalEntryKind = 7
+	JournalEntryKindExtensionParameterize JournalEntryKind = 8
+	JournalEntryKindSnippets              JournalEntryKind = 9
 )
 
 func (k JournalEntryKind) String() string {
@@ -50,6 +52,10 @@ func (k JournalEntryKind) String() string {
 		return "secrets-manager"
 	case JournalEntryKindRebuiltBaseState:
 		return "rebuilt-base-state"
+	case JournalEntryKindExtensionParameterize:
+		return "extension-parameterize"
+	case JournalEntryKindSnippets:
+		return "snippets"
 	default:
 		return "invalid"
 	}
@@ -84,9 +90,17 @@ type JournalEntry struct {
 	IsRefresh bool `json:"isRefresh,omitempty"`
 	// The secrets manager associated with this journal entry, if any.
 	SecretsProvider *SecretsProvidersV1 `json:"secretsProvider,omitempty"`
+	// The complete snippet list associated with this journal entry, if any.
+	Snippets []SnippetV1 `json:"snippets,omitempty"`
 
 	// NewSnapshot is the new snapshot that this journal entry is associated with.
 	NewSnapshot *DeploymentV3 `json:"newSnapshot,omitempty"`
+
+	// ExtensionRef and Extension carry the (ref, blob) pair produced by an
+	// extension parameterize step so replay can rebuild DeploymentV3.Extensions.
+	// Only set for JournalEntryKindExtensionParameterize entries.
+	ExtensionRef *ExtensionRef `json:"extensionRef,omitempty"`
+	Extension    *Extension    `json:"extension,omitempty"`
 }
 
 func (e JournalEntry) String() string {
@@ -125,6 +139,9 @@ func (e JournalEntry) String() string {
 	}
 	if e.NewSnapshot != nil {
 		fmt.Fprintf(&sb, ", +snap")
+	}
+	if e.Snippets != nil {
+		fmt.Fprintf(&sb, ", snippets(%v)", len(e.Snippets))
 	}
 
 	return sb.String()

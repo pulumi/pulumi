@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"math"
 	"net/url"
 	"os"
@@ -38,8 +39,9 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -67,13 +69,19 @@ func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	return pkgSpec
 }
 
+// readSchema decodes an embedded provider schema (the canonical "<name>-<version>.json").
+func readSchema(t *testing.T, name, version string) (pkgSpec PackageSpec) {
+	require.NoError(t, json.Unmarshal(utils.ReadSchema(t, name, version), &pkgSpec))
+	return pkgSpec
+}
+
 func TestRoundtripRemoteTypeRef(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/13000
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("remoteref-1.0.0.json")
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
+	pkgSpec := readSchema(t, "remoteref", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -96,8 +104,8 @@ func TestRoundtripLocalTypeRef(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("localref-1.0.0.json")
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
+	pkgSpec := readSchema(t, "localref", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -133,8 +141,8 @@ func TestRoundtripEnum(t *testing.T) {
 	}
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("enum-1.0.0.json")
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
+	pkgSpec := readSchema(t, "enum", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -245,8 +253,8 @@ func TestRoundtripPlainProperties(t *testing.T) {
 	}
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("plain-properties-1.0.0.json")
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
+	pkgSpec := readSchema(t, "plain-properties", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -273,9 +281,9 @@ func TestImportSpec(t *testing.T) {
 	t.Parallel()
 
 	// Read in, decode, and import the schema.
-	pkgSpec := readSchemaFile("kubernetes-3.7.0.json")
+	pkgSpec := readSchema(t, "random", "4.11.2")
 
-	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+	pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	if err != nil {
@@ -441,7 +449,7 @@ func TestInvalidTypes(t *testing.T) {
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			_, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			_, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			assert.ErrorContains(t, err, tt.expected)
@@ -458,7 +466,7 @@ func TestEnums(t *testing.T) {
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			if tt.shouldError {
@@ -651,7 +659,7 @@ func TestRejectDuplicateNames(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, diags, err := BindSpec(tt.spec, NewPluginLoader(utils.NewHost(testdataPath)), ValidationOptions{
+			_, diags, err := BindSpec(tt.spec, NewPluginLoader(utils.NewContext(testdataPath)), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			require.NoError(t, err)
@@ -724,7 +732,7 @@ func TestImportResourceRef(t *testing.T) {
 		},
 	}
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -732,7 +740,8 @@ func TestImportResourceRef(t *testing.T) {
 
 			// Read in, decode, and import the schema.
 			schemaBytes, err := os.ReadFile(
-				filepath.Join(testdataPath, tt.schemaFile))
+				filepath.Join(testdataPath, tt.schemaFile),
+			)
 			require.NoError(t, err)
 
 			var pkgSpec PackageSpec
@@ -897,7 +906,7 @@ func Test_parseTypeSpecRef(t *testing.T) {
 
 func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -948,7 +957,7 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 
 func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -990,7 +999,7 @@ func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 
 func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1027,7 +1036,7 @@ func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 
 func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1056,7 +1065,7 @@ func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
 
 func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1085,7 +1094,7 @@ func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
 
 func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1122,7 +1131,7 @@ func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 
 func TestUsingVersionPropertyNameIsOk(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1152,7 +1161,7 @@ func TestUsingVersionPropertyNameIsOk(t *testing.T) {
 
 func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1397,7 +1406,7 @@ func TestBindSpecPrintableNames(t *testing.T) {
 
 func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1430,7 +1439,7 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 
 func TestUsingIdInStateInputsIsAnError(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1471,7 +1480,7 @@ func TestUsingIdInStateInputsIsAnError(t *testing.T) {
 
 func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name: "test",
 		Meta: &MetadataSpec{
@@ -1490,7 +1499,7 @@ func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 
 func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
 	t.Parallel()
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := PackageSpec{
 		Name:    "test",
 		Version: "1.0.0",
@@ -1629,7 +1638,7 @@ func TestMethods(t *testing.T) {
 
 			// provider-methods-3.json declares the builtin "pulumi" package to exercise method binding on
 			// pulumi:providers:pulumi; allow the reserved name for these fixtures.
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 				AllowPulumiPackage:      true,
 			})
@@ -1655,7 +1664,7 @@ func TestIsOverlay(t *testing.T) {
 
 		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay.json"))
 
-		pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+		pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 			AllowDanglingReferences: true,
 		})
 		if err != nil {
@@ -1698,7 +1707,7 @@ func TestOverlaySupportedLanguages(t *testing.T) {
 
 		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay-supported-languages.json"))
 
-		pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+		pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 			AllowDanglingReferences: true,
 		})
 		if err != nil {
@@ -1775,7 +1784,7 @@ func TestBindingOutputsPopulatesReturnType(t *testing.T) {
 		},
 	}
 
-	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+	pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	if err != nil {
@@ -1855,8 +1864,9 @@ func TestReplaceOnChanges(t *testing.T) {
 			sort.Strings(tt.result)
 			sort.Strings(tt.errors)
 			pkgSpec := readSchemaFile(
-				filepath.Join("schema", tt.filePath))
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				filepath.Join("schema", tt.filePath),
+			)
+			pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			require.NoError(t, err, "Import should be successful")
@@ -2589,8 +2599,9 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 }
 
 func TestLoaderRespectsDebugProviders(t *testing.T) {
-	host := debugProvidersHelperHost(t)
-	loader := NewPluginLoader(host)
+	pluginCtx := debugProvidersHelperContext(t)
+	host := pluginCtx.Host
+	loader := NewPluginLoader(pluginCtx)
 	cancel := make(chan bool)
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancel,
@@ -2647,24 +2658,28 @@ func (*debugProvidersHelperServer) Attach(
 	return &emptypb.Empty{}, nil
 }
 
-// This is the host that pulumi-yaml is using. Somehow the test does not work with utils.NewHost,
+// This is the host that pulumi-yaml is using. Somehow the test does not work with utils.NewContext,
 // perhaps that does not support PULUMI_DEBUG_PROVIDERS yet.
-func debugProvidersHelperHost(t *testing.T) plugin.Host {
+func debugProvidersHelperContext(t *testing.T) *plugin.Context {
 	cwd := t.TempDir()
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	//nolint:usetesting // plugin.NewContext manages the lifecycle of gRPC providers; t.Context cancels before they shut down
-	pluginCtx, err := plugin.NewContext(t.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost, nil)
+	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), sink, sink, nil, nil,
+		NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
-	return pluginCtx.Host
+	t.Cleanup(func() { require.NoError(t, pluginHost.Close()) })
+	pluginCtx, err := plugin.NewContext(
+		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+	require.NoError(t, err)
+	return pluginCtx
 }
 
 func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	// c.f. https://github.com/pulumi/pulumi/issues/16757
 	t.Parallel()
 
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	// Test that certain names aren't allowed as a property in the package config.
 	pkgSpec := PackageSpec{
@@ -2692,7 +2707,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"pulumi": {
 					TypeSpec: TypeSpec{
@@ -2713,7 +2728,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"version": {
 					TypeSpec: TypeSpec{
@@ -2735,7 +2750,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{
 				Properties: map[string]PropertySpec{
 					"pulumi": {
@@ -2759,7 +2774,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{
 				Properties: map[string]PropertySpec{
 					"version": {
@@ -2783,12 +2798,12 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 func TestResourceWithKeynameOverlapFunction(t *testing.T) {
 	t.Parallel()
 
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{},
 		},
 		Functions: map[string]FunctionSpec{
@@ -2804,12 +2819,12 @@ func TestResourceWithKeynameOverlapFunction(t *testing.T) {
 func TestResourceWithKeynameOverlapResource(t *testing.T) {
 	t.Parallel()
 
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{},
 		},
 		Resources: map[string]ResourceSpec{
@@ -2825,12 +2840,12 @@ func TestResourceWithKeynameOverlapResource(t *testing.T) {
 func TestResourceWithKeynameOverlapType(t *testing.T) {
 	t.Parallel()
 
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{},
 		},
 		Types: map[string]ComplexTypeSpec{
@@ -2859,8 +2874,10 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("aliases-1.0.0.json")
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
+	schemaBytes := utils.ReadSchema(t, "aliases", "1.0.0")
+	var pkgSpec PackageSpec
+	require.NoError(t, json.Unmarshal(schemaBytes, &pkgSpec))
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -2873,9 +2890,6 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 	jsonData, err := json.Marshal(&newSpec)
 	require.NoError(t, err)
 
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.json"))
-	require.NoError(t, err)
-
 	assert.JSONEq(t, string(schemaBytes), string(jsonData))
 }
 
@@ -2883,8 +2897,11 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("aliases-1.0.0.yaml")
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
+	schemaBytes, err := fs.ReadFile(utils.SchemaFS(), "aliases-1.0.0.yaml")
+	require.NoError(t, err)
+	var pkgSpec PackageSpec
+	require.NoError(t, yaml.Unmarshal(schemaBytes, &pkgSpec))
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -2897,9 +2914,6 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 	yamlData, err := yaml.Marshal(&newSpec)
 	require.NoError(t, err)
 
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.yaml"))
-	require.NoError(t, err)
-
 	assert.YAMLEq(t, string(schemaBytes), string(yamlData))
 }
 
@@ -2907,8 +2921,8 @@ func TestDanglingReferences(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("dangling-reference-bad-0.1.0.json")
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
+	pkgSpec := readSchema(t, "dangling-reference-bad", "0.1.0")
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
 
 	require.Len(t, diags, 1)
@@ -2923,8 +2937,8 @@ func TestNoDanglingReferences(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("dangling-reference-good-0.1.0.json")
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
+	pkgSpec := readSchema(t, "dangling-reference-good", "0.1.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
@@ -3018,7 +3032,7 @@ func TestFunctionToken(t *testing.T) {
 			}
 
 			// Try to bind the spec
-			pkg, diags, err := BindSpec(spec, nil, ValidationOptions{
+			pkg, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 
@@ -3031,7 +3045,7 @@ func TestFunctionToken(t *testing.T) {
 			require.NotNil(t, newSpec)
 
 			// Try and bind again
-			_, diags, err = BindSpec(*newSpec, nil, ValidationOptions{
+			_, diags, err = BindSpec(*newSpec, NewNullLoader(), ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			require.NoError(t, err)
@@ -3040,6 +3054,59 @@ func TestFunctionToken(t *testing.T) {
 			// Verify the function token is preserved
 			_, exists := newSpec.Functions[tt.token]
 			assert.True(t, exists)
+		})
+	}
+}
+
+func TestExtensionTokenNamespace(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		token        string
+		wantRejected bool
+	}{
+		{
+			name:  "base-namespaced token is allowed",
+			token: "extbase:index:Greeting",
+		},
+		{
+			name:         "extension-own-namespace token is rejected",
+			token:        "myext:index:Greeting",
+			wantRejected: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			spec := PackageSpec{
+				Name:    "myext",
+				Version: "2.0.0",
+				Resources: map[string]ResourceSpec{
+					tt.token: {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				},
+				ExtensionParameterization: &ExtensionParameterizationSpec{
+					BaseProvider: BaseProviderRefSpec{Name: "extbase", Version: "45.0.0"},
+					Parameter:    []byte("hello"),
+				},
+			}
+
+			_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{
+				AllowDanglingReferences: true,
+			})
+			require.NoError(t, err)
+
+			want := fmt.Sprintf("invalid token '%s' (must have package name 'extbase')", tt.token)
+			rejected := false
+			for _, d := range diags {
+				if d.Severity == hcl.DiagError && strings.Contains(d.Summary, want) {
+					rejected = true
+				}
+			}
+			if tt.wantRejected {
+				assert.True(t, rejected, "expected rejection diagnostic %q, got %v", want, diags)
+			} else {
+				assert.False(t, diags.HasErrors(), "base-namespaced token should bind without errors, got %v", diags)
+			}
 		})
 	}
 }
@@ -3063,7 +3130,7 @@ func TestProviderRefWarning(t *testing.T) {
 	}
 
 	// Try to bind the spec
-	_, diags, err := BindSpec(spec, nil, ValidationOptions{
+	_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 
@@ -3083,7 +3150,7 @@ func TestBindParameterizedExternals(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas")
-	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	loader := NewPluginLoader(utils.NewContext(testdataPath))
 	pkgSpec := readSchemaFile("parameterized-schemas/parameterizedref-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
@@ -3100,6 +3167,132 @@ func TestBindParameterizedExternals(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
+}
+
+// Test that we can bind a package with a top-level extensionParameterization.
+func TestBindExtensionParameterized(t *testing.T) {
+	t.Parallel()
+
+	const schema = `{
+  "name": "extensionref",
+  "version": "1.0.0",
+  "resources": {
+    "test-base:index:Root": {
+      "type": "object",
+      "properties": { "data": { "type": "string" } }
+    }
+  },
+  "extensionParameterization": {
+    "baseProvider": { "name": "test-base", "version": "1.0.0" },
+    "parameter": "dGVzdA=="
+  }
+}`
+	var pkgSpec PackageSpec
+	require.NoError(t, json.Unmarshal([]byte(schema), &pkgSpec))
+
+	pkg, diags, err := BindSpec(pkgSpec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
+	require.NoError(t, err)
+	require.NotNil(t, pkg.ExtensionParameterization)
+	assert.Nil(t, pkg.Provider)
+	assert.Empty(t, diags)
+
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	// Bind the round-tripped spec again to confirm the extension parameterization survives.
+	pkg2, diags, err := BindSpec(*newSpec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
+	require.NoError(t, err)
+	require.NotNil(t, pkg2.ExtensionParameterization)
+	assert.Nil(t, pkg2.Provider)
+	assert.Empty(t, diags)
+}
+
+func TestBindSpecRejectsBothParameterizationFlavors(t *testing.T) {
+	t.Parallel()
+
+	base := BaseProviderSpec{Name: "base", Version: "1.0.0"}
+	spec := PackageSpec{
+		Name: "ext",
+		Parameterization: &ParameterizationSpec{
+			BaseProvider: base,
+			Parameter:    []byte("p"),
+		},
+		ExtensionParameterization: &ExtensionParameterizationSpec{
+			BaseProvider: BaseProviderRefSpec{Name: base.Name, Version: base.Version},
+			Parameter:    []byte("p"),
+		},
+	}
+	_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{})
+	require.NoError(t, err)
+	require.True(t, diags.HasErrors())
+	var found bool
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError &&
+			strings.Contains(d.Summary, "parameterization or extensionParameterization, not both") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected exclusivity diagnostic, got %v", diags)
+}
+
+func TestBindSpecRejectsExtensionWithProvider(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name:     "ext",
+		Provider: &ResourceSpec{},
+		ExtensionParameterization: &ExtensionParameterizationSpec{
+			BaseProvider: BaseProviderRefSpec{Name: "base", Version: "1.0.0"},
+			Parameter:    []byte("p"),
+		},
+	}
+	_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{})
+	require.NoError(t, err)
+	require.True(t, diags.HasErrors())
+	var found bool
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError &&
+			strings.Contains(d.Summary, "extensionParameterization may not declare a provider") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected provider-rejection diagnostic, got %v", diags)
+}
+
+func TestMarshalExtensionParameterizationNestedParameterization(t *testing.T) {
+	t.Parallel()
+
+	p := Package{
+		Name:    "ext",
+		Version: &semver.Version{Major: 1},
+		ExtensionParameterization: &ExtensionParameterization{
+			BaseProvider: BaseProvider{
+				Name:    "base",
+				Version: semver.MustParse("1.0.0"),
+				Parameterization: &Parameterization{
+					BasePlugin: BasePlugin{Name: "baseplugin", Version: semver.MustParse("2.0.0")},
+					Parameter:  []byte("repl"),
+				},
+			},
+			Parameter: []byte("ext"),
+		},
+	}
+
+	spec, err := p.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, spec.ExtensionParameterization)
+	assert.Equal(t, "base", spec.ExtensionParameterization.BaseProvider.Name)
+	assert.Equal(t, "1.0.0", spec.ExtensionParameterization.BaseProvider.Version)
+	assert.Equal(t, []byte("ext"), spec.ExtensionParameterization.Parameter)
+
+	pp := spec.ExtensionParameterization.BaseProvider.Parameterization
+	require.NotNil(t, pp, "the nested parameterization must be carried into the spec")
+	assert.Equal(t, "baseplugin", pp.BasePlugin.Name)
+	assert.Equal(t, "2.0.0", pp.BasePlugin.Version)
+	assert.Equal(t, []byte("repl"), pp.Parameter)
 }
 
 func TestTokenToModuleIndexPrefix(t *testing.T) {
@@ -3139,7 +3332,7 @@ func TestAliasBuildIsLazy(t *testing.T) {
 	t.Run("Package", func(t *testing.T) {
 		t.Parallel()
 
-		pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		pkg, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 
 		_, ok := pkg.GetResource("test:mod:Thing")
@@ -3165,7 +3358,7 @@ func TestAliasBuildIsLazy(t *testing.T) {
 		var partial PartialPackageSpec
 		require.NoError(t, json.Unmarshal(raw, &partial))
 
-		pkg, err := ImportPartialSpec(partial, nil, nil)
+		pkg, err := ImportPartialSpec(partial, nil, NewNullLoader())
 		require.NoError(t, err)
 
 		_, ok, err := pkg.Resources().Get("test:mod:Thing")
@@ -3197,7 +3390,7 @@ func TestGetWithIndexAliases(t *testing.T) {
 		},
 	}
 
-	pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+	pkg, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 	require.NoError(t, err)
 
 	for _, query := range []string{"test:index:Thing", "test::Thing", "test:Thing"} {
@@ -3239,7 +3432,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 	t.Run("Package", func(t *testing.T) {
 		t.Parallel()
 
-		pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		pkg, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 
 		r, ok := pkg.GetResource("test:mod:Thing")
@@ -3267,7 +3460,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 		var partial PartialPackageSpec
 		require.NoError(t, json.Unmarshal(raw, &partial))
 
-		pkg, err := ImportPartialSpec(partial, nil, nil)
+		pkg, err := ImportPartialSpec(partial, nil, NewNullLoader())
 		require.NoError(t, err)
 
 		r, ok, err := pkg.Resources().Get("test:mod:Thing")
@@ -3311,7 +3504,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:thing")
 	})
@@ -3331,7 +3524,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1_v2:a")
 	})
@@ -3352,7 +3545,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 	})
 
@@ -3375,7 +3568,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1:a")
 	})
@@ -3395,7 +3588,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:a")
 	})
@@ -3413,7 +3606,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 			},
 		}
 
-		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 	})
 }
@@ -3446,7 +3639,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"foo": {TypeSpec: refSpec("test:index:A")},
 			}, "foo"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Equal(t, hcl.Diagnostics{{
 			Severity: hcl.DiagError,
@@ -3465,7 +3658,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"a": {TypeSpec: refSpec("test:index:A")},
 			}, "a"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Equal(t, hcl.Diagnostics{{
 			Severity: hcl.DiagError,
@@ -3487,7 +3680,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"a": {TypeSpec: refSpec("test:index:A")},
 			}, "a"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Equal(t, hcl.Diagnostics{{
 			Severity: hcl.DiagError,
@@ -3503,7 +3696,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"foo": {TypeSpec: refSpec("test:index:A")},
 			}),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -3518,7 +3711,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				}},
 			}, "foo"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -3533,7 +3726,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				}},
 			}, "foo"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -3547,7 +3740,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				}},
 			}, "foo"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -3566,7 +3759,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"leaf":   {TypeSpec: refSpec("test:index:Leaf")},
 			}, "branch", "leaf"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Empty(t, diags)
 	})
@@ -3581,7 +3774,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 				"b": {TypeSpec: refSpec("test:index:B")},
 			}, "b"),
 		})
-		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
 		require.NoError(t, err)
 		assert.Equal(t, hcl.Diagnostics{
 			{
@@ -3607,7 +3800,7 @@ func TestBindSpecReservedPackageNames(t *testing.T) {
 	for _, name := range []string{"pulumi", "input"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, diags, err := BindSpec(PackageSpec{Name: name}, nil, ValidationOptions{})
+			_, diags, err := BindSpec(PackageSpec{Name: name}, NewNullLoader(), ValidationOptions{})
 			require.NoError(t, err)
 			require.True(t, diags.HasErrors(), "expected errors for reserved name %q, got %v", name, diags)
 			found := false
@@ -3625,9 +3818,269 @@ func TestBindSpecReservedPackageNames(t *testing.T) {
 	// Sanity-check: any other name binds without that specific diagnostic.
 	t.Run("non-reserved", func(t *testing.T) {
 		t.Parallel()
-		_, diags, _ := BindSpec(PackageSpec{Name: "aws"}, nil, ValidationOptions{})
+		_, diags, _ := BindSpec(PackageSpec{Name: "aws"}, NewNullLoader(), ValidationOptions{})
 		for _, d := range diags {
 			assert.NotContains(t, d.Summary, "package names 'pulumi' and 'input' are reserved")
 		}
 	})
+}
+
+func TestMissingRefErrors(t *testing.T) {
+	t.Parallel()
+
+	missingRef := "{{% ref #/resources/test:index:Missing %}}"
+	spec := PackageSpec{
+		Name:        "test",
+		Description: missingRef,
+		Config: ConfigSpec{
+			Variables: map[string]PropertySpec{
+				"someConfig": {
+					TypeSpec:           TypeSpec{Type: "string"},
+					Description:        missingRef,
+					DeprecationMessage: missingRef,
+				},
+			},
+		},
+		Provider: &ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{
+				Description: missingRef,
+				Properties: map[string]PropertySpec{
+					"someProviderProperty": {
+						TypeSpec:           TypeSpec{Type: "string"},
+						Description:        missingRef,
+						DeprecationMessage: missingRef,
+					},
+				},
+			},
+			InputProperties: map[string]PropertySpec{
+				"someProviderInputProperty": {
+					TypeSpec:           TypeSpec{Type: "string"},
+					Description:        missingRef,
+					DeprecationMessage: missingRef,
+				},
+			},
+			StateInputs: &ObjectTypeSpec{
+				Description: missingRef,
+				Properties: map[string]PropertySpec{
+					"someProviderStateInputProperty": {
+						TypeSpec:           TypeSpec{Type: "string"},
+						Description:        missingRef,
+						DeprecationMessage: missingRef,
+					},
+				},
+			},
+			DeprecationMessage: missingRef,
+		},
+		Resources: map[string]ResourceSpec{
+			"test:index:SomeResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Description: missingRef,
+					Properties: map[string]PropertySpec{
+						"someResourceProperty": {
+							TypeSpec:           TypeSpec{Type: "string"},
+							Description:        missingRef,
+							DeprecationMessage: missingRef,
+						},
+					},
+				},
+				InputProperties: map[string]PropertySpec{
+					"someResourceInputProperty": {
+						TypeSpec:           TypeSpec{Type: "string"},
+						Description:        missingRef,
+						DeprecationMessage: missingRef,
+					},
+				},
+				StateInputs: &ObjectTypeSpec{
+					Description: missingRef,
+					Properties: map[string]PropertySpec{
+						"someResourceStateInputProperty": {
+							TypeSpec:           TypeSpec{Type: "string"},
+							Description:        missingRef,
+							DeprecationMessage: missingRef,
+						},
+					},
+				},
+				DeprecationMessage: missingRef,
+			},
+		},
+		Functions: map[string]FunctionSpec{
+			"test:index:SomeFunction": {
+				Description: missingRef,
+				Inputs: &ObjectTypeSpec{
+					Description: missingRef,
+					Properties: map[string]PropertySpec{
+						"someFunctionInputProperty": {
+							TypeSpec:           TypeSpec{Type: "string"},
+							Description:        missingRef,
+							DeprecationMessage: missingRef,
+						},
+					},
+				},
+				Outputs: &ObjectTypeSpec{
+					Description: missingRef,
+					Properties: map[string]PropertySpec{
+						"someFunctionOutputProperty": {
+							TypeSpec:           TypeSpec{Type: "string"},
+							Description:        missingRef,
+							DeprecationMessage: missingRef,
+						},
+					},
+				},
+				DeprecationMessage: missingRef,
+			},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"test:index:SomeType": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type:        "object",
+					Description: missingRef,
+					Properties: map[string]PropertySpec{
+						"someTypeProperty": {
+							TypeSpec:           TypeSpec{Type: "string"},
+							Description:        missingRef,
+							DeprecationMessage: missingRef,
+						},
+					},
+				},
+			},
+			"test:index:SomeEnum": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type:        "string",
+					Description: missingRef,
+				},
+				Enum: []EnumValueSpec{
+					{
+						Value:              "someEnumValue",
+						Description:        missingRef,
+						DeprecationMessage: missingRef,
+					},
+				},
+			},
+		},
+	}
+
+	// Try to bind the spec
+	_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{})
+
+	require.NoError(t, err)
+	missingRefError := "reference to resource '/resources/test:index:Missing' not found in package test"
+	diag := func(path string) *hcl.Diagnostic {
+		return &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  path + ": " + missingRefError,
+		}
+	}
+	expectedErrors := hcl.Diagnostics{
+		diag("#/description"),
+		diag("#/config/variables/someConfig/description"),
+		diag("#/config/variables/someConfig/deprecationMessage"),
+		diag("#/functions/test:index:SomeFunction/description"),
+		diag("#/functions/test:index:SomeFunction/deprecationMessage"),
+		diag("#/functions/test:index:SomeFunction/inputs/description"),
+		diag("#/functions/test:index:SomeFunction/inputs/properties/someFunctionInputProperty/description"),
+		diag("#/functions/test:index:SomeFunction/inputs/properties/someFunctionInputProperty/deprecationMessage"),
+		diag("#/functions/test:index:SomeFunction/outputs/description"),
+		diag("#/functions/test:index:SomeFunction/outputs/properties/someFunctionOutputProperty/description"),
+		diag("#/functions/test:index:SomeFunction/outputs/properties/someFunctionOutputProperty/deprecationMessage"),
+		diag("#/provider/description"),
+		diag("#/provider/deprecationMessage"),
+		diag("#/provider/inputProperties/someProviderInputProperty/description"),
+		diag("#/provider/inputProperties/someProviderInputProperty/deprecationMessage"),
+		diag("#/provider/properties/someProviderProperty/description"),
+		diag("#/provider/properties/someProviderProperty/deprecationMessage"),
+		diag("#/provider/stateInputs/description"),
+		diag("#/provider/stateInputs/properties/someProviderStateInputProperty/description"),
+		diag("#/provider/stateInputs/properties/someProviderStateInputProperty/deprecationMessage"),
+		diag("#/resources/test:index:SomeResource/description"),
+		diag("#/resources/test:index:SomeResource/deprecationMessage"),
+		diag("#/resources/test:index:SomeResource/inputProperties/someResourceInputProperty/description"),
+		diag("#/resources/test:index:SomeResource/inputProperties/someResourceInputProperty/deprecationMessage"),
+		diag("#/resources/test:index:SomeResource/properties/someResourceProperty/description"),
+		diag("#/resources/test:index:SomeResource/properties/someResourceProperty/deprecationMessage"),
+		diag("#/resources/test:index:SomeResource/stateInputs/description"),
+		diag("#/resources/test:index:SomeResource/stateInputs/properties/someResourceStateInputProperty/description"),
+		diag("#/resources/test:index:SomeResource/stateInputs/properties/someResourceStateInputProperty/deprecationMessage"),
+		diag("#/types/test:index:SomeEnum/description"),
+		diag("#/types/test:index:SomeEnum/enum/0/description"),
+		diag("#/types/test:index:SomeEnum/enum/0/deprecationMessage"),
+		diag("#/types/test:index:SomeType/description"),
+		diag("#/types/test:index:SomeType/properties/someTypeProperty/description"),
+		diag("#/types/test:index:SomeType/properties/someTypeProperty/deprecationMessage"),
+	}
+	assert.Equal(t, expectedErrors, diags)
+}
+
+func TestMissingPropertyRefErrors(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name: "test",
+		Resources: map[string]ResourceSpec{
+			"test:index:SomeResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					// Reference to a non-existent output property
+					Description: "{{% ref #/resources/test:index:SomeResource/properties/nonExistent %}}",
+					Properties: map[string]PropertySpec{
+						"realProp": {TypeSpec: TypeSpec{Type: "string"}},
+					},
+				},
+				// Reference to a non-existent input property
+				InputProperties: map[string]PropertySpec{
+					"realInputProp": {
+						TypeSpec:    TypeSpec{Type: "string"},
+						Description: "{{% ref #/resources/test:index:SomeResource/inputProperties/nonExistent %}}",
+					},
+				},
+			},
+		},
+		Functions: map[string]FunctionSpec{
+			"test:index:SomeFunction": {
+				Inputs: &ObjectTypeSpec{
+					// Reference to a non-existent function input property
+					Description: "{{% ref #/functions/test:index:SomeFunction/inputs/properties/nonExistent %}}",
+					Properties: map[string]PropertySpec{
+						"realInput": {TypeSpec: TypeSpec{Type: "string"}},
+					},
+				},
+				Outputs: &ObjectTypeSpec{
+					// Reference to a non-existent function output property
+					Description: "{{% ref #/functions/test:index:SomeFunction/outputs/properties/nonExistent %}}",
+					Properties: map[string]PropertySpec{
+						"realOutput": {TypeSpec: TypeSpec{Type: "string"}},
+					},
+				},
+			},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"test:index:SomeType": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type: "object",
+					// Reference to a non-existent type property
+					Description: "{{% ref #/types/test:index:SomeType/properties/nonExistent %}}",
+					Properties: map[string]PropertySpec{
+						"realTypeProp": {TypeSpec: TypeSpec{Type: "string"}},
+					},
+				},
+			},
+		},
+	}
+
+	_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{})
+	require.NoError(t, err)
+
+	summaries := make([]string, 0, len(diags))
+	for _, d := range diags {
+		summaries = append(summaries, d.Summary)
+	}
+
+	assert.Contains(t, summaries,
+		"#/resources/test:index:SomeResource/description: property 'nonExistent' not found on resource 'test:index:SomeResource'")
+	assert.Contains(t, summaries,
+		"#/resources/test:index:SomeResource/inputProperties/realInputProp/description: input property 'nonExistent' not found on resource 'test:index:SomeResource'")
+	assert.Contains(t, summaries,
+		"#/functions/test:index:SomeFunction/inputs/description: input property 'nonExistent' not found on function 'test:index:SomeFunction'")
+	assert.Contains(t, summaries,
+		"#/functions/test:index:SomeFunction/outputs/description: output property 'nonExistent' not found on function 'test:index:SomeFunction'")
+	assert.Contains(t, summaries,
+		"#/types/test:index:SomeType/description: property 'nonExistent' not found on type 'test:index:SomeType'")
 }

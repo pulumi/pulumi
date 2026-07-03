@@ -23,8 +23,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
@@ -96,16 +96,17 @@ func (p *ConfigurerProvider) GetSchema(
 		}
 	}
 
+	providerResource := resourceSpec(false,
+		"The configurer provider. Its `config` setting is echoed onto each Custom resource it creates.",
+		map[string]schema.PropertySpec{"config": primitive("string")},
+		map[string]schema.PropertySpec{"config": primitive("string")},
+	)
 	pkg := schema.PackageSpec{
 		Name:      configurerPkg,
 		Version:   configurerVersion,
 		Functions: map[string]schema.FunctionSpec{},
 		Resources: map[string]schema.ResourceSpec{},
-		Provider: resourceSpec(false,
-			"The configurer provider. Its `config` setting is echoed onto each Custom resource it creates.",
-			map[string]schema.PropertySpec{"config": primitive("string")},
-			map[string]schema.PropertySpec{"config": primitive("string")},
-		),
+		Provider:  &providerResource,
 	}
 
 	pkg.Resources["configurer:index:Custom"] = resourceSpec(false,

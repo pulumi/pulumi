@@ -2345,7 +2345,8 @@ supportsresultreporting: jspb.Message.getBooleanFieldWithDefault(msg, 32, false)
 packageref: jspb.Message.getFieldWithDefault(msg, 33, ""),
 hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
 hidediffsList: (f = jspb.Message.getRepeatedField(msg, 37)) == null ? undefined : f,
-envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance, undefined) : []
+envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance, undefined) : [],
+snippetid: jspb.Message.getFieldWithDefault(msg, 40, "")
   };
 
   if (includeInstance) {
@@ -2557,6 +2558,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
          });
+      break;
+    case 40:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setSnippetid(value);
       break;
     default:
       reader.skipField();
@@ -2862,6 +2867,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   f = message.getEnvvarmappingsMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(41, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getSnippetid();
+  if (f.length > 0) {
+    writer.writeString(
+      40,
+      f
+    );
   }
 };
 
@@ -4752,6 +4764,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getEnvvarmappingsMap = functio
 proto.pulumirpc.RegisterResourceRequest.prototype.clearEnvvarmappingsMap = function() {
   this.getEnvvarmappingsMap().clear();
   return this;
+};
+
+
+/**
+ * optional string snippetId = 40;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getSnippetid = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 40, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setSnippetid = function(value) {
+  return jspb.Message.setProto3StringField(this, 40, value);
 };
 
 
@@ -11170,7 +11200,8 @@ name: jspb.Message.getFieldWithDefault(msg, 1, ""),
 version: jspb.Message.getFieldWithDefault(msg, 2, ""),
 downloadUrl: jspb.Message.getFieldWithDefault(msg, 3, ""),
 checksumsMap: (f = msg.getChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-parameterization: (f = msg.getParameterization()) && proto.pulumirpc.Parameterization.toObject(includeInstance, f)
+parameterization: (f = msg.getParameterization()) && proto.pulumirpc.Parameterization.toObject(includeInstance, f),
+extension: (f = msg.getExtension$()) && proto.pulumirpc.Parameterization.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -11230,6 +11261,11 @@ proto.pulumirpc.RegisterPackageRequest.deserializeBinaryFromReader = function(ms
       reader.readMessage(value,proto.pulumirpc.Parameterization.deserializeBinaryFromReader);
       msg.setParameterization(value);
       break;
+    case 6:
+      var value = new proto.pulumirpc.Parameterization;
+      reader.readMessage(value,proto.pulumirpc.Parameterization.deserializeBinaryFromReader);
+      msg.setExtension$(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -11288,6 +11324,14 @@ proto.pulumirpc.RegisterPackageRequest.serializeBinaryToWriter = function(messag
   if (f != null) {
     writer.writeMessage(
       5,
+      f,
+      proto.pulumirpc.Parameterization.serializeBinaryToWriter
+    );
+  }
+  f = message.getExtension$();
+  if (f != null) {
+    writer.writeMessage(
+      6,
       f,
       proto.pulumirpc.Parameterization.serializeBinaryToWriter
     );
@@ -11406,6 +11450,43 @@ proto.pulumirpc.RegisterPackageRequest.prototype.clearParameterization = functio
  */
 proto.pulumirpc.RegisterPackageRequest.prototype.hasParameterization = function() {
   return jspb.Message.getField(this, 5) != null;
+};
+
+
+/**
+ * optional Parameterization extension = 6;
+ * @return {?proto.pulumirpc.Parameterization}
+ */
+proto.pulumirpc.RegisterPackageRequest.prototype.getExtension$ = function() {
+  return /** @type{?proto.pulumirpc.Parameterization} */ (
+    jspb.Message.getWrapperField(this, proto.pulumirpc.Parameterization, 6));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.Parameterization|undefined} value
+ * @return {!proto.pulumirpc.RegisterPackageRequest} returns this
+*/
+proto.pulumirpc.RegisterPackageRequest.prototype.setExtension$ = function(value) {
+  return jspb.Message.setWrapperField(this, 6, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.RegisterPackageRequest} returns this
+ */
+proto.pulumirpc.RegisterPackageRequest.prototype.clearExtension$ = function() {
+  return this.setExtension$(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterPackageRequest.prototype.hasExtension$ = function() {
+  return jspb.Message.getField(this, 6) != null;
 };
 
 

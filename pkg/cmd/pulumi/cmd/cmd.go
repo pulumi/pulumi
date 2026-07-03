@@ -33,9 +33,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
@@ -167,7 +167,7 @@ We would appreciate a report: https://github.com/pulumi/pulumi/issues/
 
 	if sie.Op == snapshot.SnapshotIntegrityRead && sie.Metadata == nil {
 		message.WriteString(`
-NOTE: This error occurred while reading a snaphot. This error was introduced by
+NOTE: This error occurred while reading a snapshot. This error was introduced by
 a previous operation when it wrote the snapshot. If you have details about that
 operation, please include them in your report as well.
 `)

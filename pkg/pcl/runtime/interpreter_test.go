@@ -60,7 +60,7 @@ func (*mockLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Pac
 			},
 		},
 	}
-	p, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{})
+	p, diags, err := schema.BindSpec(spec, schema.NewNullLoader(), schema.ValidationOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ resource "dependent_on_output" "test:index:Resource" {
 	require.NoError(t, err)
 	require.False(t, parser.Diagnostics.HasErrors(), parser.Diagnostics.Error())
 
-	bound, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(&mockLoader{}))
+	bound, diags, err := pcl.BindProgram(parser.Files, &mockLoader{})
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), diags.Error())
 
@@ -408,4 +408,22 @@ func TestApplySchemaInputs(t *testing.T) {
 	assert.Equal(t, resource.NewProperty("us-west-2"), converted["region"])
 	// Defaults that fill in for secret properties get wrapped too.
 	assert.Equal(t, resource.MakeSecret(resource.NewProperty("fallback")), converted["secretWithDefault"])
+}
+
+func TestFillSchemaOutputs_MissingSecret(t *testing.T) {
+	t.Parallel()
+
+	properties := []*schema.Property{
+		{Name: "secretOutput", Type: schema.StringType, Secret: true},
+	}
+
+	previewOutputs := resource.PropertyMap{}
+	fillSchemaOutputs(previewOutputs, properties, true)
+	assert.Equal(t, resource.MakeSecret(resource.NewProperty(resource.Computed{
+		Element: resource.NewProperty(""),
+	})), previewOutputs["secretOutput"])
+
+	updateOutputs := resource.PropertyMap{}
+	fillSchemaOutputs(updateOutputs, properties, false)
+	assert.Equal(t, resource.MakeSecret(resource.NewNullProperty()), updateOutputs["secretOutput"])
 }

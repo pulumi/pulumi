@@ -60,6 +60,16 @@ func collectPrintln(cmd tea.Cmd) []string {
 		return out
 	}
 	v := reflect.ValueOf(msg)
+	// tea.Sequence yields an unexported sequenceMsg ([]Cmd); walk it like a batch.
+	if v.Kind() == reflect.Slice && v.Type().Name() == "sequenceMsg" {
+		var out []string
+		for i := 0; i < v.Len(); i++ {
+			if c, ok := v.Index(i).Interface().(tea.Cmd); ok {
+				out = append(out, collectPrintln(c)...)
+			}
+		}
+		return out
+	}
 	if v.Kind() == reflect.Struct && v.Type().Name() == "printLineMessage" {
 		if f := v.FieldByName("messageBody"); f.IsValid() && f.Kind() == reflect.String {
 			return []string{f.String()}
@@ -505,6 +515,75 @@ func TestModel_Update_KeyCtrlC_StaleDisarmIgnored(t *testing.T) {
 	assert.True(t, um.ctrlCArmed, "stale-gen disarm tick must not clear a fresh arm")
 }
 
+func TestModel_Update_KeyCtrlZ_Suspends(t *testing.T) {
+	t.Parallel()
+
+	// Ctrl+Z must hand the shell back via standard job control (SIGTSTP).
+	// Bubbletea models this as the Suspend command, which resolves to a
+	// tea.SuspendMsg. It must work mid-turn, so assert it both idle and busy.
+	t.Run("idle", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{})
+		_, cmd := m.Update(tea.KeyPressMsg{Code: 'z', Mod: tea.ModCtrl})
+		require.NotNil(t, cmd)
+		_, ok := cmd().(tea.SuspendMsg)
+		assert.True(t, ok, "Ctrl+Z must produce a tea.SuspendMsg")
+	})
+
+	t.Run("busy", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{})
+		m.busy = true
+		_, cmd := m.Update(tea.KeyPressMsg{Code: 'z', Mod: tea.ModCtrl})
+		require.NotNil(t, cmd)
+		_, ok := cmd().(tea.SuspendMsg)
+		assert.True(t, ok, "Ctrl+Z must suspend even while the agent is busy")
+	})
+}
+
+func TestModel_CommittedScrollback(t *testing.T) {
+	t.Parallel()
+
+	// committedScrollback feeds both the initial flush and the resume reprint:
+	// the welcome banner first, then committed blocks in order, skipping live
+	// blocks (e.g. the busy spinner) and empty renders.
+	m := NewModel(ModelConfig{})
+	m.blocks = []block{
+		{kind: blockUserMessage, rendered: "user one"},
+		{kind: blockBusy, rendered: "spinner"}, // live — excluded
+		{kind: blockAssistantFinal, rendered: "assistant one"},
+		{kind: blockError, rendered: ""}, // empty — excluded
+	}
+
+	got := m.committedScrollback()
+	want := []string{m.welcome.View(), "user one", "assistant one"}
+	assert.Equal(t, want, got,
+		"welcome leads, committed blocks follow in order, live and empty blocks dropped")
+}
+
+func TestModel_Update_Resume_ReprintsTranscript(t *testing.T) {
+	t.Parallel()
+
+	// On resume from a Ctrl+Z suspend, the committed transcript must be re-emitted
+	// to scrollback, since bubbletea only repaints the live frame. The first
+	// re-emitted block carries no leading blank line (hasEmittedScrollback reset),
+	// matching the initial flush.
+	m := NewModel(ModelConfig{})
+	m.hasEmittedScrollback = true // simulate a session that already printed
+	m.blocks = []block{
+		{kind: blockUserMessage, rendered: "user one"},
+		{kind: blockAssistantFinal, rendered: "assistant one"},
+	}
+
+	_, cmd := m.Update(tea.ResumeMsg{})
+	require.NotNil(t, cmd)
+
+	printed := collectPrintln(cmd)
+	want := []string{m.welcome.View(), "\nuser one", "\nassistant one"}
+	assert.Equal(t, want, printed,
+		"resume must reprint welcome + committed blocks, first without a leading blank")
+}
+
 func TestModel_Update_KeyCtrlD_BehavesLikeCtrlC(t *testing.T) {
 	t.Parallel()
 
@@ -835,7 +914,8 @@ func TestModel_Update_UIApprovalRequest_ShowsPromptAndPausesAgent(t *testing.T) 
 func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
 	t.Parallel()
 
-	cases := []string{"y", "Y", "yes", "YES", "Yes"}
+	// Representative sample — exhaustive phrase coverage lives in TestIsAffirmative.
+	cases := []string{"y", "yes", "ok", "go ahead"}
 	for _, in := range cases {
 		t.Run(in, func(t *testing.T) {
 			t.Parallel()
@@ -874,8 +954,9 @@ func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
 func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 	t.Parallel()
 
-	// Anything that isn't "y"/"yes" is treated as a denial; the typed text becomes
-	// the instructions field so the agent can act on the user's reasoning.
+	// Anything that isn't a recognized affirmative is treated as a denial; the
+	// typed text becomes the instructions field so the agent can act on the
+	// user's reasoning.
 	outCh := make(chan outboundEvent, 1)
 	m := newApprovalPendingModel(t, outCh)
 	m.textInput.SetValue("not on prod")

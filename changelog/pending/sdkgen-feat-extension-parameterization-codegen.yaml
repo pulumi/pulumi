@@ -1,0 +1,6 @@
+component: sdkgen
+kind: feat
+body: Generate SDKs and programs for extension-parameterized packages
+time: 2026-06-16T00:00:00+00:00
+custom:
+  PR: 23579

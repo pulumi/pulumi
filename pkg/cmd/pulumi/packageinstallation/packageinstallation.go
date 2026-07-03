@@ -30,10 +30,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -118,7 +118,7 @@ type Options struct {
 	packageresolution.Options
 	// The maximum number of concurrent operations.
 	//
-	// If Concurrency is less then 1, the number of concurrent operations is unbounded.
+	// If Concurrency is less than 1, the number of concurrent operations is unbounded.
 	Concurrency int
 
 	// A [PriorState] representing existing work done that won't be repeated.

@@ -22,10 +22,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+func TestGetRequiredPluginsWithoutRuntime(t *testing.T) {
+	t.Parallel()
+
+	plugins, err := GetRequiredPlugins(t.Context(), nil, "", plugin.ProgramInfo{})
+	require.NoError(t, err)
+	assert.Empty(t, plugins)
+}
 
 func mustMakeVersion(v string) *semver.Version {
 	ver := semver.MustParse(v)
@@ -725,4 +734,41 @@ func TestAmbigiousPluginSourceErrorMessage(t *testing.T) {
   plugin "parameterize-base" v1.1.1 parameterized as "target" v2.73.0
 Remove one of the packages, or pass an explicit `+"`provider`"+` option on each resource to disambiguate.`,
 		err.Error())
+}
+
+func TestSamePackage(t *testing.T) {
+	t.Parallel()
+
+	param := func(name string) *workspace.Parameterization {
+		return &workspace.Parameterization{Name: name, Version: semver.MustParse("1.0.0")}
+	}
+	desc := func(name string, replacement, extension *workspace.Parameterization) workspace.PackageDescriptor {
+		return workspace.PackageDescriptor{
+			PluginDescriptor:          workspace.PluginDescriptor{Name: name},
+			Parameterization:          replacement,
+			ExtensionParameterization: extension,
+		}
+	}
+
+	// Plain plugins: same binary name is the same package; a different name is not.
+	assert.True(t, samePackage(desc("aws", nil, nil), desc("aws", nil, nil)))
+	assert.False(t, samePackage(desc("aws", nil, nil), desc("gcp", nil, nil)))
+
+	// Replacement parameterization is part of the identity.
+	assert.True(t, samePackage(
+		desc("terraform-provider", param("scaleway"), nil),
+		desc("terraform-provider", param("scaleway"), nil)))
+	assert.False(t, samePackage(
+		desc("terraform-provider", param("scaleway"), nil),
+		desc("terraform-provider", param("random"), nil)))
+
+	// An extension layered on a plugin is not the same package as the plain plugin.
+	assert.False(t, samePackage(desc("aws", nil, nil), desc("aws", nil, param("aws-ext"))))
+	// Same extension name is the same package; different extension names are not.
+	assert.True(t, samePackage(
+		desc("aws", nil, param("aws-ext")),
+		desc("aws", nil, param("aws-ext"))))
+	assert.False(t, samePackage(
+		desc("aws", nil, param("aws-ext")),
+		desc("aws", nil, param("other-ext"))))
 }

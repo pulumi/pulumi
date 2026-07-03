@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 // This checks that the buildTarget option for Pulumi Go programs does build a binary.
@@ -113,7 +114,6 @@ func TestPanickingComponentConfigure(t *testing.T) {
 		testDir      = filepath.Join("go", "component-configure-panic")
 		componentDir = "testcomponent-go"
 	)
-	runComponentSetup(t, testDir)
 
 	var stderr bytes.Buffer
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -580,18 +580,18 @@ func TestConstructSlowGo(t *testing.T) {
 	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-	// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+	// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+	// module to install the locally-built @pulumi/pulumi into the Go program's directory, allowing
 	// the Node.js dynamic provider plugin to load.
 	// When the underlying issue has been fixed, the use of this environment variable inside the integration
 	// test module should be removed.
-	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+	const testLinkPulumiEnv = "PULUMI_TEST_LINK_PULUMI=true"
 
 	testDir := "construct_component_slow"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	opts := &integration.ProgramTestOptions{
-		Env: []string{testYarnLinkPulumiEnv},
+		Env: []string{testLinkPulumiEnv},
 		Dir: filepath.Join(testDir, "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
@@ -616,7 +616,7 @@ func TestConstructPlainGo(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_plain"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -627,12 +627,12 @@ func TestConstructPlainGo(t *testing.T) {
 			componentDir:          "testcomponent",
 			expectedResourceCount: 9,
 			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+			// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+			// module to install the locally-built @pulumi/pulumi into the Go program's directory, allowing
 			// the Node.js dynamic provider plugin to load.
 			// When the underlying issue has been fixed, the use of this environment variable inside the integration
 			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
+			env: []string{"PULUMI_TEST_LINK_PULUMI=true"},
 		},
 		{
 			componentDir:          "testcomponent-python",
@@ -684,7 +684,7 @@ func TestConstructMethodsGo(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_methods"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -760,7 +760,7 @@ func TestConstructProviderGo(t *testing.T) {
 	t.Parallel()
 
 	const testDir = "construct_component_provider"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -979,7 +979,7 @@ func TestDeletedWithGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 	})
@@ -1149,7 +1149,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: validateOutputs(map[string]any{
@@ -1192,7 +1192,7 @@ func TestParameterizedGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		PrePrepareProject: func(info *engine.Projinfo) error {
 			e := ptesting.NewEnvironment(t)
@@ -1210,9 +1210,9 @@ func TestParameterizedGo(t *testing.T) {
 			require.NoError(t, err)
 			e.WriteTestFile("main_test.go", string(actualProgram))
 
-			// Generate the SDK for the provider.
-			path := info.Proj.Plugins.Providers[0].Path
-			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", path, "pkg", "--language", "go")
+			// Generate the SDK for the provider. gen-sdk takes the plugin
+			// binary itself and infers the package name from its filename.
+			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", testutil.TestProvider(t), "pkg", "--language", "go")
 
 			// Add a reference to the generated SDK in go.mod.
 			err = appendLines(filepath.Join(e.CWD, "go.mod"), []string{
@@ -1592,9 +1592,23 @@ outer:
 	resp, err = dap.ReadProtocolMessage(reader)
 	require.NoError(t, err)
 	assert.IsType(t, &dap.ContinueResponse{}, resp)
-	resp, err = dap.ReadProtocolMessage(reader)
-	require.NoError(t, err)
-	assert.IsType(t, &dap.TerminatedEvent{}, resp)
+	// On program exit the debugger sends both an "exited" and a "terminated" event. DAP doesn't
+	// guarantee their order, and delve changed it in 1.27 (exited now precedes terminated), so read
+	// until we see the terminated event.
+	sawTerminated := false
+	for i := 0; i < 2 && !sawTerminated; i++ {
+		resp, err = dap.ReadProtocolMessage(reader)
+		require.NoError(t, err)
+		switch resp.(type) {
+		case *dap.TerminatedEvent:
+			sawTerminated = true
+		case *dap.ExitedEvent:
+			// Ignore; its order relative to the terminated event is not guaranteed.
+		default:
+			t.Fatalf("unexpected DAP message waiting for terminated event: %T", resp)
+		}
+	}
+	require.True(t, sawTerminated, "expected a terminated event")
 
 	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
 		Request: newDAPRequest(seq, "disconnect"),
@@ -1633,7 +1647,7 @@ func TestPluginDebuggerAttach(t *testing.T) {
 		// Therefore we expect a EOF error.
 		stdout, _ := e.RunCommandExpectError("pulumi", "preview", "--attach-debugger=plugins",
 			"--event-log", eventLogPath)
-		require.Regexp(t, "error: could not read plugin \\[.*/go-plugin/pulumi-resource-debugplugin\\]: EOF", stdout)
+		require.Regexp(t, "could not read plugin \\[.*/go-plugin/pulumi-resource-debugplugin\\]: EOF", stdout)
 	}()
 
 	wait := 20 * time.Millisecond
@@ -1767,14 +1781,17 @@ func TestRunPlugin(t *testing.T) {
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	installNodejsProviderDependencies(t, filepath.Join(e.RootPath, "provider-nodejs"))
-	installPythonProviderDependencies(t, filepath.Join(e.RootPath, "provider-python"))
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider-nodejs"))
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider-python"))
 
 	e.CWD = filepath.Join(e.RootPath, "go")
 	sdkPath, err := filepath.Abs("../../sdk/")
 	require.NoError(t, err)
+	pkgPath, err := filepath.Abs("../../pkg/")
+	require.NoError(t, err)
 
 	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/sdk/v3="+sdkPath)
+	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/pkg/v3="+pkgPath)
 	e.RunCommand("go", "mod", "tidy")
 	e.RunCommand("pulumi", "stack", "init", "runplugin-test")
 	e.RunCommand("pulumi", "stack", "select", "runplugin-test")

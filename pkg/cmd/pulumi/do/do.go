@@ -16,7 +16,6 @@ package do
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -27,6 +26,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pgavlin/fx/v2/maps"
+	json "github.com/segmentio/encoding/json"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
@@ -35,24 +35,28 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"go.opentelemetry.io/otel"
 )
 
 func NewDoCmd(
 	lm cmdBackend.LoginManager, ws pkgWorkspace.Context,
 	pluginFromSource func(context.Context, *plugin.Context, string, string) (plugin.Provider, error),
-	newHost func() (plugin.Host, error),
+	newHost func(ctx context.Context, d, statusD diag.Sink) (plugin.Host, error),
 	loadConverterPlugin func(
 		*plugin.Context, string, func(sev diag.Severity, msg string),
 	) (plugin.Converter, error),
@@ -68,8 +72,16 @@ func NewDoCmd(
 		}
 	}
 	if newHost == nil {
-		newHost = func() (plugin.Host, error) {
-			return nil, nil
+		newHost = func(ctx context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+			// The host is owned by the do command (closed via cleanup), so its lifetime context is
+			// uncancellable. Plugin logs route through the command's diagnostics sinks, so a
+			// provider's output reaches the command's stdout/stderr the same way it does without a
+			// pre-constructed host.
+			reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, d, env.Global())
+			return pkghost.New(
+				context.WithoutCancel(ctx), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled,
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(reg))
 		}
 	}
 	if loadConverterPlugin == nil {
@@ -79,6 +91,7 @@ func NewDoCmd(
 	var pkg string
 	var dryrun bool
 	var showSecrets bool
+	var stateless bool
 
 	// buildSubcommand returns the dynamically constructed subcommand along with a cleanup function that must be
 	// deferred by the caller. The cleanup tears down the provider gRPC channel — running it as a defer inside
@@ -127,37 +140,31 @@ func NewDoCmd(
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return nil, nil, fmt.Errorf("read project: %w", err)
 		}
-		evalContext := functionEvalContext{
-			WorkingDir: wd,
-		}
+		// If we're inside a Pulumi project, the working directory the plugin host runs in should be
+		// the project's pwd, not whatever the user happened to invoke `pulumi` from. Snapshot that
+		// here so plugin.NewContext / pluginFromSource see the project-relative path; the rest of
+		// the PCL evaluation state (project name, stack identity, ...) is derived lazily by
+		// packageCommand.evalContext().
 		if proj != nil {
 			wd, _, err = (&engine.Projinfo{Proj: proj, Root: root}).GetPwdMain()
 			if err != nil {
 				return nil, nil, fmt.Errorf("get project working directory: %w", err)
 			}
-			evalContext = functionEvalContext{
-				WorkingDir:    wd,
-				ProjectName:   string(proj.Name),
-				RootDirectory: root,
-			}
-			// When a stack is selected in the workspace, expose its organization and short name to the PCL
-			// runtime so input files can reference pulumi.organization / pulumi.stack the same way a program
-			// would. We deliberately read just the local selection rather than contacting a backend — `do`
-			// is meant to stay usable without a login.
-			evalContext.Organization, evalContext.Stack = currentStackIdentity(ws)
 		}
 
 		ctx := cmd.Context()
+		tracer := otel.Tracer("pulumi-cli")
 
-		host, err := newHost()
+		host, err := newHost(ctx, sink, sink)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
 		}
 
 		pctx, err := plugin.NewContext(
 			ctx, sink, sink, host, nil, wd, nil, false,
-			nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			nil)
 		if err != nil {
+			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}
 
@@ -165,11 +172,14 @@ func NewDoCmd(
 		if err != nil {
 			// Close the plugin context we opened above since we're not returning it to the caller.
 			contract.IgnoreClose(pctx)
+			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("load provider: %w", err)
 		}
 		cleanup := func() {
 			contract.IgnoreClose(p)
 			contract.IgnoreClose(pctx)
+			// host is owned here, closed after the context
+			contract.IgnoreClose(host)
 		}
 
 		// Parse "name@version" out of pkgargs[0] so we can also describe the package to downstream consumers
@@ -207,8 +217,10 @@ func NewDoCmd(
 			cleanup()
 			return nil, nil, fmt.Errorf("get schema: %w", err)
 		}
-		var spec schema.PackageSpec
-		err = json.Unmarshal(getSchema.Schema, &spec)
+		_, unmarshalSpan := tracer.Start(ctx, "pulumi-do.unmarshal-schema")
+		var spec schema.PartialPackageSpec
+		_, err = json.Parse(getSchema.Schema, &spec, json.ZeroCopy)
+		unmarshalSpan.End()
 		if err != nil {
 			cleanup()
 			return nil, nil, fmt.Errorf("unmarshal schema: %w", err)
@@ -222,10 +234,17 @@ func NewDoCmd(
 			packageDescriptor.Parameterization.Value = spec.Parameterization.Parameter
 		}
 
-		boundpkg, err := packages.BindSpec(spec)
+		boundpkg, err := schema.ImportPartialSpecWithContext(ctx, spec, nil, schema.NewPluginLoader(pctx))
 		if err != nil {
 			cleanup()
-			return nil, nil, fmt.Errorf("bind schema: %w", err)
+			return nil, nil, fmt.Errorf("import schema: %w", err)
+		}
+
+		// This is needed in every subcommand, so bind it now.
+		providerDef, err := boundpkg.Provider()
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("bind provider schema: %w", err)
 		}
 
 		loadConverter := func(name string) (plugin.Converter, error) {
@@ -238,14 +257,21 @@ func NewDoCmd(
 		subcmd, err := (&packageCommand{
 			pkg:               pkg,
 			args:              pargs,
-			evalContext:       evalContext,
 			converter:         loadConverter,
-			loaderTarget:      pctx.Host.LoaderAddr(),
+			loaderTarget:      pctx.LoaderAddr(),
 			packageDescriptor: packageDescriptor,
 			provider:          p,
 			spec:              boundpkg,
+			providerDef:       providerDef,
 			dryrun:            dryrun,
 			showSecrets:       showSecrets,
+			stateless:         stateless,
+			wd:                wd,
+			proj:              proj,
+			root:              root,
+			ws:                ws,
+			lm:                lm,
+			sink:              sink,
 		}).newCommand()
 		if err != nil {
 			cleanup()
@@ -338,11 +364,9 @@ func NewDoCmd(
 	}
 
 	cmd := &cobra.Command{
-		// Hidden for now while we iterate.
-		Hidden: true,
-		Use:    "do <pkg:mod:typ> [command]",
-		Short:  "Interact directly with cloud resources",
-		Long: `Interact with any cloud
+		Use:   "do <pkg:mod:typ> [command]",
+		Short: "[EXPERIMENTAL] Interact directly with cloud resources",
+		Long: `[EXPERIMENTAL] Interact with any cloud
 
 pulumi do dynamically builds a CLI from any Pulumi provider's schema, giving you
 direct CRUD access to cloud resources without a Pulumi program or state file.
@@ -411,6 +435,10 @@ converter plugin for that format to be installed.`,
 
 	cmd.PersistentFlags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
 	cmd.PersistentFlags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
+	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
+		"Run create/patch/delete directly against the provider without persisting state. "+
+			"Required for now: the stateful (engine-driven) implementation is still in development, "+
+			"so create/patch/delete error out unless --stateless is set.")
 	cmd.PersistentFlags().StringVar(
 		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
 			"a path to a plugin binary or folder. If the package supports "+
@@ -452,16 +480,48 @@ func currentStackIdentity(ws pkgWorkspace.Context) (organization, stack string) 
 type packageCommand struct {
 	pkg               string
 	args              []string
-	evalContext       functionEvalContext
 	converter         func(string) (plugin.Converter, error)
 	loaderTarget      string
 	packageDescriptor *codegenrpc.GetSchemaRequest
 	provider          plugin.Provider
 	providerFile      string
+	providerURN       string
 	format            string
-	spec              *schema.Package
+	spec              schema.PackageReference
+	providerDef       *schema.Resource
 	dryrun            bool
 	showSecrets       bool
+	stateless         bool
+
+	// wd / proj / root capture the working-directory and project-loading state from buildSubcommand
+	// — kept here rather than baked into a snapshot of functionEvalContext so the evalContext()
+	// method can re-read the workspace's currently-selected stack each time a subcommand runs
+	// (test fixtures that mutate the workspace between Execute() calls otherwise see stale data).
+	wd   string
+	proj *workspace.Project
+	root string
+
+	// ws / lm let configureProvider open the current stack's backend when --provider is set so it
+	// can read the referenced provider resource's Inputs. Plumbed from NewDoCmd.
+	ws   pkgWorkspace.Context
+	lm   cmdBackend.LoginManager
+	sink diag.Sink
+}
+
+// evalContext builds the PCL evaluation context from the workspace state we captured at construction
+// time. Computed on demand so the stack selection follows ws (helpful in tests, and matches the
+// "best-effort, no login required" intent — currentStackIdentity reads only the local workspace).
+func (pc *packageCommand) evalContext() functionEvalContext {
+	ec := functionEvalContext{WorkingDir: pc.wd}
+	if pc.proj != nil {
+		ec.ProjectName = string(pc.proj.Name)
+		ec.RootDirectory = pc.root
+		// When a stack is selected in the workspace, expose its organization and short name to the
+		// PCL runtime so input files can reference pulumi.organization / pulumi.stack the same way
+		// a program would.
+		ec.Organization, ec.Stack = currentStackIdentity(pc.ws)
+	}
+	return ec
 }
 
 func (pc *packageCommand) newCommand() (*cobra.Command, error) {
@@ -473,10 +533,14 @@ func (pc *packageCommand) newCommand() (*cobra.Command, error) {
 	}
 
 	// Try and look it up, it's either a module, resource, or function.
-	if fun, ok := pc.spec.GetFunction(pc.args[0]); ok {
+	if fun, ok, err := pc.spec.Functions().Get(pc.args[0]); err != nil {
+		return nil, err
+	} else if ok {
 		return pc.newFunctionCommand(fun), nil
 	}
-	if res, ok := pc.spec.GetResource(pc.args[0]); ok {
+	if res, ok, err := pc.spec.Resources().Get(pc.args[0]); err != nil {
+		return nil, err
+	} else if ok {
 		return pc.newResourceCommand(res), nil
 	}
 	if pc.isKnownModule(pc.args[0]) {
@@ -484,6 +548,20 @@ func (pc *packageCommand) newCommand() (*cobra.Command, error) {
 	}
 
 	return nil, pc.unknownTokenError(pc.args[0])
+}
+
+// memberTokens returns the resource and function tokens defined in the schema, excluding method
+// functions, without binding any package members.
+func (pc *packageCommand) memberTokens() (resources, functions []string) {
+	for it := pc.spec.Resources().Range(); it.Next(); {
+		resources = append(resources, it.Token())
+	}
+	for it := pc.spec.Functions().Range(); it.Next(); {
+		if !it.IsMethod() {
+			functions = append(functions, it.Token())
+		}
+	}
+	return resources, functions
 }
 
 // isKnownModule checks whether `typed` (e.g. "aws:s3" or "pkg:mod1/mod2") matches a module in the schema.
@@ -498,13 +576,14 @@ func (pc *packageCommand) isKnownModule(typed string) bool {
 		mod := pc.spec.TokenToModule(token)
 		return mod == name || strings.HasPrefix(mod, name+"/")
 	}
-	for _, fn := range pc.spec.Functions {
-		if !fn.IsMethod && inModule(fn.Token) {
+	resources, functions := pc.memberTokens()
+	for _, tok := range functions {
+		if inModule(tok) {
 			return true
 		}
 	}
-	for _, res := range pc.spec.Resources {
-		if inModule(res.Token) {
+	for _, tok := range resources {
+		if inModule(tok) {
 			return true
 		}
 	}
@@ -520,7 +599,7 @@ func (pc *packageCommand) moduleToken(token string) string {
 }
 
 func (pc *packageCommand) unknownTokenError(typed string) error {
-	msg := fmt.Sprintf("unknown function, resource, or module %q in package %q", typed, pc.spec.Name)
+	msg := fmt.Sprintf("unknown function, resource, or module %q in package %q", typed, pc.spec.Name())
 	suggestions := pc.suggestTokens(typed)
 	if len(suggestions) == 0 {
 		return cmdCmd.ConfigurationError{Message: msg}
@@ -541,6 +620,7 @@ func (pc *packageCommand) suggestTokens(typed string) []string {
 	if diags.HasErrors() {
 		return nil
 	}
+	resources, functions := pc.memberTokens()
 
 	op := levenshtein.DefaultOptionsWithSub
 	op.Matches = func(r1, r2 rune) bool {
@@ -585,14 +665,11 @@ func (pc *packageCommand) suggestTokens(typed string) []string {
 		seen[display] = struct{}{}
 		suggestions = append(suggestions, display)
 	}
-	for _, fn := range pc.spec.Functions {
-		if fn.IsMethod {
-			continue
-		}
-		consider(fn.Token)
+	for _, tok := range functions {
+		consider(tok)
 	}
-	for _, res := range pc.spec.Resources {
-		consider(res.Token)
+	for _, tok := range resources {
+		consider(tok)
 	}
 
 	// If the user typed a 2-segment value (pkg:something), the second segment may have been intended as a module name,
@@ -610,13 +687,11 @@ func (pc *packageCommand) suggestTokens(typed string) []string {
 			seen[display] = struct{}{}
 			suggestions = append(suggestions, display)
 		}
-		for _, fn := range pc.spec.Functions {
-			if !fn.IsMethod {
-				considerModule(fn.Token)
-			}
+		for _, tok := range functions {
+			considerModule(tok)
 		}
-		for _, res := range pc.spec.Resources {
-			considerModule(res.Token)
+		for _, tok := range resources {
+			considerModule(tok)
 		}
 	}
 
@@ -625,10 +700,10 @@ func (pc *packageCommand) suggestTokens(typed string) []string {
 }
 
 func (pc *packageCommand) newPackageCommand() *cobra.Command {
-	shorthelp := fmt.Sprintf("Interact with %s resources and functions", pc.spec.Name)
+	shorthelp := fmt.Sprintf("Interact with %s resources and functions", pc.spec.Name())
 	longhelp := shorthelp + "."
-	if pc.spec.Description != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, pc.spec.Description)
+	if pc.spec.Description() != "" {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, pc.spec.Description())
 	}
 
 	// If the package can't be inferred from the token then add --package to the help text.
@@ -646,27 +721,25 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 		"%s\n\nRun 'pulumi do%s <module/resource/function> --help' for more details on usage.",
 		longhelp, flag)
 
+	resTokens, fnTokens := pc.memberTokens()
 	modules := map[string]struct{}{}
-	functions := map[string]*schema.Function{}
-	resources := map[string]*schema.Resource{}
-	for _, fn := range pc.spec.Functions {
-		if fn.IsMethod {
-			continue
-		}
-
-		if mod := pc.moduleToken(fn.Token); mod == "" {
-			functions[fn.Token] = fn
+	var functions, resources []string
+	for _, tok := range fnTokens {
+		if mod := pc.moduleToken(tok); mod == "" {
+			functions = append(functions, tok)
 		} else {
 			modules[mod] = struct{}{}
 		}
 	}
-	for _, res := range pc.spec.Resources {
-		if mod := pc.moduleToken(res.Token); mod == "" {
-			resources[res.Token] = res
+	for _, tok := range resTokens {
+		if mod := pc.moduleToken(tok); mod == "" {
+			resources = append(resources, tok)
 		} else {
 			modules[mod] = struct{}{}
 		}
 	}
+	slices.Sort(functions)
+	slices.Sort(resources)
 
 	var help strings.Builder
 	if len(modules) > 0 {
@@ -678,36 +751,32 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 	}
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
-		for _, fn := range maps.Sorted(functions) {
-			tok := pc.spec.CanonicalizeToken(fn.Token)
-			fmt.Fprintf(&help, "  %s\n", tok)
+		for _, tok := range functions {
+			fmt.Fprintf(&help, "  %s\n", pc.spec.CanonicalizeToken(tok))
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
-		for _, res := range maps.Sorted(resources) {
-			tok := pc.spec.CanonicalizeToken(res.Token)
-			fmt.Fprintf(&help, "  %s\n", tok)
+		for _, tok := range resources {
+			fmt.Fprintf(&help, "  %s\n", pc.spec.CanonicalizeToken(tok))
 		}
 		fmt.Fprintln(&help, "")
 	}
 
 	longhelp = fmt.Sprintf("%s\n\n%s", longhelp, help.String())
 
-	use := pc.spec.Name
+	use := pc.spec.Name()
 	if len(pc.args) > 0 {
 		use = pc.args[0]
 	}
 
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   use,
 		Short: shorthelp,
 		Long:  longhelp,
 		Args:  cobra.NoArgs,
 	}
-
-	return cmd
 }
 
 func (pc *packageCommand) newModuleCommand() *cobra.Command {
@@ -731,29 +800,27 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 		"%s\n\nRun 'pulumi do%s <module/resource/function> --help' for more details on usage.",
 		longhelp, flag)
 
+	resTokens, fnTokens := pc.memberTokens()
 	modules := map[string]struct{}{}
-	functions := map[string]*schema.Function{}
-	resources := map[string]*schema.Resource{}
-	for _, fn := range pc.spec.Functions {
-		if fn.IsMethod {
-			continue
-		}
-
-		mod := pc.spec.TokenToModule(fn.Token)
+	var functions, resources []string
+	for _, tok := range fnTokens {
+		mod := pc.spec.TokenToModule(tok)
 		if mod == name {
-			functions[pc.spec.CanonicalizeToken(fn.Token)] = fn
+			functions = append(functions, pc.spec.CanonicalizeToken(tok))
 		} else if strings.HasPrefix(mod, name+"/") {
-			modules[pc.moduleToken(fn.Token)] = struct{}{}
+			modules[pc.moduleToken(tok)] = struct{}{}
 		}
 	}
-	for _, res := range pc.spec.Resources {
-		mod := pc.spec.TokenToModule(res.Token)
+	for _, tok := range resTokens {
+		mod := pc.spec.TokenToModule(tok)
 		if mod == name {
-			resources[res.Token] = res
+			resources = append(resources, tok)
 		} else if strings.HasPrefix(mod, name+"/") {
-			modules[pc.moduleToken(res.Token)] = struct{}{}
+			modules[pc.moduleToken(tok)] = struct{}{}
 		}
 	}
+	slices.Sort(functions)
+	slices.Sort(resources)
 
 	var help strings.Builder
 	if len(modules) > 0 {
@@ -765,34 +832,30 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 	}
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
-		for _, fn := range maps.Sorted(functions) {
-			tok := pc.spec.CanonicalizeToken(fn.Token)
+		for _, tok := range functions {
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
 	}
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
-		for _, res := range maps.Sorted(resources) {
-			tok := pc.spec.CanonicalizeToken(res.Token)
-			fmt.Fprintf(&help, "  %s\n", tok)
+		for _, tok := range resources {
+			fmt.Fprintf(&help, "  %s\n", pc.spec.CanonicalizeToken(tok))
 		}
 		fmt.Fprintln(&help, "")
 	}
 
 	longhelp = fmt.Sprintf("%s\n\n%s", longhelp, help.String())
 
-	use := pc.spec.Name
+	use := pc.spec.Name()
 	if len(pc.args) > 0 {
 		use = pc.args[0]
 	}
 
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   use,
 		Short: shorthelp,
 		Long:  longhelp,
 		Args:  cobra.NoArgs,
 	}
-
-	return cmd
 }

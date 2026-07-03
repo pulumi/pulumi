@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -62,8 +63,8 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string, configFile *stri
 
 	cmd.AddCommand(newConfigEnvInitCmd(&impl))
 	cmd.AddCommand(newConfigEnvAddCmd(&impl))
-	cmd.AddCommand(newConfigEnvRmCmd(&impl))
-	cmd.AddCommand(newConfigEnvLsCmd(&impl))
+	cmd.AddCommand(newConfigEnvRemoveCmd(&impl))
+	cmd.AddCommand(newConfigEnvListCmd(&impl))
 
 	return cmd
 }
@@ -100,6 +101,10 @@ type configEnvCmd struct {
 
 	saveProjectStack func(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack, configFile string) error
 
+	// prompt asks the user to pick one of options.
+	prompt func(msg string, options []string, defaultOption string, colorization colors.Colorization,
+		surveyAskOpts ...survey.AskOpt) string
+
 	stackRef   *string
 	configFile *string
 }
@@ -107,7 +112,7 @@ type configEnvCmd struct {
 func (cmd *configEnvCmd) initArgs() {
 	cmd.interactive = cmdutil.Interactive()
 	cmd.color = cmdutil.GetGlobalColorization()
-
+	cmd.prompt = ui.PromptUser
 	cmd.ssml = cmdStack.NewStackSecretsManagerLoaderFromEnv()
 }
 
@@ -147,40 +152,14 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 	return projectStack, project, &stack, nil
 }
 
-func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool) error {
+func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, render stackEnvironmentsRenderFunc) error {
 	projectStack, _, _, err := cmd.loadEnvPreamble(ctx)
 	if err != nil {
 		return err
 	}
 	imports := projectStack.Environment.Imports()
 
-	if jsonOut {
-		if len(imports) == 0 {
-			ui.Fprintf(cmd.stdout, "[]\n")
-		} else {
-			err := ui.FprintJSON(cmd.stdout, imports)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		rows := []cmdutil.TableRow{}
-		for _, imp := range imports {
-			rows = append(rows, cmdutil.TableRow{Columns: []string{imp}})
-		}
-
-		if len(imports) > 0 {
-			ui.FprintTable(cmd.stdout, cmdutil.Table{
-				Headers: []string{"ENVIRONMENTS"},
-				Rows:    rows,
-			}, nil)
-		} else {
-			ui.Fprintf(cmd.stdout, "This stack configuration has no environments listed. "+
-				"Try adding one with `pulumi config env add <projectName>/<envName>`.\n")
-		}
-	}
-
-	return nil
+	return render(cmd.stdout, imports)
 }
 
 func (cmd *configEnvCmd) editStackEnvironment(
@@ -220,7 +199,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	if !yes {
 		fmt.Fprintln(cmd.stdout)
 
-		response := ui.PromptUser("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
+		response := cmd.prompt("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
 		switch response {
 		case "no":
 			return errors.New("canceled")

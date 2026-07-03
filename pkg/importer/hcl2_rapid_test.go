@@ -46,7 +46,12 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 	t.Parallel()
 
 	rapid.Check(t, func(t *rapid.T) {
-		pkg := rapidschema.Package().Filter(hasSelectableResource).Draw(t, "pkg")
+		// This round-trip reloads packages by name, but extension tokens are
+		// base-namespaced, so exclude extension-parameterized packages.
+		pkg := rapidschema.Package().
+			Filter(hasSelectableResource).
+			Filter(func(pkg *schema.Package) bool { return pkg.ExtensionParameterization == nil }).
+			Draw(t, "pkg")
 		sample := rapidimporter.State(pkg).Draw(t, "sample")
 
 		if checkPropertyMap(sample.State.Inputs, property.Value.IsNull) {
@@ -129,7 +134,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 				parser.Diagnostics.Error(), text)
 		}
 
-		prog, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+		prog, diags, err := pcl.BindProgram(parser.Files, loader, pcl.AllowMissingVariables)
 		require.NoErrorf(t, err, "block:\n%s", text)
 		require.Falsef(t, diags.HasErrors(),
 			"bind diagnostics: %v\nblock:\n%s", diags.Error(), text)

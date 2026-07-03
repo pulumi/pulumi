@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,21 +30,29 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/spf13/pflag"
 
-	git "github.com/go-git/go-git/v5"
+	git "github.com/go-git/go-git/v6"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
+	cmdEnv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/hgutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -56,7 +65,7 @@ func GetPolicyPublishMetadata(root string) map[string]string {
 	}
 
 	if err := addVCSMetadata(root, m); err != nil {
-		logging.V(3).Infof("errors detecting VCS metadata: %s", err)
+		slog.Info("errors detecting VCS metadata", "err", err)
 	}
 
 	addCIMetadataToEnvironment(m.Environment)
@@ -71,16 +80,30 @@ func GetLanguageRuntimeMetadata(
 	proj *workspace.Project,
 ) *promise.Promise[map[string]string] {
 	return promise.Run(func() (map[string]string, error) {
+		if proj.Runtime.Name() == "" {
+			return map[string]string{}, nil
+		}
+
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		reg := cmdCmd.NewDefaultRegistry(
+			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), cmdEnv.Global())
+		pluginHost, err := pkghost.New(
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServer(reg))
+		if err != nil {
+			return nil, err
+		}
+		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		pwd, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 		if err != nil {
 			return nil, err
 		}
 		defer pctx.Close()
 
 		programInfo := plugin.NewProgramInfo(root, pwd, main, proj.Runtime.Options())
-		lang, err := pctx.Host.LanguageRuntime(proj.Runtime.Name())
+		lang, err := pctx.Host.LanguageRuntime(pctx, proj.Runtime.Name())
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +141,7 @@ func GetUpdateMetadata(
 	addPulumiCLIMetadataToEnvironment(m.Environment, flags, os.Environ)
 
 	if err := addVCSMetadata(root, m); err != nil {
-		logging.V(3).Infof("errors detecting VCS metadata: %s", err)
+		slog.Info("errors detecting VCS metadata", "err", err)
 	}
 
 	addCIMetadataToEnvironment(m.Environment)
@@ -390,7 +413,7 @@ func addGitRemoteMetadataToMap(repo *git.Repository, projectRoot string, env map
 		// Resolve symlinks on both paths so filepath.Rel works correctly when
 		// they go through different symlink chains (e.g. on macOS where /var
 		// is a symlink to /private/var).
-		repoRoot, err := filepath.EvalSymlinks(tree.Filesystem.Root())
+		repoRoot, err := filepath.EvalSymlinks(tree.Filesystem().Root())
 		if err != nil {
 			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
 		} else {

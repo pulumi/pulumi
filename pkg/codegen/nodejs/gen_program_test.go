@@ -28,8 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,21 +82,24 @@ resource "app" "scaleway:iam/application:Application" {}
 	parser := syntax.NewParser()
 	err = parser.ParseFile(bytes.NewReader([]byte(hcl)), "infra.tf")
 	require.NoError(t, err, "parse failed")
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(&plugin.MockHost{
-		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
-			return &workspace.PluginInfo{Name: spec.Name}, nil
-		},
-		ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
-			return &plugin.MockProvider{
-				GetSchemaF: func(
-					ctx context.Context,
-					gsr plugin.GetSchemaRequest,
-				) (plugin.GetSchemaResponse, error) {
-					return plugin.GetSchemaResponse{Schema: scalewaySchemaBytes}, nil
-				},
-			}, nil
-		},
-	}))
+	pctx, err := plugin.NewContextWithHost(
+		t.Context(), nil, nil, &plugin.MockHost{
+			ResolvePluginF: func(_ *plugin.Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+				return &workspace.PluginInfo{Name: spec.Name}, nil
+			},
+			ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+				return &plugin.MockProvider{
+					GetSchemaF: func(
+						ctx context.Context,
+						gsr plugin.GetSchemaRequest,
+					) (plugin.GetSchemaResponse, error) {
+						return plugin.GetSchemaResponse{Schema: scalewaySchemaBytes}, nil
+					},
+				}, nil
+			},
+		}, "", "", nil)
+	require.NoError(t, err)
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewPluginLoader(pctx))
 	if err != nil || diags.HasErrors() {
 		for _, d := range diags {
 			t.Logf("%s: %s", d.Summary, d.Detail)
@@ -134,8 +137,7 @@ func parseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
-	return pcl.BindProgram(parser.Files, options...)
+	return pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
 }
 
 func bindProgramWithParameterizedDependencies(t *testing.T) *pcl.Program {

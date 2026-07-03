@@ -32,12 +32,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -123,7 +123,7 @@ func (defaultPluginManager) InstallPlugin(
 	content pluginstorage.Content,
 	reinstall bool,
 ) error {
-	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromHost)
+	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromContext)
 }
 
 // PluginSet represents a set of plugins.
@@ -282,15 +282,19 @@ func (p PackageSet) UpdatesTo(old PackageSet) []PackageUpdate {
 // GetRequiredPlugins lists a full set of plugins that will be required by the given program.
 func GetRequiredPlugins(
 	ctx context.Context,
-	host plugin.Host,
+	plugctx *plugin.Context,
 	runtime string,
 	info plugin.ProgramInfo,
 ) ([]workspace.PluginDescriptor, error) {
 	plugins := make([]workspace.PluginDescriptor, 0, 1)
+	if runtime == "" {
+		return plugins, nil
+	}
+	host := plugctx.Host
 
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := host.LanguageRuntime(runtime)
+	lang, err := host.LanguageRuntime(plugctx, runtime)
 	if lang == nil || err != nil {
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
@@ -330,8 +334,11 @@ func GetRequiredPlugins(
 // function. If the language host does not support this operation, the empty set is returned.
 func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plugin.ProgramInfo) (PackageSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPackagesFromProgram(): gathering plugins from language host")
+	if runtime == "" {
+		return NewPackageSet(), nil
+	}
 
-	lang, err := plugctx.Host.LanguageRuntime(runtime)
+	lang, err := plugctx.Host.LanguageRuntime(plugctx, runtime)
 	if lang == nil || err != nil {
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
@@ -535,21 +542,21 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins PluginSet, kinds pl
 		switch p.Kind {
 		case apitype.AnalyzerPlugin:
 			if kinds&plugin.AnalyzerPlugins != 0 {
-				if _, err := host.Analyzer(tokens.QName(p.Name)); err != nil {
+				if _, err := host.Analyzer(plugctx, tokens.QName(p.Name)); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load analyzer plugin %s: %w", p.Name, err))
 				}
 			}
 		case apitype.LanguagePlugin:
 			if kinds&plugin.LanguagePlugins != 0 {
-				if _, err := host.LanguageRuntime(p.Name); err != nil {
+				if _, err := host.LanguageRuntime(plugctx, p.Name); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load language plugin %s: %w", p.Name, err))
 				}
 			}
 		case apitype.ResourcePlugin:
 			if kinds&plugin.ResourcePlugins != 0 {
-				if _, err := host.Provider(p, env.Global()); err != nil {
+				if _, err := host.Provider(plugctx, p, env.Global()); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load resource plugin %s: %w", p.Name, err))
 				}
@@ -684,16 +691,26 @@ func installPlugin(
 	return nil
 }
 
-// samePluginSource reports whether two PackageDescriptors refer to the same
-// underlying plugin (matching binary Name and matching parameterization
-// origin). Two descriptors that differ only in version are the same source;
-// two descriptors with different plugin Names (for example, a native
-// "scaleway" provider and a "terraform-provider" bridge parameterized as
-// "scaleway") are not.
-func samePluginSource(a, b workspace.PackageDescriptor) bool {
+// samePackage reports whether two descriptors resolve to the same package: the
+// same plugin binary and the same parameterization, if any. A bridge
+// parameterized as "scaleway" and a native "scaleway" provider are different
+// packages, and so are a plain "aws" plugin and an extension layered on it.
+func samePackage(a, b workspace.PackageDescriptor) bool {
+	replacementName := func(pd workspace.PackageDescriptor) string {
+		if pd.Parameterization == nil {
+			return ""
+		}
+		return pd.Parameterization.Name
+	}
+	extensionName := func(pd workspace.PackageDescriptor) string {
+		if pd.ExtensionParameterization == nil {
+			return ""
+		}
+		return pd.ExtensionParameterization.Name
+	}
 	return a.Name == b.Name &&
-		(a.Parameterization == nil) == (b.Parameterization == nil) &&
-		(a.Parameterization == nil || a.Parameterization.Name == b.Parameterization.Name)
+		replacementName(a) == replacementName(b) &&
+		extensionName(a) == extensionName(b)
 }
 
 // describePluginSource returns a human-readable description of a plugin that
@@ -793,10 +810,19 @@ func computeDefaultProviderPackages(
 			continue
 		}
 
+		if p.ExtensionParameterization != nil {
+			// Extensions reuse their base provider, so they don't get a default provider
+			// of their own: extension resources register against an explicit package ref,
+			// and the base plugin is installed via the plugin set, not from here.
+			logging.V(preparePluginVerboseLog).Infof(
+				"computeDefaultProviderPlugins(): skipping extension package %s", p.PackageName())
+			continue
+		}
+
 		name := tokens.Package(p.PackageName())
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
-			if !samePluginSource(seenPlugin, p) {
+			if !samePackage(seenPlugin, p) {
 				return nil, ambigiousPluginSourceError{name, seenPlugin, p}
 			}
 

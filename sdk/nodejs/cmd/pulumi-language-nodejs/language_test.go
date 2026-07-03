@@ -100,8 +100,9 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l1-expand-final":                    "Node.js program generation does not support `...` argument expansion",
 	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
-	"l3-range-ref":                       "Property 'k1' does not exist on type 'Target[]'",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
+	"l3-range-invoke-output-traversal":   "pulumi#12507: range loop variable captured by reference; indexed output resolves with the wrong index", //nolint:lll
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
@@ -132,10 +133,14 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 
 			cancel := make(chan bool)
 
+			// Share installed node_modules trees between test projects with
+			// identical dependency manifests; see installcache.go.
+			installCacheDir := t.TempDir()
+
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					host := newLanguageHost(engineAddress, runtime, "", "", forceTsc)
+					host := newLanguageHost(t.Context(), engineAddress, runtime, "", "", forceTsc, installCacheDir)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
@@ -205,7 +210,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 
 					if runtime == "bun" {
 						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" ||
-							tt == "provider-replacement-trigger-component" {
+							tt == "provider-replacement-trigger-component" || tt == "l2-docs" {
 							t.Skip(
 								"On linux bun has trouble resolving indirect dependencies that point to a local file" +
 									"https://github.com/pulumi/pulumi/issues/22100")

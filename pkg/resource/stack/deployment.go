@@ -28,9 +28,9 @@ import (
 
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/migrate"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -64,11 +64,13 @@ const (
 	floatSignature = "8ad145fe-0d11-4827-bfd7-1abcbf086f5c"
 
 	// Feature names for deployment features.
-	refreshBeforeUpdateFeature = "refreshBeforeUpdate"
-	viewsFeature               = "views"
-	hooksFeature               = "hooks"
-	taintFeature               = "taint"
-	replaceWithFeature         = "replaceWith"
+	refreshBeforeUpdateFeature       = "refreshBeforeUpdate"
+	viewsFeature                     = "views"
+	hooksFeature                     = "hooks"
+	taintFeature                     = "taint"
+	replaceWithFeature               = "replaceWith"
+	snippetsFeature                  = "snippets-prototype"
+	extensionParameterizationFeature = "extensionParameterization"
 )
 
 var (
@@ -120,11 +122,13 @@ func init() {
 // supportedFeatures is a map of features that are currently supported.
 // Any features not in this map will be rejected.
 var supportedFeatures = map[string]bool{
-	refreshBeforeUpdateFeature: true,
-	viewsFeature:               true,
-	hooksFeature:               true,
-	taintFeature:               true,
-	replaceWithFeature:         true,
+	refreshBeforeUpdateFeature:       true,
+	viewsFeature:                     true,
+	hooksFeature:                     true,
+	taintFeature:                     true,
+	replaceWithFeature:               true,
+	snippetsFeature:                  true,
+	extensionParameterizationFeature: true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -157,6 +161,12 @@ func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	}
 	if len(res.ReplaceWith) > 0 {
 		features[replaceWithFeature] = true
+	}
+	if res.ExtensionRef != "" {
+		features[extensionParameterizationFeature] = true
+	}
+	if res.SnippetID != "" {
+		features[snippetsFeature] = true
 	}
 }
 
@@ -246,6 +256,15 @@ func SerializeDeploymentWithMetadata(
 		}
 	}
 
+	var snippets []apitype.SnippetV1
+	if len(snap.Snippets) > 0 {
+		snippets = make([]apitype.SnippetV1, len(snap.Snippets))
+		for i, s := range snap.Snippets {
+			snippets[i] = SerializeSnippet(s)
+		}
+		featureMap[snippetsFeature] = true
+	}
+
 	if completeBatch != nil { // If we started a batch operation, complete it.
 		if err := completeBatch(ctx); err != nil {
 			return nil, 0, nil, err
@@ -268,7 +287,79 @@ func SerializeDeploymentWithMetadata(
 		SecretsProviders:  secretsProvider,
 		PendingOperations: operations,
 		Metadata:          metadata,
+		Snippets:          snippets,
+		Extensions:        snap.Extensions,
 	}, version, features, nil
+}
+
+// SerializeSnippet converts a resource.Snippet into its apitype representation.
+func SerializeSnippet(s resource.Snippet) apitype.SnippetV1 {
+	var refs map[string]string
+	if len(s.References) > 0 {
+		refs = make(map[string]string, len(s.References))
+		for k, v := range s.References {
+			refs[k] = v
+		}
+	}
+	return apitype.SnippetV1{
+		UUID:       s.UUID,
+		Name:       s.Name,
+		Type:       s.Type,
+		Code:       s.Code,
+		Descriptor: serializePackageDescriptor(s.Descriptor),
+		References: refs,
+	}
+}
+
+func serializePackageDescriptor(d resource.PackageDescriptor) apitype.PackageDescriptorV1 {
+	out := apitype.PackageDescriptorV1{
+		Name:        d.Name,
+		Version:     d.Version,
+		DownloadURL: d.DownloadURL,
+	}
+	if d.Parameterization != nil {
+		out.Parameterization = &apitype.ParameterizationDescriptorV1{
+			Name:    d.Parameterization.Name,
+			Version: d.Parameterization.Version,
+			Value:   d.Parameterization.Value,
+		}
+	}
+	return out
+}
+
+// DeserializeSnippet converts an apitype.SnippetV1 back into a resource.Snippet.
+func DeserializeSnippet(s apitype.SnippetV1) resource.Snippet {
+	var refs map[string]string
+	if len(s.References) > 0 {
+		refs = make(map[string]string, len(s.References))
+		for k, v := range s.References {
+			refs[k] = v
+		}
+	}
+	return resource.Snippet{
+		UUID:       s.UUID,
+		Name:       s.Name,
+		Type:       s.Type,
+		Code:       s.Code,
+		Descriptor: deserializePackageDescriptor(s.Descriptor),
+		References: refs,
+	}
+}
+
+func deserializePackageDescriptor(d apitype.PackageDescriptorV1) resource.PackageDescriptor {
+	out := resource.PackageDescriptor{
+		Name:        d.Name,
+		Version:     d.Version,
+		DownloadURL: d.DownloadURL,
+	}
+	if d.Parameterization != nil {
+		out.Parameterization = &resource.ParameterizationDescriptor{
+			Name:    d.Parameterization.Name,
+			Version: d.Parameterization.Version,
+			Value:   d.Parameterization.Value,
+		}
+	}
+	return out
 }
 
 // SerializeOptions controls how a deployment is serialized to JSON.
@@ -400,7 +491,8 @@ func DeserializeStackOutputs(
 		secretsManager,
 		func(ctx context.Context, dec config.Decrypter) (resource.PropertyMap, error) {
 			return DeserializeProperties(stackResource.Outputs, dec)
-		})
+		},
+	)
 }
 
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
@@ -449,7 +541,8 @@ func DeserializeDeploymentV3(
 			}
 
 			return deserializedData{resources: resources, ops: ops}, nil
-		})
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +556,15 @@ func DeserializeDeploymentV3(
 		}
 	}
 
-	return deploy.NewSnapshot(*manifest, secretsManager, data.resources, data.ops, metadata), nil
+	var snippets []resource.Snippet
+	if len(deployment.Snippets) > 0 {
+		snippets = make([]resource.Snippet, len(deployment.Snippets))
+		for i, s := range deployment.Snippets {
+			snippets[i] = DeserializeSnippet(s)
+		}
+	}
+	return deploy.NewSnapshot(
+		*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions), nil
 }
 
 // initializeSecretsManager initializes the secrets manager for a deployment.
@@ -540,6 +641,7 @@ func SerializeResource(
 		Dependencies:            res.Dependencies,
 		InitErrors:              res.InitErrors,
 		Provider:                res.Provider,
+		ExtensionRef:            res.ExtensionRef,
 		PropertyDependencies:    res.PropertyDependencies,
 		PendingReplacement:      res.PendingReplacement,
 		AdditionalSecretOutputs: res.AdditionalSecretOutputs,
@@ -559,6 +661,7 @@ func SerializeResource(
 		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 		ViewOf:                  res.ViewOf,
 		ResourceHooks:           res.ResourceHooks,
+		SnippetID:               res.SnippetID,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -770,6 +873,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			Dependencies:            res.Dependencies,
 			InitErrors:              res.InitErrors,
 			Provider:                res.Provider,
+			ExtensionRef:            res.ExtensionRef,
 			PropertyDependencies:    res.PropertyDependencies,
 			PendingReplacement:      res.PendingReplacement,
 			AdditionalSecretOutputs: res.AdditionalSecretOutputs,
@@ -790,6 +894,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
+			SnippetID:               res.SnippetID,
 		}.Make(),
 		nil
 }
@@ -828,7 +933,8 @@ func deserializeSecret(
 	if (secret.Plaintext == "" && secret.Ciphertext == "") ||
 		(secret.Plaintext != "" && secret.Ciphertext != "") {
 		return resource.PropertyValue{}, errors.New(
-			"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
+			"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied",
+		)
 	}
 
 	if secret.Plaintext != "" {
@@ -914,7 +1020,8 @@ func DeserializePropertyValue(v any, dec config.Decrypter,
 					plaintext, plainOk := objmap["plaintext"].(string)
 					if (!cipherOk && !plainOk) || (plainOk && cipherOk) {
 						return resource.PropertyValue{}, errors.New(
-							"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
+							"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied",
+						)
 					}
 					secret := &apitype.SecretV1{
 						Sig:        resource.SecretSig,
@@ -1023,7 +1130,8 @@ func FormatDeploymentDeserializationError(err error, stackName string) error {
 		return fmt.Errorf(
 			"the stack '%s' uses features that are not supported by this version of the Pulumi CLI: %s. "+
 				"Please update your version of the Pulumi CLI",
-			stackName, strings.Join(unsupportedErr.Features, ", "))
+			stackName, strings.Join(unsupportedErr.Features, ", "),
+		)
 	case errors.Is(err, ErrDeploymentSchemaVersionTooOld):
 		return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
 			stackName)

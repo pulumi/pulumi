@@ -26,13 +26,13 @@ import (
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
@@ -358,7 +358,7 @@ func GetProviderParameterization(
 type Registry struct {
 	plugin.NotForwardCompatibleProvider
 
-	host      plugin.Host
+	pctx      *plugin.Context
 	isPreview bool
 	providers map[providers.Reference]plugin.Provider
 	builtins  plugin.Provider
@@ -369,7 +369,7 @@ type Registry struct {
 var _ plugin.Provider = (*Registry)(nil)
 
 func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
-	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider, e env.Env,
+	checksums map[string][]byte, pctx *plugin.Context, builtins plugin.Provider, e env.Env,
 ) (plugin.Provider, error) {
 	if builtins != nil && pkg == "pulumi" {
 		return builtins, nil
@@ -383,7 +383,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		Checksums:         checksums,
 	}
 
-	provider, err := host.Provider(descriptor, e)
+	provider, err := pctx.Host.Provider(pctx, descriptor, e)
 	if err == nil {
 		return provider, nil
 	}
@@ -405,16 +405,16 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 	}
 
 	log := func(sev diag.Severity, msg string) {
-		host.Log(sev, "", msg, 0)
+		pctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromHost)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromContext)
 	if err != nil {
 		return nil, err
 	}
 
 	// Try to load the provider again, this time it should succeed.
-	return host.Provider(descriptor, e)
+	return pctx.Host.Provider(pctx, descriptor, e)
 }
 
 // loadParameterizedProvider wraps loadProvider to also support loading parameterized providers.
@@ -422,10 +422,10 @@ func loadParameterizedProvider(
 	ctx context.Context,
 	name tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
 	parameter *workspace.Parameterization,
-	host plugin.Host, builtins plugin.Provider,
+	pctx *plugin.Context, builtins plugin.Provider,
 	e env.Env,
 ) (plugin.Provider, error) {
-	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, host, builtins, e)
+	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, pctx, builtins, e)
 	if err != nil {
 		return nil, err
 	}
@@ -461,10 +461,10 @@ func FilterProviderConfig(inputs resource.PropertyMap) resource.PropertyMap {
 	return result
 }
 
-// NewRegistry creates a new provider registry using the given host.
-func NewRegistry(host plugin.Host, isPreview bool, builtins plugin.Provider) *Registry {
+// NewRegistry creates a new provider registry using the given plugin context.
+func NewRegistry(pctx *plugin.Context, isPreview bool, builtins plugin.Provider) *Registry {
 	return &Registry{
-		host:      host,
+		pctx:      pctx,
 		isPreview: isPreview,
 		providers: make(map[providers.Reference]plugin.Provider),
 		builtins:  builtins,
@@ -660,7 +660,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 
 	// TODO: We should thread checksums through here.
 	provider, err := loadParameterizedProvider(
-		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
+		ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -708,7 +708,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	if _, has := req.News[internalKey]; has {
 		// Before we reset it warn the user that the providers data is being discarded
 		if _, has := resp.Properties[internalKey]; has {
-			r.host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
+			r.pctx.Host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
 		}
 		resp.Properties[internalKey] = req.News[internalKey]
 	}
@@ -845,7 +845,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State, fromCheck bool
 
 		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(
-			ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
+			ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -933,7 +933,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 
 		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(
-			ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
+			ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)

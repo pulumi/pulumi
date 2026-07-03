@@ -181,7 +181,8 @@ jobs:
             --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module pkg 1 \
             --partition-module sdk 1 \
-            --partition-module sdk/go/pulumi-language-go 1 \
+            --partition-package github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3 \
+                sdk/go/pulumi-language-go 3 \
             --partition-package github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl \
                 sdk/pcl/cmd/pulumi-language-pcl 2 \
             --partition-package github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3 \
@@ -270,12 +271,14 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Set outputs"
-          ./.github/scripts/set-output unit-test-matrix "${UNIT_TEST_MATRIX}"
-          ./.github/scripts/set-output integration-test-matrix "${INTEGRATION_TEST_MATRIX}"
-          ./.github/scripts/set-output acceptance-test-matrix-win "${ACCEPTANCE_TEST_MATRIX_WIN}"
-          ./.github/scripts/set-output acceptance-test-matrix-macos "${ACCEPTANCE_TEST_MATRIX_MACOS}"
-          ./.github/scripts/set-output version-set "${VERSION_SET}"
-          ./.github/scripts/set-output build-targets "${BUILD_TARGETS}"
+          # Pipe matrix values via stdin: they can exceed the 128 KiB per-argument limit
+          # (MAX_ARG_STRLEN), which would otherwise fail the exec with "Argument list too long".
+          printf '%s' "${UNIT_TEST_MATRIX}" | ./.github/scripts/set-output unit-test-matrix
+          printf '%s' "${INTEGRATION_TEST_MATRIX}" | ./.github/scripts/set-output integration-test-matrix
+          printf '%s' "${ACCEPTANCE_TEST_MATRIX_WIN}" | ./.github/scripts/set-output acceptance-test-matrix-win
+          printf '%s' "${ACCEPTANCE_TEST_MATRIX_MACOS}" | ./.github/scripts/set-output acceptance-test-matrix-macos
+          printf '%s' "${VERSION_SET}" | ./.github/scripts/set-output version-set
+          printf '%s' "${BUILD_TARGETS}" | ./.github/scripts/set-output build-targets
           echo "::endgroup::"
     outputs:
       unit-test-matrix: "${{ fromJson(steps.matrix.outputs.unit-test-matrix) }}"

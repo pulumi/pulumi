@@ -21,14 +21,16 @@ import (
 	"fmt"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // defaultProviders manages the registration of default providers. The default provider for a package is the provider
@@ -138,10 +140,11 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	req providers.ProviderRequest,
 ) (*registerResourceEvent, <-chan *RegisterResult, error) {
 	// Attempt to get the config for the package.
-	inputs, err := d.config.GetPackageConfig(req.Package())
+	minputs, err := d.config.GetPackageConfig(req.Package())
 	if err != nil {
 		return nil, nil, err
 	}
+	inputs := resource.ToResourcePropertyMap(minputs)
 	if req.Version() != nil {
 		providers.SetProviderVersion(inputs, req.Version())
 	}
@@ -159,11 +162,11 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
-		goal: resource.NewGoal{
+		goal: pkgresource.NewGoal{
 			Type:                    sdkproviders.MakeProviderType(req.Package()),
 			Name:                    req.DefaultName(),
 			Custom:                  true,
-			Properties:              inputs,
+			Properties:              resource.FromResourcePropertyMap(inputs),
 			Parent:                  "",
 			Protect:                 nil,
 			Dependencies:            nil,
@@ -177,7 +180,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			ID:                      "",
 			CustomTimeouts:          nil,
 			ReplaceOnChanges:        nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.New(property.Null),
 			RetainOnDelete:          nil,
 			HideDiff:                nil,
 			DeletedWith:             "",
@@ -185,6 +188,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make(),
 		done: done,
 	}
@@ -270,19 +274,19 @@ func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (boo
 	}
 
 	denyCreation := false
-	if value, ok := pConfig["disable-default-providers"]; ok {
+	if value, ok := pConfig.GetOk("disable-default-providers"); ok {
 		array := []any{}
 		if !value.IsString() {
 			return true, errors.New("Unexpected encoding of pulumi:disable-default-providers")
 		}
-		if value.StringValue() == "" {
+		if value.AsString() == "" {
 			// If the list is provided but empty, we don't encode a empty json
 			// list, we just encode the empty string. Check to ensure we don't
 			// get parse errors.
 			return false, nil
 		}
-		if err := json.Unmarshal([]byte(value.StringValue()), &array); err != nil {
-			return true, fmt.Errorf("Failed to parse %s: %w", value.StringValue(), err)
+		if err := json.Unmarshal([]byte(value.AsString()), &array); err != nil {
+			return true, fmt.Errorf("Failed to parse %s: %w", value.AsString(), err)
 		}
 		for i, v := range array {
 			s, ok := v.(string)

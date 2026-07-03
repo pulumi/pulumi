@@ -1,0 +1,47 @@
+{
+  "name": "importpath",
+  "version": "1.0.0",
+  "description": "Synthetic schema exercising the Go importPathPattern language option (e.g. azure-native's per-module versioned SDK layout).",
+  "meta": {
+    "moduleFormat": "(.*)"
+  },
+  "language": {
+    "go": {
+      "importBasePath": "example.com/pulumi-importpath-sdk",
+      "importPathPattern": "{baseImportPath}/{module}/v2"
+    }
+  },
+  "config": {},
+  "provider": {
+    "type": "object"
+  },
+  "resources": {
+    "importpath:eventgrid:Resource": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "inputProperties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the resource."
+        },
+        "value": {
+          "type": "string",
+          "description": "An arbitrary value carried by the resource."
+        }
+      },
+      "requiredInputs": [
+        "name"
+      ]
+    }
+  }
+}

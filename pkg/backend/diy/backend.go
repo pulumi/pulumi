@@ -25,6 +25,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -555,10 +556,14 @@ func (b *diyBackend) upgradeStack(
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
-// can support.  Importantly, s3/azblob/gs paths should not be touched. This will only affect
-// file:// paths which have a few oddities around them that we want to ensure work properly.
+// can support.  For s3:// paths this translates AWS SDK v1-era query parameters to their v2
+// equivalents; azblob/gs paths are not touched. file:// paths have a few oddities around them that
+// we want to ensure work properly.
 func massageBlobPath(path string) (string, error) {
 	if !strings.HasPrefix(path, FilePathPrefix) {
+		if strings.HasPrefix(path, "s3://") {
+			return translateLegacyS3Params(path)
+		}
 		// Not a file:// path.  Keep this untouched and pass directly to gocloud.
 		return path, nil
 	}
@@ -618,6 +623,53 @@ func massageBlobPath(path string) (string, error) {
 	}
 
 	return FilePathPrefix + path + queryString, nil
+}
+
+// translateLegacyS3Params rewrites query parameters on s3:// URLs that were supported by the
+// AWS SDK v1-based s3blob driver in gocloud.dev before v0.46, so that backend URLs configured
+// before the upgrade keep working:
+//
+//   - disableSSL becomes disable_https; gocloud.dev v0.46 rejects the v1 name as an unknown
+//     query parameter.
+//   - a scheme-less endpoint (e.g. endpoint=minio:9000) gets an explicit http:// or https://
+//     scheme depending on disableSSL; the v1 SDK implied the scheme, while the v2 SDK
+//     requires one.
+//
+// The other v1-era parameters (s3ForcePathStyle, awssdk) are still understood by gocloud.dev
+// and need no translation.
+func translateLegacyS3Params(urlstr string) (string, error) {
+	u, err := url.Parse(urlstr)
+	if err != nil {
+		return "", fmt.Errorf("parsing the provided URL: %w", err)
+	}
+	query := u.Query()
+	changed := false
+
+	disableSSL := false
+	if values, ok := query["disableSSL"]; ok {
+		disableSSL, err = strconv.ParseBool(values[len(values)-1])
+		if err != nil {
+			return "", fmt.Errorf("invalid value for query parameter %q: %w", "disableSSL", err)
+		}
+		query.Del("disableSSL")
+		query.Set("disable_https", strconv.FormatBool(disableSSL))
+		changed = true
+	}
+
+	if endpoint := query.Get("endpoint"); endpoint != "" && !strings.Contains(endpoint, "://") {
+		scheme := "https"
+		if disableSSL {
+			scheme = "http"
+		}
+		query.Set("endpoint", scheme+"://"+endpoint)
+		changed = true
+	}
+
+	if !changed {
+		return urlstr, nil
+	}
+	u.RawQuery = query.Encode()
+	return u.String(), nil
 }
 
 func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Project) (Backend, error) {
@@ -1252,6 +1304,10 @@ func (b *diyBackend) apply(
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
 		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot, nil)
 		engineCtx.SnapshotManager = manager
+	}
+
+	if op.Opts.Engine.HostFactory == nil {
+		op.Opts.Engine.HostFactory = backend.DefaultHostFactory(b.GetReadOnlyCloudRegistry())
 	}
 
 	// Perform the update

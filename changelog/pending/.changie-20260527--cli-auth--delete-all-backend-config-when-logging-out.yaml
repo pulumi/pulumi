@@ -1,5 +1,0 @@
-kind: fix
-body: "BREAKING: Delete all backend config when logging out"
-component: cli/auth
-custom:
-  PR: "23358"

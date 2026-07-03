@@ -92,6 +92,23 @@ output result {
 	assert.Equal(t, expectedPclCode, pclCode)
 }
 
+// Tests that converting a Terraform program to the "hcl" language is rejected,
+// since pulumi-hcl runs Terraform directly and converting would re-home every
+// resource onto a different provider.
+func TestConvertTerraformToHclErrors(t *testing.T) {
+	t.Parallel()
+
+	cwd, err := filepath.Abs("testdata")
+	require.NoError(t, err)
+
+	result := runConvert(
+		t.Context(), io.Discard, io.Discard, &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance,
+		env.Global(), []string{}, cwd, []string{},
+		"terraform", "hcl", t.TempDir(), true, true, "")
+	require.Error(t, result)
+	assert.Contains(t, result.Error(), "pulumi-hcl runs Terraform directly")
+}
+
 // Tests that project names default to the directory of the source project.
 func TestProjectNameDefaults(t *testing.T) {
 	t.Parallel()

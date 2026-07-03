@@ -21,9 +21,10 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -35,9 +36,14 @@ func initLoader(b testing.TB, options pluginLoaderCacheOptions) ReferenceLoader 
 	require.NoError(b, err)
 	sink := diagtest.LogSink(b)
 	//nolint:usetesting // plugin.NewContext manages gRPC providers; b.Context cancels too early
-	ctx, err := plugin.NewContext(b.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost, nil)
+	pluginHost, err := pkghost.New(context.WithoutCancel(b.Context()), sink, sink, nil, nil,
+		NewLoaderServerFromContext, nil, nil)
 	require.NoError(b, err)
-	loader := newPluginLoaderWithOptions(ctx.Host, options)
+	b.Cleanup(func() { require.NoError(b, pluginHost.Close()) })
+	ctx, err := plugin.NewContext(
+		b.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+	require.NoError(b, err)
+	loader := newPluginLoaderWithOptions(ctx, options)
 
 	return loader
 }
@@ -161,12 +167,12 @@ func TestLoadParameterized(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+		ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 			assert.Equal(t, "terraform-provider", descriptor.Name)
 			assert.Equal(t, semver.MustParse("1.0.0"), *descriptor.Version)
 			return mockProvider, nil
 		},
-		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(_ *plugin.Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			assert.Equal(t, apitype.ResourcePlugin, spec.Kind)
 			assert.Equal(t, "terraform-provider", spec.Name)
 			assert.Equal(t, semver.MustParse("1.0.0"), *spec.Version)
@@ -179,7 +185,9 @@ func TestLoadParameterized(t *testing.T) {
 		},
 	}
 
-	loader := newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	require.NoError(t, err)
+	loader := newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,
 		disableMmap:       true,
 		disableFileCache:  true,
@@ -229,10 +237,10 @@ func TestLoadNameMismatch(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
+		ProviderF: func(*plugin.Context, workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
 			return provider, nil
 		},
-		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(*plugin.Context, workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{
 				Name:    notPkg,
 				Kind:    apitype.ResourcePlugin,
@@ -241,7 +249,9 @@ func TestLoadNameMismatch(t *testing.T) {
 		},
 	}
 
-	loader := newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	require.NoError(t, err)
+	loader := newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,
 		disableMmap:       true,
 		disableFileCache:  true,
@@ -300,10 +310,10 @@ func TestLoadVersionMismatch(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
+		ProviderF: func(*plugin.Context, workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
 			return provider, nil
 		},
-		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(*plugin.Context, workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{
 				Name:    pkg,
 				Kind:    apitype.ResourcePlugin,
@@ -312,7 +322,9 @@ func TestLoadVersionMismatch(t *testing.T) {
 		},
 	}
 
-	loader := newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	require.NoError(t, err)
+	loader := newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,
 		disableMmap:       true,
 		disableFileCache:  true,

@@ -138,7 +138,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 					return fmt.Errorf("failed to get logs: %w", err)
 				}
 
-				// When we are emitting a fixed number of log entries, and outputing JSON, wrap them in an array.
+				// When we are emitting a fixed number of log entries, and outputting JSON, wrap them in an array.
 				if !follow && jsonOut {
 					entries := slice.Prealloc[logEntryJSON](len(logs))
 
@@ -198,6 +198,8 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	constrictor.AttachArguments(logsCmd, constrictor.NoArgs)
 
 	logsCmd.AddCommand(newDecryptCmd(ws))
+	logsCmd.AddCommand(newListCmd())
+	logsCmd.AddCommand(newRemoveCmd())
 
 	logsCmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",

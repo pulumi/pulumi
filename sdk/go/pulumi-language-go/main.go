@@ -125,6 +125,8 @@ func compileProgram(
 	args := []string{"build", "-buildvcs=false", "-o", outfile}
 	if withDebugFlags {
 		args = append(args, "-gcflags", "all=-N -l")
+	} else {
+		args = append(args, "-trimpath", "-ldflags", "-w -s")
 	}
 	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
@@ -697,26 +699,28 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 		return nil, err
 	}
 
-	var server string
-	var parameterization *pulumirpc.PackageParameterization
-	server = pulumiPlugin.Server
-	if pulumiPlugin.Parameterization != nil {
-		parameterization = &pulumirpc.PackageParameterization{
-			Name:    pulumiPlugin.Parameterization.Name,
-			Version: pulumiPlugin.Parameterization.Version,
-			Value:   pulumiPlugin.Parameterization.Value,
+	server := pulumiPlugin.Server
+	toProtoParameterization := func(p *plugin.PulumiParameterizationJSON) *pulumirpc.PackageParameterization {
+		if p == nil {
+			return nil
+		}
+		return &pulumirpc.PackageParameterization{
+			Name:    p.Name,
+			Version: p.Version,
+			Value:   p.Value,
 		}
 	}
 
-	plugin := &pulumirpc.PackageDependency{
+	pkg := &pulumirpc.PackageDependency{
 		Name:             name,
 		Version:          version,
 		Kind:             "resource",
 		Server:           server,
-		Parameterization: parameterization,
+		Parameterization: toProtoParameterization(pulumiPlugin.Parameterization),
+		Extension:        toProtoParameterization(pulumiPlugin.ExtensionParameterization),
 	}
 
-	return plugin, nil
+	return pkg, nil
 }
 
 // Reads and parses the go.mod file for the program at the given path.
@@ -1335,7 +1339,7 @@ func (host *goLanguageHost) RunPlugin(
 	defer contract.IgnoreClose(closer)
 
 	program, err := compileProgram(
-		server.Context(), engineClient, req.Info.ProgramDirectory, "", false, os.Stdout, os.Stderr)
+		server.Context(), engineClient, req.Info.ProgramDirectory, "", req.GetAttachDebugger(), os.Stdout, os.Stderr)
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
@@ -1405,7 +1409,9 @@ func (host *goLanguageHost) GenerateProject(
 	}
 	defer loader.Close()
 
-	extraOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
+	extraOptions := []pcl.BindOption{
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
@@ -1462,7 +1468,8 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(schema.NewCachedLoader(loader)))
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader),
+		pcl.PreferOutputVersionedInvokes)
 	if err != nil {
 		return nil, err
 	}

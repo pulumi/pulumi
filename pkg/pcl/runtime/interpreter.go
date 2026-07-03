@@ -37,9 +37,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -80,13 +80,21 @@ type Interpreter struct {
 	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
 	namePrefix string
 
-	// packageRefs are package references returned by RegisterPackage keyed by package name.
+	// packageRefs maps a fully-qualified token (resource, function, or
+	// pulumi:providers:<pkg>) to the package reference RegisterPackage returned.
+	// Keying on the exact token, not package name, keeps extensions that share the
+	// base provider's namespace distinct. A miss resolves to the empty ref, and so
+	// to the default provider.
 	packageRefs map[string]string
 
 	// callbacks is the server that handles resource hook callbacks.
 	callbacks     *pclCallbackServer
 	callbacksOnce sync.Once
 	callbacksErr  error
+
+	// snippetID is the UUID of the snippet driving this interpreter, if any. When set, it is
+	// propagated onto every RegisterResourceRequest emitted by the interpreter.
+	snippetID string
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
@@ -443,14 +451,6 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		i.call,
 	)
 
-	if diags := i.bindConfigVariables(ctx); diags.HasErrors() {
-		return diags
-	}
-
-	if err := i.enforceRequiredVersion(ctx); err != nil {
-		return err
-	}
-
 	if err := i.registerStack(ctx); err != nil {
 		return err
 	}
@@ -486,6 +486,61 @@ func (i *Interpreter) Run(ctx context.Context) error {
 	return nil
 }
 
+// RunEmbedded runs the interpreter against a pre-existing monitor and loader supplied by the
+// caller, skipping the steps that only make sense for a top-level program run (stack registration,
+// stack-output emission, and the SignalAndWaitForShutdown handshake). It is the entry point for
+// callers that drive the interpreter as a sub-source inside a larger update — for example, the
+// engine evaluating a PCL snippet alongside the main program.
+//
+// scopeVars, if non-nil, are converted and installed on the eval context as root-scope variables
+// after init so the program body can reference resources resolved elsewhere (e.g. snippet
+// References resolved via the engine's registration observer).
+func (i *Interpreter) RunEmbedded(
+	ctx context.Context,
+	monitor pulumirpc.ResourceMonitorClient,
+	loader schema.ReferenceLoader,
+	scopeVars map[string]resource.PropertyValue,
+	snippetID string,
+) error {
+	i.monitor = monitor
+	i.loader = loader
+	i.snippetID = snippetID
+
+	i.evalContext = NewEvalContext(
+		i.info.WorkingDir,
+		i.info.RootDirectory,
+		i.info.Organization,
+		i.info.Project,
+		i.info.Stack,
+		i.lookupResource,
+		i.lookupFunction,
+		i.getResource,
+		i.invoke,
+		i.call,
+	)
+	for name, val := range scopeVars {
+		ctyVal, err := propertyValueToCty(ctx, i.getResource, val)
+		if err != nil {
+			return fmt.Errorf("converting scope variable %q: %w", name, err)
+		}
+		i.evalContext.SetVariable(name, ctyVal)
+	}
+
+	if err := i.registerPackages(ctx); err != nil {
+		return err
+	}
+
+	if _, err := i.executeProgramNodes(ctx); err != nil {
+		return err
+	}
+
+	if i.callbacks != nil {
+		close(i.callbacks.stop)
+	}
+
+	return nil
+}
+
 func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.PropertyMap, error) {
 	dag := pdag.New[pcl.Node]()
 	nodes := map[pcl.Node]pdag.Node{}
@@ -508,15 +563,40 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 		}
 	}
 
+	// The required version check must run before any resource is created. Make every resource and
+	// component depend on the pulumi block so the gate is enforced once its own dependencies (e.g. a
+	// config variable holding the version) have been evaluated.
+	if gate := i.requiredVersionGate(); gate != nil {
+		gateDagNode := nodes[gate]
+		for _, node := range i.program.Nodes {
+			switch node.(type) {
+			case *pcl.Resource, *pcl.Component:
+				if err := dag.NewEdge(gateDagNode, nodes[node]); err != nil {
+					return nil, fmt.Errorf("failed to create edge from %s to %s: %w",
+						gate.Name(), node.Name(), err)
+				}
+			}
+		}
+	}
+
 	var outputsLock sync.Mutex
 	outputs := resource.PropertyMap{}
 	err := dag.Walk(ctx, func(ctx context.Context, node pcl.Node) error {
 		switch node := node.(type) {
 		case *pcl.ConfigVariable:
-			// handled before node execution
+			// When executing a component program, config variables are supplied as component inputs
+			// and set before the walk; don't override them with the enclosing program's config.
+			if i.evalContext.HasVariable(node.Name()) {
+				return nil
+			}
+			if diags := i.bindConfigVariable(ctx, node); diags.HasErrors() {
+				return diags
+			}
 			return nil
 		case *pcl.PulumiBlock:
-			// handled before node execution
+			if err := i.enforceRequiredVersion(ctx); err != nil {
+				return err
+			}
 			return nil
 		case *pcl.Hook:
 			if err := i.registerHookNode(ctx, node); err != nil {
@@ -575,23 +655,28 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		pkgName = typ
 	}
 
-	descriptor := i.lookupPackageDescriptor(pkgName)
-	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-	if err != nil {
-		return nil, fmt.Errorf("load package for token %s: %w", token, err)
+	var loadErr error
+	for _, descriptor := range i.lookupPackageDescriptors(pkgName) {
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
+			continue
+		}
+		if pkg == "pulumi" && mod == "providers" {
+			return pkgref.Provider()
+		}
+		schemaResource, ok, err := pkgref.Resources().Get(token)
+		if err != nil {
+			return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
+		}
+		if ok {
+			return schemaResource, nil
+		}
 	}
-	if pkg == "pulumi" && mod == "providers" {
-		return pkgref.Provider()
+	if loadErr != nil {
+		return nil, loadErr
 	}
-	resources := pkgref.Resources()
-	schemaResource, ok, err := resources.Get(token)
-	if err != nil {
-		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
-	}
-	if !ok {
-		return nil, fmt.Errorf("get resource from package for token %s", token)
-	}
-	return schemaResource, nil
+	return nil, fmt.Errorf("get resource from package for token %s", token)
 }
 
 func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema.Function, error) {
@@ -600,27 +685,42 @@ func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema
 
 	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 
-	descriptor := i.lookupPackageDescriptor(pkg)
-	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-	if err != nil {
-		return nil, fmt.Errorf("load package for token %s: %w", token, err)
+	var loadErr error
+	for _, descriptor := range i.lookupPackageDescriptors(pkg) {
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
+			continue
+		}
+		schemaFunction, ok, err := pkgref.Functions().Get(token)
+		if err != nil {
+			return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
+		}
+		if ok {
+			return schemaFunction, nil
+		}
 	}
-	functions := pkgref.Functions()
-	schemaFunction, ok, err := functions.Get(token)
-	if err != nil {
-		return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
+	if loadErr != nil {
+		return nil, loadErr
 	}
-	if !ok {
-		return nil, fmt.Errorf("get function from package for token %s", token)
-	}
-	return schemaFunction, nil
+	return nil, fmt.Errorf("get function from package for token %s", token)
 }
 
-func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDescriptor {
+// lookupPackageDescriptors returns the packages a pkgName-namespaced token could
+// resolve to: pkgName itself plus every extension layered on it.
+func (i *Interpreter) lookupPackageDescriptors(pkgName string) []*schema.PackageDescriptor {
+	var candidates []*schema.PackageDescriptor
 	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
-		return descriptor
+		candidates = append(candidates, descriptor)
+	} else {
+		candidates = append(candidates, &schema.PackageDescriptor{Name: pkgName})
 	}
-	return &schema.PackageDescriptor{Name: pkgName}
+	for _, descriptor := range i.info.PackageDescriptors {
+		if descriptor != nil && descriptor.Parameterization != nil && descriptor.Name == pkgName {
+			candidates = append(candidates, descriptor)
+		}
+	}
+	return candidates
 }
 
 func PackageNameFromToken(token string) (string, error) {
@@ -638,11 +738,7 @@ func PackageNameFromToken(token string) (string, error) {
 }
 
 func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
-	pkgName, err := PackageNameFromToken(token)
-	if err != nil {
-		return "", err
-	}
-	return i.packageRefs[pkgName], nil
+	return i.packageRefs[token], nil
 }
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {
@@ -672,10 +768,24 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 		if descriptor.Version != nil {
 			request.Version = descriptor.Version.String()
 		}
-		request.Parameterization = &pulumirpc.Parameterization{
+		param := &pulumirpc.Parameterization{
 			Name:    descriptor.Parameterization.Name,
 			Version: descriptor.Parameterization.Version.String(),
 			Value:   descriptor.Parameterization.Value,
+		}
+		// Route to the wire field matching the schema's parameterization flavor.
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			return fmt.Errorf("load package %q for register: %w", key, err)
+		}
+		def, err := pkgref.Definition()
+		if err != nil {
+			return fmt.Errorf("load definition for package %q: %w", key, err)
+		}
+		if def.ExtensionParameterization != nil {
+			request.Extension = param
+		} else {
+			request.Parameterization = param
 		}
 
 		resp, err := i.monitor.RegisterPackage(ctx, request)
@@ -686,63 +796,79 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 			return fmt.Errorf("register package %q returned empty reference", key)
 		}
 
-		i.packageRefs[key] = resp.GetRef()
-		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
+		// Index every token the package defines, plus its provider ref (see packageRefs).
+		ref := resp.GetRef()
+		i.packageRefs["pulumi:providers:"+descriptor.PackageName()] = ref
+		for _, r := range def.Resources {
+			i.packageRefs[r.Token] = ref
+		}
+		for _, f := range def.Functions {
+			i.packageRefs[f.Token] = ref
+		}
 	}
 
 	return nil
 }
 
-func (i *Interpreter) bindConfigVariables(ctx context.Context) hcl.Diagnostics {
+// requiredVersionGate returns the pulumi block that enforces a required engine version, or nil if the
+// program has no such constraint.
+func (i *Interpreter) requiredVersionGate() pcl.Node {
+	for _, node := range i.program.Nodes {
+		if block, ok := node.(*pcl.PulumiBlock); ok && block.RequiredVersion != nil {
+			return node
+		}
+	}
+	return nil
+}
+
+func (i *Interpreter) bindConfigVariable(ctx context.Context, cfg *pcl.ConfigVariable) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 	secretKeys := map[string]struct{}{}
 	for _, key := range i.info.ConfigSecrets {
 		secretKeys[key] = struct{}{}
 	}
-	for _, cfg := range i.program.ConfigVariables() {
-		key := fmt.Sprintf("%s:%s", i.info.Project, cfg.LogicalName())
-		raw, has := i.info.Config[key]
-		if !has {
-			if cfg.DefaultValue != nil {
-				value, poison, diags := i.evalContext.Evaluate(cfg.DefaultValue)
-				contract.Assertf(poison == nil, "config variables can't be poisoned")
-				diagnostics = append(diagnostics, diags...)
-				if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
-					value = resource.MakeSecret(value)
-				}
-				if !diags.HasErrors() {
-					if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
-						diagnostics = append(diagnostics, &hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Summary:  err.Error(),
-						})
-					}
-				}
-				continue
-			}
-			if !cfg.Nullable {
-				rng := cfg.SyntaxNode().Range()
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  fmt.Sprintf("missing required configuration value %q", cfg.LogicalName()),
-					Subject:  &rng,
-				})
-			}
-			continue
-		}
-
-		value, diags := parseConfigPropertyValue(raw, cfg.Type())
-		diagnostics = append(diagnostics, diags...)
-		if !diags.HasErrors() {
+	key := fmt.Sprintf("%s:%s", i.info.Project, cfg.LogicalName())
+	raw, has := i.info.Config[key]
+	if !has {
+		if cfg.DefaultValue != nil {
+			value, poison, diags := i.evalContext.Evaluate(cfg.DefaultValue)
+			contract.Assertf(poison == nil, "config variables can't be poisoned")
+			diagnostics = append(diagnostics, diags...)
 			if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
 				value = resource.MakeSecret(value)
 			}
-			if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  err.Error(),
-				})
+			if !diags.HasErrors() {
+				if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  err.Error(),
+					})
+				}
 			}
+			return diagnostics
+		}
+		if !cfg.Nullable {
+			rng := cfg.SyntaxNode().Range()
+			diagnostics = append(diagnostics, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("missing required configuration value %q", cfg.LogicalName()),
+				Subject:  &rng,
+			})
+		}
+		return diagnostics
+	}
+
+	value, diags := parseConfigPropertyValue(raw, cfg.Type())
+	diagnostics = append(diagnostics, diags...)
+	if !diags.HasErrors() {
+		if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
+			value = resource.MakeSecret(value)
+		}
+		if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
+			diagnostics = append(diagnostics, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  err.Error(),
+			})
 		}
 	}
 	return diagnostics
@@ -1173,6 +1299,7 @@ func (i *Interpreter) registerResourceWith(
 		AcceptSecrets:           true,
 		AcceptResources:         true,
 		SupportsResultReporting: true,
+		SnippetId:               i.snippetID,
 	}
 	packageRef, err := i.getPackageRefFromToken(token)
 	if err != nil {
@@ -1742,12 +1869,20 @@ func (i *Interpreter) registerResourceWith(
 		}
 	}
 
-	// Add schema-based replaceOnChanges paths.
+	// Add schema-based replaceOnChanges paths and additionalSecretOutput keys.
 	if schemaResource != nil {
 		schemaReplaceOnChanges, _ := schemaResource.ReplaceOnChanges()
 		request.ReplaceOnChanges = append(
 			request.ReplaceOnChanges,
 			schema.PropertyListJoinToString(schemaReplaceOnChanges, func(s string) string { return s })...)
+
+		var additionalSecretOutputs []string
+		for _, prop := range schemaResource.Properties {
+			if prop.Secret {
+				additionalSecretOutputs = append(additionalSecretOutputs, prop.Name)
+			}
+		}
+		request.AdditionalSecretOutputs = append(request.AdditionalSecretOutputs, additionalSecretOutputs...)
 	}
 
 	// Default parent to the stack if not specified
@@ -1776,20 +1911,13 @@ func (i *Interpreter) registerResourceWith(
 	outputs["__name"] = resource.NewProperty(request.Name)
 	outputs["__type"] = resource.NewProperty(request.Type)
 
-	// We need to ensure all schema outputs exist in the output object, even if they weren't returned by the engine.
+	// Ensure every schema-declared output property is present, recursing into nested object
+	// types so that programs which traverse into an optional inner field see a typed null
+	// rather than triggering an HCL "unsupported attribute" error.
 	// - preview: unknown/computed
 	// - update: explicit null
 	if schemaResource != nil {
-		for _, prop := range schemaResource.Properties {
-			key := resource.PropertyKey(prop.Name)
-			if _, ok := outputs[key]; !ok {
-				if i.info.DryRun {
-					outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
-				} else {
-					outputs[key] = resource.NewNullProperty()
-				}
-			}
-		}
+		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun)
 	}
 
 	result := resource.NewProperty(resource.Output{
@@ -1849,6 +1977,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		AcceptSecrets:        true,
 		AcceptResources:      true,
 		Parent:               i.stackURN,
+		SnippetId:            i.snippetID,
 	}
 	if component.Options != nil && component.Options.Parent != nil {
 		parent, poison, diags := i.evalContext.Evaluate(component.Options.Parent)

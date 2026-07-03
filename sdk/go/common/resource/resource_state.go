@@ -23,6 +23,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// ExtensionRef identifies an extension parameterization within a deployment.
+type ExtensionRef string
+
 // State is a structure containing state associated with a resource. This resource may have been serialized and
 // deserialized, or snapshotted from a live graph of resource objects. The value's state is not, however, associated
 // with any runtime objects in memory that may be actively involved in ongoing computations.
@@ -50,6 +53,7 @@ type State struct {
 	Dependencies            []URN                 // the resource's dependencies.
 	InitErrors              []string              // the set of errors encountered in the process of initializing resource.
 	Provider                string                // the provider to use for this resource.
+	ExtensionRef            ExtensionRef          // the persisted reference to the extension parameterization that created this resource, if any. Empty otherwise.
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
 	PendingReplacement      bool                  // true if this resource was deleted and is awaiting replacement.
 	AdditionalSecretOutputs []PropertyKey         // an additional set of outputs that should be treated as secrets.
@@ -70,6 +74,7 @@ type State struct {
 	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
 	ViewOf                  URN                   // If set, the URN of the resource this resource is a view of.
 	ResourceHooks           map[HookType][]string // The resource hooks attached to the resource, by type.
+	SnippetID               string                // If set, the UUID of the snippet that most recently registered this resource.
 }
 
 func cloneMapOfSlices[M ~map[K]V, K comparable, V ~[]E, E any](m M) M {
@@ -100,6 +105,7 @@ func (s *State) Copy() *State {
 		Dependencies:            slices.Clone(s.Dependencies),
 		InitErrors:              slices.Clone(s.InitErrors),
 		Provider:                s.Provider,
+		ExtensionRef:            s.ExtensionRef,
 		PropertyDependencies:    cloneMapOfSlices(s.PropertyDependencies),
 		PendingReplacement:      s.PendingReplacement,
 		AdditionalSecretOutputs: slices.Clone(s.AdditionalSecretOutputs),
@@ -120,6 +126,7 @@ func (s *State) Copy() *State {
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           cloneMapOfSlices(s.ResourceHooks),
+		SnippetID:               s.SnippetID,
 	}
 }
 
@@ -182,6 +189,9 @@ type NewState struct {
 	// the provider to use for this resource.
 	Provider string // required
 
+	// the extension ref for this resource, if it was generated from an extension
+	ExtensionRef ExtensionRef
+
 	// the set of dependencies that affect each property.
 	PropertyDependencies map[PropertyKey][]URN // required
 
@@ -241,6 +251,9 @@ type NewState struct {
 
 	// The resource hooks attached to the resource, by type.
 	ResourceHooks map[HookType][]string // required
+
+	// If set, the UUID of the snippet that most recently registered this resource.
+	SnippetID string // required
 }
 
 // Make consumes the NewState to create a *State.
@@ -268,6 +281,7 @@ func (s NewState) Make() *State {
 		Dependencies:            s.Dependencies,
 		InitErrors:              s.InitErrors,
 		Provider:                s.Provider,
+		ExtensionRef:            s.ExtensionRef,
 		PropertyDependencies:    s.PropertyDependencies,
 		PendingReplacement:      s.PendingReplacement,
 		AdditionalSecretOutputs: s.AdditionalSecretOutputs,
@@ -288,6 +302,7 @@ func (s NewState) Make() *State {
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           s.ResourceHooks,
+		SnippetID:               s.SnippetID,
 	}
 }
 

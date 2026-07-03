@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"slices"
 	"strconv"
 
@@ -36,7 +37,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -163,7 +163,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if cmd.openWeb {
 		err = browser.OpenURL(res.URL)
 		if err != nil {
-			logging.Warningf("failed to open URL: %s", err)
+			slog.WarnContext(ctx, "failed to open URL", "err", err)
 		}
 	}
 	return nil

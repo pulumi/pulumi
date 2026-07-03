@@ -29,12 +29,12 @@ import (
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -135,8 +135,10 @@ Flags:
       --input-file string      Path to a file containing function inputs
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --param1 string          To set param1 things (alias for --input:param1)
+      --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
+      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
 `
 	assert.Equal(t, expected, stdout.String())
 }
@@ -1378,7 +1380,7 @@ func TestDoCmdFunctionInvokeWithConfiguration(t *testing.T) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"opt1": {
 						TypeSpec: schema.TypeSpec{
@@ -1814,10 +1816,12 @@ func TestDoCmdFunctionInvokeWithYAMLInputFile(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
+		// `do` forwards to the converter as its TargetLoader.
 		return &plugin.MockHost{
-			LoaderAddrF: func() string {
-				return "loader-address"
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
 			},
 		}, nil
 	}
@@ -1942,10 +1946,12 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
+		// `do` forwards to the converter as its TargetLoader.
 		return &plugin.MockHost{
-			LoaderAddrF: func() string {
-				return "loader-address"
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
 			},
 		}, nil
 	}
@@ -2085,9 +2091,13 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
+		// `do` forwards to the converter as its TargetLoader.
 		return &plugin.MockHost{
-			LoaderAddrF: func() string { return "loader-address" },
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
+			},
 		}, nil
 	}
 	loadConverter := func(
@@ -2117,7 +2127,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"opt1": {TypeSpec: schema.TypeSpec{Type: "string"}},
 				},
@@ -2172,8 +2182,8 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
-		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2230,8 +2240,8 @@ func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
-		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2289,8 +2299,8 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
-		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2356,8 +2366,8 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	host := func() (plugin.Host, error) {
-		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		return &plugin.MockHost{}, nil
 	}
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
@@ -2425,7 +2435,7 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"opt1":   {TypeSpec: schema.TypeSpec{Type: "string"}},
 					"optTwo": {TypeSpec: schema.TypeSpec{Type: "string"}},
@@ -2495,9 +2505,13 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	yamlHost := func() (plugin.Host, error) {
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
+		// `do` forwards to the converter as its TargetLoader.
 		return &plugin.MockHost{
-			LoaderAddrF: func() string { return "loader-address" },
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
+			},
 		}, nil
 	}
 	loadConverter := func(
@@ -2557,7 +2571,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"opt1":   {TypeSpec: schema.TypeSpec{Type: "string"}},
 					"optTwo": {TypeSpec: schema.TypeSpec{Type: "string"}},

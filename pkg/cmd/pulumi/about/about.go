@@ -34,26 +34,44 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	cmdEnv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
-	var jsonOut bool
 	var transitiveDependencies bool
 	var stack string
 	short := "Print information about the Pulumi environment."
+
+	output := outputflag.OutputFlag[aboutRenderFunc]{
+		RenderForTerminal: func(w io.Writer, summary summaryAbout) error {
+			summary.Print(w)
+			return nil
+		},
+		RenderJSON: func(w io.Writer, summary summaryAbout) error {
+			return ui.FprintJSON(w, summary)
+		},
+	}
+
 	cmd := &cobra.Command{
 		Use:   "about",
 		Short: short,
@@ -70,11 +88,7 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
-			if jsonOut {
-				return ui.FprintJSON(cmd.OutOrStdout(), summary)
-			}
-			summary.Print(cmd.OutOrStdout())
-			return nil
+			return output.Get()(cmd.OutOrStdout(), summary)
 		},
 	}
 
@@ -82,8 +96,7 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd.AddCommand(newAboutEnvCmd())
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to get info on. Defaults to the current stack")
@@ -92,6 +105,8 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	return cmd
 }
+
+type aboutRenderFunc func(w io.Writer, summary summaryAbout) error
 
 type summaryAbout struct {
 	// We use pointers here to allow the field to be nullable. When
@@ -140,11 +155,20 @@ func getSummaryAbout(
 		addError(err, "Failed to read project")
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
-		pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
-		if err != nil {
+		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), cmdEnv.Global())
+		pluginHost, hostErr := pkghost.New(
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServer(reg))
+		if hostErr != nil {
+			addError(hostErr, "Failed to create plugin host")
+		} else if pwd, program, pluginContext, err := engine.ProjectInfoContext(
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil); err != nil {
 			addError(err, "Failed to create plugin context")
+			contract.IgnoreClose(pluginHost)
 		} else {
+			// host is owned here; deferred closes run context-first, host-last.
+			defer contract.IgnoreClose(pluginHost)
 			defer pluginContext.Close()
 
 			// Only try to get project plugins if we managed to read a project
@@ -154,32 +178,34 @@ func getSummaryAbout(
 				result.Plugins = plugins
 			}
 
-			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
-			if err != nil {
-				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
-			} else {
-				programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
-				aboutResponse, err := lang.About(ctx, programInfo)
+			if proj.Runtime.Name() != "" {
+				lang, err := pluginContext.Host.LanguageRuntime(pluginContext, proj.Runtime.Name())
 				if err != nil {
-					addError(err, "Failed to get information about the project runtime")
+					addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 				} else {
-					result.Runtime = &projectRuntimeAbout{
-						other:      aboutResponse.Metadata,
-						Language:   proj.Runtime.Name(),
-						Executable: aboutResponse.Executable,
-						Version:    aboutResponse.Version,
+					programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
+					aboutResponse, err := lang.About(ctx, programInfo)
+					if err != nil {
+						addError(err, "Failed to get information about the project runtime")
+					} else {
+						result.Runtime = &projectRuntimeAbout{
+							other:      aboutResponse.Metadata,
+							Language:   proj.Runtime.Name(),
+							Executable: aboutResponse.Executable,
+							Version:    aboutResponse.Version,
+						}
 					}
-				}
 
-				deps, err := lang.GetProgramDependencies(ctx, programInfo, transitiveDependencies)
-				if err != nil {
-					addError(err, "Failed to get information about the Pulumi program's dependencies")
-				} else {
-					result.Dependencies = make([]programDependencyAbout, len(deps))
-					for i, dep := range deps {
-						result.Dependencies[i] = programDependencyAbout{
-							Name:    dep.Name,
-							Version: dep.Version,
+					deps, err := lang.GetProgramDependencies(ctx, programInfo, transitiveDependencies)
+					if err != nil {
+						addError(err, "Failed to get information about the Pulumi program's dependencies")
+					} else {
+						result.Dependencies = make([]programDependencyAbout, len(deps))
+						for i, dep := range deps {
+							result.Dependencies[i] = programDependencyAbout{
+								Name:    dep.Name,
+								Version: dep.Version,
+							}
 						}
 					}
 				}
@@ -618,6 +644,10 @@ func (runtime projectRuntimeAbout) String() string {
 func getProjectPluginsSilently(
 	ctx *plugin.Context, proj *workspace.Project, pwd, main string,
 ) ([]workspace.PluginDescriptor, error) {
+	if proj.Runtime.Name() == "" {
+		return nil, nil
+	}
+
 	_, w, err := os.Pipe()
 	if err != nil {
 		return nil, err
@@ -628,5 +658,5 @@ func getProjectPluginsSilently(
 
 	programInfo := plugin.NewProgramInfo(ctx.Root, pwd, main, proj.Runtime.Options())
 	runtimeName := proj.Runtime.Name()
-	return engine.GetRequiredPlugins(ctx.Request(), ctx.Host, runtimeName, programInfo)
+	return engine.GetRequiredPlugins(ctx.Request(), ctx, runtimeName, programInfo)
 }

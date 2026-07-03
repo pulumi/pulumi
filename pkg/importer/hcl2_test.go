@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -40,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -320,7 +320,7 @@ func readTestCases(path string) (testCases, error) {
 func TestGenerateHCL2Definition(t *testing.T) {
 	t.Parallel()
 
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 	cases, err := readTestCases("testdata/cases.json")
 	require.NoError(t, err)
 
@@ -335,11 +335,11 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					ID:             "123",
 					ImportID:       "abc",
 					Custom:         true,
-					Type:           "pulumi:providers:aws",
+					Type:           "pulumi:providers:importer",
 					RetainOnDelete: true,
 					IgnoreChanges:  []string{"fooIgnore"},
 					DeletedWith:    "123",
-					URN:            "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+					URN:            "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 				},
 				{
 					ID:             "123",
@@ -385,7 +385,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			require.NoError(t, err)
 			require.False(t, parser.Diagnostics.HasErrors())
 
-			p, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+			p, diags, err := pcl.BindProgram(parser.Files, loader, pcl.AllowMissingVariables)
 			require.NoError(t, err)
 			assert.False(t, diags.HasErrors())
 
@@ -433,13 +433,13 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	state := &resource.State{
 		ID:       "someProvider",
-		Type:     "pulumi:providers:aws",
-		Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-		URN:      "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		Type:     "pulumi:providers:importer",
+		Provider: "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+		URN:      "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 		Inputs: resource.PropertyMap{
 			"region": resource.NewProperty("us-west-2"),
 		},
@@ -451,8 +451,8 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 			{
 				ID:       "123",
 				ImportID: "abc",
-				Type:     "pulumi:providers:aws",
-				URN:      "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+				Type:     "pulumi:providers:importer",
+				URN:      "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 				Inputs: resource.PropertyMap{
 					"region": resource.NewProperty("some-default-value"),
 				},
@@ -483,33 +483,30 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	pkg := tokens.Package("aws")
+	pkg := tokens.Package("importer")
 	requestVersion := "4.26.0"
-	loadVersion := "5.4.0"
+	loadVersion := "1.0.0"
 
 	pluginLoader := deploytest.NewProviderLoader(pkg, semver.MustParse(requestVersion), func() (plugin.Provider, error) {
 		return &deploytest.Provider{
 			GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
-				path := filepath.Join(testdataPath, fmt.Sprintf("%s-%s.json", pkg, loadVersion))
-				data, err := os.ReadFile(path)
-				if err != nil {
-					return plugin.GetSchemaResponse{}, err
-				}
 				return plugin.GetSchemaResponse{
-					Schema: data,
+					Schema: utils.ReadSchema(t, string(pkg), loadVersion),
 				}, nil
 			},
 		}, nil
 	})
 
 	host := deploytest.NewPluginHost(nil /*sink*/, nil /*statusSink*/, nil /*languageRuntime*/, pluginLoader)
-	schemaLoader := schema.NewPluginLoader(host)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	require.NoError(t, err)
+	schemaLoader := schema.NewPluginLoader(pctx)
 
 	state := &resource.State{
-		Type:     "aws:cloudformation/stack:Stack",
-		URN:      "urn:pulumi:stack::project::aws:cloudformation/stack:Stack::Stack",
+		Type:     "importer:cloudformation/stack:Stack",
+		URN:      "urn:pulumi:stack::project::importer:cloudformation/stack:Stack::Stack",
 		Custom:   true,
-		Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
+		Provider: "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
 		Inputs: resource.PropertyMap{
 			"name":         resource.NewProperty("foobar"),
 			"templateBody": resource.NewProperty("foobar"),
@@ -520,9 +517,9 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 		Names: nil,
 		Snapshot: []*resource.State{
 			{
-				Type:   "pulumi:providers:aws",
+				Type:   "pulumi:providers:importer",
 				ID:     "123",
-				URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+				URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 				Custom: true,
 				Inputs: resource.PropertyMap{
 					"version": resource.NewProperty("4.26.0"),
@@ -532,7 +529,7 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	}
 
 	// Act.
-	_, _, err := GenerateHCL2Definition(schemaLoader, state, importState)
+	_, _, err = GenerateHCL2Definition(schemaLoader, state, importState)
 
 	// Assert.
 	require.NoError(t, err)
@@ -540,30 +537,30 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 
 func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	snapshot := []*resource.State{
 		{
 			ID:     "123",
 			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			Type:   "pulumi:providers:importer",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 		},
 	}
 
 	resources := []apitype.ResourceV3{
 		{
-			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
+			URN:      "urn:pulumi:stack::project::importer:s3/bucket:Bucket::exampleBucket",
 			ID:       "provider-generated-bucket-id-abc123",
 			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
+			Type:     "importer:s3/bucket:Bucket",
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			URN:    "urn:pulumi:stack::project::importer:s3/bucketObject:BucketObject::exampleBucketObject",
 			ID:     "provider-generated-bucket-object-id-abc123",
 			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			Type:   "importer:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.id in the generated code
 				"bucket":       "provider-generated-bucket-id-abc123",
@@ -597,11 +594,11 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 		contract.IgnoreError(err)
 	}
 
-	expectedCode := `resource exampleBucket "aws:s3/bucket:Bucket" {
+	expectedCode := `resource exampleBucket "importer:s3/bucket:Bucket" {
 
 }
 
-resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
+resource exampleBucketObject "importer:s3/bucketObject:BucketObject" {
     bucket = exampleBucket.id
     storageClass = "STANDARD"
 
@@ -616,19 +613,19 @@ resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
 // Also shows that the logical name is emitted in the form of the __logicalName attribute.
 func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGeneratedCode(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	snapshot := []*resource.State{
 		{
 			ID:     "123",
 			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			Type:   "pulumi:providers:importer",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 		},
 	}
 
 	logicalName := "Bucket & Stuff"
-	bucketUrn := "urn:pulumi:stack::project::aws:s3/bucket:Bucket::" + logicalName
+	bucketUrn := "urn:pulumi:stack::project::importer:s3/bucket:Bucket::" + logicalName
 	nameTable := NameTable{
 		urn.URN(bucketUrn): "lexicalName",
 	}
@@ -638,14 +635,14 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGenerated
 			URN:      urn.URN(bucketUrn),
 			ID:       "provider-generated-bucket-id-abc123",
 			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
+			Type:     "importer:s3/bucket:Bucket",
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			URN:    "urn:pulumi:stack::project::importer:s3/bucketObject:BucketObject::exampleBucketObject",
 			ID:     "provider-generated-bucket-object-id-abc123",
 			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			Type:   "importer:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.id in the generated code
 				"bucket":       "provider-generated-bucket-id-abc123",
@@ -679,12 +676,12 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGenerated
 		contract.IgnoreError(err)
 	}
 
-	expectedCode := `resource lexicalName "aws:s3/bucket:Bucket" {
+	expectedCode := `resource lexicalName "importer:s3/bucket:Bucket" {
     __logicalName = "Bucket & Stuff"
 
 }
 
-resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
+resource exampleBucketObject "importer:s3/bucketObject:BucketObject" {
     bucket = lexicalName.id
     storageClass = "STANDARD"
 
@@ -696,24 +693,24 @@ resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
 
 func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	snapshot := []*resource.State{
 		{
 			ID:     "123",
 			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			Type:   "pulumi:providers:importer",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 		},
 	}
 
 	resources := []apitype.ResourceV3{
 		{
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::exampleBucket",
+			URN:      "urn:pulumi:stack::project::importer:s3/bucket:Bucket::exampleBucket",
 			ID:       "provider-generated-bucket-id-abc123",
 			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
+			Type:     "importer:s3/bucket:Bucket",
 			Outputs: map[string]any{
 				"name": "bucketName-12345",
 				"arn":  "arn:aws:s3:bucket-12345",
@@ -721,10 +718,10 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 		},
 		{
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			URN:      "urn:pulumi:stack::project::importer:s3/bucketObject:BucketObject::exampleBucketObject",
 			ID:       "provider-generated-bucket-object-id-abc123",
 			Custom:   true,
-			Type:     "aws:s3/bucketObject:BucketObject",
+			Type:     "importer:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.name in the generated code
 				"bucket":       "bucketName-12345",
@@ -733,10 +730,10 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 		},
 		{
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObjectUsingArn",
+			URN:      "urn:pulumi:stack::project::importer:s3/bucketObject:BucketObject::exampleBucketObjectUsingArn",
 			ID:       "provider-generated-bucket-object-id-abc123",
 			Custom:   true,
-			Type:     "aws:s3/bucketObject:BucketObject",
+			Type:     "importer:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this will be replaced with a reference to exampleBucket.arn in the generated code
 				"bucket":       "arn:aws:s3:bucket-12345",
@@ -769,17 +766,17 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 		contract.IgnoreError(err)
 	}
 
-	expectedCode := `resource exampleBucket "aws:s3/bucket:Bucket" {
+	expectedCode := `resource exampleBucket "importer:s3/bucket:Bucket" {
 
 }
 
-resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
+resource exampleBucketObject "importer:s3/bucketObject:BucketObject" {
     bucket = exampleBucket.name
     storageClass = "STANDARD"
 
 }
 
-resource exampleBucketObjectUsingArn "aws:s3/bucketObject:BucketObject" {
+resource exampleBucketObjectUsingArn "importer:s3/bucketObject:BucketObject" {
     bucket = exampleBucket.arn
     storageClass = "STANDARD"
 
@@ -791,38 +788,38 @@ resource exampleBucketObjectUsingArn "aws:s3/bucketObject:BucketObject" {
 
 func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	snapshot := []*resource.State{
 		{
 			ID:     "123",
 			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			Type:   "pulumi:providers:importer",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 		},
 	}
 
 	resources := []apitype.ResourceV3{
 		{
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::firstBucket",
+			URN:      "urn:pulumi:stack::project::importer:s3/bucket:Bucket::firstBucket",
 			ID:       "provider-generated-bucket-id-abc123",
 			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
+			Type:     "importer:s3/bucket:Bucket",
 		},
 		{
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::secondBucket",
+			URN:      "urn:pulumi:stack::project::importer:s3/bucket:Bucket::secondBucket",
 			ID:       "provider-generated-bucket-id-abc123",
 			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
+			Type:     "importer:s3/bucket:Bucket",
 		},
 		{
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			URN:      "urn:pulumi:stack::project::importer:s3/bucketObject:BucketObject::exampleBucketObject",
 			ID:       "provider-generated-bucket-object-id-abc123",
 			Custom:   true,
-			Type:     "aws:s3/bucketObject:BucketObject",
+			Type:     "importer:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this will *NOT* be replaced with a reference to either firstBucket.id or secondBucket.id
 				// because both have the same ID and it would be ambiguous
@@ -856,15 +853,15 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 		contract.IgnoreError(err)
 	}
 
-	expectedCode := `resource firstBucket "aws:s3/bucket:Bucket" {
+	expectedCode := `resource firstBucket "importer:s3/bucket:Bucket" {
 
 }
 
-resource secondBucket "aws:s3/bucket:Bucket" {
+resource secondBucket "importer:s3/bucket:Bucket" {
 
 }
 
-resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
+resource exampleBucketObject "importer:s3/bucketObject:BucketObject" {
     bucket = "provider-generated-bucket-id-abc123"
     storageClass = "STANDARD"
 
@@ -876,24 +873,24 @@ resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
 
 func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	snapshot := []*resource.State{
 		{
 			ID:     "123",
 			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			Type:   "pulumi:providers:importer",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 		},
 	}
 
 	resources := []apitype.ResourceV3{
 		{
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-			URN:      "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			URN:      "urn:pulumi:stack::project::importer:s3/bucketObject:BucketObject::exampleBucketObject",
 			ID:       "provider-generated-bucket-object-id-abc123",
 			Custom:   true,
-			Type:     "aws:s3/bucketObject:BucketObject",
+			Type:     "importer:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				// this literal value will stay as is since it shouldn't self-reference the bucket object itself
 				"bucket":       "provider-generated-bucket-object-id-abc123",
@@ -926,7 +923,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 		contract.IgnoreError(err)
 	}
 
-	expectedCode := `resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
+	expectedCode := `resource exampleBucketObject "importer:s3/bucketObject:BucketObject" {
     bucket = "provider-generated-bucket-object-id-abc123"
     storageClass = "STANDARD"
 

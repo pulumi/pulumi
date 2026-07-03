@@ -37,19 +37,23 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	resourcestack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -58,7 +62,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -101,6 +104,20 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			Component:         res.IsComponent,
 			Remote:            res.IsRemote,
 			LogicalName:       res.LogicalName,
+		}
+		if p := res.Parameterization; p != nil {
+			specs[i].Parameterization = &importParameterization{
+				PluginName:    p.PluginName,
+				PluginVersion: p.PluginVersion,
+				Value:         p.Value,
+			}
+		}
+		if e := res.Extension; e != nil {
+			specs[i].Extension = &importExtension{
+				Name:    e.Name,
+				Version: e.Version,
+				Value:   e.Value,
+			}
 		}
 	}
 
@@ -170,6 +187,31 @@ type importSpec struct {
 
 	// LogicalName is the resources Pulumi name (i.e. the first argument to `new Resource`).
 	LogicalName string `json:"logicalName,omitempty"`
+
+	// Parameterization is set when the resource should be imported under a replacement-parameterized
+	// (e.g. dynamically bridged) provider rather than a plain one.
+	Parameterization *importParameterization `json:"parameterization,omitempty"`
+
+	// Extension is set when an extension parameterization should be applied to the resource's (base)
+	// provider. Mutually exclusive with Parameterization.
+	Extension *importExtension `json:"extension,omitempty"`
+}
+
+// importParameterization is the JSON representation of a resource's replacement parameterization. The
+// parameterized package name and version are taken from the resource's own type and version; these
+// fields describe the base plugin the parameterization is applied to.
+type importParameterization struct {
+	PluginName    string `json:"pluginName"`
+	PluginVersion string `json:"pluginVersion"`
+	Value         []byte `json:"value"`
+}
+
+// importExtension is the JSON representation of an extension parameterization applied to a resource's
+// (base) provider.
+type importExtension struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Value   []byte `json:"value"`
 }
 
 type importFile struct {
@@ -505,6 +547,32 @@ func parseImportFile(
 			}
 		}
 
+		if spec.Parameterization != nil {
+			v, err := semver.ParseTolerant(spec.Parameterization.PluginVersion)
+			if err != nil {
+				pusherrf("could not parse parameterization version '%v' for %v: %w",
+					spec.Parameterization.PluginVersion, describeResource(i, spec), err)
+			} else {
+				imp.Parameterization = &deploy.Parameterization{
+					PluginName:    tokens.Package(spec.Parameterization.PluginName),
+					PluginVersion: v,
+					Value:         spec.Parameterization.Value,
+				}
+			}
+		}
+
+		if spec.Extension != nil {
+			if spec.Parameterization != nil {
+				pusherrf("%v has both a parameterization and an extension, which are mutually exclusive",
+					describeResource(i, spec))
+			}
+			imp.Extension = &apitype.Extension{
+				Name:    spec.Extension.Name,
+				Version: spec.Extension.Version,
+				Value:   spec.Extension.Value,
+			}
+		}
+
 		imports[i] = imp
 	}
 
@@ -576,7 +644,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		return false, nil
 	}
 
-	loader := schema.NewPluginLoader(ctx.Host)
+	loader := schema.NewPluginLoader(ctx)
 	err := importer.GenerateLanguageDefinitions(
 		out,
 		loader,
@@ -664,7 +732,7 @@ func NewImportCmd() *cobra.Command {
 			"The type token and property used for resource lookup are available in the Import section of\n" +
 			"the resource's API documentation in the Pulumi Registry (https://www.pulumi.com/registry/)." +
 			"\n" +
-			"To fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
+			"To fully specify parent and/or provider, substitute the <urn> for each into the following:\n" +
 			"\n" +
 			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
 			"\n" +
@@ -730,11 +798,20 @@ func NewImportCmd() *cobra.Command {
 				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
-			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
-				schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, sink, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(reg))
+			if err != nil {
+				return fmt.Errorf("create plugin host: %w", err)
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
+			defer contract.IgnoreClose(pCtx)
 
 			var importFile importFile
 			if importFilePath != "" {
@@ -776,7 +853,7 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
 					}
-					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromHost)
+					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 						return nil
@@ -787,7 +864,7 @@ func NewImportCmd() *cobra.Command {
 				baseMapper, err := convert.NewBasePluginMapper(
 					pluginstorage.Instance,
 					from, /*conversionKey*/
-					convert.ProviderFactoryFromHost(ctx, pCtx.Host),
+					convert.ProviderFactoryFromHost(ctx, pCtx),
 					installPlugin,
 					nil, /*mappings*/
 				)
@@ -954,13 +1031,21 @@ func NewImportCmd() *cobra.Command {
 				}
 				sink := cmdutil.Diag()
 
-				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil,
-					schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				innerReg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, sink, env.Global())
+				innerHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
+					pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+					packageworkspace.NewResolverServer(innerReg))
 				if err != nil {
 					return nil, nil, err
 				}
-				defer contract.IgnoreClose(pCtx.Host)
-				languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
+				// host is owned here, closed after the context
+				defer contract.IgnoreClose(innerHost)
+				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil)
+				if err != nil {
+					return nil, nil, err
+				}
+				defer contract.IgnoreClose(ctx)
+				languagePlugin, err := ctx.Host.LanguageRuntime(ctx, proj.Runtime.Name())
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1024,7 +1109,7 @@ func NewImportCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			}, imports)
 
-			if generateCode {
+			if generateCode && proj.Runtime.Name() != "" {
 				deployment, err := getCurrentDeploymentForStack(ctx, s)
 				if err != nil {
 					return err

@@ -32,6 +32,11 @@ import { getTestOrg, getTestSuffix, withStack, withTestBackend } from "./util";
 const userAgent = "pulumi/pulumi/test";
 
 describe("LocalWorkspace", () => {
+    it(`projectSettings permits a project without a runtime`, () => {
+        const settings: ProjectSettings = { name: "runtime-less" };
+        assert.strictEqual(settings.runtime, undefined);
+    });
+
     it(`projectSettings from yaml/yml/json`, async () => {
         for (const ext of ["yaml", "yml", "json"]) {
             const ws = await LocalWorkspace.create(

@@ -17,7 +17,6 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as semver from "semver";
-import * as tmp from "tmp";
 import { version as DEFAULT_VERSION } from "../version";
 import { download } from "./download";
 import { minimumVersion } from "./minimumVersion";
@@ -252,34 +251,20 @@ function withDefaults(opts?: PulumiCommandOptions): Required<PulumiCommandOption
     return { version, root, skipVersionCheck };
 }
 
-function writeTempFile(
+async function writeTempFile(
     contents: string,
     options?: { extension?: string },
 ): Promise<{ path: string; cleanup: () => void }> {
-    return new Promise<{ path: string; cleanup: () => void }>((resolve, reject) => {
-        tmp.file(
-            {
-                // Powershell requires a `.ps1` extension.
-                postfix: options?.extension,
-                // Powershell won't execute the script if the file descriptor is open.
-                discardDescriptor: true,
-            },
-            (tmpErr, tmpPath, _fd, cleanup) => {
-                if (tmpErr) {
-                    reject(tmpErr);
-                } else {
-                    fs.writeFile(tmpPath, contents, (writeErr) => {
-                        if (writeErr) {
-                            cleanup();
-                            reject(writeErr);
-                        } else {
-                            resolve({ path: tmpPath, cleanup });
-                        }
-                    });
-                }
-            },
-        );
-    });
+    const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "pulumi-"));
+    const cleanup = () => fs.rmSync(dir, { recursive: true, force: true });
+    try {
+        const filePath = path.join(dir, `tmp${options?.extension ?? ""}`);
+        await fs.promises.writeFile(filePath, contents);
+        return { path: filePath, cleanup };
+    } catch (err) {
+        cleanup();
+        throw err;
+    }
 }
 
 /**

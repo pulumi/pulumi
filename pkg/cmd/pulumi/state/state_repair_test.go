@@ -304,7 +304,7 @@ func newStateRepairCmdFixture(
 		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			sm := b64.NewBase64SecretsManager()
-			return deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}), nil
+			return deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, nil), nil
 		},
 	}
 

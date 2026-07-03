@@ -45,6 +45,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -78,6 +79,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -176,7 +178,8 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, runtimeName, tracing, otelEndpoint, false /* forceTsc */)
+			host := newLanguageHost(context.Background(),
+				engineAddress, runtimeName, tracing, otelEndpoint, false /* forceTsc */, "" /* installCacheDir */)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -262,6 +265,13 @@ type nodeLanguageHost struct {
 
 	// used by language conformance tests to force TSC usage
 	forceTsc bool
+
+	// installCacheDir, when non-empty, makes InstallDependencies share
+	// installed node_modules trees between projects with identical dependency
+	// manifests. Used by language conformance tests; see installcache.go for
+	// why it must stay disabled for real projects.
+	installCacheDir   string
+	installCacheLocks gsync.Map[string, *sync.Mutex]
 }
 
 type nodeOptions struct {
@@ -356,17 +366,19 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 }
 
 func newLanguageHost(
-	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool,
+	ctx context.Context,
+	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool, installCacheDir string,
 ) pulumirpc.LanguageRuntimeServer {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	return &nodeLanguageHost{
-		engineAddress: engineAddress,
-		tracing:       tracing,
-		otelEndpoint:  otelEndpoint,
-		forceTsc:      forceTsc,
-		runtime:       runtime,
-		cancelCtx:     ctx,
-		cancelFunc:    cancel,
+		engineAddress:   engineAddress,
+		tracing:         tracing,
+		otelEndpoint:    otelEndpoint,
+		forceTsc:        forceTsc,
+		installCacheDir: installCacheDir,
+		runtime:         runtime,
+		cancelCtx:       ctx,
+		cancelFunc:      cancel,
 	}
 }
 
@@ -617,12 +629,21 @@ func getPackagesFromDir(
 			if err != nil {
 				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 			} else if ok {
+				var extension *pulumirpc.PackageParameterization
+				if info.Pulumi.ExtensionParameterization != nil {
+					extension = &pulumirpc.PackageParameterization{
+						Name:    info.Pulumi.ExtensionParameterization.Name,
+						Version: info.Pulumi.ExtensionParameterization.Version,
+						Value:   info.Pulumi.ExtensionParameterization.Value,
+					}
+				}
 				packages = append(packages, &pulumirpc.PackageDependency{
 					Name:             name,
 					Kind:             "resource",
 					Version:          version,
 					Server:           server,
 					Parameterization: parameterization,
+					Extension:        extension,
 				})
 			}
 		}
@@ -1189,8 +1210,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
-	_, err = npm.Install(ctx, opts.packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
-	if err != nil {
+	if err := host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, stdout, stderr); err != nil {
 		return err
 	}
 
@@ -1806,7 +1826,6 @@ func (host *nodeLanguageHost) GenerateProgram(
 	}
 
 	bindOptions := []pcl.BindOption{
-		pcl.Loader(schema.NewCachedLoader(loader)),
 		// for nodejs, prefer output-versioned invokes
 		pcl.PreferOutputVersionedInvokes,
 	}
@@ -1815,7 +1834,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, bindOptions...)
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader), bindOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -1939,29 +1958,31 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		// pack-sdk". Long term we should try and unify the style of the code sdk with that of generated sdks
 		// so we don't need this special case.
 
-		yarn, err := executable.FindExecutable("yarn")
+		npm, err := executable.FindExecutable("npm")
 		if err != nil {
-			return nil, fmt.Errorf("find yarn: %w", err)
+			return nil, fmt.Errorf("find npm: %w", err)
 		}
 
-		err = writeString("$ yarn install --frozen-lockfile\n")
+		err = writeString("$ npm ci\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
-		yarnInstallCmd.Dir = req.PackageDirectory
-		if err := runWithOutput(yarnInstallCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("yarn install: %w", err)
+		npmInstallCmd := exec.Command(npm, "ci")
+		npmInstallCmd.Dir = req.PackageDirectory
+		if err := runWithOutput(npmInstallCmd, os.Stdout, os.Stderr); err != nil {
+			return nil, fmt.Errorf("npm ci: %w", err)
 		}
 
-		err = writeString("$ yarn run tsc\n")
+		// Run tsc via npx: it resolves the project-local node_modules/.bin ahead of any
+		// globally-installed TypeScript, and --no-install keeps it from fetching tsc from the registry.
+		err = writeString("$ npx --no-install tsc\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnTscCmd := exec.Command(yarn, "run", "tsc")
-		yarnTscCmd.Dir = req.PackageDirectory
-		if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("yarn run tsc: %w", err)
+		tscCmd := exec.Command("npx", "--no-install", "tsc")
+		tscCmd.Dir = req.PackageDirectory
+		if err := runWithOutput(tscCmd, os.Stdout, os.Stderr); err != nil {
+			return nil, fmt.Errorf("tsc: %w", err)
 		}
 
 		// "tsc" doesn't copy in the "proto" and "vendor" directories.

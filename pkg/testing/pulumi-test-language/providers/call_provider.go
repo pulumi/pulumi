@@ -23,9 +23,9 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
@@ -107,7 +107,7 @@ func (p *CallProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plug
 		Version:   "15.7.9",
 		Functions: map[string]schema.FunctionSpec{},
 		Resources: map[string]schema.ResourceSpec{},
-		Provider: customResource(
+		Provider: ptr(customResource(
 			"The `call` package's provider resource",
 			map[string]schema.PropertySpec{
 				"value": primitiveType("string"),
@@ -115,7 +115,7 @@ func (p *CallProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plug
 			map[string]schema.PropertySpec{
 				"value": primitiveType("string"),
 			},
-		),
+		)),
 	}
 	pkg.Functions["pulumi:providers:call/identity"] = schema.FunctionSpec{
 		Description: "The `identity` method of the `call` package's provider. " +

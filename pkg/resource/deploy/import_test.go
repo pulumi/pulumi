@@ -20,12 +20,13 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -33,6 +34,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// newMockRegistryContext wraps a mock host in a plugin context for constructing a Registry.
+func newMockRegistryContext(host plugin.Host) *plugin.Context {
+	return &plugin.Context{Diag: &deploytest.NoopSink{}, Host: host}
+}
 
 func TestImportDeployment(t *testing.T) {
 	t.Parallel()
@@ -97,19 +103,19 @@ func TestImporter(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							assert.Equal(t, "foo", descriptor.Name)
 							assert.Equal(t, "1.0.0", descriptor.Version.String())
 							return nil, expectedErr
 						},
-					}, true, nil),
+					}), true, nil),
 					imports: []Import{
 						{
 							Version:           &version,
@@ -138,14 +144,14 @@ func TestImporter(t *testing.T) {
 			// ProviderInputs, we should still attempt to create the provider.
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							return &deploytest.Provider{
 								CheckConfigF: func(
 									_ context.Context, req plugin.CheckConfigRequest,
@@ -154,7 +160,7 @@ func TestImporter(t *testing.T) {
 								},
 							}, nil
 						},
-					}, true, nil),
+					}), true, nil),
 					imports: []Import{
 						{
 							Type:              "foo:bar:Bar",
@@ -179,14 +185,14 @@ func TestImporter(t *testing.T) {
 
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							return &deploytest.Provider{
 								CheckConfigF: func(
 									_ context.Context, req plugin.CheckConfigRequest,
@@ -201,7 +207,7 @@ func TestImporter(t *testing.T) {
 								},
 							}, nil
 						},
-					}, true, nil),
+					}), true, nil),
 					imports: []Import{
 						{
 							Type:     "foo:bar:Bar",
@@ -225,7 +231,7 @@ func TestImporter(t *testing.T) {
 
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
@@ -238,12 +244,12 @@ func TestImporter(t *testing.T) {
 							Type: "pulumi:providers:foo",
 						},
 					},
-					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							t.Fatal("ProviderF should not be called for provider already in state")
 							return nil, nil
 						},
-					}, true, nil),
+					}), true, nil),
 					imports: []Import{
 						{
 							Type:     "foo:bar:Bar",
@@ -268,14 +274,14 @@ func TestImporter(t *testing.T) {
 
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							return &deploytest.Provider{
 								CheckConfigF: func(
 									_ context.Context, req plugin.CheckConfigRequest,
@@ -284,7 +290,7 @@ func TestImporter(t *testing.T) {
 								},
 							}, nil
 						},
-					}, true, nil),
+					}), true, nil),
 					imports: []Import{
 						{
 							Type:     "foo:bar:Bar",
@@ -332,7 +338,7 @@ func TestImporter(t *testing.T) {
 								},
 							},
 						},
-						goals:  &gsync.Map[urn.URN, *resource.Goal]{},
+						goals:  &gsync.Map[urn.URN, *pkgresource.Goal]{},
 						source: &nullSource{},
 						target: &Target{},
 						imports: []Import{
@@ -429,19 +435,19 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			ctx: ctx,
 		},
 		deployment: &Deployment{
-			goals: &gsync.Map[urn.URN, *resource.Goal]{},
+			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 			target: &Target{
 				Name: tokens.MustParseStackName("stack-name"),
 			},
 			source: &nullSource{},
-			providers: providers.NewRegistry(&plugin.MockHost{
-				ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+			providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+				ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 					assert.Equal(t, "foo", descriptor.Name)
 					assert.Equal(t, "1.0.0", descriptor.Version.String())
 					return &mockProvider, nil
 				},
-			}, true, nil),
+			}), true, nil),
 			imports: []Import{
 				{
 					Version:           &version,

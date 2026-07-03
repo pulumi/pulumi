@@ -22,10 +22,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestDecryptGzipLog(t *testing.T) {
@@ -82,6 +85,35 @@ func TestFormatLogRecordsFoldsArgs(t *testing.T) {
 	assert.EqualValues(t, 3, got["v"])
 }
 
+func TestFormatLogRecordsDecodesPropertyValues(t *testing.T) {
+	t.Parallel()
+
+	sv, err := structpb.NewValue(map[string]any{"key": "val"})
+	require.NoError(t, err)
+	encoded, err := logging.EncodeStructValueForLog(sv)
+	require.NoError(t, err)
+
+	input := map[string]any{
+		"time":            "2026-04-30T10:00:00Z",
+		"level":           "INFO",
+		"msg":             "resource inputs: %v",
+		"pulumi.log.arg0": string(encoded),
+	}
+	line, err := json.Marshal(input)
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out)
+	require.NoError(t, err)
+
+	var got map[string]any
+	err = json.Unmarshal(out.Bytes(), &got)
+	require.NoError(t, err)
+
+	assert.Equal(t, "resource inputs: map[key:val]", got["msg"])
+	assert.NotContains(t, got, "pulumi.log.arg0")
+}
+
 // TestDecryptEncryptedLog verifies the full flow: automatic logging creates
 // an encrypted log file during a `pulumi preview`, and `pulumi logs decrypt`
 // can read it back.
@@ -120,4 +152,38 @@ runtime: nodejs`)
 	stdout, _ := e.RunCommand("pulumi", "logs", "decrypt", logFile)
 
 	assert.Contains(t, stdout, "Pulumi")
+}
+
+func TestFormatLogChoicesAligns(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	entries := []logEntry{
+		{path: "/p/dev-1.log", stack: "dev", timestamp: now.Add(-2 * time.Hour), updateID: "abc"},
+		{path: "/p/staging-1.log", stack: "staging", timestamp: now.Add(-3 * time.Hour), updateID: "def-update-1"},
+		{path: "/p/cli-1.log", stack: "", cliLevel: true, timestamp: now.Add(-4 * time.Hour), updateID: "1234"},
+	}
+
+	options, optionMap := formatLogChoices(entries)
+	require.Len(t, options, 3)
+	require.Len(t, optionMap, 3)
+
+	// Stack column should be left-padded to the widest stack name.
+	for _, o := range options {
+		assert.True(t, strings.HasPrefix(o, "dev    ") ||
+			strings.HasPrefix(o, "staging") ||
+			strings.HasPrefix(o, "(cli)  "),
+			"unexpected option layout: %q", o)
+	}
+
+	// CLI-level entries should render as "(cli)".
+	var cliOption string
+	for _, o := range options {
+		if strings.HasPrefix(o, "(cli)") {
+			cliOption = o
+		}
+	}
+	require.NotEmpty(t, cliOption)
+	assert.Equal(t, "/p/cli-1.log", optionMap[cliOption])
+	assert.Contains(t, cliOption, "1234")
 }

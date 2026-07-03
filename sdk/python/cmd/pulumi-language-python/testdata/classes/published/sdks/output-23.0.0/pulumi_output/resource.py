@@ -82,6 +82,9 @@ class Resource(pulumi.CustomResource):
                 raise TypeError("Missing required property 'value'")
             __props__.__dict__["value"] = value
             __props__.__dict__["output"] = None
+            __props__.__dict__["secret_output"] = None
+        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["secretOutput"])
+        opts = pulumi.ResourceOptions.merge(opts, secret_opts)
         super(Resource, __self__).__init__(
             'output:index:Resource',
             resource_name,
@@ -105,6 +108,7 @@ class Resource(pulumi.CustomResource):
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
         __props__.__dict__["output"] = None
+        __props__.__dict__["secret_output"] = None
         __props__.__dict__["value"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
@@ -112,6 +116,11 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter
     def output(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "output")
+
+    @_builtins.property
+    @pulumi.getter(name="secretOutput")
+    def secret_output(self) -> pulumi.Output[_builtins.str]:
+        return pulumi.get(self, "secret_output")
 
     @_builtins.property
     @pulumi.getter

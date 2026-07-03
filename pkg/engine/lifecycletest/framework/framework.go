@@ -44,7 +44,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -54,9 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -295,11 +295,18 @@ func (op TestOp) runWithContext(
 	// We want to always run with plan generation to ensure that plans _can_ be generated.
 	// This is to prevent regressions such as https://github.com/pulumi/pulumi/pull/19750.
 	updateOpts.GeneratePlan = true
-	defer func() {
-		if updateOpts.Host != nil {
-			contract.IgnoreClose(updateOpts.Host)
+	// The engine builds the host from HostFactory and closes it when its cancel source terminates.
+	// This harness roots that source at context.Background() (it never terminates), so the engine's
+	// close never fires here -- build the host up front and close it ourselves.
+	if opts.HostF != nil {
+		host := opts.HostF()
+		defer contract.IgnoreClose(host)
+		updateOpts.HostFactory = func(
+			context.Context, diag.Sink, diag.Sink, plugin.DebugContext,
+		) (plugin.Host, error) {
+			return host, nil
 		}
-	}()
+	}
 
 	// Begin draining events.
 	firedEventsPromise := promise.Run(func() ([]engine.Event, error) {
@@ -789,9 +796,6 @@ type TestUpdateOptions struct {
 // Options produces UpdateOptions for an update operation.
 func (o TestUpdateOptions) Options() engine.UpdateOptions {
 	opts := o.UpdateOptions
-	if o.HostF != nil {
-		opts.Host = o.HostF()
-	}
 	// Set a sensible parallel count because most tests leave this zero.
 	if opts.Parallel == 0 {
 		opts.Parallel = int32(runtime.NumCPU()) //nolint:gosec // NumCPU isn't going to overflow int32
@@ -804,6 +808,7 @@ type TestPlan struct {
 	Project        string
 	Stack          string
 	Runtime        string
+	NoRuntime      bool
 	RuntimeOptions map[string]any
 	Config         config.Map
 	Decrypter      config.Decrypter
@@ -820,7 +825,7 @@ func (p *TestPlan) getNames() (stack tokens.StackName, project tokens.PackageNam
 		project = "test"
 	}
 	runtime = p.Runtime
-	if runtime == "" {
+	if runtime == "" && !p.NoRuntime {
 		runtime = "test"
 	}
 	stack = tokens.MustParseStackName("test")
@@ -846,10 +851,11 @@ func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resour
 func (p *TestPlan) GetProject() workspace.Project {
 	_, projectName, runtime := p.getNames()
 
-	return workspace.Project{
-		Name:    projectName,
-		Runtime: workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions),
+	project := workspace.Project{Name: projectName}
+	if runtime != "" {
+		project.Runtime = workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions)
 	}
+	return project
 }
 
 func (p *TestPlan) GetTarget(t TB, snapshot *deploy.Snapshot) deploy.Target {
@@ -1082,7 +1088,7 @@ func (b *TestBuilder) RunUpdate(
 	program func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error, skipDisplayTests bool,
 ) *Result {
 	programF := deploytest.NewLanguageRuntimeF(program)
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, b.loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, b.loaders...)
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{T: b.t, HostF: hostF, SkipDisplayTests: skipDisplayTests},

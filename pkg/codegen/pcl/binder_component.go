@@ -176,7 +176,6 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		}
 
 		opts := []BindOption{
-			Loader(loader),
 			DirPath(componentSourceDir),
 			ComponentBinder(ComponentProgramBinderFromFileSystem()),
 			Cache(args.PackageCache),
@@ -201,7 +200,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 			opts = append(opts, SkipRangeTypechecking)
 		}
 
-		componentProgram, programDiags, err := BindProgram(parser.Files, opts...)
+		componentProgram, programDiags, err := BindProgram(parser.Files, loader, opts...)
 
 		includeSourceDirectoryInDiagnostics(programDiags, componentSourceDir)
 

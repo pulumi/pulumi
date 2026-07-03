@@ -14,7 +14,7 @@ else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from ._inputs import *
-import pulumi_kubernetes
+import pulumi_other
 
 __all__ = ['ComponentArgs', 'Component']
 

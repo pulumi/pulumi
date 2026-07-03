@@ -122,7 +122,12 @@ func (g *generator) genAnonymousFunctionExpression(
 	} else if strings.HasPrefix(retTypeName, "pulumi") {
 		g.Fgenf(w, "return %s(%v), nil", retTypeName, body)
 	} else if strings.HasPrefix(retTypeName, "*") {
-		if g.exprIsAddressable(body) {
+		// If body lands on an optional field of a schema-backed object type, the Go field is
+		// already a pointer (e.g. `data.Boolean` is `*bool`). Returning `&body` would produce
+		// `**T`. Just return body in that case.
+		if g.bodyEndsInOptionalObjectField(body) {
+			g.Fgenf(w, "return %v, nil", body)
+		} else if g.exprIsAddressable(body) {
 			g.Fgenf(w, "return &%v, nil", body)
 		} else {
 			g.Fgenf(w, "val := %v\nreturn &val, nil", body)
@@ -131,6 +136,57 @@ func (g *generator) genAnonymousFunctionExpression(
 		g.Fgenf(w, "return %v, nil", body)
 	}
 	g.Fgenf(w, "\n}")
+}
+
+// bodyEndsInOptionalObjectField reports whether expr is a traversal whose last step
+// is an attribute access on a schema-backed object type, where that attribute is
+// declared optional. In the generated Go code such a field is already represented
+// as a pointer (the Go SDK declares optional fields as *T), so wrapping with `&`
+// would produce `**T`. Note: this is stricter than checking PCL optionality of the
+// whole expression, because operations like array indexing on an output also lift
+// types to optional in PCL while the generated Go expression remains a value, not
+// a pointer.
+func (g *generator) bodyEndsInOptionalObjectField(expr model.Expression) bool {
+	st, ok := expr.(*model.ScopeTraversalExpression)
+	if !ok {
+		return false
+	}
+	rel := st.Traversal.SimpleSplit().Rel
+	if len(rel) == 0 {
+		return false
+	}
+	lastAttr, ok := rel[len(rel)-1].(hcl.TraverseAttr)
+	if !ok {
+		return false
+	}
+	// st.Parts is aligned with rel: st.Parts[i] is the type/traversable BEFORE rel[i].
+	// The source of the last step is therefore st.Parts[len(rel)-1].
+	if len(st.Parts) < len(rel) {
+		return false
+	}
+	source := st.Parts[len(rel)-1]
+	if g.isMapAccessTraversal(source) {
+		// Map / inline-object access goes through map[string]interface{}; the value
+		// isn't a struct field at all.
+		return false
+	}
+	sourceType := model.GetTraversableType(source)
+	sourceType = model.ResolveOutputs(sourceType)
+	sourceType = pcl.UnwrapOption(sourceType)
+	objType, ok := sourceType.(*model.ObjectType)
+	if !ok {
+		return false
+	}
+	// Only consider schema-backed objects: inline anonymous objects have no
+	// generated struct and no notion of optional fields in Go.
+	if _, hasSchema := pcl.GetSchemaForType(objType); !hasSchema {
+		return false
+	}
+	propType, ok := objType.Properties[lastAttr.Name]
+	if !ok {
+		return false
+	}
+	return model.IsOptionalType(propType)
 }
 
 // exprIsAddressable reports whether the Go code generated for expr will
@@ -401,18 +457,48 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		typeParameter := deferredOutputCastTypeParameter(outputType)
 		g.Fgenf(w, "pulumix.Cast[%s](%v)", typeParameter, expr.Args[0])
 	case pcl.Invoke:
-		if expr.Signature.MultiArgumentInputs {
-			panic(fmt.Errorf("go program-gen does not implement MultiArgumentInputs for function '%v'",
-				expr.Args[0]))
-		}
-
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "We don't allow problems getting the function name")
 		if module == "" || module == "index" {
 			module = pkg
 		}
 		isOut, outArgs, outArgsType := pcl.RecognizeOutputVersionedInvoke(expr)
-		if isOut {
+		if expr.Signature.MultiArgumentInputs {
+			name := fn
+			if pcl.IsOutputVersionInvokeCall(expr) {
+				name += "Output"
+			}
+			g.Fgenf(w, "%s.%s(ctx", module, name)
+
+			var invokeArgs *model.ObjectConsExpression
+			if len(expr.Args) >= 2 {
+				// extract invoke args in case we have the form invoke("token", __convert(args))
+				if converted, objectArgs, _ := pcl.RecognizeTypedObjectCons(expr.Args[1]); converted {
+					invokeArgs = objectArgs
+				} else {
+					// otherwise, we have the form invoke("token", args)
+					invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
+				}
+			}
+
+			arguments := map[string]model.Expression{}
+			if invokeArgs != nil {
+				for _, item := range invokeArgs.Items {
+					arguments[pcl.LiteralValueString(item.Key)] = item.Value
+				}
+			}
+
+			// Unlike other languages, Go cannot leave out trailing optional parameters, so
+			// every parameter is emitted, passing nil for absent optional ones.
+			for _, param := range pcl.SortedFunctionParameters(expr) {
+				g.Fgen(w, ", ")
+				if value, ok := arguments[param.Name]; ok {
+					g.Fgenf(w, "%.v", value)
+				} else {
+					g.Fgen(w, "nil")
+				}
+			}
+		} else if isOut {
 			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType, g.externalCache)
 			if err != nil {
 				// We create a diag instead of panicking since panics are caught in go
@@ -468,7 +554,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					}
 				}
 			}
-		} else {
+		} else if !expr.Signature.MultiArgumentInputs {
+			// A multi-argument invoke passes its inputs positionally and takes invokeOptions as a
+			// trailing variadic parameter, so when there are no options nothing is emitted. Other
+			// invokes pass a single options argument positionally, defaulting to nil.
 			g.Fgenf(&buf, ", nil")
 		}
 		optionsBag = buf.String()
@@ -1615,10 +1704,13 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	case "[]string":
 		typeAssertion = ".(pulumi.StringArrayOutput)"
 	default:
-		// For map types the string form (e.g. "map[string]bool") cannot be turned into
-		// a valid pulumi output type via simple string manipulation, so use
+		// For map and list types the string form (e.g. "map[string]bool", "[]float64") cannot
+		// be turned into a valid pulumi output type via simple string manipulation, so use
 		// deferredOutputCastTypeParameter which already knows the correct names.
-		if _, isMap := pcl.UnwrapOption(then.Signature.ReturnType).(*model.MapType); isMap {
+		unwrappedRet := pcl.UnwrapOption(then.Signature.ReturnType)
+		_, isMap := unwrappedRet.(*model.MapType)
+		_, isList := unwrappedRet.(*model.ListType)
+		if isMap || isList {
 			typeAssertion = ".(" + deferredOutputCastTypeParameter(then.Signature.ReturnType) + ")"
 		} else {
 			if strings.HasPrefix(retType, "*") {
@@ -1739,13 +1831,32 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 	return strKey, true
 }
 
+// functionPackage resolves the package that defines the function token. For
+// extensions the token lives in the base namespace but the owner is the
+// extension; fall back to the token prefix.
+func (g *generator) functionPackage(token string) string {
+	pkg, _, _, _ := pcl.DecomposeToken(token, hcl.Range{})
+	if _, ok := g.packages[pkg]; ok {
+		return pkg
+	}
+	for name, p := range g.packages {
+		if _, ok := p.GetFunction(token); ok {
+			return name
+		}
+	}
+	return pkg
+}
+
 // functionName computes the go package, module, and name for the given function token.
 func (g *generator) functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
 
-	// Compute the resource type from the Pulumi type token.
-	pkg, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	// Compute the resource type from the Pulumi type token. The package that
+	// defines the function may differ from the token's namespace (e.g. an invoke
+	// that resolves through an extension), so prefer functionPackage.
+	_, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkg := g.functionPackage(token)
 	module := g.resolveModule(token)
 	if strings.HasPrefix(member, "get") {
 		if g.useLookupInvokeForm(token) {

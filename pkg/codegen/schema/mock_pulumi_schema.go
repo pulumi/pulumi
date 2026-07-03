@@ -87,7 +87,7 @@ func newPulumiPackage() *Package {
 				},
 			},
 		},
-		Provider: ResourceSpec{
+		Provider: &ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"name": {
 					Description: "fully qualified name of stack, i.e. <organization>/<project>/<stack>",
@@ -104,7 +104,7 @@ func newPulumiPackage() *Package {
 		},
 	}
 
-	pkg, diags, err := bindSpec(spec, nil, nullLoader{}, false, ValidationOptions{
+	pkg, diags, err := bindSpec(context.Background(), spec, nil, nullLoader{}, false, ValidationOptions{
 		AllowPulumiPackage:      true,
 		AllowDanglingReferences: true,
 	})
@@ -114,6 +114,10 @@ func newPulumiPackage() *Package {
 	contract.AssertNoErrorf(err, "failed to bind mock pulumi package")
 	return pkg
 }
+
+// NewNullLoader returns a [Loader] that fails if asked to load a package. Bind a spec with it when the
+// spec references no other packages, so binding needs a non-nil loader but never actually loads one.
+func NewNullLoader() Loader { return nullLoader{} }
 
 type nullLoader struct{}
 

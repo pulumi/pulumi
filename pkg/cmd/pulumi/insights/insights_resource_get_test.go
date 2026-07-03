@@ -91,6 +91,16 @@ func sampleResource() apitype.InsightsResourceWithVersion {
 	}
 }
 
+func defaultGetArgs() insightsResourceGetArgs {
+	return insightsResourceGetArgs{account: "prod-aws", renderOutput: renderResourceText}
+}
+
+func jsonGetArgs() insightsResourceGetArgs {
+	a := defaultGetArgs()
+	a.renderOutput = renderResourceJSON
+	return a
+}
+
 func TestInsightsResourceGetCmd_DefaultOutput(t *testing.T) {
 	t.Parallel()
 
@@ -98,8 +108,7 @@ func TestInsightsResourceGetCmd_DefaultOutput(t *testing.T) {
 	c := &insightsResourceGetCmd{clientFactory: stubFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket",
-		insightsResourceGetArgs{account: "prod-aws"})
+	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket", defaultGetArgs())
 	require.NoError(t, err)
 
 	output := out.String()
@@ -125,8 +134,7 @@ func TestInsightsResourceGetCmd_DefaultOutput_WithPolicyState(t *testing.T) {
 	c := &insightsResourceGetCmd{clientFactory: stubFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket",
-		insightsResourceGetArgs{account: "prod-aws"})
+	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket", defaultGetArgs())
 	require.NoError(t, err)
 
 	assert.Contains(t, out.String(), "Policy state: violation")
@@ -141,8 +149,7 @@ func TestInsightsResourceGetCmd_DefaultOutput_NoState(t *testing.T) {
 	c := &insightsResourceGetCmd{clientFactory: stubFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket",
-		insightsResourceGetArgs{account: "prod-aws"})
+	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket", defaultGetArgs())
 	require.NoError(t, err)
 
 	// Header fields are present, but no "State:" section when state is empty.
@@ -174,8 +181,7 @@ func TestInsightsResourceGetCmd_JSONOutput(t *testing.T) {
 	c := &insightsResourceGetCmd{clientFactory: stubFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket",
-		insightsResourceGetArgs{account: "prod-aws", output: "json"})
+	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket", jsonGetArgs())
 	require.NoError(t, err)
 
 	var got apitype.InsightsResourceWithVersion
@@ -222,8 +228,10 @@ func TestInsightsResourceGetCmd_OrgOverride(t *testing.T) {
 			}
 			c := &insightsResourceGetCmd{clientFactory: stubFactory(client, tt.defaultOrg)}
 
+			args := tt.args
+			args.renderOutput = renderResourceText
 			var out bytes.Buffer
-			err := c.Run(t.Context(), &out, tt.wantTypeID, tt.args)
+			err := c.Run(t.Context(), &out, tt.wantTypeID, args)
 			require.NoError(t, err)
 			assert.Equal(t, capturedCall{
 				org:               tt.wantOrg,
@@ -247,19 +255,6 @@ func TestInsightsResourceGetCmd_MissingAccount(t *testing.T) {
 	assert.Contains(t, err.Error(), "--account is required")
 }
 
-func TestInsightsResourceGetCmd_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	client := &mockInsightsClient{resource: sampleResource()}
-	c := &insightsResourceGetCmd{clientFactory: stubFactory(client, "acme")}
-
-	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket",
-		insightsResourceGetArgs{account: "prod-aws", output: "yaml"})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid --output value "yaml"`)
-}
-
 func TestInsightsResourceGetCmd_ClientError(t *testing.T) {
 	t.Parallel()
 
@@ -267,8 +262,7 @@ func TestInsightsResourceGetCmd_ClientError(t *testing.T) {
 	c := &insightsResourceGetCmd{clientFactory: stubFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::missing",
-		insightsResourceGetArgs{account: "prod-aws"})
+	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::missing", defaultGetArgs())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "reading insights resource")
 	assert.Contains(t, err.Error(), "404 not found")
@@ -280,8 +274,7 @@ func TestInsightsResourceGetCmd_FactoryError(t *testing.T) {
 	c := &insightsResourceGetCmd{clientFactory: failingFactory(errors.New("not logged in"))}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket",
-		insightsResourceGetArgs{account: "prod-aws"})
+	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket", defaultGetArgs())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }

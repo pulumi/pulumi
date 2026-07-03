@@ -21,14 +21,17 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/segmentio/encoding/json"
 )
 
-func NewLoaderServerFromHost(host plugin.Host) codegenrpc.LoaderServer {
-	return NewLoaderServer(NewPluginLoader(host))
+// NewLoaderServerFromContext constructs the loader service bound to a plugin context. It
+// matches [plugin.NewLoaderFunc]: the loader resolves and boots plugins through the given
+// context's workspace view.
+func NewLoaderServerFromContext(pctx *plugin.Context) codegenrpc.LoaderServer {
+	return NewLoaderServer(NewPluginLoader(pctx))
 }
 
 type loaderServer struct {
@@ -74,6 +77,22 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 			return nil, fmt.Errorf("%s not a valid semver: %w", req.Version, err)
 		}
 		descriptor.Parameterization.Version = v
+	}
+
+	// If the loader can hand us the raw schema bytes, ship those directly: the client parses and lazily binds
+	// them anyway, so binding and re-marshaling the package here would be pure overhead.
+	if rawLoader, ok := m.loader.(RawLoader); ok {
+		data, ok, err := rawLoader.LoadRawSchemaBytes(ctx, descriptor)
+		if err != nil {
+			logging.V(7).Infof("%s failed: %v", label, err)
+			return nil, err
+		}
+		if ok {
+			logging.V(7).Infof("%s success: data=#%d", label, len(data))
+			return &codegenrpc.GetSchemaResponse{
+				Schema: data,
+			}, nil
+		}
 	}
 
 	pkg, err := m.loader.LoadPackageV2(ctx, descriptor)

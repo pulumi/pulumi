@@ -51,6 +51,7 @@ import (
 	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -62,7 +63,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -280,6 +280,10 @@ func New(ctx context.Context, d diag.Sink,
 	apiToken := account.AccessToken
 
 	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
+	apiClient.WithRefresh(account.RefreshToken, func(at string, expiresAt time.Time, rt string) error {
+		account.SetCredentials(at, expiresAt, rt)
+		return account.Save(cloudURL, false)
+	})
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
 	config, err := workspace.GetPulumiConfig()
@@ -331,7 +335,7 @@ func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account,
 	if fromAgent {
 		logging.V(7).Infof("Using backend account for %q from shared agent credentials", cloudURL)
 		MarkAgentCredentialsUsed(ctx, cloudURL)
-	} else if account.AccessToken != "" {
+	} else if account.HasCredential() {
 		logging.V(7).Infof("Using backend account for %q from default credentials", cloudURL)
 	} else {
 		logging.V(7).Infof("No backend account for %q found", cloudURL)
@@ -446,7 +450,7 @@ func loginWithBrowser(
 
 	accessToken := <-c
 
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -517,35 +521,58 @@ var newLoginManager = func() LoginManager {
 
 type defaultLoginManager struct{}
 
-// validateStoredAccount checks whether a stored account can still
-// authenticate, refreshing cached user and token metadata when needed.
+// validateStoredAccount checks whether a stored account can still authenticate, refreshing cached
+// user and token metadata when needed. An account that carries a refresh token but a stale (or
+// missing) access token is renewed transparently via getAccountDetails's wrapper-equipped client —
+// the local account is updated to reflect any rotation, and the caller persists the result.
 func validateStoredAccount(
 	ctx context.Context,
 	cloudURL string,
 	insecure bool,
 	account workspace.Account,
 ) (workspace.Account, bool, error) {
+	if !account.HasCredential() {
+		return account, false, nil
+	}
+
 	valid := true
 	username := account.Username
 	organizations := account.Organizations
 	tokenInfo := account.TokenInformation
 	now := time.Now()
-	if tokenInfo != nil && tokenInfo.ExpiresAt != nil && tokenInfo.ExpiresAt.Before(now) {
+	expired := tokenInfo != nil && tokenInfo.ExpiresAt != nil && tokenInfo.ExpiresAt.Before(now)
+	if expired && account.RefreshToken == "" {
 		// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 		valid = false
-	} else if username == "" || account.LastValidatedAt.Add(1*time.Hour).Before(now) {
+	} else if username == "" || account.LastValidatedAt.Add(1*time.Hour).Before(now) || expired {
 		// If the username has not yet been populated, fetch it now.
 		// Also, we do not store the expiration time of the backend access token if oidc token exchange is not used.
 		// So we need to check periodically if it is still valid.
 		// We do this every hour by fetching the account details again using the backend access token.
-		var err error
-		username, organizations, tokenInfo, err = getAccountDetails(
-			ctx, cloudURL, insecure, account.AccessToken,
+		fetchedUser, fetchedOrgs, fetchedTokenInfo, err := getAccountDetails(
+			ctx, cloudURL, insecure, account.AccessToken, account.RefreshToken,
+			func(at string, expiresAt time.Time, rt string) error {
+				account.SetCredentials(at, expiresAt, rt)
+				return nil
+			},
 		)
 		if errors.Is(err, ErrUnauthorized) {
 			valid = false
 		} else if err != nil {
 			return workspace.Account{}, false, err
+		} else {
+			username, organizations = fetchedUser, fetchedOrgs
+			// /api/user reports Name/Organization/Team only; preserve the locally
+			// cached ExpiresAt set by grant responses.
+			if fetchedTokenInfo != nil {
+				if account.TokenInformation == nil {
+					account.TokenInformation = &workspace.TokenInformation{}
+				}
+				account.TokenInformation.Name = fetchedTokenInfo.Name
+				account.TokenInformation.Organization = fetchedTokenInfo.Organization
+				account.TokenInformation.Team = fetchedTokenInfo.Team
+			}
+			tokenInfo = account.TokenInformation
 		}
 		account.LastValidatedAt = now
 	}
@@ -578,12 +605,12 @@ func (m defaultLoginManager) Current(
 	// is not set use it.  If PULUMI_ACCESS_TOKEN does not match,
 	// we prefer that.
 	existingAccount, err := workspace.GetAccount(cloudURL)
-	if err == nil && existingAccount.AccessToken != "" {
+	if err == nil && existingAccount.HasCredential() {
 		logging.V(7).Infof("Found stored credentials for %q in default credentials", cloudURL)
 	} else if err != nil {
 		logging.V(7).Infof("Could not read default credentials for %q: %v", cloudURL, err)
 	}
-	if err == nil && existingAccount.AccessToken != "" &&
+	if err == nil && existingAccount.HasCredential() &&
 		(accessToken == "" || existingAccount.AccessToken == accessToken) {
 		var valid bool
 		logging.V(7).Infof("Validating stored credentials for %q", cloudURL)
@@ -625,7 +652,7 @@ func (m defaultLoginManager) Current(
 	_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", env.AccessToken.Var().Name())
 	contract.IgnoreError(err)
 
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -666,7 +693,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	if err != nil {
 		return nil, err
 	}
-	if agentAccount.AccessToken != "" {
+	if agentAccount.HasCredential() {
 		var valid bool
 		logging.V(7).Infof("Found shared agent credentials for %q; validating", cloudURL)
 		agentAccount, valid, err = validateStoredAccount(ctx, cloudURL, insecure, agentAccount)
@@ -675,7 +702,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		}
 		if valid {
 			logging.V(7).Infof("Using valid shared agent credentials for %q", cloudURL)
-			if err = workspace.StoreAgentAccount(cloudURL, agentAccount, setCurrent); err != nil {
+			if err = agentAccount.Save(cloudURL, setCurrent); err != nil {
 				return nil, err
 			}
 			MarkAgentCredentialsUsed(ctx, cloudURL)
@@ -723,23 +750,18 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		return nil, fmt.Errorf("creating agent Pulumi account: could not construct claim URL for cloud URL %q", cloudURL)
 	}
 
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, signup.AccessToken)
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, signup.AccessToken, "", nil)
 	if err != nil {
 		return nil, err
 	}
-	if tokenInfo == nil {
-		tokenInfo = &workspace.TokenInformation{}
-	}
-	tokenInfo.ExpiresAt = &signup.AccessTokenValidUntil
-
 	account := workspace.Account{
-		AccessToken:      signup.AccessToken,
 		Username:         username,
 		Organizations:    organizations,
 		TokenInformation: tokenInfo,
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
+	account.SetCredentials(signup.AccessToken, signup.AccessTokenValidUntil, signup.RefreshToken)
 	if err = workspace.StoreAgentAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
@@ -790,18 +812,20 @@ func (m defaultLoginManager) Login(
 
 	// If no access token is available from the environment, and we are interactive, prompt and offer to
 	// open a browser to make it easy to generate and use a fresh token.
-	line1 := "Manage your " + message + " by logging in."
-	line1len := len(line1)
-	line1 = colors.Highlight(line1, message, colors.Underline+colors.Bold)
+	//
+	// TODO: The `message` parameter is no longer used now that the prompt is the same regardless of
+	// caller. It used to differentiate between "Pulumi stacks" and "Pulumi ESC environments". Once the
+	// ESC CLI is merged into the Pulumi CLI, drop the parameter from the LoginManager.Login signature.
+	line1 := "Connect to Pulumi Cloud for state storage, config management, team collaboration, and more."
+	line1 = colors.Highlight(line1, "Pulumi Cloud", colors.SpecHeadline)
 	fmt.Println(opts.Color.Colorize(line1))
-	maxlen := line1len
+	fmt.Println()
 
+	// Dim the help line so it reads as a secondary aside next to the headline and prompt.
 	line2 := fmt.Sprintf("Run `%s login --help` for alternative login options.", command)
-	line2len := len(line2)
+	line2 = colors.BrightBlack + line2 + colors.Reset
 	fmt.Println(opts.Color.Colorize(line2))
-	if line2len > maxlen {
-		maxlen = line2len
-	}
+	fmt.Println()
 
 	// In the case where we could not construct a link to the pulumi console based on the API server's hostname,
 	// don't offer magic log-in or text about where to find your access token.
@@ -815,23 +839,15 @@ func (m defaultLoginManager) Login(
 			}
 		}
 	} else {
-		line3 := "Enter your access token from " + accountLink
-		line3len := len(line3)
-		line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
-		line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
-		fmt.Println(opts.Color.Colorize(line3))
-		if line3len > maxlen {
-			maxlen = line3len
-		}
+		browserLine := "Press <ENTER> to log in with your browser, or"
+		browserLine = colors.Highlight(browserLine, "<ENTER>", colors.SpecPrompt)
+		fmt.Println(opts.Color.Colorize(browserLine))
 
-		line4 := "    or hit <ENTER> to log in using your browser"
-		var padding string
-		if pad := maxlen - len(line4); pad > 0 {
-			padding = strings.Repeat(" ", pad)
-		}
-		line4 = colors.Highlight(line4, "<ENTER>", colors.BrightCyan+colors.Bold)
+		prompt := "paste an access token from " + accountLink
+		prompt = colors.Highlight(prompt, "access token", colors.SpecPrompt)
+		prompt = colors.Highlight(prompt, accountLink, colors.BrightBlue+colors.Underline)
 
-		if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line4) + padding); err != nil {
+		if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(prompt)); err != nil {
 			return nil, err
 		}
 
@@ -845,7 +861,7 @@ func (m defaultLoginManager) Login(
 		}
 	}
 
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -882,24 +898,19 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 		return nil, err
 	}
 
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, "", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if tokenInfo == nil {
-		tokenInfo = &workspace.TokenInformation{}
-	}
-	tokenInfo.ExpiresAt = &expiresAt
-
 	account := workspace.Account{
-		AccessToken:      accessToken,
 		Username:         username,
 		Organizations:    organizations,
 		TokenInformation: tokenInfo,
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
+	account.SetCredentials(accessToken, expiresAt, "")
 	if err = storeUserAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
@@ -2018,7 +2029,7 @@ func (b *cloudBackend) runEngineAction(
 		displayEvents, displayDone, op.Opts.Display, dryRun)
 
 	if err := pkgLogging.RenameCurrentLogger(string(stackRef.FullyQualifiedName()), update.UpdateID); err != nil {
-		return nil, nil, err
+		logging.V(3).Infof("encrypted log failed to rename: %v", err)
 	}
 
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
@@ -2120,6 +2131,10 @@ func (b *cloudBackend) runEngineAction(
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
+	}
+
+	if op.Opts.Engine.HostFactory == nil {
+		op.Opts.Engine.HostFactory = backend.DefaultHostFactory(b.GetReadOnlyCloudRegistry())
 	}
 
 	var plan *deploy.Plan
@@ -2621,15 +2636,20 @@ func isExpectedTokenFormat(token string) bool {
 
 // getAccountDetails makes a request to get the authenticated user. If it returns a successful response,
 // we know the access token is valid and a managed or self-hosted cloud backend is used.
+//
+// When refreshToken is non-empty, the request goes through a wrapper-equipped client that
+// transparently exchanges it for a new access token on 401 and retries once. onRefresh, if set,
+// receives the refreshed (access, refresh) pair so the caller can persist them.
 func getAccountDetails(
 	ctx context.Context,
 	cloudURL string,
 	insecure bool,
-	accessToken string,
+	accessToken, refreshToken string,
+	onRefresh func(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) error,
 ) (string, []string, *workspace.TokenInformation, error) {
-	// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
-	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).
-		GetPulumiAccountDetails(ctx)
+	apiClient := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).
+		WithRefresh(refreshToken, onRefresh)
+	username, organizations, tokenInfo, err := apiClient.GetPulumiAccountDetails(ctx)
 	if errors.Is(err, backenderr.LoginRequiredError{}) {
 		return "", nil, nil, ErrUnauthorized
 	}

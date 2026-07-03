@@ -192,8 +192,17 @@ async function invokeAsync(
     try {
         // The direct dependencies of the invoke call from the dependsOn option.
         const dependsOnDeps = await gatherExplicitDependencies(opts.dependsOn);
-        // The dependencies of the inputs to the invoke call.
-        const [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
+        // The dependencies of the inputs to the invoke call. The output-returning invoke variants resolve a
+        // serialization failure into the returned Output rather than surfacing it, so log it here to keep it visible.
+        let serialized: Record<string, any>;
+        let deps: Map<string, Set<Resource>>;
+        try {
+            [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
+        } catch (err) {
+            const detail = err instanceof Error ? err.stack || err.message : String(err);
+            log.error(`Error serializing arguments for invoke ${tok}: ${detail}`);
+            throw err;
+        }
         if (containsUnknownValues(serialized)) {
             // if any of the input properties are unknown,
             // make sure the entire response is marked as unknown
@@ -415,14 +424,24 @@ function callAsync<T>(
                     pluginDownloadURL = res.__pluginDownloadURL;
                 }
 
-                const [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props, {
-                    // We keep output values when serializing inputs for call.
-                    keepOutputValues: true,
-                    // We exclude resource references from 'argDependencies' when serializing inputs for call.
-                    // This way, component providers creating outputs for component inputs based on
-                    // 'argDependencies' won't create outputs for properties that only contain resource references.
-                    excludeResourceReferencesFromDependencies: true,
-                });
+                // The call variants resolve a serialization failure into the returned Output rather than
+                // surfacing it, so log it here to keep it visible.
+                let serialized: Record<string, any>;
+                let propertyDepsResources: Map<string, Set<Resource>>;
+                try {
+                    [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props, {
+                        // We keep output values when serializing inputs for call.
+                        keepOutputValues: true,
+                        // We exclude resource references from 'argDependencies' when serializing inputs for call.
+                        // This way, component providers creating outputs for component inputs based on
+                        // 'argDependencies' won't create outputs for properties that only contain resource references.
+                        excludeResourceReferencesFromDependencies: true,
+                    });
+                } catch (err) {
+                    const detail = err instanceof Error ? err.stack || err.message : String(err);
+                    log.error(`Error serializing arguments for call ${tok}: ${detail}`);
+                    throw err;
+                }
                 log.debug(
                     `Call RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
                 );

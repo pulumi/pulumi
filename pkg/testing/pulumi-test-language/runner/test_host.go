@@ -26,26 +26,40 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 type testHost struct {
-	engine      *languageTestServer
-	ctx         *plugin.Context
-	host        plugin.Host
-	runtime     plugin.LanguageRuntime
-	runtimeName string
-	providers   map[string]func() (plugin.Provider, error)
+	engine       *languageTestServer
+	runtime      plugin.LanguageRuntime
+	runtimeName  string
+	languageInfo string
+	providers    map[string]func() (plugin.Provider, error)
+
+	// servicesMu guards loader and contextServices, which are written from Loader/Mapper as the
+	// engine boots contexts concurrently.
+	servicesMu sync.Mutex
+
+	// loader is the provider-backed schema loader this host binds onto a context. It is captured
+	// here when Loader runs so the conformance runner can reuse it to bind PCL programs.
+	loader *providerLoader
+
+	// contextServices holds the loader/mapper gRPC servers this host hosts for each context; they
+	// are shut down in that context's ReleaseContext.
+	contextServices map[*plugin.Context][]*plugin.GrpcServer
 
 	connectionsMutex sync.Mutex
 	connections      map[plugin.Provider]io.Closer
@@ -53,18 +67,12 @@ type testHost struct {
 	policies []plugin.Analyzer
 
 	closeMutex sync.Mutex
-
-	loaderAddress string
 }
 
 var _ plugin.Host = (*testHost)(nil)
 
 func (h *testHost) ServerAddr() string {
 	return h.engine.addr
-}
-
-func (h *testHost) LoaderAddr() string {
-	return h.loaderAddress
 }
 
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
@@ -98,18 +106,18 @@ func (h *testHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, st
 	panic("not implemented")
 }
 
-func (h *testHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
+func (h *testHost) Analyzer(ctx *plugin.Context, nm tokens.QName) (plugin.Analyzer, error) {
 	panic("not implemented")
 }
 
 func (h *testHost) PolicyAnalyzer(
-	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
+	ctx *plugin.Context, name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
 	hasPlugin := func(spec workspace.PluginDescriptor) bool {
 		// This is only called for the language runtime, so we can just do a simple check.
 		return spec.Kind == apitype.LanguagePlugin && spec.Name == h.runtimeName
 	}
-	analyzer, err := plugin.NewPolicyAnalyzer(h, h.ctx, name, path, opts, hasPlugin)
+	analyzer, err := plugin.NewPolicyAnalyzer(h, ctx, name, path, opts, hasPlugin)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +125,9 @@ func (h *testHost) PolicyAnalyzer(
 	return analyzer, nil
 }
 
-func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+func (h *testHost) Provider(
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
 	// If we've not been given a version, we'll try and find the provider by name alone, picking the latest if there are
 	// multiple versions of the named provider. Otherwise, we can attempt to find an exact match.
 	var key string
@@ -175,7 +185,7 @@ func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (p
 
 // LanguageRuntime returns the language runtime initialized by the test host.
 // ProgramInfo is only used here for compatibility reasons and will be removed from this function.
-func (h *testHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+func (h *testHost) LanguageRuntime(ctx *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
 	if runtime != h.runtimeName {
 		return nil, fmt.Errorf("unexpected runtime %s", runtime)
 	}
@@ -183,7 +193,7 @@ func (h *testHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, erro
 }
 
 func (h *testHost) ResolvePlugin(
-	spec workspace.PluginDescriptor,
+	ctx *plugin.Context, spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
 		for key, provider := range h.providers {
@@ -217,10 +227,62 @@ func (h *testHost) ResolvePlugin(
 	}, nil
 }
 
-func (h *testHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	// We're not using project plugins, in fact this method shouldn't even really exists on Host given it's
-	// just reading off Pulumi.yaml.
-	return nil
+// ReleaseContext shuts down the loader and mapper gRPC servers this host hosts for the context.
+// The test host's providers are not scoped to a context and are torn down when it closes.
+func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
+	h.servicesMu.Lock()
+	servers := h.contextServices[ctx]
+	delete(h.contextServices, ctx)
+	h.servicesMu.Unlock()
+
+	var errs []error
+	for _, srv := range servers {
+		if err := srv.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// Loader serves the conformance runner's provider-backed schema loader, bound to ctx. The loader
+// resolves schemas from the test's own providers via this host.
+func (h *testHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	loader := &providerLoader{
+		language:     h.runtimeName,
+		languageInfo: h.languageInfo,
+		pctx:         ctx,
+		host:         h,
+	}
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterLoaderServer(srv, schema.NewLoaderServer(loader))
+	})
+	if err != nil {
+		return nil, err
+	}
+	h.servicesMu.Lock()
+	h.loader = loader
+	h.contextServices[ctx] = append(h.contextServices[ctx], srv)
+	h.servicesMu.Unlock()
+	return srv, nil
+}
+
+// Mapper serves the standard conversion mapper bound to ctx, sourcing mappings from the plugins
+// installed in the global plugin storage.
+func (h *testHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterMapperServer(srv, convert.NewMapperServerFromContext(ctx))
+	})
+	if err != nil {
+		return nil, err
+	}
+	h.servicesMu.Lock()
+	h.contextServices[ctx] = append(h.contextServices[ctx], srv)
+	h.servicesMu.Unlock()
+	return srv, nil
+}
+
+func (h *testHost) Resolver(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	return nil, nil
 }
 
 func (h *testHost) SignalCancellation() error {

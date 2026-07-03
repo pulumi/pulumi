@@ -27,10 +27,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 var ErrHostIsClosed = errors.New("plugin host is shutting down")
@@ -297,17 +298,33 @@ type pluginHost struct {
 	sink            diag.Sink
 	statusSink      diag.Sink
 
+	// loaderFactory and mapperFactory build the schema loader and conversion mapper this host
+	// serves to its contexts. They are injected (rather than imported) because deploytest cannot
+	// import the codegen packages that define them without creating an import cycle; both are nil
+	// unless a caller needs the host to serve those services.
+	loaderFactory plugin.NewLoaderFunc
+	mapperFactory plugin.NewMapperFunc
+
 	engine *hostEngine
 
 	providers []plugin.Provider
 	analyzers []plugin.Analyzer
 	plugins   map[any]io.Closer
-	closed    bool
-	m         sync.Mutex
+	// contextServers holds the loader/mapper gRPC servers this host hosts on behalf of a context,
+	// shut down in ReleaseContext. Guarded by m.
+	contextServers map[*plugin.Context][]*plugin.GrpcServer
+	closed         bool
+	m              sync.Mutex
 }
 
-// NewPluginHostF returns a factory that produces a plugin host for an operation.
+// NewPluginHostF returns a factory that produces a plugin host for an operation. The produced
+// host serves a schema loader and conversion mapper built from newLoader and newMapper; callers
+// that do not need those services pass nil for both. deploytest cannot import the codegen packages
+// that define [schema.NewLoaderServerFromContext] and [convert.NewMapperServerFromContext] (it
+// would create an import cycle), so callers that need a host serving those services inject the
+// factories here.
 func NewPluginHostF(sink, statusSink diag.Sink, languageRuntimeF LanguageRuntimeFactory,
+	newLoader plugin.NewLoaderFunc, newMapper plugin.NewMapperFunc,
 	pluginLoaders ...*ProviderLoader,
 ) PluginHostFactory {
 	return func() plugin.Host {
@@ -315,13 +332,22 @@ func NewPluginHostF(sink, statusSink diag.Sink, languageRuntimeF LanguageRuntime
 		if languageRuntimeF != nil {
 			lr = languageRuntimeF()
 		}
-		return NewPluginHost(sink, statusSink, lr, pluginLoaders...)
+		host := newPluginHost(sink, statusSink, lr, pluginLoaders...)
+		host.loaderFactory = newLoader
+		host.mapperFactory = newMapper
+		return host
 	}
 }
 
 func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRuntime,
 	pluginLoaders ...*ProviderLoader,
 ) plugin.Host {
+	return newPluginHost(sink, statusSink, languageRuntime, pluginLoaders...)
+}
+
+func newPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRuntime,
+	pluginLoaders ...*ProviderLoader,
+) *pluginHost {
 	engine := &hostEngine{
 		sink:       sink,
 		statusSink: statusSink,
@@ -348,6 +374,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		statusSink:      statusSink,
 		engine:          engine,
 		plugins:         map[any]io.Closer{},
+		contextServers:  map[*plugin.Context][]*plugin.GrpcServer{},
 	}
 }
 
@@ -439,7 +466,9 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 	return plug, nil
 }
 
-func (host *pluginHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+func (host *pluginHost) Provider(
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
@@ -457,11 +486,34 @@ func (host *pluginHost) Provider(descriptor workspace.PluginDescriptor, e env.En
 	return plug.(plugin.Provider), nil
 }
 
-func (host *pluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime, error) {
+func (host *pluginHost) LanguageRuntime(ctx *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
 	return host.languageRuntime, nil
+}
+
+// ReleaseContext shuts down the loader and mapper gRPC servers this host hosts for the context.
+// This host does not scope its plugins to a context, so those are torn down when it closes.
+func (host *pluginHost) ReleaseContext(ctx *plugin.Context) error {
+	host.m.Lock()
+	servers := host.contextServers[ctx]
+	delete(host.contextServers, ctx)
+	host.m.Unlock()
+
+	var errs []error
+	for _, srv := range servers {
+		if err := srv.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (host *pluginHost) trackContextServer(ctx *plugin.Context, srv *plugin.GrpcServer) {
+	host.m.Lock()
+	defer host.m.Unlock()
+	host.contextServers[ctx] = append(host.contextServers[ctx], srv)
 }
 
 func (host *pluginHost) SignalCancellation() error {
@@ -516,10 +568,6 @@ func (host *pluginHost) ServerAddr() string {
 	return host.engine.address
 }
 
-func (host *pluginHost) LoaderAddr() string {
-	return host.engine.address
-}
-
 func (host *pluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	if !host.isClosed() {
 		host.sink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
@@ -540,12 +588,44 @@ func (host *pluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
 	return false
 }
 
-func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
-	return host.PolicyAnalyzer(nm, "", nil)
+func (host *pluginHost) Analyzer(ctx *plugin.Context, nm tokens.QName) (plugin.Analyzer, error) {
+	return host.PolicyAnalyzer(ctx, nm, "", nil)
+}
+
+func (host *pluginHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	if host.loaderFactory == nil {
+		return nil, nil
+	}
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterLoaderServer(srv, host.loaderFactory(ctx))
+	})
+	if err != nil {
+		return nil, err
+	}
+	host.trackContextServer(ctx, srv)
+	return srv, nil
+}
+
+func (host *pluginHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	if host.mapperFactory == nil {
+		return nil, nil
+	}
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterMapperServer(srv, host.mapperFactory(ctx))
+	})
+	if err != nil {
+		return nil, err
+	}
+	host.trackContextServer(ctx, srv)
+	return srv, nil
+}
+
+func (host *pluginHost) Resolver(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	return nil, nil
 }
 
 func (host *pluginHost) ResolvePlugin(
-	spec workspace.PluginDescriptor,
+	ctx *plugin.Context, spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	plugins := slice.Prealloc[workspace.PluginInfo](len(host.pluginLoaders))
 
@@ -581,11 +661,7 @@ func (host *pluginHost) GetRequiredPackages(
 	return host.languageRuntime.GetRequiredPackages(context.TODO(), info)
 }
 
-func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	return nil
-}
-
-func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
+func (host *pluginHost) PolicyAnalyzer(ctx *plugin.Context, name tokens.QName, path string,
 	opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
 	if host.isClosed() {

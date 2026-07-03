@@ -29,8 +29,8 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -69,7 +69,7 @@ func TestMultipleProtectedDeletes(t *testing.T) {
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
@@ -154,7 +154,7 @@ func TestProtectInheritance(t *testing.T) {
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
@@ -228,7 +228,7 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 		return nil
 	})
 
-	setupHostF1 := deploytest.NewPluginHostF(nil, nil, setupProgramF1, setupLoaders1...)
+	setupHostF1 := deploytest.NewPluginHostF(nil, nil, setupProgramF1, nil, nil, setupLoaders1...)
 	setupOpts1 := lt.TestUpdateOptions{
 		T:     t,
 		HostF: setupHostF1,
@@ -276,7 +276,7 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 		return nil
 	})
 
-	setupHostF2 := deploytest.NewPluginHostF(nil, nil, setupProgramF2, setupLoaders2...)
+	setupHostF2 := deploytest.NewPluginHostF(nil, nil, setupProgramF2, nil, nil, setupLoaders2...)
 	setupOpts2 := lt.TestUpdateOptions{
 		T:     t,
 		HostF: setupHostF2,
@@ -300,7 +300,7 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,

@@ -18,9 +18,11 @@ import (
 	"errors"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -89,7 +91,7 @@ func (e *mockEvents) OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic) {
 	panic("unimplemented")
 }
 
-func (e *mockEvents) OnPolicyRemediation(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap) {
+func (e *mockEvents) OnPolicyRemediation(resource.URN, plugin.Remediation, property.Map, property.Map) {
 	panic("unimplemented")
 }
 
@@ -229,7 +231,7 @@ func TestStepExecutor(t *testing.T) {
 							return expectedErr
 						},
 					},
-					goals: &gsync.Map[resource.URN, *resource.Goal]{},
+					goals: &gsync.Map[resource.URN, *pkgresource.Goal]{},
 					news:  &gsync.Map[resource.URN, *resource.State]{},
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},

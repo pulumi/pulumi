@@ -26,11 +26,14 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
+
+type stackTagsRenderFunc func(w io.Writer, tags map[apitype.StackTagName]string) error
 
 func newStackTagCmd() *cobra.Command {
 	var stack string
@@ -52,8 +55,8 @@ func newStackTagCmd() *cobra.Command {
 		&stack, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 
 	cmd.AddCommand(newStackTagGetCmd(&stack))
-	cmd.AddCommand(newStackTagLsCmd(&stack))
-	cmd.AddCommand(newStackTagRmCmd(&stack))
+	cmd.AddCommand(newStackTagListCmd(&stack))
+	cmd.AddCommand(newStackTagRemoveCmd(&stack))
 	cmd.AddCommand(newStackTagSetCmd(&stack))
 
 	return cmd
@@ -106,11 +109,20 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 	return cmd
 }
 
-func newStackTagLsCmd(stack *string) *cobra.Command {
-	var jsonOut bool
+func newStackTagListCmd(stack *string) *cobra.Command {
+	output := outputflag.OutputFlag[stackTagsRenderFunc]{
+		RenderForTerminal: func(w io.Writer, tags map[apitype.StackTagName]string) error {
+			printStackTags(w, tags)
+			return nil
+		},
+		RenderJSON: func(w io.Writer, tags map[apitype.StackTagName]string) error {
+			return ui.FprintJSON(w, tags)
+		},
+	}
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List all stack tags",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List all stack tags",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -135,19 +147,13 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 
 			tags := s.Tags()
 
-			if jsonOut {
-				return ui.FprintJSON(cmd.OutOrStdout(), tags)
-			}
-
-			printStackTags(cmd.OutOrStdout(), tags)
-			return nil
+			return output.Get()(cmd.OutOrStdout(), tags)
 		},
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 
 	return cmd
 }
@@ -170,10 +176,11 @@ func printStackTags(w io.Writer, tags map[apitype.StackTagName]string) {
 	}, nil)
 }
 
-func newStackTagRmCmd(stack *string) *cobra.Command {
+func newStackTagRemoveCmd(stack *string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove a stack tag",
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "Remove a stack tag",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()

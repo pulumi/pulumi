@@ -139,9 +139,9 @@ func TestBindResourceOptions(t *testing.T) {
 				parser.ParseFile(strings.NewReader(src), "test.pcl"),
 				"parse failed")
 
-			prog, diag, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+			prog, diag, err := BindProgram(parser.Files, &stubSchemaLoader{
 				Package: &fooPkg,
-			}))
+			})
 			require.NoError(t, err, "bind failed")
 			require.Empty(t, diag, "bind failed")
 
@@ -162,6 +162,73 @@ func TestBindResourceOptions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBindResourceProgram(t *testing.T) {
+	t.Parallel()
+
+	fooPkg := schema.Package{
+		Name: "foo",
+		Provider: &schema.Resource{
+			Token: "foo:index:Foo",
+			InputProperties: []*schema.Property{
+				{Name: "property", Type: schema.StringType},
+			},
+			Properties: []*schema.Property{
+				{Name: "property", Type: schema.StringType},
+			},
+		},
+		Resources: []*schema.Resource{
+			{
+				Token: "foo:index:Foo",
+				InputProperties: []*schema.Property{
+					{Name: "property", Type: schema.StringType},
+				},
+				Properties: []*schema.Property{
+					{Name: "property", Type: schema.StringType},
+				},
+			},
+		},
+	}
+
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(strings.NewReader(`
+property = external.value
+options {
+	range = 2
+	protect = true
+}
+`), "snippet.pcl"))
+	require.False(t, parser.Diagnostics.HasErrors())
+
+	program, diags, err := BindResourceProgram(
+		parser.Files[0],
+		"example",
+		"foo:index:Foo",
+		&stubSchemaLoader{Package: &fooPkg},
+		ExtraScopeVariables(map[string]*model.Variable{
+			"external": {Name: "external", VariableType: model.DynamicType},
+		}),
+	)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+	require.Len(t, program.Nodes, 1)
+
+	res, ok := program.Nodes[0].(*Resource)
+	require.True(t, ok)
+	require.Equal(t, "example", res.Name())
+	token, _ := res.GetToken()
+	require.Equal(t, "foo::Foo", token)
+	require.Len(t, res.Inputs, 1)
+	require.NotNil(t, res.Options)
+
+	rangeValue, rangeDiags := res.Options.Range.Evaluate(&hcl.EvalContext{})
+	require.False(t, rangeDiags.HasErrors())
+	require.True(t, rangeValue.RawEquals(cty.NumberIntVal(2)))
+
+	protectValue, protectDiags := res.Options.Protect.Evaluate(&hcl.EvalContext{})
+	require.False(t, protectDiags.HasErrors())
+	require.True(t, protectValue.RawEquals(cty.True))
 }
 
 func TestBindReadResourceOptions(t *testing.T) {
@@ -243,9 +310,9 @@ func TestBindReadResourceOptions(t *testing.T) {
 				parser.ParseFile(strings.NewReader(src), "test.pcl"),
 				"parse failed")
 
-			prog, diag, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+			prog, diag, err := BindProgram(parser.Files, &stubSchemaLoader{
 				Package: &fooPkg,
-			}))
+			})
 			require.NoError(t, err, "bind failed")
 			require.Empty(t, diag, "bind failed")
 
@@ -272,7 +339,7 @@ func TestBindReadComponentResourceFails(t *testing.T) {
 	fooPkgSpec := schema.PackageSpec{
 		Name:    "foo",
 		Version: "1.0.0",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type: "object",
 			},
@@ -295,7 +362,7 @@ func TestBindReadComponentResourceFails(t *testing.T) {
 			},
 		},
 	}
-	fooPkg, diags, err := schema.BindSpec(fooPkgSpec, nil, schema.ValidationOptions{})
+	fooPkg, diags, err := schema.BindSpec(fooPkgSpec, schema.NewNullLoader(), schema.ValidationOptions{})
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors())
 
@@ -309,9 +376,9 @@ func TestBindReadComponentResourceFails(t *testing.T) {
 		parser.ParseFile(strings.NewReader(src), "test.pcl"),
 		"parse failed")
 
-	prog, diags, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+	prog, diags, err := BindProgram(parser.Files, &stubSchemaLoader{
 		Package: fooPkg,
-	}))
+	})
 	require.Error(t, err, "bind should fail")
 	require.True(t, diags.HasErrors(), "expected bind diagnostics")
 	require.Nil(t, prog)
@@ -325,7 +392,7 @@ func TestBindResourceIgnoreChangesNameCollision(t *testing.T) {
 	pkgSpec := schema.PackageSpec{
 		Name:    "foo",
 		Version: "1.0.0",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"},
 		},
 		Resources: map[string]schema.ResourceSpec{
@@ -359,7 +426,7 @@ func TestBindResourceIgnoreChangesNameCollision(t *testing.T) {
 			},
 		},
 	}
-	pkg, diags, err := schema.BindSpec(pkgSpec, nil, schema.ValidationOptions{})
+	pkg, diags, err := schema.BindSpec(pkgSpec, schema.NewNullLoader(), schema.ValidationOptions{})
 	require.NoError(t, err, "BindSpec failed")
 	require.False(t, diags.HasErrors(), "BindSpec diagnostics: %v", diags.Error())
 
@@ -455,9 +522,9 @@ resource property "foo:index:Foo" {
 				parser.ParseFile(strings.NewReader(tt.src), "test.pp"),
 				"parse failed")
 
-			prog, bindDiags, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+			prog, bindDiags, err := BindProgram(parser.Files, &stubSchemaLoader{
 				Package: pkg,
-			}))
+			})
 			require.NoError(t, err, "bind returned error")
 			require.Falsef(t, bindDiags.HasErrors(), "bind diagnostics: %v", bindDiags.Error())
 			require.NotNil(t, prog)
@@ -480,6 +547,100 @@ resource property "foo:index:Foo" {
 				"unexpected dependency set for %q", subject.Name())
 		})
 	}
+}
+
+// TestBindResourceQuotedPropertyKeys ensures that nested object literals written with quoted keys
+// are annotated with their schema types, just as they are with bare keys (pulumi/pulumi#15001).
+func TestBindResourceQuotedPropertyKeys(t *testing.T) {
+	t.Parallel()
+
+	pkgSpec := schema.PackageSpec{
+		Name:    "foo",
+		Version: "1.0.0",
+		Provider: &schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"},
+		},
+		Types: map[string]schema.ComplexTypeSpec{
+			"foo:index:Spec": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"template": {TypeSpec: schema.TypeSpec{Type: "ref", Ref: "#/types/foo:index:Template"}},
+					},
+				},
+			},
+			"foo:index:Template": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+			},
+		},
+		Resources: map[string]schema.ResourceSpec{
+			"foo:index:Foo": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"spec": {TypeSpec: schema.TypeSpec{Type: "ref", Ref: "#/types/foo:index:Spec"}},
+					},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"spec": {TypeSpec: schema.TypeSpec{Type: "ref", Ref: "#/types/foo:index:Spec"}},
+				},
+			},
+		},
+	}
+	pkg, diags, err := schema.BindSpec(pkgSpec, schema.NewNullLoader(), schema.ValidationOptions{})
+	require.NoError(t, err, "BindSpec failed")
+	require.False(t, diags.HasErrors(), "BindSpec diagnostics: %v", diags.Error())
+
+	src := `resource foo "foo:index:Foo" {
+	spec = {
+		"template" = {
+			name = "first"
+		}
+	}
+}`
+
+	parser := syntax.NewParser()
+	require.NoError(t,
+		parser.ParseFile(strings.NewReader(src), "test.pp"),
+		"parse failed")
+
+	prog, bindDiags, err := BindProgram(parser.Files, &stubSchemaLoader{
+		Package: pkg,
+	})
+	require.NoError(t, err, "bind returned error")
+	require.Falsef(t, bindDiags.HasErrors(), "bind diagnostics: %v", bindDiags.Error())
+	require.Len(t, prog.Nodes, 1, "expected one node")
+	res := prog.Nodes[0].(*Resource)
+	AnnotateResourceInputs(res)
+
+	var spec *model.Attribute
+	for _, attr := range res.Inputs {
+		if attr.Name == "spec" {
+			spec = attr
+		}
+	}
+	require.NotNil(t, spec, "no spec attribute on the bound resource")
+
+	requireAnnotatedWith := func(expr model.Expression, token string) {
+		obj, ok := expr.(*model.ObjectConsExpression)
+		require.Truef(t, ok, "expected an object literal, got %T", expr)
+		schemaType, ok := GetSchemaForType(obj.Type())
+		require.Truef(t, ok, "object literal has no schema type annotation")
+		objType, ok := schemaType.(*schema.ObjectType)
+		require.Truef(t, ok, "expected an object type annotation, got %T", schemaType)
+		require.Equal(t, token, objType.Token)
+	}
+
+	requireAnnotatedWith(spec.Value, "foo:index:Spec")
+
+	outer := spec.Value.(*model.ObjectConsExpression)
+	require.Len(t, outer.Items, 1)
+	requireAnnotatedWith(outer.Items[0].Value, "foo:index:Template")
 }
 
 type stubSchemaLoader struct {

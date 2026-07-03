@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,16 +34,15 @@ import (
 // without polluting the global $PATH, where the integration tests usually expect to find the binaries.
 func SetupPulumiBinary() {
 	// Find the root of the repository
-	stdout, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	repoRoot, err := ptesting.RepoRoot()
 	if err != nil {
 		fmt.Printf("error finding repo root: %v\n", err)
 		os.Exit(1) //nolint:noosexit // test setup helper invoked from TestMain.
 	}
-	repoRoot := strings.TrimSpace(string(stdout))
 	if os.Getenv("PULUMI_INTEGRATION_REBUILD_BINARIES") == "true" {
 		cmd := exec.Command("make", "build")
 		cmd.Dir = repoRoot
-		stdout, err = cmd.CombinedOutput()
+		stdout, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Printf("error building plugin: %v.  Output: %v\n", err, string(stdout))
 			os.Exit(1) //nolint:noosexit // test setup helper invoked from TestMain.
@@ -68,17 +68,16 @@ func SetupPulumiBinary() {
 // This runs pulumi install on the python provider so it's venv is setup for running.
 func InstallPythonProvider() {
 	// Find the root of the repository
-	stdout, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	repoRoot, err := ptesting.RepoRoot()
 	if err != nil {
 		fmt.Printf("error finding repo root: %v\n", err)
 		os.Exit(1) //nolint:noosexit // test setup helper invoked from TestMain.
 	}
-	repoRoot := strings.TrimSpace(string(stdout))
 
 	cmd := exec.Command("pulumi", "install")
 	providerRoot := filepath.Join(repoRoot, "tests", "testprovider-py")
 	cmd.Dir = providerRoot
-	stdout, err = cmd.CombinedOutput()
+	stdout, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Printf("error install requirements for plugin: %v.  Output: %v\n", err, string(stdout))
 		os.Exit(1) //nolint:noosexit // test setup helper invoked from TestMain.

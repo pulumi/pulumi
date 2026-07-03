@@ -17,7 +17,6 @@ package ints
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,17 +24,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -52,7 +47,8 @@ func testComponentSlowLocalProvider(t *testing.T) integration.LocalDependency {
 }
 
 func testComponentProviderSchema(t *testing.T, path string) {
-	runComponentSetup(t, "component_provider_schema")
+	const testDir = "component_provider_schema"
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		name          string
@@ -120,7 +116,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 // Test remote component inputs properly handle unknowns.
 func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_unknown"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -158,7 +154,7 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 // Test methods properly handle unknowns.
 func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_unknown"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 	tests := []struct {
 		componentDir string
 	}{
@@ -192,116 +188,10 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 	}
 }
 
-func runComponentSetup(t *testing.T, testDir string) {
-	ptesting.YarnInstallMutex.Lock()
-	defer ptesting.YarnInstallMutex.Unlock()
-
-	setupFilename, err := filepath.Abs("component_setup.sh")
-	require.NoError(t, err, "could not determine absolute path")
-	// Even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
-	setupFilename = filepath.ToSlash(setupFilename)
-
-	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func() {
-		out := iotest.LogWriter(t)
-
-		cmd := exec.Command("bash", "-x", setupFilename)
-		cmd.Dir = testDir
-		cmd.Stdout = out
-		cmd.Stderr = out
-		err := cmd.Run()
-
-		// This runs in a separate goroutine, so don't use 'require'.
-		require.NoError(t, err, "failed to run setup script")
-	})
-
-	// The function above runs in a separate goroutine
-	// so it can't halt test execution.
-	// Verify that it didn't fail separately
-	// and halt execution if it did.
-	require.False(t, t.Failed(), "component setup failed")
-}
-
-func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn func()) {
-	ctx, cancel := context.WithTimeout(t.Context(), timeout)
-	defer cancel()
-
-	lockWait := make(chan struct{})
-	go func() {
-		mutex := fsutil.NewFileMutex(lockfile)
-
-		// ctx.Err will be non-nil when the context finishes
-		// either because it timed out or because it got canceled.
-		for ctx.Err() == nil {
-			if err := mutex.Lock(); err != nil {
-				time.Sleep(1 * time.Second)
-				continue
-			}
-
-			defer func() {
-				require.NoError(t, mutex.Unlock())
-			}()
-			break
-		}
-
-		// Context may hav expired
-		// by the time we acquired the lock.
-		if ctx.Err() == nil {
-			fn()
-			close(lockWait)
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		t.Fatalf("timed out waiting for lock on %s", lockfile)
-	case <-lockWait:
-		// waited for fn, success.
-	}
-}
-
-// Verifies that if a file lock is already acquired,
-// synchronouslyDo is able to time out properly.
-func TestSynchronouslyDo_timeout(t *testing.T) {
-	t.Parallel()
-
-	path := filepath.Join(t.TempDir(), "foo")
-	mu := fsutil.NewFileMutex(path)
-	require.NoError(t, mu.Lock())
-	defer func() {
-		require.NoError(t, mu.Unlock())
-	}()
-
-	fakeT := nonfatalT{T: t}
-	synchronouslyDo(&fakeT, path, 10*time.Millisecond, func() {
-		t.Errorf("timed-out operation should not be called")
-	})
-
-	assert.True(t, fakeT.fatal, "must have a fatal failure")
-	require.Len(t, fakeT.messages, 1)
-	assert.Contains(t, fakeT.messages[0], "timed out waiting")
-}
-
-// nonfatalT wraps a testing.T to capture fatal errors.
-type nonfatalT struct {
-	*testing.T
-
-	mu       sync.Mutex
-	fatal    bool
-	messages []string
-}
-
-func (t *nonfatalT) Fatalf(msg string, args ...any) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	t.fatal = true
-	t.messages = append(t.messages, fmt.Sprintf(msg, args...))
-}
-
 // Test methods that create resources.
 func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_resources"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -350,7 +240,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 // Test failures returned from methods are observed.
 func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_errors"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -392,7 +282,7 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 // Tests methods work when there is an explicit provider for another provider set on the component.
 func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_provider"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -413,7 +303,7 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
 			}
 			testProvider := integration.LocalDependency{
-				Package: "testprovider", Path: filepath.Join("..", "testprovider"),
+				Package: "testprovider", Path: testutil.TestProviderDir(t),
 			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),
@@ -431,7 +321,7 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 
 func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_output_values"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -493,7 +383,6 @@ func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStack
 
 func testConstructProviderExplicit(t *testing.T, lang string, dependencies []string) {
 	const testDir = "construct_component_provider_explicit"
-	runComponentSetup(t, testDir)
 
 	localProvider := integration.LocalDependency{
 		Package: "testcomponent", Path: filepath.Join(testDir, "testcomponent-go"),
@@ -514,7 +403,7 @@ func testConstructProviderExplicit(t *testing.T, lang string, dependencies []str
 // Test failures returned from construct.
 func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_failures"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -557,7 +446,7 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 // Test failures returned from call.
 func testCallFailures(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "call_component_failures"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
