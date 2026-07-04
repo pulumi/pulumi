@@ -22,10 +22,13 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
+	"go.opentelemetry.io/otel"
+
 	"github.com/pulumi/pulumi/pkg/v3/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -190,6 +193,10 @@ func (b *cloudBackend) completeUpdate(
 func (b *cloudBackend) getSnapshot(ctx context.Context,
 	secretsProvider secrets.Provider, stackRef backend.StackReference,
 ) (*deploy.Snapshot, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "cloudBackend.getSnapshot")
+	defer span.End()
+
 	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
 	if err != nil {
 		return nil, err
@@ -225,6 +232,10 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 	secretsProvider secrets.Provider, stackRef backend.StackReference,
 ) (property.Map, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "cloudBackend.getSnapshotStackOutputs")
+	defer span.End()
+
 	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
 	if err != nil {
 		return property.Map{}, err

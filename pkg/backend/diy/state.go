@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
+	"go.opentelemetry.io/otel"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
@@ -43,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -131,6 +133,10 @@ func (b *diyBackend) stackExists(
 func (b *diyBackend) getSnapshot(ctx context.Context,
 	secretsProvider secrets.Provider, ref *diyBackendReference,
 ) (*deploy.Snapshot, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "diyBackend.getSnapshot")
+	defer span.End()
+
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
@@ -169,6 +175,10 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 func (b *diyBackend) getSnapshotStackOutputs(ctx context.Context,
 	secretsProvider secrets.Provider, ref *diyBackendReference,
 ) (property.Map, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "diyBackend.getSnapshotStackOutputs")
+	defer span.End()
+
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
