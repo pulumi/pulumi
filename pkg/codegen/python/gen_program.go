@@ -30,6 +30,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -193,7 +194,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 		// generate resource args for this component
 		for _, variableName := range variableNames {
 			objectType := objectTypedConfigs[variableName]
-			objectTypeName := title(variableName)
+			objectTypeName := cgstrings.UppercaseFirst(variableName)
 			g.Fprintf(w, "class %s(TypedDict, total=False):\n", objectTypeName)
 			g.Indented(func() {
 				propertyNames := maputil.SortedKeys(objectType.Properties)
@@ -219,19 +220,19 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 				switch configType := configVar.Type().(type) {
 				case *model.ObjectType:
 					// for objects of type T, generate T as is
-					argType = title(configVar.Name())
+					argType = cgstrings.UppercaseFirst(configVar.Name())
 				case *model.ListType:
 					// for list(T) where T is an object type, generate List[T]
 					switch configType.ElementType.(type) {
 					case *model.ObjectType:
-						objectTypeName := title(configVar.Name())
+						objectTypeName := cgstrings.UppercaseFirst(configVar.Name())
 						argType = fmt.Sprintf("list(%s)", objectTypeName)
 					}
 				case *model.MapType:
 					// for map(T) where T is an object type, generate Dict[str, T]
 					switch configType.ElementType.(type) {
 					case *model.ObjectType:
-						objectTypeName := title(configVar.Name())
+						objectTypeName := cgstrings.UppercaseFirst(configVar.Name())
 						argType = fmt.Sprintf("Dict[str, %s]", objectTypeName)
 					}
 				}
@@ -826,7 +827,7 @@ func tokenToQualifiedName(pkgAlias, module, member string) string {
 		module = "." + module
 	}
 
-	return fmt.Sprintf("%s%s.%s", pkgAlias, module, title(member))
+	return fmt.Sprintf("%s%s.%s", pkgAlias, module, cgstrings.UppercaseFirst(member))
 }
 
 // resourceTypeName computes the qualified name of a python resource.
