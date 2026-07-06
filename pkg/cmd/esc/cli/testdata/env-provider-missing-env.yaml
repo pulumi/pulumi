@@ -6,7 +6,7 @@ run: |
 ---
 > esc env provider aws-login static default/created AKIAEXAMPLE shhhhhh --create
 Environment created: test-user/default/created
-Provider updated.
+Provider updated. (revision 2)
 > esc env get default/created --definition
 values:
   aws:
@@ -18,7 +18,7 @@ values:
             fn::secret:
               ciphertext: ZXNjeAAAAAHz6Ojo6OjoVtjhwQ==
 > esc env provider aws-login static default/created AKIANEW newshhh
-Provider updated.
+Provider updated. (revision 3)
 > esc env get default/created --definition
 values:
   aws:

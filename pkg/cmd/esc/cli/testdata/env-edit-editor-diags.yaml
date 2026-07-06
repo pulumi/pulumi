@@ -16,7 +16,7 @@ environments:
 
 ---
 > esc env edit default/test
-Environment updated.
+Environment updated. (revision 3)
 > esc env get default/test
 # Value
 ```json

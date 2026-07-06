@@ -6,7 +6,7 @@ run: |
 > esc env init default/test
 Environment created: test-user/default/test
 > esc env provider azure-login static default/test tid /subscriptions/sub cid shhhhhh
-Provider updated.
+Provider updated. (revision 2)
 > esc env get default/test --definition
 values:
   azure:

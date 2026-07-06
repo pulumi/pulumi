@@ -7,7 +7,7 @@ run: |
 > esc env init default/test
 Environment created: test-user/default/test
 > esc env provider azure-login oidc default/test tid /subscriptions/sub cid
-Provider updated.
+Provider updated. (revision 2)
 > esc env get default/test --definition
 values:
   azure:
@@ -18,7 +18,7 @@ values:
         subscriptionId: /subscriptions/sub
         oidc: true
 > esc env provider azure-login oidc default/test tid /subscriptions/sub cid --subject-attribute env --subject-attribute team
-Provider updated.
+Provider updated. (revision 3)
 > esc env get default/test --definition
 values:
   azure:
