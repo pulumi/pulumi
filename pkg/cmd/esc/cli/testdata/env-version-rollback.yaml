@@ -37,7 +37,7 @@ environments:
 
 ---
 > esc env version rollback default/test@stable
-Environment updated.
+Environment updated. (revision 5)
 > esc env get default/test
 # Value
 ```json

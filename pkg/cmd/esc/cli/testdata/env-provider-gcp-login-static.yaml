@@ -7,7 +7,7 @@ run: |
 > esc env init default/test
 Environment created: test-user/default/test
 > esc env provider gcp-login static default/test 123456789 ya29.token
-Provider updated.
+Provider updated. (revision 2)
 > esc env get default/test --definition
 values:
   gcp:
@@ -19,7 +19,7 @@ values:
             fn::secret:
               ciphertext: ZXNjeAAAAAH54bK5rvTv6+Xuek7KOw==
 > esc env provider gcp-login static default/test 123456789 ya29.token --service-account sa@proj.iam.gserviceaccount.com --token-lifetime 1h
-Provider updated.
+Provider updated. (revision 3)
 > esc env get default/test --definition
 values:
   gcp:

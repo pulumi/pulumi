@@ -495,12 +495,12 @@ func (esc *escCommand) updateEnvironment(
 		}
 		return diags, nil
 	} else {
-		diags, _, err := esc.client.UpdateEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, yaml, tag)
+		diags, revision, err := esc.client.UpdateEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, yaml, tag)
 		if err != nil {
 			return nil, fmt.Errorf("updating environment definition: %w", err)
 		}
 		if !client.DiagnosticsHaveErrors(diags) && envUpdateSuccessMessage != "" {
-			fmt.Fprintln(esc.stdout, envUpdateSuccessMessage)
+			fmt.Fprintf(esc.stdout, "%s (revision %d)\n", envUpdateSuccessMessage, revision)
 		}
 		return diags, nil
 	}
