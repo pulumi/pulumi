@@ -3,4 +3,4 @@ kind: improvement
 body: Introduce `eval.EvalOptions` and `eval.TraceMode` so callers can export each value without its `Trace.Base` merge-history chain, bounding serialized opened-payload size by its logical content instead of by import-merge depth
 time: 2026-07-06T00:00:00.000000+00:00
 custom:
-    PR: ""
+    PR: "23801"
