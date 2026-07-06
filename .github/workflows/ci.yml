@@ -109,7 +109,7 @@ jobs:
       - run: |
           cd vendor/gotestsum
           go install .
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
@@ -479,7 +479,7 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: test-results
           key: gotestsum-timing-${{ github.run_number }}
