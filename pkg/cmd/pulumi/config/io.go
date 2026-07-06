@@ -158,7 +158,7 @@ func getStackConfigurationFromProjectStack(
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
 	// the correct decrypter for the diy backend would involve prompting for a passphrase)
-	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
+	if !needsCrypter(workspaceStack.Config, pulumiEnv, project) {
 		return backend.StackConfiguration{
 			EnvironmentImports: workspaceStack.Environment.Imports(),
 			Environment:        pulumiEnv,
@@ -197,7 +197,7 @@ func getAndSaveSecretsManager(
 	return sm, nil
 }
 
-func needsCrypter(cfg config.Map, env esc.Value) bool {
+func needsCrypter(cfg config.Map, env esc.Value, project *workspace.Project) bool {
 	var hasSecrets func(v esc.Value) bool
 	hasSecrets = func(v esc.Value) bool {
 		if v.Secret {
@@ -220,7 +220,23 @@ func needsCrypter(cfg config.Map, env esc.Value) bool {
 		return false
 	}
 
-	return cfg.HasSecureValue() || hasSecrets(env)
+	if cfg.HasSecureValue() || hasSecrets(env) {
+		return true
+	}
+
+	// A project that declares a secret config key with a default/value will have that value
+	// applied to the stack config as an encrypted (secure) value during config merge, which
+	// requires a crypter (e.g. to build the log-redaction filter). Account for that here so a
+	// panic crypter is not selected. See https://github.com/pulumi/pulumi/issues/21865.
+	if project != nil {
+		for _, c := range project.Config {
+			if c.Secret && (c.Default != nil || c.Value != nil) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func openStackEnv(

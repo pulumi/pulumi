@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/esc"
@@ -136,19 +137,20 @@ func TestValidateStackConfigValues(t *testing.T) {
 		require.Contains(t, err.Error(), "must be of type")
 	})
 
-	t.Run("Secret Default Is Encrypted", func(t *testing.T) {
+	t.Run("Secret Default Is Applied As A Secret", func(t *testing.T) {
 		t.Parallel()
+		// Regression test for https://github.com/pulumi/pulumi/issues/21865: a secret config key
+		// with a default value that is not set on the stack must validate. The default is applied
+		// as an encrypted (secure) value so it is treated as a secret, rather than being rejected
+		// for not being encrypted.
 		stringType := stringTypeName
-		// Regression test for #21865: a secret config key with a default value that is not
-		// set on the stack must validate, with the default applied as an encrypted value
-		// rather than rejected for not being encrypted.
 		project := &Project{
 			Name: "testProject",
 			Config: map[string]ProjectConfigType{
 				"top-secret": {
 					Type:    &stringType,
 					Secret:  true,
-					Default: "",
+					Default: "some-value",
 				},
 			},
 		}
@@ -163,10 +165,44 @@ func TestValidateStackConfigValues(t *testing.T) {
 			t.Context(), project.Name.String(), project, esc.Value{}, stack.Config, config.Base64Crypter, config.Base64Crypter)
 		require.NoError(t, err, "a defaulted secret config must not be mis-validated")
 
-		// The default must have been applied as an encrypted (secure) value.
+		// The default is applied under the project's namespace as an encrypted value that
+		// decrypts back to the default.
 		value, ok, err := stack.Config.Get(config.MustMakeKey(project.Name.String(), "top-secret"), true)
 		require.NoError(t, err)
 		require.True(t, ok, "the defaulted secret key should be present on the stack")
-		require.True(t, value.Secure(), "the applied secret default must be encrypted")
+		assert.True(t, value.Secure(), "the applied secret default must be encrypted")
+		plaintext, err := value.Value(config.Base64Crypter)
+		require.NoError(t, err)
+		assert.Equal(t, "some-value", plaintext)
+	})
+
+	t.Run("Secret Default Is Type Checked", func(t *testing.T) {
+		t.Parallel()
+		// A secret default is applied as an encrypted value, so it satisfies the
+		// secret-encryption check; type validation still applies, so a secret integer key whose
+		// default is not an integer must be rejected for the type, not for being unencrypted.
+		// See https://github.com/pulumi/pulumi/issues/21865.
+		integerType := integerTypeName
+		project := &Project{
+			Name: "testProject",
+			Config: map[string]ProjectConfigType{
+				"top-secret": {
+					Type:    &integerType,
+					Secret:  true,
+					Default: "not-a-number",
+				},
+			},
+		}
+
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, "config: {}\n")
+		require.NoError(t, err, "Should be able to read the stack")
+
+		err = ValidateStackConfigAndApplyProjectConfig(
+			t.Context(), project.Name.String(), project, esc.Value{}, stack.Config, config.Base64Crypter, config.Base64Crypter)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "must be of type")
+		require.NotContains(t, err.Error(), "must be encrypted")
 	})
 }
