@@ -91,6 +91,20 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 	return name, urn, nil
 }
 
+// converterMappingKey returns the conversion key to use for mapping lookups on
+// behalf of the given converter. The key identifies the ecosystem whose
+// mappings the converter consumes, which is not necessarily the converter's own
+// name: the hcl converter executes Terraform programs, so its provider
+// mappings are "terraform" mappings — the same key the engine uses when
+// serving mappings to the hcl language runtime (see deploy.program_source and
+// deploy.source_eval).
+func converterMappingKey(from string) string {
+	if from == "hcl" {
+		return "terraform"
+	}
+	return from
+}
+
 func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFile, error) {
 	nameTable := map[string]resource.URN{}
 	specs := make([]importSpec, len(resources))
@@ -863,7 +877,7 @@ func NewImportCmd() *cobra.Command {
 
 				baseMapper, err := convert.NewBasePluginMapper(
 					pluginstorage.Instance,
-					from, /*conversionKey*/
+					converterMappingKey(from),
 					convert.ProviderFactoryFromHost(ctx, pCtx),
 					installPlugin,
 					nil, /*mappings*/

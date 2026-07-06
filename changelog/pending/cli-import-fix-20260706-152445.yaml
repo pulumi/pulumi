@@ -1,0 +1,4 @@
+component: cli/import
+kind: fix
+body: Key converter mapping lookups for `import --from <converter>` by the ecosystem the converter consumes, so `import --from hcl` resolves terraform mappings
+time: 2026-07-06T15:24:45.220354+02:00

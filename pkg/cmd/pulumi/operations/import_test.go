@@ -748,3 +748,14 @@ func TestImportCmd_OutputAndJSONMutuallyExclusive(t *testing.T) {
 	assert.Contains(t, err.Error(), "none of the others can be",
 		"expected cobra's mutually-exclusive error, got: %v", err)
 }
+
+// TestConverterMappingKey verifies that mapping lookups for `import --from X`
+// are keyed by the ecosystem the converter consumes rather than the converter
+// name: the hcl converter consumes terraform mappings, matching the key the
+// engine uses when serving mappings to the hcl language runtime.
+func TestConverterMappingKey(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, "terraform", converterMappingKey("hcl"))
+	assert.Equal(t, "terraform", converterMappingKey("terraform"))
+	assert.Equal(t, "yaml", converterMappingKey("yaml"))
+}
