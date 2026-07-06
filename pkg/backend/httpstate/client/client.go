@@ -2455,12 +2455,6 @@ func (pc *Client) UpdateStackConfig(
 	return pc.restCall(ctx, "PUT", getStackPath(stack, "config"), nil, config, nil)
 }
 
-func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
-	deployment apitype.DeploymentSettings,
-) error {
-	return pc.restCall(ctx, "PUT", getStackPath(stack, "deployments", "settings"), nil, deployment, nil)
-}
-
 // PatchStackDeploymentSettings merges the supplied patch into the stack's
 // existing deployment settings. Wraps the `PatchDeploymentSettings` Pulumi
 // Cloud REST endpoint (POST /api/stacks/{org}/{project}/{stack}/deployments/settings).
@@ -2474,19 +2468,6 @@ func (pc *Client) PatchStackDeploymentSettings(ctx context.Context, stack StackI
 	patch json.RawMessage,
 ) error {
 	return pc.restCall(ctx, http.MethodPost, getStackPath(stack, "deployments", "settings"), nil, patch, nil)
-}
-
-func (pc *Client) EncryptStackDeploymentSettingsSecret(ctx context.Context,
-	stack StackIdentifier, secret string,
-) (*apitype.SecretValue, error) {
-	request := apitype.SecretValue{Value: secret}
-	response := apitype.SecretValue{}
-	err := pc.restCall(ctx, "POST", getStackPath(stack, "deployments", "settings", "encrypt"), nil, &request, &response)
-	if err != nil {
-		return nil, err
-	}
-
-	return &response, nil
 }
 
 func (pc *Client) DestroyStackDeploymentSettings(ctx context.Context, stack StackIdentifier) error {
