@@ -25,7 +25,7 @@ import (
 func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 	var grantExpiration time.Duration
 	var accessDuration time.Duration
-	var description string
+	var reason string
 	var output string
 
 	cmd := &cobra.Command{
@@ -68,9 +68,10 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 				return errors.New("the server did not create any change requests for the open request")
 			}
 
-			var descriptionPtr *string
-			if description != "" {
-				descriptionPtr = &description
+			// The optional --reason is stored as the change request's description.
+			var reasonPtr *string
+			if reason != "" {
+				reasonPtr = &reason
 			}
 
 			// An open request creates one change request per environment — the target plus one for
@@ -78,7 +79,7 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 			if format == outputJSON {
 				for i := range resp.ChangeRequests {
 					if err := envcmd.esc.submitChangeRequest(
-						ctx, ref.orgName, resp.ChangeRequests[i].ChangeRequestID, descriptionPtr,
+						ctx, ref.orgName, resp.ChangeRequests[i].ChangeRequestID, reasonPtr,
 					); err != nil {
 						return err
 					}
@@ -105,7 +106,7 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 					"Change request URL: %v\n",
 					envcmd.esc.changeRequestURL(crRef, cr.ChangeRequestID),
 				)
-				if err := envcmd.esc.submitChangeRequest(ctx, ref.orgName, cr.ChangeRequestID, descriptionPtr); err != nil {
+				if err := envcmd.esc.submitChangeRequest(ctx, ref.orgName, cr.ChangeRequestID, reasonPtr); err != nil {
 					return err
 				}
 				fmt.Fprintln(envcmd.esc.stdout, "Change request submitted")
@@ -122,8 +123,8 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 		&accessDuration, "access-duration-seconds", 259200*time.Second,
 		"duration of access in seconds")
 	cmd.Flags().StringVar(
-		&description, "description", "",
-		"an optional description explaining why the environment is being opened, shown to approvers")
+		&reason, "reason", "",
+		"an optional reason explaining why the environment is being opened, shown to approvers")
 	addOutputFlag(cmd, &output)
 
 	return cmd

@@ -2113,8 +2113,8 @@ func TestCLI(t *testing.T) {
 }
 
 // TestEnvOpenRequestSubmits verifies that `esc env open-request` submits the change requests it
-// creates rather than leaving them as unsubmitted drafts, and that --description is forwarded to
-// the submit call.
+// creates rather than leaving them as unsubmitted drafts, and that --reason is forwarded to the
+// submit call as the change request description.
 func TestEnvOpenRequestSubmits(t *testing.T) {
 	t.Setenv("PULUMI_API", "")
 	t.Setenv("PULUMI_HOME", t.TempDir())
@@ -2141,7 +2141,7 @@ func TestEnvOpenRequestSubmits(t *testing.T) {
 		assert.Equal(t, "test-request-id-12345", sub.changeRequestID)
 	}
 
-	// The first two invocations pass no description; the third passes --description.
+	// The first two invocations pass no reason; the third passes --reason.
 	assert.Nil(t, client.submittedChangeRequests[0].description)
 	assert.Nil(t, client.submittedChangeRequests[1].description)
 	require.NotNil(t, client.submittedChangeRequests[2].description)
