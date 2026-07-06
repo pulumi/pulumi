@@ -15,6 +15,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 	var grantExpiration time.Duration
 	var accessDuration time.Duration
+	var description string
 	var output string
 
 	cmd := &cobra.Command{
@@ -62,18 +64,53 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if len(resp.ChangeRequests) == 0 {
+				return errors.New("the server did not create any change requests for the open request")
+			}
 
+			var descriptionPtr *string
+			if description != "" {
+				descriptionPtr = &description
+			}
+
+			// Opening a protected environment creates a draft change request for the environment
+			// (and one for each gated import). Submit each so it moves from draft to pending
+			// approval instead of being left as an unsubmitted draft that can never be approved.
 			if format == outputJSON {
+				for i := range resp.ChangeRequests {
+					if err := envcmd.esc.submitChangeRequest(
+						ctx, ref.orgName, resp.ChangeRequests[i].ChangeRequestID, descriptionPtr,
+					); err != nil {
+						return err
+					}
+				}
 				return writeJSON(envcmd.esc.stdout, struct {
 					ChangeRequestID string `json:"changeRequestId"`
 				}{resp.ChangeRequests[0].ChangeRequestID})
 			}
 
-			fmt.Fprintf(
-				envcmd.esc.stdout,
-				"Created environment open request with ID: %s\n",
-				resp.ChangeRequests[0].ChangeRequestID,
-			)
+			for i := range resp.ChangeRequests {
+				cr := resp.ChangeRequests[i]
+				crRef := environmentRef{
+					orgName:     ref.orgName,
+					projectName: cr.ProjectName,
+					envName:     cr.EnvironmentName,
+				}
+				fmt.Fprintf(
+					envcmd.esc.stdout,
+					"Created environment open request with ID: %s\n",
+					cr.ChangeRequestID,
+				)
+				fmt.Fprintf(
+					envcmd.esc.stdout,
+					"Change request URL: %v\n",
+					envcmd.esc.changeRequestURL(crRef, cr.ChangeRequestID),
+				)
+				if err := envcmd.esc.submitChangeRequest(ctx, ref.orgName, cr.ChangeRequestID, descriptionPtr); err != nil {
+					return err
+				}
+				fmt.Fprintln(envcmd.esc.stdout, "Change request submitted")
+			}
 
 			return nil
 		},
@@ -85,6 +122,9 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 	cmd.Flags().DurationVar(
 		&accessDuration, "access-duration-seconds", 259200*time.Second,
 		"duration of access in seconds")
+	cmd.Flags().StringVar(
+		&description, "description", "",
+		"an optional description explaining why the environment is being opened, shown to approvers")
 	addOutputFlag(cmd, &output)
 
 	return cmd
