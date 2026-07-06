@@ -629,12 +629,21 @@ func getPackagesFromDir(
 			if err != nil {
 				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 			} else if ok {
+				var extension *pulumirpc.PackageParameterization
+				if info.Pulumi.ExtensionParameterization != nil {
+					extension = &pulumirpc.PackageParameterization{
+						Name:    info.Pulumi.ExtensionParameterization.Name,
+						Version: info.Pulumi.ExtensionParameterization.Version,
+						Value:   info.Pulumi.ExtensionParameterization.Value,
+					}
+				}
 				packages = append(packages, &pulumirpc.PackageDependency{
 					Name:             name,
 					Kind:             "resource",
 					Version:          version,
 					Server:           server,
 					Parameterization: parameterization,
+					Extension:        extension,
 				})
 			}
 		}

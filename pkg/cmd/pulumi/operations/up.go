@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"math"
 	"os"
@@ -60,7 +61,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -76,7 +76,7 @@ func defaultParallel() int32 {
 	if p := env.Parallel.Value(); p > 0 {
 		if p > math.MaxInt32 {
 			// Log a warning and cap at MaxInt32
-			logging.Warningf("Parallel value %d exceeds maximum allowed value, capping at %d", p, math.MaxInt32)
+			slog.Warn("Parallel value exceeds maximum allowed value, capping", "value", p, "max", math.MaxInt32)
 			defaultParallel = math.MaxInt32
 		} else {
 			defaultParallel = int32(p) //nolint:gosec
@@ -275,9 +275,9 @@ func NewUpCmd() *cobra.Command {
 
 		start := time.Now()
 		metadata, err := meta.Result(ctx)
-		logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+		slog.InfoContext(ctx, "Waiting for language runtime metadata", "duration", time.Since(start))
 		if err != nil {
-			logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+			slog.InfoContext(ctx, "Could not retrieve language runtime metadata", "err", err)
 		} else {
 			maps.Copy(m.Environment, metadata)
 		}
@@ -535,9 +535,9 @@ func NewUpCmd() *cobra.Command {
 
 		start := time.Now()
 		metadata, err := meta.Result(ctx)
-		logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+		slog.InfoContext(ctx, "Waiting for language runtime metadata", "duration", time.Since(start))
 		if err != nil {
-			logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+			slog.InfoContext(ctx, "Could not retrieve language runtime metadata", "err", err)
 		} else {
 			maps.Copy(m.Environment, metadata)
 		}
@@ -702,7 +702,7 @@ func NewUpCmd() *cobra.Command {
 			}
 
 			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
-			logging.V(7).Infof("PULUMI_SUPPRESS_NEO_LINK=%v", env.SuppressNeoLink.Value())
+			slog.InfoContext(ctx, "PULUMI_SUPPRESS_NEO_LINK", "value", env.SuppressNeoLink.Value())
 			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)

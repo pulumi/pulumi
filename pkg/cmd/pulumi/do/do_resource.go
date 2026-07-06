@@ -63,7 +63,7 @@ func resourceSchemaHelp(res *schema.Resource) string {
 			}
 			b.WriteString(")")
 			if property.Comment != "" {
-				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(property.Comment, "\n", " "))
+				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(cleanComment(property.Comment), "\n", " "))
 			}
 			b.WriteString("\n")
 		}
@@ -84,7 +84,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	shorthelp := fmt.Sprintf("Operate on the %s resource", name)
 	longhelp := shorthelp + "."
 	if res.Comment != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, res.Comment)
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, cleanComment(res.Comment))
 	}
 	if schemaHelp := resourceSchemaHelp(res); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
@@ -107,7 +107,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	cmd.PersistentFlags().StringVar(&pc.providerURN, "provider", "",
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
 			"base of the provider configuration (requires a stack context)")
-	addPersistentInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties)
+	addPersistentInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
 	cmd.AddCommand(pc.newResourceCreateCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))

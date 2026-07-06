@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
@@ -119,7 +120,7 @@ func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
-	return title(tokenToName(f.Token)) + "Result"
+	return cgstrings.UppercaseFirst(tokenToName(f.Token)) + "Result"
 }
 
 func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
@@ -152,7 +153,7 @@ func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modN
 			forDocs: true,
 		})
 	}
-	return fmt.Sprintf("%s.%sResult", resourceName(r), title(d.GetMethodName(m)))
+	return fmt.Sprintf("%s.%sResult", resourceName(r), cgstrings.UppercaseFirst(d.GetMethodName(m)))
 }
 
 // GetPropertyName returns the property name specific to Python.

@@ -62,6 +62,16 @@ func (c *testConverter) ConvertState(
 				LogicalName:       "test:logicalName",
 				IsRemote:          true,
 				IsComponent:       true,
+				Parameterization: &ResourceParameterization{
+					PluginName:    "test:pluginName",
+					PluginVersion: "1.2.3",
+					Value:         []byte("test:value"),
+				},
+				Extension: &ResourceExtension{
+					Name:    "test:extension",
+					Version: "4.5.6",
+					Value:   []byte("test:extValue"),
+				},
 			},
 		},
 		Diagnostics: diags,
@@ -147,6 +157,14 @@ func TestConverterServer_State(t *testing.T) {
 	assert.Equal(t, "test:logicalName", res.LogicalName)
 	assert.Equal(t, true, res.IsRemote)
 	assert.Equal(t, true, res.IsComponent)
+	require.NotNil(t, res.Parameterization)
+	assert.Equal(t, "test:pluginName", res.Parameterization.PluginName)
+	assert.Equal(t, "1.2.3", res.Parameterization.PluginVersion)
+	assert.Equal(t, []byte("test:value"), res.Parameterization.Value)
+	require.NotNil(t, res.Extension)
+	assert.Equal(t, "test:extension", res.Extension.Name)
+	assert.Equal(t, "4.5.6", res.Extension.Version)
+	assert.Equal(t, []byte("test:extValue"), res.Extension.Value)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, codegenrpc.DiagnosticSeverity_DIAG_ERROR, diag.Severity)

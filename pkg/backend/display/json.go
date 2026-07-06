@@ -118,6 +118,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           s.ResourceHooks,
+		SnippetID:               s.SnippetID,
 	}.Make()
 }
 

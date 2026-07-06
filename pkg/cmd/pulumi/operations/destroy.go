@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -44,7 +45,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -230,8 +230,8 @@ func NewDestroyCmd() *cobra.Command {
 
 			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
-				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
-					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())
+				slog.WarnContext(ctx, "failed to find current Pulumi project, continuing with an empty project "+
+					"using stack from backend", "stack", s.Ref().Name(), "backend", s.Backend().Name())
 				projectName, has := s.Ref().Project()
 				if !has {
 					// If the stack doesn't have a project name (legacy diy) then leave this blank, as

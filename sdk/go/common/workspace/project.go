@@ -30,8 +30,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/esc/ast"
-	"github.com/pulumi/esc/eval"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/ast"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	"github.com/hashicorp/go-multierror"
@@ -1245,16 +1245,6 @@ func (ps *ProjectStack) Save(path string) error {
 type ProjectRuntimeInfo struct {
 	name    string
 	options map[string]any
-}
-
-type ProjectStackDeployment struct {
-	DeploymentSettings apitype.DeploymentSettings `json:"settings" yaml:"settings"`
-}
-
-func (psd *ProjectStackDeployment) Save(path string) error {
-	contract.Requiref(path != "", "path", "must not be empty")
-	contract.Requiref(psd != nil, "ps", "must not be nil")
-	return save(path, psd, true /*mkDirAll*/)
 }
 
 func NewProjectRuntimeInfo(name string, options map[string]any) ProjectRuntimeInfo {

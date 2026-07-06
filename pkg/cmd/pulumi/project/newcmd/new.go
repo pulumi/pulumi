@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -52,7 +53,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -613,7 +613,7 @@ func NewNewCmd() *cobra.Command {
 				templates, closer, err := getTemplates(ctx)
 				defer contract.IgnoreClose(closer)
 				if err != nil {
-					logging.Warningf("could not list templates: %v", err)
+					slog.WarnContext(ctx, "could not list templates", "err", err)
 					return err
 				}
 				available, _ := templatesToOptionArrayAndMap(templates)
@@ -646,7 +646,7 @@ func NewNewCmd() *cobra.Command {
 		templates, closer, err := getTemplates(cmd.Context())
 		contract.IgnoreClose(closer)
 		if err != nil {
-			logging.Warningf("could not list templates: %v", err)
+			slog.Warn("could not list templates", "err", err)
 			return
 		}
 

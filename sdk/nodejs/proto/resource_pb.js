@@ -2345,7 +2345,8 @@ supportsresultreporting: jspb.Message.getBooleanFieldWithDefault(msg, 32, false)
 packageref: jspb.Message.getFieldWithDefault(msg, 33, ""),
 hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
 hidediffsList: (f = jspb.Message.getRepeatedField(msg, 37)) == null ? undefined : f,
-envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance, undefined) : []
+envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance, undefined) : [],
+snippetid: jspb.Message.getFieldWithDefault(msg, 40, "")
   };
 
   if (includeInstance) {
@@ -2557,6 +2558,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
          });
+      break;
+    case 40:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setSnippetid(value);
       break;
     default:
       reader.skipField();
@@ -2862,6 +2867,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   f = message.getEnvvarmappingsMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(41, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getSnippetid();
+  if (f.length > 0) {
+    writer.writeString(
+      40,
+      f
+    );
   }
 };
 
@@ -4752,6 +4764,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getEnvvarmappingsMap = functio
 proto.pulumirpc.RegisterResourceRequest.prototype.clearEnvvarmappingsMap = function() {
   this.getEnvvarmappingsMap().clear();
   return this;
+};
+
+
+/**
+ * optional string snippetId = 40;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getSnippetid = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 40, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setSnippetid = function(value) {
+  return jspb.Message.setProto3StringField(this, 40, value);
 };
 
 

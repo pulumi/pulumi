@@ -76,7 +76,11 @@ type Import struct {
 	PluginChecksums   map[string][]byte // The provider checksums to use for the resource, if any.
 	Protect           bool              // Whether to mark the resource as protected after import
 	Properties        []string          // Which properties to include (Defaults to required properties)
-	Parameterization  *Parameterization // The parameterization to use for the resource, if any.
+	Parameterization  *Parameterization // The replacement parameterization to use for the resource, if any.
+
+	// Extension is the extension parameterization to apply to the resource's (base) provider, if any.
+	// Mutually exclusive with Parameterization.
+	Extension *apitype.Extension
 
 	// ProviderInputs holds the full inputs for an explicit provider that is not yet in state.
 	// When set, these inputs are used to create the provider during import. Unlike default
@@ -161,6 +165,7 @@ func NewImportDeployment(
 		providers:                       reg,
 		newPlans:                        newResourcePlan(target.Config),
 		news:                            &gsync.Map[resource.URN, *resource.State]{},
+		extensions:                      map[sdkproviders.Reference][]inFlightExtension{},
 	}, nil
 }
 
@@ -267,6 +272,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
+		SnippetID:               "",
 	}.Make()
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
@@ -430,6 +436,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
@@ -519,6 +526,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
 		if issueCheckErrors(i.deployment, state, providerURN, resp.Failures) {
 			return nil, fmt.Errorf("explicit provider check failed for %s", providerURN)
@@ -544,6 +552,59 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	return urnToReference, nil
 }
 
+// importProviderURN returns the URN of the provider that an import's resource should use. For default
+// providers this mirrors the computation in importResources, deriving the provider from the resource's
+// type/version (and any replacement parameterization).
+func (i *importer) importProviderURN(imp Import) (resource.URN, error) {
+	if imp.Provider != "" {
+		return imp.Provider, nil
+	}
+	pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+	if err != nil {
+		return "", err
+	}
+	req := providers.NewProviderRequest(pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+	typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
+	return i.deployment.generateURN("", typ, name), nil
+}
+
+// parameterizeExtensions applies each import's extension parameterization to its (base) provider. The
+// step is recorded in the snapshot's Extensions map, and dedupes so a provider is only parameterized
+// once per distinct extension even when multiple resources share it.
+func (i *importer) parameterizeExtensions(ctx context.Context, urnToReference map[resource.URN]string) error {
+	for _, imp := range i.deployment.imports {
+		if imp.Extension == nil {
+			continue
+		}
+
+		providerURN, err := i.importProviderURN(imp)
+		if err != nil {
+			return err
+		}
+		providerRefStr, ok := urnToReference[providerURN]
+		if !ok {
+			return fmt.Errorf("provider reference for URN %v not found", providerURN)
+		}
+		providerRef, err := sdkproviders.ParseReference(providerRefStr)
+		if err != nil {
+			return fmt.Errorf("invalid provider reference %v: %w", providerRefStr, err)
+		}
+		provider, ok := i.deployment.providers.GetProvider(providerRef)
+		if !ok {
+			return fmt.Errorf("provider %v not found for extension parameterization", providerRef)
+		}
+
+		extRef := apitype.ExtensionRef(hashExtension(*imp.Extension))
+		if _, created := i.deployment.LookupOrRegisterExtension(providerRef, extRef); created != nil {
+			if !i.executeSerial(ctx,
+				NewExtensionParameterizeStep(i.deployment, provider, extRef, *imp.Extension, created)) {
+				return i.executor.Errored()
+			}
+		}
+	}
+	return nil
+}
+
 func (i *importer) importResources(ctx context.Context) error {
 	contract.Assertf(len(i.deployment.imports) != 0, "no resources to import")
 
@@ -558,6 +619,12 @@ func (i *importer) importResources(ctx context.Context) error {
 
 	urnToReference, err := i.registerProviders(ctx)
 	if err != nil {
+		return err
+	}
+
+	// Apply any extension parameterizations to their (base) providers before importing the resources
+	// that depend on them, so the provider understands the extension's resource types.
+	if err := i.parameterizeExtensions(ctx, urnToReference); err != nil {
 		return err
 	}
 
@@ -648,7 +715,11 @@ func (i *importer) importResources(ctx context.Context) error {
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
+		if imp.Extension != nil {
+			new.ExtensionRef = resource.ExtensionRef(hashExtension(*imp.Extension))
+		}
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &pkgresource.Goal{})
 

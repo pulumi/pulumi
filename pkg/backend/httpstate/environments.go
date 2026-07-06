@@ -18,10 +18,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/pulumi/esc"
-	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 )
 
 var _ = backend.EnvironmentsBackend((*cloudBackend)(nil))
@@ -48,10 +48,10 @@ func (b *cloudBackend) CreateEnvironment(
 	envName string,
 	yaml []byte,
 ) (apitype.EnvironmentDiagnostics, error) {
-	if err := b.escClient.CreateEnvironmentWithProject(ctx, org, projectName, envName); err != nil {
+	if err := b.escClient.CreateEnvironment(ctx, org, projectName, envName); err != nil {
 		return nil, err
 	}
-	diags, err := b.escClient.UpdateEnvironmentWithProject(ctx, org, projectName, envName, yaml, "")
+	diags, _, err := b.escClient.UpdateEnvironment(ctx, org, projectName, envName, yaml, "")
 	return convertESCDiags(diags), err
 }
 

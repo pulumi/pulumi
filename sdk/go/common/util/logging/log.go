@@ -227,13 +227,21 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 		fmt.Sscan(f.Value.String(), &Verbose) //nolint:errcheck
 	}
 
+	initExportHandler(filepath.Base(os.Args[0]))
+
 	handlerMu.Lock()
 
-	if LogToStderr {
+	switch {
+	case LogToStderr && exportHandler != nil:
+		// Logs already flow to the engine over OTel, so ignore --logtostderr:
+		// writing JSON records to stderr would only leak them into the
+		// engine's display of our output.
+		primary = discardHandler{}
+	case LogToStderr:
 		primary = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 			Level: verbosityLevel(Verbose),
 		})
-	} else if Verbose > 0 {
+	case Verbose > 0:
 		f, err := os.Create(logFileName())
 		if err == nil {
 			logFilePath = f.Name()
@@ -245,8 +253,6 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	}
 	rebuildLogger()
 	handlerMu.Unlock()
-
-	initExportHandler(filepath.Base(os.Args[0]))
 }
 
 // logFileName returns a log file path matching the glog naming convention:

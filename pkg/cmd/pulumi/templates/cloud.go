@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
@@ -39,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -324,17 +324,17 @@ func (s *Source) getOrgTemplates(
 		if !errors.Is(err, backenderr.MissingEnvVarForNonInteractiveError{}) {
 			s.addError(fmt.Errorf("could not get the current backend: %w", err))
 		}
-		logging.Infof("could not get a backend for org templates")
+		slog.InfoContext(ctx, "could not get a backend for org templates")
 		return
 	} else if b == nil {
-		logging.Infof("no current logged in user")
+		slog.InfoContext(ctx, "no current logged in user")
 		return
 	}
 
 	// Attempt to retrieve the current user
 	if _, _, _, err := b.CurrentUser(); err != nil {
 		if errors.Is(err, backenderr.ErrLoginRequired) {
-			logging.Infof("user is not logged in")
+			slog.InfoContext(ctx, "user is not logged in")
 			return // No current user - so don't proceed
 		}
 		s.addError(fmt.Errorf("could not get the current user for %s: %s", url, err))
@@ -342,11 +342,11 @@ func (s *Source) getOrgTemplates(
 	}
 
 	if !b.SupportsTemplates() {
-		logging.Infof("%s does not support Org Templates", b.Name())
+		slog.InfoContext(ctx, "does not support Org Templates", "backend", b.Name())
 		return
 	}
 
-	logging.Infof("Listing Org Templates from the cloud")
+	slog.InfoContext(ctx, "Listing Org Templates from the cloud")
 	user, orgs, _, err := b.CurrentUser()
 	if err != nil {
 		s.addError(fmt.Errorf("could not get the current user: %w", err))
@@ -359,31 +359,33 @@ func (s *Source) getOrgTemplates(
 
 	handleOrg := func(org string) {
 		defer wg.Done()
-		logging.Infof("Checking for templates from %q", org)
+		slog.InfoContext(ctx, "Checking for templates", "org", org)
 		orgTemplates, err := b.ListTemplates(ctx, org)
 		if apiError := new(apitype.ErrorResponse); errors.As(err, &apiError) {
 			// This is what happens when we try to access org templates for an org that hasn't enabled org templates.
 			if apiError.Code == 402 {
-				logging.Infof("%q does not have access to org templates (code=%d)", org, apiError.Code)
+				slog.InfoContext(ctx, "does not have access to org templates", "org", org, "code", apiError.Code)
 				return
 			}
 		} else if err != nil {
 			s.addError(fmt.Errorf("list templates: %w", err))
-			logging.Warningf("Failed to get templates from %q: %s", org, err.Error())
+			slog.WarnContext(ctx, "Failed to get templates", "org", org, "err", err.Error())
 			return
 		} else if orgTemplates.HasAccessError {
-			logging.Warningf("Failed to get templates from %q: Access Denied\n"+
-				"Please check that %s can access all template sources", org, b.Name())
+			slog.WarnContext(ctx,
+				"Failed to get templates: access denied; check that the backend can access all template sources",
+				"org", org, "backend", b.Name())
 			return
 		} else if orgTemplates.HasUpstreamError {
 			// This is a catch-all error indicating only that *something* went
 			// wrong with fetching templates for an org.
-			logging.Warningf("Failed to get templates from %q: %s could not download the template", org, b.Name())
+			slog.WarnContext(ctx, "Failed to get templates: the backend could not download the template",
+				"org", org, "backend", b.Name())
 			return
 		}
 
 		for source, sourceTemplates := range orgTemplates.Templates {
-			logging.Infof("sourcing templates from %q", source)
+			slog.InfoContext(ctx, "sourcing templates", "source", source)
 			for _, template := range sourceTemplates {
 				// These template are maintained using https://github.com/pulumi/templates, and are
 				// ingested without going through the Pulumi Cloud.
@@ -403,11 +405,11 @@ func (s *Source) getOrgTemplates(
 				// If we are searching for a template of a specific name,
 				// only match templates of that name.
 				if templateName != "" && templateName != template.Name {
-					logging.V(10).Infof("skipping template %q", template.Name)
+					slog.DebugContext(ctx, "skipping template", "template", template.Name)
 					continue
 				}
 
-				logging.V(10).Infof("adding template %q", template.Name)
+				slog.DebugContext(ctx, "adding template", "template", template.Name)
 				s.addTemplate(orgTemplate{
 					t:       template,
 					org:     org,
@@ -455,7 +457,7 @@ func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	); err != nil {
 		return workspace.Template{}, err
 	}
-	logging.Infof("downloaded %q into %q", t.t.Name, templateDir)
+	slog.InfoContext(ctx, "downloaded template", "template", t.t.Name, "dir", templateDir)
 
 	return workspace.LoadTemplate(templateDir)
 }
@@ -506,7 +508,7 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 			return err
 		}
 
-		logging.V(8).Infof("Decompressing %q", header.Name)
+		slog.InfoContext(ctx, "Decompressing", "name", header.Name)
 
 		path := filepath.Clean(header.Name)
 		if !filepath.IsLocal(path) {

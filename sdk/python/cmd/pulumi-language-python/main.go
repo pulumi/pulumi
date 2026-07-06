@@ -660,6 +660,7 @@ func packageDependencyFromPluginJSON(
 ) (*pulumirpc.PackageDependency, error) {
 	var name, version, server string
 	var parameterization *pulumirpc.PackageParameterization
+	var extension *pulumirpc.PackageParameterization
 	if p != nil {
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.
@@ -673,6 +674,14 @@ func packageDependencyFromPluginJSON(
 				Name:    p.Parameterization.Name,
 				Version: p.Parameterization.Version,
 				Value:   p.Parameterization.Value,
+			}
+		}
+
+		if p.ExtensionParameterization != nil {
+			extension = &pulumirpc.PackageParameterization{
+				Name:    p.ExtensionParameterization.Name,
+				Version: p.ExtensionParameterization.Version,
+				Value:   p.ExtensionParameterization.Value,
 			}
 		}
 
@@ -710,6 +719,7 @@ func packageDependencyFromPluginJSON(
 		Kind:             "resource",
 		Server:           server,
 		Parameterization: parameterization,
+		Extension:        extension,
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)

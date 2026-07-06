@@ -3058,6 +3058,59 @@ func TestFunctionToken(t *testing.T) {
 	}
 }
 
+func TestExtensionTokenNamespace(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		token        string
+		wantRejected bool
+	}{
+		{
+			name:  "base-namespaced token is allowed",
+			token: "extbase:index:Greeting",
+		},
+		{
+			name:         "extension-own-namespace token is rejected",
+			token:        "myext:index:Greeting",
+			wantRejected: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			spec := PackageSpec{
+				Name:    "myext",
+				Version: "2.0.0",
+				Resources: map[string]ResourceSpec{
+					tt.token: {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				},
+				ExtensionParameterization: &ExtensionParameterizationSpec{
+					BaseProvider: BaseProviderRefSpec{Name: "extbase", Version: "45.0.0"},
+					Parameter:    []byte("hello"),
+				},
+			}
+
+			_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{
+				AllowDanglingReferences: true,
+			})
+			require.NoError(t, err)
+
+			want := fmt.Sprintf("invalid token '%s' (must have package name 'extbase')", tt.token)
+			rejected := false
+			for _, d := range diags {
+				if d.Severity == hcl.DiagError && strings.Contains(d.Summary, want) {
+					rejected = true
+				}
+			}
+			if tt.wantRejected {
+				assert.True(t, rejected, "expected rejection diagnostic %q, got %v", want, diags)
+			} else {
+				assert.False(t, diags.HasErrors(), "base-namespaced token should bind without errors, got %v", diags)
+			}
+		})
+	}
+}
+
 func TestProviderRefWarning(t *testing.T) {
 	t.Parallel()
 
@@ -3124,7 +3177,7 @@ func TestBindExtensionParameterized(t *testing.T) {
   "name": "extensionref",
   "version": "1.0.0",
   "resources": {
-    "extensionref:index:Root": {
+    "test-base:index:Root": {
       "type": "object",
       "properties": { "data": { "type": "string" } }
     }

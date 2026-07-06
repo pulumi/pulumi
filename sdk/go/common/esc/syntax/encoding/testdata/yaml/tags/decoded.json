@@ -1,0 +1,325 @@
+{
+    "syntax": {
+        "object": [
+            {
+                "key": {
+                    "literal": "null-value",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 1,
+                            "Column": 1,
+                            "Byte": 0
+                        },
+                        "End": {
+                            "Line": 1,
+                            "Column": 11,
+                            "Byte": 10
+                        }
+                    }
+                },
+                "value": {
+                    "literal": "null",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 1,
+                            "Column": 15,
+                            "Byte": 14
+                        },
+                        "End": {
+                            "Line": 1,
+                            "Column": 24,
+                            "Byte": 23
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "boolean-value",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 2,
+                            "Column": 1,
+                            "Byte": 24
+                        },
+                        "End": {
+                            "Line": 2,
+                            "Column": 14,
+                            "Byte": 37
+                        }
+                    }
+                },
+                "value": {
+                    "literal": "true",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 2,
+                            "Column": 16,
+                            "Byte": 39
+                        },
+                        "End": {
+                            "Line": 2,
+                            "Column": 25,
+                            "Byte": 48
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "integer-value",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 3,
+                            "Column": 1,
+                            "Byte": 49
+                        },
+                        "End": {
+                            "Line": 3,
+                            "Column": 14,
+                            "Byte": 62
+                        }
+                    }
+                },
+                "value": {
+                    "literal": "42",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 3,
+                            "Column": 16,
+                            "Byte": 64
+                        },
+                        "End": {
+                            "Line": 3,
+                            "Column": 23,
+                            "Byte": 71
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "number-value",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 4,
+                            "Column": 1,
+                            "Byte": 72
+                        },
+                        "End": {
+                            "Line": 4,
+                            "Column": 13,
+                            "Byte": 84
+                        }
+                    }
+                },
+                "value": {
+                    "literal": "3.14",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 4,
+                            "Column": 15,
+                            "Byte": 86
+                        },
+                        "End": {
+                            "Line": 4,
+                            "Column": 24,
+                            "Byte": 95
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "string-value",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 5,
+                            "Column": 1,
+                            "Byte": 96
+                        },
+                        "End": {
+                            "Line": 5,
+                            "Column": 13,
+                            "Byte": 108
+                        }
+                    }
+                },
+                "value": {
+                    "literal": "hello, world",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 5,
+                            "Column": 15,
+                            "Byte": 110
+                        },
+                        "End": {
+                            "Line": 5,
+                            "Column": 32,
+                            "Byte": 127
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "array-value",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 6,
+                            "Column": 1,
+                            "Byte": 128
+                        },
+                        "End": {
+                            "Line": 6,
+                            "Column": 12,
+                            "Byte": 139
+                        }
+                    }
+                },
+                "value": {
+                    "array": [
+                        {
+                            "literal": 0,
+                            "range": {
+                                "Filename": "tags",
+                                "Start": {
+                                    "Line": 6,
+                                    "Column": 20,
+                                    "Byte": 147
+                                },
+                                "End": {
+                                    "Line": 6,
+                                    "Column": 21,
+                                    "Byte": 148
+                                }
+                            }
+                        },
+                        {
+                            "literal": 1,
+                            "range": {
+                                "Filename": "tags",
+                                "Start": {
+                                    "Line": 6,
+                                    "Column": 23,
+                                    "Byte": 150
+                                },
+                                "End": {
+                                    "Line": 6,
+                                    "Column": 24,
+                                    "Byte": 151
+                                }
+                            }
+                        }
+                    ],
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 6,
+                            "Column": 14,
+                            "Byte": 141
+                        },
+                        "End": {
+                            "Line": 6,
+                            "Column": 24,
+                            "Byte": 151
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "object-value",
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 7,
+                            "Column": 1,
+                            "Byte": 153
+                        },
+                        "End": {
+                            "Line": 7,
+                            "Column": 13,
+                            "Byte": 165
+                        }
+                    }
+                },
+                "value": {
+                    "object": [
+                        {
+                            "key": {
+                                "literal": "a",
+                                "range": {
+                                    "Filename": "tags",
+                                    "Start": {
+                                        "Line": 7,
+                                        "Column": 22,
+                                        "Byte": 174
+                                    },
+                                    "End": {
+                                        "Line": 7,
+                                        "Column": 23,
+                                        "Byte": 175
+                                    }
+                                }
+                            },
+                            "value": {
+                                "literal": "b",
+                                "range": {
+                                    "Filename": "tags",
+                                    "Start": {
+                                        "Line": 7,
+                                        "Column": 25,
+                                        "Byte": 177
+                                    },
+                                    "End": {
+                                        "Line": 7,
+                                        "Column": 26,
+                                        "Byte": 178
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    "range": {
+                        "Filename": "tags",
+                        "Start": {
+                            "Line": 7,
+                            "Column": 15,
+                            "Byte": 167
+                        },
+                        "End": {
+                            "Line": 7,
+                            "Column": 26,
+                            "Byte": 178
+                        }
+                    }
+                }
+            }
+        ],
+        "range": {
+            "Filename": "tags",
+            "Start": {
+                "Line": 1,
+                "Column": 1,
+                "Byte": 0
+            },
+            "End": {
+                "Line": 7,
+                "Column": 26,
+                "Byte": 178
+            }
+        }
+    }
+}

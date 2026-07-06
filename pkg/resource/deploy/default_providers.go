@@ -188,6 +188,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make(),
 		done: done,
 	}
