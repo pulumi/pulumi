@@ -1,0 +1,36 @@
+run: |
+  printf 'values:\n  x: 1\nvalues:\n  y: 2\n' | esc env edit default/test -f=-
+  esc env get default/test
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env edit default/test -f=-
+Environment updated.
+> esc env get default/test
+# Value
+```json
+{
+  "y": 2
+}
+```
+# Definition
+```yaml
+values:
+  x: 1
+values:
+  y: 2
+
+```
+
+
+---
+> esc env edit default/test -f=-
+Warning: duplicate key "values"
+
+  on default/test line 3:
+   3: values:
+
+> esc env get default/test

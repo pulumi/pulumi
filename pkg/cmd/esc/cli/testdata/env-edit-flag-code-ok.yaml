@@ -1,0 +1,34 @@
+run: |
+  esc env edit default/test --editor code
+  esc env get default/test
+process:
+  commands:
+    code: |
+      if [[ "$1" -ne "-w" ]]; then exit 1; fi
+      echo -e "values:\n  foo: baz\n" >$2
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env edit default/test --editor code
+Environment updated.
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "baz"
+}
+```
+# Definition
+```yaml
+values:
+  foo: baz
+
+```
+
+
+---
+> esc env edit default/test --editor code
+> esc env get default/test
