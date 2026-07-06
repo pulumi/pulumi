@@ -252,8 +252,8 @@ type testPulumiClient struct {
 	environments map[string]*testEnvironment
 	openEnvs     map[string]*esc.Environment
 
-	// submittedChangeRequests records every change request submitted via SubmitChangeRequest,
-	// in call order, so tests can assert that created change requests are actually submitted.
+	// submittedChangeRequests records submitted change requests in call order, so tests can assert
+	// that a command actually submits the change requests it creates.
 	submittedChangeRequests []submittedChangeRequest
 }
 
@@ -2112,9 +2112,9 @@ func TestCLI(t *testing.T) {
 	}
 }
 
-// TestEnvOpenRequestSubmits verifies that `esc env open-request` submits the change request it
-// creates (transitioning it from draft to pending approval) rather than leaving it as an
-// unsubmitted draft, and that the --description flag is forwarded to the submit call.
+// TestEnvOpenRequestSubmits verifies that `esc env open-request` submits the change requests it
+// creates rather than leaving them as unsubmitted drafts, and that --description is forwarded to
+// the submit call.
 func TestEnvOpenRequestSubmits(t *testing.T) {
 	t.Setenv("PULUMI_API", "")
 	t.Setenv("PULUMI_HOME", t.TempDir())

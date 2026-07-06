@@ -73,9 +73,8 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 				descriptionPtr = &description
 			}
 
-			// Opening a protected environment creates a draft change request for the environment
-			// (and one for each gated import). Submit each so it moves from draft to pending
-			// approval instead of being left as an unsubmitted draft that can never be approved.
+			// An open request creates one change request per environment — the target plus one for
+			// each gated import — so every one of them has to be submitted, not just the first.
 			if format == outputJSON {
 				for i := range resp.ChangeRequests {
 					if err := envcmd.esc.submitChangeRequest(
