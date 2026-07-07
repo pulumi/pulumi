@@ -388,12 +388,11 @@ installed locally.
 
 Provider configuration can be supplied via:
   - the provider's standard environment variables (e.g. AWS_REGION)
-  - an input file passed with --provider-file (PCL by default;
-    set --input to convert from another format)
+  - an input file passed with --provider-file (YAML by default;
+    set --input to use another format)
 
-Function inputs come from --input-file. PCL is the default; pass --input
-to convert from another format such as YAML. Non-PCL formats require a
-converter plugin for that format to be installed.`,
+Function inputs come from --input-file. YAML is the default; pass --input
+to use another format.`,
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
