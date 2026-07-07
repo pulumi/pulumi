@@ -149,8 +149,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 			if err != nil {
 				return err
 			}
-			// Create doesn't have an ID yet, so require the user to type "yes" — same pattern as `plugin rm`.
-			if err := pc.confirm(cmd, summary, "yes", yes); err != nil {
+			if err := pc.confirm(cmd, summary, "create", yes); err != nil {
 				return err
 			}
 			response, err := pc.provider.Create(ctx, plugin.CreateRequest{
@@ -279,8 +278,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			}
 			summary := formatPatchSummary(
 				res, id, oldInputs, checked, diff, pc.showSecrets, cmdutil.GetGlobalColorization())
-			// Require the user to type the resource ID — same pattern as `stack rm` requiring the stack name.
-			if err := pc.confirm(cmd, summary, string(id), yes); err != nil {
+			if err := pc.confirm(cmd, summary, "patch", yes); err != nil {
 				return err
 			}
 
@@ -327,8 +325,7 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			}
 			urn := resourceURN(res)
 			id := resource.ID(args[0])
-			// Require the user to type the resource ID — same pattern as `stack rm` requiring the stack name.
-			if err := pc.confirm(cmd, formatDeleteSummary(res, id), string(id), yes); err != nil {
+			if err := pc.confirm(cmd, formatDeleteSummary(res, id), "delete", yes); err != nil {
 				return err
 			}
 			_, err := pc.provider.Delete(ctx, plugin.DeleteRequest{

@@ -28,6 +28,8 @@ import (
 	"strings"
 	"unicode"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/gofrs/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
@@ -733,12 +735,13 @@ func (pc *packageCommand) requireYesIfNonInteractive(yes bool) error {
 	return nil
 }
 
-// confirm prints summary and asks the user to type confirmName to proceed. The summary and prompt go to stderr so
-// that stdout stays a clean JSON channel for piping. Returns nil to proceed; a bail error (suppressed by the
-// outer CLI) when the user declines. requireYesIfNonInteractive should have been called earlier; if we somehow
-// reach here non-interactively without --yes we treat it as a decline. Uses ui.ConfirmPrompt for the prompt
-// itself so the look and feel matches stack rm and friends.
-func (pc *packageCommand) confirm(cmd *cobra.Command, summary, confirmName string, yes bool) error {
+// confirm prints summary and asks the user whether to proceed, using the same yes/no chooser as `pulumi up`
+// and `pulumi destroy`. operation names the operation in the prompt (e.g. "create"). The summary and prompt
+// go to stderr so that stdout stays a clean JSON channel for piping. Returns nil to proceed; a bail error
+// (suppressed by the outer CLI) when the user declines; a real error when the prompt is cancelled (e.g.
+// Ctrl-C), matching up/destroy. requireYesIfNonInteractive should have been called
+// earlier; if we somehow reach here non-interactively without --yes we treat it as a decline.
+func (pc *packageCommand) confirm(cmd *cobra.Command, summary, operation string, yes bool) error {
 	stderr := cmd.ErrOrStderr()
 	fmt.Fprint(stderr, summary)
 	if !strings.HasSuffix(summary, "\n") {
@@ -750,12 +753,22 @@ func (pc *packageCommand) confirm(cmd *cobra.Command, summary, confirmName strin
 	if !cmdutil.Interactive() {
 		return backenderr.ErrNonInteractiveRequiresYes
 	}
-	opts := display.Options{
-		Color:  cmdutil.GetGlobalColorization(),
-		Stdin:  cmd.InOrStdin(),
-		Stdout: stderr,
+	// Route the prompt to stderr so stdout stays a clean JSON channel. survey needs file-backed
+	// streams for terminal control, so fall back to its defaults when the command's streams have
+	// been replaced with plain buffers.
+	var askOpts []survey.AskOpt
+	in, inOK := cmd.InOrStdin().(terminal.FileReader)
+	out, outOK := stderr.(terminal.FileWriter)
+	if inOK && outOK {
+		askOpts = append(askOpts, survey.WithStdio(in, out, out))
 	}
-	if !ui.ConfirmPrompt("", confirmName, opts) {
+	response := ui.PromptUser(
+		fmt.Sprintf("Do you want to perform this %s?", operation),
+		[]string{"yes", "no"},
+		"no",
+		cmdutil.GetGlobalColorization(),
+		askOpts...)
+	if response != "yes" {
 		return result.FprintBailf(stderr, "confirmation declined")
 	}
 	return nil

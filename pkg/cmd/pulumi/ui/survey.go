@@ -183,6 +183,22 @@ func PromptUser(
 	colorization colors.Colorization,
 	surveyAskOpts ...survey.AskOpt,
 ) string {
+	response, err := PromptUserErr(msg, options, defaultOption, colorization, surveyAskOpts...)
+	if err != nil {
+		return ""
+	}
+	return response
+}
+
+// PromptUserErr is like PromptUser but returns the survey error (for example the user pressing
+// Ctrl-C) instead of swallowing it, so callers can distinguish cancellation from a chosen option.
+func PromptUserErr(
+	msg string,
+	options []string,
+	defaultOption string,
+	colorization colors.Colorization,
+	surveyAskOpts ...survey.AskOpt,
+) (string, error) {
 	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
 	disableSurveyColorOnce()
 
@@ -200,9 +216,9 @@ func PromptUser(
 		Options: options,
 		Default: defaultOption,
 	}, &response, allSurveyAskOpts...); err != nil {
-		return ""
+		return "", err
 	}
-	return response
+	return response, nil
 }
 
 // PromptUserMultiSkippable wraps over promptUserMulti making it skippable through the "yes" parameter
