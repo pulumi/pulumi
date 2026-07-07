@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Replace resources whose deletedWith target is being replaced, instead of leaving them orphaned in state
+time: 2026-07-07T00:00:00.000000+00:00

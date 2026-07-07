@@ -858,7 +858,8 @@ export interface ResourceOptions {
 
     /**
      * If set, the providers Delete method will not be called for this resource
-     * if specified is being deleted as well.
+     * if specified is being deleted as well. If the named resource is being
+     * replaced, this resource will be replaced as well.
      */
     deletedWith?: Resource;
 

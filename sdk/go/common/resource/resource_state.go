@@ -61,7 +61,7 @@ type State struct {
 	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
-	DeletedWith             URN                   // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
+	DeletedWith             URN                   // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well. If the named resource is being replaced, this resource will be replaced as well.
 	ReplaceWith             []URN                 // If set, the URNs of the resources whose replaces will also trigger a replace of this resource.
 	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
 	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
