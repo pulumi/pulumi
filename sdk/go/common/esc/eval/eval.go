@@ -50,6 +50,9 @@ type ProviderLoader interface {
 type EnvironmentLoader interface {
 	// LoadEnvironment loads the definition for the environment with the given name.
 	LoadEnvironment(ctx context.Context, name string) ([]byte, Decrypter, error)
+
+	// AuthorizeImport reports whether the environment named by importer may import the environment named by imported.
+	AuthorizeImport(ctx context.Context, importer string, imported string, importerIsRoot bool) error
 }
 
 // LoadYAML decodes a YAML template from an io.Reader.
@@ -597,6 +600,12 @@ func (e *evalContext) evaluateImports() {
 //
 // Each environment in the import closure is only evaluated once.
 func (e *evalContext) evaluateImport(expr ast.Expr, name string) (*value, bool) {
+	// Authorize the import edge before consulting the cache, so authorization runs once per (importer, imported)
+	if err := e.environments.AuthorizeImport(e.ctx, e.name, name, e.isRootEnv); err != nil {
+		e.errorf(expr, "%s", err.Error())
+		return nil, false
+	}
+
 	var val *value
 	if imported, ok := e.imports[name]; ok {
 		if imported.evaluating {
