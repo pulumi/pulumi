@@ -31,7 +31,9 @@ type Mapper interface {
 	// package that is expected to provide the mapping and satisfy the request, which implementations may use to optimise
 	// their efforts to return the best possible mapping. The ecosystem parameter identifies the source ecosystem whose
 	// mappings are being requested (e.g. "terraform"); when empty, implementations fall back to the conversion key they
-	// were configured with. If no matching mapping exists, implementations should return an empty byte array result.
+	// were configured with (most instances default to "terraform"; `pulumi convert` and `pulumi import` default it to
+	// the source converter's plugin name). If no matching mapping exists, implementations should return an empty byte
+	// array result.
 	GetMapping(ctx context.Context, provider string, hint *MapperPackageHint, ecosystem string) ([]byte, error)
 }
 

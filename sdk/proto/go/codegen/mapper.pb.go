@@ -49,7 +49,11 @@ type GetMappingRequest struct {
 	// The ecosystem whose mappings are being requested (e.g. "terraform"). This identifies the source ecosystem
 	// the caller consumes, which is not necessarily the caller's own name -- the hcl converter, for instance,
 	// executes Terraform programs and so requests "terraform" mappings. If left empty, the mapper falls back to
-	// the conversion key it was configured with.
+	// the conversion key it was configured with: most mapper instances (those served to `plugin run` and to
+	// providers and language runtimes) default to "terraform", while `pulumi convert` and `pulumi import` default
+	// it to the source converter's plugin name. Setting this field lets a caller request a specific ecosystem
+	// regardless of that configured default, which is particularly useful for `plugin run` and providers
+	// accessing the mapper.
 	Ecosystem     string `protobuf:"bytes,4,opt,name=ecosystem,proto3" json:"ecosystem,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
