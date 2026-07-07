@@ -27,6 +27,8 @@ import (
 	"strings"
 
 	fxs "github.com/pgavlin/fx/v2/slices"
+	"go.opentelemetry.io/otel"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/migrate"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -37,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/santhosh-tekuri/jsonschema/v5"
@@ -404,6 +407,10 @@ func UnmarshalUntypedDeployment(
 	ctx context.Context,
 	deployment *apitype.UntypedDeployment,
 ) (*apitype.DeploymentV3, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	_, span := cmdutil.StartSpan(ctx, tracer, "stack.UnmarshalUntypedDeployment")
+	defer span.End()
+
 	contract.Requiref(deployment != nil, "deployment", "must not be nil")
 	switch {
 	case deployment.Version > DeploymentSchemaVersionLatest:
@@ -454,6 +461,10 @@ func DeserializeUntypedDeployment(
 	deployment *apitype.UntypedDeployment,
 	secretsProv secrets.Provider,
 ) (*deploy.Snapshot, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "stack.DeserializeUntypedDeployment")
+	defer span.End()
+
 	v3deployment, err := UnmarshalUntypedDeployment(ctx, deployment)
 	if err != nil {
 		return nil, err
@@ -468,6 +479,10 @@ func DeserializeStackOutputs(
 	deployment apitype.DeploymentV3,
 	secretsProv secrets.Provider,
 ) (resource.PropertyMap, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "stack.DeserializeStackOutputs")
+	defer span.End()
+
 	// Find the root stack resource in the deployment.
 	var stackResource *apitype.ResourceV3
 	for i := range deployment.Resources {
@@ -501,6 +516,10 @@ func DeserializeDeploymentV3(
 	deployment apitype.DeploymentV3,
 	secretsProv secrets.Provider,
 ) (*deploy.Snapshot, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "stack.DeserializeDeploymentV3")
+	defer span.End()
+
 	// Unpack the versions.
 	manifest, err := deploy.DeserializeManifest(deployment.Manifest)
 	if err != nil {
