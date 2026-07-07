@@ -181,6 +181,9 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 		Short: "Read a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if pc.dryrun {
+				return errDryRunNotSupported("read")
+			}
 			ctx := cmd.Context()
 			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
@@ -313,6 +316,9 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 		Short: "Delete a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if pc.dryrun {
+				return errDryRunNotSupported("delete")
+			}
 			if !pc.stateless {
 				return errStatefulNotImplemented("delete")
 			}
@@ -354,6 +360,9 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 		Short: "List resources",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if pc.dryrun {
+				return errDryRunNotSupported("list")
+			}
 			if all && count > 0 {
 				return errors.New("--all and --count are mutually exclusive")
 			}
@@ -496,6 +505,10 @@ func (pc *packageCommand) printListResults(cmd *cobra.Command, results []plugin.
 	}
 	fmt.Fprint(cmd.OutOrStdout(), output)
 	return nil
+}
+
+func errDryRunNotSupported(op string) error {
+	return fmt.Errorf("--dry-run is not supported for `%s`", op)
 }
 
 // errStatefulNotImplemented is returned from create/patch/delete when the user did not pass

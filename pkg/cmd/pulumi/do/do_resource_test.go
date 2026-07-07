@@ -607,6 +607,48 @@ func TestDoCmdResourceNonInteractiveRequiresYes(t *testing.T) {
 	}
 }
 
+// TestDoCmdResourceDryRunNotSupported asserts that operations without a preview mode reject --dry-run instead
+// of ignoring it. For delete this is load-bearing: --dry-run skips the confirmation prompt, so accepting it
+// would delete the resource without asking.
+func TestDoCmdResourceDryRunNotSupported(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"delete", []string{"--dry-run", "--stateless", "azure:index:myResource", "delete", "res-1", "--yes"}},
+		{"read", []string{"--dry-run", "azure:index:myResource", "read", "res-1"}},
+		{"list", []string{"--dry-run", "azure:index:myResource", "list"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			provider := &testProvider{
+				spec: doResourceSpec(true),
+				MockProvider: plugin.MockProvider{
+					DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+						require.Fail(t, "Delete should not be called with --dry-run")
+						return plugin.DeleteResponse{}, nil
+					},
+					ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+						require.Fail(t, "Read should not be called with --dry-run")
+						return plugin.ReadResponse{}, nil
+					},
+					ListF: func(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
+						require.Fail(t, "List should not be called with --dry-run")
+						return nil, nil
+					},
+				},
+			}
+			cmd, _, _ := newDoResourceCommand(t, provider)
+			cmd.SetArgs(tc.args)
+			err := cmd.Execute()
+			require.ErrorContains(t, err, "--dry-run is not supported for `"+tc.name+"`")
+		})
+	}
+}
+
 // TestDoCmdResourceConfirmationSummary asserts the operation summary lands on stderr (so stdout stays a clean
 // JSON channel for piping) and that the patch summary surfaces the Diff response.
 func TestDoCmdResourceConfirmationSummary(t *testing.T) {
