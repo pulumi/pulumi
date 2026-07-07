@@ -32,6 +32,7 @@ class GetMappingRequest(google.protobuf.message.Message):
     PROVIDER_FIELD_NUMBER: builtins.int
     PULUMI_PROVIDER_FIELD_NUMBER: builtins.int
     PARAMETERIZATION_HINT_FIELD_NUMBER: builtins.int
+    ECOSYSTEM_FIELD_NUMBER: builtins.int
     provider: builtins.str
     """The name of the source provider (e.g. the Terraform provider name if a Terraform program is being converted) for
     which a mapping into Pulumi should be returned.
@@ -39,6 +40,12 @@ class GetMappingRequest(google.protobuf.message.Message):
     pulumi_provider: builtins.str
     """The name of the Pulumi plugin that is expected to provide the mapping. If left empty, will be defaulted to the
     source provider name.
+    """
+    ecosystem: builtins.str
+    """The ecosystem whose mappings are being requested (e.g. "terraform"). This identifies the source ecosystem
+    the caller consumes, which is not necessarily the caller's own name -- the hcl converter, for instance,
+    executes Terraform programs and so requests "terraform" mappings. If left empty, the mapper falls back to
+    the conversion key it was configured with.
     """
     @property
     def parameterization_hint(self) -> global___MapperParameterizationHint:
@@ -50,9 +57,10 @@ class GetMappingRequest(google.protobuf.message.Message):
         provider: builtins.str = ...,
         pulumi_provider: builtins.str = ...,
         parameterization_hint: global___MapperParameterizationHint | None = ...,
+        ecosystem: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["parameterization_hint", b"parameterization_hint"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["parameterization_hint", b"parameterization_hint", "provider", b"provider", "pulumi_provider", b"pulumi_provider"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["ecosystem", b"ecosystem", "parameterization_hint", b"parameterization_hint", "provider", b"provider", "pulumi_provider", b"pulumi_provider"]) -> None: ...
 
 global___GetMappingRequest = GetMappingRequest
 
