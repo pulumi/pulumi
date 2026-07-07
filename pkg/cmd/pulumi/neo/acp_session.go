@@ -30,13 +30,8 @@ import (
 // handlers, and the editor client used to stream updates. The Neo task and its
 // event loop are created lazily on the first prompt (matching the TUI).
 type acpSession struct {
-	acpID string
-	// pc creates the Neo task and backs the Session event loop (needs the
-	// concrete client). api is the same client viewed through a narrow interface
-	// so the task-facing calls can be faked in tests; both point at the one
-	// cloud client.
-	pc           *client.Client
-	api          neoTaskAPI
+	acpID        string
+	api          neoSessionAPI
 	orgName      string
 	projectName  string
 	stackRefName string
@@ -70,12 +65,13 @@ type acpSession struct {
 	activeTurn     chan turnResult
 }
 
-// neoTaskAPI is the slice of the cloud client a session drives its task
-// through: posting user events (chat messages, approvals, cancels) and
-// PATCHing a live task's mode settings. *client.Client satisfies it; tests
-// fake it.
-type neoTaskAPI interface {
-	PostNeoTaskUserEvent(ctx context.Context, orgName, taskID string, body any) error
+// neoSessionAPI is the slice of the cloud client an ACP session drives its Neo
+// task through: creating the task, streaming its events, posting user events
+// (chat messages, approvals, cancels), and PATCHing a live task's mode
+// settings. *client.Client satisfies it; tests fake it.
+type neoSessionAPI interface {
+	EventStreamer
+	neoTaskCreator
 	UpdateNeoTask(ctx context.Context, orgName, taskID string, opts client.UpdateNeoTaskOptions) error
 }
 
@@ -105,7 +101,7 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 	planMode := s.planMode
 	s.mu.Unlock()
 
-	resp, err := createNeoTaskWithEntityRetry(baseCtx, s.pc, s.orgName, prompt, s.stackRefName, s.projectName,
+	resp, err := createNeoTaskWithEntityRetry(baseCtx, s.api, s.orgName, prompt, s.stackRefName, s.projectName,
 		client.CreateNeoTaskOptions{
 			ToolExecutionMode: "cli",
 			// Manual approval routes every gated tool call to the editor as an ACP
@@ -130,7 +126,7 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 	s.mu.Unlock()
 
 	session := &Session{
-		Client:   s.pc,
+		Client:   s.api,
 		Handlers: s.handlers,
 		OrgName:  s.orgName,
 		TaskID:   resp.TaskID,
@@ -149,6 +145,71 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 	}()
 	go s.pump(sessCtx, uiCh)
 	return nil
+}
+
+// runTurn runs one prompt turn: on the first prompt it creates the Neo task and
+// starts the event loop (start); on later prompts it posts the user's message.
+// Either way it blocks until the turn ends (a final assistant message,
+// cancellation, or a fatal error) and reports the stop reason. baseCtx is the
+// connection-lifetime context the session's background loops run on; ctx is the
+// prompt request's own context.
+func (s *acpSession) runTurn(ctx, baseCtx context.Context, text string) (acp.PromptResult, error) {
+	// Register this turn before any work so the pump can signal it the moment
+	// the turn ends, even for a very fast turn. ACP drives one prompt at a time
+	// per session; reject an overlapping prompt rather than overwrite activeTurn,
+	// which would orphan the prior waiter (the pump only ever signals the latest).
+	done := make(chan turnResult, 1)
+	s.mu.Lock()
+	if s.ended {
+		// The Session event loop is gone (stream failure or clean end); a new
+		// turn could never complete, so fail it up front.
+		s.mu.Unlock()
+		return acp.PromptResult{}, s.endedError()
+	}
+	if s.activeTurn != nil {
+		s.mu.Unlock()
+		return acp.PromptResult{}, fmt.Errorf("a prompt turn is already in progress for session %q", s.acpID)
+	}
+	s.activeTurn = done
+	needStart := !s.started
+	taskID := s.taskID
+	s.mu.Unlock()
+
+	var startErr error
+	if needStart {
+		startErr = s.start(baseCtx, text)
+	} else {
+		startErr = s.api.PostNeoTaskUserEvent(ctx, s.orgName, taskID,
+			apitype.AgentUserEventUserMessage{Type: "user_message", Content: text})
+	}
+	if startErr != nil {
+		s.mu.Lock()
+		s.activeTurn = nil
+		s.mu.Unlock()
+		return acp.PromptResult{}, startErr
+	}
+
+	select {
+	case <-ctx.Done():
+		return acp.PromptResult{}, ctx.Err()
+	case tr := <-done:
+		if tr.err != nil {
+			return acp.PromptResult{}, tr.err
+		}
+		return acp.PromptResult{StopReason: tr.reason}, nil
+	}
+}
+
+// cancel posts a cancel user event for the session's task, if one is running.
+// The turn ends with StopCancelled once the backend acknowledges.
+func (s *acpSession) cancel(ctx context.Context) error {
+	s.mu.Lock()
+	started, taskID := s.started, s.taskID
+	s.mu.Unlock()
+	if !started || taskID == "" {
+		return nil
+	}
+	return s.api.PostNeoTaskUserEvent(ctx, s.orgName, taskID, apitype.AgentUserEventCancel{Type: "user_cancel"})
 }
 
 // endedError describes why the session can no longer run turns: the event loop

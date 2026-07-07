@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"testing"
@@ -102,6 +104,145 @@ func TestBuildACPHandlersRoutesShellToTerminal(t *testing.T) {
 	sh, ok := handlers["shell"].(*tools.Shell)
 	require.True(t, ok)
 	require.NotNil(t, sh.OnExec, "terminal capability should route shell commands through the editor")
+}
+
+// recordingFSCaller answers the agent's outbound fs/* requests: it records the
+// last method and params (re-encoded as JSON so assertions don't need acp's
+// unexported wire structs) and serves readContent for fs/read_text_file.
+type recordingFSCaller struct {
+	calls       int
+	method      string
+	params      json.RawMessage
+	readContent string
+}
+
+func (c *recordingFSCaller) Call(_ context.Context, method string, params, result any) error {
+	c.calls++
+	c.method = method
+	c.params, _ = json.Marshal(params)
+	if method == "fs/read_text_file" && result != nil {
+		return json.Unmarshal([]byte(`{"content":`+strconv.Quote(c.readContent)+`}`), result)
+	}
+	return nil
+}
+
+// fsParams is the wire shape of the fs/read_text_file and fs/write_text_file
+// params, decoded from the recorded JSON for assertions.
+type fsParams struct {
+	SessionID string `json:"sessionId"`
+	Path      string `json:"path"`
+	Content   string `json:"content"`
+}
+
+// TestACPFilesystemReadUsesEditorContent: with fs.readTextFile advertised, a
+// filesystem read is served by the editor — returning its (possibly unsaved)
+// buffer, with the tool's offset/limit slicing still applied — ignoring
+// whatever is on local disk.
+func TestACPFilesystemReadUsesEditorContent(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	target := filepath.Join(root, "main.go")
+	require.NoError(t, os.WriteFile(target, []byte("ON DISK\n"), 0o600))
+
+	caller := &recordingFSCaller{readContent: "line1\nline2\nline3\n"}
+	handlers, err := buildACPHandlers(root, "sess_abc",
+		acp.ClientCapabilities{FS: acp.FileSystemCapability{ReadTextFile: true}},
+		caller, pkgWorkspace.Instance)
+	require.NoError(t, err)
+
+	res, err := handlers["filesystem"].Invoke(t.Context(), "read",
+		mustJSON(t, map[string]any{"file_path": target, "offset": 1}))
+	require.NoError(t, err)
+	assert.Equal(t, "fs/read_text_file", caller.method)
+
+	// The result reflects the editor's content (sliced from offset 1), not disk.
+	raw, err := json.Marshal(res)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), "line2")
+	assert.NotContains(t, string(raw), "ON DISK")
+	assert.NotContains(t, string(raw), "line1", "offset slicing should still apply to editor content")
+}
+
+// TestACPFilesystemEditUsesEditorBufferOverDisk guards that an ACP-backed edit
+// matches and writes against the editor's buffer (via the read routing), not
+// stale disk: the on-disk content here would not contain old_string at all.
+func TestACPFilesystemEditUsesEditorBufferOverDisk(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	target := filepath.Join(root, "main.go")
+	require.NoError(t, os.WriteFile(target, []byte("STALE DISK CONTENT\n"), 0o600))
+
+	caller := &recordingFSCaller{readContent: "func target() {}\n"}
+	handlers, err := buildACPHandlers(root, "sess_abc",
+		acp.ClientCapabilities{FS: acp.FileSystemCapability{ReadTextFile: true, WriteTextFile: true}},
+		caller, pkgWorkspace.Instance)
+	require.NoError(t, err)
+
+	res, err := handlers["filesystem"].Invoke(t.Context(), "edit", mustJSON(t, map[string]string{
+		"file_path":  target,
+		"old_string": "func target()",
+		"new_string": "func renamed()",
+	}))
+	require.NoError(t, err)
+
+	raw, err := json.Marshal(res)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), "Successfully edited", "edit should match against the editor buffer")
+
+	// The write carried the buffer-derived content, and disk was left untouched.
+	var wrote fsParams
+	require.NoError(t, json.Unmarshal(caller.params, &wrote))
+	assert.Equal(t, "func renamed() {}\n", wrote.Content)
+	onDisk, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, "STALE DISK CONTENT\n", string(onDisk))
+}
+
+// TestACPFilesystemEditRoutesThroughEditorWrite is the end-to-end check for the
+// edit-as-ACP-write path: with only fs.writeTextFile advertised, a filesystem
+// edit reads and computes the modified content locally but commits it through
+// the editor's fs/write_text_file, leaving the on-disk file untouched (the
+// editor owns the write).
+func TestACPFilesystemEditRoutesThroughEditorWrite(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	target := filepath.Join(root, "main.go")
+	const original = "package main\n\nfunc foo() {}\n"
+	require.NoError(t, os.WriteFile(target, []byte(original), 0o600))
+
+	caller := &recordingFSCaller{}
+	handlers, err := buildACPHandlers(root, "sess_abc",
+		acp.ClientCapabilities{FS: acp.FileSystemCapability{WriteTextFile: true}},
+		caller, pkgWorkspace.Instance)
+	require.NoError(t, err)
+
+	_, err = handlers["filesystem"].Invoke(t.Context(), "edit", mustJSON(t, map[string]string{
+		"file_path":  target,
+		"old_string": "func foo()",
+		"new_string": "func bar()",
+	}))
+	require.NoError(t, err)
+
+	// The write was diverted to the editor with the fully-modified content.
+	require.Equal(t, 1, caller.calls)
+	require.Equal(t, "fs/write_text_file", caller.method)
+	var wrote fsParams
+	require.NoError(t, json.Unmarshal(caller.params, &wrote))
+	// The filesystem tool canonicalizes the path before writing, so the editor
+	// receives the symlink-evaluated absolute path.
+	realRoot, err := filepath.EvalSymlinks(root)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(realRoot, "main.go"), wrote.Path)
+	assert.Equal(t, "sess_abc", wrote.SessionID)
+	assert.Equal(t, "package main\n\nfunc bar() {}\n", wrote.Content)
+
+	// Disk is untouched: the CLI did not perform the write itself.
+	onDisk, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, original, string(onDisk))
 }
 
 // scriptedTermCaller records the terminal/* methods invoked and can fail the
@@ -192,7 +333,6 @@ func TestACPDelegateSessionLookup(t *testing.T) {
 	assert.Equal(t, "proj", got.projectName)
 	assert.Equal(t, "dev", got.stackRefName)
 	assert.Equal(t, "/work", got.cwd)
-	assert.Nil(t, got.pc)
 	require.NotNil(t, got.handlers)
 
 	_, ok = d.session("missing")
@@ -247,12 +387,47 @@ func TestPromptRejectedAfterSessionEnded(t *testing.T) {
 	assert.Empty(t, api.posted, "a prompt on an ended session must not post to the backend")
 }
 
-// fakeTaskAPI records the user events and mode PATCHes a session sends to the
-// (fake) Neo backend.
+// createdTask records one CreateNeoTask call a session made against the fake
+// backend.
+type createdTask struct {
+	content     string
+	stackName   string
+	projectName string
+	opts        client.CreateNeoTaskOptions
+}
+
+// fakeTaskAPI is a fake neoSessionAPI: it records the task creations, user
+// events, and mode PATCHes a session sends to the (fake) Neo backend, and
+// serves stream (which may be nil: reads then block until ctx ends) as the
+// task's event stream.
 type fakeTaskAPI struct {
+	stream    chan client.NeoStreamEvent
+	createErr error
+
 	mu      sync.Mutex
+	created []createdTask
 	posted  []any
 	patches []client.UpdateNeoTaskOptions
+}
+
+func (p *fakeTaskAPI) CreateNeoTask(
+	_ context.Context, _, content, stackName, projectName string, opts client.CreateNeoTaskOptions,
+) (*client.NeoTaskResponse, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.createErr != nil {
+		return nil, p.createErr
+	}
+	p.created = append(p.created, createdTask{
+		content: content, stackName: stackName, projectName: projectName, opts: opts,
+	})
+	return &client.NeoTaskResponse{TaskID: "task_1"}, nil
+}
+
+func (p *fakeTaskAPI) StreamNeoTaskEvents(
+	context.Context, string, string, string,
+) (<-chan client.NeoStreamEvent, error) {
+	return p.stream, nil
 }
 
 func (p *fakeTaskAPI) PostNeoTaskUserEvent(_ context.Context, _, _ string, body any) error {

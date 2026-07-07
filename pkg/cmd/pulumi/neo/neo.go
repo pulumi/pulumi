@@ -56,6 +56,14 @@ const nonInteractivePromptPreamble = "<details><summary>non-interactive mode</su
 	"explicit and return a complete final answer.\n\n" +
 	"</details>"
 
+// neoTaskCreator is the slice of the cloud client that creates Neo tasks.
+// *client.Client satisfies it; tests fake it.
+type neoTaskCreator interface {
+	CreateNeoTask(
+		ctx context.Context, orgName, content, stackName, projectName string, opts client.CreateNeoTaskOptions,
+	) (*client.NeoTaskResponse, error)
+}
+
 // createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
 // attached stack with "invalid entities" (typically a permissions issue) it retries
 // once without the stack so the task is still created. onEntityDropped, if non-nil,
@@ -63,7 +71,7 @@ const nonInteractivePromptPreamble = "<details><summary>non-interactive mode</su
 // surface a warning.
 func createNeoTaskWithEntityRetry(
 	ctx context.Context,
-	pc *client.Client,
+	pc neoTaskCreator,
 	orgName, prompt, stackName, projectName string,
 	opts client.CreateNeoTaskOptions,
 	onEntityDropped func(error),

@@ -36,7 +36,7 @@ const codeAuthRequired int64 = -32000
 // Delegate supplies the application-specific behavior behind the ACP session
 // methods, keeping this package free of application dependencies. The neo
 // package implements it over the Pulumi Cloud backend and the Neo Session event
-// loop. A nil Delegate makes the session methods report "not implemented".
+// loop.
 type Delegate interface {
 	// CheckAuth reports whether a usable session is available from the existing
 	// credentials, returning ErrAuthRequired when none is. It never prompts. The
@@ -84,52 +84,36 @@ type Identity struct {
 }
 
 // Agent is the ACP agent side of the adapter. It holds the state that spans the
-// connection's lifetime — the negotiated client capabilities and the installed
-// Delegate — and implements the client→agent methods dispatched by handle. The
-// Client used to reach back to the editor is not stored here: handle derives it
-// from the connection on each dispatch.
+// connection's lifetime — the negotiated client capabilities and the Delegate —
+// and implements the client→agent methods dispatched by handle. The Client used
+// to reach back to the editor is not stored here: handle derives it from the
+// connection on each dispatch.
 //
 // Agent owns only the protocol handshake (initialize/authenticate) and request
 // routing; the application-specific session behavior (for Neo: the Cloud client,
 // org/stack resolution, and the Neo Session event loop) lives behind the
-// Delegate, which the embedding package installs via SetDelegate.
+// Delegate supplied at construction.
 type Agent struct {
 	// identity is reported as agentInfo and the advertised auth methods on
 	// initialize.
 	identity Identity
 	// version is reported as agentInfo.version on initialize.
 	version string
+	// delegate supplies the application-specific session behavior.
+	delegate Delegate
 
 	mu sync.Mutex
 	// clientCaps is captured from the initialize request and consulted when
 	// building per-session tool handlers (filesystem/shell routing).
 	clientCaps ClientCapabilities
-	// delegate supplies the Pulumi-specific session behavior. nil until
-	// SetDelegate is called; the session methods report "not implemented" while
-	// nil.
-	delegate Delegate
 }
 
 // NewAgent constructs an Agent. identity is advertised to the editor as agentInfo
 // and the available auth methods, and version is surfaced as agentInfo.version,
-// both during initialize.
-func NewAgent(identity Identity, version string) *Agent {
-	return &Agent{identity: identity, version: version}
-}
-
-// SetDelegate installs the application-specific session behavior. Call before Serve.
-func (a *Agent) SetDelegate(d Delegate) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.delegate = d
-}
-
-// getDelegate returns the installed Delegate, or nil when SetDelegate has not
-// been called yet.
-func (a *Agent) getDelegate() Delegate {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return a.delegate
+// both during initialize. delegate supplies the application-specific session
+// behavior and must be non-nil.
+func NewAgent(identity Identity, version string, delegate Delegate) *Agent {
+	return &Agent{identity: identity, version: version, delegate: delegate}
 }
 
 // initialize handles the `initialize` request: it records the client's
@@ -174,24 +158,10 @@ func (a *Agent) authenticate(ctx context.Context, req *jsonrpc2.Request) (any, e
 	if _, err := decodeParams[AuthenticateParams](req); err != nil {
 		return nil, err
 	}
-	d := a.getDelegate()
-	if d == nil {
-		return nil, errNotImplemented("authenticate")
-	}
-	if err := d.CheckAuth(ctx); err != nil {
+	if err := a.delegate.CheckAuth(ctx); err != nil {
 		return nil, mapDelegateErr(err)
 	}
 	return nil, nil
-}
-
-// errNotImplemented is the response a session method returns when no Delegate is
-// installed. In normal operation the neo package always sets one before Serve;
-// this guards the standalone-handshake case (and tests).
-func errNotImplemented(method string) error {
-	return &jsonrpc2.Error{
-		Code:    jsonrpc2.CodeInternalError,
-		Message: method + " is not implemented yet",
-	}
 }
 
 // mapDelegateErr converts a Delegate error into the response the editor should
@@ -210,16 +180,13 @@ func mapDelegateErr(err error) error {
 // session/update notifications.
 func (a *Agent) newSession(ctx context.Context, client Client, req *jsonrpc2.Request) (any, error) {
 	a.mu.Lock()
-	d, caps := a.delegate, a.clientCaps
+	caps := a.clientCaps
 	a.mu.Unlock()
-	if d == nil {
-		return nil, errNotImplemented("session/new")
-	}
 	params, err := decodeParams[NewSessionParams](req)
 	if err != nil {
 		return nil, err
 	}
-	res, err := d.NewSession(ctx, params, caps, client)
+	res, err := a.delegate.NewSession(ctx, params, caps, client)
 	if err != nil {
 		return nil, mapDelegateErr(err)
 	}
@@ -227,39 +194,27 @@ func (a *Agent) newSession(ctx context.Context, client Client, req *jsonrpc2.Req
 }
 
 func (a *Agent) prompt(ctx context.Context, req *jsonrpc2.Request) (any, error) {
-	d := a.getDelegate()
-	if d == nil {
-		return nil, errNotImplemented("session/prompt")
-	}
 	params, err := decodeParams[PromptParams](req)
 	if err != nil {
 		return nil, err
 	}
-	return d.Prompt(ctx, params)
+	return a.delegate.Prompt(ctx, params)
 }
 
 func (a *Agent) setConfigOption(ctx context.Context, req *jsonrpc2.Request) (any, error) {
-	d := a.getDelegate()
-	if d == nil {
-		return nil, errNotImplemented("session/set_config_option")
-	}
 	params, err := decodeParams[SetConfigOptionParams](req)
 	if err != nil {
 		return nil, err
 	}
-	return d.SetConfigOption(ctx, params)
+	return a.delegate.SetConfigOption(ctx, params)
 }
 
 // cancel handles the session/cancel notification. As a notification it has no
 // response; HandlerWithError logs any returned error.
 func (a *Agent) cancel(ctx context.Context, req *jsonrpc2.Request) (any, error) {
-	d := a.getDelegate()
-	if d == nil {
-		return nil, nil
-	}
 	params, err := decodeParams[CancelParams](req)
 	if err != nil {
 		return nil, err
 	}
-	return nil, d.Cancel(ctx, params)
+	return nil, a.delegate.Cancel(ctx, params)
 }

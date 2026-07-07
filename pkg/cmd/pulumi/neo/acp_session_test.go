@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -228,6 +229,141 @@ func TestPumpTeardownResolvesActiveTurn(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("session teardown did not resolve the waiting turn")
 	}
+}
+
+// TestRunTurnFirstPromptCreatesTaskAndCompletes drives a whole first turn
+// through the real start path against a fake backend: the task is created with
+// the session's configured modes, the event loop connects to the scripted
+// stream, the assistant's message reaches the editor as a session/update, and
+// the final message resolves the turn with end_turn.
+func TestRunTurnFirstPromptCreatesTaskAndCompletes(t *testing.T) {
+	t.Parallel()
+
+	fp := &fakeTaskAPI{stream: make(chan client.NeoStreamEvent, 8)}
+	fc := &fakeACPClient{}
+	s := &acpSession{
+		acpID:          "sess_x",
+		api:            fp,
+		orgName:        "acme",
+		projectName:    "proj",
+		stackRefName:   "dev",
+		client:         fc,
+		handlers:       map[string]ToolHandler{},
+		permissionMode: client.NeoPermissionModeReadOnly,
+		planMode:       true,
+	}
+	// Queue the turn-ending final assistant message so the event loop finds it
+	// as soon as it connects.
+	fp.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		Content: "done",
+		IsFinal: true,
+	})}
+
+	res, err := s.runTurn(t.Context(), t.Context(), "build it")
+	require.NoError(t, err)
+	assert.Equal(t, acp.StopEndTurn, res.StopReason)
+
+	fp.mu.Lock()
+	require.Len(t, fp.created, 1)
+	created := fp.created[0]
+	fp.mu.Unlock()
+	assert.Equal(t, "build it", created.content)
+	assert.Equal(t, "dev", created.stackName)
+	assert.Equal(t, "proj", created.projectName)
+	assert.Equal(t, "cli", created.opts.ToolExecutionMode)
+	assert.Equal(t, client.NeoApprovalModeManual, created.opts.ApprovalMode,
+		"approval stays manual so gated calls surface as editor permission requests")
+	assert.Equal(t, client.NeoPermissionModeReadOnly, created.opts.PermissionMode)
+	assert.True(t, created.opts.PlanMode)
+
+	s.mu.Lock()
+	assert.True(t, s.started)
+	assert.Equal(t, "task_1", s.taskID)
+	s.mu.Unlock()
+
+	// The assistant's message was written to the editor before the turn
+	// resolved (the pump orders updates ahead of the turn result).
+	fc.mu.Lock()
+	defer fc.mu.Unlock()
+	require.NotEmpty(t, fc.notifications)
+	assert.Equal(t, "session/update", fc.notifications[0].method)
+}
+
+// TestStartDefaultsModes verifies the hardcoded baseline reaches task creation
+// when the editor never changed a config option: full-access permissions, plan
+// mode off.
+func TestStartDefaultsModes(t *testing.T) {
+	t.Parallel()
+
+	fp := &fakeTaskAPI{}
+	s := &acpSession{acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{}}
+
+	require.NoError(t, s.start(t.Context(), "hello"))
+
+	fp.mu.Lock()
+	defer fp.mu.Unlock()
+	require.Len(t, fp.created, 1)
+	assert.Equal(t, client.NeoPermissionModeDefault, fp.created[0].opts.PermissionMode)
+	assert.False(t, fp.created[0].opts.PlanMode)
+}
+
+// TestRunTurnCreateErrorReleasesTurn: a failed task creation must propagate the
+// error, leave the session unstarted, and release the turn slot so the editor
+// can retry the prompt.
+func TestRunTurnCreateErrorReleasesTurn(t *testing.T) {
+	t.Parallel()
+
+	fp := &fakeTaskAPI{createErr: errors.New("task quota exceeded")}
+	s := &acpSession{acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{}}
+
+	_, err := s.runTurn(t.Context(), t.Context(), "hello")
+	require.ErrorContains(t, err, "task quota exceeded")
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	assert.False(t, s.started, "a failed creation must not mark the session started")
+	assert.Nil(t, s.activeTurn, "a failed start must release the turn slot for a retry")
+}
+
+// TestRunTurnLaterPromptPostsUserMessage: once the task exists, a prompt posts a
+// user_message instead of creating a task, and resolves when the turn ends.
+func TestRunTurnLaterPromptPostsUserMessage(t *testing.T) {
+	t.Parallel()
+
+	fp := &fakeTaskAPI{}
+	s := &acpSession{
+		acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{},
+		started: true, taskID: "task_9",
+	}
+
+	turnDone := make(chan struct{})
+	var res acp.PromptResult
+	var err error
+	go func() {
+		defer close(turnDone)
+		res, err = s.runTurn(t.Context(), t.Context(), "again")
+	}()
+
+	// Wait for the post, then resolve the turn the way the pump would.
+	require.Eventually(t, func() bool {
+		fp.mu.Lock()
+		defer fp.mu.Unlock()
+		return len(fp.posted) == 1
+	}, 2*time.Second, 5*time.Millisecond, "second prompt should post a user_message")
+	s.finishTurn(turnResult{reason: acp.StopEndTurn})
+	<-turnDone
+
+	require.NoError(t, err)
+	assert.Equal(t, acp.StopEndTurn, res.StopReason)
+
+	fp.mu.Lock()
+	defer fp.mu.Unlock()
+	assert.Empty(t, fp.created, "no second task is created")
+	msg, ok := fp.posted[0].(apitype.AgentUserEventUserMessage)
+	require.True(t, ok)
+	assert.Equal(t, "user_message", msg.Type)
+	assert.Equal(t, "again", msg.Content)
 }
 
 func TestRequestPermissionRelaysDecision(t *testing.T) {

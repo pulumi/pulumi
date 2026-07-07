@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -77,8 +76,7 @@ func newNeoACPCmd() *cobra.Command {
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			agent := acp.NewAgent(neoACPIdentity, version.Version)
-			agent.SetDelegate(&acpDelegate{
+			agent := acp.NewAgent(neoACPIdentity, version.Version, &acpDelegate{
 				ws:       pkgWorkspace.Instance,
 				baseCtx:  ctx,
 				sessions: map[string]*acpSession{},
@@ -175,11 +173,9 @@ func (d *acpDelegate) NewSession(
 		return acp.NewSessionResult{}, err
 	}
 
-	pc := cloudBe.Client()
 	sess := &acpSession{
 		acpID:        sessionID,
-		pc:           pc,
-		api:          pc,
+		api:          cloudBe.Client(),
 		orgName:      orgName,
 		projectName:  projectName,
 		stackRefName: stackRefName,
@@ -199,61 +195,15 @@ func (d *acpDelegate) NewSession(
 	}, nil
 }
 
-// Prompt runs one prompt turn: on the first prompt it creates the Neo task and
-// starts the event loop; on later prompts it posts the user's message. Either
-// way it blocks until the turn ends (a final assistant message, cancellation, or
-// a fatal error) and reports the stop reason. See acp.Delegate.
+// Prompt runs one prompt turn for the session, blocking until it ends and
+// reporting the stop reason. The turn lifecycle itself lives on acpSession
+// (see runTurn). See acp.Delegate.
 func (d *acpDelegate) Prompt(ctx context.Context, params acp.PromptParams) (acp.PromptResult, error) {
 	s, ok := d.session(params.SessionID)
 	if !ok {
 		return acp.PromptResult{}, fmt.Errorf("unknown session %q", params.SessionID)
 	}
-	text := promptText(params.Prompt)
-
-	// Register this turn before any work so the pump can signal it the moment
-	// the turn ends, even for a very fast turn. ACP drives one prompt at a time
-	// per session; reject an overlapping prompt rather than overwrite activeTurn,
-	// which would orphan the prior waiter (the pump only ever signals the latest).
-	done := make(chan turnResult, 1)
-	s.mu.Lock()
-	if s.ended {
-		// The Session event loop is gone (stream failure or clean end); a new
-		// turn could never complete, so fail it up front.
-		s.mu.Unlock()
-		return acp.PromptResult{}, s.endedError()
-	}
-	if s.activeTurn != nil {
-		s.mu.Unlock()
-		return acp.PromptResult{}, fmt.Errorf("a prompt turn is already in progress for session %q", params.SessionID)
-	}
-	s.activeTurn = done
-	needStart := !s.started
-	taskID := s.taskID
-	s.mu.Unlock()
-
-	var startErr error
-	if needStart {
-		startErr = s.start(d.baseCtx, text)
-	} else {
-		startErr = s.api.PostNeoTaskUserEvent(ctx, s.orgName, taskID,
-			apitype.AgentUserEventUserMessage{Type: "user_message", Content: text})
-	}
-	if startErr != nil {
-		s.mu.Lock()
-		s.activeTurn = nil
-		s.mu.Unlock()
-		return acp.PromptResult{}, startErr
-	}
-
-	select {
-	case <-ctx.Done():
-		return acp.PromptResult{}, ctx.Err()
-	case tr := <-done:
-		if tr.err != nil {
-			return acp.PromptResult{}, tr.err
-		}
-		return acp.PromptResult{StopReason: tr.reason}, nil
-	}
+	return s.runTurn(ctx, d.baseCtx, promptText(params.Prompt))
 }
 
 // Cancel posts a cancel user event for the session's task, if one is running.
@@ -264,13 +214,7 @@ func (d *acpDelegate) Cancel(ctx context.Context, params acp.CancelParams) error
 	if !ok {
 		return nil
 	}
-	s.mu.Lock()
-	started, taskID := s.started, s.taskID
-	s.mu.Unlock()
-	if !started || taskID == "" {
-		return nil
-	}
-	return s.api.PostNeoTaskUserEvent(ctx, s.orgName, taskID, apitype.AgentUserEventCancel{Type: "user_cancel"})
+	return s.cancel(ctx)
 }
 
 // SetConfigOption applies a `permission` or `plan` config-option change for the
@@ -310,9 +254,6 @@ func buildACPHandlers(
 	lt, err := buildLocalToolHandlers(cwd, ws)
 	if err != nil {
 		return nil, err
-	}
-	if caller == nil {
-		return lt.handlers, nil
 	}
 	if caps.FS.WriteTextFile || caps.FS.ReadTextFile {
 		cfs := &acp.ClientFS{Caller: caller, SessionID: sessionID}
