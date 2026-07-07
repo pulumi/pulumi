@@ -115,7 +115,8 @@ proto.codegen.GetMappingRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 provider: jspb.Message.getFieldWithDefault(msg, 1, ""),
 pulumiProvider: jspb.Message.getFieldWithDefault(msg, 2, ""),
-parameterizationHint: (f = msg.getParameterizationHint()) && proto.codegen.MapperParameterizationHint.toObject(includeInstance, f)
+parameterizationHint: (f = msg.getParameterizationHint()) && proto.codegen.MapperParameterizationHint.toObject(includeInstance, f),
+ecosystem: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -164,6 +165,10 @@ proto.codegen.GetMappingRequest.deserializeBinaryFromReader = function(msg, read
       var value = new proto.codegen.MapperParameterizationHint;
       reader.readMessage(value,proto.codegen.MapperParameterizationHint.deserializeBinaryFromReader);
       msg.setParameterizationHint(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setEcosystem(value);
       break;
     default:
       reader.skipField();
@@ -214,6 +219,13 @@ proto.codegen.GetMappingRequest.serializeBinaryToWriter = function(message, writ
       3,
       f,
       proto.codegen.MapperParameterizationHint.serializeBinaryToWriter
+    );
+  }
+  f = message.getEcosystem();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
     );
   }
 };
@@ -289,6 +301,24 @@ proto.codegen.GetMappingRequest.prototype.clearParameterizationHint = function()
  */
 proto.codegen.GetMappingRequest.prototype.hasParameterizationHint = function() {
   return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * optional string ecosystem = 4;
+ * @return {string}
+ */
+proto.codegen.GetMappingRequest.prototype.getEcosystem = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.codegen.GetMappingRequest} returns this
+ */
+proto.codegen.GetMappingRequest.prototype.setEcosystem = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
