@@ -738,7 +738,8 @@ func (pc *packageCommand) requireYesIfNonInteractive(yes bool) error {
 // confirm prints summary and asks the user whether to proceed, using the same yes/no chooser as `pulumi up`
 // and `pulumi destroy`. operation names the operation in the prompt (e.g. "create"). The summary and prompt
 // go to stderr so that stdout stays a clean JSON channel for piping. Returns nil to proceed; a bail error
-// (suppressed by the outer CLI) when the user declines. requireYesIfNonInteractive should have been called
+// (suppressed by the outer CLI) when the user declines; a real error when the prompt is cancelled (e.g.
+// Ctrl-C), matching up/destroy. requireYesIfNonInteractive should have been called
 // earlier; if we somehow reach here non-interactively without --yes we treat it as a decline.
 func (pc *packageCommand) confirm(cmd *cobra.Command, summary, operation string, yes bool) error {
 	stderr := cmd.ErrOrStderr()
