@@ -80,15 +80,14 @@ func TypeString(typ schema.Type) string {
 	}
 }
 
-// Bold renders s in bold. Colorization is always enabled so the output is consistent regardless of
-// whether it is written to a terminal.
-func Bold(s string) string {
-	return colors.Always.Colorize(colors.Bold + s + colors.Reset)
+// Bold renders s in bold when c enables colorization.
+func Bold(c colors.Colorization, s string) string {
+	return c.Colorize(colors.Bold + s + colors.Reset)
 }
 
-// Underline renders s underlined.
-func Underline(s string) string {
-	return colors.Always.Colorize(colors.Underline + s + colors.Reset)
+// Underline renders s underlined when c enables colorization.
+func Underline(c colors.Colorization, s string) string {
+	return c.Colorize(colors.Underline + s + colors.Reset)
 }
 
 var langChoiceSpanRegexp = regexp.MustCompile(`(?s)<span\b[^>]*>(.*?)</span>`)
@@ -122,8 +121,8 @@ func Summarize(description string) string {
 //
 // and, when any property is marked, a footnote explaining the '*' is appended. The section title is
 // always written, even when there are no properties.
-func WriteProperties(w io.Writer, title string, props []Property, kind Kind) {
-	fmt.Fprintln(w, Bold(title)+":")
+func WriteProperties(w io.Writer, c colors.Colorization, title string, props []Property, kind Kind) {
+	fmt.Fprintln(w, Bold(c, title)+":")
 
 	sorted := make([]Property, len(props))
 	copy(sorted, props)
@@ -136,7 +135,7 @@ func WriteProperties(w io.Writer, title string, props []Property, kind Kind) {
 			marker = "*"
 			marked = true
 		}
-		fmt.Fprintf(w, " - %s (%s%s)", Bold(prop.Name), Underline(prop.Type), Underline(marker))
+		fmt.Fprintf(w, " - %s (%s%s)", Bold(c, prop.Name), Underline(c, prop.Type), Underline(c, marker))
 		if summary := Summarize(prop.Description); summary != "" {
 			fmt.Fprintf(w, ": %s", summary)
 		}

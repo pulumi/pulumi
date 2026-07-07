@@ -385,68 +385,17 @@ func SchemaFromSchemaSource(
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 	env env.Env, concurrency int,
 ) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+	raw, packageSpec, err := schemaJSONBytes(ws, pctx, packageSource, parameters, registry, env, concurrency)
+	if err != nil {
+		return nil, nil, err
+	}
 	var spec schema.PackageSpec
-	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
-		if !parameters.Empty() {
-			return nil, nil, errors.New("parameterization arguments are not supported for yaml files")
-		}
-		f, err := os.ReadFile(packageSource)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = yaml.Unmarshal(f, &spec)
-		if err != nil {
-			return nil, nil, err
-		}
+	if err := json.Unmarshal(raw, &spec); err != nil {
+		return nil, nil, err
+	}
+	if packageSpec == nil {
+		// The schema came from a file, so there is no plugin to describe.
 		return &spec, nil, nil
-	} else if ext == ".json" {
-		if !parameters.Empty() {
-			return nil, nil, errors.New("parameterization arguments are not supported for json files")
-		}
-
-		f, err := os.ReadFile(packageSource)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = json.Unmarshal(f, &spec)
-		if err != nil {
-			return nil, nil, err
-		}
-		return &spec, nil, nil
-	}
-
-	p, packageSpec, err := ProviderFromSource(ws, pctx, packageSource, registry, env, concurrency)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer contract.IgnoreClose(p)
-
-	var request plugin.GetSchemaRequest
-	if !parameters.Empty() {
-		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-			Parameters: parameters,
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("parameterize: %w", err)
-		}
-
-		request = plugin.GetSchemaRequest{
-			SubpackageName:    resp.Name,
-			SubpackageVersion: &resp.Version,
-		}
-	}
-
-	tracer := otel.Tracer("pulumi-cli")
-	_, schemaSpan := cmdutil.StartSpan(pctx.Request(), tracer, "get-schema",
-		trace.WithAttributes(attribute.String("source", packageSource)))
-	schema, err := p.GetSchema(pctx.Request(), request)
-	schemaSpan.End()
-	if err != nil {
-		return nil, nil, err
-	}
-	err = json.Unmarshal(schema.Schema, &spec)
-	if err != nil {
-		return nil, nil, err
 	}
 	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
@@ -456,7 +405,7 @@ func SchemaFromSchemaSource(
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
 	setSpecNamespace(&spec, pluginSpec)
-	return &spec, &packageSpec, nil
+	return &spec, packageSpec, nil
 }
 
 // PartialPackageFromSchemaSource loads a schema source into a lazily-bound *schema.PartialPackage.
@@ -468,7 +417,7 @@ func PartialPackageFromSchemaSource(
 	ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string,
 	parameters plugin.ParameterizeParameters, reg registry.Registry, env env.Env, concurrency int,
 ) (*schema.PartialPackage, error) {
-	raw, err := schemaJSONBytes(ws, pctx, packageSource, parameters, reg, env, concurrency)
+	raw, _, err := schemaJSONBytes(ws, pctx, packageSource, parameters, reg, env, concurrency)
 	if err != nil {
 		return nil, err
 	}
@@ -480,35 +429,38 @@ func PartialPackageFromSchemaSource(
 }
 
 // schemaJSONBytes returns the raw JSON bytes of a schema source (a YAML or JSON file, or a
-// provider's schema).
+// provider's schema). The returned workspace.PackageSpec is non-nil if and only if the schema is
+// sourced from a plugin.
 func schemaJSONBytes(
 	ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string,
 	parameters plugin.ParameterizeParameters, reg registry.Registry, env env.Env, concurrency int,
-) ([]byte, error) {
+) ([]byte, *workspace.PackageSpec, error) {
 	switch filepath.Ext(packageSource) {
 	case ".yaml", ".yml":
 		if !parameters.Empty() {
-			return nil, errors.New("parameterization arguments are not supported for yaml files")
+			return nil, nil, errors.New("parameterization arguments are not supported for yaml files")
 		}
 		f, err := os.ReadFile(packageSource)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		var spec schema.PackageSpec
 		if err := yaml.Unmarshal(f, &spec); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return json.Marshal(spec)
+		raw, err := json.Marshal(spec)
+		return raw, nil, err
 	case ".json":
 		if !parameters.Empty() {
-			return nil, errors.New("parameterization arguments are not supported for json files")
+			return nil, nil, errors.New("parameterization arguments are not supported for json files")
 		}
-		return os.ReadFile(packageSource)
+		raw, err := os.ReadFile(packageSource)
+		return raw, nil, err
 	}
 
-	p, _, err := ProviderFromSource(ws, pctx, packageSource, reg, env, concurrency)
+	p, packageSpec, err := ProviderFromSource(ws, pctx, packageSource, reg, env, concurrency)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer contract.IgnoreClose(p)
 
@@ -516,15 +468,19 @@ func schemaJSONBytes(
 	if !parameters.Empty() {
 		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{Parameters: parameters})
 		if err != nil {
-			return nil, fmt.Errorf("parameterize: %w", err)
+			return nil, nil, fmt.Errorf("parameterize: %w", err)
 		}
 		request = plugin.GetSchemaRequest{SubpackageName: resp.Name, SubpackageVersion: &resp.Version}
 	}
+	tracer := otel.Tracer("pulumi-cli")
+	_, schemaSpan := cmdutil.StartSpan(pctx.Request(), tracer, "get-schema",
+		trace.WithAttributes(attribute.String("source", packageSource)))
 	getSchema, err := p.GetSchema(pctx.Request(), request)
+	schemaSpan.End()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return getSchema.Schema, nil
+	return getSchema.Schema, &packageSpec, nil
 }
 
 // ProviderFromSource takes a plugin name or path.

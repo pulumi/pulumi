@@ -15,20 +15,14 @@
 package schemainfo
 
 import (
-	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
-
-var ansiEscapeRegexp = regexp.MustCompile("\x1b\\[[0-9;]*m")
-
-func stripANSI(s string) string {
-	return ansiEscapeRegexp.ReplaceAllString(s, "")
-}
 
 func TestSummarize(t *testing.T) {
 	t.Parallel()
@@ -117,7 +111,7 @@ func TestWriteProperties(t *testing.T) {
 	t.Run("sorts, marks required, and adds the inputs footnote", func(t *testing.T) {
 		t.Parallel()
 		var b strings.Builder
-		WriteProperties(&b, "Inputs", []Property{
+		WriteProperties(&b, colors.Never, "Inputs", []Property{
 			{Name: "size", Type: "integer"},
 			{Name: "name", Type: "string", Required: true, Description: "The name.\n\nMore detail."},
 			{Name: "tags", Type: "[]string"},
@@ -126,43 +120,43 @@ func TestWriteProperties(t *testing.T) {
 			" - name (string*): The name.\n"+
 			" - size (integer)\n"+
 			" - tags ([]string)\n"+
-			"Inputs marked with '*' are required\n", stripANSI(b.String()))
+			"Inputs marked with '*' are required\n", b.String())
 	})
 
 	t.Run("uses the outputs footnote wording", func(t *testing.T) {
 		t.Parallel()
 		var b strings.Builder
-		WriteProperties(&b, "Outputs", []Property{
+		WriteProperties(&b, colors.Never, "Outputs", []Property{
 			{Name: "id", Type: "string", Required: true, Description: "The id."},
 		}, Outputs)
 		assert.Equal(t, "Outputs:\n"+
 			" - id (string*): The id.\n"+
-			"Outputs marked with '*' are always present\n", stripANSI(b.String()))
+			"Outputs marked with '*' are always present\n", b.String())
 	})
 
 	t.Run("uses the list-inputs footnote wording", func(t *testing.T) {
 		t.Parallel()
 		var b strings.Builder
-		WriteProperties(&b, "List Inputs", []Property{
+		WriteProperties(&b, colors.Never, "List Inputs", []Property{
 			{Name: "prefix", Type: "string", Required: true, Description: "The prefix."},
 		}, ListInputs)
 		assert.Equal(t, "List Inputs:\n"+
 			" - prefix (string*): The prefix.\n"+
-			"List inputs marked with '*' are required\n", stripANSI(b.String()))
+			"List inputs marked with '*' are required\n", b.String())
 	})
 
 	t.Run("writes the title with no footnote for an empty or unmarked section", func(t *testing.T) {
 		t.Parallel()
 		var b strings.Builder
-		WriteProperties(&b, "Outputs", nil, Outputs)
-		assert.Equal(t, "Outputs:\n", stripANSI(b.String()))
+		WriteProperties(&b, colors.Never, "Outputs", nil, Outputs)
+		assert.Equal(t, "Outputs:\n", b.String())
 	})
 
-	t.Run("styles names bold and types underlined", func(t *testing.T) {
+	t.Run("styles names bold and types underlined when colorization is enabled", func(t *testing.T) {
 		t.Parallel()
 		var b strings.Builder
-		WriteProperties(&b, "Inputs", []Property{{Name: "name", Type: "string"}}, Inputs)
-		assert.Contains(t, b.String(), Bold("name"))
-		assert.Contains(t, b.String(), Underline("string"))
+		WriteProperties(&b, colors.Always, "Inputs", []Property{{Name: "name", Type: "string"}}, Inputs)
+		assert.Contains(t, b.String(), Bold(colors.Always, "name"))
+		assert.Contains(t, b.String(), Underline(colors.Always, "string"))
 	})
 }

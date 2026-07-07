@@ -27,16 +27,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func functionSchemaHelp(fn *schema.Function) string {
+	color := cmdutil.GetGlobalColorization()
 	var b strings.Builder
 	writeSection := func(title string, properties []*schema.Property, kind schemainfo.Kind) {
 		if b.Len() > 0 {
 			b.WriteByte('\n')
 		}
-		schemainfo.WriteProperties(&b, title, schemainfo.BoundProperties(properties), kind)
+		schemainfo.WriteProperties(&b, color, title, schemainfo.BoundProperties(properties), kind)
 	}
 
 	var inputs []*schema.Property
@@ -50,7 +52,7 @@ func functionSchemaHelp(fn *schema.Function) string {
 	} else if fn.ReturnType != nil {
 		b.WriteByte('\n')
 		fmt.Fprintf(&b, "%s: %s\n",
-			schemainfo.Bold("Outputs"), schemainfo.Underline(schemainfo.TypeString(fn.ReturnType)))
+			schemainfo.Bold(color, "Outputs"), schemainfo.Underline(color, schemainfo.TypeString(fn.ReturnType)))
 	}
 	return strings.TrimSuffix(b.String(), "\n")
 }

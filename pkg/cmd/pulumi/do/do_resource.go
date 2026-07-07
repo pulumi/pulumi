@@ -41,13 +41,14 @@ import (
 )
 
 func resourceSchemaHelp(res *schema.Resource) string {
+	color := cmdutil.GetGlobalColorization()
 	var b strings.Builder
 	writeSection := func(title string, properties []*schema.Property, kind schemainfo.Kind) {
 		if b.Len() > 0 {
 			// WriteProperties output ends in a newline; add one more to separate sections.
 			b.WriteByte('\n')
 		}
-		schemainfo.WriteProperties(&b, title, schemainfo.BoundProperties(properties), kind)
+		schemainfo.WriteProperties(&b, color, title, schemainfo.BoundProperties(properties), kind)
 	}
 
 	writeSection("Inputs", res.InputProperties, schemainfo.Inputs)

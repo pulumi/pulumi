@@ -149,7 +149,7 @@ Flags:
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
-	assert.Equal(t, expected, stripANSI(stdout.String()))
+	assert.Equal(t, expected, stdout.String())
 }
 
 func TestDoCmdResourceHelpOmitsListWithoutListInputs(t *testing.T) {
@@ -199,7 +199,7 @@ Flags:
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
-	assert.Equal(t, expected, stripANSI(stdout.String()))
+	assert.Equal(t, expected, stdout.String())
 }
 
 func TestDoCmdResourceCreate(t *testing.T) {

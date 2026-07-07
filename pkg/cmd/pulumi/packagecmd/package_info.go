@@ -85,6 +85,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 			stdout := cmd.OutOrStdout()
+			color := cmdutil.GetGlobalColorization()
 
 			loadPartial := func() (*schema.PartialPackage, error) {
 				return packages.PartialPackageFromSchemaSource(cmd.Context(), pkgWorkspace.Instance, pctx, args[0],
@@ -96,13 +97,13 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				if err != nil {
 					return err
 				}
-				return showFunctionInfo(pp, module, function, stdout)
+				return showFunctionInfo(pp, module, function, stdout, color)
 			} else if resource != "" {
 				pp, err := loadPartial()
 				if err != nil {
 					return err
 				}
-				return showResourceInfo(pp, module, resource, stdout)
+				return showResourceInfo(pp, module, resource, stdout, color)
 			}
 
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, args[0], parameters,
@@ -111,9 +112,9 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				return err
 			}
 			if module != "" {
-				return showModuleInfo(spec, module, stdout)
+				return showModuleInfo(spec, module, stdout, color)
 			}
-			return showProviderInfo(spec, loadPartial, args, stdout)
+			return showProviderInfo(spec, loadPartial, args, stdout, color)
 		},
 	}
 
@@ -139,6 +140,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 
 func showProviderInfo(
 	spec *schema.PackageSpec, loadPartial func() (*schema.PartialPackage, error), args []string, stdout io.Writer,
+	color colors.Colorization,
 ) error {
 	contract.Requiref(len(args) > 0, "args", "should be non-empty")
 
@@ -166,7 +168,7 @@ func showProviderInfo(
 			if err != nil {
 				return err
 			}
-			return showFunctionInfo(pp, "", nameSplit[2], stdout)
+			return showFunctionInfo(pp, "", nameSplit[2], stdout, color)
 		}
 	}
 
@@ -180,16 +182,17 @@ func showProviderInfo(
 			if err != nil {
 				return err
 			}
-			return showResourceInfo(pp, "", nameSplit[2], stdout)
+			return showResourceInfo(pp, "", nameSplit[2], stdout, color)
 		}
 	}
 
 	if len(modules) == 1 {
 		for name := range modules {
-			return showModuleInfo(spec, name, stdout)
+			return showModuleInfo(spec, name, stdout, color)
 		}
 	}
 
+	bold := func(s string) string { return schemainfo.Bold(color, s) }
 	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
 	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
 	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
@@ -244,7 +247,8 @@ func simplifyModuleName(typ string, name string) (string, error) {
 	return split[0] + ":" + moduleSplit[0] + ":" + split[2], nil
 }
 
-func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Writer) error {
+func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Writer, color colors.Colorization) error {
+	bold := func(s string) string { return schemainfo.Bold(color, s) }
 	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
 	fmt.Fprintf(stdout, bold("Module")+": %s\n", moduleName)
 	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
@@ -304,15 +308,9 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 	return nil
 }
 
-func bold(s string) string {
-	return colors.Always.Colorize(colors.Bold + s + colors.Reset)
-}
-
-func underline(s string) string {
-	return colors.Always.Colorize(colors.Underline + s + colors.Reset)
-}
-
-func showFunctionInfo(pp *schema.PartialPackage, moduleName, functionName string, stdout io.Writer) error {
+func showFunctionInfo(
+	pp *schema.PartialPackage, moduleName, functionName string, stdout io.Writer, color colors.Colorization,
+) error {
 	var tokens []string
 	for it := pp.Functions().Range(); it.Next(); {
 		tokens = append(tokens, it.Token())
@@ -329,6 +327,7 @@ func showFunctionInfo(pp *schema.PartialPackage, moduleName, functionName string
 		return fmt.Errorf("function %q not found", functionName)
 	}
 
+	bold := func(s string) string { return schemainfo.Bold(color, s) }
 	fmt.Fprintf(stdout, bold("Function")+": %s\n", fun.Token)
 	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(fun.Comment))
 
@@ -337,23 +336,26 @@ func showFunctionInfo(pp *schema.PartialPackage, moduleName, functionName string
 	if fun.Inputs != nil {
 		inputProperties = fun.Inputs.Properties
 	}
-	schemainfo.WriteProperties(stdout, "Inputs", schemainfo.BoundProperties(inputProperties), schemainfo.Inputs)
+	schemainfo.WriteProperties(stdout, color, "Inputs", schemainfo.BoundProperties(inputProperties), schemainfo.Inputs)
 
 	// A bound function's object outputs live in Outputs; a single non-object return value lives in
 	// ReturnType and renders inline.
 	if fun.Outputs != nil {
 		fmt.Fprintln(stdout)
 		outputs := schemainfo.BoundProperties(fun.Outputs.Properties)
-		schemainfo.WriteProperties(stdout, "Outputs", outputs, schemainfo.Outputs)
+		schemainfo.WriteProperties(stdout, color, "Outputs", outputs, schemainfo.Outputs)
 	} else if fun.ReturnType != nil {
 		fmt.Fprintln(stdout)
-		fmt.Fprintf(stdout, bold("Outputs")+": %s\n", underline(schemainfo.TypeString(fun.ReturnType)))
+		fmt.Fprintf(stdout, bold("Outputs")+": %s\n",
+			schemainfo.Underline(color, schemainfo.TypeString(fun.ReturnType)))
 	}
 
 	return nil
 }
 
-func showResourceInfo(pp *schema.PartialPackage, moduleName, resourceName string, stdout io.Writer) error {
+func showResourceInfo(
+	pp *schema.PartialPackage, moduleName, resourceName string, stdout io.Writer, color colors.Colorization,
+) error {
 	var tokens []string
 	for it := pp.Resources().Range(); it.Next(); {
 		tokens = append(tokens, it.Token())
@@ -370,14 +372,16 @@ func showResourceInfo(pp *schema.PartialPackage, moduleName, resourceName string
 		return fmt.Errorf("resource %q not found", resourceName)
 	}
 
+	bold := func(s string) string { return schemainfo.Bold(color, s) }
 	fmt.Fprintf(stdout, bold("Resource")+": %s\n", res.Token)
 	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(res.Comment))
 
 	fmt.Fprintln(stdout)
-	schemainfo.WriteProperties(stdout, "Inputs", schemainfo.BoundProperties(res.InputProperties), schemainfo.Inputs)
+	schemainfo.WriteProperties(
+		stdout, color, "Inputs", schemainfo.BoundProperties(res.InputProperties), schemainfo.Inputs)
 
 	fmt.Fprintln(stdout)
-	schemainfo.WriteProperties(stdout, "Outputs", schemainfo.BoundProperties(res.Properties), schemainfo.Outputs)
+	schemainfo.WriteProperties(stdout, color, "Outputs", schemainfo.BoundProperties(res.Properties), schemainfo.Outputs)
 	return nil
 }
 

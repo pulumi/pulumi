@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -190,18 +189,18 @@ func TestPackageInfo(t *testing.T) {
 	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf(`\x1b[1mName\x1b[0m: test
-\x1b[1mVersion\x1b[0m: 0.0.1
-\x1b[1mDescription\x1b[0m: test description markdown formatted
-\x1b[1mTotal resources\x1b[0m 3
-\x1b[1mTotal functions\x1b[0m 2
-\x1b[1mTotal modules\x1b[0m: 3
+	require.Equal(t, fmt.Sprintf(`Name: test
+Version: 0.0.1
+Description: test description markdown formatted
+Total resources 3
+Total functions 2
+Total modules: 3
 
-\x1b[1mModules\x1b[0m: another, funs, index
+Modules: another, funs, index
 
 Use 'pulumi package info %[1]s --module <module>' to list resources in a module
 Use 'pulumi package info %[1]s --module <module> --resource <resource>' for detailed resource info
-`, schemaPath), strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+`, schemaPath), output.String())
 }
 
 func TestModuleInfo(t *testing.T) {
@@ -221,18 +220,18 @@ func TestModuleInfo(t *testing.T) {
 	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
-	require.Equal(t, `\x1b[1mName\x1b[0m: test
-\x1b[1mModule\x1b[0m: index
-\x1b[1mVersion\x1b[0m: 0.0.1
-\x1b[1mDescription\x1b[0m: test description markdown formatted
-\x1b[1mResources\x1b[0m: 2
+	require.Equal(t, `Name: test
+Module: index
+Version: 0.0.1
+Description: test description markdown formatted
+Resources: 2
 
- - \x1b[1mTest\x1b[0m: test resource description
- - \x1b[1mTest2\x1b[0m: this is another test resource
+ - Test: test resource description
+ - Test2: this is another test resource
 
-\x1b[1mFunctions\x1b[0m: 0
+Functions: 0
 
-`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+`, output.String())
 }
 
 func TestResourceInfo(t *testing.T) {
@@ -251,19 +250,19 @@ func TestResourceInfo(t *testing.T) {
 	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
-	require.Equal(t, `\x1b[1mResource\x1b[0m: test:index:Test
-\x1b[1mDescription\x1b[0m: test resource description
+	require.Equal(t, `Resource: test:index:Test
+Description: test resource description
 
-\x1b[1mInputs\x1b[0m:
- - \x1b[1mprop1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m\x1b[0m): this is a string property
+Inputs:
+ - prop1 (string): this is a string property
 
-\x1b[1mOutputs\x1b[0m:
- - \x1b[1marrayProp\x1b[0m (\x1b[4mArray<test:index:TestType>\x1b[0m\x1b[4m\x1b[0m): this is an array property
- - \x1b[1menumProp\x1b[0m (\x1b[4mtest:index:EnumType\x1b[0m\x1b[4m\x1b[0m): this is an enum property
- - \x1b[1mmapProp\x1b[0m (\x1b[4mMap<string>\x1b[0m\x1b[4m\x1b[0m): this is a map property
- - \x1b[1mprop1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m*\x1b[0m): this is a string property
+Outputs:
+ - arrayProp (Array<test:index:TestType>): this is an array property
+ - enumProp (test:index:EnumType): this is an enum property
+ - mapProp (Map<string>): this is a map property
+ - prop1 (string*): this is a string property
 Outputs marked with '*' are always present
-`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+`, output.String())
 
 	cmd.SetArgs([]string{"--module", "index", "--resource", "Test2", schemaPath})
 	output.Reset()
@@ -271,15 +270,15 @@ Outputs marked with '*' are always present
 	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
-	require.Equal(t, `\x1b[1mResource\x1b[0m: test:index:Test2
-\x1b[1mDescription\x1b[0m: this is another test resource
+	require.Equal(t, `Resource: test:index:Test2
+Description: this is another test resource
 
-\x1b[1mInputs\x1b[0m:
- - \x1b[1mpropA\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m*\x1b[0m): this is propA
+Inputs:
+ - propA (string*): this is propA
 Inputs marked with '*' are required
 
-\x1b[1mOutputs\x1b[0m:
-`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+Outputs:
+`, output.String())
 }
 
 func TestFunctionInfo(t *testing.T) {
@@ -299,14 +298,14 @@ func TestFunctionInfo(t *testing.T) {
 	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
-	require.Equal(t, `\x1b[1mFunction\x1b[0m: test:funs:TestFunction
-\x1b[1mDescription\x1b[0m: this is a test function
+	require.Equal(t, `Function: test:funs:TestFunction
+Description: this is a test function
 
-\x1b[1mInputs\x1b[0m:
- - \x1b[1minput1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m\x1b[0m): the first and only input
+Inputs:
+ - input1 (string): the first and only input
 
-\x1b[1mOutputs\x1b[0m: \x1b[4mstring\x1b[0m
-`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+Outputs: string
+`, output.String())
 
 	cmd.SetArgs([]string{"--function", "TestFunction2", schemaPath})
 	output = bytes.Buffer{}
@@ -314,14 +313,13 @@ func TestFunctionInfo(t *testing.T) {
 	cmd.SetErr(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
-	require.Equal(t, `\x1b[1mFunction\x1b[0m: test:funs:TestFunction2
-\x1b[1mDescription\x1b[0m: 
-
-\x1b[1mInputs\x1b[0m:
- - \x1b[1minput1\x1b[0m (\x1b[4mboolean\x1b[0m\x1b[4m*\x1b[0m): a flag input
-Inputs marked with '*' are required
-
-\x1b[1mOutputs\x1b[0m:
- - \x1b[1moutput1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m\x1b[0m): the first and only output
-`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+	require.Equal(t, "Function: test:funs:TestFunction2\n"+
+		"Description: \n"+
+		"\n"+
+		"Inputs:\n"+
+		" - input1 (boolean*): a flag input\n"+
+		"Inputs marked with '*' are required\n"+
+		"\n"+
+		"Outputs:\n"+
+		" - output1 (string): the first and only output\n", output.String())
 }
