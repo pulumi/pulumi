@@ -286,6 +286,7 @@ func NewPreviewCmd() *cobra.Command {
 	var stackName string
 	var configArray []string
 	var configFile string
+	var envOverrides []string
 	var configPath bool
 	var client string
 	var planFilePath string
@@ -470,7 +471,7 @@ func NewPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -659,6 +660,9 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	cmd.PersistentFlags().StringArrayVar(
+		&envOverrides, "override-env", nil,
+		config.OverrideEnvFlagUsage)
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the preview and save to the stack config file")
