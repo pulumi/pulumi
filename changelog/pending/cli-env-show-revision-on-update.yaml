@@ -1,0 +1,6 @@
+component: cli/env
+kind: improvement
+body: Report the new revision number when an environment definition is updated (e.g. `pulumi env edit`, `pulumi env provider`, `pulumi env version rollback`)
+time: 2026-07-06T12:00:00.000000+00:00
+custom:
+    PR: "23799"

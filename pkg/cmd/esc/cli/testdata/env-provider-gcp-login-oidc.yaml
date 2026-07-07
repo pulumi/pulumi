@@ -1,0 +1,43 @@
+run: |
+  esc env init default/test
+  esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com && esc env get default/test --definition
+  esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com --region us-central1 --token-lifetime 1h --subject-attribute env && esc env get default/test --definition
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com
+Provider updated. (revision 2)
+> esc env get default/test --definition
+values:
+  gcp:
+    login:
+      fn::open::gcp-login:
+        project: 123456789
+        oidc:
+          workloadPoolId: pool
+          providerId: provider
+          serviceAccount: sa@proj.iam.gserviceaccount.com
+> esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com --region us-central1 --token-lifetime 1h --subject-attribute env
+Provider updated. (revision 3)
+> esc env get default/test --definition
+values:
+  gcp:
+    login:
+      fn::open::gcp-login:
+        project: 123456789
+        oidc:
+          workloadPoolId: pool
+          providerId: provider
+          serviceAccount: sa@proj.iam.gserviceaccount.com
+          region: us-central1
+          tokenLifetime: 1h
+          subjectAttributes:
+            - env
+
+---
+> esc env init default/test
+> esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com
+> esc env get default/test --definition
+> esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com --region us-central1 --token-lifetime 1h --subject-attribute env
+> esc env get default/test --definition

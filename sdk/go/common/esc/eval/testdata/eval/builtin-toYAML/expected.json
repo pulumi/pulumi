@@ -1,0 +1,1336 @@
+{
+    "check": {
+        "exprs": {
+            "object": {
+                "range": {
+                    "environment": "builtin-toYAML",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 22
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 9,
+                        "byte": 35
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "a": {
+                            "type": "string",
+                            "const": "b"
+                        },
+                        "c": {
+                            "type": "string",
+                            "const": "d"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "a",
+                        "c"
+                    ]
+                },
+                "keyRanges": {
+                    "a": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 22
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 6,
+                            "byte": 23
+                        }
+                    },
+                    "c": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 31
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 6,
+                            "byte": 32
+                        }
+                    }
+                },
+                "object": {
+                    "a": {
+                        "range": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 3,
+                                "column": 8,
+                                "byte": 25
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 9,
+                                "byte": 26
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "b"
+                        },
+                        "literal": "b"
+                    },
+                    "c": {
+                        "range": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 4,
+                                "column": 8,
+                                "byte": 34
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 9,
+                                "byte": 35
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "d"
+                        },
+                        "literal": "d"
+                    }
+                }
+            },
+            "toYAML": {
+                "range": {
+                    "environment": "builtin-toYAML",
+                    "begin": {
+                        "line": 6,
+                        "column": 5,
+                        "byte": 50
+                    },
+                    "end": {
+                        "line": 8,
+                        "column": 11,
+                        "byte": 83
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toYAML",
+                    "nameRange": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 50
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 15,
+                            "byte": 60
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 68
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 11,
+                                "byte": 83
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "b"
+                                },
+                                "c": {
+                                    "type": "string",
+                                    "const": "d"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "c"
+                            ]
+                        },
+                        "keyRanges": {
+                            "a": {
+                                "environment": "builtin-toYAML",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 68
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 8,
+                                    "byte": 69
+                                }
+                            },
+                            "c": {
+                                "environment": "builtin-toYAML",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 79
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 8,
+                                    "byte": 80
+                                }
+                            }
+                        },
+                        "object": {
+                            "a": {
+                                "range": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 10,
+                                        "byte": 71
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 72
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "b"
+                                },
+                                "literal": "b"
+                            },
+                            "c": {
+                                "range": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 10,
+                                        "byte": 82
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 11,
+                                        "byte": 83
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "d"
+                                },
+                                "literal": "d"
+                            }
+                        }
+                    }
+                }
+            },
+            "toYAMLRef": {
+                "range": {
+                    "environment": "builtin-toYAML",
+                    "begin": {
+                        "line": 10,
+                        "column": 5,
+                        "byte": 101
+                    },
+                    "end": {
+                        "line": 10,
+                        "column": 26,
+                        "byte": 122
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toYAML",
+                    "nameRange": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 101
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 15,
+                            "byte": 111
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 10,
+                                "column": 17,
+                                "byte": 113
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 26,
+                                "byte": 122
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "b"
+                                },
+                                "c": {
+                                    "type": "string",
+                                    "const": "d"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "c"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "object",
+                                "range": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 19,
+                                        "byte": 115
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 25,
+                                        "byte": 121
+                                    }
+                                },
+                                "value": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 22
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 9,
+                                        "byte": 35
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "object": {
+                "value": {
+                    "a": {
+                        "value": "b",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-toYAML",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 8,
+                                    "byte": 25
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 9,
+                                    "byte": 26
+                                }
+                            }
+                        }
+                    },
+                    "c": {
+                        "value": "d",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-toYAML",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 8,
+                                    "byte": 34
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 9,
+                                    "byte": 35
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 22
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 9,
+                            "byte": 35
+                        }
+                    }
+                }
+            },
+            "toYAML": {
+                "value": "a: b\nc: d\n",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 50
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 11,
+                            "byte": 83
+                        }
+                    }
+                }
+            },
+            "toYAMLRef": {
+                "value": "a: b\nc: d\n",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 101
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 26,
+                            "byte": 122
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "object": {
+                    "properties": {
+                        "a": {
+                            "type": "string",
+                            "const": "b"
+                        },
+                        "c": {
+                            "type": "string",
+                            "const": "d"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "a",
+                        "c"
+                    ]
+                },
+                "toYAML": {
+                    "type": "string"
+                },
+                "toYAMLRef": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "object",
+                "toYAML",
+                "toYAMLRef"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-toYAML",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-toYAML",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-toYAML",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-toYAML"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-toYAML"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "object": {
+            "a": "b",
+            "c": "d"
+        },
+        "toYAML": "a: b\nc: d\n",
+        "toYAMLRef": "a: b\nc: d\n"
+    },
+    "eval": {
+        "exprs": {
+            "object": {
+                "range": {
+                    "environment": "builtin-toYAML",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 22
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 9,
+                        "byte": 35
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "a": {
+                            "type": "string",
+                            "const": "b"
+                        },
+                        "c": {
+                            "type": "string",
+                            "const": "d"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "a",
+                        "c"
+                    ]
+                },
+                "keyRanges": {
+                    "a": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 22
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 6,
+                            "byte": 23
+                        }
+                    },
+                    "c": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 31
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 6,
+                            "byte": 32
+                        }
+                    }
+                },
+                "object": {
+                    "a": {
+                        "range": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 3,
+                                "column": 8,
+                                "byte": 25
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 9,
+                                "byte": 26
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "b"
+                        },
+                        "literal": "b"
+                    },
+                    "c": {
+                        "range": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 4,
+                                "column": 8,
+                                "byte": 34
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 9,
+                                "byte": 35
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "d"
+                        },
+                        "literal": "d"
+                    }
+                }
+            },
+            "toYAML": {
+                "range": {
+                    "environment": "builtin-toYAML",
+                    "begin": {
+                        "line": 6,
+                        "column": 5,
+                        "byte": 50
+                    },
+                    "end": {
+                        "line": 8,
+                        "column": 11,
+                        "byte": 83
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toYAML",
+                    "nameRange": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 50
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 15,
+                            "byte": 60
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 68
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 11,
+                                "byte": 83
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "b"
+                                },
+                                "c": {
+                                    "type": "string",
+                                    "const": "d"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "c"
+                            ]
+                        },
+                        "keyRanges": {
+                            "a": {
+                                "environment": "builtin-toYAML",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 68
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 8,
+                                    "byte": 69
+                                }
+                            },
+                            "c": {
+                                "environment": "builtin-toYAML",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 79
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 8,
+                                    "byte": 80
+                                }
+                            }
+                        },
+                        "object": {
+                            "a": {
+                                "range": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 10,
+                                        "byte": 71
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 72
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "b"
+                                },
+                                "literal": "b"
+                            },
+                            "c": {
+                                "range": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 10,
+                                        "byte": 82
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 11,
+                                        "byte": 83
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "d"
+                                },
+                                "literal": "d"
+                            }
+                        }
+                    }
+                }
+            },
+            "toYAMLRef": {
+                "range": {
+                    "environment": "builtin-toYAML",
+                    "begin": {
+                        "line": 10,
+                        "column": 5,
+                        "byte": 101
+                    },
+                    "end": {
+                        "line": 10,
+                        "column": 26,
+                        "byte": 122
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::toYAML",
+                    "nameRange": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 101
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 15,
+                            "byte": 111
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 10,
+                                "column": 17,
+                                "byte": 113
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 26,
+                                "byte": 122
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "b"
+                                },
+                                "c": {
+                                    "type": "string",
+                                    "const": "d"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "c"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "object",
+                                "range": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 19,
+                                        "byte": 115
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 25,
+                                        "byte": 121
+                                    }
+                                },
+                                "value": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 22
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 9,
+                                        "byte": 35
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "object": {
+                "value": {
+                    "a": {
+                        "value": "b",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-toYAML",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 8,
+                                    "byte": 25
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 9,
+                                    "byte": 26
+                                }
+                            }
+                        }
+                    },
+                    "c": {
+                        "value": "d",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-toYAML",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 8,
+                                    "byte": 34
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 9,
+                                    "byte": 35
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 22
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 9,
+                            "byte": 35
+                        }
+                    }
+                }
+            },
+            "toYAML": {
+                "value": "a: b\nc: d\n",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 50
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 11,
+                            "byte": 83
+                        }
+                    }
+                }
+            },
+            "toYAMLRef": {
+                "value": "a: b\nc: d\n",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-toYAML",
+                        "begin": {
+                            "line": 10,
+                            "column": 5,
+                            "byte": 101
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 26,
+                            "byte": 122
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "object": {
+                    "properties": {
+                        "a": {
+                            "type": "string",
+                            "const": "b"
+                        },
+                        "c": {
+                            "type": "string",
+                            "const": "d"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "a",
+                        "c"
+                    ]
+                },
+                "toYAML": {
+                    "type": "string"
+                },
+                "toYAMLRef": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "object",
+                "toYAML",
+                "toYAMLRef"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-toYAML",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-toYAML",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-toYAML",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-toYAML",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-toYAML",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-toYAML"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-toYAML"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "object": {
+            "a": "b",
+            "c": "d"
+        },
+        "toYAML": "a: b\nc: d\n",
+        "toYAMLRef": "a: b\nc: d\n"
+    },
+    "evalJSONRevealed": {
+        "object": {
+            "a": "b",
+            "c": "d"
+        },
+        "toYAML": "a: b\nc: d\n",
+        "toYAMLRef": "a: b\nc: d\n"
+    }
+}

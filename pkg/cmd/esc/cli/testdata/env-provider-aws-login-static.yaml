@@ -1,0 +1,68 @@
+run: |
+  esc env init default/test
+  esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh && esc env get default/test --definition
+  esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh --session-token toktok && esc env get default/test --definition
+  esc env provider aws-login static default/test AKIANEW newshhh --path other.creds && esc env get default/test --definition
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh
+Provider updated. (revision 2)
+> esc env get default/test --definition
+values:
+  aws:
+    login:
+      fn::open::aws-login:
+        static:
+          accessKeyId: AKIAEXAMPLE
+          secretAccessKey:
+            fn::secret:
+              ciphertext: ZXNjeAAAAAHz6Ojo6OjoVtjhwQ==
+> esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh --session-token toktok
+Provider updated. (revision 3)
+> esc env get default/test --definition
+values:
+  aws:
+    login:
+      fn::open::aws-login:
+        static:
+          accessKeyId: AKIAEXAMPLE
+          secretAccessKey:
+            fn::secret:
+              ciphertext: ZXNjeAAAAAHz6Ojo6OjoVtjhwQ==
+          sessionToken:
+            fn::secret:
+              ciphertext: ZXNjeAAAAAH07+v07+saq0zU
+> esc env provider aws-login static default/test AKIANEW newshhh --path other.creds
+Provider updated. (revision 4)
+> esc env get default/test --definition
+values:
+  aws:
+    login:
+      fn::open::aws-login:
+        static:
+          accessKeyId: AKIAEXAMPLE
+          secretAccessKey:
+            fn::secret:
+              ciphertext: ZXNjeAAAAAHz6Ojo6OjoVtjhwQ==
+          sessionToken:
+            fn::secret:
+              ciphertext: ZXNjeAAAAAH07+v07+saq0zU
+  other:
+    creds:
+      fn::open::aws-login:
+        static:
+          accessKeyId: AKIANEW
+          secretAccessKey:
+            fn::secret:
+              ciphertext: ZXNjeAAAAAHu5ffz6Ojoieff3A==
+
+---
+> esc env init default/test
+> esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh
+> esc env get default/test --definition
+> esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh --session-token toktok
+> esc env get default/test --definition
+> esc env provider aws-login static default/test AKIANEW newshhh --path other.creds
+> esc env get default/test --definition

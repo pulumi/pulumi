@@ -188,31 +188,6 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 	assert.ErrorIs(t, err, ErrProjectNotFound)
 }
 
-//nolint:paralleltest // These tests use and change the current working directory
-func TestDetectProjectStackDeploymentPath(t *testing.T) {
-	tmpDir := mkTempDir(t)
-	t.Chdir(tmpDir)
-
-	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
-	yamlContents := `
-name: some_project
-description: Some project
-runtime: nodejs`
-
-	err := os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
-	require.NoError(t, err)
-
-	yamlDeployPath := filepath.Join(tmpDir, "Pulumi.stack.deploy.yaml")
-	yamlDeployContents := ""
-
-	err = os.WriteFile(yamlDeployPath, []byte(yamlDeployContents), 0o600)
-	require.NoError(t, err)
-
-	path, err := DetectProjectStackDeploymentPath("stack")
-	require.NoError(t, err)
-	assert.Equal(t, yamlDeployPath, path)
-}
-
 func TestDetectPolicyPackPathAt(t *testing.T) {
 	t.Parallel()
 	tmpDir := mkTempDir(t)

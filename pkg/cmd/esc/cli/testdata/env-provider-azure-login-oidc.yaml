@@ -1,0 +1,40 @@
+run: |
+  esc env init default/test
+  esc env provider azure-login oidc default/test tid /subscriptions/sub cid && esc env get default/test --definition
+  esc env provider azure-login oidc default/test tid /subscriptions/sub cid --subject-attribute env --subject-attribute team && esc env get default/test --definition
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env provider azure-login oidc default/test tid /subscriptions/sub cid
+Provider updated. (revision 2)
+> esc env get default/test --definition
+values:
+  azure:
+    login:
+      fn::open::azure-login:
+        clientId: cid
+        tenantId: tid
+        subscriptionId: /subscriptions/sub
+        oidc: true
+> esc env provider azure-login oidc default/test tid /subscriptions/sub cid --subject-attribute env --subject-attribute team
+Provider updated. (revision 3)
+> esc env get default/test --definition
+values:
+  azure:
+    login:
+      fn::open::azure-login:
+        clientId: cid
+        tenantId: tid
+        subscriptionId: /subscriptions/sub
+        oidc: true
+        subjectAttributes:
+          - env
+          - team
+
+---
+> esc env init default/test
+> esc env provider azure-login oidc default/test tid /subscriptions/sub cid
+> esc env get default/test --definition
+> esc env provider azure-login oidc default/test tid /subscriptions/sub cid --subject-attribute env --subject-attribute team
+> esc env get default/test --definition

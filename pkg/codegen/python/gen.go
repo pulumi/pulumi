@@ -32,11 +32,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/BurntSushi/toml"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -98,14 +98,6 @@ func (imports imports) strings() []string {
 	}
 	sort.Strings(result)
 	return result
-}
-
-func title(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
 }
 
 type modLocator struct {
@@ -373,7 +365,7 @@ func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	return title(components[2])
+	return cgstrings.UppercaseFirst(components[2])
 }
 
 // tokenToModule accepts a *Pulumi token* and returns name of the *Python module* that it
@@ -1770,7 +1762,7 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) (
 		}
 	}
 
-	name := pyClassName(title(method.Name)) + "Result"
+	name := pyClassName(cgstrings.UppercaseFirst(method.Name)) + "Result"
 
 	// Produce a class definition with optional """ comment.
 	fmt.Fprintf(w, "    @pulumi.output_type\n")
@@ -2595,9 +2587,9 @@ func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterE
 		case schema.DocRefKindFunction:
 			base = PyName(tokenToName(ref.Function.Token))
 		case schema.DocRefKindFunctionInputProperty:
-			base = title(PyName(tokenToName(ref.Function.Token))) + "Args"
+			base = cgstrings.UppercaseFirst(PyName(tokenToName(ref.Function.Token))) + "Args"
 		case schema.DocRefKindFunctionOutputProperty:
-			base = title(PyName(tokenToName(ref.Function.Token))) + "Result"
+			base = cgstrings.UppercaseFirst(PyName(tokenToName(ref.Function.Token))) + "Result"
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			switch t := ref.Type.(type) {
 			case *schema.ObjectType:
