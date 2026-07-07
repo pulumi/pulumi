@@ -157,9 +157,12 @@ type ShellResult struct {
 	TimedOut  bool   `json:"timed_out,omitempty"`
 }
 
-// maxOutputBytes is the maximum number of bytes captured from stdout or stderr.
-// Output beyond this limit is silently discarded and "truncated" is set in the result.
-const maxOutputBytes = 1 << 20 // 1 MiB
+// MaxOutputBytes is the maximum number of bytes captured from stdout or stderr.
+// Output beyond this limit is silently discarded and "truncated" is set in the
+// result. It is the canonical capture cap for the shell tool: the Neo ACP
+// adapter passes it to editor-run terminals too, so truncation behaves
+// identically on both paths.
+const MaxOutputBytes = 1 << 20 // 1 MiB
 
 // cappedBuffer is a bytes.Buffer that stops accepting writes after a limit.
 type cappedBuffer struct {
@@ -203,8 +206,8 @@ func (s *Shell) run(ctx context.Context, command string, dir string, timeout tim
 	// grace period instead of blocking forever on the inherited pipes.
 	cmd.WaitDelay = 5 * time.Second
 
-	stdout := &cappedBuffer{limit: maxOutputBytes}
-	stderr := &cappedBuffer{limit: maxOutputBytes}
+	stdout := &cappedBuffer{limit: MaxOutputBytes}
+	stderr := &cappedBuffer{limit: MaxOutputBytes}
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 

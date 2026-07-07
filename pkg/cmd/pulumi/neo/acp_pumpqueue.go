@@ -34,9 +34,9 @@ type pumpAction struct {
 
 // pumpQueue is an unbounded, ordered, single-consumer queue of pumpActions. The
 // pump pushes without ever blocking on the editor; drainPumpQueue pops in FIFO
-// order. On close any still-queued actions are abandoned: close happens only on
-// session teardown, where the connection (and any waiting Prompt) is already
-// going away.
+// order. close stops intake, but actions already queued are still delivered —
+// in particular the turn result the pump queues on teardown, so a waiting
+// Prompt always resolves.
 type pumpQueue struct {
 	mu     sync.Mutex
 	cond   *sync.Cond
@@ -61,14 +61,14 @@ func (q *pumpQueue) push(a pumpAction) {
 }
 
 // pop blocks until an action is available, returning ok=false once the queue is
-// closed.
+// closed and everything queued before the close has been delivered.
 func (q *pumpQueue) pop() (pumpAction, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for len(q.items) == 0 && !q.closed {
 		q.cond.Wait()
 	}
-	if q.closed {
+	if len(q.items) == 0 {
 		return pumpAction{}, false
 	}
 	a := q.items[0]
@@ -76,6 +76,8 @@ func (q *pumpQueue) pop() (pumpAction, bool) {
 	return a, true
 }
 
+// close stops intake: later pushes are dropped, and pop reports done once the
+// already-queued actions have been delivered.
 func (q *pumpQueue) close() {
 	q.mu.Lock()
 	defer q.mu.Unlock()

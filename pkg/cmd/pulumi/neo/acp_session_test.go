@@ -200,6 +200,36 @@ func TestPumpBoundaryReasons(t *testing.T) {
 	}
 }
 
+// TestPumpTeardownResolvesActiveTurn is the regression guard for a dying event
+// loop: when Session.Run exits without ever emitting a turn-boundary event
+// (e.g. the stream failed), the pump's teardown must still resolve the waiting
+// Prompt — with the loop's error — instead of leaving it blocked forever.
+func TestPumpTeardownResolvesActiveTurn(t *testing.T) {
+	t.Parallel()
+
+	fc := &fakeACPClient{}
+	done := make(chan turnResult, 1)
+	s := &acpSession{acpID: "sess_x", client: fc, activeTurn: done}
+	ctx, cancel := context.WithCancel(t.Context())
+	uiCh := make(chan UIEvent)
+	go s.pump(ctx, uiCh)
+
+	// Simulate the Run goroutine: record why the loop died, then cancel the
+	// session context, exactly in that order.
+	s.mu.Lock()
+	s.ended, s.runErr = true, errors.New("event stream lost")
+	s.mu.Unlock()
+	cancel()
+
+	select {
+	case tr := <-done:
+		require.Error(t, tr.err)
+		assert.ErrorContains(t, tr.err, "event stream lost")
+	case <-time.After(2 * time.Second):
+		t.Fatal("session teardown did not resolve the waiting turn")
+	}
+}
+
 func TestRequestPermissionRelaysDecision(t *testing.T) {
 	t.Parallel()
 
@@ -218,8 +248,8 @@ func TestRequestPermissionRelaysDecision(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			fc := &fakeACPClient{permResult: acp.RequestPermissionResult{Outcome: tt.outcome}, callErr: tt.callErr}
-			fp := &fakePoster{}
-			s := &acpSession{acpID: "sess_x", client: fc, poster: fp, orgName: "acme", taskID: "task_1"}
+			fp := &fakeTaskAPI{}
+			s := &acpSession{acpID: "sess_x", client: fc, api: fp, orgName: "acme", taskID: "task_1"}
 
 			s.requestPermission(t.Context(), UIApprovalRequest{ApprovalID: "appr_1", Message: "run it?"})
 

@@ -128,11 +128,15 @@ func TestToolTrackerTranslate(t *testing.T) {
 	assert.Equal(t, "tc_1", upd.ToolCallID, "completed update reuses the started call id")
 	assert.Equal(t, acp.ToolStatusCompleted, upd.Status)
 
-	// After completion the current id is cleared, so a stray progress event no
-	// longer correlates to the finished call.
+	// After completion the current id is cleared, so a stray progress or
+	// completion event no longer correlates to the finished call.
 	_, ok = tr.translate(UIToolProgress{Message: "late"})
 	assert.False(t, ok, "progress after completion produces no update")
+	_, ok = tr.translate(UIToolCompleted{})
+	assert.False(t, ok, "completion with no tracked start produces no update")
 
+	_, ok = tr.translate(UIToolStarted{Name: "shell__shell_execute"})
+	require.True(t, ok)
 	u, ok = tr.translate(UIToolCompleted{IsError: true})
 	require.True(t, ok)
 	assert.Equal(t, acp.ToolStatusFailed, u.(acp.ToolCallProgress).Status)

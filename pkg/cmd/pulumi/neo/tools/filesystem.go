@@ -583,7 +583,7 @@ func (f *Filesystem) grep(pattern, searchPath, include string) (grepResult, erro
 	for _, m := range matches {
 		fmt.Fprintf(&buf, "%s:%d: %s\n", m.path, m.lineno, m.content)
 	}
-	body, truncated := capString(buf.String(), maxOutputBytes)
+	body, truncated := capString(buf.String(), MaxOutputBytes)
 	return grepResult{Content: body, Truncated: truncated}, nil
 }
 
@@ -671,7 +671,7 @@ func (f *Filesystem) contentReplace(
 	for _, r := range results {
 		fmt.Fprintf(&buf, "%s: %d replacements\n", r.path, r.count)
 	}
-	body, truncated := capString(buf.String(), maxOutputBytes)
+	body, truncated := capString(buf.String(), MaxOutputBytes)
 	return contentReplaceResult{
 		Content:          body,
 		ReplacementsMade: totalReplacements,

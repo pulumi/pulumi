@@ -110,3 +110,4 @@ func (p *testloggingProvider) GetPluginInfo(_ context.Context, _ *emptypb.Empty)
 func (p *testloggingProvider) Attach(_ context.Context, _ *rpc.PluginAttach) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
+

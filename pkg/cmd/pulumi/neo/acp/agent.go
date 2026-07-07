@@ -84,9 +84,10 @@ type Identity struct {
 }
 
 // Agent is the ACP agent side of the adapter. It holds the state that spans the
-// connection's lifetime — the negotiated client capabilities and the Caller used
-// to reach back to the editor — and implements the client→agent methods
-// dispatched by handle.
+// connection's lifetime — the negotiated client capabilities and the installed
+// Delegate — and implements the client→agent methods dispatched by handle. The
+// Client used to reach back to the editor is not stored here: handle derives it
+// from the connection on each dispatch.
 //
 // Agent owns only the protocol handshake (initialize/authenticate) and request
 // routing; the application-specific session behavior (for Neo: the Cloud client,
@@ -103,9 +104,6 @@ type Agent struct {
 	// clientCaps is captured from the initialize request and consulted when
 	// building per-session tool handlers (filesystem/shell routing).
 	clientCaps ClientCapabilities
-	// client reaches the editor for outbound requests and notifications (fs/*,
-	// terminal/*, session/update, session/request_permission). Set once by Serve.
-	client Client
 	// delegate supplies the Pulumi-specific session behavior. nil until
 	// SetDelegate is called; the session methods report "not implemented" while
 	// nil.
@@ -119,14 +117,6 @@ func NewAgent(identity Identity, version string) *Agent {
 	return &Agent{identity: identity, version: version}
 }
 
-// setClient records the connection-backed Client. Called once by Serve before
-// any request is dispatched.
-func (a *Agent) setClient(c Client) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.client = c
-}
-
 // SetDelegate installs the application-specific session behavior. Call before Serve.
 func (a *Agent) SetDelegate(d Delegate) {
 	a.mu.Lock()
@@ -134,22 +124,12 @@ func (a *Agent) SetDelegate(d Delegate) {
 	a.delegate = d
 }
 
-// ClientCapabilities returns the capabilities the editor advertised on
-// initialize. Safe to call from any goroutine.
-func (a *Agent) ClientCapabilities() ClientCapabilities {
+// getDelegate returns the installed Delegate, or nil when SetDelegate has not
+// been called yet.
+func (a *Agent) getDelegate() Delegate {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.clientCaps
-}
-
-// Client returns the connection-backed Client used to issue outbound requests
-// and notifications to the editor. It is nil until Serve has wired the
-// connection. session/new hands it to the Delegate to build editor-backed tool
-// handlers (e.g. ClientFS) and to stream session/update notifications.
-func (a *Agent) Client() Client {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return a.client
+	return a.delegate
 }
 
 // initialize handles the `initialize` request: it records the client's
@@ -194,9 +174,7 @@ func (a *Agent) authenticate(ctx context.Context, req *jsonrpc2.Request) (any, e
 	if _, err := decodeParams[AuthenticateParams](req); err != nil {
 		return nil, err
 	}
-	a.mu.Lock()
-	d := a.delegate
-	a.mu.Unlock()
+	d := a.getDelegate()
 	if d == nil {
 		return nil, errNotImplemented("authenticate")
 	}
@@ -226,9 +204,13 @@ func mapDelegateErr(err error) error {
 	return err
 }
 
-func (a *Agent) newSession(ctx context.Context, req *jsonrpc2.Request) (any, error) {
+// newSession handles the `session/new` request. client is the connection-backed
+// Client handle supplied by handle; the Delegate retains it for the session's
+// lifetime to build editor-backed tool handlers (e.g. ClientFS) and to stream
+// session/update notifications.
+func (a *Agent) newSession(ctx context.Context, client Client, req *jsonrpc2.Request) (any, error) {
 	a.mu.Lock()
-	d, client, caps := a.delegate, a.client, a.clientCaps
+	d, caps := a.delegate, a.clientCaps
 	a.mu.Unlock()
 	if d == nil {
 		return nil, errNotImplemented("session/new")
@@ -245,9 +227,7 @@ func (a *Agent) newSession(ctx context.Context, req *jsonrpc2.Request) (any, err
 }
 
 func (a *Agent) prompt(ctx context.Context, req *jsonrpc2.Request) (any, error) {
-	a.mu.Lock()
-	d := a.delegate
-	a.mu.Unlock()
+	d := a.getDelegate()
 	if d == nil {
 		return nil, errNotImplemented("session/prompt")
 	}
@@ -259,9 +239,7 @@ func (a *Agent) prompt(ctx context.Context, req *jsonrpc2.Request) (any, error) 
 }
 
 func (a *Agent) setConfigOption(ctx context.Context, req *jsonrpc2.Request) (any, error) {
-	a.mu.Lock()
-	d := a.delegate
-	a.mu.Unlock()
+	d := a.getDelegate()
 	if d == nil {
 		return nil, errNotImplemented("session/set_config_option")
 	}
@@ -275,9 +253,7 @@ func (a *Agent) setConfigOption(ctx context.Context, req *jsonrpc2.Request) (any
 // cancel handles the session/cancel notification. As a notification it has no
 // response; HandlerWithError logs any returned error.
 func (a *Agent) cancel(ctx context.Context, req *jsonrpc2.Request) (any, error) {
-	a.mu.Lock()
-	d := a.delegate
-	a.mu.Unlock()
+	d := a.getDelegate()
 	if d == nil {
 		return nil, nil
 	}

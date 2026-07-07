@@ -15,8 +15,6 @@
 package neo
 
 import (
-	"context"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,22 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
-
-// fakeUpdater records the UpdateNeoTask PATCHes a session issues for live mode
-// changes (the read-only toggle on a running task).
-type fakeUpdater struct {
-	mu    sync.Mutex
-	calls []client.UpdateNeoTaskOptions
-}
-
-func (u *fakeUpdater) UpdateNeoTask(
-	_ context.Context, _, _ string, opts client.UpdateNeoTaskOptions,
-) error {
-	u.mu.Lock()
-	defer u.mu.Unlock()
-	u.calls = append(u.calls, opts)
-	return nil
-}
 
 // findOption returns the config option with the given id, failing the test if it
 // is absent.
@@ -81,14 +63,14 @@ func TestSetConfigOptionPermission(t *testing.T) {
 
 	t.Run("before start stores value without patching", func(t *testing.T) {
 		t.Parallel()
-		up := &fakeUpdater{}
-		s := &acpSession{updater: up, orgName: "acme"}
+		up := &fakeTaskAPI{}
+		s := &acpSession{api: up, orgName: "acme"}
 
 		require.NoError(t, s.setConfigOption(t.Context(), acpConfigPermission, acpPermissionValueReadOnly))
 
 		assert.Equal(t, client.NeoPermissionModeReadOnly, s.permissionMode)
 		up.mu.Lock()
-		assert.Empty(t, up.calls, "no task exists yet, so nothing to PATCH")
+		assert.Empty(t, up.patches, "no task exists yet, so nothing to PATCH")
 		up.mu.Unlock()
 		assert.Equal(t, acpPermissionValueReadOnly,
 			findOption(t, s.configOptionsSnapshot(), acpConfigPermission).CurrentValue)
@@ -96,17 +78,17 @@ func TestSetConfigOptionPermission(t *testing.T) {
 
 	t.Run("after start patches the live task", func(t *testing.T) {
 		t.Parallel()
-		up := &fakeUpdater{}
-		s := &acpSession{updater: up, orgName: "acme", taskID: "task_1", started: true}
+		up := &fakeTaskAPI{}
+		s := &acpSession{api: up, orgName: "acme", taskID: "task_1", started: true}
 
 		require.NoError(t, s.setConfigOption(t.Context(), acpConfigPermission, acpPermissionValueReadOnly))
 
 		up.mu.Lock()
 		defer up.mu.Unlock()
-		require.Len(t, up.calls, 1)
-		require.NotNil(t, up.calls[0].PermissionMode)
-		assert.Equal(t, client.NeoPermissionModeReadOnly, *up.calls[0].PermissionMode)
-		assert.Nil(t, up.calls[0].ApprovalMode, "approval mode is never changed")
+		require.Len(t, up.patches, 1)
+		require.NotNil(t, up.patches[0].PermissionMode)
+		assert.Equal(t, client.NeoPermissionModeReadOnly, *up.patches[0].PermissionMode)
+		assert.Nil(t, up.patches[0].ApprovalMode, "approval mode is never changed")
 	})
 }
 
@@ -149,9 +131,9 @@ func TestSetConfigOptionRejectsInvalid(t *testing.T) {
 func TestDelegateSetConfigOption(t *testing.T) {
 	t.Parallel()
 
-	up := &fakeUpdater{}
+	up := &fakeTaskAPI{}
 	d := &acpDelegate{ws: pkgWorkspace.Instance, sessions: map[string]*acpSession{}}
-	d.sessions["sess_x"] = &acpSession{acpID: "sess_x", updater: up, orgName: "acme"}
+	d.sessions["sess_x"] = &acpSession{acpID: "sess_x", api: up, orgName: "acme"}
 
 	res, err := d.SetConfigOption(t.Context(), acp.SetConfigOptionParams{
 		SessionID: "sess_x", ConfigID: acpConfigPermission, Value: acpPermissionValueReadOnly,
@@ -171,8 +153,8 @@ func TestRequestPermissionPlanExitEmitsConfigUpdate(t *testing.T) {
 	fc := &fakeACPClient{permResult: acp.RequestPermissionResult{
 		Outcome: acp.PermissionOutcome{Outcome: "selected", OptionID: "allow"},
 	}}
-	fp := &fakePoster{}
-	s := &acpSession{acpID: "sess_x", client: fc, poster: fp, orgName: "acme", taskID: "task_1", planMode: true}
+	fp := &fakeTaskAPI{}
+	s := &acpSession{acpID: "sess_x", client: fc, api: fp, orgName: "acme", taskID: "task_1", planMode: true}
 
 	s.requestPermission(t.Context(), UIApprovalRequest{
 		ApprovalID:   "appr_1",
@@ -205,8 +187,8 @@ func TestRequestPermissionPlanExitRejectedKeepsPlanMode(t *testing.T) {
 	fc := &fakeACPClient{permResult: acp.RequestPermissionResult{
 		Outcome: acp.PermissionOutcome{Outcome: "selected", OptionID: "reject"},
 	}}
-	fp := &fakePoster{}
-	s := &acpSession{acpID: "sess_x", client: fc, poster: fp, orgName: "acme", taskID: "task_1", planMode: true}
+	fp := &fakeTaskAPI{}
+	s := &acpSession{acpID: "sess_x", client: fc, api: fp, orgName: "acme", taskID: "task_1", planMode: true}
 
 	s.requestPermission(t.Context(), UIApprovalRequest{
 		ApprovalID:   "appr_1",

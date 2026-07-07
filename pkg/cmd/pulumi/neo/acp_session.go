@@ -17,6 +17,7 @@ package neo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -31,12 +32,11 @@ import (
 type acpSession struct {
 	acpID string
 	// pc creates the Neo task and backs the Session event loop (needs the
-	// concrete client). poster is the same client viewed through a narrow
-	// interface so user-event posting can be faked in tests; both point at the
-	// one cloud client.
+	// concrete client). api is the same client viewed through a narrow interface
+	// so the task-facing calls can be faked in tests; both point at the one
+	// cloud client.
 	pc           *client.Client
-	poster       userEventPoster
-	updater      neoTaskUpdater
+	api          neoTaskAPI
 	orgName      string
 	projectName  string
 	stackRefName string
@@ -44,9 +44,22 @@ type acpSession struct {
 	handlers     map[string]ToolHandler
 	client       acp.Client
 
+	// startMu serializes task creation (start) with config-option changes
+	// (setConfigOption), spanning their network calls. Without it a mode change
+	// could land between start reading the modes and the task becoming
+	// PATCHable — stored and advertised, but never applied to the task. mu stays
+	// the short-lived field lock; never acquire startMu while holding mu.
+	startMu sync.Mutex
+
 	mu      sync.Mutex
 	taskID  string
 	started bool
+	// ended records that the Session event loop has exited (runErr says why;
+	// nil means a clean stream end or connection teardown). Set by the start
+	// goroutine when Run returns. Once ended, new prompts are rejected and the
+	// pump's teardown resolves any in-flight turn.
+	ended  bool
+	runErr error
 	// permissionMode and planMode are the config-option selections that feed the
 	// Neo task. They are mutated by SetConfigOption and read when the task is
 	// created (start) — permissionMode also live-PATCHes a running task, while
@@ -57,16 +70,12 @@ type acpSession struct {
 	activeTurn     chan turnResult
 }
 
-// userEventPoster posts user events (chat messages, approvals, cancels) back to
-// a Neo task. *client.Client satisfies it; tests fake it.
-type userEventPoster interface {
+// neoTaskAPI is the slice of the cloud client a session drives its task
+// through: posting user events (chat messages, approvals, cancels) and
+// PATCHing a live task's mode settings. *client.Client satisfies it; tests
+// fake it.
+type neoTaskAPI interface {
 	PostNeoTaskUserEvent(ctx context.Context, orgName, taskID string, body any) error
-}
-
-// neoTaskUpdater PATCHes a live Neo task's mode settings. *client.Client
-// satisfies it; tests fake it. Used to push a read-only toggle to a task that
-// already exists (SetConfigOption).
-type neoTaskUpdater interface {
 	UpdateNeoTask(ctx context.Context, orgName, taskID string, opts client.UpdateNeoTaskOptions) error
 }
 
@@ -82,6 +91,12 @@ type turnResult struct {
 // on a context derived from the connection lifetime so they survive past the
 // prompt request that started them.
 func (s *acpSession) start(baseCtx context.Context, prompt string) error {
+	// Hold startMu across the whole creation window so a concurrent
+	// setConfigOption either happens-before (its values are read below) or
+	// happens-after (it sees started and PATCHes the live task).
+	s.startMu.Lock()
+	defer s.startMu.Unlock()
+
 	s.mu.Lock()
 	permissionMode := s.permissionMode
 	if permissionMode == "" {
@@ -121,14 +136,31 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 		TaskID:   resp.TaskID,
 		UIEvents: uiCh,
 	}
-	// When Run returns (stream ended or ctx cancelled) tear down the derived
-	// context so the pump stops too.
+	// When Run returns (stream ended, failed, or ctx cancelled), record that the
+	// event loop is gone — new prompts are rejected from then on — and tear down
+	// the derived context so the pump stops too and resolves any in-flight turn
+	// (see pump's teardown).
 	go func() {
 		defer cancel()
-		_ = session.Run(sessCtx)
+		err := session.Run(sessCtx)
+		s.mu.Lock()
+		s.ended, s.runErr = true, err
+		s.mu.Unlock()
 	}()
 	go s.pump(sessCtx, uiCh)
 	return nil
+}
+
+// endedError describes why the session can no longer run turns: the event loop
+// exited with runErr, or ended without error (a clean stream end or connection
+// teardown).
+func (s *acpSession) endedError() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.runErr != nil {
+		return fmt.Errorf("Neo session ended: %w", s.runErr)
+	}
+	return errors.New("Neo session has ended")
 }
 
 // pump translates Session UIEvents into ordered actions (session/update
@@ -147,8 +179,16 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 // the order the agent produced events (so updates still precede the turn result).
 func (s *acpSession) pump(ctx context.Context, uiCh <-chan UIEvent) {
 	q := newPumpQueue()
-	defer q.close()
 	go s.drainPumpQueue(ctx, q)
+	defer func() {
+		// Teardown must resolve a waiting Prompt: the event loop is gone, so no
+		// turn-boundary event will ever arrive. Queue a final turn result — a
+		// no-op if the turn already resolved (finishTurn without a waiter does
+		// nothing) — then close the queue, which still delivers everything
+		// queued ahead of it before the drain stops.
+		q.push(pumpAction{finish: &turnResult{err: s.endedError()}})
+		q.close()
+	}()
 
 	tracker := toolTracker{cwd: s.cwd}
 	for {
@@ -178,9 +218,13 @@ func (s *acpSession) pump(ctx context.Context, uiCh <-chan UIEvent) {
 	}
 }
 
-// drainPumpQueue performs queued pump actions in order until the queue is closed.
-// It is the only place that writes session/update notifications, so a slow editor
-// stalls it alone and never the pump that feeds it.
+// drainPumpQueue performs queued pump actions in order until the queue is closed
+// and drained. It is the only writer of stream-derived session/update
+// notifications, so a slow editor stalls it alone and never the pump that feeds
+// it. (requestPermission — already off this goroutine — sends its
+// config_option_update directly: that update is ordered by the permission
+// round-trip it follows, not by the event stream, and jsonrpc2 serializes
+// concurrent writes.)
 func (s *acpSession) drainPumpQueue(ctx context.Context, q *pumpQueue) {
 	for {
 		a, ok := q.pop()
@@ -247,7 +291,7 @@ func (s *acpSession) requestPermission(ctx context.Context, e UIApprovalRequest)
 	s.mu.Lock()
 	taskID := s.taskID
 	s.mu.Unlock()
-	_ = s.poster.PostNeoTaskUserEvent(ctx, s.orgName, taskID, apitype.AgentUserEventUserConfirmation{
+	_ = s.api.PostNeoTaskUserEvent(ctx, s.orgName, taskID, apitype.AgentUserEventUserConfirmation{
 		Type:       "user_confirmation",
 		ApprovalID: e.ApprovalID,
 		Approved:   approved,

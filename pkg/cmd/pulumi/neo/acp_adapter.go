@@ -179,8 +179,7 @@ func (d *acpDelegate) NewSession(
 	sess := &acpSession{
 		acpID:        sessionID,
 		pc:           pc,
-		poster:       pc,
-		updater:      pc,
+		api:          pc,
 		orgName:      orgName,
 		projectName:  projectName,
 		stackRefName: stackRefName,
@@ -217,6 +216,12 @@ func (d *acpDelegate) Prompt(ctx context.Context, params acp.PromptParams) (acp.
 	// which would orphan the prior waiter (the pump only ever signals the latest).
 	done := make(chan turnResult, 1)
 	s.mu.Lock()
+	if s.ended {
+		// The Session event loop is gone (stream failure or clean end); a new
+		// turn could never complete, so fail it up front.
+		s.mu.Unlock()
+		return acp.PromptResult{}, s.endedError()
+	}
 	if s.activeTurn != nil {
 		s.mu.Unlock()
 		return acp.PromptResult{}, fmt.Errorf("a prompt turn is already in progress for session %q", params.SessionID)
@@ -230,7 +235,7 @@ func (d *acpDelegate) Prompt(ctx context.Context, params acp.PromptParams) (acp.
 	if needStart {
 		startErr = s.start(d.baseCtx, text)
 	} else {
-		startErr = s.poster.PostNeoTaskUserEvent(ctx, s.orgName, taskID,
+		startErr = s.api.PostNeoTaskUserEvent(ctx, s.orgName, taskID,
 			apitype.AgentUserEventUserMessage{Type: "user_message", Content: text})
 	}
 	if startErr != nil {
@@ -265,7 +270,7 @@ func (d *acpDelegate) Cancel(ctx context.Context, params acp.CancelParams) error
 	if !started || taskID == "" {
 		return nil
 	}
-	return s.poster.PostNeoTaskUserEvent(ctx, s.orgName, taskID, apitype.AgentUserEventCancel{Type: "user_cancel"})
+	return s.api.PostNeoTaskUserEvent(ctx, s.orgName, taskID, apitype.AgentUserEventCancel{Type: "user_cancel"})
 }
 
 // SetConfigOption applies a `permission` or `plan` config-option change for the
@@ -329,10 +334,6 @@ func buildACPHandlers(
 	return lt.handlers, nil
 }
 
-// acpTerminalOutputLimit caps the output captured from an editor terminal,
-// matching the local shell tool's 1 MiB capture.
-const acpTerminalOutputLimit = 1 << 20
-
 // runInEditorTerminal runs a shell command in the editor's terminal and shapes
 // the result like the local shell tool, through the shared tools.ShellResult so
 // the wire shape stays identical. The editor merges stdout and stderr, so the
@@ -345,7 +346,9 @@ func runInEditorTerminal(
 	tctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	res, err := ct.Run(tctx, program, args, dir, acpTerminalOutputLimit)
+	// Cap the captured output at the same limit as the local shell tool, so
+	// truncation behaves identically on both paths.
+	res, err := ct.Run(tctx, program, args, dir, tools.MaxOutputBytes)
 
 	exitCode := res.ExitCode
 	if res.Signal != "" {

@@ -71,6 +71,11 @@ func (t *toolTracker) translate(evt UIEvent) (acp.SessionUpdate, bool) {
 			Content:    textContent(e.Message),
 		}, true
 	case UIToolCompleted:
+		// A completion with no tracked start (e.g. events replayed across a
+		// reconnect) has no call id to attach to, and ACP requires one.
+		if t.current == "" {
+			return nil, false
+		}
 		status := acp.ToolStatusCompleted
 		if e.IsError {
 			status = acp.ToolStatusFailed

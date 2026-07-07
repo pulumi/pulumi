@@ -40,9 +40,6 @@ func Serve(ctx context.Context, a *Agent, in io.Reader, out io.Writer) error {
 	// session/prompt is still in flight.
 	handler := jsonrpc2.AsyncHandler(jsonrpc2.HandlerWithError(a.handle))
 	conn := jsonrpc2.NewConn(ctx, stream, handler)
-	// Give the agent a Client so its method handlers can issue outbound requests
-	// to the editor (fs/*, terminal/*, session/update, session/request_permission).
-	a.setClient(connCaller{conn: conn})
 
 	select {
 	case <-ctx.Done():
@@ -57,6 +54,8 @@ func Serve(ctx context.Context, a *Agent, in io.Reader, out io.Writer) error {
 // in jsonrpc2.HandlerWithError, which turns the (result, error) return into a
 // JSON-RPC response: a *jsonrpc2.Error becomes a structured error response,
 // any other error becomes a generic one, and notifications drop the result.
+// The Client handed to session/new is derived from conn here, so it exists the
+// moment a request can be dispatched — there is no wiring step to race.
 func (a *Agent) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (any, error) {
 	switch req.Method {
 	case "initialize":
@@ -64,7 +63,7 @@ func (a *Agent) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.R
 	case "authenticate":
 		return a.authenticate(ctx, req)
 	case "session/new":
-		return a.newSession(ctx, req)
+		return a.newSession(ctx, connCaller{conn: conn}, req)
 	case "session/prompt":
 		return a.prompt(ctx, req)
 	case "session/cancel":

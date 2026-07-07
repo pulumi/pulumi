@@ -57,7 +57,6 @@ func newTestPeersWithClient(t *testing.T, a *Agent, clientHandler jsonrpc2.Handl
 
 	agentConn := jsonrpc2.NewConn(t.Context(),
 		jsonrpc2.NewPlainObjectStream(agentEnd), jsonrpc2.AsyncHandler(jsonrpc2.HandlerWithError(a.handle)))
-	a.setClient(connCaller{conn: agentConn})
 
 	clientConn := jsonrpc2.NewConn(t.Context(),
 		jsonrpc2.NewPlainObjectStream(clientEnd), clientHandler)
@@ -98,8 +97,11 @@ func TestInitializeNegotiatesAndCapturesCapabilities(t *testing.T) {
 	require.Len(t, res.AuthMethods, 1)
 	assert.Equal(t, testAuthMethod, res.AuthMethods[0].ID)
 
-	// The editor's capabilities are captured for later tool routing.
-	caps := agent.ClientCapabilities()
+	// The editor's capabilities are captured for later tool routing. (The Call
+	// above completing gives the necessary happens-before for this direct read.)
+	agent.mu.Lock()
+	caps := agent.clientCaps
+	agent.mu.Unlock()
 	assert.True(t, caps.FS.WriteTextFile)
 	assert.True(t, caps.FS.ReadTextFile)
 	assert.True(t, caps.Terminal)
@@ -149,14 +151,6 @@ func TestUnknownMethodIsMethodNotFound(t *testing.T) {
 	var rpcErr *jsonrpc2.Error
 	require.ErrorAs(t, err, &rpcErr)
 	assert.EqualValues(t, jsonrpc2.CodeMethodNotFound, rpcErr.Code)
-}
-
-func TestCallerWiredBySetup(t *testing.T) {
-	t.Parallel()
-
-	agent := NewAgent(testIdentity, "v3.0.0")
-	newTestPeers(t, agent)
-	require.NotNil(t, agent.Client())
 }
 
 // fakeDelegate records what the session methods were called with and returns

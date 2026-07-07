@@ -17,6 +17,7 @@ package neo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"sync"
 	"testing"
@@ -25,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -200,11 +202,11 @@ func TestACPDelegateSessionLookup(t *testing.T) {
 func TestPromptRejectsOverlappingTurn(t *testing.T) {
 	t.Parallel()
 
-	poster := &fakePoster{}
+	api := &fakeTaskAPI{}
 	d := &acpDelegate{ws: pkgWorkspace.Instance, baseCtx: t.Context(), sessions: map[string]*acpSession{}}
 	d.sessions["sess_1"] = &acpSession{
 		acpID:   "sess_1",
-		poster:  poster,
+		api:     api,
 		orgName: "acme",
 		started: true,
 		taskID:  "task_1",
@@ -218,28 +220,63 @@ func TestPromptRejectsOverlappingTurn(t *testing.T) {
 		Prompt:    []acp.ContentBlock{{Type: "text", Text: "hi"}},
 	})
 	require.ErrorContains(t, err, "already in progress")
-	assert.Empty(t, poster.posted, "overlapping prompt must not post to the backend")
+	assert.Empty(t, api.posted, "overlapping prompt must not post to the backend")
 }
 
-// fakePoster records the user events posted back to the (fake) Neo task.
-type fakePoster struct {
-	mu     sync.Mutex
-	posted []any
+func TestPromptRejectedAfterSessionEnded(t *testing.T) {
+	t.Parallel()
+
+	api := &fakeTaskAPI{}
+	d := &acpDelegate{ws: pkgWorkspace.Instance, baseCtx: t.Context(), sessions: map[string]*acpSession{}}
+	d.sessions["sess_1"] = &acpSession{
+		acpID:   "sess_1",
+		api:     api,
+		orgName: "acme",
+		started: true,
+		taskID:  "task_1",
+		// The event loop exited with an error; a new turn could never complete.
+		ended:  true,
+		runErr: errors.New("event stream lost"),
+	}
+
+	_, err := d.Prompt(t.Context(), acp.PromptParams{
+		SessionID: "sess_1",
+		Prompt:    []acp.ContentBlock{{Type: "text", Text: "hi"}},
+	})
+	require.ErrorContains(t, err, "event stream lost")
+	assert.Empty(t, api.posted, "a prompt on an ended session must not post to the backend")
 }
 
-func (p *fakePoster) PostNeoTaskUserEvent(_ context.Context, _, _ string, body any) error {
+// fakeTaskAPI records the user events and mode PATCHes a session sends to the
+// (fake) Neo backend.
+type fakeTaskAPI struct {
+	mu      sync.Mutex
+	posted  []any
+	patches []client.UpdateNeoTaskOptions
+}
+
+func (p *fakeTaskAPI) PostNeoTaskUserEvent(_ context.Context, _, _ string, body any) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.posted = append(p.posted, body)
 	return nil
 }
 
+func (p *fakeTaskAPI) UpdateNeoTask(
+	_ context.Context, _, _ string, opts client.UpdateNeoTaskOptions,
+) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.patches = append(p.patches, opts)
+	return nil
+}
+
 func TestCancelPostsUserCancel(t *testing.T) {
 	t.Parallel()
 
-	fp := &fakePoster{}
+	fp := &fakeTaskAPI{}
 	d := &acpDelegate{ws: pkgWorkspace.Instance, sessions: map[string]*acpSession{}}
-	d.sessions["sess_x"] = &acpSession{acpID: "sess_x", poster: fp, orgName: "acme", taskID: "task_1", started: true}
+	d.sessions["sess_x"] = &acpSession{acpID: "sess_x", api: fp, orgName: "acme", taskID: "task_1", started: true}
 
 	require.NoError(t, d.Cancel(t.Context(), acp.CancelParams{SessionID: "sess_x"}))
 
@@ -253,9 +290,9 @@ func TestCancelPostsUserCancel(t *testing.T) {
 func TestCancelNoopWhenUnknownOrNotStarted(t *testing.T) {
 	t.Parallel()
 
-	fp := &fakePoster{}
+	fp := &fakeTaskAPI{}
 	d := &acpDelegate{ws: pkgWorkspace.Instance, sessions: map[string]*acpSession{}}
-	d.sessions["not_started"] = &acpSession{poster: fp}
+	d.sessions["not_started"] = &acpSession{api: fp}
 
 	require.NoError(t, d.Cancel(t.Context(), acp.CancelParams{SessionID: "missing"}))
 	require.NoError(t, d.Cancel(t.Context(), acp.CancelParams{SessionID: "not_started"}))

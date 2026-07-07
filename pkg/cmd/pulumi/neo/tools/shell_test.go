@@ -208,13 +208,13 @@ func TestShell_TruncatesLargeOutput(t *testing.T) {
 
 	sh, err := NewShell(t.TempDir())
 	require.NoError(t, err)
-	// Generate more than maxOutputBytes of stdout.
+	// Generate more than MaxOutputBytes of stdout.
 	res, err := sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(`{"command":"dd if=/dev/zero bs=1048576 count=2 2>/dev/null | tr '\\0' 'A'"}`))
 	require.NoError(t, err)
 	r := res.(ShellResult)
 	assert.True(t, r.Truncated)
-	assert.LessOrEqual(t, len(r.Stdout), maxOutputBytes)
+	assert.LessOrEqual(t, len(r.Stdout), MaxOutputBytes)
 }
 
 func TestShell_RejectsUnknownMethod(t *testing.T) {

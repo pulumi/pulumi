@@ -110,7 +110,16 @@ func (s *acpSession) configOptionsSnapshot() []acp.ConfigOption {
 // plan option is fixed at task creation — PlanMode cannot change on a running task
 // — so a change after the task starts is clamped (kept at its current value),
 // mirroring the TUI, where Shift+Tab is frozen after the first message.
+//
+// startMu is held throughout so this cannot interleave with start's task
+// creation: a change lands either before it (start reads the new values) or
+// after it (started is true, so the permission change PATCHes the live task and
+// a plan change is clamped) — never in between, where it would be stored and
+// advertised but never applied.
 func (s *acpSession) setConfigOption(ctx context.Context, configID, value string) error {
+	s.startMu.Lock()
+	defer s.startMu.Unlock()
+
 	switch configID {
 	case acpConfigPermission:
 		var mode client.NeoPermissionMode
@@ -128,8 +137,8 @@ func (s *acpSession) setConfigOption(ctx context.Context, configID, value string
 		// Push to a live task first; only record the new value once the server has
 		// accepted it, so a failed PATCH doesn't leave us advertising a mode the
 		// task isn't actually in.
-		if started && taskID != "" {
-			if err := s.updater.UpdateNeoTask(ctx, s.orgName, taskID,
+		if started {
+			if err := s.api.UpdateNeoTask(ctx, s.orgName, taskID,
 				client.UpdateNeoTaskOptions{PermissionMode: &mode}); err != nil {
 				return err
 			}

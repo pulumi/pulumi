@@ -13,8 +13,10 @@
 // limitations under the License.
 
 // Package acp is a self-contained implementation of the Agent Client Protocol
-// (ACP) wire layer: the JSON-RPC plumbing, the method router, the protocol
-// types, and the fs/terminal callback hooks an agent exposes to its editor.
+// (https://agentclientprotocol.com) wire layer: the JSON-RPC plumbing, the
+// method router, the protocol types, and the fs/terminal callback hooks an
+// agent exposes to its editor. It is application-neutral: the embedding
+// application supplies its identity (see NewAgent) and behavior (see Delegate).
 //
 // It has no dependencies on Pulumi or Neo — its only external dependency is the
 // jsonrpc2 transport. The Neo-specific glue that wires this protocol to Neo's
