@@ -157,7 +157,7 @@ func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []
 			res.Protect = false
 			resourceCount++
 		} else {
-			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
+			errs = append(errs, resourceNotFoundError(snap, urn))
 		}
 	}
 

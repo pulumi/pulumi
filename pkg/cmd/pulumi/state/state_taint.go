@@ -124,7 +124,7 @@ func taintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []erro
 			res.Taint = true
 			resourceCount++
 		} else {
-			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
+			errs = append(errs, resourceNotFoundError(snap, urn))
 		}
 	}
 
