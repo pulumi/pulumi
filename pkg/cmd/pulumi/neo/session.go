@@ -27,6 +27,8 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/net/http2"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -185,6 +187,15 @@ func isTransientStreamError(err error) bool {
 	var ue *url.Error
 	if errors.As(err, &ue) {
 		return !errors.Is(ue.Err, context.Canceled)
+	}
+	var streamErr http2.StreamError
+	if errors.As(err, &streamErr) {
+		switch streamErr.Code {
+		case http2.ErrCodeInternal, http2.ErrCodeCancel, http2.ErrCodeRefusedStream:
+			return true
+		default:
+			return false
+		}
 	}
 	var oe *net.OpError
 	return errors.As(err, &oe)

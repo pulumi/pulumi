@@ -27,6 +27,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/http2"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -925,6 +926,47 @@ func TestSession_ReconnectsAfterTransientStreamError(t *testing.T) {
 	defer streamer.mu.Unlock()
 	assert.Equal(t, []string{"", "e1"}, streamer.lastIDs,
 		"second open must pass the last seen event ID so the service replays missed events")
+}
+
+func TestSession_ReconnectsAfterHTTP2InternalStreamError(t *testing.T) {
+	t.Parallel()
+
+	t.Cleanup(func(prev time.Duration) func() {
+		return func() { reconnectInitialBackoff = prev }
+	}(reconnectInitialBackoff))
+	reconnectInitialBackoff = 1 * time.Millisecond
+
+	stream1 := make(chan client.NeoStreamEvent, 2)
+	stream2 := make(chan client.NeoStreamEvent, 2)
+	streamer := &reconnectStreamer{streams: []chan client.NeoStreamEvent{stream1, stream2}}
+
+	stream1 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e1",
+	}
+	stream1 <- client.NeoStreamEvent{Err: http2.StreamError{
+		StreamID: 1,
+		Code:     http2.ErrCodeInternal,
+	}}
+	close(stream1)
+
+	stream2 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e2",
+	}
+	close(stream2)
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, []string{"", "e1"}, streamer.lastIDs,
+		"HTTP/2 stream resets must reconnect with the last seen event ID")
 }
 
 func TestSession_PropagatesNonTransientStreamError(t *testing.T) {

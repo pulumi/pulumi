@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Retry `pulumi neo` event streams after transient HTTP/2 stream resets
+time: 2026-07-07T00:00:00.000000+00:00
