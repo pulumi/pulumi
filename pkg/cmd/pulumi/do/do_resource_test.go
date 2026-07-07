@@ -122,7 +122,6 @@ List Inputs:
   prefix (string, optional)
 
 Usage:
-  do azure:index:myResource [flags]
   do azure:index:myResource [command]
 
 Available Commands:
@@ -172,7 +171,6 @@ Outputs:
   size (integer)
 
 Usage:
-  do azure:index:myResource [flags]
   do azure:index:myResource [command]
 
 Available Commands:
