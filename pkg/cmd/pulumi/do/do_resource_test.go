@@ -607,46 +607,66 @@ func TestDoCmdResourceNonInteractiveRequiresYes(t *testing.T) {
 	}
 }
 
-// TestDoCmdResourceDryRunNotSupported asserts that operations without a preview mode reject --dry-run instead
-// of ignoring it. For delete this is load-bearing: --dry-run skips the confirmation prompt, so accepting it
-// would delete the resource without asking.
-func TestDoCmdResourceDryRunNotSupported(t *testing.T) {
+// TestDoCmdResourceDeleteDryRun asserts that delete --dry-run prints what would be deleted and never
+// calls the provider. Delete has no provider-side preview mode, so the summary is the whole dry run;
+// crucially --dry-run must not act like --yes (the confirmation prompt is skipped on dry runs).
+func TestDoCmdResourceDeleteDryRun(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name string
-		args []string
-	}{
-		{"delete", []string{"--dry-run", "--stateless", "azure:index:myResource", "delete", "res-1", "--yes"}},
-		{"read", []string{"--dry-run", "azure:index:myResource", "read", "res-1"}},
-		{"list", []string{"--dry-run", "azure:index:myResource", "list"}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			provider := &testProvider{
-				spec: doResourceSpec(true),
-				MockProvider: plugin.MockProvider{
-					DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-						require.Fail(t, "Delete should not be called with --dry-run")
-						return plugin.DeleteResponse{}, nil
-					},
-					ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-						require.Fail(t, "Read should not be called with --dry-run")
-						return plugin.ReadResponse{}, nil
-					},
-					ListF: func(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
-						require.Fail(t, "List should not be called with --dry-run")
-						return nil, nil
-					},
+	cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
+		spec: doResourceSpec(false),
+		MockProvider: plugin.MockProvider{
+			DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+				require.Fail(t, "Delete should not be called with --dry-run")
+				return plugin.DeleteResponse{}, nil
+			},
+		},
+	})
+	cmd.SetArgs([]string{"--dry-run", "--stateless", "azure:index:myResource", "delete", "res-1"})
+	require.NoError(t, cmd.Execute())
+	assert.Contains(t, stderr.String(), `This would delete azure:index:myResource "res-1"`)
+	assert.Empty(t, stdout.String())
+}
+
+// TestDoCmdResourceDryRunIgnoredForReadOnlyOps asserts that read and list ignore --dry-run: they never
+// mutate anything, so there is nothing to preview and they behave as if the flag wasn't passed.
+func TestDoCmdResourceDryRunIgnoredForReadOnlyOps(t *testing.T) {
+	t.Parallel()
+
+	t.Run("read", func(t *testing.T) {
+		t.Parallel()
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Outputs: resource.PropertyMap{"name": resource.NewProperty("read")},
+						},
+					}, nil
 				},
-			}
-			cmd, _, _ := newDoResourceCommand(t, provider)
-			cmd.SetArgs(tc.args)
-			err := cmd.Execute()
-			require.ErrorContains(t, err, "--dry-run is not supported for `"+tc.name+"`")
+			},
 		})
-	}
+		cmd.SetArgs([]string{"--dry-run", "azure:index:myResource", "read", "res-1"})
+		require.NoError(t, cmd.Execute())
+		assert.JSONEq(t, `{"id":"res-1","name":"read"}`, stdout.String())
+	})
+
+	t.Run("list", func(t *testing.T) {
+		t.Parallel()
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(true),
+			MockProvider: plugin.MockProvider{
+				ListF: func(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
+					return plugin.NewListStream([]plugin.ListResult{{ID: "1", Name: "one"}}, ""), nil
+				},
+			},
+		})
+		cmd.SetArgs([]string{"--dry-run", "azure:index:myResource", "list"})
+		require.NoError(t, cmd.Execute())
+		assert.JSONEq(t, `[{"id":"1","name":"one"}]`, stdout.String())
+	})
 }
 
 // TestDoCmdResourceConfirmationSummary asserts the operation summary lands on stderr (so stdout stays a clean

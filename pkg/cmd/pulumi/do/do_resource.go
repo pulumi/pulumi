@@ -181,9 +181,6 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 		Short: "Read a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if pc.dryrun {
-				return errDryRunNotSupported("read")
-			}
 			ctx := cmd.Context()
 			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
@@ -316,9 +313,6 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 		Short: "Delete a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if pc.dryrun {
-				return errDryRunNotSupported("delete")
-			}
 			if !pc.stateless {
 				return errStatefulNotImplemented("delete")
 			}
@@ -331,8 +325,12 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			}
 			urn := resourceURN(res)
 			id := resource.ID(args[0])
-			if err := pc.confirm(cmd, formatDeleteSummary(res, id), "delete", yes); err != nil {
+			if err := pc.confirm(cmd, formatDeleteSummary(res, id, pc.dryrun), string(id), yes); err != nil {
 				return err
+			}
+			// The provider protocol has no preview mode for Delete, so the summary above is the whole dry run.
+			if pc.dryrun {
+				return nil
 			}
 			_, err := pc.provider.Delete(ctx, plugin.DeleteRequest{
 				URN:     urn,
@@ -360,9 +358,6 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 		Short: "List resources",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if pc.dryrun {
-				return errDryRunNotSupported("list")
-			}
 			if all && count > 0 {
 				return errors.New("--all and --count are mutually exclusive")
 			}
@@ -507,10 +502,6 @@ func (pc *packageCommand) printListResults(cmd *cobra.Command, results []plugin.
 	return nil
 }
 
-func errDryRunNotSupported(op string) error {
-	return fmt.Errorf("--dry-run is not supported for `%s`", op)
-}
-
 // errStatefulNotImplemented is returned from create/patch/delete when the user did not pass
 // --stateless. The stateful (engine-driven) implementation of these operations is the planned
 // default but isn't built yet, so for now the only working path is opting in to the stateless one.
@@ -527,7 +518,10 @@ func formatCreateSummary(res *schema.Resource, inputs resource.PropertyMap, show
 	return fmt.Sprintf("This will create %s with the following inputs:\n%s", res.Token, body), nil
 }
 
-func formatDeleteSummary(res *schema.Resource, id resource.ID) string {
+func formatDeleteSummary(res *schema.Resource, id resource.ID, dryrun bool) string {
+	if dryrun {
+		return fmt.Sprintf("This would delete %s %q.", res.Token, id)
+	}
 	return fmt.Sprintf("This will delete %s %q.", res.Token, id)
 }
 
