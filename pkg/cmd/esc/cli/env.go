@@ -447,9 +447,7 @@ func (esc *escCommand) changeRequestURL(ref environmentRef, changeRequestID stri
 	return path + "?version=" + changeRequestID
 }
 
-// submitChangeRequest submits a previously created change request, transitioning it from a draft
-// to pending approval. Every command that creates a change request must submit it, otherwise the
-// change request is left as an unsubmitted draft that can never be reviewed or approved.
+// submitChangeRequest moves a draft change request to pending approval.
 func (esc *escCommand) submitChangeRequest(
 	ctx context.Context,
 	orgName string,

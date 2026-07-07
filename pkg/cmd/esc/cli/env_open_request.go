@@ -65,21 +65,21 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 			if len(resp.ChangeRequests) == 0 {
-				return errors.New("the server did not create any change requests for the open request")
+				return errors.New("no open request was created for this environment; " +
+					"check that an open approval rule applies to it")
 			}
 
-			// The optional --reason is stored as the change request's description.
-			var reasonPtr *string
+			var changeRequestDescription *string
 			if reason != "" {
-				reasonPtr = &reason
+				changeRequestDescription = &reason
 			}
 
-			// An open request creates one change request per environment — the target plus one for
-			// each gated import — so every one of them has to be submitted, not just the first.
+			// An open request can span multiple change requests: one for the target environment
+			// and one for each gated import.
 			if format == outputJSON {
 				for i := range resp.ChangeRequests {
 					if err := envcmd.esc.submitChangeRequest(
-						ctx, ref.orgName, resp.ChangeRequests[i].ChangeRequestID, reasonPtr,
+						ctx, ref.orgName, resp.ChangeRequests[i].ChangeRequestID, changeRequestDescription,
 					); err != nil {
 						return err
 					}
@@ -106,7 +106,9 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 					"Change request URL: %v\n",
 					envcmd.esc.changeRequestURL(crRef, cr.ChangeRequestID),
 				)
-				if err := envcmd.esc.submitChangeRequest(ctx, ref.orgName, cr.ChangeRequestID, reasonPtr); err != nil {
+				if err := envcmd.esc.submitChangeRequest(
+					ctx, ref.orgName, cr.ChangeRequestID, changeRequestDescription,
+				); err != nil {
 					return err
 				}
 				fmt.Fprintln(envcmd.esc.stdout, "Change request submitted")
