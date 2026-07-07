@@ -74,11 +74,29 @@ func printStepHeader(b io.StringWriter, step engine.StepEventMetadata, showURNs 
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
 		extra = " 🔒"
 	}
+	op := addRetainStatusFlag(string(step.Op), step)
 	if showURNs {
-		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.URN), step.Op, extra))
+		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.URN), op, extra))
 	} else {
-		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
+		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), op, extra))
 	}
+}
+
+// addRetainStatusFlag adds a "[retain]" suffix to the input string if the resource is marked as
+// RetainOnDelete and the step will discard the resource.
+func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
+	if step.Old == nil || !step.Old.RetainOnDelete {
+		return status
+	}
+
+	switch step.Op {
+	// Deletes and Replacements should indicate retain on delete behavior as they can leave
+	// untracked resources in the environment.
+	case deploy.OpDelete, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
+		status += "[retain]"
+	}
+
+	return status
 }
 
 func getIndentationString(indent int, op display.StepOp, prefix bool) string {
