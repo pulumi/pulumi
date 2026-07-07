@@ -99,7 +99,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	// Provider configuration applies to all sub-operations, so register here as persistent flags.
 	cmd.PersistentFlags().StringVar(&pc.providerFile, "provider-file", "",
 		"Path to a file containing provider configuration")
-	cmd.PersistentFlags().StringVar(&pc.format, "input", "pcl",
+	cmd.PersistentFlags().StringVar(&pc.format, "input", "yaml",
 		"Format of the provider configuration file")
 	cmd.PersistentFlags().StringVar(&pc.providerURN, "provider", "",
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
@@ -300,7 +300,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			return pc.printResourceResult(cmd, id, response.Properties, res)
 		},
 	}
-	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Format of the configuration files")
+	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Format of the configuration files")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
@@ -419,7 +419,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 			return pc.printListResults(cmd, results)
 		},
 	}
-	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Input file format")
+	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Input file format")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource list inputs")
 	cmd.Flags().BoolVar(&all, "all", false, "Enumerate all matching resources")
 	cmd.Flags().Int64Var(&count, "count", 0, "Enumerate up to count matching resources")
