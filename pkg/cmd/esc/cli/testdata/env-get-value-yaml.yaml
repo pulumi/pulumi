@@ -1,0 +1,66 @@
+run: |
+  esc env get default/test --value value:yaml
+  esc env get default/test --value process:json-detailed
+  esc env get default/test --value process:json
+  esc env get default/test --value process:yaml
+  esc env get default/test --value process:json --show-secrets
+environments:
+  test-user/default/test:
+    values:
+      pi: 3.14
+      secret:
+        fn::secret:
+          ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+      environmentVariables:
+        FOO: bar
+        SECRET: ${secret}
+      files:
+        FILE: ${pi}
+
+---
+> esc env get default/test --value value:yaml
+environmentVariables:
+   FOO: bar
+   SECRET: '[secret]'
+files:
+   FILE: "3.14"
+pi: "3.14"
+secret: '[secret]'
+> esc env get default/test --value process:json-detailed
+{
+  "FILE": {
+    "value": "[unknown]",
+    "secret": false
+  },
+  "FOO": {
+    "value": "bar",
+    "secret": false
+  },
+  "SECRET": {
+    "value": "[unknown]",
+    "secret": true
+  }
+}
+> esc env get default/test --value process:json
+{
+  "FILE": "[unknown]",
+  "FOO": "bar",
+  "SECRET": "[secret]"
+}
+> esc env get default/test --value process:yaml
+FILE: '[unknown]'
+FOO: bar
+SECRET: '[secret]'
+> esc env get default/test --value process:json --show-secrets
+{
+  "FILE": "[unknown]",
+  "FOO": "bar",
+  "SECRET": "secretAccessKey"
+}
+
+---
+> esc env get default/test --value value:yaml
+> esc env get default/test --value process:json-detailed
+> esc env get default/test --value process:json
+> esc env get default/test --value process:yaml
+> esc env get default/test --value process:json --show-secrets

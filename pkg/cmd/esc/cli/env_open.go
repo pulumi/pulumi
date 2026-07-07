@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -63,15 +64,8 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				path = p
 			}
 
-			switch format {
-			case "detailed", "json", "yaml", "string":
-				// OK
-			case "dotenv", "shell":
-				if len(path) != 0 {
-					return fmt.Errorf("output format '%s' may not be used with a property path", format)
-				}
-			default:
-				return fmt.Errorf("unknown output format %q", format)
+			if _, err := validateFormat(format, path); err != nil {
+				return err
 			}
 
 			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft)
@@ -91,7 +85,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 		"the lifetime of the opened environment in the form HhMm (e.g. 2h, 1h30m, 15m)")
 	cmd.Flags().StringVarP(
 		&format, "format", "f", "json",
-		"the output format to use. May be 'dotenv', 'json', 'yaml', 'detailed', 'shell' or 'string'")
+		formatFlagHelp("the output format to use. May be one of "))
 	cmd.Flags().StringVar(
 		&draft, "draft", "",
 		"open an environment draft with --draft=<change-request-id>")
@@ -111,6 +105,15 @@ func (env *envCommand) renderValue(
 		return nil
 	}
 
+	f, err := parseFormat(format)
+	if err != nil {
+		return err
+	}
+
+	if f.isProcess() {
+		return env.renderProcessEnvironment(out, e, f.encoding, pretend, showSecrets)
+	}
+
 	val := esc.NewValue(e.Properties)
 	if len(path) != 0 {
 		if vv, ok := getEnvValue(val, path); ok {
@@ -120,46 +123,22 @@ func (env *envCommand) renderValue(
 		}
 	}
 
-	switch format {
-	case "json":
+	switch f.encoding {
+	case encodingJSON:
 		body := val.ToJSON(!showSecrets)
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		return enc.Encode(body)
-	case "yaml":
+	case encodingYAML:
 		body := val.ToJSON(!showSecrets)
 		enc := yaml.NewEncoder(out)
 		enc.SetIndent(3)
 		return enc.Encode(body)
-	case "detailed":
+	case encodingJSONDetailed:
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		return enc.Encode(val)
-	case "dotenv":
-		_, environ, _, err := env.prepareEnvironment(
-			e,
-			PrepareOptions{Pretend: pretend, Quote: true, Redact: !showSecrets},
-		)
-		if err != nil {
-			return err
-		}
-		for _, kvp := range environ {
-			fmt.Fprintln(out, kvp)
-		}
-		return nil
-	case "shell":
-		_, environ, _, err := env.prepareEnvironment(
-			e,
-			PrepareOptions{Pretend: pretend, Quote: true, Redact: !showSecrets},
-		)
-		if err != nil {
-			return err
-		}
-		for _, kvp := range environ {
-			fmt.Fprintf(out, "export %v\n", kvp)
-		}
-		return nil
-	case "string":
+	case encodingString:
 		s := val.ToString(!showSecrets)
 		if strings.HasSuffix(s, "\n") {
 			fmt.Fprintf(out, "%v", s)
@@ -167,10 +146,90 @@ func (env *envCommand) renderValue(
 			fmt.Fprintf(out, "%v\n", s)
 		}
 		return nil
+	case encodingDotenv, encodingShell:
+		return fmt.Errorf("unreachable: value object cannot be encoded as %q", format)
 	default:
-		// NOTE: we shouldn't get here. This was checked at the beginning of the function.
 		return fmt.Errorf("unknown output format %q", format)
 	}
+}
+
+// processEnvironmentEntry is one variable of the structured process-environment (process:json-detailed),
+// pairing the value a process would see with the secret flag the flat dotenv/shell encodings discard.
+type processEnvironmentEntry struct {
+	Value  string `json:"value"`
+	Secret bool   `json:"secret"`
+}
+
+func (env *envCommand) renderProcessEnvironment(
+	out io.Writer,
+	e *esc.Environment,
+	encoding outputEncoding,
+	pretend bool,
+	showSecrets bool,
+) error {
+	switch encoding {
+	case encodingDotenv, encodingShell:
+		_, environ, _, err := env.prepareEnvironment(
+			e,
+			PrepareOptions{Pretend: pretend, Quote: true, Redact: !showSecrets},
+		)
+		if err != nil {
+			return err
+		}
+		prefix := ""
+		if encoding == encodingShell {
+			prefix = "export "
+		}
+		for _, kvp := range environ {
+			fmt.Fprintf(out, "%s%v\n", prefix, kvp)
+		}
+		return nil
+	case encodingJSON, encodingYAML:
+		proj, err := env.projectEnvironment(e, PrepareOptions{Pretend: pretend})
+		if err != nil {
+			return err
+		}
+		body := make(map[string]string, len(proj.Variables)+len(proj.Files))
+		for _, v := range proj.Variables {
+			s := v.Value
+			if v.Secret && !showSecrets {
+				s = "[secret]"
+			}
+			body[v.Name] = s
+		}
+		for _, f := range proj.Files {
+			body[f.Name] = f.Path
+		}
+		return encodeStructured(out, encoding, body)
+	case encodingJSONDetailed:
+		proj, err := env.projectEnvironment(e, PrepareOptions{Pretend: pretend})
+		if err != nil {
+			return err
+		}
+		body := make(map[string]processEnvironmentEntry, len(proj.Variables)+len(proj.Files))
+		for _, v := range proj.Variables {
+			body[v.Name] = processEnvironmentEntry{Value: v.Value, Secret: v.Secret}
+		}
+		for _, f := range proj.Files {
+			body[f.Name] = processEnvironmentEntry{Value: f.Path, Secret: f.Secret}
+		}
+		return encodeStructured(out, encodingJSON, body)
+	case encodingString:
+		return errors.New("unreachable: process object cannot be encoded as a bare string")
+	default:
+		return errors.New("unknown process-environment encoding")
+	}
+}
+
+func encodeStructured(out io.Writer, encoding outputEncoding, body any) error {
+	if encoding == encodingYAML {
+		enc := yaml.NewEncoder(out)
+		enc.SetIndent(3)
+		return enc.Encode(body)
+	}
+	enc := json.NewEncoder(out)
+	enc.SetIndent("", "  ")
+	return enc.Encode(body)
 }
 
 // prepareEnvironment prepares the envvar and temporary file projections for an environment. Returns the paths to
@@ -181,6 +240,15 @@ func (env *envCommand) prepareEnvironment(
 ) (files, environ, secrets []string, err error) {
 	opts.fs = env.esc.fs
 	return PrepareEnvironment(e, &opts)
+}
+
+func (env *envCommand) projectEnvironment(e *esc.Environment, opts PrepareOptions) (*EnvironmentProjection, error) {
+	opts.fs = env.esc.fs
+	proj, err := projectEnvironment(e, &opts)
+	if err != nil {
+		return nil, fmt.Errorf("creating temporary files: %v", err)
+	}
+	return proj, nil
 }
 
 func (env *envCommand) removeTemporaryFiles(paths []string) {

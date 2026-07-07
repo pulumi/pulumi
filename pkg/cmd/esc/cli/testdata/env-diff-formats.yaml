@@ -1,0 +1,52 @@
+run: |
+  esc env diff default/test@stable --format yaml
+  esc env diff default/test@stable --format process:json
+environments:
+  test-user/default/test:
+    revisions:
+      - yaml:
+          values:
+            pi: 3.14
+            environmentVariables:
+              FOO: bar
+        tags:
+          - stable
+      - yaml:
+          values:
+            pi: 3.14
+            secret:
+              fn::secret:
+                ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+            environmentVariables:
+              FOO: baz
+              SECRET: ${secret}
+            files:
+              NUM_FILE: ${pi}
+
+---
+> esc env diff default/test@stable --format yaml
+--- test-user/default/test@stable
++++ test-user/default/test@latest
+@@ -1,3 +1,7 @@
+ environmentVariables:
+-   FOO: bar
++   FOO: baz
++   SECRET: '[secret]'
++files:
++   NUM_FILE: "3.14"
+ pi: "3.14"
++secret: '[secret]'
+> esc env diff default/test@stable --format process:json
+--- test-user/default/test@stable
++++ test-user/default/test@latest
+@@ -1,3 +1,5 @@
+ {
+-  "FOO": "bar"
++  "FOO": "baz",
++  "NUM_FILE": "[unknown]",
++  "SECRET": "[secret]"
+ }
+
+---
+> esc env diff default/test@stable --format yaml
+> esc env diff default/test@stable --format process:json

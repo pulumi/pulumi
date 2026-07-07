@@ -1,0 +1,15 @@
+run: esc open default/test foo --format process:json
+error: exit status 1
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+      environmentVariables:
+        FOO: ${foo}
+
+---
+> esc open default/test foo --format process:json
+
+---
+> esc open default/test foo --format process:json
+Error: output format "process:json" may not be used with a property path
