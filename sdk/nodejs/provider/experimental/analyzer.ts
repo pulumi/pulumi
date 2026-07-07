@@ -403,14 +403,14 @@ Please ensure these components are properly imported to your package's entry poi
     ): PropertyDefinition {
         // Check if the property is optional, e.g.: myProp?: string; This is
         // defined on the symbol, not the type.
-        const propType = this.checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration);
+        const propType = this.checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
         const optional = isOptional(symbol);
         const dNode = symbol.valueDeclaration as docNode;
         let docString: string | undefined = undefined;
         if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
             docString = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
         }
-        return this.analyzeType({ ...context }, propType, symbol.valueDeclaration, optional, docString);
+        return this.analyzeType({ ...context }, propType, symbol.valueDeclaration!, optional, docString);
     }
 
     private analyzeType(

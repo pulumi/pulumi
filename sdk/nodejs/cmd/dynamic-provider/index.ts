@@ -177,7 +177,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
 
             callback(undefined, resp);
         } catch (e) {
-            console.error(`${e}: ${e.stack}`);
+            console.error(`${e}: ${(e as Error).stack}`);
             callback(e, undefined);
         }
     }
@@ -229,7 +229,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
 
             callback(undefined, resp);
         } catch (e) {
-            console.error(`${e}: ${e.stack}`);
+            console.error(`${e}: ${(e as Error).stack}`);
             callback(e, undefined);
         }
     }
@@ -258,7 +258,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
 
             callback(undefined, resp);
         } catch (e) {
-            const response = grpcResponseFromError(e);
+            const response = grpcResponseFromError(e as { id: string; properties: any; message: string; reasons?: string[] });
             return callback(/*err:*/ response, /*value:*/ null, /*metadata:*/ response.metadata);
         }
     }
@@ -293,7 +293,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
 
             callback(undefined, resp);
         } catch (e) {
-            console.error(`${e}: ${e.stack}`);
+            console.error(`${e}: ${(e as Error).stack}`);
             callback(e, undefined);
         }
     }
@@ -324,7 +324,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
 
             callback(undefined, resp);
         } catch (e) {
-            const response = grpcResponseFromError(e);
+            const response = grpcResponseFromError(e as { id: string; properties: any; message: string; reasons?: string[] });
             return callback(/*err:*/ response, /*value:*/ null, /*metadata:*/ response.metadata);
         }
     }
@@ -339,7 +339,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
             }
             callback(undefined, new emptyproto.Empty());
         } catch (e) {
-            console.error(`${e}: ${e.stack}`);
+            console.error(`${e}: ${(e as Error).stack}`);
             callback(e, undefined);
         }
     }

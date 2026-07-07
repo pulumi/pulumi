@@ -288,7 +288,7 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.`;
         };
 
         return new Proxy(this, {
-            get: (obj, prop: keyof T) => {
+            get: (obj, prop: string | symbol) => {
                 // Recreate the prototype walk to ensure we find any actual members defined directly
                 // on `Output<T>`.
                 for (let o = obj; o; o = Object.getPrototypeOf(o)) {

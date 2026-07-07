@@ -15,7 +15,7 @@
 
 import * as packageJson from "../../package.json";
 import * as opentelemetry from "@opentelemetry/api";
-import { Resource } from "@opentelemetry/resources";
+import { defaultResource, resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchSpanProcessor, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { ZipkinExporter } from "@opentelemetry/exporter-zipkin";
 import { GrpcInstrumentation } from "@opentelemetry/instrumentation-grpc";
@@ -65,8 +65,8 @@ export function start(destinationUrl: string) {
     });
 
     // Tag traces from this program with metadata about their source.
-    const resource = Resource.default().merge(
-        new Resource({
+    const resource = defaultResource().merge(
+        resourceFromAttributes({
             [ATTR_SERVICE_NAME]: serviceName,
             [ATTR_SERVICE_VERSION]: packageJson.version,
         }),
@@ -84,15 +84,15 @@ export function start(destinationUrl: string) {
      * registered here.
      */
 
-    // Create a new tracer provider, acting as a factory for tracers.
-    const provider = new NodeTracerProvider({
-        resource: resource,
-    });
-
     // Configure span processor to send spans to the exporter
     log.debug(`Registering tracing url: ${destinationUrl}`);
     exporter = new ZipkinExporter({ url: destinationUrl, serviceName });
-    provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+
+    // Create a new tracer provider, acting as a factory for tracers.
+    const provider = new NodeTracerProvider({
+        resource: resource,
+        spanProcessors: [new SimpleSpanProcessor(exporter)],
+    });
 
     provider.register();
     const tracer = opentelemetry.trace.getTracer("nodejs-runtime");

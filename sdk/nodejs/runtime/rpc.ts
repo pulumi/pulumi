@@ -307,7 +307,7 @@ export function resolveProperties(
             resolve(value, /*isKnown*/ true, isSecret, deps[k]);
         } catch (resolveError) {
             throw new Error(
-                `Unable to set property '${k}' on resource '${name}' [${t}]; error: ${errorString(resolveError)}`,
+                `Unable to set property '${k}' on resource '${name}' [${t}]; error: ${errorString(resolveError as Error)}`,
             );
         }
     }

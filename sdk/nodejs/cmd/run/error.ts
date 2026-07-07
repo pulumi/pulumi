@@ -53,7 +53,7 @@ export function defaultErrorMessage(err: any): string {
         try {
             return util.inspect(err);
         } catch (error) {
-            return `an error occurred while inspecting an error: ${error.message}`;
+            return `an error occurred while inspecting an error: ${(error as Error).message}`;
         }
     }
 }

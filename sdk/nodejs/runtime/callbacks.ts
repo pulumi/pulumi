@@ -454,7 +454,7 @@ export class CallbackServer implements ICallbackServer {
         this.registerTransform(transform)
             .then(
                 (req) => {
-                    return new Promise((resolve, reject) => {
+                    return new Promise<void>((resolve, reject) => {
                         this._monitor.registerStackTransform(req, (err, _) => {
                             if (err !== null) {
                                 // Remove this from the list of callbacks given we didn't manage to actually register it.
@@ -551,7 +551,7 @@ export class CallbackServer implements ICallbackServer {
         this.registerStackInvokeTransformAsync(transform)
             .then(
                 (req) => {
-                    return new Promise((resolve, reject) => {
+                    return new Promise<void>((resolve, reject) => {
                         this._monitor.registerStackInvokeTransform(req, (err, _) => {
                             if (err !== null) {
                                 // Remove this from the list of callbacks given we didn't manage to actually register it.
@@ -605,7 +605,7 @@ export class CallbackServer implements ICallbackServer {
                 });
             } catch (error) {
                 const response = new resproto.ResourceHookResponse();
-                response.setError(error.message);
+                response.setError((error as Error).message);
                 return response;
             }
             return new resproto.ResourceHookResponse();
@@ -670,7 +670,7 @@ export class CallbackServer implements ICallbackServer {
                 return response;
             } catch (error) {
                 const response = new resproto.ErrorHookResponse();
-                response.setError(error.message);
+                response.setError((error as Error).message);
                 return response;
             }
         };

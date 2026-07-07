@@ -13,13 +13,13 @@
         "@logdna/tail-file": "^2.0.6",
         "@npmcli/arborist": "^9.0.0",
         "@opentelemetry/api": "^1.9",
-        "@opentelemetry/exporter-trace-otlp-grpc": "^0.57",
-        "@opentelemetry/exporter-zipkin": "^1.30",
-        "@opentelemetry/instrumentation": "^0.57",
-        "@opentelemetry/instrumentation-grpc": "^0.57",
-        "@opentelemetry/resources": "^1.30",
-        "@opentelemetry/sdk-trace-base": "^1.30",
-        "@opentelemetry/sdk-trace-node": "^1.30",
+        "@opentelemetry/exporter-trace-otlp-grpc": "^0.220",
+        "@opentelemetry/exporter-zipkin": "^2.9",
+        "@opentelemetry/instrumentation": "^0.220",
+        "@opentelemetry/instrumentation-grpc": "^0.220",
+        "@opentelemetry/resources": "^2.9",
+        "@opentelemetry/sdk-trace-base": "^2.9",
+        "@opentelemetry/sdk-trace-node": "^2.9",
         "@types/google-protobuf": "^3.15.5",
         "@types/semver": "^7.5.6",
         "execa": "^5.1.0",
@@ -51,11 +51,11 @@
         "nyc": "15.1.0",
         "ts-node": "7.0.1",
         "tsx": "4.19.3",
-        "typescript": "3.8.3"
+        "typescript": "^5.9.3"
     },
     "peerDependencies": {
         "ts-node": ">= 7.0.1 < 12",
-        "typescript": ">= 3.8.3 < 7"
+        "typescript": ">= 5.0.4 < 7"
     },
     "peerDependenciesMeta": {
         "typescript": {
@@ -72,8 +72,14 @@
         "node": ">=22"
     },
     "mocha": {
-        "require": ["source-map-support/register"],
-        "node-option": ["import=tsx"]
+        "require": [
+            "source-map-support/register"
+        ],
+        "node-option": [
+            "import=tsx"
+        ]
     },
-    "//": ["NOTE: @types/node is pinned due to grpc/grpc-node#2002"]
+    "//": [
+        "NOTE: @types/node is pinned due to grpc/grpc-node#2002"
+    ]
 }

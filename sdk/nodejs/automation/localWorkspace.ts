@@ -322,7 +322,7 @@ export class LocalWorkspace implements Workspace {
                     loadProjectSettings(wsOpts.workDir);
                 } catch (e) {
                     // If it failed to find the project settings file, set a default project.
-                    if (e.toString().includes("failed to find project settings")) {
+                    if ((e as Error).toString().includes("failed to find project settings")) {
                         wsOpts.projectSettings = defaultProject(args.projectName);
                     } else {
                         throw e;

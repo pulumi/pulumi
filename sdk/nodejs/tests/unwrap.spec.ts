@@ -160,13 +160,13 @@ describe("unwrap", () => {
     function createOutput<T>(cv: T, ...resources: TestResource[]): Output<T> {
         return Output.isInstance<T>(cv)
             ? cv
-            : new Output(
+            : (new Output(
                   <any>new Set(resources),
                   Promise.resolve(cv),
                   Promise.resolve(true),
                   Promise.resolve(false),
                   Promise.resolve(<any>new Set(resources)),
-              );
+              ) as unknown as Output<T>);
     }
 
     describe("preserves resources", () => {

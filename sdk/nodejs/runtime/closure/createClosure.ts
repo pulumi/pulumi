@@ -584,7 +584,7 @@ async function analyzeFunctionInfoAsync(
                     capturedValues.set(name, { entry: value });
                 }
             } catch (err) {
-                throwSerializationError(func, context, err.message);
+                throwSerializationError(func, context, (err as Error).message);
             }
         }
 
@@ -727,7 +727,7 @@ async function analyzeFunctionInfoAsync(
                 try {
                     value = await v8.lookupCapturedVariableValueAsync(func, name, throwOnFailure);
                 } catch (err) {
-                    throwSerializationError(func, context, err.message);
+                    throwSerializationError(func, context, (err as Error).message);
                 }
 
                 const moduleName = await findNormalizedModuleNameAsync(value);
