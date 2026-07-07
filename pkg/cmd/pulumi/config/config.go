@@ -1410,7 +1410,7 @@ func checkStackEnv(
 
 	envs, ok := stack.Backend().(backend.EnvironmentsBackend)
 	if !ok {
-		return nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
+		return nil, nil, errBackendNoEnvironments(stack.Backend())
 	}
 	orgNamer, ok := stack.(interface{ OrgName() string })
 	if !ok {

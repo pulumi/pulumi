@@ -1,0 +1,6 @@
+component: cli
+kind: improvement
+body: Improve the error message when using Pulumi ESC with a DIY backend to suggest logging into Pulumi Cloud
+time: 2026-07-07T00:00:00.000000+00:00
+custom:
+    PR: ""
