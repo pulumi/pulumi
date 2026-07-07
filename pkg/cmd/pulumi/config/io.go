@@ -35,10 +35,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/spf13/cobra"
 )
 
-const OverrideEnvFlagUsage = "Override an imported environment for this run only, as <env>=<replacement>; " +
-	"repeatable. Sent to ESC and never written to the stack config"
+// OverrideEnvFlag registers the --override-env flag on cmd, binding it to overrides.
+func OverrideEnvFlag(cmd *cobra.Command, overrides *[]string) {
+	cmd.PersistentFlags().StringArrayVar(
+		overrides, "override-env", nil,
+		"Override an imported environment for this run only, as <env>=<replacement>; repeatable")
+}
 
 // Attempts to load configuration for the given stack.
 func GetStackConfiguration(
