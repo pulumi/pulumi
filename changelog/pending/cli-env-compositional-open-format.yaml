@@ -3,4 +3,4 @@ kind: feat
 body: '`pulumi env open`, `get`, and `diff` accept compositional `<object>:<encoding>` values for `--format`/`--value` (for example `process:json-detailed`), adding a structured JSON/YAML view of the process-environment that carries a per-value secret flag; all existing format values keep working unchanged and `yaml` is now accepted by `get` and `diff`'
 time: 2026-07-07T00:00:00.000000+00:00
 custom:
-    PR: ""
+    PR: "23810"
