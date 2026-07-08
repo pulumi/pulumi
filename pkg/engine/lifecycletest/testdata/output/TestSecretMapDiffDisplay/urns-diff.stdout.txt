@@ -1,0 +1,12 @@
+<{%fg 3%}>~ urn:pulumi:test::test::pkgA:m:typA::resA: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ targets : <{%reset%}><{%fg 3%}>[
+<{%reset%}><{%fg 3%}>      ~ [1]: <{%reset%}><{%fg 1%}>[secret]<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>[secret]<{%reset%}><{%fg 3%}>
+<{%reset%}><{%fg 3%}>    ]
+<{%reset%}><{%fg 3%}>  ~ webhooks: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>      ~ beta: <{%reset%}><{%fg 1%}>[secret]<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>[secret]<{%reset%}><{%fg 3%}>
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

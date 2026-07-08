@@ -5025,3 +5025,81 @@ func TestResourceError(t *testing.T) {
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "create failed intentionally")
 }
+
+// TestSecretMapDiffDisplay exercises the display path for a resource whose input is a secret
+// wrapping a map/array. Before commit PR#23734 the differ treated two secret-wrapped values
+// opaquely and only produced a top-level `~ webhooks: ...` line; after that commit it recurses
+// into the wrapped element, so the rendered diff shows structural per-key detail. This test
+// asserts on the structural rendering so any regression that reverts the recursion would fail.
+func TestSecretMapDiffDisplay(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					diff := req.OldOutputs.Diff(req.NewInputs)
+					if diff == nil {
+						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+					}
+					return plugin.DiffResult{
+						Changes:      plugin.DiffSome,
+						ChangedKeys:  diff.ChangedKeys(),
+						DetailedDiff: plugin.NewDetailedDiffFromObjectDiff(diff, false),
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "id123",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+
+	var inputs resource.PropertyMap
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
+
+	inputs = resource.PropertyMap{
+		"targets": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("one"),
+			resource.NewProperty("two"),
+		})),
+		"webhooks": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
+			"alpha": resource.NewProperty("a"),
+			"beta":  resource.NewProperty("b"),
+		})),
+	}
+	snap, err := lt.TestOp(Update).Run(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	// Change one inner key of each property
+	inputs = resource.PropertyMap{
+		"targets": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("one"),
+			resource.NewProperty("TWO"),
+		})),
+		"webhooks": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
+			"alpha": resource.NewProperty("a"),
+			"beta":  resource.NewProperty("B"),
+		})),
+	}
+	_, err = lt.TestOp(Update).Run(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+}
