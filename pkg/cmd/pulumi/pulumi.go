@@ -595,12 +595,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// environment variable declarations.
 	declareFlagsAsEnvironmentVariables(cmd)
 
-	// Patch group commands so that invalid invocations exit non-zero. The root
-	// command itself is excluded: its nil Args already rejects unknown commands,
-	// and a bare `pulumi` keeps printing help with a zero exit code.
-	for _, child := range cmd.Commands() {
-		rejectUnknownSubcommands(child)
-	}
+	// Patch group commands so that invalid invocations exit non-zero.
+	rejectUnknownSubcommands(cmd)
 
 	return cmd, cleanup
 }
@@ -614,7 +610,9 @@ func rejectUnknownSubcommands(c *cobra.Command) {
 	for _, child := range c.Commands() {
 		rejectUnknownSubcommands(child)
 	}
-	if !c.HasSubCommands() || c.Runnable() {
+	// The root command is excluded: its nil Args already rejects unknown
+	// commands, and a bare `pulumi` keeps printing help with a zero exit code.
+	if !c.HasParent() || !c.HasSubCommands() || c.Runnable() {
 		return
 	}
 	// A positional arg to a group command can only be an attempted subcommand,

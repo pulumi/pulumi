@@ -1075,7 +1075,10 @@ func TestGroupCommandsRejectUnknownSubcommands(t *testing.T) {
 // A bare group command such as `pulumi env` should still print help, but exit
 // non-zero since it did not do anything.
 func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
-	t.Parallel()
+	// A bare group invocation is runnable and so executes the root
+	// PersistentPreRunE, which would otherwise fire a background network
+	// update check. t.Setenv also rules out t.Parallel here.
+	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
 
 	pulumiCmd, cleanup := NewPulumiCmd()
 	defer cleanup()
