@@ -29,6 +29,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -875,8 +877,7 @@ func TestDoCmdResourceProviderFlagOutsideStackContext(t *testing.T) {
 // configureProvider's RequireStack → CurrentBackend → CurrentStack chain finds a stack whose
 // snapshot is exactly `snapshot`. Returns the cmd plus output buffers. The fully-qualified stack
 // name avoids tripping getStackNameWithLegacyOrgNameIfNeeded, which would otherwise call into the
-// MockBackend trying to look up a default org. Tests using this helper must not run in parallel
-// because cmdBackend.BackendInstance is process-global.
+// MockBackend trying to look up a default org.
 func providerFlagStackContext(
 	t *testing.T, provider *testProvider, snapshot *deploy.Snapshot,
 ) (*cobra.Command, *bytes.Buffer, *bytes.Buffer) {
@@ -921,10 +922,20 @@ func providerFlagStackContext(
 			return mockStack, nil
 		},
 	}
-	cmdBackend.BackendInstance = mockBackend
-	t.Cleanup(func() { cmdBackend.BackendInstance = nil })
-
-	mlm := &cmdBackend.MockLoginManager{}
+	mlm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		return provider, nil

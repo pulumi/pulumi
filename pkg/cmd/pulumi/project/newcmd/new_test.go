@@ -224,14 +224,14 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
@@ -261,7 +261,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	assert.ErrorContains(t, err, "project with this name already exists")
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
@@ -275,7 +275,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		return func(yield func(apitype.TemplateMetadata, error) bool) {}
 	}
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
@@ -301,14 +301,14 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	assert.ErrorContains(t, err, "Try again")
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -346,14 +346,14 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	assert.Equal(t, projectName, proj.Name.String())
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -429,14 +429,14 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	removeStack(t, tempdir, stackName)
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -469,14 +469,14 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	assert.ErrorContains(t, err, "project names may only contain")
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -565,6 +565,23 @@ func tempProjectDir(t *testing.T) string {
 	dir := filepath.Join(t.TempDir(), genUniqueName(t))
 	require.NoError(t, os.MkdirAll(dir, 0o700))
 	return dir
+}
+
+func mockCurrentBackend(t *testing.T, mockBackend backend.Backend) {
+	t.Helper()
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
 }
 
 func genUniqueName(t *testing.T) string {
@@ -981,7 +998,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
 }
 
-//nolint:paralleltest // Sets a global mock backend
+//nolint:paralleltest // Sets a mock login manager
 func TestPulumiNewWithOrgTemplates(t *testing.T) {
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
@@ -1036,20 +1053,7 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 			}
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
-		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-			insecure bool, color colors.Colorization,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-	})
+	mockCurrentBackend(t, mockBackend)
 
 	newCmd := NewNewCmd()
 	var stdout, stderr bytes.Buffer
@@ -1086,7 +1090,7 @@ Available Templates:
 
 func ptr[T any](v T) *T { return &v }
 
-//nolint:paralleltest // Sets a global mock backend
+//nolint:paralleltest // Sets a mock login manager
 func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "false")
 	t.Setenv("PULUMI_EXPERIMENTAL", "true")
@@ -1115,19 +1119,7 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 			return mockRegistry
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
-		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-	})
+	mockCurrentBackend(t, mockBackend)
 
 	newCmd := NewNewCmd()
 	var stdout, stderr bytes.Buffer
@@ -1191,9 +1183,9 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-//nolint:paralleltest // Sets a global mock backend
+//nolint:paralleltest // Sets a mock login manager
 func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
 				Mock: registry.Mock{
@@ -1225,7 +1217,7 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-//nolint:paralleltest // Sets a global mock backend, changes the directory
+//nolint:paralleltest // Sets a mock login manager, changes the directory
 func TestPulumiNewOrgTemplate(t *testing.T) {
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
@@ -1293,20 +1285,7 @@ resources:
 			}
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
-		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-	})
+	mockCurrentBackend(t, mockBackend)
 
 	newCmd := NewNewCmd()
 	var stdout, stderr bytes.Buffer
