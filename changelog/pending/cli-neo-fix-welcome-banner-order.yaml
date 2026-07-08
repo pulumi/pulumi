@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Fix the initial prompt sometimes rendering above the welcome banner in `pulumi neo`
+time: 2026-07-08T00:00:00.000000+00:00

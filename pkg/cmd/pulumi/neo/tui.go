@@ -527,8 +527,13 @@ func NewModel(cfg ModelConfig) Model {
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
 		// findBlockKind. The actual scrollback emission happens on the first
-		// WindowSizeMsg, when we have the real terminal width.
-		m.appendUserMessageBlock(cfg.InitialPrompt)
+		// WindowSizeMsg, when we have the real terminal width. Seed the block
+		// directly rather than via commitBlock: its printlnBlock side effect
+		// would flip hasEmittedScrollback before anything is actually printed,
+		// giving the welcome banner a stray leading blank line.
+		b := block{kind: blockUserMessage, raw: cfg.InitialPrompt}
+		m.renderBlock(&b)
+		m.appendBlock(b)
 		m.pendingUserEchoes = append(m.pendingUserEchoes, cfg.InitialPrompt)
 	}
 	if cfg.Busy {
@@ -587,9 +592,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case firstFlushReadyMsg:
+		// Sequence, not Batch: Update returns cmds via tea.Batch, which runs
+		// them concurrently with no ordering guarantee — the banner and a
+		// pre-seeded initial-prompt block would race for scrollback order.
+		seq := make([]tea.Cmd, 0, len(msg.rendered))
 		for _, r := range msg.rendered {
-			cmds = append(cmds, m.printlnBlock(r))
+			seq = append(seq, m.printlnBlock(r))
 		}
+		cmds = append(cmds, tea.Sequence(seq...))
 
 	case tea.ResumeMsg:
 		// Resuming from a Ctrl+Z suspend (via `fg`): bubbletea repaints only the
