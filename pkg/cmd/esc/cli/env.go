@@ -476,7 +476,8 @@ func (esc *escCommand) updateEnvironment(
 			fmt.Fprintf(esc.stdout, "Change request created: %v\n", changeRequestID)
 			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
 
-			if err := esc.client.SubmitChangeRequest(ctx, ref.orgName, changeRequestID, nil); err != nil {
+			err = esc.client.SubmitChangeRequest(ctx, ref.orgName, changeRequestID, nil)
+			if err != nil {
 				return nil, fmt.Errorf("submitting change request: %w", err)
 			}
 			fmt.Fprintln(esc.stdout, "Change request submitted")
@@ -494,12 +495,12 @@ func (esc *escCommand) updateEnvironment(
 		}
 		return diags, nil
 	} else {
-		diags, _, err := esc.client.UpdateEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, yaml, tag)
+		diags, revision, err := esc.client.UpdateEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, yaml, tag)
 		if err != nil {
 			return nil, fmt.Errorf("updating environment definition: %w", err)
 		}
 		if !client.DiagnosticsHaveErrors(diags) && envUpdateSuccessMessage != "" {
-			fmt.Fprintln(esc.stdout, envUpdateSuccessMessage)
+			fmt.Fprintf(esc.stdout, "%s (revision %d)\n", envUpdateSuccessMessage, revision)
 		}
 		return diags, nil
 	}
