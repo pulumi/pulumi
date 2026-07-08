@@ -49,7 +49,7 @@ func (esc *escCommand) checkBackendURL(url string) error {
 		return fmt.Errorf("%s is not a valid self-hosted backend, "+
 			"use `%s login` without arguments to log into the Pulumi Cloud backend", url, esc.command)
 	case diy.IsDIYBackendURL(url):
-		return fmt.Errorf("%s does not support Pulumi ESC; Pulumi ESC requires the Pulumi Cloud backend, "+
+		return fmt.Errorf("%s does not support Pulumi ESC. Pulumi ESC requires the Pulumi Cloud backend; "+
 			"use `%s login` without arguments to log into the Pulumi Cloud backend", url, esc.command)
 	default:
 		return nil
