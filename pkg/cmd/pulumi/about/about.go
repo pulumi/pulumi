@@ -427,7 +427,10 @@ func getCurrentStackAbout(
 
 	name := s.Ref().String()
 	var snapshot *deploy.Snapshot
-	snapshot, err = s.Snapshot(ctx, secrets.DefaultProvider)
+	// `about` only reports resource types and URNs, never secret values, so deserialize with the blinding
+	// provider. This avoids prompting for a passphrase (or other secrets-provider credentials) just to list the
+	// resources in the current stack.
+	snapshot, err = s.Snapshot(ctx, secrets.BlindingProvider)
 	if err != nil {
 		return currentStackAbout{}, err
 	} else if snapshot == nil {
