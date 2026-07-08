@@ -435,6 +435,62 @@ func TestProgressPolicyPacks(t *testing.T) {
 	assert.Contains(t, stdout.String(), "Loading policy packs...")
 }
 
+func TestSuppressStackRow(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("stack", "project", "", "pkgA:index:typA", "resA")
+	metadata := engine.StepEventMetadata{
+		Op:   deploy.OpCreate,
+		URN:  urn,
+		Type: urn.Type(),
+	}
+
+	run := func(t *testing.T, interactive, suppress bool) string {
+		eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+
+		var stdout, stderr bytes.Buffer
+		opts := Options{
+			IsInteractive:       interactive,
+			Color:               colors.Never,
+			Stdout:              &stdout,
+			Stderr:              &stderr,
+			SuppressStackRow:    suppress,
+			DeterministicOutput: true,
+		}
+		if interactive {
+			opts.term = terminal.NewMockTerminal(&stdout, 80, 24, true)
+		}
+
+		go ShowProgressEvents(
+			"test", "update", tokens.MustParseStackName("stack"), "project", "", eventChannel, doneChannel,
+			opts, false)
+
+		eventChannel <- engine.NewEvent(engine.ResourcePreEventPayload{Metadata: metadata})
+		eventChannel <- engine.NewEvent(engine.ResourceOutputsEventPayload{Metadata: metadata})
+		close(eventChannel)
+		<-doneChannel
+
+		return stdout.String()
+	}
+
+	for _, interactive := range []bool{true, false} {
+		name := "non-interactive"
+		if interactive {
+			name = "interactive"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			suppressed := run(t, interactive, true)
+			assert.Contains(t, suppressed, "pkgA:index:typA")
+			assert.NotContains(t, suppressed, "pulumi:pulumi:Stack")
+
+			visible := run(t, interactive, false)
+			assert.Contains(t, visible, "pulumi:pulumi:Stack")
+		})
+	}
+}
+
 func testSimpleRenderer(
 	t testing.TB,
 	path string,
