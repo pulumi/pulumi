@@ -1,6 +1,0 @@
-component: cli/convert
-kind: improvement
-body: Add an `ecosystem` field to converter mapping requests so a converter can request mappings for the ecosystem it consumes rather than its own name
-time: 2026-07-07T10:21:24.766053+02:00
-custom:
-    PR: "23804"

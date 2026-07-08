@@ -1,4 +1,0 @@
-component: sdk/nodejs
-kind: fix
-body: Don't include the version in module paths when serializing functions when using pnpm
-time: 2026-07-01T15:18:43.430936+02:00
