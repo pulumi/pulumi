@@ -134,7 +134,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 
 	cmd.Flags().StringVarP(
 		&format, "format", "f", "",
-		formatFlagHelp("the output format to use. May be one of "))
+		formatFlagHelp("the output format to use, given as <object>:<encoding>."))
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show static secrets in plaintext rather than ciphertext")

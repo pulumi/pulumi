@@ -82,13 +82,19 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 
 	cmd.Flags().DurationVarP(
 		&duration, "lifetime", "l", 2*time.Hour,
-		"the lifetime of the opened environment in the form HhMm (e.g. 2h, 1h30m, 15m)")
+		"the lifetime of the opened environment in the form HhMm (e.g. 2h, 1h30m, 15m)",
+	)
 	cmd.Flags().StringVarP(
 		&format, "format", "f", "json",
-		formatFlagHelp("the output format to use. May be one of "))
+		formatFlagHelp("the output format to use, given as <object>:<encoding>. Defaults to value:json."),
+	)
+	// The default is stated in the help text above; blank DefValue so cobra does not also append a
+	// "(default ...)" note to the end of the multi-line format list, where it reads as part of the last entry.
+	cmd.Flags().Lookup("format").DefValue = ""
 	cmd.Flags().StringVar(
 		&draft, "draft", "",
-		"open an environment draft with --draft=<change-request-id>")
+		"open an environment draft with --draft=<change-request-id>",
+	)
 
 	return cmd
 }

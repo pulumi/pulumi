@@ -55,6 +55,11 @@ func (f renderFormat) isProcess() bool {
 	return f.object == objectProcess
 }
 
+// String renders the format in its canonical `<object>:<encoding>` form.
+func (f renderFormat) String() string {
+	return objectNames[f.object] + ":" + encodingNames[f.encoding]
+}
+
 // formatAliases maps the legacy single-word `--format` values to their compositional equivalents. Every
 // legacy value keeps working and renders identically.
 var formatAliases = map[string]renderFormat{
@@ -80,23 +85,65 @@ var encodingTokens = map[string]outputEncoding{
 	"shell":         encodingShell,
 }
 
-// validEncodings lists the encodings each object may pair with. `value` has no dotenv/shell (those encode
-// only a flat string map), and `process` has no bare string.
-var validEncodings = map[outputObject]map[outputEncoding]bool{
-	objectValue: {
-		encodingString:       true,
-		encodingJSON:         true,
-		encodingYAML:         true,
-		encodingJSONDetailed: true,
-	},
-	objectProcess: {
-		encodingJSON:         true,
-		encodingYAML:         true,
-		encodingJSONDetailed: true,
-		encodingDotenv:       true,
-		encodingShell:        true,
-	},
+var objectNames = map[outputObject]string{
+	objectValue:   "value",
+	objectProcess: "process",
 }
+
+// objectDescriptions explains, for flag help, what each object is and how the two differ.
+var objectDescriptions = map[outputObject]string{
+	objectValue: "the resolved configuration value tree",
+	objectProcess: "the environmentVariables and files reserved keys projected as the string variables a " +
+		"process consumes; files are written to disk and each variable holds the file path",
+}
+
+// objectOrder is the order objects appear in flag help.
+var objectOrder = []outputObject{objectValue, objectProcess}
+
+var encodingNames = map[outputEncoding]string{
+	encodingString:       "string",
+	encodingJSON:         "json",
+	encodingYAML:         "yaml",
+	encodingJSONDetailed: "json-detailed",
+	encodingDotenv:       "dotenv",
+	encodingShell:        "shell",
+}
+
+// formatDescriptor is one valid `<object>:<encoding>` pair together with the one-line description shown in
+// flag help.
+type formatDescriptor struct {
+	renderFormat
+	description string
+}
+
+// formats is the canonical, display-ordered set of valid `<object>:<encoding>` pairs. It is the single source
+// of truth for which pairs are legal (validEncodings is derived from it) and how each is described.
+var formats = []formatDescriptor{
+	{renderFormat{objectValue, encodingString}, "resolved value as a single flattened string"},
+	{renderFormat{objectValue, encodingJSON}, "resolved value tree as JSON"},
+	{renderFormat{objectValue, encodingYAML}, "resolved value tree as YAML"},
+	{
+		renderFormat{objectValue, encodingJSONDetailed},
+		"resolved value tree as JSON, annotated with secret flags and source provenance",
+	},
+	{renderFormat{objectProcess, encodingJSON}, "process environment as a flat JSON object"},
+	{renderFormat{objectProcess, encodingYAML}, "process environment as a flat YAML mapping"},
+	{renderFormat{objectProcess, encodingJSONDetailed}, "process environment as JSON, with a per-variable secret flag"},
+	{renderFormat{objectProcess, encodingDotenv}, "process environment as dotenv assignments"},
+	{renderFormat{objectProcess, encodingShell}, "process environment as shell export statements"},
+}
+
+// validEncodings lists the encodings each object may pair with, derived from formats so the two cannot drift.
+var validEncodings = func() map[outputObject]map[outputEncoding]bool {
+	m := map[outputObject]map[outputEncoding]bool{}
+	for _, f := range formats {
+		if m[f.object] == nil {
+			m[f.object] = map[outputEncoding]bool{}
+		}
+		m[f.object][f.encoding] = true
+	}
+	return m
+}()
 
 // parseFormat resolves a `--format`/`--value` string into a renderFormat. It accepts both the legacy
 // single-word aliases and the compositional `<object>:<encoding>` form, and rejects illegal pairs such as
@@ -138,20 +185,41 @@ func validateFormat(s string, path resource.PropertyPath) (renderFormat, error) 
 	return f, nil
 }
 
-// formatFlagHelp renders the flag help listing every accepted format value: the legacy aliases plus every
-// valid object:encoding pair, sorted.
-func formatFlagHelp(prefix string) string {
-	var values []string
-	for alias := range formatAliases {
-		values = append(values, alias)
+// formatFlagHelp renders the flag help: an intro sentence, then a described list of every canonical
+// `<object>:<encoding>` value, then the legacy single-word aliases that map onto them.
+func formatFlagHelp(intro string) string {
+	width := 0
+	for _, f := range formats {
+		if n := len(f.String()); n > width {
+			width = n
+		}
 	}
-	for objectStr, object := range objectTokens {
-		for encodingStr, encoding := range encodingTokens {
-			if validEncodings[object][encoding] {
-				values = append(values, objectStr+":"+encodingStr)
+
+	var b strings.Builder
+	b.WriteString(intro)
+
+	aliases := make([]string, 0, len(formatAliases))
+	aliasWidth := 0
+	for alias := range formatAliases {
+		aliases = append(aliases, alias)
+		if len(alias) > aliasWidth {
+			aliasWidth = len(alias)
+		}
+	}
+	sort.Strings(aliases)
+	b.WriteString("\n\naliases:")
+	for _, alias := range aliases {
+		fmt.Fprintf(&b, "\n  %-*s  %s", aliasWidth, alias, formatAliases[alias].String())
+	}
+
+	for _, object := range objectOrder {
+		fmt.Fprintf(&b, "\n\n%s: %s", objectNames[object], objectDescriptions[object])
+		for _, f := range formats {
+			if f.object == object {
+				fmt.Fprintf(&b, "\n  %-*s  %s", width, f.String(), f.description)
 			}
 		}
 	}
-	sort.Strings(values)
-	return prefix + strings.Join(values, ", ")
+
+	return b.String()
 }
