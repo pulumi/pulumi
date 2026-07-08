@@ -137,7 +137,12 @@ func TestClientTerminalRunReportsSignal(t *testing.T) {
 func TestClientTerminalRunPropagatesCreateError(t *testing.T) {
 	t.Parallel()
 
-	ct := &ClientTerminal{Caller: &recordingCaller{err: errors.New("no terminal")}, SessionID: "sess_1"}
+	rc := &recordingCaller{err: errors.New("no terminal")}
+	ct := &ClientTerminal{Caller: rc, SessionID: "sess_1"}
 	_, err := ct.Run(t.Context(), "sh", []string{"-c", "true"}, "/work", 0)
 	require.Error(t, err)
+	// No terminal was created, so there is nothing to kill or release: the
+	// failed create must be the only call issued.
+	assert.Equal(t, 1, rc.calls)
+	assert.Equal(t, "terminal/create", rc.method)
 }

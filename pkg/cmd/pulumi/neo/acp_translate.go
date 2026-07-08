@@ -92,6 +92,14 @@ func (t *toolTracker) translate(evt UIEvent) (acp.SessionUpdate, bool) {
 		return update, true
 	case UITodoList:
 		return acp.PlanUpdate{Entries: planEntries(e.Items)}, true
+	case UIWarning:
+		if e.Message == "" {
+			return nil, false
+		}
+		// ACP has no dedicated warning update, so surface it in the message
+		// stream (the TUI renders these in the transcript too). The prefix marks
+		// it as the CLI speaking rather than the model.
+		return acp.AgentMessageChunk{Content: acp.ContentBlock{Type: "text", Text: "Warning: " + e.Message + "\n"}}, true
 	}
 	return nil, false
 }

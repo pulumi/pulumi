@@ -148,6 +148,48 @@ func TestToolTrackerTranslate(t *testing.T) {
 	assert.Equal(t, acp.PlanEntry{Content: "do", Status: "pending", Priority: "high"}, plan.Entries[0])
 }
 
+// TestToolTrackerOverlappingStarts pins the serial-dispatch assumption's
+// behavior at the edge: if a second tool start arrives before the first
+// completes, the tracker moves to the new call — the completion attaches to the
+// latest start, and the earlier call simply never completes (it is not
+// mis-attributed).
+func TestToolTrackerOverlappingStarts(t *testing.T) {
+	t.Parallel()
+
+	var tr toolTracker
+
+	u, ok := tr.translate(UIToolStarted{Name: "filesystem__read"})
+	require.True(t, ok)
+	assert.Equal(t, "tc_1", u.(acp.ToolCallStart).ToolCallID)
+
+	u, ok = tr.translate(UIToolStarted{Name: "shell__shell_execute"})
+	require.True(t, ok)
+	assert.Equal(t, "tc_2", u.(acp.ToolCallStart).ToolCallID)
+
+	u, ok = tr.translate(UIToolCompleted{})
+	require.True(t, ok)
+	assert.Equal(t, "tc_2", u.(acp.ToolCallProgress).ToolCallID,
+		"a completion attaches to the latest start")
+
+	_, ok = tr.translate(UIToolCompleted{})
+	assert.False(t, ok, "the overlapped first call has no id left to complete against")
+}
+
+// TestTranslateWarning verifies warnings reach the editor as message-stream
+// chunks (ACP has no dedicated warning update) and empty ones are dropped.
+func TestTranslateWarning(t *testing.T) {
+	t.Parallel()
+
+	var tr toolTracker
+	u, ok := tr.translate(UIWarning{Message: "stack was dropped"})
+	require.True(t, ok)
+	chunk := u.(acp.AgentMessageChunk)
+	assert.Equal(t, "Warning: stack was dropped\n", chunk.Content.Text)
+
+	_, ok = tr.translate(UIWarning{})
+	assert.False(t, ok, "an empty warning produces no update")
+}
+
 // TestPlanEntriesClampVocabulary verifies the ACP egress path keeps plan entries
 // within ACP's enums even if the backend drifts: empty or unknown priority falls
 // back to "medium", empty or unknown status falls back to "pending".

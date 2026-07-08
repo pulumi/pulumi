@@ -15,6 +15,7 @@
 package neo
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -89,6 +90,23 @@ func TestSetConfigOptionPermission(t *testing.T) {
 		require.NotNil(t, up.patches[0].PermissionMode)
 		assert.Equal(t, client.NeoPermissionModeReadOnly, *up.patches[0].PermissionMode)
 		assert.Nil(t, up.patches[0].ApprovalMode, "approval mode is never changed")
+	})
+
+	t.Run("failed patch keeps the old mode", func(t *testing.T) {
+		t.Parallel()
+		up := &fakeTaskAPI{updateErr: errors.New("PATCH rejected")}
+		s := &acpSession{api: up, orgName: "acme", taskID: "task_1", started: true}
+
+		// The documented ordering: push to the live task first, store only on
+		// success — a failed PATCH must not leave us advertising a mode the task
+		// isn't actually in.
+		err := s.setConfigOption(t.Context(), acpConfigPermission, acpPermissionValueReadOnly)
+		require.ErrorContains(t, err, "PATCH rejected")
+
+		assert.Empty(t, s.permissionMode, "a failed PATCH must not store the new mode")
+		assert.Equal(t, acpPermissionValueDefault,
+			findOption(t, s.configOptionsSnapshot(), acpConfigPermission).CurrentValue,
+			"the advertised options must still show the mode the task is in")
 	})
 }
 

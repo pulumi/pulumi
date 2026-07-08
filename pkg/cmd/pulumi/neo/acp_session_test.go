@@ -17,6 +17,7 @@ package neo
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -324,6 +325,109 @@ func TestRunTurnCreateErrorReleasesTurn(t *testing.T) {
 	defer s.mu.Unlock()
 	assert.False(t, s.started, "a failed creation must not mark the session started")
 	assert.Nil(t, s.activeTurn, "a failed start must release the turn slot for a retry")
+}
+
+// TestRunTurnPostErrorReleasesTurn: on a later prompt, a failed user_message
+// post must propagate the error and release the turn slot so the editor can
+// retry — the documented cleanup in runTurn's start-error path.
+func TestRunTurnPostErrorReleasesTurn(t *testing.T) {
+	t.Parallel()
+
+	fp := &fakeTaskAPI{postErr: errors.New("backend rejected the message")}
+	s := &acpSession{
+		acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{},
+		started: true, taskID: "task_9",
+	}
+
+	_, err := s.runTurn(t.Context(), t.Context(), "again")
+	require.ErrorContains(t, err, "backend rejected the message")
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	assert.Nil(t, s.activeTurn, "a failed post must release the turn slot for a retry")
+}
+
+// TestRunTurnConcurrentPromptsExactlyOneWins races two prompts on a started
+// session: exactly one must register the turn (and complete once the pump
+// resolves it), the other must be rejected without posting to the backend.
+func TestRunTurnConcurrentPromptsExactlyOneWins(t *testing.T) {
+	t.Parallel()
+
+	fp := &fakeTaskAPI{}
+	s := &acpSession{
+		acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{},
+		started: true, taskID: "task_9",
+	}
+
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := s.runTurn(t.Context(), t.Context(), "hi")
+			errs <- err
+		}()
+	}
+
+	// The loser fails fast; the winner blocks until the turn is resolved, so the
+	// first error to arrive must be the rejection.
+	select {
+	case err := <-errs:
+		require.ErrorContains(t, err, "already in progress")
+	case <-time.After(2 * time.Second):
+		t.Fatal("neither prompt returned; expected one to be rejected immediately")
+	}
+
+	// Resolve the winner's turn the way the pump would, once its post landed.
+	require.Eventually(t, func() bool {
+		fp.mu.Lock()
+		defer fp.mu.Unlock()
+		return len(fp.posted) == 1
+	}, 2*time.Second, 5*time.Millisecond, "the winning prompt should post exactly one user_message")
+	s.finishTurn(turnResult{reason: acp.StopEndTurn})
+
+	select {
+	case err := <-errs:
+		require.NoError(t, err, "the winning prompt should complete once the turn resolves")
+	case <-time.After(2 * time.Second):
+		t.Fatal("winning prompt did not resolve after finishTurn")
+	}
+}
+
+// TestStartEntityDroppedWarningReachesEditor: when the backend rejects the
+// attached stack and task creation falls back to no stack context, the editor
+// must be told — as a message-stream warning ahead of any stream events.
+func TestStartEntityDroppedWarningReachesEditor(t *testing.T) {
+	t.Parallel()
+
+	fp := &fakeTaskAPI{rejectStack: true}
+	fc := &fakeACPClient{}
+	s := &acpSession{
+		acpID: "sess_x", api: fp, orgName: "acme", projectName: "proj", stackRefName: "dev",
+		client: fc, handlers: map[string]ToolHandler{},
+	}
+
+	require.NoError(t, s.start(t.Context(), "hello"))
+
+	// The task was still created, just without the stack attached.
+	fp.mu.Lock()
+	require.Len(t, fp.created, 1)
+	assert.Empty(t, fp.created[0].stackName)
+	fp.mu.Unlock()
+
+	require.Eventually(t, func() bool {
+		fc.mu.Lock()
+		defer fc.mu.Unlock()
+		for _, n := range fc.notifications {
+			sn, ok := n.params.(acp.SessionNotification)
+			if !ok {
+				continue
+			}
+			if chunk, ok := sn.Update.(acp.AgentMessageChunk); ok &&
+				strings.Contains(chunk.Content.Text, "could not attach stack acme/proj/dev") {
+				return true
+			}
+		}
+		return false
+	}, 2*time.Second, 5*time.Millisecond, "the stack-dropped warning should reach the editor")
 }
 
 // TestRunTurnLaterPromptPostsUserMessage: once the task exists, a prompt posts a

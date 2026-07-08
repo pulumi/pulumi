@@ -101,6 +101,10 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 	planMode := s.planMode
 	s.mu.Unlock()
 
+	// If the backend drops the attached stack (createNeoTaskWithEntityRetry's
+	// fallback), collect the warning here — uiCh doesn't exist yet — and queue
+	// it below so it reaches the editor, mirroring the TUI.
+	var warnings []string
 	resp, err := createNeoTaskWithEntityRetry(baseCtx, s.api, s.orgName, prompt, s.stackRefName, s.projectName,
 		client.CreateNeoTaskOptions{
 			ToolExecutionMode: "cli",
@@ -112,13 +116,21 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 			// option selections; see the `permission` and `plan` ACP config options.
 			PermissionMode: permissionMode,
 			PlanMode:       planMode,
-		}, nil)
+		}, func(originalErr error) {
+			warnings = append(warnings,
+				entityDroppedWarning(s.orgName, s.projectName, s.stackRefName, originalErr))
+		})
 	if err != nil {
 		return err
 	}
 
 	sessCtx, cancel := context.WithCancel(baseCtx)
 	uiCh := make(chan UIEvent, 64)
+	// Queue creation-time warnings ahead of any stream events so the pump
+	// forwards them to the editor first.
+	for _, w := range warnings {
+		sendUI(uiCh, UIWarning{Message: w})
+	}
 
 	s.mu.Lock()
 	s.taskID = resp.TaskID

@@ -86,6 +86,17 @@ func createNeoTaskWithEntityRetry(
 	return resp, err
 }
 
+// entityDroppedWarning renders the user-facing warning for
+// createNeoTaskWithEntityRetry's stack-dropped fallback. The TUI and the ACP
+// adapter both surface it, so the wording lives here rather than at each call
+// site.
+func entityDroppedWarning(orgName, projectName, stackRefName string, err error) string {
+	return fmt.Sprintf(
+		"could not attach stack %s/%s/%s to Neo task: %s; creating task without stack context",
+		orgName, projectName, stackRefName, err,
+	)
+}
+
 // isInvalidEntitiesError reports whether err is the Neo backend's "invalid entities"
 // rejection. Matched on the message because the service doesn't expose a stable
 // error code for this case.
@@ -392,11 +403,9 @@ func runNeo(
 						PlanMode:            planMode,
 						EnabledIntegrations: enabledIntegrations,
 					}, func(originalErr error) {
-						sendUI(uiCh, UIWarning{Message: fmt.Sprintf(
-							"could not attach stack %s/%s/%s to Neo task: %s; "+
-								"creating task without stack context",
-							orgName, projectName, stackRefName, originalErr,
-						)})
+						sendUI(uiCh, UIWarning{
+							Message: entityDroppedWarning(orgName, projectName, stackRefName, originalErr),
+						})
 					})
 				if err != nil {
 					sendUI(uiCh, UIError{Message: "failed to create Neo task: " + err.Error()})

@@ -157,6 +157,13 @@ type ShellResult struct {
 	TimedOut  bool   `json:"timed_out,omitempty"`
 }
 
+// TimeoutError is the error the shell tool returns when a command exceeds its
+// timeout. Both the local runner and the Neo ACP editor-terminal runner return
+// it, so the agent sees the same failure whichever path ran the command.
+func TimeoutError(timeout time.Duration) error {
+	return fmt.Errorf("shell command timed out after %s", timeout)
+}
+
 // MaxOutputBytes is the maximum number of bytes captured from stdout or stderr.
 // Output beyond this limit is silently discarded and "truncated" is set in the
 // result. It is the canonical capture cap for the shell tool: the Neo ACP
@@ -228,7 +235,7 @@ func (s *Shell) run(ctx context.Context, command string, dir string, timeout tim
 	}
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
 		res.TimedOut = true
-		return res, fmt.Errorf("shell command timed out after %s", timeout)
+		return res, TimeoutError(timeout)
 	}
 	return res, nil
 }

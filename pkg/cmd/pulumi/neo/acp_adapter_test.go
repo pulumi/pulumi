@@ -399,10 +399,16 @@ type createdTask struct {
 // fakeTaskAPI is a fake neoSessionAPI: it records the task creations, user
 // events, and mode PATCHes a session sends to the (fake) Neo backend, and
 // serves stream (which may be nil: reads then block until ctx ends) as the
-// task's event stream.
+// task's event stream. The *Err fields, when set, fail the corresponding call.
 type fakeTaskAPI struct {
 	stream    chan client.NeoStreamEvent
 	createErr error
+	postErr   error
+	updateErr error
+	// rejectStack, when true, fails any CreateNeoTask that names a stack with
+	// the backend's "invalid entities" rejection, driving the retry-without-
+	// stack fallback in createNeoTaskWithEntityRetry.
+	rejectStack bool
 
 	mu      sync.Mutex
 	created []createdTask
@@ -417,6 +423,9 @@ func (p *fakeTaskAPI) CreateNeoTask(
 	defer p.mu.Unlock()
 	if p.createErr != nil {
 		return nil, p.createErr
+	}
+	if p.rejectStack && stackName != "" {
+		return nil, &apitype.ErrorResponse{Code: 400, Message: "invalid entities for task"}
 	}
 	p.created = append(p.created, createdTask{
 		content: content, stackName: stackName, projectName: projectName, opts: opts,
@@ -433,6 +442,9 @@ func (p *fakeTaskAPI) StreamNeoTaskEvents(
 func (p *fakeTaskAPI) PostNeoTaskUserEvent(_ context.Context, _, _ string, body any) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.postErr != nil {
+		return p.postErr
+	}
 	p.posted = append(p.posted, body)
 	return nil
 }
@@ -442,6 +454,9 @@ func (p *fakeTaskAPI) UpdateNeoTask(
 ) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.updateErr != nil {
+		return p.updateErr
+	}
 	p.patches = append(p.patches, opts)
 	return nil
 }

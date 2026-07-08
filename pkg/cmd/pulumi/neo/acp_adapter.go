@@ -106,16 +106,20 @@ type acpDelegate struct {
 // currentBackend resolves the Pulumi Cloud backend from the stored CLI
 // credentials, returning errNeoAuthRequired (which wraps acp.ErrAuthRequired)
 // when the user is not logged in. It never prompts, so it is safe to call on the
-// JSON-RPC channel. The project (if any) is returned alongside so callers needing
-// it for target resolution don't re-read it.
-func (d *acpDelegate) currentBackend(ctx context.Context) (backend.Backend, *workspace.Project, error) {
-	project, _, err := d.ws.ReadProject()
+// JSON-RPC channel. ws determines where the project is detected from (a
+// session-cwd-scoped context in NewSession, the process-cwd d.ws in CheckAuth);
+// the project (if any) is returned alongside so callers needing it for target
+// resolution don't re-read it.
+func (d *acpDelegate) currentBackend(
+	ctx context.Context, ws pkgWorkspace.Context,
+) (backend.Backend, *workspace.Project, error) {
+	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, nil, err
 	}
 	// NonInteractiveCurrentBackend uses the stored CLI credentials and never
 	// prompts, so it returns a nil backend when the user is not logged in.
-	be, err := cmdBackend.NonInteractiveCurrentBackend(ctx, d.ws, cmdBackend.DefaultLoginManager, project)
+	be, err := cmdBackend.NonInteractiveCurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,9 +130,11 @@ func (d *acpDelegate) currentBackend(ctx context.Context) (backend.Backend, *wor
 }
 
 // CheckAuth reports whether a usable Pulumi Cloud session exists. See
-// acp.Delegate; the agent calls it from the `authenticate` handler.
+// acp.Delegate; the agent calls it from the `authenticate` handler. The
+// authenticate request carries no working directory, so the project (which only
+// influences backend selection here) is detected from the process cwd.
 func (d *acpDelegate) CheckAuth(ctx context.Context) error {
-	_, _, err := d.currentBackend(ctx)
+	_, _, err := d.currentBackend(ctx, d.ws)
 	return err
 }
 
@@ -145,8 +151,12 @@ func (d *acpDelegate) NewSession(
 			return acp.NewSessionResult{}, fmt.Errorf("resolving working directory: %w", err)
 		}
 	}
+	// Root the whole session at cwd: project detection, current-stack lookup,
+	// and the tool sandboxes all resolve from the editor-supplied directory, not
+	// from wherever the editor happened to launch the CLI process.
+	ws := pkgWorkspace.NewContextFrom(cwd)
 
-	be, project, err := d.currentBackend(ctx)
+	be, project, err := d.currentBackend(ctx, ws)
 	if err != nil {
 		return acp.NewSessionResult{}, err
 	}
@@ -158,7 +168,7 @@ func (d *acpDelegate) NewSession(
 		return acp.NewSessionResult{}, errors.New(msg)
 	}
 
-	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, d.ws, cloudBe, project, "", "")
+	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, "", "")
 	if err != nil {
 		return acp.NewSessionResult{}, err
 	}
@@ -168,7 +178,7 @@ func (d *acpDelegate) NewSession(
 		return acp.NewSessionResult{}, err
 	}
 
-	handlers, err := buildACPHandlers(cwd, sessionID, caps, client, d.ws)
+	handlers, err := buildACPHandlers(cwd, sessionID, caps, client, ws)
 	if err != nil {
 		return acp.NewSessionResult{}, err
 	}
@@ -305,7 +315,7 @@ func runInEditorTerminal(
 		TimedOut:  res.TimedOut,
 	}
 	if res.TimedOut {
-		return out, fmt.Errorf("shell command timed out after %s", timeout)
+		return out, tools.TimeoutError(timeout)
 	}
 	if err != nil {
 		// A non-timeout transport error means we can't trust the result.
