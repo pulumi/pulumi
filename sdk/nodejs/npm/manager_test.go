@@ -505,6 +505,9 @@ func fakeNPMRegistry(t testing.TB) string {
 			fmt.Fprintf(w, `{
 				"name": "@pulumi/pulumi",
 				"dist-tags": {"latest": "3.0.0"},
+				"time": {
+					"3.0.0": "2020-01-01T00:00:00.000Z"
+				},
 				"versions": {
 					"3.0.0": {
 						"name": "@pulumi/pulumi",
