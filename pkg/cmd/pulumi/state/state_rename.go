@@ -44,7 +44,7 @@ func stateReurnOperation(
 	// Check whether the input URN corresponds to an existing resource
 	existingResources := edit.LocateResource(snap, oldURN)
 	if len(existingResources) == 0 {
-		return resourceNotFoundError(snap, oldURN)
+		return resourceNotFoundError(snapshotURNs(snap), oldURN)
 	}
 	if len(existingResources) > 1 {
 		return errors.New("The input URN ambiguously refers to multiple resources")

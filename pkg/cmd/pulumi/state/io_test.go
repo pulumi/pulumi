@@ -27,17 +27,15 @@ import (
 func TestResourceNotFoundError(t *testing.T) {
 	t.Parallel()
 
-	snap := &deploy.Snapshot{
-		Resources: []*resource.State{
-			{URN: "urn:pulumi:stk::proj::pkg:index:typ::my-bucket"},
-			{URN: "urn:pulumi:stk::proj::pkg:index:typ::something-else-entirely"},
-		},
+	candidates := []resource.URN{
+		"urn:pulumi:stk::proj::pkg:index:typ::my-bucket",
+		"urn:pulumi:stk::proj::pkg:index:typ::something-else-entirely",
 	}
 
 	t.Run("suggests close matches", func(t *testing.T) {
 		t.Parallel()
 
-		err := resourceNotFoundError(snap, "urn:pulumi:stk::proj::pkg:index:typ::my-bukcet")
+		err := resourceNotFoundError(candidates, "urn:pulumi:stk::proj::pkg:index:typ::my-bukcet")
 		assert.ErrorContains(t, err, "No such resource")
 		assert.ErrorContains(t, err, "Did you mean:")
 		assert.ErrorContains(t, err, "urn:pulumi:stk::proj::pkg:index:typ::my-bucket")
@@ -49,14 +47,14 @@ func TestResourceNotFoundError(t *testing.T) {
 	t.Run("no suggestions when nothing is close", func(t *testing.T) {
 		t.Parallel()
 
-		err := resourceNotFoundError(snap, "urn:pulumi:other::other::other:index:other::unrelated")
+		err := resourceNotFoundError(candidates, "urn:pulumi:other::other::other:index:other::unrelated")
 		assert.ErrorContains(t, err, "No such resource")
 		assert.NotContains(t, err.Error(), "Did you mean:")
 		assert.ErrorContains(t, err, "pulumi stack --show-urns")
 		assert.ErrorContains(t, err, "pulumi stack export")
 	})
 
-	t.Run("nil snapshot", func(t *testing.T) {
+	t.Run("no candidates", func(t *testing.T) {
 		t.Parallel()
 
 		err := resourceNotFoundError(nil, "urn:pulumi:stk::proj::pkg:index:typ::res")
@@ -68,15 +66,13 @@ func TestResourceNotFoundError(t *testing.T) {
 	t.Run("at most three suggestions, closest first", func(t *testing.T) {
 		t.Parallel()
 
-		manySnap := &deploy.Snapshot{
-			Resources: []*resource.State{
-				{URN: "urn:pulumi:stk::proj::pkg:index:typ::res-aaaa"},
-				{URN: "urn:pulumi:stk::proj::pkg:index:typ::res-abab"},
-				{URN: "urn:pulumi:stk::proj::pkg:index:typ::res-abbb"},
-				{URN: "urn:pulumi:stk::proj::pkg:index:typ::res-abba"},
-			},
+		many := []resource.URN{
+			"urn:pulumi:stk::proj::pkg:index:typ::res-aaaa",
+			"urn:pulumi:stk::proj::pkg:index:typ::res-abab",
+			"urn:pulumi:stk::proj::pkg:index:typ::res-abbb",
+			"urn:pulumi:stk::proj::pkg:index:typ::res-abba",
 		}
-		suggestions := similarURNs(manySnap, "urn:pulumi:stk::proj::pkg:index:typ::res-aaab", 3)
+		suggestions := similarURNs(many, "urn:pulumi:stk::proj::pkg:index:typ::res-aaab", 3)
 		require.Len(t, suggestions, 3)
 		assert.Equal(t, resource.URN("urn:pulumi:stk::proj::pkg:index:typ::res-aaaa"), suggestions[0])
 	})
@@ -84,7 +80,46 @@ func TestResourceNotFoundError(t *testing.T) {
 	t.Run("case-insensitive matching", func(t *testing.T) {
 		t.Parallel()
 
-		suggestions := similarURNs(snap, "urn:pulumi:stk::proj::pkg:index:typ::MY-BUCKET", 3)
+		suggestions := similarURNs(candidates, "urn:pulumi:stk::proj::pkg:index:typ::MY-BUCKET", 3)
 		assert.Equal(t, []resource.URN{"urn:pulumi:stk::proj::pkg:index:typ::my-bucket"}, suggestions)
 	})
+}
+
+func TestSnapshotURNs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil snapshot", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Empty(t, snapshotURNs(nil))
+	})
+
+	t.Run("deduplicates same-URN states", func(t *testing.T) {
+		t.Parallel()
+
+		snap := &deploy.Snapshot{
+			Resources: []*resource.State{
+				{URN: "urn:pulumi:stk::proj::pkg:index:typ::res"},
+				{URN: "urn:pulumi:stk::proj::pkg:index:typ::res", Delete: true},
+				{URN: "urn:pulumi:stk::proj::pkg:index:typ::other"},
+			},
+		}
+		assert.Equal(t, []resource.URN{
+			"urn:pulumi:stk::proj::pkg:index:typ::res",
+			"urn:pulumi:stk::proj::pkg:index:typ::other",
+		}, snapshotURNs(snap))
+	})
+}
+
+func TestListURNsHint(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t,
+		"To list the resource URNs in the stack, run `pulumi stack --show-urns`; "+
+			"to inspect the full state, run `pulumi stack export`.",
+		listURNsHint(""))
+	assert.Equal(t,
+		"To list the resource URNs in the stack, run `pulumi stack --show-urns --stack org/proj/stk`; "+
+			"to inspect the full state, run `pulumi stack export --stack org/proj/stk`.",
+		listURNsHint("org/proj/stk"))
 }

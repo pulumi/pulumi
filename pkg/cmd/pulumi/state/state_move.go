@@ -251,10 +251,8 @@ func (cmd *stateMoveCmd) Run(
 	}
 
 	if len(resourcesToMove) == 0 {
-		return fmt.Errorf("no resources found to move\n"+
-			"To list the resource URNs in the source stack, run `pulumi stack --show-urns --stack %s`; "+
-			"to inspect its full state, run `pulumi stack export --stack %s`.",
-			source.Ref().FullyQualifiedName(), source.Ref().FullyQualifiedName())
+		return fmt.Errorf("no resources found to move\n%s",
+			listURNsHint(string(source.Ref().FullyQualifiedName())))
 	}
 
 	sourceDepGraph := graph.NewDependencyGraph(sourceSnapshot.Resources)
