@@ -16,16 +16,14 @@ runs:
       run: |
         set -euo pipefail
 
-        # uv wants an absolute cutoff instant; everything else takes a relative age.
-        cutoff="$(python3 -c "import datetime, os; d = int(os.environ['COOLDOWN_DAYS']); print((datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=d)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
-
+        # Each manager takes the window in its own unit; all are relative to "now".
         pnpm_minutes=$(( COOLDOWN_DAYS * 1440 ))
         bun_seconds=$(( COOLDOWN_DAYS * 86400 ))
 
-        echo "Dependency cooldown: excluding package versions published after ${cutoff} (${COOLDOWN_DAYS} days)"
+        echo "Dependency cooldown: excluding package versions published in the last ${COOLDOWN_DAYS} days"
 
         {
-          echo "UV_EXCLUDE_NEWER=${cutoff}"                     # uv (Python)
+          echo "UV_EXCLUDE_NEWER=P${COOLDOWN_DAYS}D"            # uv (ISO-8601 duration)
           echo "npm_config_min_release_age=${COOLDOWN_DAYS}"    # npm (days)
           echo "npm_config_minimum_release_age=${pnpm_minutes}" # pnpm (minutes)
           echo "POETRY_SOLVER_MIN_RELEASE_AGE=${COOLDOWN_DAYS}" # poetry (days)
