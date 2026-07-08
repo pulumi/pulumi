@@ -447,19 +447,6 @@ func (esc *escCommand) changeRequestURL(ref environmentRef, changeRequestID stri
 	return path + "?version=" + changeRequestID
 }
 
-// submitChangeRequest moves a draft change request to pending approval.
-func (esc *escCommand) submitChangeRequest(
-	ctx context.Context,
-	orgName string,
-	changeRequestID string,
-	description *string,
-) error {
-	if err := esc.client.SubmitChangeRequest(ctx, orgName, changeRequestID, description); err != nil {
-		return fmt.Errorf("submitting change request: %w", err)
-	}
-	return nil
-}
-
 // updateEnvironment updates an environment.
 // If draft is empty, the environment is directly updated.
 // If draft is "new", a change request is created and submitted.
@@ -489,8 +476,8 @@ func (esc *escCommand) updateEnvironment(
 			fmt.Fprintf(esc.stdout, "Change request created: %v\n", changeRequestID)
 			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
 
-			if err := esc.submitChangeRequest(ctx, ref.orgName, changeRequestID, nil); err != nil {
-				return nil, err
+			if err := esc.client.SubmitChangeRequest(ctx, ref.orgName, changeRequestID, nil); err != nil {
+				return nil, fmt.Errorf("submitting change request: %w", err)
 			}
 			fmt.Fprintln(esc.stdout, "Change request submitted")
 		}

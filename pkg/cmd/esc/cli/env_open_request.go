@@ -75,15 +75,17 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 			}
 
 			// An open request can span multiple change requests: one for the target environment
-			// and one for each gated import.
-			if format == outputJSON {
-				for i := range resp.ChangeRequests {
-					if err := envcmd.esc.submitChangeRequest(
-						ctx, ref.orgName, resp.ChangeRequests[i].ChangeRequestID, changeRequestDescription,
-					); err != nil {
-						return err
-					}
+			// and one for each gated import. Submit them all up front so the output paths below
+			// only differ in how they present the result.
+			for i := range resp.ChangeRequests {
+				if err := envcmd.esc.client.SubmitChangeRequest(
+					ctx, ref.orgName, resp.ChangeRequests[i].ChangeRequestID, changeRequestDescription,
+				); err != nil {
+					return fmt.Errorf("submitting change request: %w", err)
 				}
+			}
+
+			if format == outputJSON {
 				return writeJSON(envcmd.esc.stdout, struct {
 					ChangeRequestID string `json:"changeRequestId"`
 				}{resp.ChangeRequests[0].ChangeRequestID})
@@ -106,11 +108,6 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 					"Change request URL: %v\n",
 					envcmd.esc.changeRequestURL(crRef, cr.ChangeRequestID),
 				)
-				if err := envcmd.esc.submitChangeRequest(
-					ctx, ref.orgName, cr.ChangeRequestID, changeRequestDescription,
-				); err != nil {
-					return err
-				}
 				fmt.Fprintln(envcmd.esc.stdout, "Change request submitted")
 			}
 
