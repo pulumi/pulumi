@@ -122,7 +122,6 @@ List Inputs:
   prefix (string, optional)
 
 Usage:
-  do azure:index:myResource [flags]
   do azure:index:myResource [command]
 
 Available Commands:
@@ -135,7 +134,7 @@ Available Commands:
 Flags:
       --dry-run                Run the operation in preview mode
   -h, --help                   help for do
-      --input string           Format of the provider configuration file (default "pcl")
+      --input string           Format of the provider configuration file (default "yaml")
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
@@ -172,7 +171,6 @@ Outputs:
   size (integer)
 
 Usage:
-  do azure:index:myResource [flags]
   do azure:index:myResource [command]
 
 Available Commands:
@@ -184,7 +182,7 @@ Available Commands:
 Flags:
       --dry-run                Run the operation in preview mode
   -h, --help                   help for do
-      --input string           Format of the provider configuration file (default "pcl")
+      --input string           Format of the provider configuration file (default "yaml")
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
@@ -229,7 +227,10 @@ func TestDoCmdResourceCreate(t *testing.T) {
 name = "example"
 size = 2
 `)
-	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "--yes", "--input-file", inputFile})
+	cmd.SetArgs([]string{
+		"--stateless", "azure:index:myResource", "create", "--yes",
+		"--input", "pcl", "--input-file", inputFile,
+	})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -292,6 +293,7 @@ func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
 		"--stateless",
 		"azure:index:myResource", "create",
 		"--yes",
+		"--input", "pcl",
 		"--input-file", inputFile,
 		"--int-value", "42",
 		"--already-kebab-case", "kebab",
@@ -418,7 +420,10 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 name = "new"
 enabled = true
 `)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "patch", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.Equal(t, []string{"read", "check", "diff", "update"}, calls)
@@ -467,7 +472,10 @@ enabled = true
 		})
 
 		inputFile := writeHCLFile(t, "patch.pcl", `enabled = true`)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "patch", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"id":"res-1","name":"existing","enabled":true}`, stdout.String())
@@ -491,7 +499,7 @@ func TestDoCmdResourceList(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "list.pcl", `prefix = "prod"`)
-		cmd.SetArgs([]string{"azure:index:myResource", "list", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myResource", "list", "--input", "pcl", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		require.Len(t, calls, 1)
@@ -599,6 +607,68 @@ func TestDoCmdResourceNonInteractiveRequiresYes(t *testing.T) {
 	}
 }
 
+// TestDoCmdResourceDeleteDryRun asserts that delete --dry-run prints what would be deleted and never
+// calls the provider. Delete has no provider-side preview mode, so the summary is the whole dry run;
+// crucially --dry-run must not act like --yes (the confirmation prompt is skipped on dry runs).
+func TestDoCmdResourceDeleteDryRun(t *testing.T) {
+	t.Parallel()
+
+	cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
+		spec: doResourceSpec(false),
+		MockProvider: plugin.MockProvider{
+			DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+				require.Fail(t, "Delete should not be called with --dry-run")
+				return plugin.DeleteResponse{}, nil
+			},
+		},
+	})
+	cmd.SetArgs([]string{"--dry-run", "--stateless", "azure:index:myResource", "delete", "res-1"})
+	require.NoError(t, cmd.Execute())
+	assert.Contains(t, stderr.String(), `This would delete azure:index:myResource "res-1"`)
+	assert.Empty(t, stdout.String())
+}
+
+// TestDoCmdResourceDryRunIgnoredForReadOnlyOps asserts that read and list ignore --dry-run: they never
+// mutate anything, so there is nothing to preview and they behave as if the flag wasn't passed.
+func TestDoCmdResourceDryRunIgnoredForReadOnlyOps(t *testing.T) {
+	t.Parallel()
+
+	t.Run("read", func(t *testing.T) {
+		t.Parallel()
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Outputs: resource.PropertyMap{"name": resource.NewProperty("read")},
+						},
+					}, nil
+				},
+			},
+		})
+		cmd.SetArgs([]string{"--dry-run", "azure:index:myResource", "read", "res-1"})
+		require.NoError(t, cmd.Execute())
+		assert.JSONEq(t, `{"id":"res-1","name":"read"}`, stdout.String())
+	})
+
+	t.Run("list", func(t *testing.T) {
+		t.Parallel()
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(true),
+			MockProvider: plugin.MockProvider{
+				ListF: func(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
+					return plugin.NewListStream([]plugin.ListResult{{ID: "1", Name: "one"}}, ""), nil
+				},
+			},
+		})
+		cmd.SetArgs([]string{"--dry-run", "azure:index:myResource", "list"})
+		require.NoError(t, cmd.Execute())
+		assert.JSONEq(t, `[{"id":"1","name":"one"}]`, stdout.String())
+	})
+}
+
 // TestDoCmdResourceConfirmationSummary asserts the operation summary lands on stderr (so stdout stays a clean
 // JSON channel for piping) and that the patch summary surfaces the Diff response.
 func TestDoCmdResourceConfirmationSummary(t *testing.T) {
@@ -618,7 +688,10 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "inputs.pcl", `name = "example"`)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "create", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), "This will create azure:index:myResource")
 		assert.NotContains(t, stdout.String(), "This will create")
@@ -653,7 +726,10 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "patch.pcl", `name = "new"`)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "patch", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), "This will update azure:index:myResource")
 		assert.Contains(t, stderr.String(), "~ name")

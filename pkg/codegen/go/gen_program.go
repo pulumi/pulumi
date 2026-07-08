@@ -910,6 +910,10 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 			} else {
 				mod = g.resolveModule(token)
 			}
+			// Extension resources import the extension's SDK package, not the base.
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				pkg = r.Schema.PackageReference.Name()
+			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
 				if r.Schema != nil {
@@ -926,6 +930,9 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 				continue
 			}
 			mod := g.resolveModule(token)
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				pkg = r.Schema.PackageReference.Name()
+			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
 				if r.Schema != nil {
@@ -957,6 +964,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 					contract.Assertf(len(diagnostics) == 0, "Expected no diagnostics, got %d", len(diagnostics))
 
+					pkg = g.functionPackage(token)
 					vPath, err := g.getVersionPath(program, pkg)
 					if err != nil {
 						panic(err)
@@ -1550,6 +1558,10 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	}
 	if pkg == "pulumi" && mod == "pulumi" {
 		mod = ""
+	}
+	// Extension resources are emitted from the extension's SDK package, not the base.
+	if r.Schema != nil && r.Schema.PackageReference != nil {
+		pkg = r.Schema.PackageReference.Name()
 	}
 	if mod == "" || strings.HasPrefix(mod, "/") || mod == IndexToken {
 		originalMod = mod

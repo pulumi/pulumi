@@ -367,7 +367,7 @@ func TestUsingDynamicConfigAsRange(t *testing.T) {
 		description = "The ID of the VPC"
 	}
 
-	resource "endpoint" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+	resource "endpoint" "infra:index:Endpoint" {
 	  options {
 		range = endpointsServiceNames
 	  }
@@ -814,7 +814,7 @@ lenPublicSubnets = invoke("std:index:max", {
   ]
 })
 
-resource "defaultVpc" "aws:ec2/vpc:Vpc" {
+resource "defaultVpc" "infra:index:Vpc" {
   options { range = createVpc ? lenPublicSubnets.result : 0 }
   cidrBlock = "10.0.0.1/16"
 }
@@ -853,7 +853,7 @@ resource "randomPet" "random:index/randomPet:RandomPet" {
 func TestBindingElementFunctionWithOutputSplatExpression(t *testing.T) {
 	t.Parallel()
 	source := `
-azs = invoke("aws:index:getAvailabilityZones", {})
+azs = invoke("infra:index:getZones", {})
 
 resource "randomPet" "random:index/randomPet:RandomPet" {
 	options { range = length(azs.filters) }
@@ -1239,14 +1239,14 @@ config "vpcId" "string" {
   description = "The ID of the VPC"
 }
 
-resource "ptfeService" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+resource "ptfeService" "infra:index:Endpoint" {
   __logicalName     = "ptfe_service"
   vpcId             = vpcId
   vpcEndpointType   = "Interface"
   privateDnsEnabled = false
 }
 
-resource "ptfeServiceRecord" "aws:route53/record:Record" {
+resource "ptfeServiceRecord" "infra:index:Record" {
   __logicalName = "ptfe_service"
   zoneId        = "example_zone_id"
   name          = "example"

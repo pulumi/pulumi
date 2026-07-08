@@ -192,7 +192,7 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 
 		interp := pclruntime.NewInterpreter(
 			program, snippetRunInfo(infoResp, s.rootDir, s.workingDir, packageDescriptors))
-		if err := interp.RunEmbedded(s.ctx, monitor, s.loader, scopeVars); err != nil {
+		if err := interp.RunEmbedded(s.ctx, monitor, s.loader, scopeVars, s.snippet.UUID); err != nil {
 			fail(fmt.Errorf("execute snippet: %w", err))
 			return
 		}

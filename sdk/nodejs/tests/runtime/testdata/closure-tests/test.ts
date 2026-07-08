@@ -45,14 +45,28 @@ async function getSnapshot(testCase: string, typescriptVersion: string): Promise
     return fs.readFile(path.join("cases", testCase, "snapshot.txt"), "utf-8");
 }
 
+// Returns the typescript version resolved within the @pulumi/pulumi package, as reported by the package manager.
+async function resolvedTypescriptVersion(packageManager: string): Promise<string> {
+    if (packageManager === "pnpm") {
+        const { stdout } = await execa("pnpm", ["ls", "typescript", "--json", "--depth", "Infinity"], {
+            cwd: __dirname,
+            reject: false,
+        });
+        const projects = JSON.parse(stdout);
+        return projects[0].dependencies["@pulumi/pulumi"].dependencies.typescript.version;
+    }
+    const { stdout } = await execa("npm", ["ls", "typescript", "--json"], { cwd: __dirname, reject: false });
+    const deps = JSON.parse(stdout);
+    return deps.dependencies["@pulumi/pulumi"].dependencies.typescript.version;
+}
+
 // This test validates that the typescript version used by the closure tests
 // is the same as the one used by the pulumi package and that we are testing
 // what we think we are testing ...
 it(`resolve to the correct typescript version within the pulumi package`,
     async function () {
-        const { stdout } = await execa("npm", ["ls", "typescript", "--json"], { cwd: __dirname, reject: false });
-        const deps = JSON.parse(stdout);
-        const version = deps.dependencies["@pulumi/pulumi"].dependencies.typescript.version;
+        const packageManager = process.env.CLOSURE_TEST_PACKAGE_MANAGER ?? "npm";
+        const version = await resolvedTypescriptVersion(packageManager);
         assert.strictEqual(version, typescript.version);
     });
 

@@ -30,6 +30,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -193,7 +194,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 		// generate resource args for this component
 		for _, variableName := range variableNames {
 			objectType := objectTypedConfigs[variableName]
-			objectTypeName := title(variableName)
+			objectTypeName := cgstrings.UppercaseFirst(variableName)
 			g.Fprintf(w, "class %s(TypedDict, total=False):\n", objectTypeName)
 			g.Indented(func() {
 				propertyNames := maputil.SortedKeys(objectType.Properties)
@@ -219,19 +220,19 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 				switch configType := configVar.Type().(type) {
 				case *model.ObjectType:
 					// for objects of type T, generate T as is
-					argType = title(configVar.Name())
+					argType = cgstrings.UppercaseFirst(configVar.Name())
 				case *model.ListType:
 					// for list(T) where T is an object type, generate List[T]
 					switch configType.ElementType.(type) {
 					case *model.ObjectType:
-						objectTypeName := title(configVar.Name())
+						objectTypeName := cgstrings.UppercaseFirst(configVar.Name())
 						argType = fmt.Sprintf("list(%s)", objectTypeName)
 					}
 				case *model.MapType:
 					// for map(T) where T is an object type, generate Dict[str, T]
 					switch configType.ElementType.(type) {
 					case *model.ObjectType:
-						objectTypeName := title(configVar.Name())
+						objectTypeName := cgstrings.UppercaseFirst(configVar.Name())
 						argType = fmt.Sprintf("Dict[str, %s]", objectTypeName)
 					}
 				}
@@ -678,7 +679,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			if pkg == "pulumi" {
 				continue
 			}
-			var packageName string
+			var packageName, schemaPkg string
 			if schemaRes != nil && schemaRes.PackageReference != nil {
 				pkgDef, err := schemaRes.PackageReference.Definition()
 				if err == nil {
@@ -689,12 +690,14 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				if packageName == "" {
 					packageName = PyPack(pkgDef.Namespace, pkgDef.Name)
 				}
+				schemaPkg = pkgDef.Name
 			} else {
 				packageName = "pulumi_" + makeValidIdentifier(pkg)
+				schemaPkg = pkg
 			}
 			importSet[packageName] = Import{
 				ImportAs: true,
-				Pkg:      g.ensurePackageImportAlias(pkg, usedImportAliases),
+				Pkg:      g.ensurePackageImportAlias(schemaPkg, usedImportAliases),
 			}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -702,9 +705,17 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				if call.Name == pcl.Invoke {
 					pkg, _, _, invokeDiags := functionName(call.Args[0])
 					contract.Assertf(len(invokeDiags) == 0, "unexpected diagnostics reported: %v", invokeDiags)
-					importSet["pulumi_"+makeValidIdentifier(pkg)] = Import{
+					// Import an extension by its real package name but alias it under the
+					// token's base name, matching how its resources are imported.
+					packageName := "pulumi_" + makeValidIdentifier(pkg)
+					schemaPkg := pkg
+					if def := g.functionPackage(call.Args[0]); def != nil {
+						packageName = PyPack(def.Namespace, def.Name)
+						schemaPkg = def.Name
+					}
+					importSet[packageName] = Import{
 						ImportAs: true,
-						Pkg:      g.ensurePackageImportAlias(pkg, usedImportAliases),
+						Pkg:      g.ensurePackageImportAlias(schemaPkg, usedImportAliases),
 					}
 				}
 				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
@@ -816,7 +827,7 @@ func tokenToQualifiedName(pkgAlias, module, member string) string {
 		module = "." + module
 	}
 
-	return fmt.Sprintf("%s%s.%s", pkgAlias, module, title(member))
+	return fmt.Sprintf("%s%s.%s", pkgAlias, module, cgstrings.UppercaseFirst(member))
 }
 
 // resourceTypeName computes the qualified name of a python resource.
@@ -826,41 +837,14 @@ func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) 
 	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
 	// Normalize module.
+	schemaPkg := pkg
 	if r.Schema != nil {
+		schemaPkg = r.Schema.PackageReference.Name()
 		// pulumi:pulumi:* resources (e.g. StackReference) belong to the root of the
 		// package, not a "pulumi" submodule.
 		if r.Schema.PackageReference.Name() == "pulumi" && module == "pulumi" {
 			module = ""
 		}
-		pkg, err := r.Schema.PackageReference.Definition()
-		if err != nil {
-			diagnostics = append(diagnostics, &hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "unable to bind schema for resource",
-				Detail:   err.Error(),
-				Subject:  r.Definition.Syntax.DefRange().Ptr(),
-			})
-		} else {
-			err = pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
-			contract.AssertNoErrorf(err, "failed to import python language plugin for package %s", pkg.Name)
-			if lang, ok := pkg.Language["python"]; ok {
-				if pkgInfo, ok := lang.(PackageInfo); ok {
-					if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
-						module = m
-					}
-				}
-			}
-		}
-	}
-
-	return tokenToQualifiedName(g.packageAlias(pkg), module, member), diagnostics
-}
-
-func (g *generator) readResourceTypeName(r *pcl.ReadResource) (string, hcl.Diagnostics) {
-	token, tokenRange := r.GetToken()
-	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
-
-	if r.Schema != nil {
 		pkgDef, err := r.Schema.PackageReference.Definition()
 		if err != nil {
 			diagnostics = append(diagnostics, &hcl.Diagnostic{
@@ -882,7 +866,38 @@ func (g *generator) readResourceTypeName(r *pcl.ReadResource) (string, hcl.Diagn
 		}
 	}
 
-	return tokenToQualifiedName(g.packageAlias(pkg), module, member), diagnostics
+	return tokenToQualifiedName(g.packageAlias(schemaPkg), module, member), diagnostics
+}
+
+func (g *generator) readResourceTypeName(r *pcl.ReadResource) (string, hcl.Diagnostics) {
+	token, tokenRange := r.GetToken()
+	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+
+	schemaPkg := pkg
+	if r.Schema != nil {
+		schemaPkg = r.Schema.PackageReference.Name()
+		pkgDef, err := r.Schema.PackageReference.Definition()
+		if err != nil {
+			diagnostics = append(diagnostics, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "unable to bind schema for resource",
+				Detail:   err.Error(),
+				Subject:  r.Definition.Syntax.DefRange().Ptr(),
+			})
+		} else {
+			err = pkgDef.ImportLanguages(map[string]schema.Language{"python": Importer})
+			contract.AssertNoErrorf(err, "failed to import python language plugin for package %s", pkgDef.Name)
+			if lang, ok := pkgDef.Language["python"]; ok {
+				if pkgInfo, ok := lang.(PackageInfo); ok {
+					if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
+						module = m
+					}
+				}
+			}
+		}
+	}
+
+	return tokenToQualifiedName(g.packageAlias(schemaPkg), module, member), diagnostics
 }
 
 func (g *generator) typedDictEnabled(expr model.Expression, typ model.Type) bool {
@@ -927,7 +942,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	tokenRange := expr.SyntaxNode().Range()
 
 	// Example: aws, s3/BucketLogging, BucketLogging, []Diagnostics
-	pkgName, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	_, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	contract.Assertf(len(diagnostics) == 0, "unexpected diagnostics reported: %v", diagnostics)
 
 	modName := objType.PackageReference.TokenToModule(token)
@@ -942,7 +957,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 			}
 		}
 	}
-	return tokenToQualifiedName(g.packageAlias(pkgName), modName, member) + "Args"
+	return tokenToQualifiedName(g.packageAlias(objType.PackageReference.Name()), modName, member) + "Args"
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name

@@ -1,5 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
+import * as infra from "@pulumi/infra";
 import * as std from "@pulumi/std";
 
 export = async () => {
@@ -29,11 +29,11 @@ export = async () => {
             3,
         ],
     })).result;
-    const currentVpc = new aws.ec2.Vpc("currentVpc", {});
+    const currentVpc = new infra.Vpc("currentVpc", {});
     const createPublicSubnets = true;
-    const publicSubnet: aws.ec2.Subnet[] = [];
+    const publicSubnet: infra.Subnet[] = [];
     for (let range = 0; range < (createPublicSubnets && (!oneNatGatewayPerAz || lenPublicSubnets >= azs.length) ? lenPublicSubnets : 0); range++) {
-        publicSubnet.push(new aws.ec2.Subnet(`publicSubnet-${range}`, {
+        publicSubnet.push(new infra.Subnet(`publicSubnet-${range}`, {
             assignIpv6AddressOnCreation: enableIpv6 && publicSubnetIpv6Native ? true : publicSubnetAssignIpv6AddressOnCreation,
             enableDns64: enableIpv6 && publicSubnetEnableDns64,
             enableResourceNameDnsAaaaRecordOnLaunch: enableIpv6 && publicSubnetEnableResourceNameDnsAaaaRecordOnLaunch,

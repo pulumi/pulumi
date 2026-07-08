@@ -54,7 +54,7 @@ func functionSchemaHelp(fn *schema.Function) string {
 			}
 			b.WriteString(")")
 			if property.Comment != "" {
-				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(property.Comment, "\n", " "))
+				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(cleanComment(property.Comment), "\n", " "))
 			}
 			b.WriteString("\n")
 		}
@@ -81,7 +81,7 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 	shorthelp := fmt.Sprintf("Invoke the %s function", name)
 	longhelp := shorthelp + "."
 	if fn.Comment != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, fn.Comment)
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, cleanComment(fn.Comment))
 	}
 	if schemaHelp := functionSchemaHelp(fn); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
@@ -150,13 +150,13 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing function inputs")
 	cmd.Flags().StringVar(&pc.providerFile, "provider-file", "",
 		"Path to a file containing provider configuration")
-	cmd.Flags().StringVar(&pc.format, "input", "pcl",
+	cmd.Flags().StringVar(&pc.format, "input", "yaml",
 		"Format of the configuration files")
 	cmd.Flags().StringVar(&pc.providerURN, "provider", "",
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
 			"base of the provider configuration (requires a stack context)")
 
-	addInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties)
+	addInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
 	if fn.Inputs != nil {
 		addInputFlags(cmd, "input", fn.Inputs.Properties)
 	}

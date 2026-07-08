@@ -1,0 +1,3 @@
+# ESC engine tests parse YAML/JSON testdata and assert on source positions,
+# which shift if files are checked out with CRLF. Force LF on all platforms.
+* text=auto eol=lf

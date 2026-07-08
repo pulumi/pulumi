@@ -1,4 +1,0 @@
-component: cli
-kind: improvement
-body: '`pulumi login` will warn if the given login differs from PULUMI_BACKEND_URL'
-time: 2026-06-28T20:32:35.227007+01:00

@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

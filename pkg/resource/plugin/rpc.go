@@ -47,6 +47,11 @@ type MarshalOptions struct {
 
 	// true if a nil input should result in a nil output, false if it should result in an empty struct/map.
 	PropagateNil bool
+
+	// skipLogging suppresses the verbose per-property marshal logging. It is set when marshaling a
+	// property in order to build a log attribute, so that the marshal does not re-enter the logging
+	// path and recurse.
+	skipLogging bool
 }
 
 const (
@@ -82,11 +87,17 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 	fields := make(map[string]*structpb.Value)
 	for _, key := range props.StableKeys() {
 		v := props[key]
-		logging.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
+		if !opts.skipLogging {
+			logging.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
+		}
 		if opts.SkipNulls && v.IsNull() {
-			logging.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
+			if !opts.skipLogging {
+				logging.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
+			}
 		} else if opts.SkipInternalKeys && resource.IsInternalPropertyKey(key) {
-			logging.V(9).Infof("Skipping internal property for RPC[%s]: %s (as requested)", opts.Label, key)
+			if !opts.skipLogging {
+				logging.V(9).Infof("Skipping internal property for RPC[%s]: %s (as requested)", opts.Label, key)
+			}
 		} else {
 			// Only skip top level internal keys
 			copts := opts
@@ -201,7 +212,9 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 		return MarshalPropertyValue(key, output, opts)
 	} else if v.IsSecret() {
 		if !opts.KeepSecrets {
-			logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
+			if !opts.skipLogging {
+				logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
+			}
 			return MarshalPropertyValue(key, v.SecretValue().Element, opts)
 		}
 		if opts.KeepOutputValues && opts.UpgradeToOutputValues {
@@ -224,7 +237,9 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			if !ref.ID.IsNull() {
 				return MarshalPropertyValue(key, ref.ID, opts)
 			}
-			logging.V(5).Infof("marshalling resource value as raw URN or ID as opts.KeepResources is false")
+			if !opts.skipLogging {
+				logging.V(5).Infof("marshalling resource value as raw URN or ID as opts.KeepResources is false")
+			}
 			return MarshalString(val, opts), nil
 		}
 		m := resource.PropertyMap{

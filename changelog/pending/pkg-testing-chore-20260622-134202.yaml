@@ -1,4 +1,0 @@
-component: pkg/testing
-kind: chore
-body: Allow ProgramTest to use npm for Node.js tests
-time: 2026-06-22T13:42:02.484976+02:00

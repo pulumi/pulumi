@@ -74,6 +74,8 @@ type Goal struct {
 	StackTrace []resource.StackFrame
 	// The resource hooks attached to the resource, by type.
 	ResourceHooks map[resource.HookType][]string
+	// If set, the UUID of the snippet that registered this resource.
+	SnippetID string
 }
 
 // NewGoal is used to construct Goal values. The dataflow for Goal is rather sensitive, so all fields are required.
@@ -155,6 +157,9 @@ type NewGoal struct {
 
 	// If set, the list of property paths to hide the diff output of.
 	HideDiff []property.Path // required
+
+	// If set, the UUID of the snippet that registered this resource.
+	SnippetID string // required
 }
 
 // Make consumes the NewGoal to create a *Goal.
@@ -189,5 +194,6 @@ func (g NewGoal) Make() *Goal {
 		SourcePosition:          g.SourcePosition,
 		StackTrace:              g.StackTrace,
 		ResourceHooks:           g.ResourceHooks,
+		SnippetID:               g.SnippetID,
 	}
 }

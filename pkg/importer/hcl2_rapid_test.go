@@ -46,7 +46,12 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 	t.Parallel()
 
 	rapid.Check(t, func(t *rapid.T) {
-		pkg := rapidschema.Package().Filter(hasSelectableResource).Draw(t, "pkg")
+		// This round-trip reloads packages by name, but extension tokens are
+		// base-namespaced, so exclude extension-parameterized packages.
+		pkg := rapidschema.Package().
+			Filter(hasSelectableResource).
+			Filter(func(pkg *schema.Package) bool { return pkg.ExtensionParameterization == nil }).
+			Draw(t, "pkg")
 		sample := rapidimporter.State(pkg).Draw(t, "sample")
 
 		if checkPropertyMap(sample.State.Inputs, property.Value.IsNull) {

@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Show a `retain` marker for retain-on-delete resources in `--diff` output
+time: 2026-07-01T09:13:57.126160+02:00

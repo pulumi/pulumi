@@ -30,6 +30,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -616,6 +617,9 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 
 // GetSchema fetches the schema for this resource provider, if any.
 func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSchemaResponse, error) {
+	_, span := otel.Tracer("pulumi-cli").Start(ctx, "provider.GetSchema")
+	defer span.End()
+
 	var subpackageVersion string
 	if req.SubpackageVersion != nil {
 		subpackageVersion = req.SubpackageVersion.String()

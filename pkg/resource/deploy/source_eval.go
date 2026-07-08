@@ -2810,6 +2810,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
+			SnippetID:               req.GetSnippetId(),
 		}.Make()
 
 		var ext *apitype.Extension

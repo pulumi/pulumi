@@ -1,4 +1,0 @@
-component: sdk/nodejs
-kind: improvement
-body: Use npm as the package manager for the Node.js SDK
-time: 2026-06-24T10:58:02.859037+02:00

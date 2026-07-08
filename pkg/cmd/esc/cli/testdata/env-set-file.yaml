@@ -1,0 +1,104 @@
+run: |
+  echo "hello" | esc env set default/test foo -f=-
+  esc env get default/test
+  echo "hello world" >test.file
+  esc env set default/test foo -f=test.file
+  esc env get default/test
+  esc env get default/test --value string
+  esc env set default/test foo -f=test.file --string
+  esc env get default/test
+  esc env set default/test -f=test.file || echo -n ""
+  esc env set -f=test.file || echo -n ""
+  esc env set default/test -f=binary foo || echo -n ""
+  esc env set -f=- default/test foo <binary || echo -n ""
+  esc env set --string -f=multiline default/test foo
+  esc env get default/test foo --value string
+process:
+  fs:
+    binary: !!binary sFOZJGpvmbYHwHRLnCYSnQ==
+    multiline: |
+      this is a
+      multiline
+      file
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env set default/test foo -f=-
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "hello"
+}
+```
+# Definition
+```yaml
+values:
+  foo: hello
+
+```
+
+> esc env set default/test foo -f=test.file
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "hello world"
+}
+```
+# Definition
+```yaml
+values:
+  foo: hello world
+
+```
+
+> esc env get default/test --value string
+"foo"="hello world"
+> esc env set default/test foo -f=test.file --string
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "hello world\n"
+}
+```
+# Definition
+```yaml
+values:
+  foo: |
+    hello world
+
+```
+
+> esc env set default/test -f=test.file
+> esc env set -f=test.file
+> esc env set default/test -f=binary foo
+> esc env set -f=- default/test foo
+> esc env set --string -f=multiline default/test foo
+> esc env get default/test foo --value string
+this is a
+multiline
+file
+
+---
+> esc env set default/test foo -f=-
+> esc env get default/test
+> esc env set default/test foo -f=test.file
+> esc env get default/test
+> esc env get default/test --value string
+> esc env set default/test foo -f=test.file --string
+> esc env get default/test
+> esc env set default/test -f=test.file
+Error: expected a path
+> esc env set -f=test.file
+Error: accepts between 1 and 3 arg(s), received 0
+> esc env set default/test -f=binary foo
+Error: file content must be valid UTF-8
+> esc env set -f=- default/test foo
+Error: file content must be valid UTF-8
+> esc env set --string -f=multiline default/test foo
+> esc env get default/test foo --value string

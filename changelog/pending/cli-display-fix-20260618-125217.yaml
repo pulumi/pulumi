@@ -1,0 +1,7 @@
+component: cli/display
+kind: fix
+body: Prevent plugin debug logs from appearing as raw JSON in the CLI's output when
+    logging with `--logtostderr`
+time: 2026-06-18T12:52:17.600518-07:00
+custom:
+    PR: "23633"

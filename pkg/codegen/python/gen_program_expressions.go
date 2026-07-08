@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -272,7 +273,28 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 		module = ""
 	}
 	module = moduleToPythonModule(module, nil)
-	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), title(member), diagnostics
+	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), cgstrings.UppercaseFirst(member), diagnostics
+}
+
+// functionPackage resolves the package that defines the function token. For
+// extensions the token lives in the base namespace but the owner is the
+// extension. Returns nil if no loaded package defines the token.
+func (g *generator) functionPackage(tokenArg model.Expression) *schema.Package {
+	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+	pkg, _, _, _ := pcl.DecomposeToken(token, tokenArg.SyntaxNode().Range())
+	for _, ref := range g.program.PackageReferences() {
+		def, err := ref.Definition()
+		if err != nil {
+			continue
+		}
+		if ref.Name() == pkg {
+			return def
+		}
+		if _, ok := def.GetFunction(token); ok {
+			return def
+		}
+	}
+	return nil
 }
 
 var functionImports = map[string][]string{
@@ -495,7 +517,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if module != "" {
 			module = "." + module
 		}
-		name := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, PyName(fn))
+		schemaPkg := pkg
+		if def := g.functionPackage(expr.Args[0]); def != nil {
+			schemaPkg = def.Name
+		}
+		name := fmt.Sprintf("%s%s.%s", g.packageAlias(schemaPkg), module, PyName(fn))
 
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		if isOut {

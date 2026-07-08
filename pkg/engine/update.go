@@ -376,6 +376,9 @@ type UpdateOptions struct {
 	// Specific resources to update during a deployment.
 	Targets deploy.UrnTargets
 
+	// Specific snippet UUIDs to target during a deployment. Applied in addition to Targets.
+	TargetSnippets []string
+
 	// true if we're allowing dependent targets to change, even if not specified in one of the above
 	// XXXTargets lists.
 	TargetDependents bool

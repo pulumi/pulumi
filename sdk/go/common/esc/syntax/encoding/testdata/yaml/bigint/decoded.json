@@ -1,0 +1,87 @@
+{
+    "syntax": {
+        "object": [
+            {
+                "key": {
+                    "literal": "int64",
+                    "range": {
+                        "Filename": "bigint",
+                        "Start": {
+                            "Line": 1,
+                            "Column": 1,
+                            "Byte": 0
+                        },
+                        "End": {
+                            "Line": 1,
+                            "Column": 6,
+                            "Byte": 5
+                        }
+                    }
+                },
+                "value": {
+                    "literal": 9223372036854775807,
+                    "range": {
+                        "Filename": "bigint",
+                        "Start": {
+                            "Line": 1,
+                            "Column": 8,
+                            "Byte": 7
+                        },
+                        "End": {
+                            "Line": 1,
+                            "Column": 27,
+                            "Byte": 26
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "uint64",
+                    "range": {
+                        "Filename": "bigint",
+                        "Start": {
+                            "Line": 2,
+                            "Column": 1,
+                            "Byte": 27
+                        },
+                        "End": {
+                            "Line": 2,
+                            "Column": 7,
+                            "Byte": 33
+                        }
+                    }
+                },
+                "value": {
+                    "literal": 18446744073709551615,
+                    "range": {
+                        "Filename": "bigint",
+                        "Start": {
+                            "Line": 2,
+                            "Column": 9,
+                            "Byte": 35
+                        },
+                        "End": {
+                            "Line": 2,
+                            "Column": 29,
+                            "Byte": 55
+                        }
+                    }
+                }
+            }
+        ],
+        "range": {
+            "Filename": "bigint",
+            "Start": {
+                "Line": 1,
+                "Column": 1,
+                "Byte": 0
+            },
+            "End": {
+                "Line": 2,
+                "Column": 29,
+                "Byte": 55
+            }
+        }
+    }
+}

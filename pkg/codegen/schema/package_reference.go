@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -25,7 +26,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/segmentio/encoding/json"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var schemaTracer = otel.Tracer("github.com/pulumi/pulumi/pkg/v3/codegen/schema")
+
+func (p *PartialPackage) traceCtx() context.Context {
+	if p.ctx != nil {
+		return p.ctx
+	}
+	return context.Background()
+}
 
 // A PackageReference represents a references Pulumi Package. Applications that do not need access to the entire
 // definition of a Pulumi Package should use PackageReference rather than Package, as the former uses memory more
@@ -169,6 +182,7 @@ type PackageFunctions interface {
 type FunctionsIter interface {
 	Token() string
 	Function() (*Function, error)
+	IsMethod() bool
 	Next() bool
 }
 
@@ -360,6 +374,10 @@ func (i *packageDefFunctionsIter) Function() (*Function, error) {
 	return i.f, nil
 }
 
+func (i *packageDefFunctionsIter) IsMethod() bool {
+	return i.f.IsMethod
+}
+
 func (i *packageDefFunctionsIter) Next() bool {
 	if len(i.functions) == 0 {
 		return false
@@ -381,6 +399,8 @@ type PartialPackage struct {
 	languages map[string]Language
 	types     *types
 
+	ctx context.Context
+
 	config []*Property
 
 	def *Package
@@ -392,6 +412,13 @@ type PartialPackage struct {
 		types     map[string]string
 		resources map[string]string
 		functions map[string]string
+	}
+
+	// methodTokens is the set of function tokens that implement resource methods, read straight
+	// out of the spec's `methods` maps. Built lazily on first use of FunctionsIter.IsMethod.
+	methodTokens struct {
+		once   sync.Once
+		tokens map[string]struct{}
 	}
 }
 
@@ -532,6 +559,9 @@ func (p *PartialPackage) Provider() (*Resource, error) {
 		return p.def.Provider, nil
 	}
 
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindProvider")
+	defer span.End()
+
 	provider, diags, err := p.types.bindResourceDef("pulumi:providers:"+p.spec.Name, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -652,6 +682,32 @@ func (p *PartialPackage) functionAliases() map[string]string {
 	return p.specAliases.functions
 }
 
+// methodTokenSet returns the set of function tokens that implement resource methods, without
+// binding any package members. Malformed member specs are skipped; they fail with a proper error
+// when the member is bound.
+func (p *PartialPackage) methodTokenSet() map[string]struct{} {
+	p.methodTokens.once.Do(func() {
+		tokens := map[string]struct{}{}
+		collect := func(raw json.RawMessage) {
+			var res struct {
+				Methods map[string]string `json:"methods"`
+			}
+			if err := parseJSONPropertyValue(raw, &res); err != nil {
+				return
+			}
+			for _, tok := range res.Methods {
+				tokens[tok] = struct{}{}
+			}
+		}
+		collect(p.spec.Provider)
+		for _, raw := range p.spec.Resources {
+			collect(raw)
+		}
+		p.methodTokens.tokens = tokens
+	})
+	return p.methodTokens.tokens
+}
+
 // buildSpecAliases builds normalized→source-form alias maps over the spec's token keys.
 // Called via specAliases.once; must not access fields guarded by p.m.
 func (p *PartialPackage) buildSpecAliases() {
@@ -668,6 +724,9 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	if p.def != nil {
 		return p.def, nil
 	}
+
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindDefinition")
+	defer span.End()
 
 	config, err := p.bindConfig()
 	if err != nil {
@@ -901,6 +960,9 @@ func (p partialPackageResources) Get(token string) (*Resource, bool, error) {
 	if token != "pulumi:providers:"+p.spec.Name {
 		token = resolveSpecToken(p.spec.Resources, token, p.resourceAliases)
 	}
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindResource",
+		trace.WithAttributes(attribute.String("schema.token", token)))
+	defer span.End()
 	res, diags, err := p.types.bindResourceDef(token, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -966,6 +1028,9 @@ func (p partialPackageFunctions) Get(token string) (*Function, bool, error) {
 	defer p.m.Unlock()
 
 	token = resolveSpecToken(p.spec.Functions, token, p.functionAliases)
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindFunction",
+		trace.WithAttributes(attribute.String("schema.token", token)))
+	defer span.End()
 	fn, diags, err := p.types.bindFunctionDef(token, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -990,6 +1055,11 @@ func (i *partialPackageFunctionsIter) Token() string {
 func (i *partialPackageFunctionsIter) Function() (*Function, error) {
 	fn, _, err := i.functions.Get(i.Token())
 	return fn, err
+}
+
+func (i *partialPackageFunctionsIter) IsMethod() bool {
+	_, ok := i.functions.methodTokenSet()[i.Token()]
+	return ok
 }
 
 func (i *partialPackageFunctionsIter) Next() bool {
