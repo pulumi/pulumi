@@ -325,8 +325,12 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			}
 			urn := resourceURN(res)
 			id := resource.ID(args[0])
-			if err := pc.confirm(cmd, formatDeleteSummary(res, id), "delete", yes); err != nil {
+			if err := pc.confirm(cmd, formatDeleteSummary(res, id, pc.dryrun), string(id), yes); err != nil {
 				return err
+			}
+			// The provider protocol has no preview mode for Delete, so the summary above is the whole dry run.
+			if pc.dryrun {
+				return nil
 			}
 			_, err := pc.provider.Delete(ctx, plugin.DeleteRequest{
 				URN:     urn,
@@ -514,7 +518,10 @@ func formatCreateSummary(res *schema.Resource, inputs resource.PropertyMap, show
 	return fmt.Sprintf("This will create %s with the following inputs:\n%s", res.Token, body), nil
 }
 
-func formatDeleteSummary(res *schema.Resource, id resource.ID) string {
+func formatDeleteSummary(res *schema.Resource, id resource.ID, dryrun bool) string {
+	if dryrun {
+		return fmt.Sprintf("This would delete %s %q.", res.Token, id)
+	}
 	return fmt.Sprintf("This will delete %s %q.", res.Token, id)
 }
 
