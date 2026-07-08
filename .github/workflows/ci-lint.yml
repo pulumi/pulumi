@@ -25,7 +25,7 @@ jobs:
     name: Lint Go
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -55,7 +55,7 @@ jobs:
     name: go mod tidy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -70,7 +70,7 @@ jobs:
     name: Generate Go SDK
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -92,7 +92,7 @@ jobs:
     name: Lint Protobufs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - uses: ./.github/actions/retry
@@ -107,7 +107,7 @@ jobs:
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -128,8 +128,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+          cache: npm
+          cache-dependency-path: sdk/nodejs/package-lock.json
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
@@ -162,7 +162,7 @@ jobs:
     name: Lint GHA
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -177,7 +177,7 @@ jobs:
     name: Lint changelog entries
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -198,7 +198,7 @@ jobs:
     name: Lint pulumi.json
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
@@ -210,8 +210,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+          cache: npm
+          cache-dependency-path: sdk/nodejs/package-lock.json
       - name: Ensure Node # We need to install Node.js deps so that biome is available
         run: |
           cd sdk/nodejs && make ensure

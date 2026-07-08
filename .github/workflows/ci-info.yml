@@ -40,7 +40,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
@@ -64,6 +64,15 @@ jobs:
       - uses: miniscruff/changie-action@v2
         with:
           version: v1.21.0
+      - name: Backfill PR numbers in pending changelog entries
+        run: |
+          python3 scripts/changie-pr-lookup.py
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add changelog/pending
+          # Commit changes made so `git status` in "Check version" doesn't always fire.
+          # Allow an empty commit so the step succeeds even when there is nothing to backfill.
+          git commit --allow-empty -m "Backfill PR numbers in pending changelog entries"
       - name: Extract release notes
         id: notes
         run: |

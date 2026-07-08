@@ -8,7 +8,7 @@
         "build": "tsc"
     },
     "optionalDependencies": {
-        "typescript": "2.9.2"
+        "typescript": "3.9.10"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"

@@ -20,18 +20,19 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAnalyzerSpawn(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
 
 	// Sanity test that from config.Map to envvars we see what we expect to see
 	proj := "test-project"
@@ -74,10 +75,11 @@ func TestAnalyzerSpawn(t *testing.T) {
 
 func TestAnalyzerSpawnNoConfig(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer-no-config")
 	require.NoError(t, err)
@@ -96,10 +98,11 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
 
 	// Sanity test that from config.Map to property values we see what we expect to see
 	proj := "test-project"

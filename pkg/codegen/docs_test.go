@@ -153,7 +153,7 @@ func bindTestPackage(t *testing.T) *schema.Package {
 			},
 		},
 	}
-	pkg, err := schema.ImportSpec(spec, nil, schema.ValidationOptions{})
+	pkg, err := schema.ImportSpec(spec, nil, schema.NewNullLoader(), schema.ValidationOptions{})
 	require.NoError(t, err)
 	return pkg
 }
@@ -260,7 +260,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 				},
 			},
 		}
-		extPkg, err := schema.ImportSpec(extSpec, nil, schema.ValidationOptions{})
+		extPkg, err := schema.ImportSpec(extSpec, nil, schema.NewNullLoader(), schema.ValidationOptions{})
 		require.NoError(t, err)
 
 		loader := &stubSchemaLoader{pkg: extPkg}

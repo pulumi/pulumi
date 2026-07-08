@@ -580,18 +580,18 @@ func TestConstructSlowGo(t *testing.T) {
 	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-	// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+	// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+	// module to install the locally-built @pulumi/pulumi into the Go program's directory, allowing
 	// the Node.js dynamic provider plugin to load.
 	// When the underlying issue has been fixed, the use of this environment variable inside the integration
 	// test module should be removed.
-	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+	const testLinkPulumiEnv = "PULUMI_TEST_LINK_PULUMI=true"
 
 	testDir := "construct_component_slow"
 	integration.RunComponentSetup(t, testDir)
 
 	opts := &integration.ProgramTestOptions{
-		Env: []string{testYarnLinkPulumiEnv},
+		Env: []string{testLinkPulumiEnv},
 		Dir: filepath.Join(testDir, "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
@@ -627,12 +627,12 @@ func TestConstructPlainGo(t *testing.T) {
 			componentDir:          "testcomponent",
 			expectedResourceCount: 9,
 			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+			// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+			// module to install the locally-built @pulumi/pulumi into the Go program's directory, allowing
 			// the Node.js dynamic provider plugin to load.
 			// When the underlying issue has been fixed, the use of this environment variable inside the integration
 			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
+			env: []string{"PULUMI_TEST_LINK_PULUMI=true"},
 		},
 		{
 			componentDir:          "testcomponent-python",
@@ -1592,9 +1592,23 @@ outer:
 	resp, err = dap.ReadProtocolMessage(reader)
 	require.NoError(t, err)
 	assert.IsType(t, &dap.ContinueResponse{}, resp)
-	resp, err = dap.ReadProtocolMessage(reader)
-	require.NoError(t, err)
-	assert.IsType(t, &dap.TerminatedEvent{}, resp)
+	// On program exit the debugger sends both an "exited" and a "terminated" event. DAP doesn't
+	// guarantee their order, and delve changed it in 1.27 (exited now precedes terminated), so read
+	// until we see the terminated event.
+	sawTerminated := false
+	for i := 0; i < 2 && !sawTerminated; i++ {
+		resp, err = dap.ReadProtocolMessage(reader)
+		require.NoError(t, err)
+		switch resp.(type) {
+		case *dap.TerminatedEvent:
+			sawTerminated = true
+		case *dap.ExitedEvent:
+			// Ignore; its order relative to the terminated event is not guaranteed.
+		default:
+			t.Fatalf("unexpected DAP message waiting for terminated event: %T", resp)
+		}
+	}
+	require.True(t, sawTerminated, "expected a terminated event")
 
 	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
 		Request: newDAPRequest(seq, "disconnect"),

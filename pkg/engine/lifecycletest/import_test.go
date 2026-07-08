@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
@@ -29,9 +30,9 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -121,7 +122,7 @@ func TestImportOption(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, UpdateOptions: engine.UpdateOptions{GeneratePlan: true}},
@@ -426,7 +427,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -504,7 +505,7 @@ func TestImportUpdatedID(t *testing.T) {
 		assert.Equal(t, actualID, resp.ID)
 		return nil
 	})
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options.T = t
 
 	p.Steps = []lt.TestStep{{Op: Refresh, SkipPreview: true}}
@@ -535,6 +536,93 @@ func TestImportUpdatedID(t *testing.T) {
 			t.Fatalf("unexpected resource %v", urn)
 		}
 	}
+}
+
+// TestImportExtensionParameterizedResource imports a resource under an extension-parameterized
+// provider. The engine must parameterize the base provider with the extension before reading the
+// resource, persist the extension blob in the snapshot, and record the resource's ExtensionRef.
+func TestImportExtensionParameterizedResource(t *testing.T) {
+	t.Parallel()
+
+	var paramLock sync.Mutex
+	var paramNames []string
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
+				},
+				ParameterizeF: func(
+					_ context.Context, req plugin.ParameterizeRequest,
+				) (plugin.ParameterizeResponse, error) {
+					value := req.Parameters.(*plugin.ParameterizeValue)
+					paramLock.Lock()
+					paramNames = append(paramNames, value.Name)
+					paramLock.Unlock()
+					return plugin.ParameterizeResponse{Name: value.Name, Version: value.Version}, nil
+				},
+				DiffF: diffImportResource,
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// The extension must have been applied to the provider before it is asked to read.
+					paramLock.Lock()
+					witnessed := len(paramNames)
+					paramLock.Unlock()
+					assert.NotZero(t, witnessed, "Parameterize must run before Read on the extension provider")
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: req.ID,
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewProperty("bar"),
+								"frob": resource.NewProperty(1.0),
+							},
+							Outputs: resource.PropertyMap{
+								"foo":  resource.NewProperty("bar"),
+								"frob": resource.NewProperty(1.0),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+
+	version := semver.MustParse("1.0.0")
+	extension := &apitype.Extension{Name: "ext-a", Version: "1.0.0", Value: []byte("blob-a")}
+	snap, err := lt.ImportOp([]deploy.Import{{
+		Type:      "pkgA:m:typA",
+		Name:      "resA",
+		ID:        "imported-id",
+		Version:   &version,
+		Extension: extension,
+	}}).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	// The base provider was parameterized with the extension. Run has returned, so the import and all
+	// its Parameterize calls have completed; there is no concurrent writer left to guard against.
+	assert.Equal(t, []string{"ext-a"}, paramNames)
+
+	// The snapshot carries the extension blob, keyed by a ref that the imported resource references.
+	require.Len(t, snap.Extensions, 1)
+	var ref apitype.ExtensionRef
+	for r, blob := range snap.Extensions {
+		ref = r
+		assert.Equal(t, []byte("blob-a"), blob.Value)
+	}
+
+	var imported *resource.State
+	for _, r := range snap.Resources {
+		if r.URN.Name() == "resA" {
+			imported = r
+		}
+	}
+	require.NotNil(t, imported, "imported resource missing from snapshot")
+	assert.Equal(t, ref, imported.ExtensionRef)
 }
 
 const importSchema = `{
@@ -631,7 +719,7 @@ func TestImportPlan(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -709,7 +797,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -777,7 +865,7 @@ func TestImportPlanExistingImport(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -849,7 +937,7 @@ func TestImportPlanEmptyState(t *testing.T) {
 		}),
 	}
 	programF := deploytest.NewLanguageRuntimeF(nil)
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -908,7 +996,7 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -989,7 +1077,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1053,7 +1141,7 @@ func TestImportIntoParent(t *testing.T) {
 		}),
 	}
 	programF := deploytest.NewLanguageRuntimeF(nil)
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1111,7 +1199,7 @@ func TestImportComponent(t *testing.T) {
 		}),
 	}
 	programF := deploytest.NewLanguageRuntimeF(nil)
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1184,7 +1272,7 @@ func TestImportRemoteComponent(t *testing.T) {
 		}),
 	}
 	programF := deploytest.NewLanguageRuntimeF(nil)
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1274,7 +1362,7 @@ func TestImportInputDiff(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1367,7 +1455,7 @@ func TestImportDefaultProvider(t *testing.T) {
 			Version: &pkgAVersion,
 		},
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1410,7 +1498,7 @@ func TestImportStackReference(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		return errors.New("unexpected program execution")
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1490,7 +1578,7 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		require.Fail(t, "RegisterResource should not return")
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1548,7 +1636,7 @@ func TestImportFailedCreate(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		return errors.New("unexpected program execution")
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1609,7 +1697,7 @@ func TestImportDeleteBeforeReplace(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},

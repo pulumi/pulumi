@@ -27,9 +27,9 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -77,7 +77,7 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
@@ -125,7 +125,7 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 		return nil
 	})
 
-	hostF2 := deploytest.NewPluginHostF(nil, nil, programF2, loaders...)
+	hostF2 := deploytest.NewPluginHostF(nil, nil, programF2, nil, nil, loaders...)
 	p2 := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF2},
 	}
@@ -179,7 +179,7 @@ func TestUpdateWithTargetedParentChildMarkedAsDelete(t *testing.T) {
 		return nil
 	})
 
-	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	host := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: host,
@@ -287,7 +287,7 @@ func TestUpdateWithTargetedResourceChangingParent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	opts := lt.TestUpdateOptions{
 		T:     t,
@@ -402,7 +402,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:             t,
 		HostF:         hostF,
@@ -485,7 +485,7 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -553,7 +553,7 @@ func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -615,7 +615,7 @@ func TestUntargetedComponentResource(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 	snap, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
@@ -720,7 +720,7 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 
 	targetURN := "urn:pulumi:test-stack::test-project::" +
 		"pkgA:index:Component$pkgB:index:ResA::resA"
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -853,7 +853,7 @@ func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
 	})
 
 	targetURN := "urn:pulumi:test-stack::test-project::pkgA:m:TypeA$pkgA:m:TypeB::res-target"
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:                t,
 		HostF:            hostF,

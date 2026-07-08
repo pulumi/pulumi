@@ -20,12 +20,13 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -102,7 +103,7 @@ func TestImporter(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
@@ -143,7 +144,7 @@ func TestImporter(t *testing.T) {
 			// ProviderInputs, we should still attempt to create the provider.
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
@@ -184,7 +185,7 @@ func TestImporter(t *testing.T) {
 
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
@@ -230,7 +231,7 @@ func TestImporter(t *testing.T) {
 
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
@@ -273,7 +274,7 @@ func TestImporter(t *testing.T) {
 
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 					target: &Target{
 						Name: tokens.MustParseStackName("stack-name"),
@@ -337,7 +338,7 @@ func TestImporter(t *testing.T) {
 								},
 							},
 						},
-						goals:  &gsync.Map[urn.URN, *resource.Goal]{},
+						goals:  &gsync.Map[urn.URN, *pkgresource.Goal]{},
 						source: &nullSource{},
 						target: &Target{},
 						imports: []Import{
@@ -434,7 +435,7 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			ctx: ctx,
 		},
 		deployment: &Deployment{
-			goals: &gsync.Map[urn.URN, *resource.Goal]{},
+			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 			target: &Target{
 				Name: tokens.MustParseStackName("stack-name"),

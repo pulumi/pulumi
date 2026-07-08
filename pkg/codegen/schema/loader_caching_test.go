@@ -25,9 +25,9 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,8 +56,9 @@ func newCachingHost(provider plugin.Provider, pluginInfo *workspace.PluginInfo) 
 
 // fileCacheLoader creates a loader with the in-memory caches disabled so that
 // only the file-based cache is exercised.
-func fileCacheLoader(host plugin.Host) ReferenceLoader {
-	pctx := plugin.NewContextWithHost(context.Background(), nil, nil, host, "", "", nil)
+func fileCacheLoader(tb testing.TB, host plugin.Host) ReferenceLoader {
+	pctx, err := plugin.NewContextWithHost(tb.Context(), nil, nil, host, "", "", nil)
+	require.NoError(tb, err)
 	return newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,
 		disableMmap:       true,
@@ -146,7 +147,7 @@ func TestSchemaCacheMissWritesFile(t *testing.T) {
 		Path:    pluginDir,
 	}
 
-	loader := fileCacheLoader(newCachingHost(provider, pluginInfo))
+	loader := fileCacheLoader(t, newCachingHost(provider, pluginInfo))
 
 	ref, err := loader.LoadPackageReferenceV2(t.Context(), &PackageDescriptor{
 		Name:    "aws",
@@ -199,7 +200,7 @@ func TestSchemaCacheHitSkipsPlugin(t *testing.T) {
 		Path:    pluginDir,
 	}
 
-	loader := fileCacheLoader(newCachingHost(provider, pluginInfo))
+	loader := fileCacheLoader(t, newCachingHost(provider, pluginInfo))
 
 	ref, err := loader.LoadPackageReferenceV2(t.Context(), &PackageDescriptor{
 		Name:    "aws",
@@ -246,7 +247,7 @@ func TestSchemaCacheStaleOnReinstall(t *testing.T) {
 		Path:    pluginDir, // ctime is newer than the backdated cache file
 	}
 
-	loader := fileCacheLoader(newCachingHost(provider, pluginInfo))
+	loader := fileCacheLoader(t, newCachingHost(provider, pluginInfo))
 
 	ref, err := loader.LoadPackageReferenceV2(t.Context(), &PackageDescriptor{
 		Name:    "aws",
@@ -283,7 +284,7 @@ func TestSchemaCacheNoVersionSkipsCache(t *testing.T) {
 		Kind: apitype.ResourcePlugin,
 	}
 
-	loader := fileCacheLoader(newCachingHost(provider, pluginInfo))
+	loader := fileCacheLoader(t, newCachingHost(provider, pluginInfo))
 
 	for range 2 {
 		_, err := loader.LoadPackageReferenceV2(t.Context(), &PackageDescriptor{Name: "aws"})
@@ -348,7 +349,7 @@ func TestSchemaCacheParameterized(t *testing.T) {
 				return plugin.GetSchemaResponse{Schema: schema}, nil
 			},
 		}
-		return fileCacheLoader(newCachingHost(p, pluginInfo))
+		return fileCacheLoader(t, newCachingHost(p, pluginInfo))
 	}
 
 	awsSchema := minimalSchemaJSON("terraform-aws", "5.0.0")
@@ -382,7 +383,7 @@ func TestSchemaCacheParameterized(t *testing.T) {
 			return plugin.GetSchemaResponse{}, nil
 		},
 	}
-	cachedLoader := fileCacheLoader(newCachingHost(neverCallProvider, pluginInfo))
+	cachedLoader := fileCacheLoader(t, newCachingHost(neverCallProvider, pluginInfo))
 
 	awsRef, err := cachedLoader.LoadPackageReferenceV2(t.Context(), awsDescriptor)
 	require.NoError(t, err)

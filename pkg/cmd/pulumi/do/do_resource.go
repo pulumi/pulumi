@@ -29,9 +29,9 @@ import (
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -63,7 +63,7 @@ func resourceSchemaHelp(res *schema.Resource) string {
 			}
 			b.WriteString(")")
 			if property.Comment != "" {
-				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(property.Comment, "\n", " "))
+				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(cleanComment(property.Comment), "\n", " "))
 			}
 			b.WriteString("\n")
 		}
@@ -84,7 +84,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	shorthelp := fmt.Sprintf("Operate on the %s resource", name)
 	longhelp := shorthelp + "."
 	if res.Comment != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, res.Comment)
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, cleanComment(res.Comment))
 	}
 	if schemaHelp := resourceSchemaHelp(res); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
@@ -95,19 +95,16 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		Short: shorthelp,
 		Long:  longhelp,
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
 	}
 	// Provider configuration applies to all sub-operations, so register here as persistent flags.
 	cmd.PersistentFlags().StringVar(&pc.providerFile, "provider-file", "",
 		"Path to a file containing provider configuration")
-	cmd.PersistentFlags().StringVar(&pc.format, "input", "pcl",
+	cmd.PersistentFlags().StringVar(&pc.format, "input", "yaml",
 		"Format of the provider configuration file")
 	cmd.PersistentFlags().StringVar(&pc.providerURN, "provider", "",
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
 			"base of the provider configuration (requires a stack context)")
-	addPersistentInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties)
+	addPersistentInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
 	cmd.AddCommand(pc.newResourceCreateCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))
@@ -152,8 +149,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 			if err != nil {
 				return err
 			}
-			// Create doesn't have an ID yet, so require the user to type "yes" — same pattern as `plugin rm`.
-			if err := pc.confirm(cmd, summary, "yes", yes); err != nil {
+			if err := pc.confirm(cmd, summary, "create", yes); err != nil {
 				return err
 			}
 			response, err := pc.provider.Create(ctx, plugin.CreateRequest{
@@ -282,8 +278,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			}
 			summary := formatPatchSummary(
 				res, id, oldInputs, checked, diff, pc.showSecrets, cmdutil.GetGlobalColorization())
-			// Require the user to type the resource ID — same pattern as `stack rm` requiring the stack name.
-			if err := pc.confirm(cmd, summary, string(id), yes); err != nil {
+			if err := pc.confirm(cmd, summary, "patch", yes); err != nil {
 				return err
 			}
 
@@ -303,7 +298,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			return pc.printResourceResult(cmd, id, response.Properties, res)
 		},
 	}
-	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Format of the configuration files")
+	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Format of the configuration files")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
@@ -330,9 +325,12 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			}
 			urn := resourceURN(res)
 			id := resource.ID(args[0])
-			// Require the user to type the resource ID — same pattern as `stack rm` requiring the stack name.
-			if err := pc.confirm(cmd, formatDeleteSummary(res, id), string(id), yes); err != nil {
+			if err := pc.confirm(cmd, formatDeleteSummary(res, id, pc.dryrun), string(id), yes); err != nil {
 				return err
+			}
+			// The provider protocol has no preview mode for Delete, so the summary above is the whole dry run.
+			if pc.dryrun {
+				return nil
 			}
 			_, err := pc.provider.Delete(ctx, plugin.DeleteRequest{
 				URN:     urn,
@@ -422,7 +420,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 			return pc.printListResults(cmd, results)
 		},
 	}
-	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Input file format")
+	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Input file format")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource list inputs")
 	cmd.Flags().BoolVar(&all, "all", false, "Enumerate all matching resources")
 	cmd.Flags().Int64Var(&count, "count", 0, "Enumerate up to count matching resources")
@@ -520,7 +518,10 @@ func formatCreateSummary(res *schema.Resource, inputs resource.PropertyMap, show
 	return fmt.Sprintf("This will create %s with the following inputs:\n%s", res.Token, body), nil
 }
 
-func formatDeleteSummary(res *schema.Resource, id resource.ID) string {
+func formatDeleteSummary(res *schema.Resource, id resource.ID, dryrun bool) string {
+	if dryrun {
+		return fmt.Sprintf("This would delete %s %q.", res.Token, id)
+	}
 	return fmt.Sprintf("This will delete %s %q.", res.Token, id)
 }
 

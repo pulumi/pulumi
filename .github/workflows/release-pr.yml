@@ -35,7 +35,7 @@ jobs:
     name: version bump
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           # `inputs.ref` is the release tag, which points at a commit created
           # before the freeze PR landed. Branch off master so we pick up the
@@ -57,6 +57,7 @@ jobs:
           set -euo pipefail
           git switch --create "automation/release-v${PULUMI_VERSION}"
 
+          python3 scripts/changie-pr-lookup.py
           changie batch "${PULUMI_VERSION}"
           changie merge
 

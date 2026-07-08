@@ -25,6 +25,7 @@ import (
 	"github.com/mitchellh/copystructure"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -193,7 +194,7 @@ func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
 	return diff
 }
 
-func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan {
+func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *pkgresource.Goal) *GoalPlan {
 	if goal == nil {
 		return nil
 	}
@@ -348,7 +349,7 @@ func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, chan
 func checkMissingPlan(
 	oldState *resource.State,
 	newInputs resource.PropertyMap,
-	programGoal *resource.Goal,
+	programGoal *pkgresource.Goal,
 ) error {
 	// We new up a fake ResourcePlan that matches the old state and then simply call checkGoal on it.
 	goal := &GoalPlan{
@@ -543,7 +544,7 @@ func (rp *ResourcePlan) checkOutputs(
 func (rp *ResourcePlan) checkGoal(
 	oldInputs resource.PropertyMap,
 	newInputs resource.PropertyMap,
-	programGoal *resource.Goal,
+	programGoal *pkgresource.Goal,
 ) error {
 	contract.Requiref(programGoal != nil, "programGoal", "must not be nil")
 	// rp.Goal may be nil, but if it isn't Type and Name should match

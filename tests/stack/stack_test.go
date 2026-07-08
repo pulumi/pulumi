@@ -306,6 +306,105 @@ func TestStackCommands(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // mutates environment and may call service backend
+func TestStackImportExportExtensionsAcrossBackends(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	integration.CreateBasicPulumiRepo(e)
+
+	const ref apitype.ExtensionRef = "sha256:test-extension"
+
+	runCase := func(backendURL string) {
+		e.Backend = backendURL
+
+		stackName := addRandomSuffix("extensions-import-export")
+		e.RunCommand("pulumi", "stack", "init", stackName)
+
+		stackFile := path.Join(e.RootPath, "stack.json")
+		e.RunCommand("pulumi", "stack", "export", "--file", stackFile)
+
+		stackJSON, err := os.ReadFile(stackFile)
+		require.NoError(t, err)
+
+		var deployment apitype.UntypedDeployment
+		err = json.Unmarshal(stackJSON, &deployment)
+		require.NoError(t, err)
+
+		var typed apitype.DeploymentV3
+		err = json.Unmarshal(deployment.Deployment, &typed)
+		require.NoError(t, err)
+
+		typed.Extensions = map[apitype.ExtensionRef]apitype.Extension{
+			ref: {
+				Name:    "extbase",
+				Version: "1.0.0",
+				Value:   []byte(`{"hello":"world"}`),
+			},
+		}
+		urn := resource.URN("urn:pulumi:" + stackName + "::pulumi-test::extbase:index:Greeting::greeter")
+		typed.Resources = append(typed.Resources, apitype.ResourceV3{
+			URN:          urn,
+			Type:         "extbase:index:Greeting",
+			ExtensionRef: ref,
+		})
+
+		snap, err := stack.DeserializeDeploymentV3(t.Context(), typed, secrets.DefaultProvider)
+		require.NoError(t, err)
+		untyped, err := stack.SerializeUntypedDeployment(t.Context(), snap, nil)
+		require.NoError(t, err)
+
+		deployment = *untyped
+		assert.Equal(t, apitype.DeploymentSchemaVersionLatest, deployment.Version)
+		assert.Contains(t, deployment.Features, "extensionParameterization")
+
+		bytes, err := json.Marshal(&deployment)
+		require.NoError(t, err)
+		err = os.WriteFile(stackFile, bytes, 0o600)
+		require.NoError(t, err)
+
+		e.RunCommand("pulumi", "stack", "import", "--file", stackFile)
+
+		e.RunCommand("pulumi", "stack", "export", "--file", stackFile)
+		stackJSON, err = os.ReadFile(stackFile)
+		require.NoError(t, err)
+
+		err = json.Unmarshal(stackJSON, &deployment)
+		require.NoError(t, err)
+		err = json.Unmarshal(deployment.Deployment, &typed)
+		require.NoError(t, err)
+
+		require.Len(t, typed.Extensions, 1)
+		ext, ok := typed.Extensions[ref]
+		require.True(t, ok, "extension blob survived the round-trip")
+		assert.Equal(t, "extbase", ext.Name)
+		assert.Equal(t, "1.0.0", ext.Version)
+		assert.Equal(t, []byte(`{"hello":"world"}`), ext.Value)
+
+		var found bool
+		for _, r := range typed.Resources {
+			if r.URN == urn {
+				assert.Equal(t, ref, r.ExtensionRef)
+				found = true
+			}
+		}
+		require.True(t, found, "resource carrying the extension ref survived the round-trip")
+		assert.Contains(t, deployment.Features, "extensionParameterization")
+
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
+	}
+
+	t.Run("service", func(t *testing.T) {
+		t.Skip("Skipping service backend until extensionParameterization import is supported")
+		runCase("")
+	})
+
+	t.Run("diy", func(t *testing.T) {
+		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+		runCase(e.LocalURL())
+	})
+}
+
 func TestStackBackups(t *testing.T) {
 	t.Run("StackBackupCreatedSanityTest", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)

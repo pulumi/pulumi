@@ -317,7 +317,7 @@ func TestPackageGetSchema(t *testing.T) {
 		err := json.Unmarshal([]byte(schemaJson), &schemaSpec)
 		require.NoError(t, err, "Unmarshalling schema specs from %s should work", pkg)
 		require.NotNil(t, schemaSpec, "Specification should be non-nil")
-		schema, diags, err := schema.BindSpec(*schemaSpec, nil, schema.ValidationOptions{
+		schema, diags, err := schema.BindSpec(*schemaSpec, schema.NewNullLoader(), schema.ValidationOptions{
 			AllowDanglingReferences: true,
 		})
 		require.NoError(t, err, "Binding the schema spec should work")
@@ -1288,7 +1288,7 @@ func TestDoCommandLocalRun(t *testing.T) {
 	// is the JSON result. The provider still captures stdout/stderr as outputs.
 	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n"+`logging = "none"`+"\n")
 
-	stdout, stderr := e.RunCommand("pulumi", "do", "command:local:run", "--input-file", "inputs.pcl")
+	stdout, stderr := e.RunCommand("pulumi", "do", "command:local:run", "--input", "pcl", "--input-file", "inputs.pcl")
 
 	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
 	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
@@ -1343,7 +1343,7 @@ func TestDoCommandLocalCommand(t *testing.T) {
 
 	stdout, stderr := e.RunCommand(
 		"pulumi", "do", "--stateless", "command:local:Command", "create",
-		"--input-file", "inputs.pcl", "--yes")
+		"--input", "pcl", "--input-file", "inputs.pcl", "--yes")
 
 	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
 	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but

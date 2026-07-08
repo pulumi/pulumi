@@ -168,7 +168,7 @@ func (d *acpDelegate) NewSession(
 		return acp.NewSessionResult{}, errors.New(msg)
 	}
 
-	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, "", "")
+	target, err := resolveTaskTarget(ctx, ws, cloudBe, project, "", "")
 	if err != nil {
 		return acp.NewSessionResult{}, err
 	}
@@ -186,9 +186,9 @@ func (d *acpDelegate) NewSession(
 	sess := &acpSession{
 		acpID:        sessionID,
 		api:          cloudBe.Client(),
-		orgName:      orgName,
-		projectName:  projectName,
-		stackRefName: stackRefName,
+		orgName:      target.org,
+		projectName:  target.project,
+		stackRefName: target.stackName(),
 		cwd:          cwd,
 		handlers:     handlers,
 		client:       client,

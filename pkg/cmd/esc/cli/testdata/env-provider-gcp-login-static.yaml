@@ -1,0 +1,41 @@
+run: |
+  esc env init default/test
+  esc env provider gcp-login static default/test 123456789 ya29.token && esc env get default/test --definition
+  esc env provider gcp-login static default/test 123456789 ya29.token --service-account sa@proj.iam.gserviceaccount.com --token-lifetime 1h && esc env get default/test --definition
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env provider gcp-login static default/test 123456789 ya29.token
+Provider updated. (revision 2)
+> esc env get default/test --definition
+values:
+  gcp:
+    login:
+      fn::open::gcp-login:
+        project: 123456789
+        accessToken:
+          accessToken:
+            fn::secret:
+              ciphertext: ZXNjeAAAAAH54bK5rvTv6+Xuek7KOw==
+> esc env provider gcp-login static default/test 123456789 ya29.token --service-account sa@proj.iam.gserviceaccount.com --token-lifetime 1h
+Provider updated. (revision 3)
+> esc env get default/test --definition
+values:
+  gcp:
+    login:
+      fn::open::gcp-login:
+        project: 123456789
+        accessToken:
+          accessToken:
+            fn::secret:
+              ciphertext: ZXNjeAAAAAH54bK5rvTv6+Xuek7KOw==
+          serviceAccount: sa@proj.iam.gserviceaccount.com
+          tokenLifetime: 1h
+
+---
+> esc env init default/test
+> esc env provider gcp-login static default/test 123456789 ya29.token
+> esc env get default/test --definition
+> esc env provider gcp-login static default/test 123456789 ya29.token --service-account sa@proj.iam.gserviceaccount.com --token-lifetime 1h
+> esc env get default/test --definition

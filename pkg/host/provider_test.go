@@ -21,7 +21,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/stretchr/testify/require"
@@ -29,10 +29,11 @@ import (
 
 func TestStartupFailure(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/provider-language")
 	require.NoError(t, err)
@@ -52,10 +53,11 @@ func TestStartupFailure(t *testing.T) {
 
 func TestNonZeroExitcode(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/provider-language")
 	require.NoError(t, err)
@@ -112,10 +114,11 @@ func TestNonZeroExitcode(t *testing.T) {
 // Similar to TestNonZeroExitcode but with a zero exit code, but no port written so it's still an error.
 func TestZeroExitcode(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/provider-language")
 	require.NoError(t, err)
@@ -174,10 +177,11 @@ func TestZeroExitcode(t *testing.T) {
 //nolint:paralleltest // Modifying the global version.Version
 func TestPulumiVersionRangeYaml(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, h.Close()) })
-	ctx := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
 	t.Cleanup(func() { ctx.Close() })
 
 	oldVersion := version.Version

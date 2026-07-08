@@ -37,9 +37,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -80,13 +80,21 @@ type Interpreter struct {
 	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
 	namePrefix string
 
-	// packageRefs are package references returned by RegisterPackage keyed by package name.
+	// packageRefs maps a fully-qualified token (resource, function, or
+	// pulumi:providers:<pkg>) to the package reference RegisterPackage returned.
+	// Keying on the exact token, not package name, keeps extensions that share the
+	// base provider's namespace distinct. A miss resolves to the empty ref, and so
+	// to the default provider.
 	packageRefs map[string]string
 
 	// callbacks is the server that handles resource hook callbacks.
 	callbacks     *pclCallbackServer
 	callbacksOnce sync.Once
 	callbacksErr  error
+
+	// snippetID is the UUID of the snippet driving this interpreter, if any. When set, it is
+	// propagated onto every RegisterResourceRequest emitted by the interpreter.
+	snippetID string
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
@@ -492,9 +500,11 @@ func (i *Interpreter) RunEmbedded(
 	monitor pulumirpc.ResourceMonitorClient,
 	loader schema.ReferenceLoader,
 	scopeVars map[string]resource.PropertyValue,
+	snippetID string,
 ) error {
 	i.monitor = monitor
 	i.loader = loader
+	i.snippetID = snippetID
 
 	i.evalContext = NewEvalContext(
 		i.info.WorkingDir,
@@ -645,23 +655,28 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		pkgName = typ
 	}
 
-	descriptor := i.lookupPackageDescriptor(pkgName)
-	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-	if err != nil {
-		return nil, fmt.Errorf("load package for token %s: %w", token, err)
+	var loadErr error
+	for _, descriptor := range i.lookupPackageDescriptors(pkgName) {
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
+			continue
+		}
+		if pkg == "pulumi" && mod == "providers" {
+			return pkgref.Provider()
+		}
+		schemaResource, ok, err := pkgref.Resources().Get(token)
+		if err != nil {
+			return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
+		}
+		if ok {
+			return schemaResource, nil
+		}
 	}
-	if pkg == "pulumi" && mod == "providers" {
-		return pkgref.Provider()
+	if loadErr != nil {
+		return nil, loadErr
 	}
-	resources := pkgref.Resources()
-	schemaResource, ok, err := resources.Get(token)
-	if err != nil {
-		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
-	}
-	if !ok {
-		return nil, fmt.Errorf("get resource from package for token %s", token)
-	}
-	return schemaResource, nil
+	return nil, fmt.Errorf("get resource from package for token %s", token)
 }
 
 func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema.Function, error) {
@@ -670,27 +685,42 @@ func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema
 
 	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 
-	descriptor := i.lookupPackageDescriptor(pkg)
-	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-	if err != nil {
-		return nil, fmt.Errorf("load package for token %s: %w", token, err)
+	var loadErr error
+	for _, descriptor := range i.lookupPackageDescriptors(pkg) {
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
+			continue
+		}
+		schemaFunction, ok, err := pkgref.Functions().Get(token)
+		if err != nil {
+			return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
+		}
+		if ok {
+			return schemaFunction, nil
+		}
 	}
-	functions := pkgref.Functions()
-	schemaFunction, ok, err := functions.Get(token)
-	if err != nil {
-		return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
+	if loadErr != nil {
+		return nil, loadErr
 	}
-	if !ok {
-		return nil, fmt.Errorf("get function from package for token %s", token)
-	}
-	return schemaFunction, nil
+	return nil, fmt.Errorf("get function from package for token %s", token)
 }
 
-func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDescriptor {
+// lookupPackageDescriptors returns the packages a pkgName-namespaced token could
+// resolve to: pkgName itself plus every extension layered on it.
+func (i *Interpreter) lookupPackageDescriptors(pkgName string) []*schema.PackageDescriptor {
+	var candidates []*schema.PackageDescriptor
 	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
-		return descriptor
+		candidates = append(candidates, descriptor)
+	} else {
+		candidates = append(candidates, &schema.PackageDescriptor{Name: pkgName})
 	}
-	return &schema.PackageDescriptor{Name: pkgName}
+	for _, descriptor := range i.info.PackageDescriptors {
+		if descriptor != nil && descriptor.Parameterization != nil && descriptor.Name == pkgName {
+			candidates = append(candidates, descriptor)
+		}
+	}
+	return candidates
 }
 
 func PackageNameFromToken(token string) (string, error) {
@@ -708,11 +738,7 @@ func PackageNameFromToken(token string) (string, error) {
 }
 
 func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
-	pkgName, err := PackageNameFromToken(token)
-	if err != nil {
-		return "", err
-	}
-	return i.packageRefs[pkgName], nil
+	return i.packageRefs[token], nil
 }
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {
@@ -742,10 +768,24 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 		if descriptor.Version != nil {
 			request.Version = descriptor.Version.String()
 		}
-		request.Parameterization = &pulumirpc.Parameterization{
+		param := &pulumirpc.Parameterization{
 			Name:    descriptor.Parameterization.Name,
 			Version: descriptor.Parameterization.Version.String(),
 			Value:   descriptor.Parameterization.Value,
+		}
+		// Route to the wire field matching the schema's parameterization flavor.
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			return fmt.Errorf("load package %q for register: %w", key, err)
+		}
+		def, err := pkgref.Definition()
+		if err != nil {
+			return fmt.Errorf("load definition for package %q: %w", key, err)
+		}
+		if def.ExtensionParameterization != nil {
+			request.Extension = param
+		} else {
+			request.Parameterization = param
 		}
 
 		resp, err := i.monitor.RegisterPackage(ctx, request)
@@ -756,8 +796,15 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 			return fmt.Errorf("register package %q returned empty reference", key)
 		}
 
-		i.packageRefs[key] = resp.GetRef()
-		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
+		// Index every token the package defines, plus its provider ref (see packageRefs).
+		ref := resp.GetRef()
+		i.packageRefs["pulumi:providers:"+descriptor.PackageName()] = ref
+		for _, r := range def.Resources {
+			i.packageRefs[r.Token] = ref
+		}
+		for _, f := range def.Functions {
+			i.packageRefs[f.Token] = ref
+		}
 	}
 
 	return nil
@@ -1252,6 +1299,7 @@ func (i *Interpreter) registerResourceWith(
 		AcceptSecrets:           true,
 		AcceptResources:         true,
 		SupportsResultReporting: true,
+		SnippetId:               i.snippetID,
 	}
 	packageRef, err := i.getPackageRefFromToken(token)
 	if err != nil {
@@ -1929,6 +1977,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		AcceptSecrets:        true,
 		AcceptResources:      true,
 		Parent:               i.stackURN,
+		SnippetId:            i.snippetID,
 	}
 	if component.Options != nil && component.Options.Parent != nil {
 		parent, poison, diags := i.evalContext.Evaluate(component.Options.Parent)

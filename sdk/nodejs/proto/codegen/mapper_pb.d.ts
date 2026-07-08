@@ -16,6 +16,8 @@ export class GetMappingRequest extends jspb.Message {
     clearParameterizationHint(): void;
     getParameterizationHint(): MapperParameterizationHint | undefined;
     setParameterizationHint(value?: MapperParameterizationHint): GetMappingRequest;
+    getEcosystem(): string;
+    setEcosystem(value: string): GetMappingRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetMappingRequest.AsObject;
@@ -32,6 +34,7 @@ export namespace GetMappingRequest {
         provider: string,
         pulumiProvider: string,
         parameterizationHint?: MapperParameterizationHint.AsObject,
+        ecosystem: string,
     }
 }
 

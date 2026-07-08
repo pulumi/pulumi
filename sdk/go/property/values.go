@@ -197,7 +197,10 @@ func copyAsset(a Asset) Asset {
 }
 
 func copyArchive(a Archive) Archive {
-	assets := make(map[string]any, len(a.Assets))
+	var assets map[string]any
+	if a.Assets != nil {
+		assets = make(map[string]any, len(a.Assets))
+	}
 	for k, v := range a.Assets {
 		switch v := v.(type) {
 		case Asset:

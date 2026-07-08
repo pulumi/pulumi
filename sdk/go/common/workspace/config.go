@@ -21,7 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -343,7 +343,7 @@ func mergeConfig(
 		}
 	}
 
-	if len(missingConfigurationKeys) > 0 {
+	if validate && len(missingConfigurationKeys) > 0 {
 		// there are missing configuration keys in the stack
 		// return them as a single error.
 		return missingStackConfigurationKeysError(missingConfigurationKeys, stackName)
@@ -372,10 +372,14 @@ func ValidateStackConfigAndApplyProjectConfig(
 	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, decrypter, true)
 }
 
-// ApplyConfigDefaults applies the default values for the project configuration onto the stack configuration
-// without validating the contents of stack config values.
-// This is because sometimes during pulumi config ls and pulumi config get, if users are
-// using PassphraseDecrypter, we don't want to always prompt for the values when not necessary
+// ApplyProjectConfig applies the project configuration onto the stack configuration without validating
+// the merged config: it neither errors on missing required keys nor type-checks stack values against the
+// project schema. Project-level defaults and values are still merged onto the stack config.
+//
+// This is used both during pulumi config ls and pulumi config get (where, if users are using
+// PassphraseDecrypter, we don't want to always prompt for values when not necessary, and where a single
+// missing key should not block reading the others), and by operations run with --skip-config-validation,
+// where project defaults still need to be applied even though validation is intentionally skipped.
 func ApplyProjectConfig(
 	ctx context.Context,
 	stackName string,
@@ -383,6 +387,7 @@ func ApplyProjectConfig(
 	stackEnv esc.Value,
 	stackConfig config.Map,
 	encrypter config.Encrypter,
+	decrypter config.Decrypter,
 ) error {
-	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, nil, false)
+	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, decrypter, false)
 }

@@ -1,0 +1,4 @@
+component: engine
+kind: feat
+body: Add `TargetSnippets` to deployment options to target snippets by UUID.
+time: 2026-06-30T21:26:58.686563+01:00

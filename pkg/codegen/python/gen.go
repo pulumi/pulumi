@@ -32,14 +32,14 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/BurntSushi/toml"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -98,14 +98,6 @@ func (imports imports) strings() []string {
 	}
 	sort.Strings(result)
 	return result
-}
-
-func title(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
 }
 
 type modLocator struct {
@@ -373,7 +365,7 @@ func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	return title(components[2])
+	return cgstrings.UppercaseFirst(components[2])
 }
 
 // tokenToModule accepts a *Pulumi token* and returns name of the *Python module* that it
@@ -563,40 +555,39 @@ def get_version():
 		return nil, err
 	}
 
-	if pkg.Parameterization != nil {
-		// If a parameterized package is being generated then we _need_ to use package references
-		param := base64.StdEncoding.EncodeToString(pkg.Parameterization.Parameter)
+	if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
+		// If a parameterized package is being generated then we _need_ to use package references.
+		// Extension and replacement parameterization differ only in which RegisterPackageRequest
+		// kwarg the blob is attached to: `parameterization=` vs `extension=`.
+		var baseProvider schema.BaseProvider
+		var parameter []byte
+		requestKwarg := "parameterization"
+		if pkg.Parameterization != nil {
+			baseProvider = schema.BaseProvider{Name: pkg.Parameterization.BasePlugin.Name, Version: pkg.Parameterization.BasePlugin.Version}
+			parameter = pkg.Parameterization.Parameter
+		} else {
+			baseProvider = pkg.ExtensionParameterization.BaseProvider
+			parameter = pkg.ExtensionParameterization.Parameter
+			requestKwarg = "extension"
+		}
+		param := base64.StdEncoding.EncodeToString(parameter)
+		extensionArg := ""
+		if requestKwarg == "extension" {
+			extensionArg = "\n\t\textension=True,"
+		}
 
 		_, err = fmt.Fprintf(buffer, `
-_package_lock = asyncio.Lock()
-_package_ref = ...
-async def get_package():
-	global _package_ref
-	if _package_ref is ...:
-		if pulumi.runtime.settings._sync_monitor_supports_parameterization():
-			async with _package_lock:
-				if _package_ref is ...:
-					monitor = pulumi.runtime.settings.get_monitor()
-					parameterization = resource_pb2.Parameterization(
-						name=%q,
-						version=get_version(),
-						value=base64.b64decode(%q),
-					)
-					registerPackageResponse = monitor.RegisterPackage(
-						resource_pb2.RegisterPackageRequest(
-							name=%q,
-							version=%q,
-							download_url=get_plugin_download_url(),
-							parameterization=parameterization,
-						))
-					_package_ref = registerPackageResponse.ref
-	# TODO: This check is only needed for parameterized providers, normal providers can return None for get_package when we start
-	# using package with them.
-	if _package_ref is None or _package_ref is ...:
-		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
-	return _package_ref
+async def get_package() -> str:
+	return await pulumi.runtime.register_package(
+		base_provider_name=%q,
+		base_provider_version=%q,
+		base_provider_download_url=get_plugin_download_url() or "",
+		package_name=%q,
+		package_version=get_version(),
+		base64_parameter=%q,%s
+	)
 	`,
-			pkg.Name, param, pkg.Parameterization.BasePlugin.Name, pkg.Parameterization.BasePlugin.Version)
+			baseProvider.Name, baseProvider.Version, pkg.Name, param, extensionArg)
 		if err != nil {
 			return nil, err
 		}
@@ -1648,7 +1639,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if pkg.Parameterization != nil {
+	if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 		fmt.Fprintf(w, ",\n            package_ref=_utilities.get_package()")
 	}
 	fmt.Fprintf(w, ")\n\n")
@@ -1771,7 +1762,7 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) (
 		}
 	}
 
-	name := pyClassName(title(method.Name)) + "Result"
+	name := pyClassName(cgstrings.UppercaseFirst(method.Name)) + "Result"
 
 	// Produce a class definition with optional """ comment.
 	fmt.Fprintf(w, "    @pulumi.output_type\n")
@@ -1938,7 +1929,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) error {
 		// If the call is on a parameterized package, make sure we pass the parameter.
 		pkg, err := fun.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
-		if pkg.Parameterization != nil {
+		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 			trailingArgs += ", package_ref=_utilities.get_package()"
 		}
 
@@ -2082,7 +2073,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		if err != nil {
 			return err
 		}
-		if pkg.Parameterization != nil {
+		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 			trailingArgs += ", package_ref=_utilities.get_package()"
 		}
 
@@ -2377,16 +2368,24 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 		}
 		pulumiPlugin.Version = pkg.Version.String()
 	}
-	if pkg.Parameterization != nil {
-		// For a parameterized package the plugin name/version is from the base provider information, not the
-		// top-level package name/version.
+	// For both replacement and extension parameterization the plugin name/version
+	// in pulumi-plugin.json is from the base provider, not the top-level package.
+	if param := pkg.Parameterization; param != nil {
 		pulumiPlugin.Parameterization = &plugin.PulumiParameterizationJSON{
 			Name:    pulumiPlugin.Name,
 			Version: pulumiPlugin.Version,
-			Value:   pkg.Parameterization.Parameter,
+			Value:   param.Parameter,
 		}
-		pulumiPlugin.Name = pkg.Parameterization.BasePlugin.Name
-		pulumiPlugin.Version = pkg.Parameterization.BasePlugin.Version.String()
+		pulumiPlugin.Name = param.BasePlugin.Name
+		pulumiPlugin.Version = param.BasePlugin.Version.String()
+	} else if param := pkg.ExtensionParameterization; param != nil {
+		pulumiPlugin.ExtensionParameterization = &plugin.PulumiParameterizationJSON{
+			Name:    pulumiPlugin.Name,
+			Version: pulumiPlugin.Version,
+			Value:   param.Parameter,
+		}
+		pulumiPlugin.Name = param.BaseProvider.Name
+		pulumiPlugin.Version = param.BaseProvider.Version.String()
 	}
 
 	return pulumiPlugin.JSON()
@@ -2481,7 +2480,7 @@ func genPackageMetadata(
 	// Collect the deps into a tuple, where the first
 	// element is the dep name and the second element
 	// is the version constraint.
-	deps, err := calculateDeps(pkg.Parameterization != nil, requires)
+	deps, err := calculateDeps(pkg.Parameterization != nil || pkg.ExtensionParameterization != nil, requires)
 	if err != nil {
 		return "", err
 	}
@@ -2588,9 +2587,9 @@ func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterE
 		case schema.DocRefKindFunction:
 			base = PyName(tokenToName(ref.Function.Token))
 		case schema.DocRefKindFunctionInputProperty:
-			base = title(PyName(tokenToName(ref.Function.Token))) + "Args"
+			base = cgstrings.UppercaseFirst(PyName(tokenToName(ref.Function.Token))) + "Args"
 		case schema.DocRefKindFunctionOutputProperty:
-			base = title(PyName(tokenToName(ref.Function.Token))) + "Result"
+			base = cgstrings.UppercaseFirst(PyName(tokenToName(ref.Function.Token))) + "Result"
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			switch t := ref.Type.(type) {
 			case *schema.ObjectType:
@@ -3319,7 +3318,10 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		}
 	}
 
-	scanResource(pkg.Provider)
+	// Extension-parameterized packages don't get their own Provider class.
+	if pkg.ExtensionParameterization == nil {
+		scanResource(pkg.Provider)
+	}
 	for _, r := range pkg.Resources {
 		scanResource(r)
 	}
@@ -3680,7 +3682,7 @@ func setPythonRequires(schema *PyprojectSchema, pkg *schema.Package) {
 // setDependencies mutates the pyproject schema adding the dependencies to the
 // list in lexical order.
 func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies map[string]string) error {
-	deps, err := calculateDeps(pkg.Parameterization != nil, dependencies)
+	deps, err := calculateDeps(pkg.Parameterization != nil || pkg.ExtensionParameterization != nil, dependencies)
 	if err != nil {
 		return err
 	}
@@ -3694,8 +3696,12 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 	return nil
 }
 
-// Require the SDK to fall within the same major version.
-var MinimumValidSDKVersion = ">=3.231.0,<4.0.0"
+var (
+	// Require the SDK to fall within the same major version.
+	MinimumValidSDKVersion = ">=3.231.0,<4.0.0"
+	// Parameterized packages call `pulumi.runtime.register_package`, which was introduced in 3.247.0
+	MinimumValidParameterizationSDKVersion = ">=3.247.0,<4.0.0"
+)
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies
@@ -3709,16 +3715,22 @@ var MinimumValidSDKVersion = ">=3.231.0,<4.0.0"
 // validate.
 func ensureValidPulumiVersion(parameterized bool, requires map[string]string) (map[string]string, error) {
 	deps := map[string]string{}
+
+	minimumValidSDKVersion := MinimumValidSDKVersion
+	if parameterized {
+		minimumValidSDKVersion = MinimumValidParameterizationSDKVersion
+	}
+
 	// Special case: if the map is empty, we return just pulumi with the minimum version constraint.
 
 	if len(requires) == 0 {
 		result := map[string]string{
-			"pulumi": MinimumValidSDKVersion,
+			"pulumi": minimumValidSDKVersion,
 		}
 		return result, nil
 	}
 	if pulumiDep, ok := requires["pulumi"]; !ok {
-		deps["pulumi"] = MinimumValidSDKVersion
+		deps["pulumi"] = minimumValidSDKVersion
 	} else {
 		deps["pulumi"] = pulumiDep
 	}

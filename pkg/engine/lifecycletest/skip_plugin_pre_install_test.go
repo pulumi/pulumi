@@ -27,9 +27,9 @@ import (
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -109,7 +109,7 @@ func TestSkipPluginPreInstallSkipsUnusedLanguagePackages(t *testing.T) {
 	// The language host advertises both pkgA and pkgB as required, even though the program only
 	// ever registers a resource of pkgA.
 	programF := deploytest.NewLanguageRuntimeF(program, pkgA, pkgB)
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	runUpdate := func(skip bool) *countingPluginManager {
 		// Reset counters

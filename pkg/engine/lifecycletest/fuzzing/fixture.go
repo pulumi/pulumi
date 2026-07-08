@@ -24,7 +24,7 @@ import (
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,7 +107,8 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 		inSnap := snapSpec.AsSnapshot()
 		require.NoError(t, inSnap.VerifyIntegrity(), "initial snapshot is not valid")
 
-		hostF := deploytest.NewPluginHostF(nil, nil, progSpec.AsLanguageRuntimeF(t), provSpec.AsProviderLoaders()...)
+		hostF := deploytest.NewPluginHostF(
+			nil, nil, progSpec.AsLanguageRuntimeF(t), nil, nil, provSpec.AsProviderLoaders()...)
 
 		opOpts, op := planSpec.Executors(t, hostF)
 		opOpts.SkipDisplayTests = true

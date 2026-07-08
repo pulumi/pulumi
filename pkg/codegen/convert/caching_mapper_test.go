@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,7 +61,7 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 	// Act.
 	//
 	// After the first time, we should have attempted an installation.
-	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 	// Act.
 	//
 	// After the second time, we should still have only attempted an installation once.
-	data, err = mapper.GetMapping(t.Context(), "gcp", nil /*hint*/)
+	data, err = mapper.GetMapping(t.Context(), "gcp", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 			defer wg.Done()
 
 			// Get the mapping - this will cause concurrent map writes without proper locking
-			_, err := mapper.GetMapping(t.Context(), p, nil /*hint*/)
+			_, err := mapper.GetMapping(t.Context(), p, nil /*hint*/, "" /*ecosystem*/)
 			require.NoError(t, err)
 		}(provider)
 	}

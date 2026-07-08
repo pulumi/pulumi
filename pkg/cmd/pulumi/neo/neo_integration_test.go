@@ -307,8 +307,7 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	// rather than relying on `go test -timeout` to catch a hang.
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", t.TempDir())
 	}()
 
 	select {
@@ -338,6 +337,18 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 		"CreateNeoTask body must include the prompt")
 	assert.True(t, srv.sawStreamConnect(),
 		"SSE stream was never opened — test did not exercise Session.Run")
+}
+
+// runNeoTest invokes runNeo with the option defaults shared by these integration tests; tests
+// vary only the prompt and working directory.
+func runNeoTest(ctx context.Context, prompt, cwd string) error {
+	return runNeo(ctx, io.Discard, io.Discard, neoRunOptions{
+		prompt:         prompt,
+		orgFlag:        "test-org",
+		cwdFlag:        cwd,
+		approvalMode:   client.NeoApprovalModeManual,
+		permissionMode: client.NeoPermissionModeDefault,
+	})
 }
 
 // installNeoTestEnv wires the fake backend and workspace globals for an
@@ -393,8 +404,7 @@ func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", t.TempDir())
 	}()
 
 	select {
@@ -421,8 +431,7 @@ func TestRunNeoIntegration_NonInteractiveRequiresPrompt(t *testing.T) {
 	srv := newNeoFakeServer(t)
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "" /*prompt*/, "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "" /*prompt*/, t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt argument is required")
 
@@ -447,8 +456,7 @@ func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
 	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Pulumi Cloud backend",
 		"non-cloud backends must surface a clear error rather than panic on the type assertion")
@@ -478,8 +486,7 @@ func TestRunNeoIntegration_ResolvesCwdWhenEmpty(t *testing.T) {
 		// cwdFlag empty → runNeo calls os.Getwd. The test's own working
 		// directory is always a real, readable path, so the tools constructors
 		// accept it and runNeo proceeds.
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", "", /*cwd*/
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", "" /*cwd*/)
 	}()
 
 	select {
@@ -502,8 +509,7 @@ func TestRunNeoIntegration_RejectsNonexistentCwd(t *testing.T) {
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
 	missing := t.TempDir() + "/does-not-exist"
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", missing,
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", missing)
 	require.Error(t, err)
 	// The exact wrapping is internal to tools.NewFilesystem, but the missing
 	// path should be referenced so the user can see what went wrong.
@@ -531,8 +537,7 @@ func TestRunNeoIntegration_PropagatesReadProjectError(t *testing.T) {
 		},
 	}
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "synthetic ReadProject failure")
 	assert.Empty(t, srv.recordedPosts(),
@@ -576,8 +581,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	isInteractive = func() bool { return false }
 	t.Cleanup(func() { isInteractive = prevInteractive })
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "creating Neo task")
 }
@@ -649,8 +653,7 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", t.TempDir())
 	}()
 
 	select {

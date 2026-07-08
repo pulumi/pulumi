@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"runtime"
 	"strings"
@@ -32,16 +33,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -277,12 +277,12 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		if !cmd.reinstall {
 			if cmd.exact {
 				if pluginstorage.Instance.HasPlugin(ctx, install) {
-					logging.V(1).Infof("%s skipping install (existing == match)", label)
+					slog.InfoContext(ctx, "skipping install (existing == match)", "label", label)
 					continue
 				}
 			} else {
 				if has, _, _ := pluginstorage.Instance.HasPluginGTE(ctx, install); has {
-					logging.V(1).Infof("%s skipping install (existing >= match)", label)
+					slog.InfoContext(ctx, "skipping install (existing >= match)", "label", label)
 					continue
 				}
 			}
@@ -333,13 +333,13 @@ func installPluginSpec(
 		payload = pluginstorage.TarPlugin(unpackStream)
 	} else {
 		source = file
-		logging.V(1).Infof("%s opening tarball from %s", label, file)
+		slog.InfoContext(ctx, "opening tarball", "label", label, "file", file)
 		payload, err = getFilePayload(file, install)
 		if err != nil {
 			return err
 		}
 	}
-	logging.V(1).Infof("%s installing tarball ...", label)
+	slog.InfoContext(ctx, "installing tarball ...", "label", label)
 	if err = pkgWorkspace.InstallPluginContent(
 		ctx, install, payload, reinstall, schema.NewLoaderServerFromContext,
 	); err != nil {

@@ -1,6 +1,0 @@
-component: cli
-kind: fix
-body: Fix a panic in `pulumi package get-schema` when binding a schema that references an uninstalled plugin
-time: 2026-06-18T17:34:03.832187-07:00
-custom:
-    PR: "23647"

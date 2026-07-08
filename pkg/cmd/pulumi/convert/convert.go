@@ -48,11 +48,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -215,10 +215,12 @@ func runConvert(
 		name = filepath.Base(cwd)
 	}
 
+	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
+
 	// the plugin context uses the output directory as the working directory
 	// of the generated program because in general, where Pulumi.yaml lives is
 	// the root of the project.
-	pCtx, err := packages.NewPluginContext(outDir)
+	pCtx, err := packages.NewPluginContext(outDir, reg)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
@@ -236,6 +238,12 @@ func runConvert(
 	}
 
 	language = cmdCmd.NormalizeRuntimeName(language)
+
+	if from == "terraform" && language == "hcl" {
+		return errors.New("cannot convert a Terraform program to the \"hcl\" language: " +
+			"pulumi-hcl runs Terraform directly, so no conversion is needed; converting would re-home " +
+			"every resource onto a different provider and show a delete and create for each one on the next preview")
+	}
 
 	var projectGenerator projectGeneratorFunction
 	switch language {
@@ -337,7 +345,6 @@ func runConvert(
 		pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 	}
 
-	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
 	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx, stderr, stderr,
 		nil, packageworkspace.Options{})
 
@@ -504,7 +511,9 @@ func runConvert(
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		pluginHost, err := pkghost.New(
-			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled)
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServer(reg))
 		if err != nil {
 			return err
 		}
@@ -598,13 +607,14 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		pkgSchema, err := packages.BindSpec(*pkgSpec)
+		pkgSchema, err := packages.BindSpec(*pkgSpec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			return fmt.Errorf("binding package schema: %w", err)
 		}
 
 		diags, err := packages.GenSDK(
 			pctx.Request(),
+			registry,
 			language,
 			tempOut,
 			pkgSchema,

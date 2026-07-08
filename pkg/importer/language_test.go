@@ -54,8 +54,8 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 				{
 					ID:     "123",
 					Custom: true,
-					Type:   "pulumi:providers:aws",
-					URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+					Type:   "pulumi:providers:importer",
+					URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 				},
 				{
 					ID:     "123",
@@ -124,25 +124,25 @@ func TestGenerateLanguageDefinitionsReferencesOtherResources(t *testing.T) {
 		{
 			ID:     "123",
 			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			Type:   "pulumi:providers:importer",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 		},
 	}
 
 	resources := []apitype.ResourceV3{
 		{
-			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::myBucket",
+			URN:      "urn:pulumi:stack::project::importer:s3/bucket:Bucket::myBucket",
 			ID:       "bucket-1",
 			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
+			Type:     "importer:s3/bucket:Bucket",
 			Inputs:   map[string]any{},
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::obj",
+			URN:    "urn:pulumi:stack::project::importer:s3/bucketObject:BucketObject::obj",
 			ID:     "bucket-object-1",
 			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			Type:   "importer:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				"bucket": "bucket-1",
 			},
@@ -162,16 +162,16 @@ func TestGenerateLanguageDefinitionsReferencesOtherResources(t *testing.T) {
 	require.NoError(t, err)
 	// notice here the generated program doesn't have any references because
 	// we retried the codegen without guessing the dependencies between the resources.
-	expectedCode := `package aws {
-    baseProviderName = "aws"
+	expectedCode := `package importer {
+    baseProviderName = "importer"
 
 }
 
-resource myBucket "aws:s3/bucket:Bucket" {
+resource myBucket "importer:s3/bucket:Bucket" {
 
 }
 
-resource obj "aws:s3/bucketObject:BucketObject" {
+resource obj "importer:s3/bucketObject:BucketObject" {
     bucket = myBucket.id
 
 }
@@ -198,25 +198,25 @@ func TestGenerateLanguageDefinitionsReferencesOtherResourcesByName(t *testing.T)
 			{
 				ID:     "123",
 				Custom: true,
-				Type:   "pulumi:providers:aws",
-				URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+				Type:   "pulumi:providers:importer",
+				URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 			},
 		}
 
 		resources := []apitype.ResourceV3{
 			{
-				URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::my.Bucket.com",
+				URN:      "urn:pulumi:stack::project::importer:s3/bucket:Bucket::my.Bucket.com",
 				ID:       "bucket-1",
 				Custom:   true,
-				Type:     "aws:s3/bucket:Bucket",
+				Type:     "importer:s3/bucket:Bucket",
 				Inputs:   map[string]any{},
 				Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 			},
 			{
-				URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::obj",
+				URN:    "urn:pulumi:stack::project::importer:s3/bucketObject:BucketObject::obj",
 				ID:     "bucket-object-1",
 				Custom: true,
-				Type:   "aws:s3/bucketObject:BucketObject",
+				Type:   "importer:s3/bucketObject:BucketObject",
 				Inputs: map[string]any{
 					"bucket": "bucket-1",
 				},
@@ -241,19 +241,19 @@ func TestGenerateLanguageDefinitionsReferencesOtherResourcesByName(t *testing.T)
 	t.Run("GivenName", func(t *testing.T) {
 		t.Parallel()
 		names := NameTable{
-			"urn:pulumi:stack::project::aws:s3/bucket:Bucket::my.Bucket.com": "myBucket",
+			"urn:pulumi:stack::project::importer:s3/bucket:Bucket::my.Bucket.com": "myBucket",
 		}
-		expectedCode := `package aws {
-    baseProviderName = "aws"
+		expectedCode := `package importer {
+    baseProviderName = "importer"
 
 }
 
-resource myBucket "aws:s3/bucket:Bucket" {
+resource myBucket "importer:s3/bucket:Bucket" {
     __logicalName = "my.Bucket.com"
 
 }
 
-resource obj "aws:s3/bucketObject:BucketObject" {
+resource obj "importer:s3/bucketObject:BucketObject" {
     bucket = myBucket.id
 
 }
@@ -266,17 +266,17 @@ resource obj "aws:s3/bucketObject:BucketObject" {
 	t.Run("SanitizedName", func(t *testing.T) {
 		t.Parallel()
 		var names NameTable
-		expectedCode := `package aws {
-    baseProviderName = "aws"
+		expectedCode := `package importer {
+    baseProviderName = "importer"
 
 }
 
-resource my_Bucket_com "aws:s3/bucket:Bucket" {
+resource my_Bucket_com "importer:s3/bucket:Bucket" {
     __logicalName = "my.Bucket.com"
 
 }
 
-resource obj "aws:s3/bucketObject:BucketObject" {
+resource obj "importer:s3/bucketObject:BucketObject" {
     bucket = my_Bucket_com.id
 
 }
@@ -301,8 +301,8 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 		{
 			ID:     "123",
 			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			Type:   "pulumi:providers:importer",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 		},
 	}
 
@@ -311,20 +311,20 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 	// without guessing the dependencies between the resources.
 	resources := []apitype.ResourceV3{
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::first",
+			URN:    "urn:pulumi:stack::project::importer:s3/bucketObject:BucketObject::first",
 			ID:     "bucket-object-1",
 			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			Type:   "importer:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				"bucket": "bucket-object-2",
 			},
 			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
 		},
 		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::second",
+			URN:    "urn:pulumi:stack::project::importer:s3/bucketObject:BucketObject::second",
 			ID:     "bucket-object-2",
 			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
+			Type:   "importer:s3/bucketObject:BucketObject",
 			Inputs: map[string]any{
 				"bucket": "bucket-object-1",
 			},
@@ -344,17 +344,17 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 	require.NoError(t, err)
 	// notice here the generated program doesn't have any references because
 	// we retried the codegen without guessing the dependencies between the resources.
-	expectedCode := `package aws {
-    baseProviderName = "aws"
+	expectedCode := `package importer {
+    baseProviderName = "importer"
 
 }
 
-resource first "aws:s3/bucketObject:BucketObject" {
+resource first "importer:s3/bucketObject:BucketObject" {
     bucket = "bucket-object-2"
 
 }
 
-resource second "aws:s3/bucketObject:BucketObject" {
+resource second "importer:s3/bucketObject:BucketObject" {
     bucket = "bucket-object-1"
 
 }

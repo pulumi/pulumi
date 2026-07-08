@@ -27,6 +27,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -34,8 +35,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type policyPacksRenderFunc func(w io.Writer, policyPacks []apitype.PolicyPackWithVersions) error
+
 func newPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
-	var jsonOut bool
+	output := outputflag.OutputFlag[policyPacksRenderFunc]{
+		RenderForTerminal: formatPolicyPacksConsole,
+		RenderJSON:        formatPolicyPacksJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -89,10 +95,7 @@ func newPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobr
 				inContToken = outContToken
 			}
 
-			if jsonOut {
-				return formatPolicyPacksJSON(cmd.OutOrStdout(), allPolicyPacks)
-			}
-			return formatPolicyPacksConsole(cmd.OutOrStdout(), allPolicyPacks)
+			return output.Get()(cmd.OutOrStdout(), allPolicyPacks)
 		},
 	}
 
@@ -103,8 +106,7 @@ func newPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobr
 		Required: 0,
 	})
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 	return cmd
 }
 

@@ -21,8 +21,8 @@ import (
 	"path/filepath"
 
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -63,12 +63,12 @@ func main() {
 		}
 
 		sink := cmdutil.Diag()
-		pluginHost, err := pkghost.New(context.WithoutCancel(ctx.Context()), sink, sink, nil, nil)
+		pluginHost, err := pkghost.New(context.WithoutCancel(ctx.Context()), sink, sink, nil, nil, nil, nil, nil)
 		if err != nil {
 			return err
 		}
 		defer contract.IgnoreClose(pluginHost)
-		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil, nil, nil)
+		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil)
 		if err != nil {
 			return err
 		}

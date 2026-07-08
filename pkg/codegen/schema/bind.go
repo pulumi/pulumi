@@ -27,7 +27,6 @@ import (
 	"maps"
 	"math"
 	"net/url"
-	"os"
 	"path"
 	"regexp"
 	"slices"
@@ -37,10 +36,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
-	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/santhosh-tekuri/jsonschema/v5"
@@ -163,15 +158,20 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 //     diagnostic. Until we have line/column information, we use JSON pointers to the offending entities. These pointers
 //     are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
 //     diagnostic error that is appropriately tagged with a JSON pointer.
-func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
+func bindSpec(ctx context.Context, spec PackageSpec, languages map[string]Language, loader Loader,
 	validate bool,
 	options ValidationOptions,
 ) (*Package, hcl.Diagnostics, error) {
+	ctx, span := schemaTracer.Start(ctx, "schema.BindSpec")
+	defer span.End()
+
 	var diags hcl.Diagnostics
 
 	// Validate the package against the metaschema.
 	if validate {
+		_, vspan := schemaTracer.Start(ctx, "schema.validateSpec")
 		validationDiags, err := validateSpec(spec)
+		vspan.End()
 		diags = diags.Extend(validationDiags)
 		if err != nil {
 			return nil, diags, fmt.Errorf("validating spec: %w", err)
@@ -183,7 +183,6 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	if err != nil {
 		return nil, diags, err
 	}
-	defer contract.IgnoreClose(types)
 
 	diags = diags.Extend(spec.validateTypeTokens())
 
@@ -200,19 +199,25 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		return nil, diags, err
 	}
 
+	_, rspan := schemaTracer.Start(ctx, "schema.bindResources")
 	provider, resources, resourceDiags, err := types.finishResources(sortedKeys(spec.Resources), options)
+	rspan.End()
 	diags = diags.Extend(resourceDiags)
 	if err != nil {
 		return nil, diags, err
 	}
 
+	_, fspan := schemaTracer.Start(ctx, "schema.bindFunctions")
 	functions, functionDiags, err := types.finishFunctions(sortedKeys(spec.Functions), options)
+	fspan.End()
 	diags = diags.Extend(functionDiags)
 	if err != nil {
 		return nil, diags, err
 	}
 
+	_, tspan := schemaTracer.Start(ctx, "schema.bindTypes")
 	typeList, typeDiags, err := types.finishTypes(sortedKeys(spec.Types), options)
+	tspan.End()
 	diags = diags.Extend(typeDiags)
 	if err != nil {
 		return nil, diags, err
@@ -264,6 +269,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	bindTo PackageReference,
 ) (*types, hcl.Diagnostics, error) {
+	contract.Requiref(loader != nil, "loader", "must not be nil")
 	var diags hcl.Diagnostics
 
 	// Validate that there is a name
@@ -353,37 +359,11 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		ExtensionParameterization: extensionParameterization,
 	}
 
-	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
-	// reference is nil.
-	var loadCtx io.Closer
-	if loader == nil {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, nil, err
-		}
-		pluginHost, err := pkghost.New(context.TODO(), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled)
-		if err != nil {
-			return nil, nil, err
-		}
-		ctx, err := plugin.NewContext(context.TODO(), nil, nil, pluginHost, nil, cwd, nil, false, nil,
-			NewLoaderServerFromContext, convert.NewMapperServerFromContext)
-		if err != nil {
-			return nil, nil, errors.Join(err, pluginHost.Close())
-		}
-
-		// loadCtx closes the context and then the host it was built with, since the host is owned
-		// here and not by the context.
-		loader, loadCtx = NewPluginLoader(ctx), closerFunc(func() error {
-			return errors.Join(ctx.Close(), pluginHost.Close())
-		})
-	}
-
 	// Create a type binder.
 	types := &types{
 		pkg:          pkg,
 		spec:         spec,
 		loader:       loader,
-		loadCtx:      loadCtx,
 		typeDefs:     map[string]Type{},
 		functionDefs: map[string]*Function{},
 		resourceDefs: map[string]*Resource{},
@@ -411,16 +391,25 @@ type ValidationOptions struct {
 // BindSpec converts a serializable PackageSpec into a Package. Any semantic errors encountered during binding are
 // contained in the returned diagnostics. The returned error is only non-nil if a fatal error was encountered.
 func BindSpec(spec PackageSpec, loader Loader, options ValidationOptions) (*Package, hcl.Diagnostics, error) {
-	return bindSpec(spec, nil, loader, true, options)
+	return BindSpecWithContext(context.Background(), spec, loader, options)
+}
+
+// BindSpecWithContext is [BindSpec] with an explicit context that parents the OpenTelemetry spans emitted while
+// binding the package.
+func BindSpecWithContext(
+	ctx context.Context, spec PackageSpec, loader Loader, options ValidationOptions,
+) (*Package, hcl.Diagnostics, error) {
+	return bindSpec(ctx, spec, nil, loader, true, options)
 }
 
 // ImportSpec converts a serializable PackageSpec into a Package. Unlike BindSpec, ImportSpec does not validate its
 // input against the Pulumi package metaschema. ImportSpec should only be used to load packages that are assumed to be
 // well-formed (e.g. packages referenced for program code generation or by a root package being used for SDK
 // generation). BindSpec should be used to load and validate a package spec prior to generating its SDKs.
-func ImportSpec(spec PackageSpec, languages map[string]Language, options ValidationOptions) (*Package, error) {
-	// Call the internal implementation that includes a loader parameter.
-	pkg, diags, err := bindSpec(spec, languages, nil, false, options)
+func ImportSpec(
+	spec PackageSpec, languages map[string]Language, loader Loader, options ValidationOptions,
+) (*Package, error) {
+	pkg, diags, err := bindSpec(context.Background(), spec, languages, loader, false, options)
 	if err != nil {
 		return nil, err
 	}
@@ -434,9 +423,19 @@ func ImportSpec(spec PackageSpec, languages map[string]Language, options Validat
 // PartialPackage loads and binds its members on-demand rather than at import time. This is useful when the entire
 // contents of a package are not needed (e.g. for referenced packages).
 func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language, loader Loader) (*PartialPackage, error) {
+	return ImportPartialSpecWithContext(context.Background(), spec, languages, loader)
+}
+
+func ImportPartialSpecWithContext(
+	ctx context.Context, spec PartialPackageSpec, languages map[string]Language, loader Loader,
+) (*PartialPackage, error) {
+	_, span := schemaTracer.Start(ctx, "schema.ImportPartialSpec")
+	defer span.End()
+
 	pkg := &PartialPackage{
 		spec:      &spec,
 		languages: languages,
+		ctx:       ctx,
 	}
 	types, diags, err := newBinder(spec.PackageInfoSpec, partialPackageSpecSource{&spec}, loader, pkg)
 	if err != nil {
@@ -540,18 +539,12 @@ func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, b
 	return spec, true, nil
 }
 
-// closerFunc adapts a function to io.Closer.
-type closerFunc func() error
-
-func (f closerFunc) Close() error { return f() }
-
 // types facilitates interning (only storing a single reference to an object) during schema processing. The fields
 // correspond to fields in the schema, and are populated during the binding process.
 type types struct {
-	pkg     *Package
-	spec    specSource
-	loader  Loader
-	loadCtx io.Closer
+	pkg    *Package
+	spec   specSource
+	loader Loader
 
 	typeDefs     map[string]Type      // objects and enums
 	functionDefs map[string]*Function // function definitions
@@ -567,13 +560,6 @@ type types struct {
 
 	// A pointer to the package reference that `types` is a part of if it exists.
 	bindToReference PackageReference
-}
-
-func (t *types) Close() error {
-	if t.loadCtx != nil {
-		return t.loadCtx.Close()
-	}
-	return nil
 }
 
 // The package which bound types will link back to.
@@ -636,7 +622,13 @@ func (spec *PackageSpec) validateTypeToken(
 
 	modules, ok := allowedNameSpecs[parts[0]]
 	if !ok {
-		err := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
+		// Extension tokens must use the base provider's namespace, not the
+		// extension's own name, so point the author at the base.
+		expectedName := spec.Name
+		if spec.ExtensionParameterization != nil {
+			expectedName = spec.ExtensionParameterization.BaseProvider.Name
+		}
+		err := errorf(path, "invalid token '%s' (must have package name '%s')", token, expectedName)
 		diags = diags.Append(err)
 	}
 	if (parts[1] == "" || strings.EqualFold(parts[1], "index")) && strings.EqualFold(parts[2], "provider") {
@@ -677,16 +669,18 @@ func (spec *PackageSpec) validateTypeToken(
 // This is for validating non-reference type tokens.
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	allowedNameSpecs := map[string][]string{spec.Name: nil}
+	allowedNameSpecs := map[string][]string{}
+	if spec.ExtensionParameterization != nil {
+		// Extension resources are served at runtime by the base provider, and the
+		// whole base->extension resolution path is keyed on the base namespace, so
+		// their tokens must use the base provider's name — not the extension's own
+		// (renamed-SDK) name.
+		allowedNameSpecs[spec.ExtensionParameterization.BaseProvider.Name] = nil
+	} else {
+		allowedNameSpecs[spec.Name] = nil
+	}
 	for _, prefix := range spec.AllowedPackageNames {
 		allowedNameSpecs[prefix] = nil
-	}
-	// An extension parameterization's resource tokens may use either the
-	// extension's own name (already allowed above) or the base provider's
-	// namespace (the SDK is renamed, but the tokens need not be), so allow the
-	// base provider's name too.
-	if spec.ExtensionParameterization != nil {
-		allowedNameSpecs[spec.ExtensionParameterization.BaseProvider.Name] = nil
 	}
 	for t := range spec.Resources {
 		diags = diags.Extend(spec.validateTypeToken(allowedNameSpecs, "resources", t))

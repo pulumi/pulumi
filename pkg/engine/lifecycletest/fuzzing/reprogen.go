@@ -88,7 +88,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 )
@@ -236,7 +236,7 @@ func writeSnapshotTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)")
+			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)")
 			g.writeBlock(
 				"reproOpts := lt.TestUpdateOptions{",
 				func(g *generator) {
@@ -342,7 +342,7 @@ func writeFrameworkTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, setupLoaders...)")
+			g.writeLine("setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, setupLoaders...)")
 			g.writeBlock(
 				"setupOpts := lt.TestUpdateOptions{",
 				func(g *generator) {
@@ -400,7 +400,7 @@ func writeFrameworkTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)")
+			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)")
 			g.writeBlock(
 				"reproOpts := lt.TestUpdateOptions{",
 				func(g *generator) {

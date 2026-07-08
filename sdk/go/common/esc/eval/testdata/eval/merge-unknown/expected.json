@@ -1,0 +1,1539 @@
+{
+    "check": {
+        "exprs": {
+            "open": {
+                "range": {
+                    "environment": "merge-unknown",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 35
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 15,
+                        "byte": 67
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "baz": {
+                            "properties": {
+                                "qux": {
+                                    "type": "string",
+                                    "const": "zed"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "qux"
+                            ]
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz",
+                        "foo"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 15,
+                            "byte": 50
+                        }
+                    },
+                    "schema": true,
+                    "builtin": {
+                        "name": "fn::open::test",
+                        "nameRange": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 3,
+                                "column": 5,
+                                "byte": 20
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 19,
+                                "byte": 34
+                            }
+                        },
+                        "argSchema": true,
+                        "arg": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 42
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 15,
+                                    "byte": 50
+                                }
+                            },
+                            "schema": {
+                                "properties": {
+                                    "baz": {
+                                        "type": "string",
+                                        "const": "qux"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "baz"
+                                ]
+                            },
+                            "keyRanges": {
+                                "baz": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 7,
+                                        "byte": 42
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 10,
+                                        "byte": 45
+                                    }
+                                }
+                            },
+                            "object": {
+                                "baz": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 4,
+                                            "column": 12,
+                                            "byte": 47
+                                        },
+                                        "end": {
+                                            "line": 4,
+                                            "column": 15,
+                                            "byte": 50
+                                        }
+                                    },
+                                    "schema": {
+                                        "type": "string",
+                                        "const": "qux"
+                                    },
+                                    "literal": "qux"
+                                }
+                            }
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "baz": {
+                        "environment": "merge-unknown",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 8,
+                            "byte": 51
+                        }
+                    },
+                    "foo": {
+                        "environment": "merge-unknown",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 35
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 8,
+                            "byte": 38
+                        }
+                    }
+                },
+                "object": {
+                    "baz": {
+                        "range": {
+                            "environment": "merge-unknown",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 59
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 15,
+                                "byte": 67
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "qux": {
+                                    "type": "string",
+                                    "const": "zed"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "qux"
+                            ]
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "merge-unknown",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 5,
+                                    "byte": 48
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 8,
+                                    "byte": 51
+                                }
+                            },
+                            "schema": false,
+                            "access": {
+                                "receiver": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 15,
+                                        "byte": 50
+                                    }
+                                },
+                                "accessors": [
+                                    {
+                                        "key": "baz",
+                                        "range": {
+                                            "environment": "merge-unknown",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        "keyRanges": {
+                            "qux": {
+                                "environment": "merge-unknown",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 59
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 10,
+                                    "byte": 62
+                                }
+                            }
+                        },
+                        "object": {
+                            "qux": {
+                                "range": {
+                                    "environment": "merge-unknown",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 12,
+                                        "byte": 64
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 15,
+                                        "byte": 67
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "zed"
+                                },
+                                "base": {
+                                    "range": {
+                                        "environment": "merge-unknown",
+                                        "begin": {
+                                            "line": 6,
+                                            "column": 5,
+                                            "byte": 48
+                                        },
+                                        "end": {
+                                            "line": 6,
+                                            "column": 8,
+                                            "byte": 51
+                                        }
+                                    },
+                                    "schema": false,
+                                    "access": {
+                                        "receiver": {
+                                            "environment": "a",
+                                            "begin": {
+                                                "line": 3,
+                                                "column": 5,
+                                                "byte": 20
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 15,
+                                                "byte": 50
+                                            }
+                                        },
+                                        "accessors": [
+                                            {
+                                                "key": "baz",
+                                                "range": {
+                                                    "environment": "merge-unknown",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "key": "qux",
+                                                "range": {
+                                                    "environment": "merge-unknown",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                "literal": "zed"
+                            }
+                        }
+                    },
+                    "foo": {
+                        "range": {
+                            "environment": "merge-unknown",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 40
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 13,
+                                "byte": 43
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "merge-unknown",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 5,
+                                    "byte": 35
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 8,
+                                    "byte": 38
+                                }
+                            },
+                            "schema": false,
+                            "access": {
+                                "receiver": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 15,
+                                        "byte": 50
+                                    }
+                                },
+                                "accessors": [
+                                    {
+                                        "key": "foo",
+                                        "range": {
+                                            "environment": "merge-unknown",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        "literal": "bar"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "open": {
+                "value": {
+                    "baz": {
+                        "value": {
+                            "qux": {
+                                "value": "zed",
+                                "trace": {
+                                    "def": {
+                                        "environment": "merge-unknown",
+                                        "begin": {
+                                            "line": 7,
+                                            "column": 12,
+                                            "byte": 64
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 15,
+                                            "byte": 67
+                                        }
+                                    },
+                                    "base": {
+                                        "unknown": true,
+                                        "trace": {
+                                            "def": {
+                                                "environment": "merge-unknown",
+                                                "begin": {
+                                                    "line": 7,
+                                                    "column": 7,
+                                                    "byte": 59
+                                                },
+                                                "end": {
+                                                    "line": 7,
+                                                    "column": 10,
+                                                    "byte": 62
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "merge-unknown",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 59
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 15,
+                                    "byte": 67
+                                }
+                            },
+                            "base": {
+                                "unknown": true,
+                                "trace": {
+                                    "def": {
+                                        "environment": "merge-unknown",
+                                        "begin": {
+                                            "line": 6,
+                                            "column": 5,
+                                            "byte": 48
+                                        },
+                                        "end": {
+                                            "line": 6,
+                                            "column": 8,
+                                            "byte": 51
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "merge-unknown",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 40
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 43
+                                }
+                            },
+                            "base": {
+                                "unknown": true,
+                                "trace": {
+                                    "def": {
+                                        "environment": "merge-unknown",
+                                        "begin": {
+                                            "line": 5,
+                                            "column": 5,
+                                            "byte": 35
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 8,
+                                            "byte": 38
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "merge-unknown",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 35
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 15,
+                            "byte": 67
+                        }
+                    },
+                    "base": {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 20
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 15,
+                                    "byte": 50
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "open": {
+                    "properties": {
+                        "baz": {
+                            "properties": {
+                                "qux": {
+                                    "type": "string",
+                                    "const": "zed"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "qux"
+                            ]
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz",
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "open"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "merge-unknown",
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "merge-unknown",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "merge-unknown",
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "merge-unknown"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "merge-unknown"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "open": {
+            "baz": {
+                "qux": "zed"
+            },
+            "foo": "bar"
+        }
+    },
+    "eval": {
+        "exprs": {
+            "open": {
+                "range": {
+                    "environment": "merge-unknown",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 35
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 15,
+                        "byte": 67
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "baz": {
+                            "properties": {
+                                "qux": {
+                                    "type": "string",
+                                    "const": "zed"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "qux"
+                            ]
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz",
+                        "foo"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 15,
+                            "byte": 50
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "baz": {
+                                "type": "string",
+                                "const": "qux"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "baz"
+                        ]
+                    },
+                    "builtin": {
+                        "name": "fn::open::test",
+                        "nameRange": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 3,
+                                "column": 5,
+                                "byte": 20
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 19,
+                                "byte": 34
+                            }
+                        },
+                        "argSchema": true,
+                        "arg": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 42
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 15,
+                                    "byte": 50
+                                }
+                            },
+                            "schema": {
+                                "properties": {
+                                    "baz": {
+                                        "type": "string",
+                                        "const": "qux"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "baz"
+                                ]
+                            },
+                            "keyRanges": {
+                                "baz": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 7,
+                                        "byte": 42
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 10,
+                                        "byte": 45
+                                    }
+                                }
+                            },
+                            "object": {
+                                "baz": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 4,
+                                            "column": 12,
+                                            "byte": 47
+                                        },
+                                        "end": {
+                                            "line": 4,
+                                            "column": 15,
+                                            "byte": 50
+                                        }
+                                    },
+                                    "schema": {
+                                        "type": "string",
+                                        "const": "qux"
+                                    },
+                                    "literal": "qux"
+                                }
+                            }
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "baz": {
+                        "environment": "merge-unknown",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 8,
+                            "byte": 51
+                        }
+                    },
+                    "foo": {
+                        "environment": "merge-unknown",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 35
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 8,
+                            "byte": 38
+                        }
+                    }
+                },
+                "object": {
+                    "baz": {
+                        "range": {
+                            "environment": "merge-unknown",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 59
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 15,
+                                "byte": 67
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "qux": {
+                                    "type": "string",
+                                    "const": "zed"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "qux"
+                            ]
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 20
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 15,
+                                    "byte": 50
+                                }
+                            },
+                            "schema": {
+                                "properties": {
+                                    "baz": {
+                                        "type": "string",
+                                        "const": "qux"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "baz"
+                                ]
+                            },
+                            "builtin": {
+                                "name": "fn::open::test",
+                                "nameRange": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 19,
+                                        "byte": 34
+                                    }
+                                },
+                                "argSchema": true,
+                                "arg": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 4,
+                                            "column": 7,
+                                            "byte": 42
+                                        },
+                                        "end": {
+                                            "line": 4,
+                                            "column": 15,
+                                            "byte": 50
+                                        }
+                                    },
+                                    "schema": {
+                                        "properties": {
+                                            "baz": {
+                                                "type": "string",
+                                                "const": "qux"
+                                            }
+                                        },
+                                        "type": "object",
+                                        "required": [
+                                            "baz"
+                                        ]
+                                    },
+                                    "keyRanges": {
+                                        "baz": {
+                                            "environment": "a",
+                                            "begin": {
+                                                "line": 4,
+                                                "column": 7,
+                                                "byte": 42
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 10,
+                                                "byte": 45
+                                            }
+                                        }
+                                    },
+                                    "object": {
+                                        "baz": {
+                                            "range": {
+                                                "environment": "a",
+                                                "begin": {
+                                                    "line": 4,
+                                                    "column": 12,
+                                                    "byte": 47
+                                                },
+                                                "end": {
+                                                    "line": 4,
+                                                    "column": 15,
+                                                    "byte": 50
+                                                }
+                                            },
+                                            "schema": {
+                                                "type": "string",
+                                                "const": "qux"
+                                            },
+                                            "literal": "qux"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "keyRanges": {
+                            "qux": {
+                                "environment": "merge-unknown",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 59
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 10,
+                                    "byte": 62
+                                }
+                            }
+                        },
+                        "object": {
+                            "qux": {
+                                "range": {
+                                    "environment": "merge-unknown",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 12,
+                                        "byte": 64
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 15,
+                                        "byte": 67
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "zed"
+                                },
+                                "literal": "zed"
+                            }
+                        }
+                    },
+                    "foo": {
+                        "range": {
+                            "environment": "merge-unknown",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 40
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 13,
+                                "byte": 43
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "literal": "bar"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "open": {
+                "value": {
+                    "baz": {
+                        "value": {
+                            "qux": {
+                                "value": "zed",
+                                "trace": {
+                                    "def": {
+                                        "environment": "merge-unknown",
+                                        "begin": {
+                                            "line": 7,
+                                            "column": 12,
+                                            "byte": 64
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 15,
+                                            "byte": 67
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "merge-unknown",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 59
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 15,
+                                    "byte": 67
+                                }
+                            },
+                            "base": {
+                                "value": "qux",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 20
+                                        },
+                                        "end": {
+                                            "line": 4,
+                                            "column": 15,
+                                            "byte": 50
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "merge-unknown",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 40
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 43
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "merge-unknown",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 35
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 15,
+                            "byte": 67
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "baz": {
+                                "value": "qux",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 20
+                                        },
+                                        "end": {
+                                            "line": 4,
+                                            "column": 15,
+                                            "byte": 50
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 20
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 15,
+                                    "byte": 50
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "open": {
+                    "properties": {
+                        "baz": {
+                            "properties": {
+                                "qux": {
+                                    "type": "string",
+                                    "const": "zed"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "qux"
+                            ]
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz",
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "open"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "merge-unknown",
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "merge-unknown",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "merge-unknown",
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "merge-unknown"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "merge-unknown"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "open": {
+            "baz": {
+                "qux": "zed"
+            },
+            "foo": "bar"
+        }
+    },
+    "evalJSONRevealed": {
+        "open": {
+            "baz": {
+                "qux": "zed"
+            },
+            "foo": "bar"
+        }
+    }
+}

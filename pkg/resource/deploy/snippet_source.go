@@ -125,7 +125,6 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 		// without seeing a `resource` block for them. The runtime values are injected on the eval context
 		// further down once the registration observer has resolved each URN.
 		bindOpts := []pcl.BindOption{
-			pcl.Loader(s.loader),
 			pcl.PackageDescriptors(packageDescriptors),
 		}
 		if len(s.snippet.References) > 0 {
@@ -135,7 +134,8 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 			}
 			bindOpts = append(bindOpts, pcl.ExtraScopeVariables(extras))
 		}
-		program, diags, err := pcl.BindResourceProgram(parser.Files[0], s.snippet.Name, s.snippet.Type, bindOpts...)
+		program, diags, err := pcl.BindResourceProgram(
+			parser.Files[0], s.snippet.Name, s.snippet.Type, s.loader, bindOpts...)
 		if err != nil {
 			fail(fmt.Errorf("bind snippet: %w", err))
 			return
@@ -192,7 +192,7 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 
 		interp := pclruntime.NewInterpreter(
 			program, snippetRunInfo(infoResp, s.rootDir, s.workingDir, packageDescriptors))
-		if err := interp.RunEmbedded(s.ctx, monitor, s.loader, scopeVars); err != nil {
+		if err := interp.RunEmbedded(s.ctx, monitor, s.loader, scopeVars, s.snippet.UUID); err != nil {
 			fail(fmt.Errorf("execute snippet: %w", err))
 			return
 		}

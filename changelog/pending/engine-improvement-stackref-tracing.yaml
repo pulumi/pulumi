@@ -1,0 +1,4 @@
+component: engine
+kind: improvement
+body: Add OpenTelemetry spans to the StackReference read path so performance traces can pinpoint slow snapshot fetches, deserialization, or secret decryption
+time: 2026-07-03T00:00:00+00:00

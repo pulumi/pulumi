@@ -25,7 +25,7 @@ import (
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 )
 
@@ -64,7 +64,7 @@ func TestAutonaming(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 			T:     t,
 			UpdateOptions: UpdateOptions{
 				GeneratePlan: true,

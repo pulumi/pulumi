@@ -1,0 +1,6 @@
+component: cli/env
+kind: chore
+body: Fold the Pulumi ESC engine and CLI into the pulumi/pulumi monorepo, removing the sdk↔esc Go module cycle. Internal refactor with no user-facing behavior change; `pulumi env`/`pulumi esc` are unaffected.
+time: 2026-07-01T12:00:00.000000+00:00
+custom:
+    PR: "23746"

@@ -88,9 +88,12 @@ jobs:
       # To cancel sibling jobs (ci, performance-gate, prepare-release) so the
       # merge queue rejects this PR without waiting for the full test suite.
       actions: write
+      # To comment on the blocked PR explaining the release hold.
+      pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Check release marker
+        id: check
         env:
           BASE_SHA: ${{ github.event.merge_group.base_sha }}
         run: |
@@ -106,6 +109,7 @@ jobs:
 
           # Release in progress. The marker must be gone after this PR.
           if [ -f .release-pending ]; then
+            echo "release-in-progress=true" >> "$GITHUB_OUTPUT"
             echo "::error::A release is in progress (.release-pending exists)."
             echo "Only the post-release changelog/go.mod PR can merge until the marker is removed."
             exit 1
@@ -143,6 +147,54 @@ jobs:
             echo "  pkg/go.mod sdk/v3:          $DEPENDED_VERSION"
             exit 1
           fi
+      - name: Comment on blocked PR
+        if: ${{ failure() && steps.check.outputs.release-in-progress == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_REF: ${{ github.event.merge_group.head_ref }}
+        run: |
+          set -euo pipefail
+
+          # The merge queue ref looks like:
+          #   gh-readonly-queue/master/pr-23690-<sha>
+          # Pull the PR number out of it. When several PRs are batched, only the
+          # last one is named here; the queue re-forms groups as it kicks PRs
+          # out, so each lands at the head of a group and gets commented in turn.
+          PR=$(printf '%s' "$HEAD_REF" | sed -n 's#.*/pr-\([0-9]\+\)-.*#\1#p')
+          if [ -z "$PR" ]; then
+            echo "Could not determine a PR number from head ref: $HEAD_REF"
+            exit 0
+          fi
+
+          # Don't comment twice - PRs get re-queued (and re-blocked) repeatedly.
+          MARKER="<!-- release-block -->"
+          if gh pr view "$PR" --repo "$REPO" --json comments \
+              --jq '.comments[].body' 2>/dev/null | grep -qF "$MARKER"; then
+            echo "Already commented on #$PR"
+            exit 0
+          fi
+
+          # Find the open finalizing PR by its predictable title. master's
+          # sdk/.version holds the version being released while the marker is set.
+          VERSION=$(git show origin/master:sdk/.version 2>/dev/null | tr -d '[:space:]')
+          FINALIZE_URL=""
+          if [ -n "$VERSION" ]; then
+            FINALIZE_URL=$(gh pr list --repo "$REPO" --state open \
+              --search "\"Changelog and go.mod updates for v${VERSION}\" in:title" \
+              --json url --jq '.[0].url // empty')
+          fi
+
+          LINK="Wait for the in-progress release to finalize, then re-queue this PR."
+          if [ -n "$FINALIZE_URL" ]; then
+            LINK="Once the release is finalized (${FINALIZE_URL}), re-queue this PR."
+          fi
+
+          gh pr comment "$PR" --repo "$REPO" --body "$MARKER
+          🚧 This PR was held out of the merge queue because a Pulumi release is in progress. The queue is temporarily closed to everything except the post-release changelog/go.mod update.
+
+          ${LINK}"
+
       - name: Cancel sibling jobs on block
         if: failure()
         env:

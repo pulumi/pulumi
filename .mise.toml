@@ -6,8 +6,8 @@ go = "1.26"
 changie = "1.24.2"
 golangci-lint = "2.12.2"
 jq = "1.8.1"
-node = "20"
-"npm:pnpm" = "10"
+node = "22"
+"npm:pnpm" = "11"
 "npm:typescript" = "6.0.3"
 "npm:typescript-language-server" = "5.3.0"
 "npm:yarn" = "1.22.22"
@@ -29,6 +29,9 @@ dotnet = "8"
 java = "temurin-11"
 gradle = "7.6"
 "github:pulumi/goteststats" = "0.0.7"
+
+[env]
+PULUMI_TEST_USE_NPM = "true"
 
 [tool_alias]
 protoc = "asdf:https://github.com/paxosglobal/asdf-protoc"
