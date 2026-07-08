@@ -140,6 +140,8 @@ func NewDoCmd(
 		sink := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
 			Color: cmdutil.GetGlobalColorization(),
 		})
+		diagFwd := &forwardingSink{base: sink}
+		statusFwd := &forwardingSink{base: sink}
 
 		proj, root, err := ws.ReadProject("")
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
@@ -163,7 +165,7 @@ func NewDoCmd(
 		loading := startSpinner(fmt.Sprintf("Loading provider '%s'", pkgargs[0]))
 		defer loading()
 
-		host, err := newHost(ctx, sink, sink)
+		host, err := newHost(ctx, diagFwd, statusFwd)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
 		}
@@ -285,6 +287,8 @@ func NewDoCmd(
 			ws:                ws,
 			lm:                lm,
 			sink:              sink,
+			diagFwd:           diagFwd,
+			statusFwd:         statusFwd,
 		}).newCommand()
 		if err != nil {
 			cleanup()
@@ -519,9 +523,11 @@ type packageCommand struct {
 
 	// ws / lm let configureProvider open the current stack's backend when --provider is set so it
 	// can read the referenced provider resource's Inputs. Plumbed from NewDoCmd.
-	ws   pkgWorkspace.Context
-	lm   cmdBackend.LoginManager
-	sink diag.Sink
+	ws        pkgWorkspace.Context
+	lm        cmdBackend.LoginManager
+	sink      diag.Sink
+	diagFwd   *forwardingSink
+	statusFwd *forwardingSink
 }
 
 // evalContext builds the PCL evaluation context from the workspace state we captured at construction

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -1130,4 +1131,28 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 	assert.Equal(t, "us-west-2", gotInputs["region"].StringValue(), "overlay should win for explicitly-set keys")
 	assert.Equal(t, "acme", gotInputs["tenant"].StringValue(),
 		"snapshot value should pass through for keys not in overlay")
+}
+
+func TestDoCmdResourceProviderErrorTidied(t *testing.T) {
+	t.Parallel()
+
+	cmd, _, _ := newDoResourceCommand(t, &testProvider{
+		spec: doResourceSpec(false),
+		MockProvider: plugin.MockProvider{
+			ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+					ID:      req.ID,
+					Inputs:  resource.PropertyMap{},
+					Outputs: resource.PropertyMap{"name": resource.NewProperty("existing")},
+				}}, nil
+			},
+			DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+				return plugin.DeleteResponse{},
+					fmt.Errorf("deleting %s: 1 error occurred:\n\t* cluster busy\n\n", req.URN)
+			},
+		},
+	})
+	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes"})
+	err := cmd.Execute()
+	assert.EqualError(t, err, `deleting azure:index:myResource "res-1": cluster busy`)
 }

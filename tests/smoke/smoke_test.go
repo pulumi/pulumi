@@ -1341,7 +1341,7 @@ func TestDoCommandLocalCommand(t *testing.T) {
 
 	e.WriteTestFile("inputs.pcl", "create = \"echo hello\"\n")
 
-	stdout, stderr := e.RunCommand(
+	_, stderr := e.RunCommand(
 		"pulumi", "do", "--stateless", "command:local:Command", "create",
 		"--input", "pcl", "--input-file", "inputs.pcl", "--yes")
 
@@ -1350,8 +1350,7 @@ func TestDoCommandLocalCommand(t *testing.T) {
 	// when it happens the test should fail loudly.
 	assert.NotContains(t, stderr, "panic:", "pulumi do should not panic; stderr:\n%s", stderr)
 
-	assert.Truef(t, strings.HasPrefix(stdout, "hello\n"),
-		"stdout did not start with hello\nActual:\n%s", stdout)
+	assert.Contains(t, stderr, "hello")
 }
 
 // Sanity test that we can `pulumi new -y` and then do some basic operations like stack selection and config.
