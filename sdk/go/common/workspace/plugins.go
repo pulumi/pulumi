@@ -1374,6 +1374,24 @@ func (spec PluginDescriptor) String() string {
 	return spec.Name + version
 }
 
+// PluginFS captures the filesystem operations used by PluginInfo (see Delete and
+// setFileMetadata). It exists so that plugin removal and metadata lookups can be exercised
+// without touching the real filesystem. A PluginInfo with a nil FS uses the real filesystem.
+type PluginFS interface {
+	Stat(name string) (os.FileInfo, error)
+	Remove(name string) error
+	RemoveAll(path string) error
+	GetTimes(fi os.FileInfo) times.Timespec
+}
+
+// osPluginFS is the default PluginFS, backed by the os package.
+type osPluginFS struct{}
+
+func (osPluginFS) Stat(name string) (os.FileInfo, error)  { return os.Stat(name) }
+func (osPluginFS) Remove(name string) error               { return os.Remove(name) }
+func (osPluginFS) RemoveAll(path string) error            { return os.RemoveAll(path) }
+func (osPluginFS) GetTimes(fi os.FileInfo) times.Timespec { return times.Get(fi) }
+
 // PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
@@ -1383,10 +1401,21 @@ type PluginInfo struct {
 	Kind    apitype.PluginKind // the kind of the plugin (language, resource, etc).
 	Version *semver.Version    // the plugin's semantic version, if present.
 
+	// FS is the filesystem backing the plugin's on-disk state. A nil FS uses the real filesystem.
+	FS PluginFS
+
 	installTime  time.Time // cached time the plugin was installed.
 	lastUsedTime time.Time // cached last time the plugin was used.
 
 	size uint64 // cached plugin size in bytes
+}
+
+// filesystem returns the plugin's PluginFS, defaulting to the real filesystem when unset.
+func (info *PluginInfo) filesystem() PluginFS {
+	if info.FS != nil {
+		return info.FS
+	}
+	return osPluginFS{}
 }
 
 // InstallTime returns the time the plugin was installed.
@@ -1449,14 +1478,15 @@ func (info PluginInfo) String() string {
 // Delete removes the plugin from the cache.  It also deletes any supporting files in the cache, which includes
 // any files that contain the same prefix as the plugin itself.
 func (info *PluginInfo) Delete() error {
+	fs := info.filesystem()
 	dir := info.Path
-	if err := os.RemoveAll(dir); err != nil {
+	if err := fs.RemoveAll(dir); err != nil {
 		return err
 	}
 	// Attempt to delete any leftover .partial or .lock files.
 	// Don't fail the operation if we can't delete these.
-	contract.IgnoreError(os.Remove(dir + ".partial"))
-	contract.IgnoreError(os.Remove(dir + ".lock"))
+	contract.IgnoreError(fs.Remove(dir + ".partial"))
+	contract.IgnoreError(fs.Remove(dir + ".lock"))
 	return nil
 }
 
@@ -1467,13 +1497,13 @@ func (info *PluginInfo) setFileMetadata() error {
 	}
 
 	// Get the file info.
-	file, err := os.Stat(info.Path)
+	file, err := info.filesystem().Stat(info.Path)
 	if err != nil {
 		return err
 	}
 
 	// Next get the access times from the plugin folder.
-	tinfo := times.Get(file)
+	tinfo := info.filesystem().GetTimes(file)
 
 	if tinfo.HasChangeTime() {
 		info.installTime = tinfo.ChangeTime()
