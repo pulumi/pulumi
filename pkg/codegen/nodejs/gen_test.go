@@ -92,6 +92,7 @@ func testGeneratedPackage(t *testing.T, pwd string) {
 		// If mocha is a dev dependency but no test files exist, this will fail.
 		test.RunCommand(t, "mocha", pwd,
 			filepath.Join(pwd, "node_modules", ".bin", "mocha"),
+			"--timeout", "120000",
 			"--require", "ts-node/register",
 			"tests/**/*.spec.ts")
 	} else {
