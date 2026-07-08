@@ -122,7 +122,6 @@ List Inputs:
   prefix (string, optional)
 
 Usage:
-  do azure:index:myResource [flags]
   do azure:index:myResource [command]
 
 Available Commands:
@@ -135,7 +134,7 @@ Available Commands:
 Flags:
       --dry-run                Run the operation in preview mode
   -h, --help                   help for do
-      --input string           Format of the provider configuration file (default "pcl")
+      --input string           Format of the provider configuration file (default "yaml")
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
@@ -172,7 +171,6 @@ Outputs:
   size (integer)
 
 Usage:
-  do azure:index:myResource [flags]
   do azure:index:myResource [command]
 
 Available Commands:
@@ -184,7 +182,7 @@ Available Commands:
 Flags:
       --dry-run                Run the operation in preview mode
   -h, --help                   help for do
-      --input string           Format of the provider configuration file (default "pcl")
+      --input string           Format of the provider configuration file (default "yaml")
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
@@ -229,7 +227,10 @@ func TestDoCmdResourceCreate(t *testing.T) {
 name = "example"
 size = 2
 `)
-	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "--yes", "--input-file", inputFile})
+	cmd.SetArgs([]string{
+		"--stateless", "azure:index:myResource", "create", "--yes",
+		"--input", "pcl", "--input-file", inputFile,
+	})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -292,6 +293,7 @@ func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
 		"--stateless",
 		"azure:index:myResource", "create",
 		"--yes",
+		"--input", "pcl",
 		"--input-file", inputFile,
 		"--int-value", "42",
 		"--already-kebab-case", "kebab",
@@ -418,7 +420,10 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 name = "new"
 enabled = true
 `)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "patch", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.Equal(t, []string{"read", "check", "diff", "update"}, calls)
@@ -467,7 +472,10 @@ enabled = true
 		})
 
 		inputFile := writeHCLFile(t, "patch.pcl", `enabled = true`)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "patch", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"id":"res-1","name":"existing","enabled":true}`, stdout.String())
@@ -491,7 +499,7 @@ func TestDoCmdResourceList(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "list.pcl", `prefix = "prod"`)
-		cmd.SetArgs([]string{"azure:index:myResource", "list", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myResource", "list", "--input", "pcl", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		require.Len(t, calls, 1)
@@ -618,7 +626,10 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "inputs.pcl", `name = "example"`)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "create", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), "This will create azure:index:myResource")
 		assert.NotContains(t, stdout.String(), "This will create")
@@ -653,7 +664,10 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "patch.pcl", `name = "new"`)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "patch", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), "This will update azure:index:myResource")
 		assert.Contains(t, stderr.String(), "~ name")

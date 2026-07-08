@@ -7,7 +7,7 @@ run: |
 > esc env init default/test
 Environment created: test-user/default/test
 > esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com
-Provider updated.
+Provider updated. (revision 2)
 > esc env get default/test --definition
 values:
   gcp:
@@ -19,7 +19,7 @@ values:
           providerId: provider
           serviceAccount: sa@proj.iam.gserviceaccount.com
 > esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com --region us-central1 --token-lifetime 1h --subject-attribute env
-Provider updated.
+Provider updated. (revision 3)
 > esc env get default/test --definition
 values:
   gcp:

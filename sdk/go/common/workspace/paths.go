@@ -66,8 +66,6 @@ const (
 
 	// ProjectFile is the base name of a project file.
 	ProjectFile = "Pulumi"
-	// DeploymentSuffix is the base suffix for deployment settings files (e.g. "Pulumi.<stack>.deploy.yaml").
-	DeploymentSuffix = "deploy"
 	// RepoFile is the name of the file that holds information specific to the entire repository.
 	RepoFile = "settings.json"
 	// WorkspaceFile is the name of the file that holds workspace information.
@@ -119,21 +117,6 @@ func DetectProjectStackPath(stackName tokens.QName) (*Project, string, error) {
 	}
 
 	return proj, filepath.Join(filepath.Dir(projPath), fileName), nil
-}
-
-func DetectProjectStackDeploymentPath(stackName tokens.QName) (string, error) {
-	proj, projPath, err := DetectProjectAndPath()
-	if err != nil {
-		return "", err
-	}
-
-	fileName := fmt.Sprintf("%s.%s.%s%s", ProjectFile, qnameFileName(stackName), DeploymentSuffix, filepath.Ext(projPath))
-
-	if proj.StackConfigDir != "" {
-		return filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
-	}
-
-	return filepath.Join(filepath.Dir(projPath), fileName), nil
 }
 
 var (
@@ -253,15 +236,6 @@ func DetectProjectStack(diags diag.Sink, stackName tokens.QName) (*ProjectStack,
 	return LoadProjectStack(diags, project, path)
 }
 
-func DetectProjectStackDeployment(stackName tokens.QName) (*ProjectStackDeployment, error) {
-	path, err := DetectProjectStackDeploymentPath(stackName)
-	if err != nil {
-		return nil, err
-	}
-
-	return LoadProjectStackDeployment(path)
-}
-
 // DetectProjectAndPath loads the closest package from the current working directory, or an error if not found.  It
 // also returns the path where the package was found.
 func DetectProjectAndPath() (*Project, string, error) {
@@ -292,15 +266,6 @@ func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
 	}
 
 	return stack.Save(path)
-}
-
-func SaveProjectStackDeployment(stackName tokens.QName, deployment *ProjectStackDeployment) error {
-	path, err := DetectProjectStackDeploymentPath(stackName)
-	if err != nil {
-		return err
-	}
-
-	return deployment.Save(path)
 }
 
 // Given a directory path search for files that appear to be a valid project that is satisfy [isProject].

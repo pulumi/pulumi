@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -60,7 +61,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -241,6 +241,10 @@ type Backend interface {
 	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
 	// Capabilities returns the capabilities of the backend indicating what features are available.
 	Capabilities(ctx context.Context) apitype.Capabilities
+
+	// GetLatestStackPreview returns the stack's most recent preview operation, or nil if the
+	// stack has no previews. Previews are tracked separately from update history (GetHistory).
+	GetLatestStackPreview(ctx context.Context, stackRef backend.StackReference) (*apitype.StackPreview, error)
 }
 
 // userInfo holds the user account details fetched from the backend.
@@ -1762,7 +1766,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 			summary, err := b.summarizeErrorWithNeo(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
 			// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 			// if we can't generate a summary.
-			display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink)
+			display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink, dryRun)
 		}
 	}
 }
@@ -2266,6 +2270,26 @@ func (b *cloudBackend) GetHistory(
 	return beUpdates, nil
 }
 
+// GetLatestStackPreview returns the stack's most recent preview operation, or nil if it has none.
+func (b *cloudBackend) GetLatestStackPreview(
+	ctx context.Context,
+	stackRef backend.StackReference,
+) (*apitype.StackPreview, error) {
+	stack, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	previews, err := b.client.GetLatestStackPreviews(ctx, stack)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stack previews: %w", err)
+	}
+	if len(previews) == 0 {
+		return nil, nil
+	}
+	return &previews[0], nil
+}
+
 func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack,
 ) (backend.LatestConfiguration, error) {
@@ -2666,28 +2690,6 @@ func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 	}
 
 	return b.client.UpdateStackTags(ctx, stackID, tags)
-}
-
-func (b *cloudBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
-	stack backend.Stack, secret string,
-) (*apitype.SecretValue, error) {
-	stackID, err := b.getCloudStackIdentifier(stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-
-	return b.client.EncryptStackDeploymentSettingsSecret(ctx, stackID, secret)
-}
-
-func (b *cloudBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
-	deployment apitype.DeploymentSettings,
-) error {
-	stackID, err := b.getCloudStackIdentifier(stack.Ref())
-	if err != nil {
-		return err
-	}
-
-	return b.client.UpdateStackDeploymentSettings(ctx, stackID, deployment)
 }
 
 func (b *cloudBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {

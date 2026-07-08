@@ -22,20 +22,23 @@ import (
 	"io"
 	"time"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -233,10 +236,6 @@ type Backend interface {
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 
-	// Encrypt secrets using the DS encryption key
-	EncryptStackDeploymentSettingsSecret(ctx context.Context, stack Stack, secret string) (*apitype.SecretValue, error)
-	// UpdateStackDeploymentSettings updates the stacks's deployment settings.
-	UpdateStackDeploymentSettings(ctx context.Context, stack Stack, deployment apitype.DeploymentSettings) error
 	// Fetch deployment settings
 	GetStackDeploymentSettings(ctx context.Context, stack Stack) (*apitype.DeploymentSettings, error)
 	// Deletes the stach deployment settings
@@ -401,6 +400,10 @@ func (c *backendClient) GetStackOutputs(
 	name string,
 	onDecryptError func(err error) error,
 ) (property.Map, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "backendClient.GetStackOutputs")
+	defer span.End()
+
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
 		return property.Map{}, err

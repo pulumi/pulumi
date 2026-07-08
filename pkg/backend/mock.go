@@ -27,13 +27,13 @@ import (
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -73,16 +73,13 @@ type MockBackend struct {
 		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 	ListStackNamesF func(context.Context, ListStackNamesFilter, ContinuationToken) (
 		[]StackReference, ContinuationToken, error)
-	RenameStackF                          func(context.Context, Stack, tokens.QName) (StackReference, error)
-	GetStackCrypterF                      func(StackReference) (config.Crypter, error)
-	GetLatestConfigurationF               func(context.Context, Stack) (LatestConfiguration, error)
-	GetHistoryF                           func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
-	UpdateStackTagsF                      func(context.Context, Stack, map[apitype.StackTagName]string) error
-	ExportDeploymentF                     func(context.Context, Stack) (*apitype.UntypedDeployment, error)
-	ImportDeploymentF                     func(context.Context, Stack, *apitype.UntypedDeployment) error
-	EncryptStackDeploymentSettingsSecretF func(ctx context.Context,
-		stack Stack, secret string) (*apitype.SecretValue, error)
-	UpdateStackDeploymentSettingsF  func(context.Context, Stack, apitype.DeploymentSettings) error
+	RenameStackF                    func(context.Context, Stack, tokens.QName) (StackReference, error)
+	GetStackCrypterF                func(StackReference) (config.Crypter, error)
+	GetLatestConfigurationF         func(context.Context, Stack) (LatestConfiguration, error)
+	GetHistoryF                     func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
+	UpdateStackTagsF                func(context.Context, Stack, map[apitype.StackTagName]string) error
+	ExportDeploymentF               func(context.Context, Stack) (*apitype.UntypedDeployment, error)
+	ImportDeploymentF               func(context.Context, Stack, *apitype.UntypedDeployment) error
 	DestroyStackDeploymentSettingsF func(ctx context.Context, stack Stack) error
 	GetGHAppIntegrationF            func(ctx context.Context, stack Stack) (*apitype.GitHubAppIntegration, error)
 	GetStackDeploymentSettingsF     func(context.Context, Stack) (*apitype.DeploymentSettings, error)
@@ -431,24 +428,6 @@ func (be *MockBackend) CurrentUser() (string, []string, *workspace.TokenInformat
 func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error {
 	if be.CancelCurrentUpdateF != nil {
 		return be.CancelCurrentUpdateF(ctx, stackRef)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) EncryptStackDeploymentSettingsSecret(
-	ctx context.Context, stack Stack, secret string,
-) (*apitype.SecretValue, error) {
-	if be.EncryptStackDeploymentSettingsSecretF != nil {
-		return be.EncryptStackDeploymentSettingsSecretF(ctx, stack, secret)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) UpdateStackDeploymentSettings(ctx context.Context, stack Stack,
-	deployment apitype.DeploymentSettings,
-) error {
-	if be.UpdateStackDeploymentSettingsF != nil {
-		return be.UpdateStackDeploymentSettingsF(ctx, stack, deployment)
 	}
 	panic("not implemented")
 }

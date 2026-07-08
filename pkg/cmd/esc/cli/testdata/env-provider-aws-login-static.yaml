@@ -8,7 +8,7 @@ run: |
 > esc env init default/test
 Environment created: test-user/default/test
 > esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh
-Provider updated.
+Provider updated. (revision 2)
 > esc env get default/test --definition
 values:
   aws:
@@ -20,7 +20,7 @@ values:
             fn::secret:
               ciphertext: ZXNjeAAAAAHz6Ojo6OjoVtjhwQ==
 > esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh --session-token toktok
-Provider updated.
+Provider updated. (revision 3)
 > esc env get default/test --definition
 values:
   aws:
@@ -35,7 +35,7 @@ values:
             fn::secret:
               ciphertext: ZXNjeAAAAAH07+v07+saq0zU
 > esc env provider aws-login static default/test AKIANEW newshhh --path other.creds
-Provider updated.
+Provider updated. (revision 4)
 > esc env get default/test --definition
 values:
   aws:

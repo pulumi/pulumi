@@ -14,7 +14,7 @@ environments:
 
 ---
 > esc env edit default/test --editor editor --some-flag --other-flag="a\"b"
-Environment updated.
+Environment updated. (revision 3)
 > esc env get default/test
 # Value
 ```json

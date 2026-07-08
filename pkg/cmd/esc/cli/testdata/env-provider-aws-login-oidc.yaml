@@ -8,7 +8,7 @@ run: |
 > esc env init default/test
 Environment created: test-user/default/test
 > esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess
-Provider updated.
+Provider updated. (revision 2)
 > esc env get default/test --definition
 values:
   aws:
@@ -18,7 +18,7 @@ values:
           roleArn: arn:aws:iam::123456789012:role/role-name
           sessionName: sess
 > esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess --duration 1h
-Provider updated.
+Provider updated. (revision 3)
 > esc env get default/test --definition
 values:
   aws:
@@ -29,7 +29,7 @@ values:
           sessionName: sess
           duration: 1h
 > esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess --policy-arn arn:aws:iam::aws:policy/Other --subject-attribute env --subject-attribute team
-Provider updated.
+Provider updated. (revision 4)
 > esc env get default/test --definition
 values:
   aws:
