@@ -31,6 +31,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestArgumentConstruction(t *testing.T) {
@@ -94,6 +95,29 @@ func TestArgumentConstruction(t *testing.T) {
 		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.Contains(t, args, "foobar")
 	})
+}
+
+func TestTemplateWritesPnpmWorkspace(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	opts, err := structpb.NewStruct(map[string]any{"packagemanager": "pnpm"})
+	require.NoError(t, err)
+	indo := &pulumirpc.ProgramInfo{
+		RootDirectory:    dir,
+		ProgramDirectory: dir,
+		EntryPoint:       ".",
+		Options:          opts,
+	}
+	host := &nodeLanguageHost{}
+
+	_, err = host.Template(t.Context(),
+		&pulumirpc.TemplateRequest{Info: indo, ProjectName: "p"})
+
+	require.NoError(t, err)
+	b, err := os.ReadFile(filepath.Join(dir, "pnpm-workspace.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(b), "allowBuilds:")
+	assert.Contains(t, string(b), "protobufjs: false")
 }
 
 func TestConfig(t *testing.T) {

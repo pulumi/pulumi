@@ -1,6 +1,3 @@
-packages:
-  - packages/*
-  - infra
 # Don't run protobufjs's unnecessary install script (pnpm 11 fails install unless it's listed here).
 # https://github.com/protobufjs/protobuf.js/pull/2299
 allowBuilds:

@@ -455,6 +455,13 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 	}`)
 	require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 
+	if packageManager == "pnpm" {
+		// @pulumi/pulumi pulls in protobufjs, whose (obsolete) install script pnpm 11 blocks by default
+		// (ERR_PNPM_IGNORED_BUILDS). Opt out of running it so the install succeeds.
+		require.NoError(t, os.WriteFile(filepath.Join(pkgdir, "pnpm-workspace.yaml"),
+			[]byte("allowBuilds:\n  protobufjs: false\n"), 0o600))
+	}
+
 	writeLockFile(t, pkgdir, packageManager)
 
 	// Install dependencies, passing nil for stdout and stderr, which connects

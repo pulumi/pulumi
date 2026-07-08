@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: fix
+body: Support pnpm 11
+time: 2026-07-07T08:16:44+02:00
