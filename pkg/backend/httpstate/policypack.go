@@ -23,6 +23,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -564,6 +565,22 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	proj, err := workspace.LoadPolicyPack(projPath)
 	if err != nil {
 		return fmt.Errorf("failed to load policy project at %s: %w", finalDir, err)
+	}
+
+	if proj.Runtime.Name() == workspace.PolicyRuntimeExecutable {
+		binaries, err := proj.ExecutableBinaries()
+		if err != nil {
+			return fmt.Errorf("invalid executable policy pack at %s: %w", finalDir, err)
+		}
+		if bin, ok := binaries[workspace.CurrentPlatform()]; ok && goruntime.GOOS != "windows" {
+			binPath := filepath.Join(finalDir, bin)
+			if _, err := os.Stat(binPath); err == nil {
+				if err := os.Chmod(binPath, 0o755); err != nil {
+					return fmt.Errorf("marking policy pack binary executable: %w", err)
+				}
+			}
+		}
+		return nil
 	}
 
 	// Workaround for python, some policy packs don't specify a venv but we want to use one
