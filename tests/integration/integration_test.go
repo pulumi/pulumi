@@ -1672,10 +1672,8 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "dev")
 	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
-	// `pulumi package add` rewrites package.json, so install the local SDK *after* it: InstallDependencies
-	// pins @pulumi/pulumi to the local build with a matching npm override.
-	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.InstallDependencies()
+	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.CWD = e.RootPath
 
 	// Run pulumi via a wrapper that does not start Pulumi in its own process group.

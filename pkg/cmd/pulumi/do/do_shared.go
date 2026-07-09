@@ -28,8 +28,6 @@ import (
 	"strings"
 	"unicode"
 
-	survey "github.com/AlecAivazis/survey/v2"
-	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/gofrs/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
@@ -606,10 +604,14 @@ func unwrapType(typ schema.Type) schema.Type {
 	return typ
 }
 
+var doDisplayStack = tokens.MustParseStackName("dev")
+
+const doDisplayProject tokens.PackageName = "default"
+
 func resourceURN(res *schema.Resource) resource.URN {
 	_, _, name, diags := pcl.DecomposeToken(res.Token, hcl.Range{})
 	contract.Assertf(!diags.HasErrors(), "token should decompose")
-	return resource.NewURN("dev", "default", "", tokens.Type(res.Token), name)
+	return resource.NewURN(doDisplayStack.Q(), doDisplayProject, "", tokens.Type(res.Token), name)
 }
 
 func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Context) error {
@@ -753,21 +755,15 @@ func (pc *packageCommand) confirm(cmd *cobra.Command, summary, operation string,
 	if !cmdutil.Interactive() {
 		return backenderr.ErrNonInteractiveRequiresYes
 	}
-	// Route the prompt to stderr so stdout stays a clean JSON channel. survey needs file-backed
-	// streams for terminal control, so fall back to its defaults when the command's streams have
-	// been replaced with plain buffers.
-	var askOpts []survey.AskOpt
-	in, inOK := cmd.InOrStdin().(terminal.FileReader)
-	out, outOK := stderr.(terminal.FileWriter)
-	if inOK && outOK {
-		askOpts = append(askOpts, survey.WithStdio(in, out, out))
-	}
-	response := ui.PromptUser(
+	response, err := ui.PromptUserErr(
 		fmt.Sprintf("Do you want to perform this %s?", operation),
 		[]string{"yes", "no"},
 		"no",
 		cmdutil.GetGlobalColorization(),
-		askOpts...)
+		ui.SurveyStdio(cmd.InOrStdin(), stderr)...)
+	if err != nil {
+		return fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", operation, err)
+	}
 	if response != "yes" {
 		return result.FprintBailf(stderr, "confirmation declined")
 	}

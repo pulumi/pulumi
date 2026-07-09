@@ -158,6 +158,8 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
+      - name: Configure dependency cooldown
+        uses: ./.github/actions/dependency-cooldown
       # Frees ~24GiB; test jobs run out of disk otherwise (#17470). The bulk of
       # the cleanup runs in the background, overlapping the setup steps below.
       # The "Wait for disk cleanup" step joins it before tests run.
