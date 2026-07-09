@@ -64,7 +64,8 @@ type CreatePolicyPackRequest struct {
 	Metadata map[string]string `json:"metadata,omitempty"`
 
 	// Platforms lists the platforms ("linux-amd64", ...) for which this pack
-	// provides per-platform artifacts. Empty for legacy single-tarball packs.
+	// provides per-platform artifacts. Empty for single-artifact packs, which
+	// remain the common case.
 	Platforms []string `json:"platforms,omitempty"`
 }
 
@@ -77,8 +78,9 @@ type CreatePolicyPackResponse struct {
 	// for the upload to succeed.
 	RequiredHeaders map[string]string `json:"requiredHeaders,omitempty"`
 
-	// PlatformUploadURIs maps platform to a presigned upload for that
-	// platform's artifact. Set when the request declared Platforms.
+	// PlatformUploadURIs maps platform to a presigned upload for that platform's
+	// artifact, and is set when the request declared Platforms. Exactly one of
+	// UploadURI or PlatformUploadURIs is populated.
 	PlatformUploadURIs map[string]PolicyPackUpload `json:"platformUploadURIs,omitempty"`
 }
 
@@ -109,9 +111,9 @@ type RequiredPolicy struct {
 	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation,omitempty"`
 
-	// PackLocations maps platform ("linux-amd64", ...) to a download URL for
-	// that platform's artifact. Set only for packs published with
-	// per-platform artifacts; PackLocation is unset for such packs.
+	// PackLocations maps platform ("linux-amd64", ...) to a download URL for that
+	// platform's artifact, and is set only for packs published with per-platform
+	// artifacts. Exactly one of PackLocation or PackLocations is populated.
 	PackLocations map[string]string `json:"packLocations,omitempty"`
 
 	// The configuration that is to be passed to the Policy Pack. This is map a of policies
