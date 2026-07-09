@@ -2099,7 +2099,10 @@ func TestPublishPolicyPackPlatforms(t *testing.T) {
 		resp := apitype.CreatePolicyPackResponse{
 			Version: 1,
 			PlatformUploadURIs: map[string]apitype.PolicyPackUpload{
-				"linux-amd64":  {UploadURI: server.URL + "/upload/linux-amd64", RequiredHeaders: map[string]string{"x-test": "yes"}},
+				"linux-amd64": {
+					UploadURI:       server.URL + "/upload/linux-amd64",
+					RequiredHeaders: map[string]string{"x-test": "yes"},
+				},
 				"darwin-arm64": {UploadURI: server.URL + "/upload/darwin-arm64"},
 			},
 		}
@@ -2121,7 +2124,7 @@ func TestPublishPolicyPackPlatforms(t *testing.T) {
 		})
 
 	client := newMockClient(server)
-	version, err := client.PublishPolicyPackPlatforms(context.Background(), "acme", "executable",
+	version, err := client.PublishPolicyPackPlatforms(t.Context(), "acme", "executable",
 		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
 		map[string][]byte{
 			"linux-amd64":  []byte("linux-bytes"),
@@ -2144,7 +2147,7 @@ func TestPublishPolicyPackPlatformsUnsupportedService(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	_, err := client.PublishPolicyPackPlatforms(context.Background(), "acme", "executable",
+	_, err := client.PublishPolicyPackPlatforms(t.Context(), "acme", "executable",
 		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
 		map[string][]byte{"linux-amd64": []byte("b")}, nil)
 	require.Error(t, err)

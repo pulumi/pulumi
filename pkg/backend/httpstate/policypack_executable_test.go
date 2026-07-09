@@ -79,7 +79,7 @@ func TestInstallRequiredPolicyExecutable(t *testing.T) {
 	packDir := t.TempDir()
 	binRel := filepath.Join("bin", "policy")
 	require.NoError(t, os.MkdirAll(filepath.Join(packDir, "bin"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(packDir, binRel), []byte("#!/bin/sh\nexit 0\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(packDir, binRel), []byte("#!/bin/sh\nexit 0\n"), 0o600))
 	manifest := fmt.Sprintf(
 		"runtime:\n  name: executable\n  options:\n    binaries:\n      %s: bin/policy\n",
 		workspace.CurrentPlatform())
@@ -114,6 +114,7 @@ func writeExecutablePack(t *testing.T, binaries map[string]string) string {
 	for _, rel := range binaries {
 		path := filepath.Join(packDir, rel)
 		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+		//nolint:gosec // G306: File needs to be executable (0755)
 		require.NoError(t, os.WriteFile(path, []byte("binary"), 0o755))
 	}
 	return packDir

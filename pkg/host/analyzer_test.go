@@ -125,6 +125,8 @@ func writeExecutableManifest(t *testing.T, packDir string, binaries map[string]s
 }
 
 func TestAnalyzerSpawnExecutable(t *testing.T) {
+	t.Parallel()
+
 	d := diagtest.LogSink(t)
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
@@ -145,6 +147,8 @@ func TestAnalyzerSpawnExecutable(t *testing.T) {
 }
 
 func TestAnalyzerSpawnExecutableMissingPlatform(t *testing.T) {
+	t.Parallel()
+
 	d := diagtest.LogSink(t)
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
