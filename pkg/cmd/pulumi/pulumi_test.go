@@ -1037,9 +1037,9 @@ func TestParseRootPersistentFlags(t *testing.T) {
 // non-zero exit code when given an unknown subcommand, rather than printing help
 // and exiting 0. See https://github.com/spf13/cobra's execute(): non-runnable
 // commands return flag.ErrHelp before args are ever validated.
+//
+//nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
 func TestGroupCommandsRejectUnknownSubcommands(t *testing.T) {
-	t.Parallel()
-
 	cases := []struct {
 		args    []string
 		wantErr string
@@ -1054,8 +1054,6 @@ func TestGroupCommandsRejectUnknownSubcommands(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(strings.Join(c.args, " "), func(t *testing.T) {
-			t.Parallel()
-
 			pulumiCmd, cleanup := NewPulumiCmd()
 			defer cleanup()
 
@@ -1096,9 +1094,9 @@ func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
 }
 
 // Requesting help explicitly must keep exiting 0.
+//
+//nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
 func TestGroupCommandsHelpFlagSucceeds(t *testing.T) {
-	t.Parallel()
-
 	pulumiCmd, cleanup := NewPulumiCmd()
 	defer cleanup()
 
