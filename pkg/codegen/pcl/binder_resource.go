@@ -817,6 +817,7 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 					"beforeCreate", "afterCreate",
 					"beforeUpdate", "afterUpdate",
 					"beforeDelete", "afterDelete",
+					"onError",
 				}
 				obj, isObj := item.Value.(*model.ObjectConsExpression)
 				if !isObj {
@@ -840,12 +841,41 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 							Subject:  kv.Key.SyntaxNode().Range().Ptr(),
 						})
 					}
-					if _, isList := kv.Value.(*model.TupleConsExpression); !isList {
+					list, isList := kv.Value.(*model.TupleConsExpression)
+					if !isList {
 						diagnostics = append(diagnostics, &hcl.Diagnostic{
 							Severity: hcl.DiagError,
 							Summary:  invalidHooksMsg,
 							Subject:  kv.Value.SyntaxNode().Range().Ptr(),
 						})
+						continue
+					}
+					// Mark the referenced hook nodes with the kind of binding they are used in.
+					// Error hooks and lifecycle hooks have different shapes in the language SDKs,
+					// so a hook may only be used as one or the other.
+					for _, expr := range list.Expressions {
+						trav, isTrav := expr.(*model.ScopeTraversalExpression)
+						if !isTrav || len(trav.Parts) == 0 {
+							continue
+						}
+						hook, isHook := trav.Parts[0].(*Hook)
+						if !isHook {
+							continue
+						}
+						if hookType == "onError" {
+							hook.IsErrorHook = true
+						} else {
+							hook.isLifecycleHook = true
+						}
+						if hook.IsErrorHook && hook.isLifecycleHook {
+							diagnostics = append(diagnostics, &hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary: fmt.Sprintf(
+									"hook '%s' cannot be used as both a lifecycle hook and an error hook",
+									hook.Name()),
+								Subject: expr.SyntaxNode().Range().Ptr(),
+							})
+						}
 					}
 				}
 				continue // skip generic type check; structural validation is done above

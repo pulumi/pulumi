@@ -215,6 +215,134 @@ resource "example" "infra:index:Vpc" {
 	assert.Equal(t, expected, val)
 }
 
+// Test that options can bind an error hook to a resource and that the hook is marked as an
+// error hook.
+func TestBindingOnErrorHookOptions(t *testing.T) {
+	t.Parallel()
+
+	source := `
+hook "foo" {
+	command = ["test"]
+}
+
+resource "example" "infra:index:Vpc" {
+  options {
+	hooks = {
+		onError = [foo]
+	}
+  }
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	require.NoError(t, err)
+	require.Empty(t, diags)
+
+	hooks := program.Hooks()
+	require.Len(t, hooks, 1)
+	assert.True(t, hooks[0].IsErrorHook, "expected hook to be marked as an error hook")
+}
+
+// Test that a hook cannot be bound as both a lifecycle hook and an error hook.
+func TestBindingMixedHookKinds(t *testing.T) {
+	t.Parallel()
+
+	source := `
+hook "foo" {
+	command = ["test"]
+}
+
+resource "example" "infra:index:Vpc" {
+  options {
+	hooks = {
+		beforeCreate = [foo]
+		onError = [foo]
+	}
+  }
+}`
+
+	_, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	require.Error(t, err)
+	require.Len(t, diags, 1)
+	assert.Equal(t, &hcl.Diagnostic{
+		Severity: hcl.DiagError,
+		Summary:  "hook 'foo' cannot be used as both a lifecycle hook and an error hook",
+		Subject: &hcl.Range{
+			Filename: "program.pp",
+			Start: hcl.Pos{
+				Line:   9,
+				Column: 14,
+				Byte:   135,
+			},
+			End: hcl.Pos{
+				Line:   9,
+				Column: 17,
+				Byte:   138,
+			},
+		},
+	}, diags[0])
+}
+
+// Test that error hooks reject the onDryRun and ignoreErrors attributes.
+func TestOnErrorHookRejectsLifecycleAttributes(t *testing.T) {
+	t.Parallel()
+
+	source := `
+hook "foo" {
+	command = ["test"]
+	onDryRun = true
+	ignoreErrors = true
+}
+
+resource "example" "infra:index:Vpc" {
+  options {
+	hooks = {
+		onError = [foo]
+	}
+  }
+}`
+
+	_, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	require.Error(t, err)
+	require.Len(t, diags, 2)
+	assert.Equal(t, &hcl.Diagnostic{
+		Severity: hcl.DiagError,
+		Summary:  "error hooks do not support the 'onDryRun' attribute",
+		Subject: &hcl.Range{
+			Filename: "program.pp",
+			Start: hcl.Pos{
+				Line:   3,
+				Column: 2,
+				Byte:   35,
+			},
+			End: hcl.Pos{
+				Line:   3,
+				Column: 10,
+				Byte:   43,
+			},
+		},
+	}, diags[0])
+	assert.Equal(t, &hcl.Diagnostic{
+		Severity: hcl.DiagError,
+		Summary:  "error hooks do not support the 'ignoreErrors' attribute",
+		Subject: &hcl.Range{
+			Filename: "program.pp",
+			Start: hcl.Pos{
+				Line:   4,
+				Column: 2,
+				Byte:   52,
+			},
+			End: hcl.Pos{
+				Line:   4,
+				Column: 14,
+				Byte:   64,
+			},
+		},
+	}, diags[1])
+}
+
 // Test that trying to use a hook name that doesn't exist is a bind error.
 func TestBindingInvalidHookOptions(t *testing.T) {
 	t.Parallel()

@@ -1,0 +1,4 @@
+component: pcl
+kind: improvement
+body: Support binding hooks to a resource's `onError` option, retrying the failed operation when the hook command exits successfully
+time: 2026-07-08T17:45:00.000000+02:00

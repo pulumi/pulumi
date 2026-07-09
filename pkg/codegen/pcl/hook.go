@@ -56,6 +56,16 @@ type Hook struct {
 	// IgnoreErrors, when set to true, causes errors from the hook to be logged as warnings
 	// instead of failing the program. Defaults to false.
 	IgnoreErrors model.Expression
+
+	// IsErrorHook is true if the hook is referenced in a resource's `onError` hooks binding.
+	// Error hooks signal whether the failed operation should be retried: the operation is
+	// retried if and only if the hook's command exits successfully.
+	IsErrorHook bool
+
+	// isLifecycleHook is true if the hook is referenced in one of a resource's lifecycle
+	// (before/after) hooks bindings. Used to reject hooks bound as both lifecycle and error
+	// hooks, since the two kinds have different shapes in the language SDKs.
+	isLifecycleHook bool
 }
 
 // SyntaxNode returns the syntax node associated with the hook.

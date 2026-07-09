@@ -225,6 +225,120 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 	}
 
 	workingDir := i.info.WorkingDir
+
+	unmarshal := func(ctx context.Context, s *structpb.Struct) (cty.Value, error) {
+		if s == nil {
+			return cty.EmptyObjectVal, nil
+		}
+		mopts := plugin.MarshalOptions{
+			KeepSecrets: true,
+		}
+		props, err := plugin.UnmarshalProperties(s, mopts)
+		if err != nil {
+			return cty.EmptyObjectVal, err
+		}
+		val, err := propertyValueToCty(ctx, i.getResource, resource.NewProperty(props))
+		if err != nil {
+			return cty.EmptyObjectVal, err
+		}
+		return val, nil
+	}
+
+	// runCommand evaluates the hook's command with the given `args` and runs it. The first
+	// return value is the error from running the command, if any; the second is an error
+	// evaluating the command expression itself.
+	runCommand := func(ctx context.Context, args map[string]cty.Value) (error, error) {
+		evalCtx := i.evalContext.NewChild()
+		evalCtx.SetVariable("args", cty.ObjectVal(args))
+
+		cmdVal, _, evalDiags := evalCtx.Evaluate(cmdExpr)
+		if evalDiags.HasErrors() {
+			return nil, fmt.Errorf("hook %s: evaluating command: %v", hookName, evalDiags)
+		}
+		if !cmdVal.IsArray() {
+			return nil, fmt.Errorf("hook %s: command must be a list of strings", hookName)
+		}
+		var cmdArgs []string
+		for _, arg := range cmdVal.ArrayValue() {
+			arg, _ = unwrapOutputs(arg)
+			if !arg.IsString() {
+				return nil, fmt.Errorf("hook %s: command elements must be strings was %v", hookName, arg)
+			}
+			cmdArgs = append(cmdArgs, arg.StringValue())
+		}
+		if len(cmdArgs) == 0 {
+			return nil, fmt.Errorf("hook %s: command must not be empty", hookName)
+		}
+
+		//nolint:gosec // G204: command is provided by user PCL program
+		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
+		cmd.Dir = workingDir
+		if out, runErr := cmd.CombinedOutput(); runErr != nil {
+			return fmt.Errorf("hook command %v failed: %s\n%s", cmdArgs, runErr, out), nil
+		}
+		return nil, nil
+	}
+
+	if h.IsErrorHook {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		cb, err := srv.RegisterCallback(func(ctx context.Context, reqBytes []byte) (proto.Message, error) {
+			var req pulumirpc.ErrorHookRequest
+			if len(reqBytes) > 0 {
+				if err := proto.Unmarshal(reqBytes, &req); err != nil {
+					return &pulumirpc.ErrorHookResponse{
+						Error: fmt.Sprintf("hook %s: failed to unmarshal request: %v", hookName, err),
+					}, nil
+				}
+			}
+
+			args := map[string]cty.Value{
+				"urn":  cty.StringVal(req.GetUrn()),
+				"id":   cty.StringVal(req.GetId()),
+				"name": cty.StringVal(req.GetName()),
+				"type": cty.StringVal(req.GetType()),
+			}
+
+			for key, val := range map[string]*structpb.Struct{
+				"newInputs": req.GetNewInputs(),
+				"oldInputs": req.GetOldInputs(),
+				// Error hooks do not receive new outputs; keep the key so that
+				// `args.newOutputs` references still evaluate.
+				"newOutputs": nil,
+				"oldOutputs": req.GetOldOutputs(),
+			} {
+				val, err := unmarshal(ctx, val)
+				if err != nil {
+					return &pulumirpc.ErrorHookResponse{
+						Error: fmt.Sprintf("hook %s: failed to unmarshal %s: %v", hookName, key, err),
+					}, nil
+				}
+				args[key] = val
+			}
+
+			runErr, evalErr := runCommand(ctx, args)
+			if evalErr != nil {
+				return &pulumirpc.ErrorHookResponse{Error: evalErr.Error()}, nil
+			}
+			return &pulumirpc.ErrorHookResponse{Retry: runErr == nil}, nil
+		})
+		if err != nil {
+			return fmt.Errorf("allocating error hook callback %s: %w", hookName, err)
+		}
+
+		_, err = i.monitor.RegisterErrorHook(ctx, &pulumirpc.RegisterErrorHookRequest{
+			Name:     hookName,
+			Callback: cb,
+		})
+		if err != nil {
+			return fmt.Errorf("registering error hook %s: %w", hookName, err)
+		}
+
+		// Store the hook's registered name as a string so it can be referenced in hooks options.
+		i.evalContext.SetVariable(h.Name(), cty.StringVal(hookName))
+		return nil
+	}
+
 	cb, err := srv.RegisterCallback(func(ctx context.Context, reqBytes []byte) (proto.Message, error) {
 		var req pulumirpc.ResourceHookRequest
 		if len(reqBytes) > 0 {
@@ -233,27 +347,6 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 					Error: fmt.Sprintf("hook %s: failed to unmarshal request: %v", hookName, err),
 				}, nil
 			}
-		}
-
-		// Build a child eval context with `args` populated from the hook request.
-		evalCtx := i.evalContext.NewChild()
-
-		unmarshal := func(s *structpb.Struct) (cty.Value, error) {
-			if s == nil {
-				return cty.EmptyObjectVal, nil
-			}
-			mopts := plugin.MarshalOptions{
-				KeepSecrets: true,
-			}
-			props, err := plugin.UnmarshalProperties(s, mopts)
-			if err != nil {
-				return cty.EmptyObjectVal, err
-			}
-			val, err := propertyValueToCty(ctx, i.getResource, resource.NewProperty(props))
-			if err != nil {
-				return cty.EmptyObjectVal, err
-			}
-			return val, nil
 		}
 
 		args := map[string]cty.Value{
@@ -269,51 +362,21 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			"newOutputs": req.GetNewOutputs(),
 			"oldOutputs": req.GetOldOutputs(),
 		} {
-			args[key], err = unmarshal(val)
+			val, err := unmarshal(ctx, val)
 			if err != nil {
 				return &pulumirpc.ResourceHookResponse{
 					Error: fmt.Sprintf("hook %s: failed to unmarshal %s: %v", hookName, key, err),
 				}, nil
 			}
+			args[key] = val
 		}
 
-		evalCtx.SetVariable("args", cty.ObjectVal(args))
-
-		// Evaluate the command expression with the args context.
-		cmdVal, _, evalDiags := evalCtx.Evaluate(cmdExpr)
-		if evalDiags.HasErrors() {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook %s: evaluating command: %v", hookName, evalDiags),
-			}, nil
+		runErr, evalErr := runCommand(ctx, args)
+		if evalErr != nil {
+			return &pulumirpc.ResourceHookResponse{Error: evalErr.Error()}, nil
 		}
-		if !cmdVal.IsArray() {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook %s: command must be a list of strings", hookName),
-			}, nil
-		}
-		var cmdArgs []string
-		for _, arg := range cmdVal.ArrayValue() {
-			arg, _ = unwrapOutputs(arg)
-			if !arg.IsString() {
-				return &pulumirpc.ResourceHookResponse{
-					Error: fmt.Sprintf("hook %s: command elements must be strings was %v", hookName, arg),
-				}, nil
-			}
-			cmdArgs = append(cmdArgs, arg.StringValue())
-		}
-		if len(cmdArgs) == 0 {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook %s: command must not be empty", hookName),
-			}, nil
-		}
-
-		//nolint:gosec // G204: command is provided by user PCL program
-		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
-		cmd.Dir = workingDir
-		if out, runErr := cmd.CombinedOutput(); runErr != nil {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook command %v failed: %s\n%s", cmdArgs, runErr, out),
-			}, nil
+		if runErr != nil {
+			return &pulumirpc.ResourceHookResponse{Error: runErr.Error()}, nil
 		}
 		return &pulumirpc.ResourceHookResponse{}, nil
 	})
@@ -1856,13 +1919,16 @@ func (i *Interpreter) registerResourceWith(
 						binding.BeforeDelete = append(binding.BeforeDelete, hookNames...)
 					case "afterDelete":
 						binding.AfterDelete = append(binding.AfterDelete, hookNames...)
+					case "onError":
+						binding.OnError = append(binding.OnError, hookNames...)
 					default:
 						return cty.NilVal, fmt.Errorf("invalid hook type: %s", hookType)
 					}
 				}
 				if len(binding.BeforeCreate)+len(binding.AfterCreate)+
 					len(binding.BeforeUpdate)+len(binding.AfterUpdate)+
-					len(binding.BeforeDelete)+len(binding.AfterDelete) > 0 {
+					len(binding.BeforeDelete)+len(binding.AfterDelete)+
+					len(binding.OnError) > 0 {
 					request.Hooks = binding
 				}
 			}

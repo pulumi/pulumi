@@ -505,6 +505,25 @@ func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption)
 		diagnostics = append(diagnostics, b.bindNode(ctx, n)...)
 	}
 
+	// Hooks only learn their kind once the resources referencing them are bound, so validate
+	// kind-specific attributes after all nodes are bound. Error hooks always run on failures
+	// of actual operations, so onDryRun and ignoreErrors do not apply to them.
+	for _, n := range b.nodes {
+		hook, ok := n.(*Hook)
+		if !ok || !hook.IsErrorHook || hook.Definition == nil {
+			continue
+		}
+		for _, name := range []string{"onDryRun", "ignoreErrors"} {
+			if attr, ok := hook.Definition.Body.Attribute(name); ok {
+				diagnostics = append(diagnostics, &hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  fmt.Sprintf("error hooks do not support the '%s' attribute", name),
+					Subject:  attr.Syntax.NameRange.Ptr(),
+				})
+			}
+		}
+	}
+
 	if diagnostics.HasErrors() {
 		return nil, diagnostics, diagnostics
 	}
