@@ -34,14 +34,14 @@ import (
 func TestPackLocationPlatformSelection(t *testing.T) {
 	t.Parallel()
 
-	t.Run("legacy single location", func(t *testing.T) {
+	t.Run("single artifact location", func(t *testing.T) {
 		t.Parallel()
 		rp := &cloudRequiredPolicy{RequiredPolicy: apitype.RequiredPolicy{
-			Name: "pack", PackLocation: "https://legacy",
+			Name: "pack", PackLocation: "https://single-artifact",
 		}}
 		loc, err := rp.packLocation()
 		require.NoError(t, err)
-		assert.Equal(t, "https://legacy", loc)
+		assert.Equal(t, "https://single-artifact", loc)
 	})
 
 	t.Run("platform map picks host platform", func(t *testing.T) {
@@ -92,11 +92,14 @@ func writeExecutablePack(t *testing.T, binaries map[string]string) string {
 func TestValidateExecutableMatrix(t *testing.T) {
 	t.Parallel()
 
+	// The matrix is validated without reference to the host platform, so these cases name
+	// platforms outright. Deriving one of them from workspace.CurrentPlatform() would collide
+	// with linux-amd64 on a linux-amd64 machine and silently collapse the map.
 	t.Run("valid", func(t *testing.T) {
 		t.Parallel()
 		binaries := map[string]string{
-			"linux-amd64":               filepath.Join("bin", "linux"),
-			workspace.CurrentPlatform(): filepath.Join("bin", "host"),
+			"linux-amd64":  filepath.Join("bin", "linux"),
+			"darwin-arm64": filepath.Join("bin", "darwin"),
 		}
 		packDir := writeExecutablePack(t, binaries)
 		require.NoError(t, validateExecutableMatrix(packDir, binaries))
@@ -104,7 +107,7 @@ func TestValidateExecutableMatrix(t *testing.T) {
 
 	t.Run("missing linux-amd64", func(t *testing.T) {
 		t.Parallel()
-		binaries := map[string]string{workspace.CurrentPlatform(): filepath.Join("bin", "host")}
+		binaries := map[string]string{"darwin-arm64": filepath.Join("bin", "darwin")}
 		packDir := writeExecutablePack(t, binaries)
 		err := validateExecutableMatrix(packDir, binaries)
 		assert.ErrorContains(t, err, "linux-amd64")
@@ -113,8 +116,8 @@ func TestValidateExecutableMatrix(t *testing.T) {
 	t.Run("declared binary missing on disk", func(t *testing.T) {
 		t.Parallel()
 		binaries := map[string]string{
-			"linux-amd64":               filepath.Join("bin", "linux"),
-			workspace.CurrentPlatform(): filepath.Join("bin", "host"),
+			"linux-amd64":  filepath.Join("bin", "linux"),
+			"darwin-arm64": filepath.Join("bin", "darwin"),
 		}
 		packDir := writeExecutablePack(t, binaries)
 		require.NoError(t, os.Remove(filepath.Join(packDir, "bin", "linux")))
@@ -123,13 +126,10 @@ func TestValidateExecutableMatrix(t *testing.T) {
 		assert.ErrorContains(t, err, filepath.Join("bin", "linux"))
 	})
 
-	// Publishing a pack that omits the publishing host's own platform is allowed here. The host
-	// binary is still needed to read the pack's metadata, but booting the analyzer reports that.
-	t.Run("host platform need not be declared", func(t *testing.T) {
+	// The publishing host's platform need not be declared. Publish still needs a host binary to
+	// read the pack's metadata, but booting the analyzer is what reports that.
+	t.Run("linux-amd64 alone is a valid matrix", func(t *testing.T) {
 		t.Parallel()
-		if workspace.CurrentPlatform() == workspace.PlatformLinuxAmd64 {
-			t.Skip("host platform is the mandatory platform")
-		}
 		binaries := map[string]string{workspace.PlatformLinuxAmd64: filepath.Join("bin", "linux")}
 		packDir := writeExecutablePack(t, binaries)
 		require.NoError(t, validateExecutableMatrix(packDir, binaries))
