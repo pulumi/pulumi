@@ -137,6 +137,7 @@ func writeExecutablePackBinary(t *testing.T, script string) (packDir, binRel str
 	packDir = t.TempDir()
 	binRel = filepath.Join("bin", "policy")
 	require.NoError(t, os.MkdirAll(filepath.Join(packDir, "bin"), 0o755))
+	//nolint:gosec // G306: the pack binary needs to be executable (0755)
 	require.NoError(t, os.WriteFile(filepath.Join(packDir, binRel), []byte(script), 0o755))
 	return packDir, binRel
 }
