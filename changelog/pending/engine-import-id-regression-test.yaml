@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Fix importing a resource whose import identifier differs from its canonical ID causes the resource to be deleted on a subsequent update
+time: 2026-07-08T00:00:00.000000+00:00

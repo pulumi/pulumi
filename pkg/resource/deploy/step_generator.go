@@ -1135,7 +1135,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
 					Aliases:                 new.Aliases,
 					CustomTimeouts:          &goal.CustomTimeouts,
-					ImportID:                "",
+					ImportID:                new.ImportID,
 					RetainOnDelete:          new.RetainOnDelete,
 					DeletedWith:             goal.DeletedWith,
 					ReplaceWith:             goal.ReplaceWith,
