@@ -292,7 +292,7 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 // _should_ normally be semantically meaningful, but currently for diffs we have to treat missing, null and computed the
 // same.
 func (v Value) hasValue() bool {
-	return !(v.IsNull() && !v.isSecret && len(v.dependencies) == 0)
+	return !v.IsNull() || v.isSecret || len(v.dependencies) != 0
 }
 
 // WithGoValue creates a new Value with the inner value newGoValue.
