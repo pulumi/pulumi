@@ -169,6 +169,17 @@ branch replacing the boot-and-tarball steps:
 Conformance internals are factored as a helper (in `pkg/backend/httpstate` or
 `pkg/engine`) so a future `pulumi policy validate` command can wrap them.
 
+Caveat, verified empirically: conformance boots the binary in the author's pack
+directory, so a binary that silently depends on files outside itself — e.g. a
+bun-compiled pack whose `@pulumi/pulumi` falls back to `require`-ing a vendored
+`typescript.js` from `node_modules` by absolute path — passes conformance while
+`node_modules` is present and only fails on consumer machines. The publish gate
+catches this class of defect only when the build residue is absent at publish
+time. The official pack template must pin `typescript` as an explicit
+dependency (which lets bun bundle it statically), and pack-repo CI should
+remove `node_modules` between build and publish so conformance boots the
+binary as a consumer would.
+
 ### apitype
 
 - `CreatePolicyPackRequest` gains `Platforms []string` — the declared matrix; empty
