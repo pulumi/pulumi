@@ -392,6 +392,10 @@ def _sync_monitor_supports_parameterization() -> bool:
     return SETTINGS.feature_support.get("parameterization", False)
 
 
+def _sync_monitor_supports_state_migrations() -> bool:
+    return SETTINGS.feature_support.get("stateMigrations", False)
+
+
 async def register_package(
     base_provider_name: str,
     base_provider_version: str,
@@ -523,4 +527,5 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("parameterization"),
         monitor_supports_feature("resourceHooks"),
         monitor_supports_feature("errorHooks"),
+        monitor_supports_feature("stateMigrations"),
     )

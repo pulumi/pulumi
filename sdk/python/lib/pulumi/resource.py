@@ -341,6 +341,70 @@ this indicates that the resource will not be transformed.
 """
 
 
+class StateMigrationArgs:
+    """
+    StateMigrationArgs is the argument bag passed to a state migration callback. It carries the
+    prior state of the resource the migration is attached to, plus the prior state of all
+    resources transitively parented to it, in the checkpoint (state file) format.
+    """
+
+    urn: str
+    """
+    The URN of the resource the migration is attached to.
+    """
+
+    old_state: list[dict[str, Any]]
+    """
+    The prior state of the resource and its descendants: a list of resources in the checkpoint
+    format, the resource itself first.
+    """
+
+    def __init__(self, urn: str, old_state: list[dict[str, Any]]) -> None:
+        self.urn = urn
+        self.old_state = old_state
+
+
+class StateMigrationResult:
+    """
+    StateMigrationResult is the result that must be returned by a state migration callback when
+    it changes the state. Every resource present in the old state must either be returned in
+    `new_state` or be acknowledged in `forgotten`.
+    """
+
+    new_state: list[dict[str, Any]]
+    """
+    The migrated state: a list of resources in the checkpoint format that replaces the old state.
+    """
+
+    forgotten: Optional[list[str]]
+    """
+    The URNs from the old state that are intentionally removed from the state. The underlying
+    cloud resources are NOT deleted; they are left unmanaged.
+    """
+
+    def __init__(
+        self, new_state: list[dict[str, Any]], forgotten: Optional[list[str]] = None
+    ) -> None:
+        self.new_state = new_state
+        self.forgotten = forgotten
+
+
+StateMigration = Callable[
+    [StateMigrationArgs],
+    Optional[Union[Awaitable[Optional[StateMigrationResult]], StateMigrationResult]],
+]
+"""
+StateMigration is the callback signature for the `state_migrations` resource option. A state
+migration is passed the prior state of the resource it is attached to plus the prior state of
+all resources transitively parented to it, and can return a transformed state that the engine
+splices into its view of the prior state before any diffing. Returning None indicates that the
+state is already in the desired shape and should be left unchanged; migrations run on every
+operation and must be written to be idempotent.
+
+This is experimental.
+"""
+
+
 class ResourceOptions:
     """
     ResourceOptions is a bag of optional settings that control a resource's behavior.
@@ -436,6 +500,15 @@ class ResourceOptions:
     This is experimental.
     """
 
+    state_migrations: Optional[list[StateMigration]]
+    """
+    Optional list of state migrations to apply to the prior state of this resource and all
+    resources transitively parented to it, before the engine diffs it. The migrations are
+    applied in order, each receiving the previous one's output.
+
+    This is experimental.
+    """
+
     hooks: Optional[ResourceHookBinding]
     """
     Optional resource hooks to bind to this resource. The hooks will be invoked during
@@ -525,6 +598,7 @@ class ResourceOptions:
         custom_timeouts: Optional["CustomTimeouts"] = None,
         transformations: Optional[list[ResourceTransformation]] = None,
         transforms: Optional[list[ResourceTransform]] = None,
+        state_migrations: Optional[list[StateMigration]] = None,
         hooks: Optional[ResourceHookBinding] = None,
         urn: Optional[str] = None,
         replace_on_changes: Optional[list[str]] = None,
@@ -569,6 +643,8 @@ class ResourceOptions:
                to this resource during construction.
         :param Optional[List[ResourceTransform]] transforms: If provided, a list of transforms to apply
                to this resource during construction. This is experimental.
+        :param Optional[List[StateMigration]] state_migrations: If provided, a list of state migrations to
+               apply to the prior state of this resource and its descendants before diffing. This is experimental.
         :param Optional[str] urn: The URN of a previously-registered resource of this type to read from the engine.
         :param Optional[List[str]] replace_on_changes: Changes to any of these property paths will force a replacement.
                If this list includes `"*"`, changes to any properties will force a replacement.  Initialization errors
@@ -599,6 +675,7 @@ class ResourceOptions:
         self.import_ = import_
         self.transformations = transformations
         self.transforms = transforms
+        self.state_migrations = state_migrations
         self.hooks = hooks
         self.urn = urn
         self.replace_on_changes = replace_on_changes
@@ -744,6 +821,9 @@ class ResourceOptions:
             dest.transformations, source.transformations
         )
         dest.transforms = _merge_lists(dest.transforms, source.transforms)
+        dest.state_migrations = _merge_lists(
+            dest.state_migrations, source.state_migrations
+        )
         dest.hooks = ResourceHookBinding.merge(dest.hooks, source.hooks)
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect

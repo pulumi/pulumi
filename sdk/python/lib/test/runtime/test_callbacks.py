@@ -13,13 +13,23 @@
 # limitations under the License.
 
 import asyncio
+import json
 import grpc
 
 import pytest
 
-from pulumi.resource import ResourceTransformArgs
+from pulumi.resource import (
+    ResourceTransformArgs,
+    StateMigrationArgs,
+    StateMigrationResult,
+)
 from pulumi.runtime._callbacks import _CallbackServicer
+from pulumi.runtime.proto.callback_pb2 import CallbackInvokeRequest
 from pulumi.runtime.proto.provider_pb2 import InvokeRequest
+from pulumi.runtime.proto.resource_pb2 import (
+    StateMigrationRequest,
+    StateMigrationResponse,
+)
 from pulumi.runtime.proto.resource_pb2_grpc import ResourceMonitorServicer
 
 from ..grpc_stubs import monitor_servicer_stub, callback_servicer_stub
@@ -73,5 +83,70 @@ async def test_callback_servicer_transform_errors():
                 assert "lib/test/runtime/test_callbacks.py" in str(e)
                 assert "in transform_cancelled_error" in str(e)
                 assert 'CancelledError("noes")' in str(e)
+
+            await servicer.shutdown()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(60)
+async def test_callback_servicer_state_migration():
+    """
+    Tests that state migration callbacks round-trip the checkpoint-format JSON state and the
+    forgotten URNs, and that returning None leaves the state unchanged.
+    """
+
+    comp_urn = "urn:pulumi:stack::proj::my:module:Comp::comp"
+    child_a_urn = "urn:pulumi:stack::proj::my:module:Comp$pkg:m:typA::childA"
+    child_b_urn = "urn:pulumi:stack::proj::my:module:Comp$pkg:m:typA::childB"
+    old_state = [
+        {"urn": comp_urn, "type": "my:module:Comp"},
+        {"urn": child_a_urn, "type": "pkg:m:typA", "custom": True, "id": "id-a"},
+    ]
+
+    def migrate_rename(args: StateMigrationArgs):
+        assert args.urn == comp_urn
+        assert args.old_state == old_state
+        new_state = [dict(res) for res in args.old_state]
+        new_state[1]["urn"] = child_b_urn
+        return StateMigrationResult(new_state=new_state, forgotten=[child_a_urn])
+
+    async def migrate_noop(args: StateMigrationArgs):
+        return None
+
+    async with monitor_servicer_stub(ResourceMonitorServicer()) as monitor_stub:
+        servicer = _CallbackServicer(monitor_stub)
+        servicer._servicers.remove(
+            servicer
+        )  # Remove this servicer from the global list, we manage the shutdown ourselves
+        cb_rename = servicer.register_state_migration(migrate_rename)
+        cb_noop = servicer.register_state_migration(migrate_noop)
+
+        # Registering the same callable again returns the same token.
+        assert (
+            servicer.register_state_migration(migrate_rename).token == cb_rename.token
+        )
+
+        async with callback_servicer_stub(servicer) as stub:
+            migration_request = StateMigrationRequest(
+                urn=comp_urn, old_state=json.dumps(old_state).encode("utf-8")
+            )
+            request = CallbackInvokeRequest(
+                token=cb_rename.token, request=migration_request.SerializeToString()
+            )
+            result = await stub.Invoke(request)
+            response = StateMigrationResponse.FromString(result.response)
+            new_state = json.loads(response.new_state)
+            assert new_state[0]["urn"] == comp_urn
+            assert new_state[1]["urn"] == child_b_urn
+            assert list(response.forgotten) == [child_a_urn]
+
+            request = CallbackInvokeRequest(
+                token=cb_noop.token, request=migration_request.SerializeToString()
+            )
+            result = await stub.Invoke(request)
+            response = StateMigrationResponse.FromString(result.response)
+            # An unchanged state is signaled by an empty new_state.
+            assert response.new_state == b""
+            assert len(response.forgotten) == 0
 
             await servicer.shutdown()
