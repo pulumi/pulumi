@@ -251,6 +251,16 @@ type testPulumiClient struct {
 	defaultOrg   string
 	environments map[string]*testEnvironment
 	openEnvs     map[string]*esc.Environment
+
+	// submittedChangeRequests records submitted change requests in call order, so tests can assert
+	// that a command actually submits the change requests it creates.
+	submittedChangeRequests []submittedChangeRequest
+}
+
+type submittedChangeRequest struct {
+	orgName         string
+	changeRequestID string
+	description     *string
 }
 
 type testLoginManager struct {
@@ -745,6 +755,11 @@ func (c *testPulumiClient) SubmitChangeRequest(
 	changeRequestID string,
 	description *string,
 ) error {
+	c.submittedChangeRequests = append(c.submittedChangeRequests, submittedChangeRequest{
+		orgName:         orgName,
+		changeRequestID: changeRequestID,
+		description:     description,
+	})
 	return nil
 }
 
@@ -2105,4 +2120,40 @@ func TestCLI(t *testing.T) {
 			assert.Equal(t, testcase.expectedStderr, stderr.String())
 		})
 	}
+}
+
+// TestEnvOpenRequestSubmits verifies that `esc env open-request` submits the change requests it
+// creates rather than leaving them as unsubmitted drafts, and that --reason is forwarded to the
+// submit call as the change request description.
+func TestEnvOpenRequestSubmits(t *testing.T) {
+	t.Setenv("PULUMI_API", "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	_, testcase, err := loadTestcase(filepath.Join("testdata", "env-open-request-ok.yaml"))
+	require.NoError(t, err)
+
+	var stdout, stderr bytes.Buffer
+	err = testcase.exec.runScript(testcase.script, &exec.Cmd{
+		Path:   "<script>",
+		Args:   []string{"<script>"},
+		Stdin:  bytes.NewReader(nil),
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	require.NoError(t, err)
+
+	client := testcase.exec.client
+
+	// The testcase runs three open-request invocations; each must submit the created change request.
+	require.Len(t, client.submittedChangeRequests, 3)
+	for _, sub := range client.submittedChangeRequests {
+		assert.Equal(t, "test-org", sub.orgName)
+		assert.Equal(t, "test-request-id-12345", sub.changeRequestID)
+	}
+
+	// The first two invocations pass no reason; the third passes --reason.
+	assert.Nil(t, client.submittedChangeRequests[0].description)
+	assert.Nil(t, client.submittedChangeRequests[1].description)
+	require.NotNil(t, client.submittedChangeRequests[2].description)
+	assert.Equal(t, "Need prod access for incident 1234", *client.submittedChangeRequests[2].description)
 }
