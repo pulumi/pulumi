@@ -16,6 +16,7 @@ package testutil
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -28,11 +29,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// listOnly reports whether the test binary was invoked with -test.list, in which case it
+// prints matching test names without running any tests. CI computes test partitions by
+// running `go test --list .`, which executes TestMain; setup helpers must not require the
+// pulumi binary (or perform any other setup work) just to enumerate test names.
+func listOnly() bool {
+	if !flag.Parsed() {
+		flag.Parse()
+	}
+	f := flag.Lookup("test.list")
+	return f != nil && f.Value.String() != ""
+}
+
 // If the PULUMI_INTEGRATION_REBUILD_BINARIES environment variable is set to "true", this function will rebuild the
 // Pulumi CLI and the language runtime plugins into the `bin` directory of the repository root. It will then set up the
 // $PATH environment variable to include this directory, so that when the tests run we will use the newly built binaries
 // without polluting the global $PATH, where the integration tests usually expect to find the binaries.
 func SetupPulumiBinary() {
+	if listOnly() {
+		return
+	}
 	// Find the root of the repository
 	repoRoot, err := ptesting.RepoRoot()
 	if err != nil {
@@ -67,6 +83,9 @@ func SetupPulumiBinary() {
 
 // This runs pulumi install on the python provider so it's venv is setup for running.
 func InstallPythonProvider() {
+	if listOnly() {
+		return
+	}
 	// Find the root of the repository
 	repoRoot, err := ptesting.RepoRoot()
 	if err != nil {

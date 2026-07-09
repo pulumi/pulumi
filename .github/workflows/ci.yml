@@ -119,8 +119,6 @@ jobs:
           action: jdx/mise-action@v2
           with: |
             experimental: true
-      - name: Install CLI
-        run: SDKS='' make install
       - name: build matrix
         id: matrix
         env:
