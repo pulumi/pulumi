@@ -92,6 +92,7 @@ func NewDoCmd(
 	var dryrun bool
 	var showSecrets bool
 	var stateless bool
+	var output string
 
 	// buildSubcommand returns the dynamically constructed subcommand along with a cleanup function that must be
 	// deferred by the caller. The cleanup tears down the provider gRPC channel — running it as a defer inside
@@ -107,6 +108,10 @@ func NewDoCmd(
 		contract.Assertf(!errors.Is(err, pflag.ErrHelp), "unexpected --help flag")
 		if err != nil {
 			return nil, nil, fmt.Errorf("parse arguments: %w", err)
+		}
+
+		if output != "" && output != "default" && output != "json" {
+			return nil, nil, fmt.Errorf("unsupported output format %q (supported: default, json)", output)
 		}
 
 		pargs := flags.Args()
@@ -266,6 +271,7 @@ func NewDoCmd(
 			dryrun:            dryrun,
 			showSecrets:       showSecrets,
 			stateless:         stateless,
+			jsonOut:           output == "json",
 			wd:                wd,
 			proj:              proj,
 			root:              root,
@@ -434,6 +440,8 @@ to use another format.`,
 
 	cmd.PersistentFlags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
 	cmd.PersistentFlags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
+	cmd.PersistentFlags().StringVar(&output, "output", "",
+		"Output format for resource operation results (supported: default, json)")
 	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
 		"Run create/patch/delete directly against the provider without persisting state. "+
 			"Required for now: the stateful (engine-driven) implementation is still in development, "+
@@ -491,6 +499,7 @@ type packageCommand struct {
 	dryrun            bool
 	showSecrets       bool
 	stateless         bool
+	jsonOut           bool
 
 	// wd / proj / root capture the working-directory and project-loading state from buildSubcommand
 	// — kept here rather than baked into a snapshot of functionEvalContext so the evalContext()

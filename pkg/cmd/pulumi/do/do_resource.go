@@ -29,6 +29,7 @@ import (
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -152,20 +153,26 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 			if err := pc.confirm(cmd, summary, "create", yes); err != nil {
 				return err
 			}
-			response, err := pc.provider.Create(ctx, plugin.CreateRequest{
-				URN:        urn,
-				Name:       urn.Name(),
-				Type:       urn.Type(),
-				Properties: checked,
-				Preview:    pc.dryrun,
+			return pc.runDisplayedStep(cmd, displayedStep{
+				Op:  deploy.OpCreate,
+				New: operationState(urn, "", nil, nil),
+			}, func() (*resource.State, error) {
+				response, err := pc.provider.Create(ctx, plugin.CreateRequest{
+					URN:        urn,
+					Name:       urn.Name(),
+					Type:       urn.Type(),
+					Properties: checked,
+					Preview:    pc.dryrun,
+				})
+				if err != nil {
+					return nil, err
+				}
+				id := response.ID
+				if id == "" {
+					id = resource.ID("[unknown]")
+				}
+				return resultState(urn, id, nil, response.Properties, res), nil
 			})
-			if err != nil {
-				return err
-			}
-			if response.ID == "" {
-				response.ID = resource.ID("[unknown]")
-			}
-			return pc.printResourceResult(cmd, response.ID, response.Properties, res)
 		},
 	}
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
@@ -186,25 +193,30 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 				return err
 			}
 			urn := resourceURN(res)
-			response, err := pc.provider.Read(ctx, plugin.ReadRequest{
-				URN:    urn,
-				Name:   urn.Name(),
-				Type:   urn.Type(),
-				ID:     resource.ID(args[0]),
-				Inputs: resource.PropertyMap{},
-				State:  resource.PropertyMap{},
+			id := resource.ID(args[0])
+			return pc.runDisplayedStep(cmd, displayedStep{
+				Op:  deploy.OpRead,
+				New: operationState(urn, id, nil, nil),
+			}, func() (*resource.State, error) {
+				response, err := pc.provider.Read(ctx, plugin.ReadRequest{
+					URN:    urn,
+					Name:   urn.Name(),
+					Type:   urn.Type(),
+					ID:     id,
+					Inputs: resource.PropertyMap{},
+					State:  resource.PropertyMap{},
+				})
+				if err != nil {
+					return nil, err
+				}
+				if response.Outputs == nil {
+					return nil, fmt.Errorf("resource %q was not found", args[0])
+				}
+				if response.ID != "" {
+					id = response.ID
+				}
+				return resultState(urn, id, nil, response.Outputs, res), nil
 			})
-			if err != nil {
-				return err
-			}
-			if response.Outputs == nil {
-				return fmt.Errorf("resource %q was not found", args[0])
-			}
-			id := response.ID
-			if id == "" {
-				id = resource.ID(args[0])
-			}
-			return pc.printResourceResult(cmd, id, response.Outputs, res)
 		},
 	}
 }
@@ -282,20 +294,28 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 				return err
 			}
 
-			response, err := pc.provider.Update(ctx, plugin.UpdateRequest{
-				URN:        urn,
-				Name:       urn.Name(),
-				Type:       urn.Type(),
-				ID:         id,
-				OldInputs:  oldInputs,
-				OldOutputs: read.Outputs,
-				NewInputs:  checked,
-				Preview:    pc.dryrun,
+			return pc.runDisplayedStep(cmd, displayedStep{
+				Op:           deploy.OpUpdate,
+				Old:          operationState(urn, id, oldInputs, read.Outputs),
+				New:          operationState(urn, id, checked, nil),
+				Diffs:        diff.ChangedKeys,
+				DetailedDiff: diff.DetailedDiff,
+			}, func() (*resource.State, error) {
+				response, err := pc.provider.Update(ctx, plugin.UpdateRequest{
+					URN:        urn,
+					Name:       urn.Name(),
+					Type:       urn.Type(),
+					ID:         id,
+					OldInputs:  oldInputs,
+					OldOutputs: read.Outputs,
+					NewInputs:  checked,
+					Preview:    pc.dryrun,
+				})
+				if err != nil {
+					return nil, err
+				}
+				return resultState(urn, id, checked, response.Properties, res), nil
 			})
-			if err != nil {
-				return err
-			}
-			return pc.printResourceResult(cmd, id, response.Properties, res)
 		},
 	}
 	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Format of the configuration files")
@@ -332,15 +352,20 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			if pc.dryrun {
 				return nil
 			}
-			_, err := pc.provider.Delete(ctx, plugin.DeleteRequest{
-				URN:     urn,
-				Name:    urn.Name(),
-				Type:    urn.Type(),
-				ID:      id,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+			return pc.runDisplayedStep(cmd, displayedStep{
+				Op:  deploy.OpDelete,
+				Old: operationState(urn, id, nil, nil),
+			}, func() (*resource.State, error) {
+				_, err := pc.provider.Delete(ctx, plugin.DeleteRequest{
+					URN:     urn,
+					Name:    urn.Name(),
+					Type:    urn.Type(),
+					ID:      id,
+					Inputs:  resource.PropertyMap{},
+					Outputs: resource.PropertyMap{},
+				})
+				return nil, err
 			})
-			return err
 		},
 	}
 	cmd.Flags().BoolVar(&yes, "yes", false,
@@ -469,16 +494,25 @@ func (pc *packageCommand) checkResourceInputs(
 	return checked.Properties, nil
 }
 
-func (pc *packageCommand) printResourceResult(
-	cmd *cobra.Command, id resource.ID, outputs resource.PropertyMap, res *schema.Resource,
-) error {
+func resultOutputs(id resource.ID, outputs resource.PropertyMap, res *schema.Resource) resource.PropertyMap {
 	contract.Requiref(id != "", "id", "id should not be blank")
-
 	if res.Properties != nil {
 		outputs = filterOutputs(outputs, res.Properties)
+	} else {
+		outputs = outputs.Copy()
 	}
 	outputs["id"] = resource.NewProperty(string(id))
-	output, err := jsonifyProperty(resource.NewProperty(outputs), pc.showSecrets)
+	return outputs
+}
+
+func resultState(
+	urn resource.URN, id resource.ID, inputs, outputs resource.PropertyMap, res *schema.Resource,
+) *resource.State {
+	return operationState(urn, id, inputs, resultOutputs(id, outputs, res))
+}
+
+func (pc *packageCommand) printResourceResult(cmd *cobra.Command, state *resource.State) error {
+	output, err := jsonifyProperty(resource.NewProperty(state.Outputs), pc.showSecrets)
 	if err != nil {
 		return fmt.Errorf("failed to convert outputs to JSON: %w", err)
 	}

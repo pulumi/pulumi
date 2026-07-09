@@ -500,6 +500,12 @@ func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
 	}
 }
 
+// MakeStepEventStateMetadata converts a resource state into the event metadata engine events
+// carry, redacting property values the same way real engine events do.
+func MakeStepEventStateMetadata(state *resource.State, showSecrets bool) *StepEventStateMetadata {
+	return makeStepEventStateMetadata(state, false /*debug*/, showSecrets)
+}
+
 func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, showSecrets bool) StepEventMetadata {
 	contract.Assertf(op == step.Op() || step.Op() == deploy.OpRefresh,
 		"step must be %v or %v, got %v", op, deploy.OpRefresh, step.Op())
