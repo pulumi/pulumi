@@ -1423,6 +1423,22 @@ func (pc *Client) GetStackUpdates(
 	return response.Updates, nil
 }
 
+// GetLatestStackPreviews returns the stack's most recent preview operations, newest-first.
+// Previews are tracked separately from update history (see GetStackUpdates).
+func (pc *Client) GetLatestStackPreviews(
+	ctx context.Context,
+	stack StackIdentifier,
+) ([]apitype.StackPreview, error) {
+	var response apitype.GetLatestStackPreviewsResponse
+	// asc=false requests newest-first; the endpoint otherwise defaults to oldest-first.
+	path := getStackPath(stack, "updates", "latest", "previews") + "?asc=false&pageSize=1&page=1"
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &response); err != nil {
+		return nil, err
+	}
+
+	return response.Updates, nil
+}
+
 // ExportStackDeployment exports the indicated stack's deployment as a raw JSON message.
 // If version is nil, will export the latest version of the stack.
 func (pc *Client) ExportStackDeployment(

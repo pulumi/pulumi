@@ -131,8 +131,9 @@ Usage:
 Flags:
       --dry-run                Run the operation in preview mode
   -h, --help                   help for do
-      --input string           Format of the configuration files (default "pcl")
+      --input string           Format of the configuration files (default "yaml")
       --input-file string      Path to a file containing function inputs
+      --output string          Output format for resource operation results (supported: default, json)
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --param1 string          To set param1 things (alias for --input:param1)
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
@@ -215,7 +216,7 @@ param2 = 42
 param3 = true
 `)
 
-	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -660,7 +661,7 @@ param = "hello"
 `)
 
 	stdout.Reset()
-	cmd.SetArgs([]string{"pkg:mod1/mod2:fun", "--input-file", inputFile})
+	cmd.SetArgs([]string{"pkg:mod1/mod2:fun", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -725,7 +726,7 @@ param2 = 42
 param3 = true
 `)
 
-	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.ErrorContains(t, err, `Missing required input "param1"`)
 }
@@ -900,7 +901,7 @@ param3 = {
 			cmd.SetErr(&stdout)
 
 			inputFile := writeHCLFile(t, "inputs.pcl", tt.input)
-			cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+			cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 			err := cmd.Execute()
 			require.Error(t, err)
 			for _, want := range tt.wantErrs {
@@ -949,7 +950,7 @@ func TestDoCmdFunctionInvokeInputFileForInputlessFunction(t *testing.T) {
 	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "unsupported attribute 'bogus'")
@@ -1005,7 +1006,7 @@ stuff {
 	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.ErrorContains(t, err, `unexpected block "stuff"`)
@@ -1065,7 +1066,7 @@ param2 = "true"
 param3 = "45"
 `)
 
-	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -1148,7 +1149,7 @@ param2 = 42
 param3 = true
 `)
 
-	cmd.SetArgs([]string{"--dry-run", "azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"--dry-run", "azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -1221,7 +1222,7 @@ param2 = max(1, length(split(":", "a:b:c")), 6)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 }
@@ -1286,7 +1287,7 @@ func TestDoCmdFunctionInvokeWithUnsupportedBuiltinFunction(t *testing.T) {
 
 			inputFile := writeHCLFile(t, "inputs.pcl", tt.input)
 
-			cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+			cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 			err := cmd.Execute()
 			require.ErrorContains(t, err, tt.expected)
 		})
@@ -1365,7 +1366,7 @@ project = project()
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 }
@@ -1462,6 +1463,7 @@ param3 = true
 
 	cmd.SetArgs([]string{
 		"azure:index:myFunction",
+		"--input", "pcl",
 		"--provider-file", providerFile,
 		"--input-file", inputFile,
 	})
@@ -1796,7 +1798,7 @@ func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
 	// First positional is the package spec: base provider name plus any Parameterize args, shlex-quoted.
 	cmd.SetArgs([]string{
 		"--package", "terraform-provider foo/bar 1.2.3",
-		"myparam:index:myFunction", "--input-file", inputFile,
+		"myparam:index:myFunction", "--input", "pcl", "--input-file", inputFile,
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -1933,6 +1935,88 @@ param3: true
   "output1": "world",
   "output2": 43,
   "output3": false
+}
+`
+	assert.Equal(t, expected, stdout.String())
+}
+
+// TestDoCmdFunctionInvokeYAMLInputByDefault verifies that YAML is the default input format: an input file
+// passed without --input is routed through the yaml converter.
+func TestDoCmdFunctionInvokeYAMLInputByDefault(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
+		// `do` forwards to the converter as its TargetLoader.
+		return &plugin.MockHost{
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
+			},
+		}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{
+			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
+			) {
+				assert.Equal(t, "inputs.yaml", filepath.Base(req.Filename))
+				assert.Equal(t, "x: hello\n", string(req.Source))
+				return &plugin.ConvertSnippetResponse{
+					Filename: "inputs.pp",
+					Source:   []byte(`x = "hello"` + "\n"),
+				}, nil
+			},
+		}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"y": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "hello", req.Args["x"].StringValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{"y": resource.NewProperty("world")},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	inputFile := writeHCLFile(t, "inputs.yaml", "x: hello\n")
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	expected := `{
+  "y": "world"
 }
 `
 	assert.Equal(t, expected, stdout.String())
@@ -2488,6 +2572,7 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
 		"azure:index:myFunction",
+		"--input", "pcl",
 		"--provider-file", providerFile,
 		"--azure:opt-two", "val2",
 		"--in1", "p1",

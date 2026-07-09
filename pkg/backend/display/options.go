@@ -61,6 +61,8 @@ type Options struct {
 	ShowURNs                 bool                // true to display full URNs instead of short resource names.
 	SuppressDiagEventsInDiff bool                // true to suppress displaying diagnostic events in the diff display
 
+	SuppressStackRow bool // true to hide the synthetic stack row when no stack is involved.
+
 	// Neo options
 	ShowLinkToNeo       bool // true to display a 'explainFailure' link to Neo.
 	ShowNeoFeatures     bool // true to display Neo features like summaries and explanations.

@@ -987,7 +987,7 @@ stack = stack()
 	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	require.NoError(t, cmd.Execute())
 }
 
@@ -1057,7 +1057,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
-		cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 		require.NoError(t, cmd.Execute())
 	})
 
@@ -1075,7 +1075,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
-		cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.ErrorContains(t, err, "organization is not supported")
 	})

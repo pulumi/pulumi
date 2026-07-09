@@ -150,7 +150,7 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing function inputs")
 	cmd.Flags().StringVar(&pc.providerFile, "provider-file", "",
 		"Path to a file containing provider configuration")
-	cmd.Flags().StringVar(&pc.format, "input", "pcl",
+	cmd.Flags().StringVar(&pc.format, "input", "yaml",
 		"Format of the configuration files")
 	cmd.Flags().StringVar(&pc.providerURN, "provider", "",
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
