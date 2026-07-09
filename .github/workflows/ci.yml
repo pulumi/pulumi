@@ -114,11 +114,6 @@ jobs:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
-      - uses: ./.github/actions/retry
-        with:
-          action: jdx/mise-action@v2
-          with: |
-            experimental: true
       - name: build matrix
         id: matrix
         env:
