@@ -3446,18 +3446,9 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 				if d.EnforcementLevel == apitype.Mandatory {
 					sawError.Store(true)
 				}
-				// If a URN was provided and it is a URN associated with a resource in the stack, use it.
-				// Otherwise, if the URN is empty or is not associated with a resource in the stack, use
-				// the default root stack URN.
-				var urn resource.URN
-				if d.URN != "" {
-					if _, ok := sg.deployment.news.Load(d.URN); ok {
-						urn = d.URN
-					}
-				}
-				if urn == "" {
-					urn = resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project())
-				}
+				urn := resolveStackPolicyViolationURN(d.URN,
+					resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project()),
+					func(u resource.URN) bool { _, ok := sg.deployment.news.Load(u); return ok })
 				sg.deployment.events.OnPolicyViolation(urn, d)
 			}
 
