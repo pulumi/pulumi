@@ -26,7 +26,9 @@ import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 
-import * as opentelemetry from "@opentelemetry/api";
+// Loaded with require() instead of a typed import because the OpenTelemetry type declarations
+// use syntax that requires TypeScript >= 4.5, while this SDK is compiled with TypeScript 3.8.
+const opentelemetry = require("@opentelemetry/api");
 
 /*
   Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
