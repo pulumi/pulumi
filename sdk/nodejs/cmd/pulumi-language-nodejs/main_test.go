@@ -713,6 +713,21 @@ func TestParseOptions(t *testing.T) {
 	}, "nodejs")
 	require.ErrorContains(t, err, "packagemanager option must be one of")
 
+	opts, err = parseOptions(nil, "nodejs")
+	require.NoError(t, err)
+	require.False(t, opts.production)
+
+	opts, err = parseOptions(map[string]any{
+		"production": true,
+	}, "nodejs")
+	require.NoError(t, err)
+	require.True(t, opts.production)
+
+	_, err = parseOptions(map[string]any{
+		"production": "yes",
+	}, "nodejs")
+	require.ErrorContains(t, err, "production option must be a boolean")
+
 	for _, tt := range []struct {
 		input    string
 		expected npm.PackageManagerType

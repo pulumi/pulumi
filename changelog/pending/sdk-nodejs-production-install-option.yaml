@@ -1,0 +1,6 @@
+component: sdk/nodejs
+kind: feat
+body: Add a `production` runtime option for Node.js projects. When set to `true` in
+  `Pulumi.yaml`, `pulumi install` skips `devDependencies` (npm `--production`, pnpm
+  `--production`, yarn `--production`).
+time: 2026-07-09T17:30:00.000000+02:00

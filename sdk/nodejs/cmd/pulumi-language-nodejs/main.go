@@ -284,6 +284,8 @@ type nodeOptions struct {
 	// The packagemanger to use to install dependencies.
 	// One of auto, npm, yarn, pnpm or bun, defaults to auto.
 	packagemanager npm.PackageManagerType
+	// Skip devDependencies when installing dependencies.
+	production bool
 }
 
 func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
@@ -313,6 +315,14 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 			nodeOptions.nodeargs = args
 		} else {
 			return nodeOptions, errors.New("nodeargs option must be a string")
+		}
+	}
+
+	if production, ok := options["production"]; ok {
+		if prod, ok := production.(bool); ok {
+			nodeOptions.production = prod
+		} else {
+			return nodeOptions, errors.New("production option must be a boolean")
 		}
 	}
 
@@ -1210,7 +1220,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
-	if err := host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, stdout, stderr); err != nil {
+	if err := host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, opts.production, stdout, stderr); err != nil {
 		return err
 	}
 
@@ -2298,5 +2308,6 @@ func setOptionsAttributes(opts nodeOptions) []attribute.KeyValue {
 		attribute.String("nodeOptions.packageManager", string(opts.packagemanager)),
 		attribute.String("nodeOptions.tsConfigPath", opts.tsconfigpath),
 		attribute.String("nodeOptions.nodeArgs", opts.nodeargs),
+		attribute.Bool("nodeOptions.production", opts.production),
 	}
 }
