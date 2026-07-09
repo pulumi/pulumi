@@ -124,8 +124,11 @@ async function main() {
             // },
             {
                 name: "pnpm",
-                // Pin to pnpm 10 to avoid ERR_PNPM_IGNORED_BUILDS in pnpm 11+.
                 version: "^10.0.0",
+            },
+            {
+                name: "pnpm",
+                version: "^11.0.0",
             },
             // Bun is not yet supported by corepack
             // {
@@ -185,6 +188,13 @@ async function runTest(
     await writeTSConfig(tmpDir);
     const projectName = `install-test-${packageManager}-${packageManagerVersion}`.replace(/[^a-zA-Z0-9]/g, "-");
     await writeProgram(tmpDir, projectName);
+
+    if (packageManager === "pnpm") {
+        // protobufjs (a transitive dependency of @pulumi/pulumi) has an install script. pnpm 11 turns unapproved
+        // install scripts into a hard error (ERR_PNPM_IGNORED_BUILDS), so opt out of running its (optional) build.
+        // pnpm 10 ignores this key.
+        await fs.writeFile(path.join(tmpDir, "pnpm-workspace.yaml"), "allowBuilds:\n  protobufjs: false\n");
+    }
 
     const dependencies = Object.entries(peerDeps)
         .filter(([_, v]) => v !== undefined)

@@ -82,14 +82,17 @@ async function copyDir(src: string, dest: string) {
 // resolves module names correctly regardless of the on-disk layout.
 type PackageManager = "npm" | "pnpm";
 
-async function install(packageManager: PackageManager, dir: string) {
+async function install(packageManager: PackageManager, dir: string, pnpmVersion: string) {
     if (packageManager === "pnpm") {
         // Force the isolated node-linker so we actually exercise the
         // node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg> layout, even if
         // the environment defaults to a hoisted layout.
         await fs.writeFile(path.join(dir, ".npmrc"), "node-linker=isolated\n");
-        // Use pnpm 10, we don't support 11 yet https://github.com/pulumi/pulumi/issues/22893
-        await execa("corepack", ["use", "pnpm@^10.0.0"], {
+        // protobufjs (a transitive dependency of @pulumi/pulumi) has an install script. pnpm 11 turns unapproved
+        // install scripts into a hard error (ERR_PNPM_IGNORED_BUILDS), so opt out of running its optional build.
+        // pnpm 10 ignores this key.
+        await fs.writeFile(path.join(dir, "pnpm-workspace.yaml"), "allowBuilds:\n  protobufjs: false\n");
+        await execa("corepack", ["use", `pnpm@${pnpmVersion}`], {
             cwd: dir,
             env: { COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" },
         });
@@ -98,7 +101,12 @@ async function install(packageManager: PackageManager, dir: string) {
     }
 }
 
-async function run(packageManager: PackageManager, typescriptVersion: string, nodeTypesVersion: string) {
+async function run(
+    packageManager: PackageManager,
+    typescriptVersion: string,
+    nodeTypesVersion: string,
+    pnpmVersion = "^10.0.0",
+) {
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "closure-test-"));
     const sdkRoot = path.join(__dirname, "..", "..", "..");
     const sdkRootBin = path.join(sdkRoot, "bin");
@@ -109,7 +117,7 @@ async function run(packageManager: PackageManager, typescriptVersion: string, no
     await writePackageJSON(tmpDir, pulumiPackagePath, typescriptVersion, nodeTypesVersion);
     await copyDir(path.join(sdkRoot, "tests", "runtime", "testdata", "closure-tests"), tmpDir);
 
-    await install(packageManager, tmpDir);
+    await install(packageManager, tmpDir, pnpmVersion);
 
     await execa("npx", ["--no-install", "tsc"], { cwd: tmpDir });
 
@@ -134,9 +142,10 @@ async function main() {
     }
 
     // Also run the suite under pnpm for the default TypeScript version. The module-resolution logic that pnpm exercises
-    // is independent of the TypeScript version, so a single run is enough to guard against regressions in pnpm's
-    // symlinked node_modules layout.
-    await run("pnpm", "~3.8.3", "ts3.8");
+    // is independent of the TypeScript version, so a single run per pnpm major is enough to guard against regressions
+    // in pnpm's symlinked node_modules layout.
+    await run("pnpm", "~3.8.3", "ts3.8", "^10.0.0");
+    await run("pnpm", "~3.8.3", "ts3.8", "^11.0.0");
 }
 
 main().catch((error) => {

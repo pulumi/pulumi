@@ -139,6 +139,10 @@ type resourceRowData struct {
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
 	hideRowIfUnnecessary bool
+
+	// True for the placeholder stack row synthesized by ensureHeaderAndStackRows before any
+	// stack event arrives.
+	syntheticStackRow bool
 }
 
 func (data *resourceRowData) DisplayOrderIndex() int {

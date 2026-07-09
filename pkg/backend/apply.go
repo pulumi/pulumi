@@ -20,9 +20,9 @@ import (
 	"os"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	surveycore "github.com/AlecAivazis/survey/v2/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -179,13 +179,6 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 ) (*deploy.Plan, error) {
 	for {
 		opts := op.Opts
-		var response string
-
-		surveycore.DisableColor = true
-		surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
-			icons.Question = survey.Icon{}
-			icons.SelectFocus = survey.Icon{Text: opts.Display.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)}
-		})
 
 		choices := []string{string(yes), string(no)}
 
@@ -208,23 +201,15 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 		}
 
 		// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
-		prompt := "\b" + opts.Display.Color.Colorize(
-			colors.SpecPrompt+fmt.Sprintf("Do you want to perform this %s%s?",
-				updateTextMap[kind].previewText, previewWarning)+colors.Reset)
+		prompt := fmt.Sprintf("Do you want to perform this %s%s?", updateTextMap[kind].previewText, previewWarning)
 		if kind == apitype.RefreshUpdate {
-			prompt += "\n" +
-				opts.Display.Color.Colorize(colors.SpecImportant+
-					"No resources will be modified as part of this refresh; just your stack's state will be.\n"+
-					colors.Reset)
+			prompt += colors.Reset + "\n" + colors.SpecImportant +
+				"No resources will be modified as part of this refresh; just your stack's state will be.\n"
 		}
 
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
-		allAskOpts := append([]survey.AskOpt{surveyIcons}, askOpts...)
-		if err := survey.AskOne(&survey.Select{
-			Message: prompt,
-			Options: choices,
-			Default: string(no),
-		}, &response, allAskOpts...); err != nil {
+		response, err := ui.PromptUserErr(prompt, choices, string(no), opts.Display.Color, askOpts...)
+		if err != nil {
 			return nil, fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)
 		}
 

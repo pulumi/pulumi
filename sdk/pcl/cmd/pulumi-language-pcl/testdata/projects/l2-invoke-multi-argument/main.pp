@@ -1,7 +1,7 @@
 output "both" {
-    value = invoke("multi-argument-invoke:index:multiArgumentInvoke", {first = "hello", second = "world"}).result
+    value = invoke("multi-argument-invoke:index:multiArgumentInvoke", "hello", "world").result
 }
 
 output "onlyRequired" {
-    value = invoke("multi-argument-invoke:index:multiArgumentInvoke", {first = "hello"}).result
+    value = invoke("multi-argument-invoke:index:multiArgumentInvoke", "hello").result
 }
