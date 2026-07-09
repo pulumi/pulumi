@@ -799,14 +799,21 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 				diagnostics = append(diagnostics, diags...)
 			case "hook":
 				labels := item.Labels
-				if len(labels) != 1 {
-					diagnostics = append(diagnostics, labelsErrorf(item, "hook blocks must have exactly one label"))
+				if len(labels) != 2 {
+					diagnostics = append(diagnostics, labelsErrorf(item,
+						"hook blocks must have exactly two labels: a kind ('resource' or 'error') and a name"))
 					continue
 				}
-				name := labels[0]
+				kind, name := HookKind(labels[0]), labels[1]
+				if kind != HookKindResource && kind != HookKindError {
+					diagnostics = append(diagnostics, labelsErrorf(item,
+						"invalid hook kind '%s': must be 'resource' or 'error'", labels[0]))
+					continue
+				}
 				v := &Hook{
 					syntax:      item,
 					logicalName: name,
+					Kind:        kind,
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
