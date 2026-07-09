@@ -29,7 +29,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	goruntime "runtime"
 	"syscall"
 	"time"
 
@@ -107,30 +106,11 @@ func (host *executableLanguageHost) GetProgramDependencies(
 	return &pulumirpc.GetProgramDependenciesResponse{}, nil
 }
 
-// InstallDependencies has nothing to install — the pack is a binary. It does mark that binary executable,
-// since the artifact may have been unpacked by something that dropped the mode bits.
+// InstallDependencies has nothing to install: the pack is a binary, and the artifact records its
+// executable bit.
 func (host *executableLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server grpc.ServerStreamingServer[pulumirpc.InstallDependenciesResponse],
 ) error {
-	return ensureExecutable(req.Info)
-}
-
-func ensureExecutable(programInfo *pulumirpc.ProgramInfo) error {
-	if goruntime.GOOS == "windows" {
-		return nil
-	}
-	binary, err := hostBinary(programInfo)
-	if err != nil {
-		return err
-	}
-	path := filepath.Join(programInfo.ProgramDirectory, binary)
-	info, err := os.Stat(path)
-	if err != nil {
-		return fmt.Errorf("policy pack binary not found at %s: %w", path, err)
-	}
-	if err := os.Chmod(path, info.Mode()|0o111); err != nil {
-		return fmt.Errorf("marking policy pack binary %s executable: %w", path, err)
-	}
 	return nil
 }
 

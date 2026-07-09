@@ -31,6 +31,78 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
+// File describes one regular file to place in an archive built by TGZFiles.
+type File struct {
+	// Path is the file's location inside the archive, relative to the archive's prefix.
+	Path string
+	// Source is the path on disk to read the file's contents from.
+	Source string
+	// Mode is the permission bits recorded in the archive. It is independent of Source's mode on
+	// disk, so the archive does not vary with the umask of the machine that built it.
+	Mode os.FileMode
+}
+
+// TGZFiles adds exactly the provided files to an in-memory .tar.gz/.tgz and returns the bytes.
+// Unlike TGZ, which walks a directory and inherits whatever it finds, the caller states the
+// archive's contents and permissions outright, so the result depends only on the file contents.
+func TGZFiles(files []File, prefixPathInsideTar string) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	gw := gzip.NewWriter(buffer)
+	writer := tar.NewWriter(gw)
+
+	for _, file := range files {
+		if err := addFileToTar(writer, file, prefixPathInsideTar); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	if err := gw.Close(); err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
+func addFileToTar(writer *tar.Writer, file File, prefixPathInsideTar string) error {
+	source, err := os.Open(file.Source)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(source)
+
+	info, err := source.Stat()
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%v is not a regular file", file.Source)
+	}
+
+	name := file.Path
+	if prefixPathInsideTar != "" {
+		name = filepath.Join(prefixPathInsideTar, name)
+	}
+	if err := writer.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeReg,
+		Name:     filepath.ToSlash(name),
+		Size:     info.Size(),
+		Mode:     int64(file.Mode.Perm()),
+	}); err != nil {
+		return err
+	}
+
+	n, err := io.Copy(writer, source)
+	if err != nil {
+		return err
+	}
+	if n != info.Size() {
+		return fmt.Errorf("failed to copy all bytes from %v to tar file", file.Source)
+	}
+	return nil
+}
+
 // TGZ adds the contents of the provided directory to an in-memory .tar.gz/.tgz and returns the bytes.
 func TGZ(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, error) {
 	buffer := &bytes.Buffer{}

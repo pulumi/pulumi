@@ -88,38 +88,6 @@ func TestHostBinaryRejectsEscapingPath(t *testing.T) {
 	assert.ErrorContains(t, err, "must not escape the policy pack directory")
 }
 
-func TestEnsureExecutableMarksBinaryExecutable(t *testing.T) {
-	if goruntime.GOOS == "windows" {
-		t.Skip("file mode bits are not meaningful on Windows")
-	}
-	t.Parallel()
-
-	packDir := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(packDir, "bin"), 0o755))
-	binary := filepath.Join(packDir, "bin", "policy")
-	require.NoError(t, os.WriteFile(binary, []byte("#!/bin/sh\nexit 0\n"), 0o600))
-
-	info := programInfo(t, packDir, map[string]string{workspace.CurrentPlatform(): "bin/policy"})
-	require.NoError(t, ensureExecutable(info))
-
-	stat, err := os.Stat(binary)
-	require.NoError(t, err)
-	assert.NotZero(t, stat.Mode()&0o111, "binary must be executable after install")
-}
-
-func TestEnsureExecutableMissingBinaryIsLoud(t *testing.T) {
-	if goruntime.GOOS == "windows" {
-		t.Skip("ensureExecutable is a no-op on Windows")
-	}
-	t.Parallel()
-
-	info := programInfo(t, t.TempDir(), map[string]string{workspace.CurrentPlatform(): "bin/policy"})
-
-	err := ensureExecutable(info)
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "policy pack binary not found")
-}
-
 // The executable runtime is not a program runtime; Run must refuse rather than silently doing nothing.
 func TestRunIsRefused(t *testing.T) {
 	t.Parallel()

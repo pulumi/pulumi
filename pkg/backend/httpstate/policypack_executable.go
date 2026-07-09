@@ -16,7 +16,6 @@ package httpstate
 
 import (
 	"fmt"
-	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -74,42 +73,16 @@ func buildExecutableArtifacts(
 // pack: a gzipped tarball containing only the pack manifest and that platform's binary, nested
 // under the standard "package" directory.
 func buildExecutablePlatformTarball(packDir, binaryRelPath string) ([]byte, error) {
-	stage, err := os.MkdirTemp("", "pulumi-policy-artifact-")
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(stage)
-
-	if err := copyFile(
-		filepath.Join(packDir, "PulumiPolicy.yaml"),
-		filepath.Join(stage, "PulumiPolicy.yaml"), 0o644); err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(filepath.Dir(filepath.Join(stage, binaryRelPath)), 0o755); err != nil {
-		return nil, err
-	}
-	if err := copyFile(
-		filepath.Join(packDir, binaryRelPath),
-		filepath.Join(stage, binaryRelPath), 0o755); err != nil {
-		return nil, err
-	}
-
-	return archive.TGZ(stage, packageDir, false /*useDefaultExcludes*/)
-}
-
-func copyFile(src, dst string, perm os.FileMode) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
-		return err
-	}
-	return out.Close()
+	return archive.TGZFiles([]archive.File{
+		{
+			Path:   "PulumiPolicy.yaml",
+			Source: filepath.Join(packDir, "PulumiPolicy.yaml"),
+			Mode:   0o644,
+		},
+		{
+			Path:   binaryRelPath,
+			Source: filepath.Join(packDir, binaryRelPath),
+			Mode:   0o755,
+		},
+	}, packageDir)
 }
