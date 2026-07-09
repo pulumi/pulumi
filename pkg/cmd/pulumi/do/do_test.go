@@ -1191,11 +1191,10 @@ func TestMergeAttributeLiteralsIntoPCL(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name            string
-		source          string
-		attrs           map[string]string
-		wantContains    []string
-		wantNotContains []string
+		name   string
+		source string
+		attrs  map[string]string
+		want   string
 	}{
 		{
 			name:   "empty file adds attribute",
@@ -1203,7 +1202,8 @@ func TestMergeAttributeLiteralsIntoPCL(t *testing.T) {
 			attrs: map[string]string{
 				"name": `"example"`,
 			},
-			wantContains: []string{`name = "example"`},
+			want: `name = "example"
+`,
 		},
 		{
 			name:   "single line without trailing newline adds attribute",
@@ -1211,10 +1211,9 @@ func TestMergeAttributeLiteralsIntoPCL(t *testing.T) {
 			attrs: map[string]string{
 				"size": "3",
 			},
-			wantContains: []string{
-				`name = "example"`,
-				`size = 3`,
-			},
+			want: `name = "example"
+size = 3
+`,
 		},
 		{
 			name:   "overwrites existing attribute",
@@ -1222,8 +1221,8 @@ func TestMergeAttributeLiteralsIntoPCL(t *testing.T) {
 			attrs: map[string]string{
 				"name": `"new"`,
 			},
-			wantContains:    []string{`name = "new"`},
-			wantNotContains: []string{`name = "old"`},
+			want: `name = "new"
+`,
 		},
 		{
 			name: "adds new attribute alongside existing attributes",
@@ -1233,11 +1232,10 @@ enabled = true
 			attrs: map[string]string{
 				"size": "3",
 			},
-			wantContains: []string{
-				`name    = "example"`,
-				`enabled = true`,
-				`size    = 3`,
-			},
+			want: `name    = "example"
+enabled = true
+size    = 3
+`,
 		},
 		{
 			name: "overwrites one attribute and adds another",
@@ -1248,12 +1246,10 @@ size = 1
 				"name":    `"new"`,
 				"enabled": "false",
 			},
-			wantContains: []string{
-				`name    = "new"`,
-				`size    = 1`,
-				`enabled = false`,
-			},
-			wantNotContains: []string{`name = "old"`},
+			want: `name    = "new"
+size    = 1
+enabled = false
+`,
 		},
 		{
 			name: "preserves blocks and comments",
@@ -1266,21 +1262,18 @@ options {
 			attrs: map[string]string{
 				"name": `"new"`,
 			},
-			wantContains: []string{
-				`# keep this`,
-				`name = "new"`,
-				`options {`,
-				`protect = true`,
-			},
-			wantNotContains: []string{`name = "old"`},
+			want: `# keep this
+name = "new"
+options {
+  protect = true
+}
+`,
 		},
 		{
 			name:   "nil attrs leaves source unchanged",
 			source: `name = "example"` + "\n",
 			attrs:  nil,
-			wantContains: []string{
-				`name = "example"` + "\n",
-			},
+			want:   `name = "example"` + "\n",
 		},
 	}
 
@@ -1290,14 +1283,7 @@ options {
 
 			got, err := mergeAttributeLiteralsIntoPCL([]byte(tt.source), "inputs.pcl", "input", tt.attrs)
 			require.NoError(t, err)
-			gotString := string(got)
-
-			for _, want := range tt.wantContains {
-				assert.Contains(t, gotString, want)
-			}
-			for _, notWant := range tt.wantNotContains {
-				assert.NotContains(t, gotString, notWant)
-			}
+			assert.Equal(t, tt.want, string(got))
 		})
 	}
 }

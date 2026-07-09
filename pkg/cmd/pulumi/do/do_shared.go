@@ -483,6 +483,11 @@ func mergeAttributeLiteralsIntoPCL(
 	if len(attrs) == 0 {
 		return source, nil
 	}
+	// hclwrite needs a blank line after a one-line file with no trailing newline; otherwise a
+	// newly-added attribute can be appended to the existing attribute's token stream.
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
+	}
 	file, diags := hclwrite.ParseConfig(source, filename, hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return nil, diags
@@ -507,7 +512,8 @@ func mergeAttributeLiteralsIntoPCL(
 		}
 		body.SetAttributeRaw(name, attr.Expr().BuildTokens(nil))
 	}
-	return file.Bytes(), nil
+	out := file.Bytes()
+	return out, nil
 }
 
 func pclLiteral(flag inputFlagValue) (string, error) {
