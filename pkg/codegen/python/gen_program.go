@@ -1211,6 +1211,25 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 		cmdExprs = tuple.Expressions
 	}
 
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
+		g.Indented(func() {
+			g.Fgenf(w, "%sresult = subprocess.run([", g.Indent)
+			for i, arg := range cmdExprs {
+				if i > 0 {
+					g.Fgenf(w, ", ")
+				}
+				g.genPyStringArg(w, arg)
+			}
+			g.Fgenf(w, "], check=False)\n")
+			g.Fgenf(w, "%sreturn result.returncode == 0\n", g.Indent)
+		})
+		g.Fgenf(w, "%s%s = pulumi.ErrorHook(%q, %s)\n", g.Indent, pyName, hookName, fnName)
+		return
+	}
+
 	g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
 	g.Indented(func() {
 		g.Fgenf(w, "%ssubprocess.run([", g.Indent)
