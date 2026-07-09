@@ -126,7 +126,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	envBackend, ok := stack.Backend().(backend.EnvironmentsBackend)
 	if !ok {
-		return fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
+		return errBackendNoEnvironments(stack.Backend())
 	}
 
 	orgName := stack.(interface{ OrgName() string }).OrgName()
