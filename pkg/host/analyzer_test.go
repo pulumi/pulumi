@@ -15,14 +15,20 @@
 package host
 
 import (
+	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
 
@@ -94,6 +100,68 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 
 	err = analyzer.Close()
 	require.NoError(t, err)
+}
+
+func buildExecutableTestPack(t *testing.T) (packDir, binRel string) {
+	packDir = t.TempDir()
+	binRel = filepath.Join("bin", "policy")
+	if goruntime.GOOS == "windows" {
+		binRel += ".exe"
+	}
+	binPath := filepath.Join(packDir, binRel)
+	cmd := exec.Command("go", "build", "-o", binPath, "./testdata/analyzer-executable")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+	return packDir, binRel
+}
+
+func writeExecutableManifest(t *testing.T, packDir string, binaries map[string]string) {
+	var sb strings.Builder
+	sb.WriteString("runtime:\n  name: executable\n  options:\n    binaries:\n")
+	for _, platform := range slices.Sorted(maps.Keys(binaries)) {
+		fmt.Fprintf(&sb, "      %s: %s\n", platform, filepath.ToSlash(binaries[platform]))
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(packDir, "PulumiPolicy.yaml"), []byte(sb.String()), 0o600))
+}
+
+func TestAnalyzerSpawnExecutable(t *testing.T) {
+	d := diagtest.LogSink(t)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, h.Close()) }()
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
+
+	packDir, binRel := buildExecutableTestPack(t)
+	writeExecutableManifest(t, packDir, map[string]string{workspace.CurrentPlatform(): binRel})
+
+	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", packDir, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, analyzer.Close()) }()
+
+	info, err := analyzer.GetAnalyzerInfo(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "executable-test-pack", info.Name)
+}
+
+func TestAnalyzerSpawnExecutableMissingPlatform(t *testing.T) {
+	d := diagtest.LogSink(t)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, h.Close()) }()
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
+
+	otherPlatform := "linux-amd64"
+	if workspace.CurrentPlatform() == otherPlatform {
+		otherPlatform = "darwin-arm64"
+	}
+	packDir := t.TempDir()
+	writeExecutableManifest(t, packDir, map[string]string{otherPlatform: "bin/policy"})
+
+	_, err = plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", packDir, nil, nil)
+	require.ErrorContains(t, err, "does not provide a binary for "+workspace.CurrentPlatform())
+	require.ErrorContains(t, err, otherPlatform)
 }
 
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {
