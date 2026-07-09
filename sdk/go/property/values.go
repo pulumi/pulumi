@@ -288,11 +288,11 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 	return v
 }
 
-// hasValue returns true if a value is non-null and non-computed. This is private to discourage external use, null
+// hasValue returns true if a value not a plain null. This is private to discourage external use, null
 // _should_ normally be semantically meaningful, but currently for diffs we have to treat missing, null and computed the
 // same.
 func (v Value) hasValue() bool {
-	return !v.IsNull() && !v.IsComputed()
+	return !(v.IsNull() && !v.isSecret && len(v.dependencies) == 0)
 }
 
 // WithGoValue creates a new Value with the inner value newGoValue.
