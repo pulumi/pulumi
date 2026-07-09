@@ -2823,6 +2823,46 @@ type NeoStreamEvent struct {
 	Err  error
 }
 
+type neoTaskEventsResponse struct {
+	Events            []apitype.AgentConsoleEvent `json:"events"`
+	ContinuationToken *string                     `json:"continuationToken,omitempty"`
+}
+
+// GetNeoTaskEvents returns all currently recorded events for a Neo task and the
+// newest event ID. Callers can pass the returned ID to StreamNeoTaskEvents as
+// Last-Event-ID to attach from the live tail without replaying historical events.
+func (pc *Client) GetNeoTaskEvents(
+	ctx context.Context, orgName, taskID string,
+) ([]apitype.AgentConsoleEvent, string, error) {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	var events []apitype.AgentConsoleEvent
+	var lastEventID string
+	var continuationToken string
+	for {
+		path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events?pageSize=1000", orgName, taskID)
+		if continuationToken != "" {
+			path += "&continuationToken=" + url.QueryEscape(continuationToken)
+		}
+
+		var resp neoTaskEventsResponse
+		if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+			return nil, "", fmt.Errorf("getting Neo task events: %w", err)
+		}
+		for _, event := range resp.Events {
+			if event.ID != "" {
+				lastEventID = event.ID
+			}
+		}
+		events = append(events, resp.Events...)
+		if resp.ContinuationToken == nil || *resp.ContinuationToken == "" {
+			return events, lastEventID, nil
+		}
+		continuationToken = *resp.ContinuationToken
+	}
+}
+
 // StreamNeoTaskEvents opens a Server-Sent Events (SSE) connection to the Neo task event
 // stream and returns a channel of events. Each value carries either a raw event payload
 // (the bytes following each `data:` line, joined for multi-line events) along with the

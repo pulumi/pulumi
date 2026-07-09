@@ -969,6 +969,26 @@ func TestSession_ReconnectsAfterHTTP2InternalStreamError(t *testing.T) {
 		"HTTP/2 stream resets must reconnect with the last seen event ID")
 }
 
+func TestSession_StartsFromInitialLastEventID(t *testing.T) {
+	t.Parallel()
+
+	stream := make(chan client.NeoStreamEvent)
+	close(stream)
+	streamer := &reconnectStreamer{streams: []chan client.NeoStreamEvent{stream}}
+
+	s := &Session{
+		Client:      streamer,
+		OrgName:     "o",
+		TaskID:      "t",
+		LastEventID: "tail-event",
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, []string{"tail-event"}, streamer.lastIDs)
+}
+
 func TestSession_PropagatesNonTransientStreamError(t *testing.T) {
 	t.Parallel()
 

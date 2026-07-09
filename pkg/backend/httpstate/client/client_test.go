@@ -1622,6 +1622,51 @@ func TestUpdateNeoTask(t *testing.T) {
 	})
 }
 
+func TestGetNeoTaskEvents(t *testing.T) {
+	t.Parallel()
+
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		paths = append(paths, req.URL.String())
+		rw.Header().Set("Content-Type", "application/json")
+		switch req.URL.Query().Get("continuationToken") {
+		case "":
+			_, _ = rw.Write([]byte(`{
+				"events": [
+					{"type": "agentResponse", "id": "evt-1"},
+					{"type": "userInput", "id": "evt-2"}
+				],
+				"continuationToken": "next-page"
+			}`))
+		case "next-page":
+			_, _ = rw.Write([]byte(`{
+				"events": [
+					{"type": "agentResponse", "id": "evt-3"}
+				]
+			}`))
+		default:
+			rw.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer server.Close()
+
+	c := newMockClient(server)
+	events, tailID, err := c.GetNeoTaskEvents(t.Context(), "my-org", "task_1")
+	require.NoError(t, err)
+
+	assert.Equal(t, "evt-3", tailID)
+	require.Len(t, events, 3)
+	assert.Equal(t, "agentResponse", events[0].Type)
+	assert.Equal(t, "evt-1", events[0].ID)
+	assert.Equal(t, "userInput", events[1].Type)
+	assert.Equal(t, "evt-2", events[1].ID)
+	assert.Equal(t, "agentResponse", events[2].Type)
+	assert.Equal(t, "evt-3", events[2].ID)
+	require.Len(t, paths, 2)
+	assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1/events?pageSize=1000", paths[0])
+	assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1/events?pageSize=1000&continuationToken=next-page", paths[1])
+}
+
 func TestPostNeoTaskUserEvent(t *testing.T) {
 	t.Parallel()
 

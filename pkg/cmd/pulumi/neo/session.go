@@ -74,6 +74,9 @@ type Session struct {
 	Handlers map[string]ToolHandler
 	OrgName  string
 	TaskID   string
+	// LastEventID, when non-empty, is used for the initial SSE open. This lets
+	// resume flows attach from the current tail without replaying old events.
+	LastEventID string
 	// Log receives single-line status messages so the caller can render them however it
 	// likes (stderr today, a TUI tomorrow). nil disables logging.
 	Log io.Writer
@@ -95,7 +98,7 @@ type Session struct {
 // exhausted.
 func (s *Session) Run(ctx context.Context) error {
 	var (
-		lastEventID string
+		lastEventID = s.LastEventID
 		failures    int
 		deadline    time.Time
 	)
@@ -190,12 +193,12 @@ func isTransientStreamError(err error) bool {
 	}
 	var streamErr http2.StreamError
 	if errors.As(err, &streamErr) {
-		switch streamErr.Code {
-		case http2.ErrCodeInternal, http2.ErrCodeCancel, http2.ErrCodeRefusedStream:
+		if streamErr.Code == http2.ErrCodeInternal ||
+			streamErr.Code == http2.ErrCodeCancel ||
+			streamErr.Code == http2.ErrCodeRefusedStream {
 			return true
-		default:
-			return false
 		}
+		return false
 	}
 	var oe *net.OpError
 	return errors.As(err, &oe)

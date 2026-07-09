@@ -21,9 +21,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -927,6 +929,128 @@ func TestDispatchUserEvents_WarnsOnPostFailure(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Contains(t, got[0].Message, "failed to send event")
 	assert.Contains(t, got[0].Message, "network down")
+}
+
+func TestDispatchUserEvents_RetriesUserMessageOnTransientPostFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	uiCh := make(chan UIEvent, 8)
+	out := make(chan outboundEvent, 1)
+	var attempts atomic.Int32
+
+	done := make(chan error, 1)
+	go func() {
+		done <- dispatchUserEvents(ctx, out, uiCh, true,
+			func() string { return "task-1" },
+			noopSpawn,
+			func(context.Context, string, any) error {
+				if attempts.Add(1) == 1 {
+					return &url.Error{Op: "Post", URL: "http://localhost:8080", Err: syscall.ECONNREFUSED}
+				}
+				return nil
+			},
+			noopUpdateTask)
+	}()
+
+	out <- outboundEvent{event: apitype.AgentUserEventUserMessage{
+		Type:    userEventUserMessage,
+		Content: "are you there?",
+	}}
+
+	var sawReconnecting, sawReconnected bool
+	deadline := time.After(3 * time.Second)
+	for !sawReconnecting || !sawReconnected {
+		select {
+		case evt := <-uiCh:
+			switch evt.(type) {
+			case UIReconnecting:
+				sawReconnecting = true
+			case UIReconnected:
+				sawReconnected = true
+			}
+		case <-deadline:
+			t.Fatalf("timed out waiting for reconnect events; attempts=%d", attempts.Load())
+		}
+	}
+	assert.Equal(t, int32(2), attempts.Load(), "message must be retried after transient post failure")
+
+	cancel()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("dispatcher did not exit after ctx cancel")
+	}
+}
+
+func TestDispatchUserEvents_DropsUserMessageOnPermanentPostFailure(t *testing.T) {
+	t.Parallel()
+
+	uiCh := make(chan UIEvent, 4)
+	out := make(chan outboundEvent, 1)
+	var attempts atomic.Int32
+
+	out <- outboundEvent{event: apitype.AgentUserEventUserMessage{
+		Type:    userEventUserMessage,
+		Content: "hello",
+	}}
+	close(out)
+
+	err := dispatchUserEvents(t.Context(), out, uiCh, true,
+		func() string { return "task-1" },
+		noopSpawn,
+		func(context.Context, string, any) error {
+			attempts.Add(1)
+			return errors.New("permission denied")
+		},
+		noopUpdateTask)
+	require.NoError(t, err)
+
+	close(uiCh)
+	var warnings []UIWarning
+	for evt := range uiCh {
+		if w, ok := evt.(UIWarning); ok {
+			warnings = append(warnings, w)
+		}
+	}
+	assert.Equal(t, int32(1), attempts.Load(), "permanent failure must not be retried")
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0].Message, "failed to send event")
+	assert.Contains(t, warnings[0].Message, "permission denied")
+}
+
+func TestForwardHistoryEventsToUI(t *testing.T) {
+	t.Parallel()
+
+	userBody, err := json.Marshal(apitype.AgentUserEventUserMessage{
+		Type:    userEventUserMessage,
+		Content: "historical question",
+	})
+	require.NoError(t, err)
+	assistantBody, err := json.Marshal(apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		Content: "historical answer",
+		IsFinal: true,
+	})
+	require.NoError(t, err)
+
+	uiCh := make(chan UIEvent, 4)
+	forwardHistoryEventsToUI(uiCh, []apitype.AgentConsoleEvent{
+		{Type: consoleEventUserInput, EventBody: userBody},
+		{Type: consoleEventAgentResponse, EventBody: assistantBody},
+	})
+
+	require.Len(t, uiCh, 2)
+	user, ok := (<-uiCh).(UIUserMessage)
+	require.True(t, ok)
+	assert.Equal(t, "historical question", user.Content)
+	assistant, ok := (<-uiCh).(UIAssistantMessage)
+	require.True(t, ok)
+	assert.Equal(t, "historical answer", assistant.Content)
+	assert.True(t, assistant.IsFinal)
 }
 
 func TestCreateNeoTaskWithEntityRetry(t *testing.T) {

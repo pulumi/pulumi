@@ -1,4 +1,6 @@
 component: cli/neo
-kind: fix
-body: Retry `pulumi neo` event streams after transient HTTP/2 stream resets
+kind: feat
+body: Retry transient `pulumi neo` stream and message-send failures, and add `pulumi neo resume` with chat history
+custom:
+  PR: 23835
 time: 2026-07-07T00:00:00.000000+00:00

@@ -976,6 +976,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.appendWarningBlock(msg.Message))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
+	case UIReconnecting:
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIReconnected:
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
 	case UICancelled:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, m.commitBlock(block{kind: blockCancelled, raw: "Session cancelled."}))
@@ -1411,6 +1419,10 @@ func (m *Model) labelForUIEvent(ev UIEvent) (string, shimmerKind, bool) {
 		return "Awaiting approvals...", shimmerVerb, true
 	case UIContextCompression:
 		return "Compressing context...", shimmerVerb, true
+	case UIReconnecting:
+		return "Reconnecting...", shimmerVerb, true
+	case UIReconnected:
+		return thinkingLabel, shimmerVerb, true
 	}
 	return "", 0, false
 }
