@@ -65,9 +65,10 @@ func newCloudRequiredPolicy(client *client.Client, envs backend.EnvironmentsBack
 	}
 }
 
-func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name }
-func (rp *cloudRequiredPolicy) Version() string { return rp.VersionTag }
-func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
+func (rp *cloudRequiredPolicy) Name() string     { return rp.RequiredPolicy.Name }
+func (rp *cloudRequiredPolicy) Version() string  { return rp.VersionTag }
+func (rp *cloudRequiredPolicy) OrgName() string  { return rp.orgName }
+func (rp *cloudRequiredPolicy) ImageRef() string { return rp.RequiredPolicy.ImageRef }
 
 func (rp *cloudRequiredPolicy) policyVersion() string {
 	policy := rp.RequiredPolicy

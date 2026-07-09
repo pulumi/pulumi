@@ -92,6 +92,15 @@ type RequiredPolicy struct {
 	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation,omitempty"`
 
+	// Runtime of the required Policy Pack (e.g. "nodejs", "oci"). Empty for
+	// packs published before runtimes were recorded.
+	Runtime string `json:"runtime,omitempty"`
+
+	// ImageRef is the digest-pinned OCI image reference for the required
+	// Policy Pack (e.g. "ghcr.io/acme/pack@sha256:…"). Set only for packs
+	// published with runtime "oci"; such packs have no PackLocation.
+	ImageRef string `json:"imageRef,omitempty"`
+
 	// The configuration that is to be passed to the Policy Pack. This is map a of policies
 	// mapped to their configuration. Each individual configuration must comply with the
 	// JSON schema for each Policy within the Policy Pack.

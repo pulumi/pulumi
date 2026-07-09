@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	oci "github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -39,6 +40,23 @@ func installPolicyPack(
 ) error {
 	policyID := fmt.Sprintf("%s@v%s", policy.Name(), policy.Version())
 	logging.V(preparePluginLog).Infof("installPolicyPack(%s): beginning install", policyID)
+
+	// OCI policy packs are container images: "install" is an eager pull of the
+	// digest-pinned ref. Nothing is written under ~/.pulumi/policies; the
+	// container runtime's image store is the cache, and pulling an
+	// already-present digest is a cheap no-op.
+	if ref := policy.ImageRef(); ref != "" {
+		rt, err := oci.DetectRuntime(nil)
+		if err != nil {
+			return fmt.Errorf("installing policy pack %s: %w", policyID, err)
+		}
+		fmt.Fprintf(os.Stderr, "Pulling policy pack image %s...\n", ref)
+		if err := rt.Pull(ctx, ref, os.Stderr); err != nil {
+			return fmt.Errorf("installing policy pack %s: %w", policyID, err)
+		}
+		logging.V(preparePluginLog).Infof("installPolicyPack(%s): image pulled", policyID)
+		return nil
+	}
 
 	// Check if already installed
 	if policy.Installed() {

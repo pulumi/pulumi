@@ -197,6 +197,9 @@ type RequiredPolicy interface {
 	Name() string
 	// Version of the PolicyPack.
 	Version() string
+	// ImageRef returns the digest-pinned OCI image reference for the
+	// PolicyPack, or "" for packs distributed as tarballs.
+	ImageRef() string
 	// Installed returns true if the PolicyPack is already installed locally.
 	Installed() bool
 	// LocalPath returns the local path of the PolicyPack.
@@ -761,6 +764,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 
 			// Create per-policy analyzer options with ESC environment variables.
 			policyOpts := *analyzerOpts
+			policyOpts.ImageRef = policy.ImageRef()
 			if resolved != nil {
 				if len(resolved.EnvironmentVariables) > 0 {
 					policyOpts.AdditionalEnv = resolved.EnvironmentVariables
@@ -770,10 +774,13 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				}
 			}
 
-			policyPath, err := policy.LocalPath()
-			if err != nil {
-				errs <- err
-				return
+			var policyPath string
+			if policyOpts.ImageRef == "" {
+				policyPath, err = policy.LocalPath()
+				if err != nil {
+					errs <- err
+					return
+				}
 			}
 
 			analyzer, err := loadPolicyAnalyzer(
