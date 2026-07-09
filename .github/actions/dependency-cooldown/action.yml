@@ -1,0 +1,37 @@
+name: Dependency cooldown
+description: >-
+  Supply-chain hardening: restrict npm, pnpm, uv, pip, poetry and bun to package versions
+  older than a cooldown window (https://cooldowns.dev). Yarn classic is not covered.
+inputs:
+  days:
+    description: Cooldown window in days. Versions published more recently than this are excluded.
+    default: "3"
+runs:
+  using: composite
+  steps:
+    - name: Configure dependency cooldown (${{ inputs.days }} days)
+      shell: bash
+      env:
+        COOLDOWN_DAYS: ${{ inputs.days }}
+      run: |
+        set -euo pipefail
+
+        # Each manager takes the window in its own unit; all are relative to "now".
+        pnpm_minutes=$(( COOLDOWN_DAYS * 1440 ))
+        bun_seconds=$(( COOLDOWN_DAYS * 86400 ))
+
+        echo "Dependency cooldown: excluding package versions published in the last ${COOLDOWN_DAYS} days"
+
+        {
+          echo "UV_EXCLUDE_NEWER=P${COOLDOWN_DAYS}D"            # uv (ISO-8601 duration)
+          echo "npm_config_min_release_age=${COOLDOWN_DAYS}"    # npm (days)
+          echo "npm_config_minimum_release_age=${pnpm_minutes}" # pnpm (minutes)
+          echo "POETRY_SOLVER_MIN_RELEASE_AGE=${COOLDOWN_DAYS}" # poetry (days)
+          echo "PIP_UPLOADED_PRIOR_TO=P${COOLDOWN_DAYS}D"       # pip >= 26.1 (ISO-8601 duration; older pip ignores it)
+        } >> "$GITHUB_ENV"
+
+        # bun has no environment variable form, but reads a global config from $HOME.
+        cat > "${HOME}/.bunfig.toml" <<EOF
+        [install]
+        minimumReleaseAge = ${bun_seconds}
+        EOF

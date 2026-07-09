@@ -107,6 +107,7 @@ func NewContext(schemaDirectoryPath string) *plugin.Context {
 		SchemaProvider{"tls", "4.10.0"},
 		SchemaProvider{"random", "4.11.2"},
 		SchemaProvider{"std", "1.0.0"},
+		SchemaProvider{"multiarg", "1.0.0"},
 
 		SchemaProvider{"component", "13.3.7"},
 		SchemaProvider{"importer", "1.0.0"},

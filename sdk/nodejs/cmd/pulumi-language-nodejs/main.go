@@ -1350,6 +1350,24 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 func (host *nodeLanguageHost) Template(ctx context.Context,
 	req *pulumirpc.TemplateRequest,
 ) (*pulumirpc.TemplateResponse, error) {
+	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.packagemanager == npm.PnpmPackageManager {
+		workspacePath := filepath.Join(req.Info.ProgramDirectory, "pnpm-workspace.yaml")
+		if _, err := os.Stat(workspacePath); os.IsNotExist(err) {
+			content := "# Don't run protobufjs's unnecessary install script (pnpm 11 fails install unless it's listed here).\n" +
+				"# https://github.com/protobufjs/protobuf.js/pull/2299\n" +
+				"allowBuilds:\n" +
+				"  protobufjs: false\n"
+			if err := os.WriteFile(workspacePath, []byte(content), 0o600); err != nil {
+				return nil, fmt.Errorf("writing pnpm-workspace.yaml: %w", err)
+			}
+		}
+	}
+
 	return &pulumirpc.TemplateResponse{}, nil
 }
 
