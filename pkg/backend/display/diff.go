@@ -57,7 +57,8 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
 	if stdout == os.Stdout && stderr == os.Stderr {
-		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/, opts.SuppressProgress)
+		spinner, ticker = cmdutil.NewSpinnerAndTicker(
+			stdout, prefix, nil, opts.Color, 8 /*timesPerSecond*/, opts.SuppressProgress)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)

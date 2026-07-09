@@ -160,7 +160,7 @@ func NewDoCmd(
 		ctx := cmd.Context()
 		tracer := otel.Tracer("pulumi-cli")
 
-		loading := startSpinner(fmt.Sprintf("Loading provider '%s'", pkgargs[0]))
+		loading := startSpinner(cmd.OutOrStdout(), fmt.Sprintf("Loading provider '%s'", pkgargs[0]))
 		defer loading()
 
 		host, err := newHost(ctx, sink, sink)
@@ -221,7 +221,7 @@ func NewDoCmd(
 		}
 
 		loading()
-		reading := startSpinner(fmt.Sprintf("Reading schema for '%s'", pkgName))
+		reading := startSpinner(cmd.OutOrStdout(), fmt.Sprintf("Reading schema for '%s'", pkgName))
 		defer reading()
 
 		getSchema, err := p.GetSchema(ctx, schemaRequest)

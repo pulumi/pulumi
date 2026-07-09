@@ -22,6 +22,7 @@ import (
 	"io"
 	"slices"
 	"strconv"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -83,6 +84,17 @@ func (jm *Progress) Display(out io.Writer, term terminal.Terminal) {
 	}
 }
 
+type syncWriter struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+func (w *syncWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.w.Write(p)
+}
+
 type messageRenderer struct {
 	opts          Options
 	isInteractive bool
@@ -116,8 +128,9 @@ func newInteractiveMessageRenderer(term terminal.Terminal, opts Options) progres
 }
 
 func newNonInteractiveRenderer(stdout io.Writer, op string, opts Options) progressRenderer {
+	stdout = &syncWriter{w: stdout}
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(
-		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
+		stdout, fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
 		nil, opts.Color, 1 /*timesPerSecond*/, opts.SuppressProgress)
 	ticker.Stop()
 

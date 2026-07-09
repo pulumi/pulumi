@@ -56,9 +56,9 @@ import (
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
-func startSpinner(prefix string) func() {
+func startSpinner(out io.Writer, prefix string) func() {
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(
-		prefix, nil, cmdutil.GetGlobalColorization(), 8 /*timesPerSecond*/, !cmdutil.Interactive())
+		out, prefix, nil, cmdutil.GetGlobalColorization(), 8 /*timesPerSecond*/, !cmdutil.Interactive())
 	spinner.Tick()
 	stop := make(chan struct{})
 	stopped := make(chan struct{})

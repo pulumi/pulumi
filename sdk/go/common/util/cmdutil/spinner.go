@@ -16,6 +16,8 @@ package cmdutil
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"time"
 	"unicode/utf8"
 
@@ -26,11 +28,14 @@ import (
 // to Spinner.Tick() should be called.  NewSpinnerAndTicket takes into account if stdout is
 // connected to a tty or not and returns either a nice animated spinner that updates quickly, using
 // the specified ttyFrames, or a simple spinner that just prints a dot on each tick and updates
-// slowly.
-func NewSpinnerAndTicker(prefix string, ttyFrames []string,
+// slowly.  The spinner writes to out; if out is nil it writes to os.Stdout.
+func NewSpinnerAndTicker(out io.Writer, prefix string, ttyFrames []string,
 	color colors.Colorization, timesPerSecond time.Duration,
 	suppressProgress bool,
 ) (Spinner, *time.Ticker) {
+	if out == nil {
+		out = os.Stdout
+	}
 	if ttyFrames == nil {
 		// If explicit tick frames weren't specified, default to unicode for Mac and ASCII for Windows/Linux.
 		if Emoji {
@@ -46,11 +51,13 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string,
 
 	if Interactive() {
 		return &ttySpinner{
+			out:    out,
 			prefix: prefix,
 			frames: ttyFrames,
 		}, time.NewTicker(time.Second / timesPerSecond)
 	}
 	return &dotSpinner{
+		out:    out,
 		color:  color,
 		prefix: prefix,
 	}, time.NewTicker(time.Second * 20)
@@ -80,6 +87,7 @@ var (
 // ttySpinner is the spinner that can be used when standard out is a tty. When we are connected to a TTY we can erase
 // characters we've written and provide a nice quick progress spinner.
 type ttySpinner struct {
+	out         io.Writer
 	prefix      string
 	frames      []string
 	index       int
@@ -89,13 +97,13 @@ type ttySpinner struct {
 func (spin *ttySpinner) Tick() {
 	if spin.lastWritten > 0 {
 		for i := 0; i < spin.lastWritten; i++ {
-			fmt.Print("\b \b")
+			fmt.Fprint(spin.out, "\b \b")
 		}
 	} else {
-		fmt.Print(spin.prefix)
+		fmt.Fprint(spin.out, spin.prefix)
 	}
 	frame := spin.frames[spin.index]
-	fmt.Print(frame)
+	fmt.Fprint(spin.out, frame)
 	spin.lastWritten = utf8.RuneCountInString(frame)
 	spin.index = (spin.index + 1) % len(spin.frames)
 }
@@ -103,7 +111,7 @@ func (spin *ttySpinner) Tick() {
 func (spin *ttySpinner) Reset() {
 	if spin.lastWritten > 0 {
 		for i := 0; i < len(spin.prefix)+spin.lastWritten; i++ {
-			fmt.Print("\b \b")
+			fmt.Fprint(spin.out, "\b \b")
 		}
 	}
 	spin.index = 0
@@ -113,6 +121,7 @@ func (spin *ttySpinner) Reset() {
 // dotSpinner is the spinner that can be used when standard out is not a tty. In this case, we just write a single
 // dot on each tick.
 type dotSpinner struct {
+	out        io.Writer
 	color      colors.Colorization
 	prefix     string
 	hasWritten bool
@@ -120,15 +129,15 @@ type dotSpinner struct {
 
 func (spin *dotSpinner) Tick() {
 	if !spin.hasWritten {
-		fmt.Print(spin.color.Colorize(colors.Yellow + spin.prefix + colors.Reset))
+		fmt.Fprint(spin.out, spin.color.Colorize(colors.Yellow+spin.prefix+colors.Reset))
 	}
-	fmt.Print(spin.color.Colorize(colors.Yellow + "." + colors.Reset))
+	fmt.Fprint(spin.out, spin.color.Colorize(colors.Yellow+"."+colors.Reset))
 	spin.hasWritten = true
 }
 
 func (spin *dotSpinner) Reset() {
 	if spin.hasWritten {
-		fmt.Println()
+		fmt.Fprintln(spin.out)
 	}
 	spin.hasWritten = false
 }
