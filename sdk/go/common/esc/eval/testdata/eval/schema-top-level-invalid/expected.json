@@ -1,0 +1,641 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "expected boolean, got object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-top-level-invalid",
+                "Start": {
+                    "Line": 2,
+                    "Column": 3,
+                    "Byte": 10
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 24,
+                    "Byte": 31
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "schema"
+        },
+        {
+            "Severity": 1,
+            "Summary": "at least one subschema must match",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-top-level-invalid",
+                "Start": {
+                    "Line": 2,
+                    "Column": 3,
+                    "Byte": 10
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 24,
+                    "Byte": 31
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "schema"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected one of [\"string\",\"number\",\"boolean\",\"array\",\"object\",\"null\"]",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-top-level-invalid",
+                "Start": {
+                    "Line": 2,
+                    "Column": 9,
+                    "Byte": 16
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 24,
+                    "Byte": 31
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "schema.type"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "schema-top-level-invalid",
+                    "begin": {
+                        "line": 4,
+                        "column": 8,
+                        "byte": 47
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 11,
+                        "byte": 50
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "schema-top-level-invalid",
+                        "begin": {
+                            "line": 4,
+                            "column": 8,
+                            "byte": 47
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 11,
+                            "byte": 50
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "schema-top-level-invalid",
+                            "trace": {
+                                "def": {
+                                    "environment": "schema-top-level-invalid",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "schema-top-level-invalid",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "schema-top-level-invalid",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "schema-top-level-invalid",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "schema-top-level-invalid",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "schema-top-level-invalid",
+                            "trace": {
+                                "def": {
+                                    "environment": "schema-top-level-invalid",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "schema-top-level-invalid",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "schema-top-level-invalid"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "schema-top-level-invalid"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "foo": "bar"
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "expected boolean, got object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-top-level-invalid",
+                "Start": {
+                    "Line": 2,
+                    "Column": 3,
+                    "Byte": 10
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 24,
+                    "Byte": 31
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "schema"
+        },
+        {
+            "Severity": 1,
+            "Summary": "at least one subschema must match",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-top-level-invalid",
+                "Start": {
+                    "Line": 2,
+                    "Column": 3,
+                    "Byte": 10
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 24,
+                    "Byte": 31
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "schema"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected one of [\"string\",\"number\",\"boolean\",\"array\",\"object\",\"null\"]",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-top-level-invalid",
+                "Start": {
+                    "Line": 2,
+                    "Column": 9,
+                    "Byte": 16
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 24,
+                    "Byte": 31
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "schema.type"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "schema-top-level-invalid",
+                    "begin": {
+                        "line": 4,
+                        "column": 8,
+                        "byte": 47
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 11,
+                        "byte": 50
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "schema-top-level-invalid",
+                        "begin": {
+                            "line": 4,
+                            "column": 8,
+                            "byte": 47
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 11,
+                            "byte": 50
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "schema-top-level-invalid",
+                            "trace": {
+                                "def": {
+                                    "environment": "schema-top-level-invalid",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "schema-top-level-invalid",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "schema-top-level-invalid",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "schema-top-level-invalid",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "schema-top-level-invalid",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "schema-top-level-invalid",
+                            "trace": {
+                                "def": {
+                                    "environment": "schema-top-level-invalid",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "schema-top-level-invalid",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "schema-top-level-invalid"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "schema-top-level-invalid"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "foo": "bar"
+    },
+    "evalJSONRevealed": {
+        "foo": "bar"
+    }
+}

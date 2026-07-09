@@ -492,7 +492,7 @@ func declare[Expr exprNode](e *evalContext, path string, x Expr, base *value) *e
 
 func (e *evalContext) isReserveTopLevelKey(k string) bool {
 	switch k {
-	case "imports", "context", "environments":
+	case "imports", "context", "environments", "schema":
 		return true
 	default:
 		return false
@@ -537,6 +537,30 @@ func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 
 	// Evaluate the root value and return.
 	v := e.evaluateExpr(e.root, schema.Always())
+
+	// If a top-level schema is defined, validate the root value against it.
+	if e.env.Schema != nil {
+		schemaDef := declare(e, "*schema*", e.env.Schema, nil)
+		schemaVal := e.evaluateExpr(schemaDef, schema.JSONSchemaSchema())
+		if schemaVal.containsUnknowns() {
+			e.errorf(e.env.Schema, "schema must not contain unknowns")
+		} else {
+			vv := validator{}
+			schemaOk := vv.validateValue(schemaVal, schema.JSONSchemaSchema(), validationLoc{x: schemaDef})
+			e.diags.Extend(vv.diags...)
+			if schemaOk {
+				validationSchema, err := e.valueToSchema(schemaVal)
+				if err != nil {
+					e.errorf(e.env.Schema, "invalid schema: %v", err)
+				} else if err := validationSchema.Compile(); err != nil {
+					e.errorf(e.env.Schema, "invalid schema: %v", err)
+				} else {
+					v, _ = e.evaluateTypedExpr(e.root, validationSchema)
+				}
+			}
+		}
+	}
+
 	return v, e.diags
 }
 
