@@ -29,16 +29,18 @@ import (
 
 func TestSameIsEqual(t *testing.T) {
 	t.Parallel()
+	value := Value(10)
 	rapid.Check(t, func(t *rapid.T) {
-		same := Value(10).Draw(t, "value")
+		same := value.Draw(t, "value")
 		assert.True(t, same.Equals(same))
 	})
 }
 
 func TestDifferentIsNotEqual(t *testing.T) {
 	t.Parallel()
+	distinctPair := rapid.SliceOfNDistinct(Value(10), 2, 2, valueKey)
 	rapid.Check(t, func(t *rapid.T) {
-		arr := rapid.SliceOfNDistinct(Value(10), 2, 2, valueKey).Draw(t, "values")
+		arr := distinctPair.Draw(t, "values")
 		v1, v2 := arr[0], arr[1]
 		assert.False(t, v1.Equals(v2))
 	})
