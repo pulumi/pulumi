@@ -91,14 +91,14 @@ jobs:
       # To comment on the blocked PR explaining the release hold.
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Check release marker
         id: check
         env:
           BASE_SHA: ${{ github.event.merge_group.base_sha }}
         run: |
           set -euo pipefail
-          git fetch --depth=1 origin master
+          git fetch --depth=2 origin master
           git fetch --depth=2 origin "$BASE_SHA"
 
           # No release in progress - nothing to enforce.
@@ -175,9 +175,9 @@ jobs:
             exit 0
           fi
 
-          # Find the open finalizing PR by its predictable title. master's
+          # Find the open finalizing PR by its predictable title. master's parent commits
           # sdk/.version holds the version being released while the marker is set.
-          VERSION=$(git show origin/master:sdk/.version 2>/dev/null | tr -d '[:space:]')
+          VERSION=$(git show origin/master~:sdk/.version 2>/dev/null | tr -d '[:space:]')
           FINALIZE_URL=""
           if [ -n "$VERSION" ]; then
             FINALIZE_URL=$(gh pr list --repo "$REPO" --state open \

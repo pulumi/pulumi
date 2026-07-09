@@ -177,7 +177,7 @@ hook "foo" {
 	command = ["test"]
 }
 
-resource "example" "aws:ec2/vpc:Vpc" {
+resource "example" "infra:index:Vpc" {
   options {
 	hooks = {
 		beforeCreate = [foo]
@@ -224,7 +224,7 @@ hook "foo" {
 	command = ["test"]
 }
 
-resource "example" "aws:ec2/vpc:Vpc" {
+resource "example" "infra:index:Vpc" {
   options {
 	hooks = {
 		badHook = [foo]
@@ -264,7 +264,7 @@ hook "foo" {
 	command = ["test"]
 }
 
-resource "example" "aws:ec2/vpc:Vpc" {
+resource "example" "infra:index:Vpc" {
   options {
 	hooks = [foo]
   }
@@ -297,7 +297,7 @@ hook "foo" {
 	command = ["test"]
 }
 
-resource "example" "aws:ec2/vpc:Vpc" {
+resource "example" "infra:index:Vpc" {
   options {
 	hooks = {
 		beforeCreate = foo

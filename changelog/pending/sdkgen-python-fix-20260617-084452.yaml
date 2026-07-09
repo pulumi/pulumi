@@ -1,6 +1,0 @@
-component: sdkgen/python
-kind: fix
-body: Cache package references per-deployment in generated SDKs
-time: 2026-06-17T08:44:52.728094+02:00
-custom:
-    PR: "22459"

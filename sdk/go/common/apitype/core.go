@@ -560,6 +560,8 @@ type ResourceV3 struct {
 	ResourceHooks map[resource.HookType][]string `json:"resourceHooks,omitempty" yaml:"resourceHooks,omitempty"`
 	// ExtensionRef is a pointer into the extensions map if any.
 	ExtensionRef ExtensionRef `json:"extensionRef,omitempty" yaml:"extensionRef,omitempty"`
+	// SnippetID is the UUID of the snippet that most recently registered this resource, if any.
+	SnippetID string `json:"snippetID,omitempty" yaml:"snippetID,omitempty"`
 }
 
 // StackFrameV1 captures information about a stack frame.

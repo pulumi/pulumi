@@ -15,9 +15,9 @@
 import { randomInt } from "crypto";
 import execa from "execa";
 import * as fs from "fs/promises";
+import * as os from "os";
 import * as path from "path";
 import * as process from "process";
-import * as tmp from "tmp";
 import { pack } from "./pack";
 
 // Write a package.json that installs the local pulumi package and ensures we
@@ -37,6 +37,7 @@ async function writePackageJSON(
             "@types/mocha": "^10.0.0",
             "@types/node": nodeTypesVersion,
             "@types/semver": "^7.5.6",
+            execa: "^5.1.0",
             mocha: "^11.0.0",
             "mocha-suppress-logs": "^0.5.1",
             mockpackage: "file:mockpackage-src",
@@ -46,6 +47,11 @@ async function writePackageJSON(
         },
         overrides: {
             typescript: typescriptVersion,
+        },
+        pnpm: {
+            overrides: {
+                typescript: typescriptVersion,
+            },
         },
     };
 
@@ -70,27 +76,58 @@ async function copyDir(src: string, dest: string) {
     }
 }
 
-async function run(typescriptVersion: string, nodeTypesVersion: string) {
-    const tmpDir = tmp.dirSync({ prefix: "closure-test-", unsafeCleanup: true });
+// The package managers we run the closure tests against. npm and pnpm lay out
+// node_modules differently (pnpm uses a symlinked virtual store under
+// node_modules/.pnpm), so we exercise both to ensure function serialization
+// resolves module names correctly regardless of the on-disk layout.
+type PackageManager = "npm" | "pnpm";
+
+async function install(packageManager: PackageManager, dir: string, pnpmVersion: string) {
+    if (packageManager === "pnpm") {
+        // Force the isolated node-linker so we actually exercise the
+        // node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg> layout, even if
+        // the environment defaults to a hoisted layout.
+        await fs.writeFile(path.join(dir, ".npmrc"), "node-linker=isolated\n");
+        // protobufjs (a transitive dependency of @pulumi/pulumi) has an install script. pnpm 11 turns unapproved
+        // install scripts into a hard error (ERR_PNPM_IGNORED_BUILDS), so opt out of running its optional build.
+        // pnpm 10 ignores this key.
+        await fs.writeFile(path.join(dir, "pnpm-workspace.yaml"), "allowBuilds:\n  protobufjs: false\n");
+        await execa("corepack", ["use", `pnpm@${pnpmVersion}`], {
+            cwd: dir,
+            env: { COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" },
+        });
+    } else {
+        await execa("npm", ["install", "--install-links"], { cwd: dir });
+    }
+}
+
+async function run(
+    packageManager: PackageManager,
+    typescriptVersion: string,
+    nodeTypesVersion: string,
+    pnpmVersion = "^10.0.0",
+) {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "closure-test-"));
     const sdkRoot = path.join(__dirname, "..", "..", "..");
     const sdkRootBin = path.join(sdkRoot, "bin");
     // Add a random suffix to the package name to avoid any issues with npm caching the tgz.
     const packageName = `pulumi-${randomInt(10000, 99999)}.tgz`;
-    const pulumiPackagePath = path.join(tmpDir.name, packageName);
+    const pulumiPackagePath = path.join(tmpDir, packageName);
     await pack(sdkRootBin, pulumiPackagePath);
-    await writePackageJSON(tmpDir.name, pulumiPackagePath, typescriptVersion, nodeTypesVersion);
-    await copyDir(path.join(sdkRoot, "tests", "runtime", "testdata", "closure-tests"), tmpDir.name);
+    await writePackageJSON(tmpDir, pulumiPackagePath, typescriptVersion, nodeTypesVersion);
+    await copyDir(path.join(sdkRoot, "tests", "runtime", "testdata", "closure-tests"), tmpDir);
 
-    await execa("npm", ["install", "--install-links"], { cwd: tmpDir.name });
+    await install(packageManager, tmpDir, pnpmVersion);
 
-    await execa("npx", ["--no-install", "tsc"], { cwd: tmpDir.name });
+    await execa("npx", ["--no-install", "tsc"], { cwd: tmpDir });
 
     await execa("npx", ["--no-install", "mocha", "--timeout", "30000", "test.js"], {
-        cwd: tmpDir.name,
+        cwd: tmpDir,
         stdio: "inherit",
+        env: { CLOSURE_TEST_PACKAGE_MANAGER: packageManager, COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" },
     });
 
-    tmpDir.removeCallback();
+    await fs.rm(tmpDir, { recursive: true, force: true });
 }
 
 async function main() {
@@ -101,8 +138,14 @@ async function main() {
         ["<5.2.0", "ts5.1"], // Awaiter changed slightly in 5.2.0 https://github.com/microsoft/TypeScript/pull/56296
         ["^5.2.0", "latest"], // Latest 5.x.x
     ]) {
-        await run(ts, typesNode);
+        await run("npm", ts, typesNode);
     }
+
+    // Also run the suite under pnpm for the default TypeScript version. The module-resolution logic that pnpm exercises
+    // is independent of the TypeScript version, so a single run per pnpm major is enough to guard against regressions
+    // in pnpm's symlinked node_modules layout.
+    await run("pnpm", "~3.8.3", "ts3.8", "^10.0.0");
+    await run("pnpm", "~3.8.3", "ts3.8", "^11.0.0");
 }
 
 main().catch((error) => {

@@ -118,6 +118,10 @@
                 "importID": {
                     "description": "The import input used for imported resources.",
                     "type": "string"
+                },
+                "snippetID": {
+                    "description": "The UUID of the snippet that most recently registered this resource, if any.",
+                    "type": "string"
                 }
             },
             "additionalProperties": false,

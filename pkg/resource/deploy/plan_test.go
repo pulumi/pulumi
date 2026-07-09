@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -240,7 +241,7 @@ func TestResourcePlan(t *testing.T) {
 			err := rp.checkGoal(
 				resource.PropertyMap{},
 				resource.PropertyMap{},
-				&resource.Goal{})
+				&pkgresource.Goal{})
 			require.NoError(t, err)
 		})
 		t.Run("violations", func(t *testing.T) {
@@ -254,7 +255,7 @@ func TestResourcePlan(t *testing.T) {
 				err := rp.checkGoal(
 					resource.PropertyMap{},
 					resource.PropertyMap{},
-					&resource.Goal{
+					&pkgresource.Goal{
 						Custom: false,
 					})
 				assert.ErrorContains(t, err, "resource kind changed (expected custom)")
@@ -271,7 +272,7 @@ func TestResourcePlan(t *testing.T) {
 					err := rp.checkGoal(
 						resource.PropertyMap{},
 						resource.PropertyMap{},
-						&resource.Goal{
+						&pkgresource.Goal{
 							Provider: "urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2::provider-foo",
 						})
 					assert.ErrorContains(t, err, "failed to parse provider reference")
@@ -286,7 +287,7 @@ func TestResourcePlan(t *testing.T) {
 					err := rp.checkGoal(
 						resource.PropertyMap{},
 						resource.PropertyMap{},
-						&resource.Goal{
+						&pkgresource.Goal{
 							Provider: "bad-provider",
 						})
 					assert.ErrorContains(t, err, "failed to parse provider reference")
@@ -302,7 +303,7 @@ func TestResourcePlan(t *testing.T) {
 				err := rp.checkGoal(
 					resource.PropertyMap{},
 					resource.PropertyMap{},
-					&resource.Goal{
+					&pkgresource.Goal{
 						Provider: "urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2::provider-foo",
 					})
 				assert.ErrorContains(t, err, "provider changed")
@@ -317,7 +318,7 @@ func TestResourcePlan(t *testing.T) {
 				err := rp.checkGoal(
 					resource.PropertyMap{},
 					resource.PropertyMap{},
-					&resource.Goal{
+					&pkgresource.Goal{
 						Parent: "bar",
 					})
 				assert.ErrorContains(t, err, "parent changed")
@@ -332,7 +333,7 @@ func TestResourcePlan(t *testing.T) {
 				err := rp.checkGoal(
 					resource.PropertyMap{},
 					resource.PropertyMap{},
-					&resource.Goal{
+					&pkgresource.Goal{
 						Protect: nil,
 					})
 				assert.ErrorContains(t, err, "protect changed")
@@ -351,7 +352,7 @@ func TestResourcePlan(t *testing.T) {
 					err := rp.checkGoal(
 						resource.PropertyMap{},
 						resource.PropertyMap{},
-						&resource.Goal{
+						&pkgresource.Goal{
 							DeleteBeforeReplace: &goalRef,
 						})
 					assert.ErrorContains(t, err, "deleteBeforeReplace changed")
@@ -367,7 +368,7 @@ func TestResourcePlan(t *testing.T) {
 					err := rp.checkGoal(
 						resource.PropertyMap{},
 						resource.PropertyMap{},
-						&resource.Goal{})
+						&pkgresource.Goal{})
 					assert.ErrorContains(t, err, "deleteBeforeReplace changed (expected false)")
 				})
 				t.Run("goal non-nil", func(t *testing.T) {
@@ -379,7 +380,7 @@ func TestResourcePlan(t *testing.T) {
 					err := rp.checkGoal(
 						resource.PropertyMap{},
 						resource.PropertyMap{},
-						&resource.Goal{
+						&pkgresource.Goal{
 							DeleteBeforeReplace: &goalRef,
 						})
 					assert.ErrorContains(t, err, "deleteBeforeReplace changed (expected no value)")
@@ -395,7 +396,7 @@ func TestResourcePlan(t *testing.T) {
 				err := rp.checkGoal(
 					resource.PropertyMap{},
 					resource.PropertyMap{},
-					&resource.Goal{
+					&pkgresource.Goal{
 						ID: "bar",
 					})
 				assert.ErrorContains(t, err, "importID changed")
@@ -413,7 +414,7 @@ func TestResourcePlan(t *testing.T) {
 					err := rp.checkGoal(
 						resource.PropertyMap{},
 						resource.PropertyMap{},
-						&resource.Goal{
+						&pkgresource.Goal{
 							CustomTimeouts: resource.CustomTimeouts{
 								Create: 5,
 							},
@@ -432,7 +433,7 @@ func TestResourcePlan(t *testing.T) {
 					err := rp.checkGoal(
 						resource.PropertyMap{},
 						resource.PropertyMap{},
-						&resource.Goal{
+						&pkgresource.Goal{
 							CustomTimeouts: resource.CustomTimeouts{
 								Update: 5,
 							},
@@ -451,7 +452,7 @@ func TestResourcePlan(t *testing.T) {
 					err := rp.checkGoal(
 						resource.PropertyMap{},
 						resource.PropertyMap{},
-						&resource.Goal{
+						&pkgresource.Goal{
 							CustomTimeouts: resource.CustomTimeouts{
 								Delete: 5,
 							},
@@ -471,7 +472,7 @@ func TestResourcePlan(t *testing.T) {
 				err := rp.checkGoal(
 					resource.PropertyMap{},
 					resource.PropertyMap{},
-					&resource.Goal{
+					&pkgresource.Goal{
 						IgnoreChanges: []string{
 							"bar",
 						},
@@ -490,7 +491,7 @@ func TestResourcePlan(t *testing.T) {
 				err := rp.checkGoal(
 					resource.PropertyMap{},
 					resource.PropertyMap{},
-					&resource.Goal{
+					&pkgresource.Goal{
 						AdditionalSecretOutputs: []resource.PropertyKey{
 							"bar",
 						},
@@ -509,7 +510,7 @@ func TestResourcePlan(t *testing.T) {
 				err := rp.checkGoal(
 					resource.PropertyMap{},
 					resource.PropertyMap{},
-					&resource.Goal{
+					&pkgresource.Goal{
 						Dependencies: []resource.URN{
 							"bar",
 						},
@@ -528,7 +529,7 @@ func TestResourcePlan(t *testing.T) {
 				err := rp.checkGoal(
 					resource.PropertyMap{},
 					resource.PropertyMap{},
-					&resource.Goal{
+					&pkgresource.Goal{
 						Aliases: []resource.Alias{
 							{Name: "bar"},
 						},

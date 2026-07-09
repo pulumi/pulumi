@@ -17,9 +17,11 @@ package deploy
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -151,14 +153,15 @@ func TestTaintedResourceDiff(t *testing.T) {
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
+		SnippetID:               "",
 	}.Make()
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
-		goal: resource.NewGoal{
+		goal: pkgresource.NewGoal{
 			Type:                    urn.Type(),
 			Name:                    urn.Name(),
 			Custom:                  true,
-			Properties:              inputs,
+			Properties:              resource.FromResourcePropertyMap(inputs),
 			Parent:                  "",
 			Protect:                 nil,
 			Dependencies:            nil,
@@ -172,7 +175,7 @@ func TestTaintedResourceDiff(t *testing.T) {
 			ID:                      "",
 			CustomTimeouts:          nil,
 			ReplaceOnChanges:        nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.Value{},
 			RetainOnDelete:          nil,
 			HideDiff:                nil,
 			DeletedWith:             "",
@@ -180,6 +183,7 @@ func TestTaintedResourceDiff(t *testing.T) {
 			SourcePosition:          "",
 			StackTrace:              nil,
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make(),
 		done: done,
 	}
@@ -385,14 +389,15 @@ func TestDiffWithTaintedResource(t *testing.T) {
 				RefreshBeforeUpdate:     false,
 				ViewOf:                  "",
 				ResourceHooks:           nil,
+				SnippetID:               "",
 			}.Make()
 			done := make(chan *RegisterResult)
 			event := &registerResourceEvent{
-				goal: resource.NewGoal{
+				goal: pkgresource.NewGoal{
 					Type:                    urn.Type(),
 					Name:                    urn.Name(),
 					Custom:                  true,
-					Properties:              inputs,
+					Properties:              resource.FromResourcePropertyMap(inputs),
 					Parent:                  "",
 					Protect:                 nil,
 					Dependencies:            nil,
@@ -407,13 +412,14 @@ func TestDiffWithTaintedResource(t *testing.T) {
 					CustomTimeouts:          nil,
 					HideDiff:                nil,
 					ReplaceOnChanges:        nil,
-					ReplacementTrigger:      resource.NewNullProperty(),
+					ReplacementTrigger:      property.Value{},
 					RetainOnDelete:          nil,
 					DeletedWith:             "",
 					ReplaceWith:             nil,
 					SourcePosition:          "",
 					StackTrace:              nil,
 					ResourceHooks:           nil,
+					SnippetID:               "",
 				}.Make(),
 				done: done,
 			}

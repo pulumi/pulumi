@@ -335,6 +335,8 @@ export class RegisterResourceRequest extends jspb.Message {
 
     getEnvvarmappingsMap(): jspb.Map<string, string>;
     clearEnvvarmappingsMap(): void;
+    getSnippetid(): string;
+    setSnippetid(value: string): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -392,6 +394,7 @@ export namespace RegisterResourceRequest {
         hidediffsList: Array<string>,
 
         envvarmappingsMap: Array<[string, string]>,
+        snippetid: string,
     }
 
 

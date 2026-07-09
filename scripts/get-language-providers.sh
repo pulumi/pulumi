@@ -53,9 +53,9 @@ download_release() {
 # live in pkg/util/plugin.go (knownLanguageRuntimes) and the CLI fetches it on demand.
 LANGUAGES=(
   # renovate: datasource=github-releases depName=pulumi/pulumi-dotnet
-  "dotnet v3.107.2"
+  "dotnet v3.107.3"
   # renovate: datasource=github-releases depName=pulumi/pulumi-java
-  "java v1.31.0"
+  "java v1.32.0"
   # renovate: datasource=github-releases depName=pulumi/pulumi-yaml
   "yaml v1.37.0"
 )

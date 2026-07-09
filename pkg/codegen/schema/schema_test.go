@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"math"
 	"net/url"
 	"os"
@@ -68,13 +69,19 @@ func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	return pkgSpec
 }
 
+// readSchema decodes an embedded provider schema (the canonical "<name>-<version>.json").
+func readSchema(t *testing.T, name, version string) (pkgSpec PackageSpec) {
+	require.NoError(t, json.Unmarshal(utils.ReadSchema(t, name, version), &pkgSpec))
+	return pkgSpec
+}
+
 func TestRoundtripRemoteTypeRef(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/13000
 	t.Parallel()
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("remoteref-1.0.0.json")
+	pkgSpec := readSchema(t, "remoteref", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -98,7 +105,7 @@ func TestRoundtripLocalTypeRef(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("localref-1.0.0.json")
+	pkgSpec := readSchema(t, "localref", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -135,7 +142,7 @@ func TestRoundtripEnum(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("enum-1.0.0.json")
+	pkgSpec := readSchema(t, "enum", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -247,7 +254,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("plain-properties-1.0.0.json")
+	pkgSpec := readSchema(t, "plain-properties", "1.0.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -274,7 +281,7 @@ func TestImportSpec(t *testing.T) {
 	t.Parallel()
 
 	// Read in, decode, and import the schema.
-	pkgSpec := readSchemaFile("random-4.11.2.json")
+	pkgSpec := readSchema(t, "random", "4.11.2")
 
 	pkg, err := ImportSpec(pkgSpec, nil, NewNullLoader(), ValidationOptions{
 		AllowDanglingReferences: true,
@@ -2868,7 +2875,9 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("aliases-1.0.0.json")
+	schemaBytes := utils.ReadSchema(t, "aliases", "1.0.0")
+	var pkgSpec PackageSpec
+	require.NoError(t, json.Unmarshal(schemaBytes, &pkgSpec))
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -2881,9 +2890,6 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 	jsonData, err := json.Marshal(&newSpec)
 	require.NoError(t, err)
 
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.json"))
-	require.NoError(t, err)
-
 	assert.JSONEq(t, string(schemaBytes), string(jsonData))
 }
 
@@ -2892,7 +2898,10 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("aliases-1.0.0.yaml")
+	schemaBytes, err := fs.ReadFile(utils.SchemaFS(), "aliases-1.0.0.yaml")
+	require.NoError(t, err)
+	var pkgSpec PackageSpec
+	require.NoError(t, yaml.Unmarshal(schemaBytes, &pkgSpec))
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -2905,9 +2914,6 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 	yamlData, err := yaml.Marshal(&newSpec)
 	require.NoError(t, err)
 
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.yaml"))
-	require.NoError(t, err)
-
 	assert.YAMLEq(t, string(schemaBytes), string(yamlData))
 }
 
@@ -2916,7 +2922,7 @@ func TestDanglingReferences(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("dangling-reference-bad-0.1.0.json")
+	pkgSpec := readSchema(t, "dangling-reference-bad", "0.1.0")
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
 
 	require.Len(t, diags, 1)
@@ -2932,7 +2938,7 @@ func TestNoDanglingReferences(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewContext(testdataPath))
-	pkgSpec := readSchemaFile("dangling-reference-good-0.1.0.json")
+	pkgSpec := readSchema(t, "dangling-reference-good", "0.1.0")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
@@ -3052,6 +3058,59 @@ func TestFunctionToken(t *testing.T) {
 	}
 }
 
+func TestExtensionTokenNamespace(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		token        string
+		wantRejected bool
+	}{
+		{
+			name:  "base-namespaced token is allowed",
+			token: "extbase:index:Greeting",
+		},
+		{
+			name:         "extension-own-namespace token is rejected",
+			token:        "myext:index:Greeting",
+			wantRejected: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			spec := PackageSpec{
+				Name:    "myext",
+				Version: "2.0.0",
+				Resources: map[string]ResourceSpec{
+					tt.token: {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				},
+				ExtensionParameterization: &ExtensionParameterizationSpec{
+					BaseProvider: BaseProviderRefSpec{Name: "extbase", Version: "45.0.0"},
+					Parameter:    []byte("hello"),
+				},
+			}
+
+			_, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{
+				AllowDanglingReferences: true,
+			})
+			require.NoError(t, err)
+
+			want := fmt.Sprintf("invalid token '%s' (must have package name 'extbase')", tt.token)
+			rejected := false
+			for _, d := range diags {
+				if d.Severity == hcl.DiagError && strings.Contains(d.Summary, want) {
+					rejected = true
+				}
+			}
+			if tt.wantRejected {
+				assert.True(t, rejected, "expected rejection diagnostic %q, got %v", want, diags)
+			} else {
+				assert.False(t, diags.HasErrors(), "base-namespaced token should bind without errors, got %v", diags)
+			}
+		})
+	}
+}
+
 func TestProviderRefWarning(t *testing.T) {
 	t.Parallel()
 
@@ -3118,7 +3177,7 @@ func TestBindExtensionParameterized(t *testing.T) {
   "name": "extensionref",
   "version": "1.0.0",
   "resources": {
-    "extensionref:index:Root": {
+    "test-base:index:Root": {
       "type": "object",
       "properties": { "data": { "type": "string" } }
     }

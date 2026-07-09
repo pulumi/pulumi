@@ -13,7 +13,9 @@
 // limitations under the License.
 
 import { randomUUID } from "crypto";
-import * as tmp from "tmp";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 import { LocalWorkspaceOptions, ProjectRuntime, Stack } from "../../automation";
 
@@ -93,12 +95,9 @@ function withTemporaryFileBackend(
     description?: string,
     runtime?: string,
 ): LocalWorkspaceOptions {
-    const tmpDir = tmp.dirSync({
-        prefix: "nodejs-tests-automation-",
-        unsafeCleanup: true,
-    });
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nodejs-tests-automation-"));
 
-    const backend = { url: `file://${tmpDir.name}` };
+    const backend = { url: `file://${tmpDir}` };
 
     if (name === undefined) {
         name = "node_test";
@@ -109,7 +108,7 @@ function withTemporaryFileBackend(
 
     return withTestConfigPassphrase({
         ...opts,
-        pulumiHome: tmpDir.name,
+        pulumiHome: tmpDir,
         projectSettings: {
             // We are obliged to provide a name and runtime if we provide project
             // settings, so we do so, but we spread in the provided project settings

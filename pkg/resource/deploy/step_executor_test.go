@@ -18,6 +18,7 @@ import (
 	"errors"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -230,7 +231,7 @@ func TestStepExecutor(t *testing.T) {
 							return expectedErr
 						},
 					},
-					goals: &gsync.Map[resource.URN, *resource.Goal]{},
+					goals: &gsync.Map[resource.URN, *pkgresource.Goal]{},
 					news:  &gsync.Map[resource.URN, *resource.State]{},
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},

@@ -22,9 +22,11 @@ import (
 	"io"
 	"maps"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/gofrs/uuid"
@@ -53,6 +55,34 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
+
+func startSpinner(prefix string) func() {
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(
+		prefix, nil, cmdutil.GetGlobalColorization(), 8 /*timesPerSecond*/, !cmdutil.Interactive())
+	spinner.Tick()
+	stop := make(chan struct{})
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		for {
+			select {
+			case <-ticker.C:
+				spinner.Tick()
+			case <-stop:
+				spinner.Reset()
+				return
+			}
+		}
+	}()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			ticker.Stop()
+			close(stop)
+			<-stopped
+		})
+	}
+}
 
 type functionEvalContext struct {
 	WorkingDir    string
@@ -508,25 +538,26 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		var flagFunc func(string, string)
 
 		typ := unwrapType(input.Type)
+		comment := flagUsage(input.Comment)
 
 		if typ == schema.StringType {
 			flagFunc = func(name, extraHelp string) {
-				flags.String(name, "", input.Comment+extraHelp)
+				flags.String(name, "", comment+extraHelp)
 			}
 		}
 		if typ == schema.BoolType {
 			flagFunc = func(name, extraHelp string) {
-				flags.Bool(name, false, input.Comment+extraHelp)
+				flags.Bool(name, false, comment+extraHelp)
 			}
 		}
 		if typ == schema.IntType {
 			flagFunc = func(name, extraHelp string) {
-				flags.Int(name, 0, input.Comment+extraHelp)
+				flags.Int(name, 0, comment+extraHelp)
 			}
 		}
 		if typ == schema.NumberType {
 			flagFunc = func(name, extraHelp string) {
-				flags.Float64(name, 0, input.Comment+extraHelp)
+				flags.Float64(name, 0, comment+extraHelp)
 			}
 		}
 
@@ -542,6 +573,19 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 			}
 		}
 	}
+}
+
+var langChoiceSpanRegexp = regexp.MustCompile(`(?s)<span\b[^>]*>(.*?)</span>`)
+
+var envVarChoiceRegexp = regexp.MustCompile("(?s)(`[A-Z][A-Z0-9_]*`) or <span\\b[^>]*>.*?</span> environment variables")
+
+func cleanComment(comment string) string {
+	comment = envVarChoiceRegexp.ReplaceAllString(comment, "$1 environment variable")
+	return langChoiceSpanRegexp.ReplaceAllString(comment, "$1")
+}
+
+func flagUsage(comment string) string {
+	return strings.ReplaceAll(cleanComment(comment), "`", "")
 }
 
 func inputFlagName(name string) string {
@@ -589,10 +633,14 @@ func unwrapType(typ schema.Type) schema.Type {
 	return typ
 }
 
+var doDisplayStack = tokens.MustParseStackName("dev")
+
+const doDisplayProject tokens.PackageName = "default"
+
 func resourceURN(res *schema.Resource) resource.URN {
 	_, _, name, diags := pcl.DecomposeToken(res.Token, hcl.Range{})
 	contract.Assertf(!diags.HasErrors(), "token should decompose")
-	return resource.NewURN("dev", "default", "", tokens.Type(res.Token), name)
+	return resource.NewURN(doDisplayStack.Q(), doDisplayProject, "", tokens.Type(res.Token), name)
 }
 
 func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Context) error {
@@ -619,8 +667,8 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 
 	config, err := evaluateResourceFile(
 		ctx, pc.providerFile, "provider", pc.format,
-		pc.spec.Provider, ec, pc.converter, pc.loaderTarget, pc.packageDescriptor,
-		collectInputFlags(cmd, pc.spec.Name, pc.spec.Provider.InputProperties))
+		pc.providerDef, ec, pc.converter, pc.loaderTarget, pc.packageDescriptor,
+		collectInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties))
 	if err != nil {
 		return fmt.Errorf("parse provider file: %w", err)
 	}
@@ -633,7 +681,7 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 		config = merged
 	}
 
-	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+pc.spec.Name), "")
+	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+pc.spec.Name()), "")
 	name := urn.Name()
 	typ := urn.Type()
 	uuid, err := uuid.NewV4()
@@ -693,7 +741,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 		// The provider package must also match: AWS provider inputs handed to an Azure
 		// Configure call would either fail with a confusing schema mismatch or — worse — silently
 		// authenticate against the wrong cloud. Reject early with a clear message.
-		expectedType := tokens.Type("pulumi:providers:" + pc.spec.Name)
+		expectedType := tokens.Type("pulumi:providers:" + pc.spec.Name())
 		if res.Type != expectedType {
 			return nil, fmt.Errorf(
 				"resource %s is a provider for a different package (type=%s); --provider must name a %s resource",
@@ -718,12 +766,13 @@ func (pc *packageCommand) requireYesIfNonInteractive(yes bool) error {
 	return nil
 }
 
-// confirm prints summary and asks the user to type confirmName to proceed. The summary and prompt go to stderr so
-// that stdout stays a clean JSON channel for piping. Returns nil to proceed; a bail error (suppressed by the
-// outer CLI) when the user declines. requireYesIfNonInteractive should have been called earlier; if we somehow
-// reach here non-interactively without --yes we treat it as a decline. Uses ui.ConfirmPrompt for the prompt
-// itself so the look and feel matches stack rm and friends.
-func (pc *packageCommand) confirm(cmd *cobra.Command, summary, confirmName string, yes bool) error {
+// confirm prints summary and asks the user whether to proceed, using the same yes/no chooser as `pulumi up`
+// and `pulumi destroy`. operation names the operation in the prompt (e.g. "create"). The summary and prompt
+// go to stderr so that stdout stays a clean JSON channel for piping. Returns nil to proceed; a bail error
+// (suppressed by the outer CLI) when the user declines; a real error when the prompt is cancelled (e.g.
+// Ctrl-C), matching up/destroy. requireYesIfNonInteractive should have been called
+// earlier; if we somehow reach here non-interactively without --yes we treat it as a decline.
+func (pc *packageCommand) confirm(cmd *cobra.Command, summary, operation string, yes bool) error {
 	stderr := cmd.ErrOrStderr()
 	fmt.Fprint(stderr, summary)
 	if !strings.HasSuffix(summary, "\n") {
@@ -735,12 +784,16 @@ func (pc *packageCommand) confirm(cmd *cobra.Command, summary, confirmName strin
 	if !cmdutil.Interactive() {
 		return backenderr.ErrNonInteractiveRequiresYes
 	}
-	opts := display.Options{
-		Color:  cmdutil.GetGlobalColorization(),
-		Stdin:  cmd.InOrStdin(),
-		Stdout: stderr,
+	response, err := ui.PromptUserErr(
+		fmt.Sprintf("Do you want to perform this %s?", operation),
+		[]string{"yes", "no"},
+		"no",
+		cmdutil.GetGlobalColorization(),
+		ui.SurveyStdio(cmd.InOrStdin(), stderr)...)
+	if err != nil {
+		return fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", operation, err)
 	}
-	if !ui.ConfirmPrompt("", confirmName, opts) {
+	if response != "yes" {
 		return result.FprintBailf(stderr, "confirmation declined")
 	}
 	return nil

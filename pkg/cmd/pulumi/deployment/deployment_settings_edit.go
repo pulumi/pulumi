@@ -44,9 +44,6 @@ type deploymentSettingsEditClient interface {
 	GetStackDeploymentSettings(
 		ctx context.Context, stack client.StackIdentifier,
 	) (*apitype.DeploymentSettings, error)
-	EncryptStackDeploymentSettingsSecret(
-		ctx context.Context, stack client.StackIdentifier, secret string,
-	) (*apitype.SecretValue, error)
 }
 
 type deploymentSettingsEditClientFactory func(
@@ -334,10 +331,8 @@ func runDeploymentSettingsEdit(
 		return err
 	}
 
-	secretValues, err := encryptSecretEnvVars(ctx, c, stackID, args.secretEnvVars)
-	if err != nil {
-		return fmt.Errorf("encrypting secret environment variables: %w", err)
-	}
+	// Secret env vars are sent in plaintext-secret wire form; the server encrypts them on PATCH.
+	secretValues := buildSecretEnvVars(args.secretEnvVars)
 
 	patch := buildEditFlagPatch(args, secretValues)
 	raw, err := marshalAndValidatePatch(patch)

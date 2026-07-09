@@ -1,4 +1,0 @@
-component: cli
-kind: fix
-body: Don't ignore diffs in `Output` values
-time: 2026-06-26T13:00:05.884538+01:00

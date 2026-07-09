@@ -31,6 +31,7 @@ const (
 	JournalEntryKindSecretsManager        JournalEntryKind = 6
 	JournalEntryKindRebuiltBaseState      JournalEntryKind = 7
 	JournalEntryKindExtensionParameterize JournalEntryKind = 8
+	JournalEntryKindSnippets              JournalEntryKind = 9
 )
 
 func (k JournalEntryKind) String() string {
@@ -53,6 +54,8 @@ func (k JournalEntryKind) String() string {
 		return "rebuilt-base-state"
 	case JournalEntryKindExtensionParameterize:
 		return "extension-parameterize"
+	case JournalEntryKindSnippets:
+		return "snippets"
 	default:
 		return "invalid"
 	}
@@ -87,6 +90,8 @@ type JournalEntry struct {
 	IsRefresh bool `json:"isRefresh,omitempty"`
 	// The secrets manager associated with this journal entry, if any.
 	SecretsProvider *SecretsProvidersV1 `json:"secretsProvider,omitempty"`
+	// The complete snippet list associated with this journal entry, if any.
+	Snippets []SnippetV1 `json:"snippets,omitempty"`
 
 	// NewSnapshot is the new snapshot that this journal entry is associated with.
 	NewSnapshot *DeploymentV3 `json:"newSnapshot,omitempty"`
@@ -134,6 +139,9 @@ func (e JournalEntry) String() string {
 	}
 	if e.NewSnapshot != nil {
 		fmt.Fprintf(&sb, ", +snap")
+	}
+	if e.Snippets != nil {
+		fmt.Fprintf(&sb, ", snippets(%v)", len(e.Snippets))
 	}
 
 	return sb.String()

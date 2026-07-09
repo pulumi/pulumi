@@ -108,6 +108,16 @@ func typeCheckNodeJS(t *testing.T, path string, _ codegen.StringSet, linkLocal b
 
 func TypeCheckNodeJSPackage(t *testing.T, pwd string, linkLocal bool) {
 	if linkLocal {
+		pkgPath := filepath.Join(pwd, "package.json")
+		original, err := os.ReadFile(pkgPath)
+		existed := err == nil
+		t.Cleanup(func() {
+			if existed {
+				require.NoError(t, os.WriteFile(pkgPath, original, 0o600))
+			} else {
+				require.NoError(t, os.RemoveAll(pkgPath))
+			}
+		})
 		ptesting.ConfigureNodejsCoreSDK(t, pwd)
 	}
 	RunCommandWithRetries(t, "npm_install", pwd, 3, "npm", "install")
@@ -128,8 +138,6 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 			result[pkgName] = "^" + pkgVersion
 		}
 		switch d {
-		case "aws":
-			set(AwsSchema)
 		case "random":
 			set(RandomSchema)
 		default:

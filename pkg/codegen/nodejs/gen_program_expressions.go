@@ -275,6 +275,27 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	return pkg, module, member, diagnostics
 }
 
+// functionPackage resolves the package that defines the function token. For
+// extensions the token lives in the base namespace but the owner is the
+// extension; fall back to the token prefix.
+func (g *generator) functionPackage(tokenArg model.Expression) string {
+	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+	pkg, _, _, _ := pcl.DecomposeToken(token, tokenArg.SyntaxNode().Range())
+	for _, ref := range g.program.PackageReferences() {
+		if ref.Name() == pkg {
+			return pkg
+		}
+	}
+	for _, ref := range g.program.PackageReferences() {
+		if def, err := ref.Definition(); err == nil {
+			if _, ok := def.GetFunction(token); ok {
+				return ref.Name()
+			}
+		}
+	}
+	return pkg
+}
+
 func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {
 	var from, to model.Expression
 	switch len(call.Args) {
@@ -350,9 +371,9 @@ func (g *generator) visitFunctionImports(
 		return
 	}
 
-	pkg, _, _, diags := functionName(x.Args[0])
+	_, _, _, diags := functionName(x.Args[0])
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
-	visitPackageImport(pkg)
+	visitPackageImport(g.functionPackage(x.Args[0]))
 }
 
 func enumName(enum *model.EnumType) (string, error) {
@@ -575,8 +596,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fprint(w, ")")
 		}
 	case pcl.Invoke:
-		pkg, module, fn, diags := functionName(expr.Args[0])
+		_, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
+		pkg := g.functionPackage(expr.Args[0])
 		if module != "" {
 			module = "." + module
 		}
@@ -997,6 +1019,17 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
 		rootName = "__item"
+	}
+
+	// Inside a numeric `range` loop, `range` is a plain number, so `range.value`
+	// and `range.key` both render as `range`.
+	if g.rangeValueIsScalar && expr.RootName == "range" {
+		if rel := expr.Traversal.SimpleSplit().Rel; len(rel) == 1 {
+			if attr, ok := rel[0].(hcl.TraverseAttr); ok && (attr.Name == "value" || attr.Name == "key") {
+				g.Fgen(w, "range")
+				return
+			}
+		}
 	}
 
 	g.Fgen(w, rootName)

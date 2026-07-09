@@ -1,2 +1,5 @@
 * @pulumi/platform
+/changelog/pending/ # We don't need a code-owner for changelog changes
 /pkg/cmd/pulumi/neo/ @pulumi/ai
+/pkg/cmd/esc/ @pulumi/iac-cloud
+/sdk/go/common/esc/ @pulumi/iac-cloud

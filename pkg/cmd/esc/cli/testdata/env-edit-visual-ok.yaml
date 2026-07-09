@@ -1,0 +1,35 @@
+run: |
+  esc env edit default/test
+  esc env get default/test
+process:
+  environ:
+    VISUAL: my-editor
+  commands:
+    my-editor: |
+      echo -e "values:\n  foo: baz\n" >$1
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env edit default/test
+Environment updated. (revision 3)
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "baz"
+}
+```
+# Definition
+```yaml
+values:
+  foo: baz
+
+```
+
+
+---
+> esc env edit default/test
+> esc env get default/test

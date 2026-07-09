@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/pulumi",
-    "version": "3.249.0",
+    "version": "3.252.0",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
     "repository": {
@@ -22,19 +22,15 @@
         "@opentelemetry/sdk-trace-node": "^1.30",
         "@types/google-protobuf": "^3.15.5",
         "@types/semver": "^7.5.6",
-        "@types/tmp": "^0.2.6",
         "execa": "^5.1.0",
-        "fdir": "^6.5.0",
         "google-protobuf": "^3.21.4",
         "ini": "^2.0.0",
         "js-yaml": "^4.0.0",
         "minimist": "^1.2.6",
         "normalize-package-data": "^6.0.0",
-        "picomatch": "^4.0.0",
         "require-from-string": "^2.0.1",
         "semver": "^7.5.2",
         "source-map-support": "^0.5.6",
-        "tmp": "^0.2.4",
         "upath": "^1.1.0"
     },
     "devDependencies": {
@@ -45,9 +41,6 @@
         "@types/mocha": "10.0.10",
         "@types/node": "14.18.63",
         "@types/normalize-package-data": "2.4.4",
-        "@types/picomatch": "2.3.4",
-        "@types/sinon": "10.0.20",
-        "@types/split2": "2.1.6",
         "@typescript-eslint/eslint-plugin": "4.33.0",
         "@typescript-eslint/parser": "4.33.0",
         "corepack": "0.34.5",
@@ -56,7 +49,6 @@
         "eslint-plugin-import": "2.30.0",
         "mocha": "11.7.5",
         "nyc": "15.1.0",
-        "sinon": "14.0.2",
         "ts-node": "7.0.1",
         "tsx": "4.19.3",
         "typescript": "3.8.3"
@@ -77,7 +69,7 @@
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
     },
     "engines": {
-        "node": ">=20"
+        "node": ">=22"
     },
     "mocha": {
         "require": ["source-map-support/register"],

@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -374,7 +375,7 @@ func (r *assetsArchiveReader) Next() (string, *asset.Blob, error) {
 				return "", nil, err
 			default:
 				// The subarchive produced a valid blob. Return it.
-				return filepath.Join(r.archiveRoot, name), blob, nil
+				return path.Join(r.archiveRoot, name), blob, nil
 			}
 		}
 

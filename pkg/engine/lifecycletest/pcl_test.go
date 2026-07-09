@@ -1651,3 +1651,279 @@ options {
 	}
 	require.Len(t, created, 3, "range = 3 should have produced three Create calls")
 }
+
+func TestPclSnippetAddUpdateDeleteViaOption(t *testing.T) {
+	t.Parallel()
+
+	var created, updated, deleted []resource.URN
+	loaders := pclSnippetTestProvider(pclSnippetSchemaPropA, &created, &updated, &deleted)
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			SkipDisplayTests: true,
+			T:                t,
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
+		},
+	}
+
+	snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+	p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
+		snippetID: {
+			Name: "test-resource", Type: "pkgA:index:res",
+			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+			Code:       `propA = true`,
+		},
+	}
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "add")
+	require.NoError(t, err)
+	require.Len(t, snap.Snippets, 1)
+	require.Equal(t, snippetID.String(), snap.Snippets[0].UUID)
+	require.Equal(t, `propA = true`, snap.Snippets[0].Code)
+	require.Len(t, created, 1)
+	require.Empty(t, updated)
+	require.Empty(t, deleted)
+
+	p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
+		snippetID: {
+			Name: "test-resource", Type: "pkgA:index:res",
+			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+			Code:       `propA = false`,
+		},
+	}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "update")
+	require.NoError(t, err)
+	require.Len(t, snap.Snippets, 1)
+	require.Equal(t, snippetID.String(), snap.Snippets[0].UUID)
+	require.Equal(t, `propA = false`, snap.Snippets[0].Code)
+	require.Len(t, created, 1, "snippet update should not recreate the resource")
+	require.Len(t, updated, 1, "snippet update should update the resource")
+	require.Empty(t, deleted)
+
+	p.Options.Snippets = map[uuid.UUID]*resource.Snippet{snippetID: nil}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "delete")
+	require.NoError(t, err)
+	require.Empty(t, snap.Snippets)
+	require.Len(t, created, 1)
+	require.Len(t, updated, 1)
+	require.Len(t, deleted, 1, "snippet delete should delete the resource")
+}
+
+func TestPclSnippetOptionValidation(t *testing.T) {
+	t.Parallel()
+
+	loaders := pclSnippetTestProvider(pclSnippetSchemaPropA, nil, nil, nil)
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	newPlan := func(t *testing.T) *lt.TestPlan {
+		return &lt.TestPlan{
+			Options: lt.TestUpdateOptions{
+				SkipDisplayTests: true,
+				T:                t,
+				HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
+			},
+		}
+	}
+
+	t.Run("mismatched UUID", func(t *testing.T) {
+		t.Parallel()
+
+		p := newPlan(t)
+		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		otherID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
+			snippetID: {
+				UUID: otherID.String(),
+				Name: "test-resource", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       `propA = true`,
+			},
+		}
+
+		_, err := lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "mismatched")
+		require.ErrorContains(t, err, fmt.Sprintf("snippet %q has mismatched uuid %q", snippetID, otherID))
+	})
+
+	t.Run("delete missing", func(t *testing.T) {
+		t.Parallel()
+
+		p := newPlan(t)
+		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = map[uuid.UUID]*resource.Snippet{snippetID: nil}
+
+		_, err := lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "delete-missing")
+		require.ErrorContains(t, err, fmt.Sprintf("cannot delete snippet %q: no such snippet in snapshot", snippetID))
+	})
+}
+
+// newPclSnippetTestPlan returns an empty-snapshot TestPlan wired to the standard pkgA snippet
+// provider, plus the empty starter snapshot. The returned slices are appended to by the provider
+// on each Create/Update/Delete and may be inspected by the test.
+func newPclSnippetTestPlan(
+	t *testing.T, created, updated, deleted *[]resource.URN,
+) (*lt.TestPlan, *deploy.Snapshot) {
+	t.Helper()
+	loaders := pclSnippetTestProvider(pclSnippetSchemaPropA, created, updated, deleted)
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			SkipDisplayTests: true,
+			T:                t,
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
+		},
+	}
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	return p, snap
+}
+
+func pclSnippetForRes(uuid, name, code string) resource.Snippet {
+	return resource.Snippet{
+		UUID: uuid,
+		Name: name, Type: "pkgA:index:res",
+		Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+		Code:       code,
+	}
+}
+
+// TestPclSnippetIDRecorded checks that the UUID of the snippet that registered a resource is
+// recorded onto the resource's state.
+func TestPclSnippetIDRecorded(t *testing.T) {
+	t.Parallel()
+
+	p, snap := newPclSnippetTestPlan(t, nil, nil, nil)
+
+	snippetUUID := newPclSnippetUUID(t)
+	snap.Snippets = []resource.Snippet{pclSnippetForRes(snippetUUID, "test-resource", `propA = true`)}
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	var found *resource.State
+	for _, r := range snap.Resources {
+		if r.Type == "pkgA:index:res" {
+			found = r
+			break
+		}
+	}
+	require.NotNil(t, found, "snippet resource should be in the snapshot")
+	require.Equal(t, snippetUUID, found.SnippetID,
+		"resource state should record the UUID of the snippet that registered it")
+}
+
+// TestPclSnippetTargetCreates checks that --target-snippets restricts an update to only
+// resources registered by the listed snippets.
+func TestPclSnippetTargetCreates(t *testing.T) {
+	t.Parallel()
+
+	var created []resource.URN
+	p, snap := newPclSnippetTestPlan(t, &created, nil, nil)
+
+	s1UUID := newPclSnippetUUID(t)
+	s2UUID := newPclSnippetUUID(t)
+	snap.Snippets = []resource.Snippet{
+		pclSnippetForRes(s1UUID, "r1", `propA = true`),
+		pclSnippetForRes(s2UUID, "r2", `propA = false`),
+	}
+
+	// Target only the first snippet. Only r1 should be created.
+	targetedOpts := p.Options
+	targetedOpts.UpdateOptions = UpdateOptions{TargetSnippets: []string{s1UUID}}
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, created, 1, "only the targeted snippet's resource should be created")
+	require.Equal(t, "r1", created[0].Name())
+
+	// r2's snippet should not have produced a resource in this update.
+	for _, r := range snap.Resources {
+		require.NotEqual(t, "r2", r.URN.Name(), "untargeted snippet should not have created its resource")
+	}
+}
+
+// TestPclSnippetTargetDeletes checks that --target-snippets restricts the deletion pass to only
+// resources whose recorded SnippetID matches one of the targets.
+func TestPclSnippetTargetDeletes(t *testing.T) {
+	t.Parallel()
+
+	var deleted []resource.URN
+	p, snap := newPclSnippetTestPlan(t, nil, nil, &deleted)
+
+	s1UUID := newPclSnippetUUID(t)
+	s2UUID := newPclSnippetUUID(t)
+	snap.Snippets = []resource.Snippet{
+		pclSnippetForRes(s1UUID, "r1", `propA = true`),
+		pclSnippetForRes(s2UUID, "r2", `propA = false`),
+	}
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	// Drop both snippets, and target deletion of only s1. r1 should be deleted; r2 should stay.
+	snap.Snippets = nil
+	targetedOpts := p.Options
+	targetedOpts.UpdateOptions = UpdateOptions{TargetSnippets: []string{s1UUID}}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+
+	require.Len(t, deleted, 1, "only the targeted snippet's resource should be deleted")
+	require.Equal(t, "r1", deleted[0].Name())
+
+	remaining := map[string]bool{}
+	for _, r := range snap.Resources {
+		if r.Type == "pkgA:index:res" {
+			remaining[r.URN.Name()] = true
+		}
+	}
+	require.False(t, remaining["r1"], "r1 should be gone from the snapshot")
+	require.True(t, remaining["r2"], "r2 should still be in the snapshot")
+}
+
+// TestPclSnippetTargetDeletesWithExcludes checks that TargetSnippets takes precedence over an
+// Excludes set during delete generation, matching the precedence applied during update
+// generation in isIncludedInOperation.
+func TestPclSnippetTargetDeletesWithExcludes(t *testing.T) {
+	t.Parallel()
+
+	var deleted []resource.URN
+	p, snap := newPclSnippetTestPlan(t, nil, nil, &deleted)
+
+	s1UUID := newPclSnippetUUID(t)
+	s2UUID := newPclSnippetUUID(t)
+	snap.Snippets = []resource.Snippet{
+		pclSnippetForRes(s1UUID, "r1", `propA = true`),
+		pclSnippetForRes(s2UUID, "r2", `propA = false`),
+	}
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	// Drop both snippets. Target snippet s1 *and* pass a non-empty Excludes (anything). The
+	// targeted snippet should still be the only thing deleted; excludes must not widen the set.
+	snap.Snippets = nil
+	targetedOpts := p.Options
+	targetedOpts.UpdateOptions = UpdateOptions{
+		TargetSnippets: []string{s1UUID},
+		Excludes:       deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:index:res::nonexistent"}),
+	}
+	_, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+
+	require.Len(t, deleted, 1, "TargetSnippets should take precedence over Excludes during deletes")
+	require.Equal(t, "r1", deleted[0].Name())
+}

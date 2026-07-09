@@ -136,6 +136,20 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 			IsRemote:          resource.IsRemote,
 			IsComponent:       resource.IsComponent,
 		}
+		if p := resource.Parameterization; p != nil {
+			resources[i].Parameterization = &ResourceParameterization{
+				PluginName:    p.PluginName,
+				PluginVersion: p.PluginVersion,
+				Value:         p.Value,
+			}
+		}
+		if e := resource.Extension; e != nil {
+			resources[i].Extension = &ResourceExtension{
+				Name:    e.Name,
+				Version: e.Version,
+				Value:   e.Value,
+			}
+		}
 	}
 
 	// Translate the rpc diagnostics into hcl.Diagnostics.

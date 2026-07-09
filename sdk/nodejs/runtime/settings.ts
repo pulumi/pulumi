@@ -777,6 +777,8 @@ export interface RegisterPackageArgs {
     packageName: string;
     packageVersion: string;
     base64Parameter: string;
+    /** When true, register an extension parameterization rather than a replacement. */
+    extension?: boolean;
 }
 
 /**
@@ -793,6 +795,7 @@ export function registerPackage(args: RegisterPackageArgs): Promise<string> {
         args.packageName,
         args.packageVersion,
         args.base64Parameter,
+        String(args.extension ?? false),
     ].join("\0");
 
     const cache = getPackageRefs();
@@ -812,7 +815,11 @@ export function registerPackage(args: RegisterPackageArgs): Promise<string> {
     req.setName(args.baseProviderName);
     req.setVersion(args.baseProviderVersion);
     req.setDownloadUrl(args.baseProviderDownloadUrl);
-    req.setParameterization(params);
+    if (args.extension) {
+        req.setExtension$(params);
+    } else {
+        req.setParameterization(params);
+    }
 
     const mon = getMonitor();
     if (mon === undefined) {

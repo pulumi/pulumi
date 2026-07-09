@@ -1831,13 +1831,32 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 	return strKey, true
 }
 
+// functionPackage resolves the package that defines the function token. For
+// extensions the token lives in the base namespace but the owner is the
+// extension; fall back to the token prefix.
+func (g *generator) functionPackage(token string) string {
+	pkg, _, _, _ := pcl.DecomposeToken(token, hcl.Range{})
+	if _, ok := g.packages[pkg]; ok {
+		return pkg
+	}
+	for name, p := range g.packages {
+		if _, ok := p.GetFunction(token); ok {
+			return name
+		}
+	}
+	return pkg
+}
+
 // functionName computes the go package, module, and name for the given function token.
 func (g *generator) functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
 
-	// Compute the resource type from the Pulumi type token.
-	pkg, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	// Compute the resource type from the Pulumi type token. The package that
+	// defines the function may differ from the token's namespace (e.g. an invoke
+	// that resolves through an extension), so prefer functionPackage.
+	_, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkg := g.functionPackage(token)
 	module := g.resolveModule(token)
 	if strings.HasPrefix(member, "get") {
 		if g.useLookupInvokeForm(token) {

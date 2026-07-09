@@ -28,12 +28,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
@@ -77,6 +77,13 @@ func SerializeJournalEntry(
 			return apitype.JournalEntry{}, fmt.Errorf("serializing new snapshot: %w", err)
 		}
 	}
+	var snippets []apitype.SnippetV1
+	if je.Snippets != nil {
+		snippets = make([]apitype.SnippetV1, len(je.Snippets))
+		for i, snippet := range je.Snippets {
+			snippets[i] = stack.SerializeSnippet(snippet)
+		}
+	}
 
 	serializedEntry := apitype.JournalEntry{
 		Version:               1,
@@ -96,6 +103,7 @@ func SerializeJournalEntry(
 		NewSnapshot:           snapshot,
 		ExtensionRef:          je.ExtensionRef,
 		Extension:             je.Extension,
+		Snippets:              snippets,
 	}
 
 	return serializedEntry, nil
@@ -229,6 +237,8 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {
 		}
 
 		r.base.SecretsProviders = entry.SecretsProvider
+	case apitype.JournalEntryKindSnippets:
+		r.base.Snippets = entry.Snippets
 	case apitype.JournalEntryKindRebuiltBaseState:
 		// We need to build the snapshot from the current state here and discard the
 		// current journal entries. This happens after a refresh operation.
@@ -392,12 +402,17 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	deployment.Resources = resources
 	deployment.PendingOperations = operations
 	deployment.Metadata = r.base.Metadata
+	deployment.Snippets = r.base.Snippets
 	deployment.Manifest = manifest.Serialize()
 	// Carry extensions forward from the base, plus any this plan produced.
 	extensions := maps.Clone(r.extensions)
 	maps.Copy(extensions, r.base.Extensions)
 	if len(extensions) > 0 {
 		deployment.Extensions = extensions
+	}
+
+	if len(deployment.Snippets) > 0 {
+		features["snippets-prototype"] = true
 	}
 
 	version := apitype.DeploymentSchemaVersionCurrent
@@ -621,6 +636,7 @@ func NewSnapshotJournaler(
 			Resources:         make([]*resource.State, 0),
 			PendingOperations: make([]resource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
+			Snippets:          baseSnap.Snippets,
 		}
 		// Copy the resources from the base snapshot to the new snapshot.
 		for _, res := range baseSnap.Resources {

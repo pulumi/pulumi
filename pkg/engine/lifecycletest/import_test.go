@@ -18,12 +18,14 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -535,6 +537,93 @@ func TestImportUpdatedID(t *testing.T) {
 			t.Fatalf("unexpected resource %v", urn)
 		}
 	}
+}
+
+// TestImportExtensionParameterizedResource imports a resource under an extension-parameterized
+// provider. The engine must parameterize the base provider with the extension before reading the
+// resource, persist the extension blob in the snapshot, and record the resource's ExtensionRef.
+func TestImportExtensionParameterizedResource(t *testing.T) {
+	t.Parallel()
+
+	var paramLock sync.Mutex
+	var paramNames []string
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
+				},
+				ParameterizeF: func(
+					_ context.Context, req plugin.ParameterizeRequest,
+				) (plugin.ParameterizeResponse, error) {
+					value := req.Parameters.(*plugin.ParameterizeValue)
+					paramLock.Lock()
+					paramNames = append(paramNames, value.Name)
+					paramLock.Unlock()
+					return plugin.ParameterizeResponse{Name: value.Name, Version: value.Version}, nil
+				},
+				DiffF: diffImportResource,
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// The extension must have been applied to the provider before it is asked to read.
+					paramLock.Lock()
+					witnessed := len(paramNames)
+					paramLock.Unlock()
+					assert.NotZero(t, witnessed, "Parameterize must run before Read on the extension provider")
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: req.ID,
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewProperty("bar"),
+								"frob": resource.NewProperty(1.0),
+							},
+							Outputs: resource.PropertyMap{
+								"foo":  resource.NewProperty("bar"),
+								"frob": resource.NewProperty(1.0),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+
+	version := semver.MustParse("1.0.0")
+	extension := &apitype.Extension{Name: "ext-a", Version: "1.0.0", Value: []byte("blob-a")}
+	snap, err := lt.ImportOp([]deploy.Import{{
+		Type:      "pkgA:m:typA",
+		Name:      "resA",
+		ID:        "imported-id",
+		Version:   &version,
+		Extension: extension,
+	}}).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	// The base provider was parameterized with the extension. Run has returned, so the import and all
+	// its Parameterize calls have completed; there is no concurrent writer left to guard against.
+	assert.Equal(t, []string{"ext-a"}, paramNames)
+
+	// The snapshot carries the extension blob, keyed by a ref that the imported resource references.
+	require.Len(t, snap.Extensions, 1)
+	var ref apitype.ExtensionRef
+	for r, blob := range snap.Extensions {
+		ref = r
+		assert.Equal(t, []byte("blob-a"), blob.Value)
+	}
+
+	var imported *resource.State
+	for _, r := range snap.Resources {
+		if r.URN.Name() == "resA" {
+			imported = r
+		}
+	}
+	require.NotNil(t, imported, "imported resource missing from snapshot")
+	assert.Equal(t, ref, imported.ExtensionRef)
 }
 
 const importSchema = `{
@@ -1617,5 +1706,123 @@ func TestImportDeleteBeforeReplace(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
+
+// TestImportIDPreservedAcrossUpdate is a regression test for
+// https://github.com/pulumi/pulumi/issues/14836.
+//
+// When a resource is imported with an ImportID whose format differs from the
+// resource's canonical ID (common for GCP Secret Manager, Cloudflare DNS
+// records, and other providers), and the imported inputs differ from the live
+// state (so the engine plans Import followed by Update), the follow-up update
+// used to blank out ImportID in the saved state. On the next `pulumi up` the
+// import decision would then compare the goal ID against the resource's ID
+// (rather than the original ImportID), mismatch, and plan an
+// ImportReplacement + Replace — deleting the live cloud resource.
+func TestImportIDPreservedAcrossUpdate(t *testing.T) {
+	t.Parallel()
+
+	// The import identifier the user passes (differs from the resource's real ID,
+	// e.g. "projects/foo/secrets/bar" vs "bar").
+	const importIdentifier = resource.ID("projects/foo/secrets/my-secret")
+	const canonicalID = resource.ID("my-secret")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// The live resource's inputs differ from the program's inputs,
+					// so the engine will schedule an Update after the Import.
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo": resource.NewProperty("live"),
+							},
+							Outputs: resource.PropertyMap{
+								"foo": resource.NewProperty("live"),
+							},
+							ID: canonicalID,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+					}
+					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{
+						Properties: req.NewInputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			ImportID: importIdentifier,
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewProperty("desired"),
+			},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	// First update: Import + Update (inputs differ from live state).
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
+			seenImport, seenUpdate := false, false
+			for _, entry := range entries {
+				if entry.Step.URN() != resURN || entry.Kind != TestJournalEntrySuccess {
+					continue
+				}
+				switch entry.Step.Op() {
+				case deploy.OpImport:
+					seenImport = true
+				case deploy.OpUpdate:
+					seenUpdate = true
+				}
+			}
+			assert.True(t, seenImport, "expected an import step")
+			assert.True(t, seenUpdate, "expected an update after the import")
+			return err
+		}, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+	// The ImportID must be preserved after the follow-up update, otherwise the
+	// next deploy cannot recognise this as an already-imported resource.
+	assert.Equal(t, importIdentifier, snap.Resources[1].ImportID,
+		"ImportID should be preserved on the resource state after Import+Update")
+
+	// Second update: same program. Should be a no-op Same for the resource — NOT a
+	// Delete or ImportReplacement.
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
+			for _, entry := range entries {
+				if entry.Step.URN() != resURN {
+					continue
+				}
+				op := entry.Step.Op()
+				assert.NotContains(t, []display.StepOp{
+					deploy.OpDelete, deploy.OpDeleteReplaced,
+					deploy.OpReplace, deploy.OpImportReplacement,
+				}, op, "resource should not be deleted or replaced on a subsequent no-op update; got %v", op)
+				assert.Equal(t, deploy.OpSame, op, "expected Same on second update")
+			}
+			return err
+		}, "1")
 	require.NoError(t, err)
 }

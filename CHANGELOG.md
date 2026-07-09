@@ -1,5 +1,122 @@
 # Changelog
 
+## 3.251.0 (2026-07-08)
+
+### Bug Fixes
+
+- [cli] Show a `retain` marker for retain-on-delete resources in `--diff` output [#23754](https://github.com/pulumi/pulumi/pull/23754)
+- [cli] Don't miscopy out archives [#23798](https://github.com/pulumi/pulumi/pull/23798)
+
+### Miscellaneous
+
+- [cli] Add `pulumi neo --debug-update` and `pulumi neo --debug-preview` flags to investigate a failed update or preview, suggested in the failure output [#23499](https://github.com/pulumi/pulumi/pull/23499)
+
+### Improvements
+
+- [cli/convert] Add an `ecosystem` field to converter mapping requests so a converter can request mappings for the ecosystem it consumes rather than its own name [#23804](https://github.com/pulumi/pulumi/pull/23804)
+- [cli/deployment] `pulumi deployment settings` no longer writes the local `Pulumi.<stack>.deploy.yaml` file: the experimental `init`, `pull`, `configure`, and `env` subcommands have been removed, and the CLI no longer calls the deployment-settings encrypt endpoint. `get`/`edit`/`destroy` continue to manage settings directly in Pulumi Cloud [#23480](https://github.com/pulumi/pulumi/pull/23480)
+- [cli/deployment] The deployment settings file (`Pulumi.<stack>.deploy.yaml`) has been removed entirely. The experimental `pulumi deployment settings push` (`update`/`up`) command, the `--config-file` flag, and the SDK helpers that read the file have been removed. Manage deployment settings directly in Pulumi Cloud with `pulumi deployment settings get`, `edit`, and `destroy` [#23480](https://github.com/pulumi/pulumi/pull/23480)
+
+### Bug Fixes
+
+- [cli/display] Prevent plugin debug logs from appearing as raw JSON in the CLI's output when logging with `--logtostderr` [#23633](https://github.com/pulumi/pulumi/pull/23633)
+
+### Improvements
+
+- [cli/env] Report the new revision number when an environment definition is updated (e.g. `pulumi env edit`, `pulumi env provider`, `pulumi env version rollback`) [#23799](https://github.com/pulumi/pulumi/pull/23799)
+
+### Miscellaneous
+
+- [cli/env] Fold the Pulumi ESC engine and CLI into the pulumi/pulumi monorepo, removing the sdk↔esc Go module cycle. Internal refactor with no user-facing behavior change; `pulumi env`/`pulumi esc` are unaffected. [#23746](https://github.com/pulumi/pulumi/pull/23746)
+
+### Improvements
+
+- [cli/import] Support importing resources under parameterized providers from a converter or import file [#23763](https://github.com/pulumi/pulumi/pull/23763)
+- [cli/import] Support importing resources under extension-parameterized providers [#23779](https://github.com/pulumi/pulumi/pull/23779)
+
+### Features
+
+- [engine] Add `TargetSnippets` to deployment options to target snippets by UUID. [#23745](https://github.com/pulumi/pulumi/pull/23745)
+
+### Improvements
+
+- [engine] Add OpenTelemetry spans to the StackReference read path so performance traces can pinpoint slow snapshot fetches, deserialization, or secret decryption [#23787](https://github.com/pulumi/pulumi/pull/23787)
+
+### Features
+
+- [programgen/pcl] Invoke functions declared with multi-argument inputs using positional arguments in PCL [#23571](https://github.com/pulumi/pulumi/pull/23571)
+
+### Bug Fixes
+
+- [sdk/nodejs] Don't include the version in module paths when serializing functions when using pnpm [#23767](https://github.com/pulumi/pulumi/pull/23767)
+- [sdk/nodejs] Support pnpm 11 [#23815](https://github.com/pulumi/pulumi/pull/23815)
+
+### Features
+
+- [sdkgen] Generate SDKs and programs for extension-parameterized packages [#23579](https://github.com/pulumi/pulumi/pull/23579)
+## 3.250.0 (2026-07-02)
+
+### Bug Fixes
+
+- [cli/engine] Fix recursive property log marshaling [#23773](https://github.com/pulumi/pulumi/pull/23773)
+## 3.249.0 (2026-07-01)
+
+### Bug Fixes
+
+- [backend/diy] Fix `pulumi stack tag rm` not removing the last tag on self-managed (diy) backends [#23702](https://github.com/pulumi/pulumi/pull/23702)
+- [backend/service] Don't fail a operation due to a logging failure [#23704](https://github.com/pulumi/pulumi/pull/23704)
+
+### Features
+
+- [cli] Add `--skip-config-validation` flag to preview, up, refresh, and destroy to skip validation of stack config against the project config schema [#23691](https://github.com/pulumi/pulumi/pull/23691)
+- [cli] Enable automatic logging for every command by default [#23731](https://github.com/pulumi/pulumi/pull/23731)
+
+### Bug Fixes
+
+- [cli] Don't ignore diffs in `Output` values [#23703](https://github.com/pulumi/pulumi/pull/23703)
+- [cli] Use display resource type names in policy violation output [#23705](https://github.com/pulumi/pulumi/pull/23705)
+
+### Improvements
+
+- [cli] Add `--output $format` flag to `pulumi stack {list,history,tag list}` [#23686](https://github.com/pulumi/pulumi/pull/23686)
+- [cli] Add --output $format to `pulumi policy list` and `pulumi policy group list` [#23698](https://github.com/pulumi/pulumi/pull/23698)
+- [cli] Add --output $format to `pulumi project list` [#23699](https://github.com/pulumi/pulumi/pull/23699)
+- [cli] Add `--output $format` flag to `pulumi config env list` [#23706](https://github.com/pulumi/pulumi/pull/23706)
+- [cli] `pulumi login` will warn if the given login differs from PULUMI_BACKEND_URL [#23716](https://github.com/pulumi/pulumi/pull/23716)
+- [cli/convert] Error when converting a Terraform program to the `hcl` language [#23742](https://github.com/pulumi/pulumi/pull/23742)
+- [cli/engine] Fix TestDebuggerAttach for dlv@1.27 [#23693](https://github.com/pulumi/pulumi/pull/23693)
+- [cli/plugin] Add `--output $format` to `pulumi plugin list` [#23688](https://github.com/pulumi/pulumi/pull/23688)
+
+### Features
+
+- [cli/policy] Add a `--file` flag to `pulumi policy analyze` to analyze a state file (as produced by `pulumi stack export`) without requiring a stack or backend login [#23664](https://github.com/pulumi/pulumi/pull/23664)
+
+### Miscellaneous
+
+- [pkg/testing] Allow ProgramTest to use npm for Node.js tests [#23675](https://github.com/pulumi/pulumi/pull/23675)
+
+### Bug Fixes
+
+- [programgen] Generate numeric `range` loops in NodeJS with a per-iteration binding so deferred applies in the loop body observe the correct index
+
+### Improvements
+
+- [sdk] Update the dotnet and java language runtimes [#23755](https://github.com/pulumi/pulumi/pull/23755)
+
+### Bug Fixes
+
+- [sdk/go] Fix FileArchive nested in an AssetArchive producing zip/tar entries with backslashes on Windows [#23750](https://github.com/pulumi/pulumi/pull/23750)
+
+### Improvements
+
+- [sdk/go] Move provider RPC setup code to the sdk module [#23695](https://github.com/pulumi/pulumi/pull/23695)
+- [sdk/nodejs] Use npm as the package manager for the Node.js SDK [#23655](https://github.com/pulumi/pulumi/pull/23655)
+- [sdk/nodejs] Remove the `fdir` and `picomatch` dependencies; the Node.js SDK now requires Node.js 22 or later [#23722](https://github.com/pulumi/pulumi/pull/23722)
+
+### Bug Fixes
+
+- [sdk/python] Fix `deletedWith` and `replaceWith` resource options in Python component resource providers [#23710](https://github.com/pulumi/pulumi/pull/23710)
+- [sdkgen/python] Cache package references per-deployment in generated SDKs [#22459](https://github.com/pulumi/pulumi/pull/22459)
 ## 3.248.0 (2026-06-24)
 
 ### Bug Fixes
