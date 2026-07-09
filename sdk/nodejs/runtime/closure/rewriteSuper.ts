@@ -18,13 +18,23 @@ import * as semver from "semver";
 import * as utils from "./utils";
 
 type Factory = {
-    createIdentifier: typeof typescript.createIdentifier;
-    createThis: typeof typescript.createThis;
-    createPropertyAccessExpression: typeof typescript.createPropertyAccess;
-    updatePropertyAccessExpression: typeof typescript.updatePropertyAccess;
-    updateFunctionDeclaration: typeof typescript.updateFunctionDeclaration;
-    updateElementAccessExpression: typeof typescript.updateElementAccess;
-    updateCallExpression: typeof typescript.updateCall;
+    createIdentifier: (text: string) => typescript.Identifier;
+    createThis: () => typescript.ThisExpression;
+    createPropertyAccessExpression: (expression: typescript.Expression, name: string | typescript.MemberName) => typescript.PropertyAccessExpression;
+    updatePropertyAccessExpression: (node: typescript.PropertyAccessExpression, expression: typescript.Expression, name: typescript.MemberName) => typescript.PropertyAccessExpression;
+    updateFunctionDeclaration: (
+        node: typescript.FunctionDeclaration,
+        decorators: readonly typescript.Decorator[] | undefined,
+        modifiers: readonly typescript.Modifier[] | undefined,
+        asteriskToken: typescript.AsteriskToken | undefined,
+        name: typescript.Identifier | undefined,
+        typeParameters: readonly typescript.TypeParameterDeclaration[] | undefined,
+        parameters: readonly typescript.ParameterDeclaration[],
+        type: typescript.TypeNode | undefined,
+        body: typescript.Block | undefined,
+    ) => typescript.FunctionDeclaration;
+    updateElementAccessExpression: (node: typescript.ElementAccessExpression, expression: typescript.Expression, argumentExpression: typescript.Expression) => typescript.ElementAccessExpression;
+    updateCallExpression: (node: typescript.CallExpression, expression: typescript.Expression, typeArguments: readonly typescript.TypeNode[] | undefined, argumentsArray: readonly typescript.Expression[]) => typescript.CallExpression;
 };
 
 // TypeScript 4.0 moved the factory functions to the transformationContext
@@ -51,7 +61,7 @@ function getFactory(transformationContext: typescript.TransformationContext): Fa
         body: typescript.Block | undefined,
     ): typescript.FunctionDeclaration {
         if (tsLessThan4) {
-            return ts.updateFunctionDeclaration(
+            return (ts as any).updateFunctionDeclaration(
                 node,
                 decorators,
                 modifiers,
@@ -89,19 +99,19 @@ function getFactory(transformationContext: typescript.TransformationContext): Fa
     }
 
     return {
-        createIdentifier: tsLessThan4 ? ts.createIdentifier : transformationContextFactory.createIdentifier,
-        createThis: tsLessThan4 ? ts.createThis : transformationContextFactory.createThis,
+        createIdentifier: tsLessThan4 ? (ts as any).createIdentifier : transformationContextFactory.createIdentifier,
+        createThis: tsLessThan4 ? (ts as any).createThis : transformationContextFactory.createThis,
         createPropertyAccessExpression: tsLessThan4
-            ? ts.createPropertyAccess
+            ? (ts as any).createPropertyAccess
             : transformationContextFactory.createPropertyAccessExpression,
         updatePropertyAccessExpression: tsLessThan4
-            ? ts.updatePropertyAccess
+            ? (ts as any).updatePropertyAccess
             : transformationContextFactory.updatePropertyAccessExpression,
         updateFunctionDeclaration,
         updateElementAccessExpression: tsLessThan4
-            ? ts.updateElementAccess
+            ? (ts as any).updateElementAccess
             : transformationContextFactory.updateElementAccessExpression,
-        updateCallExpression: tsLessThan4 ? ts.updateCall : transformationContextFactory.updateCallExpression,
+        updateCallExpression: tsLessThan4 ? (ts as any).updateCall : transformationContextFactory.updateCallExpression,
     };
 }
 
@@ -143,8 +153,8 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
                 const text = utils.isLegalMemberName(funcDecl.name!.text) ? "/*" + funcDecl.name!.text + "*/" : "";
                 return factory.updateFunctionDeclaration(
                     funcDecl,
-                    funcDecl.decorators,
-                    funcDecl.modifiers,
+                    (funcDecl as any).decorators,
+                    funcDecl.modifiers as readonly typescript.Modifier[] | undefined,
                     funcDecl.asteriskToken,
                     factory.createIdentifier(text),
                     funcDecl.typeParameters,

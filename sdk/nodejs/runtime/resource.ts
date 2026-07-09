@@ -291,7 +291,7 @@ export function getResource(
                             };
                         }
                     } catch (e) {
-                        err = e;
+                        err = e as Error;
                         resp = {
                             urn: "",
                             id: undefined,
@@ -435,7 +435,7 @@ export function readResource(
                             };
                         }
                     } catch (e) {
-                        err = e;
+                        err = e as Error;
                         resp = {
                             getUrn: () => "",
                             getProperties: () => undefined,
@@ -767,7 +767,7 @@ export function registerResource(
                             };
                         }
                     } catch (e) {
-                        err = e;
+                        err = e as Error;
                         resp = {
                             getUrn: () => "",
                             getId: () => undefined,

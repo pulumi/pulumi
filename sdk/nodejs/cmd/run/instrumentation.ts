@@ -29,12 +29,12 @@ if (process.env.TRACEPARENT) {
     const { NodeTracerProvider } = require("@opentelemetry/sdk-trace-node");
     const { W3CTraceContextPropagator } = require("@opentelemetry/core");
     const { BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
-    const { Resource } = require("@opentelemetry/resources");
+    const { defaultResource, resourceFromAttributes } = require("@opentelemetry/resources");
     const { ATTR_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 
     const provider = new NodeTracerProvider({
-        resource: Resource.default().merge(
-            new Resource({
+        resource: defaultResource().merge(
+            resourceFromAttributes({
                 [ATTR_SERVICE_NAME]: "pulumi-sdk-nodejs",
             }),
         ),

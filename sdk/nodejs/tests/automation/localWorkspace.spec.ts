@@ -74,7 +74,7 @@ describe("LocalWorkspace", () => {
             assert.fail("expected create with invalid workDir to throw");
         } catch (err) {
             assert.strictEqual(
-                err.toString(),
+                (err as Error).toString(),
                 "Error: Invalid workDir passed to local workspace: 'invalid-missing-workdir' does not exist",
             );
         }
@@ -1073,8 +1073,8 @@ describe("LocalWorkspace", () => {
                     });
                     assert.fail("expected canceled preview to throw");
                 } catch (err) {
-                    assert.match(err.toString(), /stderr: Command was killed with SIGINT|error: preview canceled/);
-                    assert.match(err.toString(), /CommandError: code: -2/);
+                    assert.match((err as Error).toString(), /stderr: Command was killed with SIGINT|error: preview canceled/);
+                    assert.match((err as Error).toString(), /CommandError: code: -2/);
                 }
                 clearTimeout(timeout);
             },

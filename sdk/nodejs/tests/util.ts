@@ -32,7 +32,7 @@ export function asyncTest(test: () => Promise<void>): (func: MochaFunc) => void 
             try {
                 await test();
             } catch (err) {
-                caught = err;
+                caught = err as Error;
             } finally {
                 done(caught);
             }
@@ -50,7 +50,7 @@ export async function assertAsyncThrows(test: () => Promise<void>): Promise<stri
     try {
         await test();
     } catch (err) {
-        return err.message;
+        return (err as Error).message;
     }
 
     assert(false, "Function was expected to throw, but didn't");

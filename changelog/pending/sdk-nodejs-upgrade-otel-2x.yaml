@@ -1,0 +1,6 @@
+component: sdk/nodejs
+kind: fix
+body: Upgrade OpenTelemetry dependencies to 2.x to address CVE-2026-54285
+time: 2026-07-07T00:00:00.000000+00:00
+custom:
+    PR: "23806"

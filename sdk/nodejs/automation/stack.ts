@@ -177,7 +177,7 @@ export class Stack {
                 log.warn(`Failed to parse engine event
 If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
 details about your environment.
-Event: ${line}\n${e.toString()}`);
+Event: ${line}\n${(e as Error).toString()}`);
             }
         });
 
@@ -2370,7 +2370,7 @@ class EventsServer implements eventsrpc.IEventsServer {
                 const event: EngineEvent = JSON.parse(eventStr);
                 this.onEvent(event);
             } catch (e) {
-                log.warn(`Failed to parse engine event: ${e.toString()}`);
+                log.warn(`Failed to parse engine event: ${(e as Error).toString()}`);
             }
         });
 
