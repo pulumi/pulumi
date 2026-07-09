@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -2080,4 +2081,41 @@ func TestClient_WithRefresh(t *testing.T) {
 		pc := NewClient("https://api.example.com", "tok", false, nil)
 		assert.Panics(t, func() { pc.WithRefresh("some-refresh", nil) })
 	})
+}
+
+func TestPublishPolicyPackWithImageRef(t *testing.T) {
+	t.Parallel()
+
+	var gotCreate apitype.CreatePolicyPackRequest
+	var sawUpload, sawComplete bool
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == "POST" && r.URL.Path == "/api/orgs/acme/policypacks":
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&gotCreate))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"version":3}`)) // no uploadURI
+		case r.Method == "PUT":
+			sawUpload = true
+			w.WriteHeader(200)
+		case strings.Contains(r.URL.Path, "/complete"):
+			sawComplete = true
+			w.WriteHeader(200)
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer server.Close()
+
+	client := newMockClient(server)
+
+	version, err := client.PublishPolicyPack(t.Context(), "acme", "oci",
+		plugin.AnalyzerInfo{Name: "security", Version: "1.2.3"},
+		nil, "ghcr.io/acme/security@sha256:abc", nil)
+	require.NoError(t, err)
+	assert.Equal(t, "1.2.3", version)
+	assert.Equal(t, "ghcr.io/acme/security@sha256:abc", gotCreate.ImageRef)
+	assert.Equal(t, "oci", gotCreate.Runtime)
+	assert.False(t, sawUpload, "no tarball upload for image-ref publishes")
+	assert.False(t, sawComplete, "no publish-complete call for image-ref publishes")
 }

@@ -1991,7 +1991,7 @@ func (pc *Client) AssignTeamRole(
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	runtime string, analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader,
-	metadata map[string]string,
+	imageRef string, metadata map[string]string,
 ) (string, error) {
 	//
 	// Step 1: Send POST containing policy metadata to service. This begins process of creating
@@ -2036,6 +2036,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Repository:  analyzerInfo.Repository,
 		Runtime:     runtime,
 		Metadata:    metadata,
+		ImageRef:    imageRef,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -2052,29 +2053,6 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		return "", fmt.Errorf("Publish policy pack failed: %w", err)
 	}
 
-	//
-	// Step 2: Upload the compressed PolicyPack directory to the pre-signed object storage service URL.
-	// The PolicyPack is now published.
-	//
-
-	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
-	if err != nil {
-		return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
-	}
-
-	for k, v := range resp.RequiredHeaders {
-		putReq.Header.Add(k, v)
-	}
-
-	_, err = pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
-	if err != nil {
-		return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
-	}
-
-	//
-	// Step 3: Signal to the service that the PolicyPack publish operation is complete.
-	//
-
 	// If the version tag is empty, an older version of pulumi/policy is being used and
 	// we therefore need to use the version provided by the pulumi service.
 	version := analyzerInfo.Version
@@ -2082,10 +2060,36 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		version = strconv.Itoa(resp.Version)
 		fmt.Printf("Published as version %s\n", version)
 	}
-	err = pc.restCall(ctx, "POST",
-		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, version), nil, nil, nil)
-	if err != nil {
-		return "", fmt.Errorf("Request to signal completion of the publish operation failed: %w", err)
+
+	if imageRef == "" {
+		//
+		// Step 2: Upload the compressed PolicyPack directory to the pre-signed object storage service URL.
+		// The PolicyPack is now published.
+		//
+
+		putReq, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
+		if err != nil {
+			return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
+		}
+
+		for k, v := range resp.RequiredHeaders {
+			putReq.Header.Add(k, v)
+		}
+
+		_, err = pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
+		if err != nil {
+			return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
+		}
+
+		//
+		// Step 3: Signal to the service that the PolicyPack publish operation is complete.
+		//
+
+		err = pc.restCall(ctx, "POST",
+			publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, version), nil, nil, nil)
+		if err != nil {
+			return "", fmt.Errorf("Request to signal completion of the publish operation failed: %w", err)
+		}
 	}
 
 	return version, nil

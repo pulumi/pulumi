@@ -62,6 +62,12 @@ type CreatePolicyPackRequest struct {
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
 	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// ImageRef is the digest-pinned OCI image reference for a policy pack with
+	// runtime "oci" (e.g. "ghcr.io/acme/pack@sha256:…"). When set, the service
+	// records the reference as the pack's artifact and no tarball is uploaded:
+	// the response carries no upload URL and no publish-complete call follows.
+	ImageRef string `json:"imageRef,omitempty"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
