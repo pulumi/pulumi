@@ -387,6 +387,8 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 				return errors.New("--all and --count are mutually exclusive")
 			}
 			ctx := cmd.Context()
+			listing := startSpinner(fmt.Sprintf("Listing %s resources", res.Token))
+			defer listing()
 			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
 			}
@@ -422,6 +424,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 					results = append(results, item)
 				}
 				if stream.Computed {
+					listing()
 					output, err := jsonifyProperty(resource.NewProperty("<unknown>"), pc.showSecrets)
 					if err != nil {
 						return err
@@ -442,6 +445,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 				}
 			}
 
+			listing()
 			return pc.printListResults(cmd, results)
 		},
 	}
