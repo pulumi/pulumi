@@ -699,7 +699,7 @@ func BenchmarkSnapshot(b *testing.B) {
 		getManager = func(t testing.TB, base *deploy.Snapshot) engine.SnapshotManager {
 			j, err := backend.NewJournaler(t.Context(), p, base.SecretsManager, base)
 			require.NoError(b, err)
-			m, err := engine.NewJournalSnapshotManager(j, base, base.SecretsManager)
+			m, err := engine.NewJournalSnapshotManager(j, base, base.SecretsManager, apitype.LatestJournalVersion)
 			require.NoError(b, err)
 			return m
 		}

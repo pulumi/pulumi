@@ -55,6 +55,7 @@ class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_
     RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS: _ResourceMonitorFeature.ValueType  # 10
     RESOURCE_MONITOR_FEATURE_ERROR_HOOKS: _ResourceMonitorFeature.ValueType  # 11
     RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: _ResourceMonitorFeature.ValueType  # 12
+    RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: _ResourceMonitorFeature.ValueType  # 13
 
 class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
     """ResourceMonitorFeature is a strongly typed monitor capability identifier.
@@ -76,6 +77,7 @@ RESOURCE_MONITOR_FEATURE_PARAMETERIZATION: ResourceMonitorFeature.ValueType  # 9
 RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS: ResourceMonitorFeature.ValueType  # 10
 RESOURCE_MONITOR_FEATURE_ERROR_HOOKS: ResourceMonitorFeature.ValueType  # 11
 RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: ResourceMonitorFeature.ValueType  # 12
+RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: ResourceMonitorFeature.ValueType  # 13
 global___ResourceMonitorFeature = ResourceMonitorFeature
 
 class _Result:
@@ -541,6 +543,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     HIDEDIFFS_FIELD_NUMBER: builtins.int
     ENVVARMAPPINGS_FIELD_NUMBER: builtins.int
     SNIPPETID_FIELD_NUMBER: builtins.int
+    STATE_MIGRATIONS_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -666,6 +669,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     def envVarMappings(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)"""
 
+    @property
+    def state_migrations(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]:
+        """a list of state migrations to apply to the prior state of this resource and its descendants before diffing."""
+
     def __init__(
         self,
         *,
@@ -710,9 +717,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         hideDiffs: collections.abc.Iterable[builtins.str] | None = ...,
         envVarMappings: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         snippetId: builtins.str = ...,
+        state_migrations: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "hooks", b"hooks", "object", b"object", "protect", b"protect", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "envVarMappings", b"envVarMappings", "hideDiffs", b"hideDiffs", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "snippetId", b"snippetId", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "envVarMappings", b"envVarMappings", "hideDiffs", b"hideDiffs", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "snippetId", b"snippetId", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "state_migrations", b"state_migrations", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_hooks", b"_hooks"]) -> typing.Literal["hooks"] | None: ...
     @typing.overload
@@ -1451,6 +1459,61 @@ class TransformInvokeOptions(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "provider", b"provider", "version", b"version"]) -> None: ...
 
 global___TransformInvokeOptions = TransformInvokeOptions
+
+@typing.final
+class StateMigrationRequest(google.protobuf.message.Message):
+    """StateMigrationRequest is the request object for state migration callbacks registered via
+    RegisterResourceRequest.state_migrations.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URN_FIELD_NUMBER: builtins.int
+    OLD_STATE_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """the URN of the registering resource."""
+    old_state: builtins.bytes
+    """A JSON-encoded array of resources in the checkpoint format (apitype.ResourceV3): the prior state of the
+    registering resource followed by the prior state of all resources transitively parented to it.
+    """
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        old_state: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["old_state", b"old_state", "urn", b"urn"]) -> None: ...
+
+global___StateMigrationRequest = StateMigrationRequest
+
+@typing.final
+class StateMigrationResponse(google.protobuf.message.Message):
+    """StateMigrationResponse is the response object for state migration callbacks."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NEW_STATE_FIELD_NUMBER: builtins.int
+    FORGOTTEN_FIELD_NUMBER: builtins.int
+    new_state: builtins.bytes
+    """A JSON-encoded array of resources in the checkpoint format (apitype.ResourceV3) that replaces old_state.
+    If unset, the prior state is left unchanged. Every resource URN present in old_state must either be present
+    in new_state or be acknowledged in forgotten.
+    """
+    @property
+    def forgotten(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """URNs from old_state that are intentionally removed from state. The underlying cloud resources are NOT
+        deleted; they are left unmanaged.
+        """
+
+    def __init__(
+        self,
+        *,
+        new_state: builtins.bytes = ...,
+        forgotten: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["forgotten", b"forgotten", "new_state", b"new_state"]) -> None: ...
+
+global___StateMigrationResponse = StateMigrationResponse
 
 @typing.final
 class ResourceHookRequest(google.protobuf.message.Message):

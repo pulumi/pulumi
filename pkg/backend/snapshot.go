@@ -224,6 +224,12 @@ func (sm *SnapshotManager) RebuiltBaseState() error {
 	return nil
 }
 
+func (sm *SnapshotManager) StateMigration(removed []*resource.State, migrated []*resource.State) error {
+	// Similar to Write() we don't need to do anything here, as the snapshot manager uses the
+	// same in-memory snapshot as the engine, which is mutated by the state migration.
+	return nil
+}
+
 func (sm *SnapshotManager) SetSnippets(snippets []resource.Snippet) error {
 	return sm.mutate(func() bool {
 		sm.snippets = slices.Clone(snippets)

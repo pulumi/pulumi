@@ -85,8 +85,28 @@ func SerializeJournalEntry(
 		}
 	}
 
+	var migratedStates []apitype.ResourceV3
+	if je.MigratedStates != nil {
+		migratedStates = make([]apitype.ResourceV3, len(je.MigratedStates))
+		for i, migrated := range je.MigratedStates {
+			s, err := stack.SerializeResource(ctx, migrated, enc, false)
+			if err != nil {
+				return apitype.JournalEntry{}, fmt.Errorf("serializing migrated resource state: %w", err)
+			}
+			migratedStates[i] = s
+		}
+	}
+
+	// State-migration entries carry fields (RemoveOlds/States) and require replay semantics that only exist in
+	// journal format version 2, so stamp them accordingly. A consumer that gates on the per-entry version then
+	// rejects or skips them rather than misinterpreting their indices as version-1 entries.
+	entryVersion := 1
+	if je.Kind == engine.JournalEntryStateMigration {
+		entryVersion = 2
+	}
+
 	serializedEntry := apitype.JournalEntry{
-		Version:               1,
+		Version:               entryVersion,
 		Kind:                  apitype.JournalEntryKind(je.Kind),
 		SequenceID:            je.SequenceID,
 		OperationID:           je.OperationID,
@@ -104,6 +124,8 @@ func SerializeJournalEntry(
 		ExtensionRef:          je.ExtensionRef,
 		Extension:             je.Extension,
 		Snippets:              snippets,
+		RemoveOlds:            je.RemoveOlds,
+		States:                migratedStates,
 	}
 
 	return serializedEntry, nil
@@ -130,6 +152,11 @@ type JournalReplayer struct {
 
 	// hasRefresh indicates whether any of the journal entries were part of a refresh operation.
 	hasRefresh bool
+
+	// hasStateMigration indicates whether any of the journal entries were state migrations. Like refreshes,
+	// state migrations may remove resources from the base snapshot that other resources still refer to, so
+	// dependencies must be rebuilt when generating the deployment.
+	hasStateMigration bool
 
 	// index is the current index in the new resource list.
 	index int64
@@ -258,8 +285,66 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {
 		r.extensions = make(map[apitype.ExtensionRef]apitype.Extension)
 	case apitype.JournalEntryKindExtensionParameterize:
 		r.extensions[*entry.ExtensionRef] = *entry.Extension
+	case apitype.JournalEntryKindStateMigration:
+		r.applyStateMigration(entry)
 	}
 	return nil
+}
+
+// applyStateMigration rewrites the replayer's base snapshot as described by a state migration entry: the
+// resources at the entry's RemoveOlds indices are removed and the entry's States are inserted at the position of
+// the last removed resource. All bookkeeping keyed by base snapshot indices is remapped to the rewritten base so
+// that entries recorded before and after the migration keep referring to the right resources.
+func (r *JournalReplayer) applyStateMigration(entry apitype.JournalEntry) {
+	if len(entry.RemoveOlds) == 0 {
+		return
+	}
+	r.hasStateMigration = true
+
+	removed := make(map[int64]struct{}, len(entry.RemoveOlds))
+	for _, index := range entry.RemoveOlds {
+		removed[index] = struct{}{}
+	}
+	last := entry.RemoveOlds[len(entry.RemoveOlds)-1]
+
+	newIndices := make(map[int64]int64, len(r.base.Resources))
+	resources := make([]apitype.ResourceV3, 0, len(r.base.Resources)-len(entry.RemoveOlds)+len(entry.States))
+	for i, res := range r.base.Resources {
+		if _, ok := removed[int64(i)]; ok {
+			if int64(i) == last {
+				resources = append(resources, entry.States...)
+			}
+			continue
+		}
+		newIndices[int64(i)] = int64(len(resources))
+		resources = append(resources, res)
+	}
+	// The base snapshot object may be shared with the journaler, which replays all entries from scratch on
+	// every save: rebase onto a copy rather than mutating it in place, mirroring what Write entries do.
+	newBase := *r.base
+	newBase.Resources = resources
+	r.base = &newBase
+
+	remapSet := func(set map[int64]struct{}) map[int64]struct{} {
+		remapped := make(map[int64]struct{}, len(set))
+		for index := range set {
+			if newIndex, ok := newIndices[index]; ok {
+				remapped[newIndex] = struct{}{}
+			}
+		}
+		return remapped
+	}
+	r.toDeleteInSnapshot = remapSet(r.toDeleteInSnapshot)
+	r.markAsDeletion = remapSet(r.markAsDeletion)
+	r.markAsPendingReplacement = remapSet(r.markAsPendingReplacement)
+
+	toReplace := make(map[int64]*apitype.ResourceV3, len(r.toReplaceInSnapshot))
+	for index, state := range r.toReplaceInSnapshot {
+		if newIndex, ok := newIndices[index]; ok {
+			toReplace[newIndex] = state
+		}
+	}
+	r.toReplaceInSnapshot = toReplace
 }
 
 // rebuildDependencies rebuilds the dependencies of the resources in the snapshot based on the
@@ -287,10 +372,14 @@ func rebuildDependencies(resources []apitype.ResourceV3) {
 				}
 			}
 		}
-		for i, r := range resources[i].ReplaceWith {
-			if !referenceable[r] {
-				resources[i].ReplaceWith = append(resources[i].ReplaceWith, "")
+		newReplaceWith := []resource.URN{}
+		for _, r := range resources[i].ReplaceWith {
+			if referenceable[r] {
+				newReplaceWith = append(newReplaceWith, r)
 			}
+		}
+		if len(resources[i].ReplaceWith) > 0 {
+			resources[i].ReplaceWith = newReplaceWith
 		}
 		if !referenceable[resources[i].DeletedWith] {
 			resources[i].DeletedWith = ""
@@ -384,8 +473,8 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 		}
 	}
 
-	if r.hasRefresh {
-		// Rebuild dependencies if we had a refresh, as refreshes may delete resources,
+	if r.hasRefresh || r.hasStateMigration {
+		// Rebuild dependencies if we had a refresh or a state migration, as both may remove resources,
 		// which may cause other resources to have dangling dependencies.
 		rebuildDependencies(resources)
 	}

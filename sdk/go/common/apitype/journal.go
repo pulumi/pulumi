@@ -32,6 +32,7 @@ const (
 	JournalEntryKindRebuiltBaseState      JournalEntryKind = 7
 	JournalEntryKindExtensionParameterize JournalEntryKind = 8
 	JournalEntryKindSnippets              JournalEntryKind = 9
+	JournalEntryKindStateMigration        JournalEntryKind = 10
 )
 
 func (k JournalEntryKind) String() string {
@@ -56,6 +57,8 @@ func (k JournalEntryKind) String() string {
 		return "extension-parameterize"
 	case JournalEntryKindSnippets:
 		return "snippets"
+	case JournalEntryKindStateMigration:
+		return "state-migration"
 	default:
 		return "invalid"
 	}
@@ -101,6 +104,13 @@ type JournalEntry struct {
 	// Only set for JournalEntryKindExtensionParameterize entries.
 	ExtensionRef *ExtensionRef `json:"extensionRef,omitempty"`
 	Extension    *Extension    `json:"extension,omitempty"`
+
+	// RemoveOlds holds the indices (in increasing order) of the resources in the base snapshot that a state
+	// migration removes. Only set for JournalEntryKindStateMigration entries.
+	RemoveOlds []int64 `json:"removeOlds,omitempty"`
+	// States holds the resources a state migration splices into the base snapshot, in order. They take the
+	// position of the last removed resource. Only set for JournalEntryKindStateMigration entries.
+	States []ResourceV3 `json:"states,omitempty"`
 }
 
 func (e JournalEntry) String() string {
@@ -142,6 +152,12 @@ func (e JournalEntry) String() string {
 	}
 	if e.Snippets != nil {
 		fmt.Fprintf(&sb, ", snippets(%v)", len(e.Snippets))
+	}
+	if e.RemoveOlds != nil {
+		fmt.Fprintf(&sb, ", removeOlds(%v)", len(e.RemoveOlds))
+	}
+	if e.States != nil {
+		fmt.Fprintf(&sb, ", states(%v)", len(e.States))
 	}
 
 	return sb.String()

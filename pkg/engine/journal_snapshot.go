@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"errors"
 	"reflect"
 	"slices"
 	"sync"
@@ -56,6 +57,10 @@ type SnapshotPersister interface {
 type JournalSnapshotManager struct {
 	journal      Journal          // The journal used to record operations performed by this plan
 	baseSnapshot *deploy.Snapshot // The base snapshot for this plan
+
+	// journalVersion is the negotiated journal version for this update. Journal entry kinds that the backend
+	// cannot replay (state migrations require version 2) are rejected based on this.
+	journalVersion int64
 
 	// newResources is a map of resources that have been added to the snapshot in this plan, keyed by the resource
 	// state.  This is used to track the added resources and their operation IDs, allowing us too delete
@@ -104,6 +109,7 @@ const (
 	JournalEntryRebuiltBaseState      JournalEntryKind = 7
 	JournalEntryExtensionParameterize JournalEntryKind = 8
 	JournalEntrySnippets              JournalEntryKind = 9
+	JournalEntryStateMigration        JournalEntryKind = 10
 )
 
 func (k JournalEntryKind) String() string {
@@ -128,6 +134,8 @@ func (k JournalEntryKind) String() string {
 		return "ExtensionParameterize"
 	case JournalEntrySnippets:
 		return "Snippets"
+	case JournalEntryStateMigration:
+		return "StateMigration"
 	default:
 		return "Unknown"
 	}
@@ -177,6 +185,13 @@ type JournalEntry struct {
 
 	// Snippets is the complete snippet list to persist when Kind is JournalEntrySnippets.
 	Snippets []resource.Snippet
+
+	// RemoveOlds holds the indices (in increasing order) of the resources in the base snapshot that a state
+	// migration removes. Only set for JournalEntryStateMigration entries.
+	RemoveOlds []int64
+	// MigratedStates holds the states a state migration splices into the base snapshot, in order. They take the
+	// position of the last removed resource. Only set for JournalEntryStateMigration entries.
+	MigratedStates []*resource.State
 }
 
 func hasNewResource(entry JournalEntry) bool {
@@ -371,6 +386,43 @@ func (sm *JournalSnapshotManager) RebuiltBaseState() error {
 		}
 	})
 	return sm.addJournalEntry(sm.newJournalEntry(JournalEntryRebuiltBaseState, 0))
+}
+
+// StateMigration records a state migration in the journal: the removed states are removed from the base
+// snapshot and the migrated states are inserted in their stead, at the position of the last removed state. This
+// must be called before the engine splices the migrated states into the base snapshot, as the removed states are
+// resolved against the current base snapshot.
+func (sm *JournalSnapshotManager) StateMigration(removed []*resource.State, migrated []*resource.State) error {
+	if sm == nil {
+		return nil
+	}
+	if sm.journalVersion < 2 {
+		return errors.New("the backend does not support state migrations yet; " +
+			"the state migration cannot be applied")
+	}
+
+	removedSet := make(map[*resource.State]bool, len(removed))
+	for _, res := range removed {
+		removedSet[res] = true
+	}
+	indices := make([]int64, 0, len(removed))
+	for i, res := range sm.baseSnapshot.Resources {
+		if removedSet[res] {
+			indices = append(indices, int64(i))
+		}
+	}
+	contract.Assertf(len(indices) == len(removed),
+		"state migration: only found %d of %d removed resources in the base snapshot", len(indices), len(removed))
+
+	states := make([]*resource.State, len(migrated))
+	for i, res := range migrated {
+		states[i] = res.Copy()
+	}
+
+	entry := sm.newJournalEntry(JournalEntryStateMigration, 0)
+	entry.RemoveOlds = indices
+	entry.MigratedStates = states
+	return sm.addJournalEntry(entry)
 }
 
 // All SnapshotMutation implementations in this file follow the same basic formula:
@@ -880,10 +932,12 @@ func NewJournalSnapshotManager(
 	journal Journal,
 	baseSnap *deploy.Snapshot,
 	sm secrets.Manager,
+	journalVersion int64,
 ) (*JournalSnapshotManager, error) {
 	manager := &JournalSnapshotManager{
-		journal:      journal,
-		baseSnapshot: baseSnap,
+		journal:        journal,
+		baseSnapshot:   baseSnap,
+		journalVersion: journalVersion,
 	}
 
 	err := manager.RegisterSecretsManager(sm)

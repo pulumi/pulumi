@@ -52,6 +52,10 @@ func (m *MockSnapshotManager) RebuiltBaseState() error {
 	return nil
 }
 
+func (m *MockSnapshotManager) StateMigration(removed []*resource.State, migrated []*resource.State) error {
+	return nil
+}
+
 func (m *MockSnapshotManager) SetSnippets(snippets []resource.Snippet) error {
 	if m.SetSnippetsF != nil {
 		return m.SetSnippetsF(snippets)

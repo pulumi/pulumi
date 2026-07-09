@@ -119,6 +119,12 @@ type Options struct {
 	ShowSecrets bool
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
+	// StateSerializer converts resource states to their checkpoint representation for state migration
+	// callbacks. It is injected by the engine because the serialization logic lives in pkg/resource/stack,
+	// which cannot be imported from this package.
+	StateSerializer ResourceSerializer
+	// StateDeserializer is the inverse of StateSerializer.
+	StateDeserializer ResourceDeserializer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -248,6 +254,11 @@ func (t *UrnTargets) addLiteral(urn resource.URN) {
 type StepExecutorEvents interface {
 	OnSnapshotWrite(base *Snapshot) error
 	OnRebuiltBaseState() error
+	// OnStateMigration is called just before a state migration splices migrated states into the deployment's
+	// base snapshot. removed holds the prior states that are being removed from the base snapshot (in snapshot
+	// order) and migrated holds the states replacing them, which are inserted at the position of the last
+	// removed state. The base snapshot has not yet been mutated when this is called.
+	OnStateMigration(removed []*resource.State, migrated []*resource.State) error
 	OnResourceStepPre(step Step) (any, error)
 	OnResourceStepPost(ctx any, step Step, status resource.Status, err error) error
 	OnResourceOutputs(step Step) error

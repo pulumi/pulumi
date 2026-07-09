@@ -286,6 +286,12 @@ func (j *TestJournal) RebuiltBaseState() error {
 	return nil
 }
 
+// StateMigration is a no-op for this journal: Snap replays against the same in-memory base snapshot the engine
+// mutates, which reflects state migrations by the time snapshots are built.
+func (j *TestJournal) StateMigration(removed []*resource.State, migrated []*resource.State) error {
+	return nil
+}
+
 func (j *TestJournal) SetSnippets(snippets []resource.Snippet) error {
 	select {
 	case j.events <- TestJournalEntry{Kind: TestJournalEntrySnippets, Snippets: snippets}:

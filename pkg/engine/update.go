@@ -1159,6 +1159,10 @@ func (acts *updateActions) OnRebuiltBaseState() error {
 	return acts.Context.SnapshotManager.RebuiltBaseState()
 }
 
+func (acts *updateActions) OnStateMigration(removed []*resource.State, migrated []*resource.State) error {
+	return acts.Context.SnapshotManager.StateMigration(removed, migrated)
+}
+
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
@@ -1378,6 +1382,10 @@ func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
 }
 
 func (acts *previewActions) OnRebuiltBaseState() error {
+	return nil
+}
+
+func (acts *previewActions) OnStateMigration(removed []*resource.State, migrated []*resource.State) error {
 	return nil
 }
 

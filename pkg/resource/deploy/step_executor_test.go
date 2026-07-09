@@ -115,6 +115,10 @@ func (e *mockEvents) OnRebuiltBaseState() error {
 	return nil
 }
 
+func (e *mockEvents) OnStateMigration(removed []*resource.State, migrated []*resource.State) error {
+	return nil
+}
+
 var _ Events = (*mockEvents)(nil)
 
 func TestStepExecutor(t *testing.T) {

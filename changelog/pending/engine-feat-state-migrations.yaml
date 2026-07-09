@@ -1,0 +1,6 @@
+component: engine
+kind: feat
+body: Support state migration callbacks on resource registrations, letting component authors migrate prior state in place on upgrade
+time: 2026-07-09T10:00:00.000000+02:00
+custom:
+    PR: ""

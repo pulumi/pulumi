@@ -67,6 +67,20 @@ func (c *CombinedManager) RebuiltBaseState() error {
 	return errors.Join(errs...)
 }
 
+func (c *CombinedManager) StateMigration(removed []*resource.State, migrated []*resource.State) error {
+	var errs []error
+	for i, m := range c.Managers {
+		if err := m.StateMigration(removed, migrated); err != nil {
+			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+				c.appendError(err)
+			} else {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
 func (c *CombinedManager) SetSnippets(snippets []resource.Snippet) error {
 	var errs []error
 	for i, m := range c.Managers {

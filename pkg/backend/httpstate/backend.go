@@ -1885,6 +1885,14 @@ func (b *cloudBackend) createAndStartUpdate(
 		}
 		return client.UpdateIdentifier{}, updateMetadata{}, err
 	}
+	// The service echoes back the negotiated journal version, which is expected to be no greater than the
+	// version we requested. Clamp defensively: a service advertising a newer protocol than this client knows
+	// how to emit must not make us journal entries in a format we cannot produce.
+	if journalVersion > apitype.LatestJournalVersion {
+		logging.V(3).Infof("clamping negotiated journal version %d to %d",
+			journalVersion, apitype.LatestJournalVersion)
+		journalVersion = apitype.LatestJournalVersion
+	}
 	// Any non-preview update will be considered part of the stack's update history.
 	if action != apitype.PreviewUpdate {
 		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
@@ -2065,13 +2073,15 @@ func (b *cloudBackend) runEngineAction(
 		},
 	}
 	if kind != apitype.PreviewUpdate && !dryRun {
-		// Note that we intentionally only accept version 1 of the journal here.  If we ever want to evolve the API,
-		// we can send a newer version than 1, and switch out the API completely on the server side, while the client
-		// will continue working with the non-journaling snapshotter. This will be slower but won't be a breaking change
-		// for older clients.
-		if journalVersion == 1 && !env.DisableJournaling.Value() {
+		// Note that we accept version 1 or newer of the journal here. Journal version 2 adds state migration
+		// entries. If the service negotiates a version lower than an entry kind requires, the corresponding
+		// feature is rejected at the point it is used, while the client continues working with the
+		// non-journaling snapshotter for version 0. This will be slower but won't be a breaking change for
+		// older clients.
+		if journalVersion >= 1 && !env.DisableJournaling.Value() {
 			snapshotJournaler := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
-			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
+			journalManager, err := engine.NewJournalSnapshotManager(
+				snapshotJournaler, u.Target.Snapshot, op.SecretsManager, journalVersion)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -2085,7 +2095,10 @@ func (b *cloudBackend) runEngineAction(
 			if err != nil {
 				return nil, nil, err
 			}
-			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
+			// The shadow journal is local-only (it validates snapshots against the legacy snapshot manager),
+			// so it always supports the latest journal version.
+			journalManager, err := engine.NewJournalSnapshotManager(
+				snapshotJournaler, u.Target.Snapshot, op.SecretsManager, apitype.LatestJournalVersion)
 			if err != nil {
 				return nil, nil, err
 			}

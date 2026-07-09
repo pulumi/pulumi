@@ -28,11 +28,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	// The config package is shadowed by a local variable in newDeployment, where the state migration serde
+	// closures need its nop crypters.
+	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -288,6 +292,15 @@ func newDeployment(
 		Autonamer:                 opts.Autonamer,
 		ShowSecrets:               opts.ShowSecrets,
 		Analyzers:                 opts.LoadedAnalyzers,
+		// State migrations exchange states in the checkpoint wire format; the serialization logic lives in
+		// pkg/resource/stack, which the deploy package cannot import. Secrets are round-tripped in plaintext
+		// (under the secret signature envelope) since the exchange never leaves the local machine.
+		StateSerializer: func(ctx context.Context, res *resource.State) (apitype.ResourceV3, error) {
+			return stack.SerializeResource(ctx, res, sdkconfig.NopEncrypter, true /*showSecrets*/)
+		},
+		StateDeserializer: func(res apitype.ResourceV3) (*resource.State, error) {
+			return stack.DeserializeResource(res, sdkconfig.NopDecrypter)
+		},
 	}
 
 	var depl *deploy.Deployment
