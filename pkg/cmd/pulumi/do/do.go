@@ -160,6 +160,9 @@ func NewDoCmd(
 		ctx := cmd.Context()
 		tracer := otel.Tracer("pulumi-cli")
 
+		loading := startSpinner(fmt.Sprintf("Loading provider '%s'", pkgargs[0]))
+		defer loading()
+
 		host, err := newHost(ctx, sink, sink)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
@@ -216,6 +219,10 @@ func NewDoCmd(
 				Version: resp.Version.String(),
 			}
 		}
+
+		loading()
+		reading := startSpinner(fmt.Sprintf("Reading schema for '%s'", pkgName))
+		defer reading()
 
 		getSchema, err := p.GetSchema(ctx, schemaRequest)
 		if err != nil {
@@ -283,6 +290,7 @@ func NewDoCmd(
 			cleanup()
 			return nil, nil, err
 		}
+		reading()
 		// Replace the short name in Use with the full token so the usage
 		// string shows e.g. "pulumi do aws:s3:Bucket" instead of "pulumi do Bucket".
 		if len(pargs) > 0 {
