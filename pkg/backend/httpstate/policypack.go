@@ -15,7 +15,6 @@
 package httpstate
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -414,13 +413,47 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 	return pack.b
 }
 
+// buildPolicyPackArtifacts compresses the policy pack into the artifact set the service expects
+// for its runtime: one tarball per platform for executable packs, a single tarball otherwise.
+//
+// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
+func buildPolicyPackArtifacts(
+	ctx context.Context, op backend.PublishOperation, packDir string,
+) (client.PolicyPackArtifacts, error) {
+	runtime := op.PolicyPack.Runtime.Name()
+
+	switch {
+	case runtime == workspace.PolicyRuntimeExecutable:
+		perPlatform, err := buildExecutableArtifacts(op.PolicyPack, packDir)
+		if err != nil {
+			return client.PolicyPackArtifacts{}, err
+		}
+		return client.PolicyPackArtifacts{PerPlatform: perPlatform}, nil
+
+	case strings.EqualFold(runtime, "nodejs"):
+		packTarball, err := npm.Pack(ctx, npm.AutoPackageManager, op.PlugCtx.Pwd, os.Stderr)
+		if err != nil {
+			return client.PolicyPackArtifacts{}, fmt.Errorf(
+				"could not publish policies because of error running npm pack: %w", err)
+		}
+		return client.PolicyPackArtifacts{Single: packTarball}, nil
+
+	default:
+		// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
+		// the same for other runtimes. That way, after unpacking, we can look for the PulumiPolicy.yaml inside the
+		// package directory to determine the runtime of the policy pack.
+		packTarball, err := archive.TGZ(op.PlugCtx.Pwd, packageDir, true /*useDefaultExcludes*/)
+		if err != nil {
+			return client.PolicyPackArtifacts{}, fmt.Errorf(
+				"could not publish policies because of error creating the .tgz: %w", err)
+		}
+		return client.PolicyPackArtifacts{Single: packTarball}, nil
+	}
+}
+
 func (pack *cloudPolicyPack) Publish(
 	ctx context.Context, op backend.PublishOperation,
 ) error {
-	if op.PolicyPack.Runtime.Name() == workspace.PolicyRuntimeExecutable {
-		return pack.publishExecutable(ctx, op)
-	}
-
 	//
 	// Get PolicyPack metadata from the plugin.
 	//
@@ -448,23 +481,9 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Compressing policy pack")
 
-	var packTarball []byte
-
-	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
-	runtime := op.PolicyPack.Runtime.Name()
-	if strings.EqualFold(runtime, "nodejs") {
-		packTarball, err = npm.Pack(ctx, npm.AutoPackageManager, op.PlugCtx.Pwd, os.Stderr)
-		if err != nil {
-			return fmt.Errorf("could not publish policies because of error running npm pack: %w", err)
-		}
-	} else {
-		// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
-		// the same for other runtimes. That way, after unpacking, we can look for the PulumiPolicy.yaml inside the
-		// package directory to determine the runtime of the policy pack.
-		packTarball, err = archive.TGZ(op.PlugCtx.Pwd, "package", true /*useDefaultExcludes*/)
-		if err != nil {
-			return fmt.Errorf("could not publish policies because of error creating the .tgz: %w", err)
-		}
+	artifacts, err := buildPolicyPackArtifacts(ctx, op, abs)
+	if err != nil {
+		return err
 	}
 
 	//
@@ -474,7 +493,7 @@ func (pack *cloudPolicyPack) Publish(
 	fmt.Println("Uploading policy pack to Pulumi service")
 
 	publishedVersion, err := pack.cl.PublishPolicyPack(
-		ctx, pack.ref.orgName, runtime, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
+		ctx, pack.ref.orgName, op.PolicyPack.Runtime.Name(), analyzerInfo, artifacts, op.Metadata)
 	if err != nil {
 		return err
 	}

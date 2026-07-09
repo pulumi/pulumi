@@ -123,16 +123,16 @@ func TestValidateExecutableMatrix(t *testing.T) {
 		assert.ErrorContains(t, err, filepath.Join("bin", "linux"))
 	})
 
-	t.Run("host platform not declared", func(t *testing.T) {
+	// Publishing a pack that omits the publishing host's own platform is allowed here. The host
+	// binary is still needed to read the pack's metadata, but booting the analyzer reports that.
+	t.Run("host platform need not be declared", func(t *testing.T) {
 		t.Parallel()
-		if workspace.CurrentPlatform() == "linux-amd64" {
+		if workspace.CurrentPlatform() == workspace.PlatformLinuxAmd64 {
 			t.Skip("host platform is the mandatory platform")
 		}
-		binaries := map[string]string{"linux-amd64": filepath.Join("bin", "linux")}
+		binaries := map[string]string{workspace.PlatformLinuxAmd64: filepath.Join("bin", "linux")}
 		packDir := writeExecutablePack(t, binaries)
-		err := validateExecutableMatrix(packDir, binaries)
-		assert.ErrorContains(t, err, workspace.CurrentPlatform())
-		assert.ErrorContains(t, err, "conformance")
+		require.NoError(t, validateExecutableMatrix(packDir, binaries))
 	})
 }
 

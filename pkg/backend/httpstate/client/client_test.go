@@ -2083,7 +2083,7 @@ func TestClient_WithRefresh(t *testing.T) {
 	})
 }
 
-func TestPublishPolicyPackPlatforms(t *testing.T) {
+func TestPublishPolicyPackPerPlatform(t *testing.T) {
 	t.Parallel()
 
 	uploads := map[string][]byte{}
@@ -2124,12 +2124,12 @@ func TestPublishPolicyPackPlatforms(t *testing.T) {
 		})
 
 	client := newMockClient(server)
-	version, err := client.PublishPolicyPackPlatforms(t.Context(), "acme", "executable",
+	version, err := client.PublishPolicyPack(t.Context(), "acme", "executable",
 		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
-		map[string][]byte{
+		PolicyPackArtifacts{PerPlatform: map[string][]byte{
 			"linux-amd64":  []byte("linux-bytes"),
 			"darwin-arm64": []byte("darwin-bytes"),
-		}, nil)
+		}}, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "0.0.1", version)
@@ -2140,7 +2140,7 @@ func TestPublishPolicyPackPlatforms(t *testing.T) {
 	assert.True(t, completeCalled)
 }
 
-func TestPublishPolicyPackPlatformsUploadRejected(t *testing.T) {
+func TestPublishPolicyPackPerPlatformUploadRejected(t *testing.T) {
 	t.Parallel()
 
 	completeCalled := false
@@ -2172,27 +2172,27 @@ func TestPublishPolicyPackPlatformsUploadRejected(t *testing.T) {
 		})
 
 	client := newMockClient(server)
-	_, err := client.PublishPolicyPackPlatforms(t.Context(), "acme", "executable",
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "executable",
 		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
-		map[string][]byte{
+		PolicyPackArtifacts{PerPlatform: map[string][]byte{
 			"linux-amd64":  []byte("linux-bytes"),
 			"darwin-arm64": []byte("darwin-bytes"),
-		}, nil)
+		}}, nil)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "darwin-arm64")
 	assert.False(t, completeCalled)
 }
 
-func TestPublishPolicyPackPlatformsUnsupportedService(t *testing.T) {
+func TestPublishPolicyPackPerPlatformUnsupportedService(t *testing.T) {
 	t.Parallel()
 
-	server := newMockServer(200, `{"version":1,"uploadURI":"https://legacy-only"}`)
+	server := newMockServer(200, `{"version":1,"uploadURI":"https://single-artifact-only"}`)
 	defer server.Close()
 
 	client := newMockClient(server)
-	_, err := client.PublishPolicyPackPlatforms(t.Context(), "acme", "executable",
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "executable",
 		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
-		map[string][]byte{"linux-amd64": []byte("b")}, nil)
+		PolicyPackArtifacts{PerPlatform: map[string][]byte{"linux-amd64": []byte("b")}}, nil)
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "does not support executable policy packs")
+	assert.ErrorContains(t, err, "does not support per-platform policy pack artifacts")
 }
