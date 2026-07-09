@@ -30,16 +30,20 @@ import (
 )
 
 func Value(maxDepth int) *rapid.Generator[property.Value] {
-	if maxDepth <= 1 {
-		return Primitive()
+	// Build one generator per depth level, sharing the shallower generator
+	// between the composite branches. Constructing a fresh sub-generator per
+	// branch instead would make construction time exponential in maxDepth.
+	value := Primitive()
+	for i := 1; i < maxDepth; i++ {
+		value = rapid.OneOf(
+			Primitive(),
+			ArrayOf(value),
+			MapOf(value),
+			SecretOf(value),
+			DependenciesOf(value),
+		)
 	}
-	return rapid.OneOf(
-		Primitive(),
-		Array(maxDepth),
-		Map(maxDepth),
-		Secret(maxDepth),
-		Dependencies(maxDepth),
-	)
+	return value
 }
 
 func Primitive() *rapid.Generator[property.Value] {
