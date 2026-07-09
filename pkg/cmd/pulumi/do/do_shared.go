@@ -745,9 +745,11 @@ func (pc *packageCommand) requireYesIfNonInteractive(yes bool) error {
 // earlier; if we somehow reach here non-interactively without --yes we treat it as a decline.
 func (pc *packageCommand) confirm(cmd *cobra.Command, summary, operation string, yes bool) error {
 	stderr := cmd.ErrOrStderr()
-	fmt.Fprint(stderr, summary)
-	if !strings.HasSuffix(summary, "\n") {
-		fmt.Fprintln(stderr)
+	if summary != "" {
+		fmt.Fprint(stderr, summary)
+		if !strings.HasSuffix(summary, "\n") {
+			fmt.Fprintln(stderr)
+		}
 	}
 	if yes || pc.dryrun {
 		return nil

@@ -131,32 +131,26 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 				return err
 			}
 			ctx := cmd.Context()
-			if err := pc.configureProvider(cmd, ctx); err != nil {
-				return err
-			}
 			urn := resourceURN(res)
-			inputs, err := evaluateResourceFile(
-				ctx, inputFile, "input", pc.format, res, pc.evalContext(),
-				pc.converter, pc.loaderTarget, pc.packageDescriptor,
-				collectInputFlags(cmd, "input", res.InputProperties))
-			if err != nil {
-				return fmt.Errorf("parse input file: %w", err)
+			var checked resource.PropertyMap
+			prepare := func() (*resource.State, error) {
+				if err := pc.configureProvider(cmd, ctx); err != nil {
+					return nil, err
+				}
+				inputs, err := evaluateResourceFile(
+					ctx, inputFile, "input", pc.format, res, pc.evalContext(),
+					pc.converter, pc.loaderTarget, pc.packageDescriptor,
+					collectInputFlags(cmd, "input", res.InputProperties))
+				if err != nil {
+					return nil, fmt.Errorf("parse input file: %w", err)
+				}
+				checked, err = pc.checkResourceInputs(ctx, urn, res, nil, inputs)
+				if err != nil {
+					return nil, err
+				}
+				return operationState(urn, "", checked, nil), nil
 			}
-			checked, err := pc.checkResourceInputs(ctx, urn, res, nil, inputs)
-			if err != nil {
-				return err
-			}
-			summary, err := formatCreateSummary(res, checked, pc.showSecrets)
-			if err != nil {
-				return err
-			}
-			if err := pc.confirm(cmd, summary, "create", yes); err != nil {
-				return err
-			}
-			return pc.runDisplayedStep(cmd, displayedStep{
-				Op:  deploy.OpCreate,
-				New: operationState(urn, "", nil, nil),
-			}, func() (*resource.State, error) {
+			create := func() (*resource.State, error) {
 				response, err := pc.provider.Create(ctx, plugin.CreateRequest{
 					URN:        urn,
 					Name:       urn.Name(),
@@ -172,7 +166,48 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 					id = resource.ID("[unknown]")
 				}
 				return resultState(urn, id, nil, response.Properties, res), nil
-			})
+			}
+			if pc.jsonOut {
+				if _, err := prepare(); err != nil {
+					return err
+				}
+				summary, err := formatCreateSummary(res, checked, pc.showSecrets)
+				if err != nil {
+					return err
+				}
+				if err := pc.confirm(cmd, summary, "create", yes); err != nil {
+					return err
+				}
+				return pc.runDisplayedStep(cmd, displayedStep{
+					Op:  deploy.OpCreate,
+					New: operationState(urn, "", nil, nil),
+				}, create)
+			}
+			if pc.dryrun {
+				return pc.runDisplayedStep(cmd, displayedStep{
+					Op:          deploy.OpCreate,
+					New:         operationState(urn, "", nil, nil),
+					ShowChanges: true,
+				}, func() (*resource.State, error) {
+					if _, err := prepare(); err != nil {
+						return nil, err
+					}
+					return create()
+				})
+			}
+			if err := pc.previewDisplayedStep(cmd, displayedStep{
+				Op:  deploy.OpCreate,
+				New: operationState(urn, "", nil, nil),
+			}, prepare); err != nil {
+				return err
+			}
+			if err := pc.confirm(cmd, "", "create", yes); err != nil {
+				return err
+			}
+			return pc.runDisplayedStep(cmd, displayedStep{
+				Op:  deploy.OpCreate,
+				New: operationState(urn, "", checked, nil),
+			}, create)
 		},
 	}
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
