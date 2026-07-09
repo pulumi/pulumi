@@ -23,12 +23,19 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
 )
 
 // EnvPolicyPackAttach lists policy packs the engine should attach to at a
@@ -58,6 +65,136 @@ func GetPolicyPackAttachPort(name tokens.QName) (*int, error) {
 		return &port, nil
 	}
 	return nil, nil
+}
+
+const analyzerReadyTimeout = 2 * time.Minute
+
+// localOCIImageRef resolves the image to run for a local `--policy-pack ./dir`
+// OCI pack: <repository>:<version>, falling back to :latest when the manifest
+// has no version. The image must have been built locally (the CLI never
+// builds or implicitly pulls for local packs).
+func localOCIImageRef(proj *workspace.PolicyPackProject, path string) (string, error) {
+	repo, _ := proj.Runtime.Options()["repository"].(string)
+	if repo == "" {
+		return "", fmt.Errorf("policy pack at %q has runtime \"oci\" but no \"repository\" runtime option; "+
+			"set runtime.options.repository in PulumiPolicy.yaml to the pack's registry repository", path)
+	}
+	tag := proj.Version
+	if tag == "" {
+		tag = "latest"
+	}
+	return repo + ":" + tag, nil
+}
+
+// newOCIPolicyAnalyzer launches the pack image in a container and connects to
+// its analyzer.
+func newOCIPolicyAnalyzer(
+	host Host, ctx *Context, name tokens.QName, image string, opts *PolicyAnalyzerOptions,
+) (Analyzer, error) {
+	rt, err := oci.DetectRuntime(nil)
+	if err != nil {
+		return nil, fmt.Errorf("policy pack %q: %w", name, err)
+	}
+	mode := oci.DetectMode()
+
+	var packEnv map[string]string
+	if opts != nil && len(opts.AdditionalEnv) > 0 {
+		packEnv = opts.AdditionalEnv
+	}
+
+	container, err := rt.Launch(ctx.Request(), oci.LaunchOptions{
+		Image:    image,
+		PackName: string(name),
+		Env:      packEnv,
+		Mode:     mode,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("policy pack %q: %w "+
+			"(for a local pack, build and tag the image as %q first -- the CLI never builds it)",
+			name, err, image)
+	}
+
+	conn, err := dialAnalyzerWithRetry(ctx.Request(), container.Addr, analyzerReadyTimeout,
+		func() (bool, string) {
+			return container.Running(ctx.Request()), container.Logs(ctx.Request())
+		})
+	if err != nil {
+		contract.IgnoreClose(container)
+		return nil, fmt.Errorf("policy pack %q: %w", name, err)
+	}
+
+	client := pulumirpc.NewAnalyzerClient(conn)
+
+	// Handshake with an engine address the container can reach.
+	engineAddr := oci.EngineAddressFor(mode, host.ServerAddr())
+	if err := ociHandshake(ctx.Request(), client, name, engineAddr); err != nil {
+		contract.IgnoreClose(conn)
+		contract.IgnoreClose(container)
+		return nil, err
+	}
+
+	if err := configureStack(ctx, client, name, opts); err != nil {
+		contract.IgnoreClose(conn)
+		contract.IgnoreClose(container)
+		return nil, err
+	}
+
+	return &analyzer{
+		name:   name,
+		client: client,
+		closeFn: func() error {
+			contract.IgnoreClose(conn)
+			return container.Close()
+		},
+	}, nil
+}
+
+// attachPolicyAnalyzer connects to a policy pack that is already running at a
+// known loopback port (PULUMI_POLICY_PACK_ATTACH).
+func attachPolicyAnalyzer(
+	host Host, ctx *Context, name tokens.QName, port int, opts *PolicyAnalyzerOptions,
+) (Analyzer, error) {
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	conn, err := dialAnalyzerWithRetry(ctx.Request(), addr, analyzerReadyTimeout, nil)
+	if err != nil {
+		return nil, fmt.Errorf("attaching to policy pack %q at %s (from %s): %w",
+			name, addr, EnvPolicyPackAttach, err)
+	}
+	client := pulumirpc.NewAnalyzerClient(conn)
+
+	if err := ociHandshake(ctx.Request(), client, name, host.ServerAddr()); err != nil {
+		contract.IgnoreClose(conn)
+		return nil, err
+	}
+	if err := configureStack(ctx, client, name, opts); err != nil {
+		contract.IgnoreClose(conn)
+		return nil, err
+	}
+	return &analyzer{
+		name:    name,
+		client:  client,
+		closeFn: conn.Close,
+	}, nil
+}
+
+// ociHandshake performs the analyzer handshake over an established connection.
+// Containerized/attached packs get no Root/ProgramDirectory: host paths are
+// meaningless inside the pack's filesystem. Unimplemented is tolerated, as in
+// the process-launch path.
+func ociHandshake(
+	reqCtx context.Context, client pulumirpc.AnalyzerClient, name tokens.QName, engineAddr string,
+) error {
+	_, err := client.Handshake(reqCtx, &pulumirpc.AnalyzerHandshakeRequest{
+		EngineAddress: engineAddr,
+	})
+	if err != nil {
+		if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
+			logging.V(7).Infof("Handshake: not supported by policy pack %q", name)
+			return nil
+		}
+		return fmt.Errorf("handshake with policy pack %q failed: %w", name, err)
+	}
+	return nil
 }
 
 // dialAnalyzerWithRetry dials addr and waits until the gRPC channel is READY,

@@ -325,6 +325,11 @@ type PolicyAnalyzerOptions struct {
 	DryRun           bool
 	Tags             map[string]string // Tags for the current stack.
 	AdditionalEnv    map[string]string // Per-pack environment variables (e.g., from ESC).
+
+	// ImageRef, when set, is a digest-pinned OCI image reference for the policy
+	// pack (from the pack version's service-side metadata). The pack boots from
+	// this image; no local manifest or pack directory is consulted.
+	ImageRef string
 }
 
 // Flags can be used to filter out plugins during loading that aren't necessary.

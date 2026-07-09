@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"testing"
@@ -23,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -62,6 +64,46 @@ func TestGetPolicyPackAttachPortUnset(t *testing.T) {
 // fakeAnalyzerServer is a minimal in-process analyzer gRPC server.
 type fakeAnalyzerServer struct {
 	pulumirpc.UnimplementedAnalyzerServer
+}
+
+func (s *fakeAnalyzerServer) Handshake(
+	ctx context.Context, req *pulumirpc.AnalyzerHandshakeRequest,
+) (*pulumirpc.AnalyzerHandshakeResponse, error) {
+	return &pulumirpc.AnalyzerHandshakeResponse{}, nil
+}
+
+func (s *fakeAnalyzerServer) GetAnalyzerInfo(
+	ctx context.Context, req *emptypb.Empty,
+) (*pulumirpc.AnalyzerInfo, error) {
+	return &pulumirpc.AnalyzerInfo{Name: "fake-pack", Version: "1.0.0"}, nil
+}
+
+// fakeHost implements only what the OCI/attach boot paths call.
+type fakeHost struct {
+	Host
+	addr string
+}
+
+func (h *fakeHost) ServerAddr() string                 { return h.addr }
+func (h *fakeHost) AttachDebugger(spec DebugSpec) bool { return false }
+
+func TestNewPolicyAnalyzerAttachMode(t *testing.T) {
+	addr := startFakeAnalyzer(t)
+	_, portStr, err := net.SplitHostPort(addr)
+	require.NoError(t, err)
+	t.Setenv(EnvPolicyPackAttach, "attach-pack:"+portStr)
+
+	ctx, err := NewContext(t.Context(), nil, nil, &MockHost{}, nil, t.TempDir(), nil, false, nil)
+	require.NoError(t, err)
+
+	a, err := NewPolicyAnalyzer(&fakeHost{addr: "127.0.0.1:1"}, ctx, "attach-pack",
+		t.TempDir() /* no manifest needed: attach short-circuits */, nil, nil)
+	require.NoError(t, err)
+
+	info, err := a.GetAnalyzerInfo(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, "fake-pack", info.Name)
+	require.NoError(t, a.Close())
 }
 
 func startFakeAnalyzer(t *testing.T) string {
