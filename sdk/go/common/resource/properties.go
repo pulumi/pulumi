@@ -413,9 +413,6 @@ func NewPropertyValueRepl(v any,
 
 // HasValue returns true if a value is semantically meaningful.
 func (v PropertyValue) HasValue() bool {
-	if v.IsOutput() {
-		return v.OutputValue().Known
-	}
 	return !v.IsNull()
 }
 
