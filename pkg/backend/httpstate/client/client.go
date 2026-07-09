@@ -2152,8 +2152,14 @@ func (pc *Client) PublishPolicyPackPlatforms(ctx context.Context, orgName string
 		for k, v := range upload.RequiredHeaders {
 			putReq.Header.Add(k, v)
 		}
-		if _, err := pc.restClient.HTTPClient().Do(putReq, retryAllMethods); err != nil {
+		resp, err := pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
+		if err != nil {
 			return "", fmt.Errorf("failed to upload policy pack artifact for %s: %w", platform, err)
+		}
+		contract.IgnoreClose(resp.Body)
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return "", fmt.Errorf("failed to upload policy pack artifact for %s: upload returned status %s",
+				platform, resp.Status)
 		}
 	}
 

@@ -23,8 +23,12 @@ import (
 	"strings"
 )
 
+// PolicyRuntimeExecutable is the policy pack runtime whose packs are pre-built per-platform
+// binaries serving the analyzer gRPC protocol.
 const PolicyRuntimeExecutable = "executable"
 
+// PlatformLinuxAmd64 is mandatory for published executable packs: server-side policy
+// evaluation runs on linux-amd64.
 const PlatformLinuxAmd64 = "linux-amd64"
 
 var validExecutablePlatforms = map[string]bool{
@@ -36,10 +40,15 @@ var validExecutablePlatforms = map[string]bool{
 	"windows-arm64": true,
 }
 
+// CurrentPlatform returns the host platform in the "<os>-<arch>" form used to key executable
+// policy pack binaries and artifacts.
 func CurrentPlatform() string {
 	return runtime.GOOS + "-" + runtime.GOARCH
 }
 
+// ExecutableBinaries returns the validated platform-to-binary-path map from an executable
+// policy pack's runtime options. Paths are relative to the pack directory, in the platform's
+// native separator form.
 func (proj *PolicyPackProject) ExecutableBinaries() (map[string]string, error) {
 	raw, has := proj.Runtime.Options()["binaries"]
 	if !has {

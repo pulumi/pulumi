@@ -2140,6 +2140,49 @@ func TestPublishPolicyPackPlatforms(t *testing.T) {
 	assert.True(t, completeCalled)
 }
 
+func TestPublishPolicyPackPlatformsUploadRejected(t *testing.T) {
+	t.Parallel()
+
+	completeCalled := false
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/api/orgs/acme/policypacks", func(rw http.ResponseWriter, req *http.Request) {
+		resp := apitype.CreatePolicyPackResponse{
+			Version: 1,
+			PlatformUploadURIs: map[string]apitype.PolicyPackUpload{
+				"darwin-arm64": {UploadURI: server.URL + "/upload/darwin-arm64"},
+				"linux-amd64":  {UploadURI: server.URL + "/upload/linux-amd64"},
+			},
+		}
+		require.NoError(t, json.NewEncoder(rw).Encode(resp))
+	})
+	mux.HandleFunc("/upload/", func(rw http.ResponseWriter, req *http.Request) {
+		require.Equal(t, http.MethodPut, req.Method)
+		platform := strings.TrimPrefix(req.URL.Path, "/upload/")
+		if platform == "darwin-arm64" {
+			rw.WriteHeader(http.StatusForbidden)
+		}
+	})
+	mux.HandleFunc("/api/orgs/acme/policypacks/mypack/versions/0.0.1/complete",
+		func(rw http.ResponseWriter, req *http.Request) {
+			completeCalled = true
+		})
+
+	client := newMockClient(server)
+	_, err := client.PublishPolicyPackPlatforms(t.Context(), "acme", "executable",
+		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
+		map[string][]byte{
+			"linux-amd64":  []byte("linux-bytes"),
+			"darwin-arm64": []byte("darwin-bytes"),
+		}, nil)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "darwin-arm64")
+	assert.False(t, completeCalled)
+}
+
 func TestPublishPolicyPackPlatformsUnsupportedService(t *testing.T) {
 	t.Parallel()
 

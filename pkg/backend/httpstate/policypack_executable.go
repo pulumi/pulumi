@@ -18,8 +18,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -39,7 +41,8 @@ func validateExecutableMatrix(packDir string, binaries map[string]string) error 
 			"executable policy packs must declare a %s binary: server-side policy evaluation runs on %s",
 			workspace.PlatformLinuxAmd64, workspace.PlatformLinuxAmd64)
 	}
-	for platform, rel := range binaries {
+	for _, platform := range slices.Sorted(maps.Keys(binaries)) {
+		rel := binaries[platform]
 		if _, err := os.Stat(filepath.Join(packDir, rel)); err != nil {
 			return fmt.Errorf("the binary declared for %s was not found at %s: %w", platform, rel, err)
 		}
