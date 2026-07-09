@@ -120,7 +120,7 @@ func startFakeAnalyzer(t *testing.T) string {
 func TestDialAnalyzerWithRetrySucceeds(t *testing.T) {
 	t.Parallel()
 	addr := startFakeAnalyzer(t)
-	conn, err := dialAnalyzerWithRetry(t.Context(), addr, 5*time.Second, nil)
+	conn, err := dialAnalyzerWithRetry(t.Context(), addr, 5*time.Second, nil, nil)
 	require.NoError(t, err)
 	require.NoError(t, conn.Close())
 }
@@ -133,8 +133,26 @@ func TestDialAnalyzerWithRetryTimesOut(t *testing.T) {
 	addr := lis.Addr().String()
 	require.NoError(t, lis.Close())
 
-	_, err = dialAnalyzerWithRetry(t.Context(), addr, 500*time.Millisecond, nil)
+	_, err = dialAnalyzerWithRetry(t.Context(), addr, 500*time.Millisecond, nil, nil)
 	require.Error(t, err)
+}
+
+func TestDialAnalyzerWithRetryTimeoutIncludesLogsWhileRunning(t *testing.T) {
+	t.Parallel()
+	// A port with nothing listening: the container is "running" but never
+	// serves (wrong port / slow start), so the dial times out — and the error
+	// must still carry the container logs.
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	addr := lis.Addr().String()
+	require.NoError(t, lis.Close())
+
+	_, err = dialAnalyzerWithRetry(t.Context(), addr, 500*time.Millisecond,
+		func() bool { return true },
+		func() string { return "listening on the wrong port" })
+	require.Error(t, err)
+	assert.Contains(t, fmt.Sprintf("%v", err), "timed out")
+	assert.Contains(t, fmt.Sprintf("%v", err), "listening on the wrong port")
 }
 
 func TestDialAnalyzerWithRetryFailsFastOnExit(t *testing.T) {
@@ -146,7 +164,8 @@ func TestDialAnalyzerWithRetryFailsFastOnExit(t *testing.T) {
 
 	start := time.Now()
 	_, err = dialAnalyzerWithRetry(t.Context(), addr, 30*time.Second,
-		func() (bool, string) { return false, "container crashed: OOM" })
+		func() bool { return false },
+		func() string { return "container crashed: OOM" })
 	require.Error(t, err)
 	assert.Contains(t, fmt.Sprintf("%v", err), "container crashed: OOM")
 	assert.Less(t, time.Since(start), 10*time.Second, "should fail fast, not wait out the timeout")

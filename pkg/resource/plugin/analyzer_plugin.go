@@ -121,7 +121,7 @@ func NewPolicyAnalyzer(
 	// A digest-pinned image ref (server-enforced OCI pack): boot the container
 	// directly; there is no local pack directory or manifest.
 	if opts != nil && opts.ImageRef != "" {
-		return newOCIPolicyAnalyzer(host, ctx, name, opts.ImageRef, opts)
+		return newOCIPolicyAnalyzer(host, ctx, name, opts.ImageRef, "" /*version*/, "" /*description*/, opts)
 	}
 
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
@@ -137,7 +137,11 @@ func NewPolicyAnalyzer(
 		if err != nil {
 			return nil, err
 		}
-		return newOCIPolicyAnalyzer(host, ctx, name, image, opts)
+		var description string
+		if proj.Description != nil {
+			description = *proj.Description
+		}
+		return newOCIPolicyAnalyzer(host, ctx, name, image, proj.Version, description, opts)
 	}
 
 	handshake := func(
@@ -289,6 +293,9 @@ func configureStack(
 	if opts == nil {
 		return nil
 	}
+	// Tags/DryRun/ConfigSecretKeys are intentionally not part of this guard: no
+	// caller sets any of those without also setting Stack/Project/Organization
+	// (engine/update.go always sets Project).
 	if opts.Stack == "" && opts.Project == "" && opts.Organization == "" && len(opts.Config) == 0 {
 		return nil
 	}

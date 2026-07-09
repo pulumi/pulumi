@@ -24,17 +24,25 @@ import (
 )
 
 // Pull pulls an image ref, streaming the runtime's progress output to output.
-// Auth-shaped failures get a note: private registries are not yet supported.
+// On failure, a note is appended: private registries are not yet supported.
 func (r *Runtime) Pull(ctx context.Context, ref string, output io.Writer) error {
 	cmd := exec.CommandContext(ctx, r.Path, "pull", ref)
 	cmd.Stdout = output
 	cmd.Stderr = output
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("pulling policy pack image %s failed: %w "+
-			"(note: private registries are not yet supported for policy packs — "+
-			"the image must be pullable anonymously)", ref, err)
+			"(note: the image must be pullable anonymously — "+
+			"private registries are not yet supported for policy packs)", ref, err)
 	}
 	return nil
+}
+
+// ImagePresent reports whether ref is already present in the runtime's local
+// image store. Digest-pinned refs are immutable, so a local hit is always
+// correct and pulling again would be wasted network I/O.
+func (r *Runtime) ImagePresent(ctx context.Context, ref string) bool {
+	_, err := r.run(ctx, "image", "inspect", "--format", "{{.Id}}", ref)
+	return err == nil
 }
 
 // ResolveDigest returns the digest-pinned ref for a tagged ref that has
@@ -55,7 +63,7 @@ func (r *Runtime) ResolveDigest(ctx context.Context, ref string) (string, error)
 	if i := strings.LastIndex(repo, ":"); i > strings.LastIndex(repo, "/") {
 		repo = repo[:i]
 	}
-	first := ""
+	var found []string
 	for _, d := range digests {
 		if !strings.Contains(d, "@sha256:") {
 			continue
@@ -63,15 +71,14 @@ func (r *Runtime) ResolveDigest(ctx context.Context, ref string) (string, error)
 		if strings.HasPrefix(d, repo+"@") {
 			return d, nil
 		}
-		if first == "" {
-			first = d
-		}
+		found = append(found, d)
 	}
-	if first != "" {
-		return first, nil
+	if len(found) == 0 {
+		return "", fmt.Errorf("could not resolve a registry digest for %s: the image has no repository digest "+
+			"(has it been pushed to its registry?)", ref)
 	}
-	return "", fmt.Errorf("could not resolve a registry digest for %s: the image has no repository digest "+
-		"(has it been pushed to its registry?)", ref)
+	return "", fmt.Errorf("could not resolve a registry digest for %s: no repository digest matches %q "+
+		"(found: %s)", ref, repo, strings.Join(found, ", "))
 }
 
 // HasPlatform reports whether the (pulled) ref supports platform ("os/arch").

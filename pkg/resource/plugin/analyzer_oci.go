@@ -87,9 +87,12 @@ func localOCIImageRef(proj *workspace.PolicyPackProject, path string) (string, e
 }
 
 // newOCIPolicyAnalyzer launches the pack image in a container and connects to
-// its analyzer.
+// its analyzer. version and description come from the pack's PulumiPolicy.yaml
+// manifest when one was loaded (local packs); both are empty for a
+// digest-pinned ImageRef publish/install, which has no manifest to read.
 func newOCIPolicyAnalyzer(
-	host Host, ctx *Context, name tokens.QName, image string, opts *PolicyAnalyzerOptions,
+	host Host, ctx *Context, name tokens.QName, image string, version, description string,
+	opts *PolicyAnalyzerOptions,
 ) (Analyzer, error) {
 	rt, err := oci.DetectRuntime(nil)
 	if err != nil {
@@ -115,9 +118,8 @@ func newOCIPolicyAnalyzer(
 	}
 
 	conn, err := dialAnalyzerWithRetry(ctx.Request(), container.Addr, analyzerReadyTimeout,
-		func() (bool, string) {
-			return container.Running(ctx.Request()), container.Logs(ctx.Request())
-		})
+		func() bool { return container.Running(ctx.Request()) },
+		func() string { return container.Logs(ctx.Request()) })
 	if err != nil {
 		contract.IgnoreClose(container)
 		return nil, fmt.Errorf("policy pack %q: %w", name, err)
@@ -140,8 +142,10 @@ func newOCIPolicyAnalyzer(
 	}
 
 	return &analyzer{
-		name:   name,
-		client: client,
+		name:        name,
+		client:      client,
+		version:     version,
+		description: description,
 		closeFn: func() error {
 			contract.IgnoreClose(conn)
 			return container.Close()
@@ -155,7 +159,7 @@ func attachPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, port int, opts *PolicyAnalyzerOptions,
 ) (Analyzer, error) {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	conn, err := dialAnalyzerWithRetry(ctx.Request(), addr, analyzerReadyTimeout, nil)
+	conn, err := dialAnalyzerWithRetry(ctx.Request(), addr, analyzerReadyTimeout, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("attaching to policy pack %q at %s (from %s): %w",
 			name, addr, EnvPolicyPackAttach, err)
@@ -200,12 +204,16 @@ func ociHandshake(
 // dialAnalyzerWithRetry dials addr and waits until the gRPC channel is READY,
 // retrying transient failures until timeout. A raw TCP connect is not
 // sufficient readiness — container runtimes bind the host port before the pack
-// is listening — so we require the channel itself to become READY. If
-// containerCheck is non-nil and reports the container has exited, we fail fast
-// with its logs instead of waiting out the timeout.
+// is listening — so we require the channel itself to become READY. If running
+// is non-nil and reports the container has exited, we fail fast instead of
+// waiting out the timeout. Both the exited-early and timeout errors include
+// container logs (via logs, if non-nil) — a timeout with a still-running
+// container (wrong port, slow start) is the main case that diagnostic exists
+// for. running is polled every retry iteration so it must stay cheap; logs is
+// only invoked when an error is being built.
 func dialAnalyzerWithRetry(
 	ctx context.Context, addr string, timeout time.Duration,
-	containerCheck func() (running bool, logs string),
+	running func() bool, logs func() string,
 ) (*grpc.ClientConn, error) {
 	conn, err := grpc.NewClient(addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -221,24 +229,26 @@ func dialAnalyzerWithRetry(
 		if state == connectivity.Ready {
 			return conn, nil
 		}
-		if containerCheck != nil {
-			if running, logs := containerCheck(); !running {
-				contract.IgnoreClose(conn)
-				return nil, fmt.Errorf("policy pack container exited before serving its analyzer; container logs:\n%s", logs)
+		if running != nil && !running() {
+			contract.IgnoreClose(conn)
+			var containerLogs string
+			if logs != nil {
+				containerLogs = logs()
 			}
+			return nil, fmt.Errorf("policy pack container exited before serving its analyzer; container logs:\n%s",
+				containerLogs)
 		}
 		waitCtx, cancel := context.WithDeadline(ctx, deadline)
 		changed := conn.WaitForStateChange(waitCtx, state)
 		cancel()
 		if !changed {
-			var logs string
-			if containerCheck != nil {
-				_, logs = containerCheck()
-				logs = "; container logs:\n" + logs
+			var logsSuffix string
+			if logs != nil {
+				logsSuffix = "; container logs:\n" + logs()
 			}
 			contract.IgnoreClose(conn)
 			return nil, fmt.Errorf("timed out after %v waiting for policy pack analyzer at %s%s",
-				timeout, addr, logs)
+				timeout, addr, logsSuffix)
 		}
 	}
 }

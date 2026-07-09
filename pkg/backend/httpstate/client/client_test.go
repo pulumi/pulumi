@@ -2119,3 +2119,36 @@ func TestPublishPolicyPackWithImageRef(t *testing.T) {
 	assert.False(t, sawUpload, "no tarball upload for image-ref publishes")
 	assert.False(t, sawComplete, "no publish-complete call for image-ref publishes")
 }
+
+func TestPublishPolicyPackWithImageRefUnsupportedByService(t *testing.T) {
+	t.Parallel()
+
+	var sawUpload, sawComplete bool
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == "POST" && r.URL.Path == "/api/orgs/acme/policypacks":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"version":3,"uploadURI":"https://example.com/up"}`))
+		case r.Method == "PUT":
+			sawUpload = true
+			w.WriteHeader(200)
+		case strings.Contains(r.URL.Path, "/complete"):
+			sawComplete = true
+			w.WriteHeader(200)
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer server.Close()
+
+	client := newMockClient(server)
+
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "oci",
+		plugin.AnalyzerInfo{Name: "security", Version: "1.2.3"},
+		nil, "ghcr.io/acme/security@sha256:abc", nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "does not support OCI policy packs")
+	assert.False(t, sawUpload, "no tarball upload should be attempted")
+	assert.False(t, sawComplete, "no publish-complete call should be made")
+}

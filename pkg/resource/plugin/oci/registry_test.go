@@ -88,6 +88,34 @@ echo '["docker.io/mirror/pack@sha256:aaaa","ghcr.io/acme/pack@sha256:bbbb"]'
 	assert.Equal(t, "ghcr.io/acme/pack@sha256:bbbb", ref)
 }
 
+func TestResolveDigestNoMatchingRepository(t *testing.T) {
+	t.Parallel()
+	rt := scriptRuntime(t, `#!/bin/sh
+echo '["docker.io/mirror/pack@sha256:aaaa"]'
+`)
+	_, err := rt.ResolveDigest(t.Context(), "ghcr.io/acme/pack:1.0.0")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ghcr.io/acme/pack:1.0.0")
+	assert.Contains(t, err.Error(), "docker.io/mirror/pack@sha256:aaaa")
+}
+
+func TestImagePresentTrue(t *testing.T) {
+	t.Parallel()
+	rt := scriptRuntime(t, `#!/bin/sh
+echo "sha256:deadbeef"
+`)
+	assert.True(t, rt.ImagePresent(t.Context(), "ghcr.io/acme/pack@sha256:deadbeef"))
+}
+
+func TestImagePresentFalse(t *testing.T) {
+	t.Parallel()
+	rt := scriptRuntime(t, `#!/bin/sh
+echo "no such image" >&2
+exit 1
+`)
+	assert.False(t, rt.ImagePresent(t.Context(), "ghcr.io/acme/pack@sha256:deadbeef"))
+}
+
 func TestHasPlatformManifestList(t *testing.T) {
 	t.Parallel()
 	rt := scriptRuntime(t, `#!/bin/sh

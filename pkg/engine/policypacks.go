@@ -41,18 +41,38 @@ func installPolicyPack(
 	policyID := fmt.Sprintf("%s@v%s", policy.Name(), policy.Version())
 	logging.V(preparePluginLog).Infof("installPolicyPack(%s): beginning install", policyID)
 
-	// OCI policy packs are container images: "install" is an eager pull of the
-	// digest-pinned ref. Nothing is written under ~/.pulumi/policies; the
-	// container runtime's image store is the cache, and pulling an
-	// already-present digest is a cheap no-op.
+	// OCI policy packs are container images: "install" pulls the digest-pinned
+	// ref. Nothing is written under ~/.pulumi/policies; the container runtime's
+	// image store is the cache. Digest refs are immutable, so if the image is
+	// already present locally we can skip the pull entirely -- the registry is
+	// not a hard dependency of every `pulumi up` once a pack has been pulled
+	// once.
 	if ref := policy.ImageRef(); ref != "" {
 		rt, err := oci.DetectRuntime(nil)
 		if err != nil {
 			return fmt.Errorf("installing policy pack %s: %w", policyID, err)
 		}
-		fmt.Fprintf(os.Stderr, "Pulling policy pack image %s...\n", ref)
-		if err := rt.Pull(ctx, ref, os.Stderr); err != nil {
-			return fmt.Errorf("installing policy pack %s: %w", policyID, err)
+		if rt.ImagePresent(ctx, ref) {
+			logging.V(preparePluginLog).Infof("installPolicyPack(%s): image already present, skipping pull", policyID)
+			return nil
+		}
+		if opts == nil {
+			fmt.Fprintf(os.Stderr, "Pulling policy pack image %s...\n", ref)
+			if err := rt.Pull(ctx, ref, os.Stderr); err != nil {
+				return fmt.Errorf("installing policy pack %s: %w", policyID, err)
+			}
+		} else {
+			pullWriter := NewProgressEventWriter(
+				opts.Events,
+				PolicyPackInstall,
+				string(PolicyPackInstall)+":image:"+policyID,
+				"Pulling policy pack image "+policyID+"...",
+			)
+			defer pullWriter.Done()
+			if err := rt.Pull(ctx, ref, pullWriter); err != nil {
+				return fmt.Errorf("installing policy pack %s: %w\n\nImage pull output:\n%s",
+					policyID, err, pullWriter.Output())
+			}
 		}
 		logging.V(preparePluginLog).Infof("installPolicyPack(%s): image pulled", policyID)
 		return nil

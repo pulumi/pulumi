@@ -75,6 +75,10 @@ func sanitizeName(s string) string {
 	return b.String()
 }
 
+// freePort has an inherent TOCTOU race: the port is released before the
+// container binds it, so another process could grab it in between. If that
+// happens, the container fails to bind and the caller's readiness retry-dial
+// simply times out (rather than misbehaving silently).
 func freePort() (int, error) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

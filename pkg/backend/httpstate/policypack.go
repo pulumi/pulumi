@@ -67,9 +67,12 @@ func newCloudRequiredPolicy(client *client.Client, envs backend.EnvironmentsBack
 	}
 }
 
-func (rp *cloudRequiredPolicy) Name() string     { return rp.RequiredPolicy.Name }
-func (rp *cloudRequiredPolicy) Version() string  { return rp.VersionTag }
-func (rp *cloudRequiredPolicy) OrgName() string  { return rp.orgName }
+func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name }
+func (rp *cloudRequiredPolicy) Version() string { return rp.VersionTag }
+func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
+
+// ImageRef intentionally shadows the promoted apitype.RequiredPolicy.ImageRef
+// field so this type satisfies engine.RequiredPolicy's ImageRef() method.
 func (rp *cloudRequiredPolicy) ImageRef() string { return rp.RequiredPolicy.ImageRef }
 
 func (rp *cloudRequiredPolicy) policyVersion() string {
@@ -442,7 +445,7 @@ func (pack *cloudPolicyPack) publishOCI(ctx context.Context, op backend.PublishO
 	// Every server-side enforcement point (Deployments executor, Insights
 	// evaluator, TF policy check) runs on linux/amd64: an image without it
 	// would pass publish and local dev, then break org enforcement.
-	ok, err := rt.HasPlatform(ctx, taggedRef, "linux/amd64")
+	ok, err := rt.HasPlatform(ctx, digestRef, "linux/amd64")
 	if err != nil {
 		return err
 	}
@@ -483,7 +486,7 @@ func (pack *cloudPolicyPack) publishOCI(ctx context.Context, op backend.PublishO
 func (pack *cloudPolicyPack) Publish(
 	ctx context.Context, op backend.PublishOperation,
 ) error {
-	if strings.EqualFold(op.PolicyPack.Runtime.Name(), "oci") {
+	if op.PolicyPack.Runtime.Name() == "oci" {
 		return pack.publishOCI(ctx, op)
 	}
 

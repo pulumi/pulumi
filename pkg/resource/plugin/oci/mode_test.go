@@ -20,11 +20,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func env(m map[string]string) func(string) string {
+func fakeEnv(m map[string]string) func(string) string {
 	return func(k string) string { return m[k] }
 }
 
-func files(fs ...string) func(string) bool {
+func fakeFiles(fs ...string) func(string) bool {
 	set := map[string]bool{}
 	for _, f := range fs {
 		set[f] = true
@@ -34,31 +34,31 @@ func files(fs ...string) func(string) bool {
 
 func TestDetectModeOnHost(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, ModeHost, detectMode(env(nil), files()))
+	assert.Equal(t, ModeHost, detectMode(fakeEnv(nil), fakeFiles()))
 }
 
 func TestDetectModeInContainerWithSocket(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, ModeSibling, detectMode(env(nil), files("/.dockerenv", "/var/run/docker.sock")))
-	assert.Equal(t, ModeSibling, detectMode(env(nil), files("/run/.containerenv", "/var/run/docker.sock")))
+	assert.Equal(t, ModeSibling, detectMode(fakeEnv(nil), fakeFiles("/.dockerenv", "/var/run/docker.sock")))
+	assert.Equal(t, ModeSibling, detectMode(fakeEnv(nil), fakeFiles("/run/.containerenv", "/var/run/docker.sock")))
 }
 
 func TestDetectModeInContainerWithDockerHost(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, ModeSibling,
-		detectMode(env(map[string]string{"DOCKER_HOST": "unix:///x.sock"}), files("/.dockerenv")))
+		detectMode(fakeEnv(map[string]string{"DOCKER_HOST": "unix:///x.sock"}), fakeFiles("/.dockerenv")))
 }
 
 func TestDetectModeInContainerNoSocket(t *testing.T) {
 	t.Parallel()
 	// In a container with no socket we still return ModeHost; the runtime
 	// probe will then fail loudly (no docker CLI / no daemon).
-	assert.Equal(t, ModeHost, detectMode(env(nil), files("/.dockerenv")))
+	assert.Equal(t, ModeHost, detectMode(fakeEnv(nil), fakeFiles("/.dockerenv")))
 }
 
 func TestDetectModeEnvOverride(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, ModeSibling, detectMode(env(map[string]string{EnvNetworkMode: "sibling"}), files()))
+	assert.Equal(t, ModeSibling, detectMode(fakeEnv(map[string]string{EnvNetworkMode: "sibling"}), fakeFiles()))
 	assert.Equal(t, ModeHost,
-		detectMode(env(map[string]string{EnvNetworkMode: "host"}), files("/.dockerenv", "/var/run/docker.sock")))
+		detectMode(fakeEnv(map[string]string{EnvNetworkMode: "host"}), fakeFiles("/.dockerenv", "/var/run/docker.sock")))
 }

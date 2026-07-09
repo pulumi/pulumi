@@ -24,18 +24,21 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 const integrationImage = "pulumi-test/oci-policy-pack:integration"
 
 func requireDocker(t *testing.T) *oci.Runtime {
 	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping OCI integration test in -short mode")
+	}
 	rt, err := oci.DetectRuntime(nil)
 	if err != nil {
 		t.Skip("no container runtime available; skipping OCI integration test")
-	}
-	if testing.Short() {
-		t.Skip("skipping OCI integration test in -short mode")
 	}
 	return rt
 }
@@ -77,6 +80,16 @@ func TestOCIPolicyPackEndToEnd(t *testing.T) {
 	info, err := a.GetAnalyzerInfo(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "oci-integration-pack", info.Name)
+
+	analyzeResp, err := a.Analyze(t.Context(), AnalyzerResource{
+		URN:        resource.URN("urn:pulumi:stack::proj::aws:s3/bucket:Bucket::b"),
+		Type:       tokens.Type("aws:s3/bucket:Bucket"),
+		Name:       "b",
+		Properties: property.Map{},
+	})
+	require.NoError(t, err)
+	require.Len(t, analyzeResp.Diagnostics, 1)
+	assert.Equal(t, "ran-in-container", analyzeResp.Diagnostics[0].Message)
 
 	require.NoError(t, a.Close())
 

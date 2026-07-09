@@ -2061,7 +2061,13 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		fmt.Printf("Published as version %s\n", version)
 	}
 
-	if imageRef == "" {
+	if imageRef != "" {
+		if resp.UploadURI != "" {
+			return "", errors.New("the Pulumi Cloud service you are connected to does not support OCI policy packs " +
+				"(it returned an artifact upload URL for an image-based publish); " +
+				"upgrade the service or publish a tarball-based pack")
+		}
+	} else {
 		//
 		// Step 2: Upload the compressed PolicyPack directory to the pre-signed object storage service URL.
 		// The PolicyPack is now published.

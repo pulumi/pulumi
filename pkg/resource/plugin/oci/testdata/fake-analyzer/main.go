@@ -42,6 +42,10 @@ func (s *server) GetAnalyzerInfo(ctx context.Context, _ *emptypb.Empty) (*pulumi
 	return &pulumirpc.AnalyzerInfo{Name: "oci-integration-pack", Version: "0.0.1"}, nil
 }
 
+func (s *server) GetPluginInfo(ctx context.Context, _ *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{Version: "0.0.1"}, nil
+}
+
 func (s *server) Analyze(ctx context.Context, req *pulumirpc.AnalyzeRequest) (*pulumirpc.AnalyzeResponse, error) {
 	return &pulumirpc.AnalyzeResponse{
 		Diagnostics: []*pulumirpc.AnalyzeDiagnostic{{

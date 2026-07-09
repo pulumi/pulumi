@@ -57,7 +57,32 @@ func TestInstallPolicyPackPullsOCIImage(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("stub runtime scripts are not supported on Windows")
 	}
-	// Stub docker on PATH that records the pull.
+	// Stub docker on PATH that records every invocation, but reports the image
+	// as absent (`image inspect` fails), so the pull path is exercised.
+	dir := t.TempDir()
+	record := filepath.Join(dir, "record")
+	dockerPath := filepath.Join(dir, "docker")
+	require.NoError(t, os.WriteFile(dockerPath, []byte(
+		"#!/bin/sh\necho \"$@\" >> "+record+"\ncase \"$1\" in\n  image) exit 1 ;;\nesac\n"), 0o600))
+	require.NoError(t, os.Chmod(dockerPath, 0o700))
+	t.Setenv("PATH", dir)
+	t.Setenv(ociruntime.EnvContainerRuntime, "")
+
+	policy := &fakeOCIRequiredPolicy{imageRef: "ghcr.io/acme/pack@sha256:abc"}
+	err := installPolicyPack(t.Context(), nil, nil, policy)
+	require.NoError(t, err)
+
+	b, err := os.ReadFile(record)
+	require.NoError(t, err)
+	assert.Contains(t, string(b), "pull ghcr.io/acme/pack@sha256:abc")
+}
+
+func TestInstallPolicyPackSkipsPullWhenImagePresent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("stub runtime scripts are not supported on Windows")
+	}
+	// Stub docker on PATH that records every invocation and reports the image
+	// as present (`image inspect` succeeds), so the pull should be skipped.
 	dir := t.TempDir()
 	record := filepath.Join(dir, "record")
 	dockerPath := filepath.Join(dir, "docker")
@@ -73,7 +98,7 @@ func TestInstallPolicyPackPullsOCIImage(t *testing.T) {
 
 	b, err := os.ReadFile(record)
 	require.NoError(t, err)
-	assert.Contains(t, string(b), "pull ghcr.io/acme/pack@sha256:abc")
+	assert.NotContains(t, string(b), "pull ghcr.io/acme/pack@sha256:abc")
 }
 
 func TestInstallPolicyPackOCIRuntimeMissing(t *testing.T) {
