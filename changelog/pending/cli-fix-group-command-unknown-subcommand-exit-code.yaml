@@ -1,0 +1,6 @@
+kind: fix
+body: Exit with a non-zero code when a command group such as `pulumi env` is given
+  an unknown subcommand or no subcommand at all
+component: cli
+custom:
+    PR: "23814"

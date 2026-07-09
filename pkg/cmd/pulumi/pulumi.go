@@ -94,6 +94,7 @@ import (
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"go.opentelemetry.io/otel"
@@ -593,7 +594,39 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// With all the commands registered, we can walk the tree to build the
 	// environment variable declarations.
 	declareFlagsAsEnvironmentVariables(cmd)
+
+	// Patch group commands so that invalid invocations exit non-zero.
+	rejectUnknownSubcommands(cmd)
+
 	return cmd, cleanup
+}
+
+// rejectUnknownSubcommands walks the command tree and patches every group
+// command — one with subcommands but no run function — to fail with a non-zero
+// exit code when invoked with an unknown subcommand or with no subcommand at
+// all. Without this, cobra returns flag.ErrHelp for non-runnable commands
+// before ever validating args, which Execute turns into "print help, exit 0".
+func rejectUnknownSubcommands(c *cobra.Command) {
+	for _, child := range c.Commands() {
+		rejectUnknownSubcommands(child)
+	}
+	// The root command is excluded: its nil Args already rejects unknown
+	// commands, and a bare `pulumi` keeps printing help with a zero exit code.
+	if !c.HasParent() || !c.HasSubCommands() || c.Runnable() {
+		return
+	}
+	// A positional arg to a group command can only be an attempted subcommand,
+	// so cobra's standard `unknown command %q for %q` error beats whatever
+	// arg-count validator the command may have declared.
+	c.Args = cobra.NoArgs
+	c.RunE = func(c *cobra.Command, args []string) error {
+		// A bare group invocation shows help but still exits non-zero. A bail
+		// error sets the exit code without printing anything after the help.
+		if err := c.Help(); err != nil {
+			return err
+		}
+		return result.BailErrorf("%q requires a subcommand", c.CommandPath())
+	}
 }
 
 // haveNewerDevVersion checks whether we have a newer dev version available.
