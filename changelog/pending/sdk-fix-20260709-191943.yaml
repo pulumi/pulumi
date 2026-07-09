@@ -1,0 +1,4 @@
+component: sdk
+kind: fix
+body: Failed resource registrations will return faulted outputs, not unknown outputs
+time: 2026-07-09T19:19:43.24112+01:00
