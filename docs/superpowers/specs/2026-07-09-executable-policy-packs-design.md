@@ -107,11 +107,9 @@ workflow, symmetric with Go provider development; the CLI never compiles anythin
 
 ### Artifact format
 
-Each platform's artifact is a `.tar.gz` containing `PulumiPolicy.yaml`, that platform's
-binary, and — when the pack has one — `package.json` (the nodejs policy SDK reads it
-from the pack directory at boot for version metadata; verified empirically). No
-sources, no other platforms' binaries. Files are nested under `package/` so the
-existing extraction code works unchanged. The tarball preserves the executable
+Each platform's artifact is a `.tar.gz` containing exactly `PulumiPolicy.yaml` and that
+platform's binary — no sources, no other platforms' binaries — nested under `package/`
+so the existing extraction code works unchanged. The tarball preserves the executable
 bit; on non-Windows platforms extraction additionally `chmod +x`es the declared binary
 defensively.
 
@@ -178,9 +176,10 @@ bun-compiled pack whose `@pulumi/pulumi` falls back to `require`-ing a vendored
 `node_modules` is present and only fails on consumer machines. The publish gate
 catches this class of defect only when the build residue is absent at publish
 time. The official pack template must pin `typescript` as an explicit
-dependency (which lets bun bundle it statically), and pack-repo CI should
-remove `node_modules` between build and publish so conformance boots the
-binary as a consumer would.
+dependency (which lets bun bundle it statically) and pass the pack version
+explicitly via `PolicyPackArgs.version` (pulumi-policy#452) with a static
+`package.json` import, and pack-repo CI should remove `node_modules` between
+build and publish so conformance boots the binary as a consumer would.
 
 ### apitype
 

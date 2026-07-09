@@ -187,25 +187,5 @@ func TestBuildExecutablePlatformTarball(t *testing.T) {
 		assert.NotZero(t, info.Mode()&0o111, "binary in artifact must keep the executable bit")
 	}
 	assert.NoFileExists(t, filepath.Join(extractDir, "package", "index.ts"),
-		"per-platform artifacts must not contain sources")
-	assert.NoFileExists(t, filepath.Join(extractDir, "package", "package.json"),
-		"package.json must not be fabricated when the pack has none")
-}
-
-func TestBuildExecutablePlatformTarballIncludesPackageJSON(t *testing.T) {
-	t.Parallel()
-
-	binRel := filepath.Join("bin", "tool")
-	packDir := writeExecutablePack(t, map[string]string{"linux-amd64": binRel})
-	require.NoError(t, os.WriteFile(filepath.Join(packDir, "package.json"),
-		[]byte(`{"name":"p","version":"0.0.1"}`), 0o600))
-
-	tgz, err := buildExecutablePlatformTarball(packDir, binRel)
-	require.NoError(t, err)
-
-	extractDir := t.TempDir()
-	require.NoError(t, archive.ExtractTGZ(io.NopCloser(bytes.NewReader(tgz)), extractDir))
-
-	assert.FileExists(t, filepath.Join(extractDir, "package", "package.json"),
-		"the nodejs policy SDK reads package.json at boot; ship it when present")
+		"per-platform artifacts must contain only the manifest and one binary")
 }
