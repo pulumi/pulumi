@@ -204,21 +204,18 @@ jobs:
             .gocache.tmp
       - name: Prime Go cache
         if: ${{ ! steps.setup-go.outputs.cache-hit }}
-        # Compile every test to ensure we populate a good cache entry.
+        # Compile every test to ensure we populate a good cache entry. The
+        # sdk is also built with -trimpath: the Go language host compiles
+        # test programs with -trimpath (see compileProgram in
+        # sdk/go/pulumi-language-go), and Go's build cache keys entries on
+        # build flags — without these entries the first program build in a
+        # job rebuilds the SDK's whole dependency graph mid-test. Persisted
+        # caches saved before this line existed lack the entries and never
+        # heal on their own; delete them (or otherwise rotate the cache key)
+        # so every matrix cell re-primes.
         run: |
           ( cd sdk && go test -run "_________" ./... )
           ( cd pkg && go test -run "_________" ./... )
-      - name: Prime Go cache for program compilation
-        # The Go language host compiles test programs with -trimpath (see
-        # compileProgram in sdk/go/pulumi-language-go), and Go's build cache
-        # keys entries on build flags. Without matching entries the first
-        # program build in a job rebuilds the SDK's whole dependency graph
-        # mid-test. This step runs unconditionally rather than only on cache
-        # miss: the restored cache may predate -trimpath priming (it is saved
-        # by whichever cache-miss job finishes first, which may never build a
-        # program), and paying the build once up front on an idle runner is
-        # far cheaper than paying it concurrently inside the first tests.
-        run: |
           ( cd sdk && go build -trimpath ./... )
       - name: Install delve
         run: |
