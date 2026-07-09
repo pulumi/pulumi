@@ -418,6 +418,10 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 func (pack *cloudPolicyPack) Publish(
 	ctx context.Context, op backend.PublishOperation,
 ) error {
+	if op.PolicyPack.Runtime.Name() == workspace.PolicyRuntimeExecutable {
+		return pack.publishExecutable(ctx, op)
+	}
+
 	//
 	// Get PolicyPack metadata from the plugin.
 	//

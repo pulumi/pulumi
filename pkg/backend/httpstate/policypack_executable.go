@@ -15,11 +15,16 @@
 package httpstate
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -91,4 +96,67 @@ func copyFile(src, dst string, perm os.FileMode) error {
 		return err
 	}
 	return out.Close()
+}
+
+func (pack *cloudPolicyPack) publishExecutable(ctx context.Context, op backend.PublishOperation) error {
+	packDir, err := filepath.Abs(op.PlugCtx.Pwd)
+	if err != nil {
+		return err
+	}
+
+	binaries, err := op.PolicyPack.ExecutableBinaries()
+	if err != nil {
+		return err
+	}
+	if err := validateExecutableMatrix(packDir, binaries); err != nil {
+		return err
+	}
+
+	fmt.Println("Running conformance checks against the host platform binary")
+
+	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(op.PlugCtx, tokens.QName(packDir), op.PlugCtx.Pwd, nil /*opts*/)
+	if err != nil {
+		return fmt.Errorf("conformance check failed: the %s binary did not boot: %w",
+			workspace.CurrentPlatform(), err)
+	}
+
+	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
+	if err != nil {
+		return fmt.Errorf("conformance check failed: GetAnalyzerInfo: %w", err)
+	}
+
+	if _, err := analyzer.Analyze(ctx, plugin.AnalyzerResource{
+		URN: resource.NewURN(
+			tokens.QName("conformance"), tokens.PackageName("conformance"),
+			tokens.Type(""), tokens.Type("pulumi:pulumi:Stack"), "conformance"),
+		Type: tokens.Type("pulumi:pulumi:Stack"),
+		Name: "conformance",
+	}); err != nil {
+		return fmt.Errorf("conformance check failed: synthetic Analyze call: %w", err)
+	}
+
+	pack.ref.name = tokens.QName(analyzerInfo.Name)
+	pack.ref.versionTag = analyzerInfo.Version
+
+	fmt.Println("Building per-platform artifacts")
+
+	archives := make(map[string][]byte, len(binaries))
+	for platform, rel := range binaries {
+		tarball, err := buildExecutablePlatformTarball(packDir, rel)
+		if err != nil {
+			return fmt.Errorf("building artifact for %s: %w", platform, err)
+		}
+		archives[platform] = tarball
+	}
+
+	fmt.Println("Uploading policy pack to Pulumi service")
+
+	publishedVersion, err := pack.cl.PublishPolicyPackPlatforms(
+		ctx, pack.ref.orgName, workspace.PolicyRuntimeExecutable, analyzerInfo, archives, op.Metadata)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\nPermalink: %s/%s\n", pack.ref.CloudConsoleURL(), publishedVersion)
+	return nil
 }
