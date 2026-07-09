@@ -438,3 +438,77 @@ func TestRenderDiffPolicyViolationEventUsesDisplayResourceTypeNameWithURNs(t *te
 		"(aws:s3:Bucket: urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket)",
 	)
 }
+
+func TestRenderDiffPolicyViolationEventIndentsMultilineMessageWithoutLinePrefix(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket")
+	payload := engine.PolicyViolationEventPayload{
+		ResourceURN:       urn,
+		Message:           "Policy description:\nmy-bucket: violation details",
+		PolicyName:        "s3-bucket-replication-enabled",
+		PolicyPackName:    "foo-policy-pack",
+		PolicyPackVersion: "0.0.6",
+		EnforcementLevel:  apitype.Advisory,
+	}
+
+	output := renderDiffPolicyViolationEvent(payload, "", "", Options{
+		Color: colors.Never,
+	})
+
+	assert.Contains(t, output, "    foo-policy-pack@v0.0.6")
+	assert.Contains(t, output, "[advisory]  s3-bucket-replication-enabled")
+	assert.Contains(t, output, "(aws:s3:Bucket: my-bucket)")
+	assert.Contains(t, output, "\n      Policy description:\n      my-bucket: violation details\n")
+}
+
+func TestRenderDiffPolicyViolationEventPreservesExplicitLinePrefix(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket")
+	payload := engine.PolicyViolationEventPayload{
+		ResourceURN:       urn,
+		Message:           "Policy description:\nmy-bucket: violation details",
+		PolicyName:        "s3-bucket-replication-enabled",
+		PolicyPackName:    "foo-policy-pack",
+		PolicyPackVersion: "0.0.6",
+		EnforcementLevel:  apitype.Advisory,
+	}
+
+	output := renderDiffPolicyViolationEvent(payload, "        - ", "          ", Options{
+		Color: colors.Never,
+	})
+
+	assert.Contains(t, output, "        - [advisory]  s3-bucket-replication-enabled")
+	assert.Contains(t, output, "(aws:s3:Bucket: my-bucket)")
+	assert.Contains(t, output, "\n          Policy description:\n          my-bucket: violation details\n")
+
+	// In grouped policy summaries, the policy pack name is rendered by the group header,
+	// so individual policy lines should not repeat it.
+	assert.NotContains(t, output, "foo-policy-pack@v0.0.6")
+}
+
+func TestRenderDiffPolicyViolationEventDoesNotAddBlankLineForEmptyMessage(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket")
+	payload := engine.PolicyViolationEventPayload{
+		ResourceURN:       urn,
+		Message:           "",
+		PolicyName:        "s3-bucket-replication-enabled",
+		PolicyPackName:    "foo-policy-pack",
+		PolicyPackVersion: "0.0.6",
+		EnforcementLevel:  apitype.Advisory,
+	}
+
+	output := renderDiffPolicyViolationEvent(payload, "", "", Options{
+		Color: colors.Never,
+	})
+
+	assert.Contains(t, output, "    foo-policy-pack@v0.0.6")
+	assert.Contains(t, output, "[advisory]  s3-bucket-replication-enabled")
+	assert.Contains(t, output, "(aws:s3:Bucket: my-bucket)")
+
+	assert.NotContains(t, output, "\n      \n")
+	assert.NotContains(t, output, "\n      Policy description")
+}
