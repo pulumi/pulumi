@@ -69,9 +69,13 @@ type permissionDebounceTickMsg struct {
 // tea.Println until after bubbletea v2's first renderer flush. Calling
 // Println inside the WindowSizeMsg handler runs while cellbuf is still
 // sized to the terminal, so insertAbove would scroll a screenful of blank
-// lines above the prompt.
+// lines above the prompt. rendered is the whole flush pre-joined into one
+// string so it can be emitted as a single, atomic Println — Update returns
+// its cmds via tea.Batch, which runs them concurrently, so per-block
+// Printlns would race each other (and any event-driven print) for
+// scrollback order.
 type firstFlushReadyMsg struct {
-	rendered []string
+	rendered string
 }
 
 // blockKind identifies the type of rendered block in the output log.
@@ -527,8 +531,13 @@ func NewModel(cfg ModelConfig) Model {
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
 		// findBlockKind. The actual scrollback emission happens on the first
-		// WindowSizeMsg, when we have the real terminal width.
-		m.appendUserMessageBlock(cfg.InitialPrompt)
+		// WindowSizeMsg, when we have the real terminal width. Seed the block
+		// directly rather than via commitBlock: its printlnBlock side effect
+		// would flip hasEmittedScrollback before anything is actually printed,
+		// giving the welcome banner a stray leading blank line.
+		b := block{kind: blockUserMessage, raw: cfg.InitialPrompt}
+		m.renderBlock(&b)
+		m.appendBlock(b)
 		m.pendingUserEchoes = append(m.pendingUserEchoes, cfg.InitialPrompt)
 	}
 	if cfg.Busy {
@@ -587,26 +596,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case firstFlushReadyMsg:
-		for _, r := range msg.rendered {
-			cmds = append(cmds, m.printlnBlock(r))
-		}
+		cmds = append(cmds, m.printlnBlock(msg.rendered))
 
 	case tea.ResumeMsg:
 		// Resuming from a Ctrl+Z suspend (via `fg`): bubbletea repaints only the
 		// live frame, but the committed transcript was emitted to scrollback via
 		// tea.Println and isn't redrawn. Clear the viewport and re-emit the
-		// committed blocks so the session reads continuously after `fg`. Reset
-		// hasEmittedScrollback so the first re-emitted block skips its leading
-		// blank line, matching the initial flush. Sequence keeps the clear ahead
-		// of the prints and the prints in transcript order.
+		// committed transcript so the session reads continuously after `fg`.
+		// Reset hasEmittedScrollback so the re-emit skips its leading blank
+		// line, matching the initial flush. Sequence keeps the clear ahead of
+		// the print.
 		m.hasEmittedScrollback = false
-		scrollback := m.committedScrollback()
-		seq := make([]tea.Cmd, 0, 1+len(scrollback))
-		seq = append(seq, tea.ClearScreen)
-		for _, r := range scrollback {
-			seq = append(seq, m.printlnBlock(r))
-		}
-		return m, tea.Sequence(seq...)
+		return m, tea.Sequence(tea.ClearScreen, m.printlnBlock(m.committedScrollback()))
 
 	case ctrlCDisarmMsg:
 		// Stale tick: the user already pressed another key (gen still
@@ -1325,17 +1326,19 @@ func (m *Model) commitBlock(b block) tea.Cmd {
 }
 
 // committedScrollback returns the welcome banner followed by every committed
-// block's rendered text, in transcript order — i.e. everything that belongs in
-// terminal scrollback. Used for the initial flush and to re-emit the transcript
-// after a suspend/resume.
-func (m Model) committedScrollback() []string {
+// block's rendered text, in transcript order, joined with the same blank-line
+// separator printlnBlock puts between incremental prints — i.e. everything
+// that belongs in terminal scrollback, as one string ready for a single
+// atomic tea.Println. Used for the initial flush and to re-emit the
+// transcript after a suspend/resume.
+func (m Model) committedScrollback() string {
 	out := []string{m.welcome.View()}
 	for _, b := range m.blocks {
 		if isCommittedKind(b) && b.rendered != "" {
 			out = append(out, b.rendered)
 		}
 	}
-	return out
+	return strings.Join(out, "\n\n")
 }
 
 // printlnBlock emits rendered to scrollback, prepending a blank line so each

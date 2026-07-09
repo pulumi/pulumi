@@ -556,7 +556,7 @@ func TestModel_CommittedScrollback(t *testing.T) {
 	}
 
 	got := m.committedScrollback()
-	want := []string{m.welcome.View(), "user one", "assistant one"}
+	want := m.welcome.View() + "\n\nuser one\n\nassistant one"
 	assert.Equal(t, want, got,
 		"welcome leads, committed blocks follow in order, live and empty blocks dropped")
 }
@@ -579,9 +579,9 @@ func TestModel_Update_Resume_ReprintsTranscript(t *testing.T) {
 	require.NotNil(t, cmd)
 
 	printed := collectPrintln(cmd)
-	want := []string{m.welcome.View(), "\nuser one", "\nassistant one"}
+	want := []string{m.welcome.View() + "\n\nuser one\n\nassistant one"}
 	assert.Equal(t, want, printed,
-		"resume must reprint welcome + committed blocks, first without a leading blank")
+		"resume must reprint welcome + committed blocks as one atomic print, without a leading blank")
 }
 
 func TestModel_Update_KeyCtrlD_BehavesLikeCtrlC(t *testing.T) {
@@ -1387,6 +1387,12 @@ func TestNewModel_InitialPromptRendersUserBlock(t *testing.T) {
 	// The busy block still sits at the bottom so the spinner is visible
 	// while the agent starts its first turn.
 	assert.Equal(t, blockBusy, m.blocks[len(m.blocks)-1].kind)
+
+	// Nothing has actually been printed yet, so the latch that adds a leading
+	// blank line before each subsequent print must still be unset — otherwise
+	// the welcome banner opens with a stray empty line.
+	assert.False(t, m.hasEmittedScrollback,
+		"seeding the initial prompt must not flip hasEmittedScrollback before anything is printed")
 }
 
 func TestModel_View_ShowsHintBasedOnBusy(t *testing.T) {
@@ -2352,6 +2358,32 @@ func TestModel_Update_FirstWindowSize_EmitsWelcomeAndInitialPromptToScrollback(t
 		assert.NotContains(t, line, "Pulumi Neo", "second resize must not re-emit the welcome banner")
 		assert.NotContains(t, line, "deploy prod", "second resize must not re-emit the initial-prompt block")
 	}
+}
+
+func TestModel_Update_FirstFlush_EmitsWelcomeBeforeInitialPrompt(t *testing.T) {
+	t.Parallel()
+
+	// Update returns its cmds via tea.Batch, which runs them concurrently
+	// with no ordering guarantee — emitted as separate tea.Println cmds, the
+	// pre-seeded initial-prompt block would race the welcome banner and could
+	// land above it in scrollback. The flush must therefore be a single
+	// atomic Println with the banner ahead of the prompt inside it.
+	m := NewModel(ModelConfig{InitialPrompt: "deploy prod"})
+	updated, sizeCmd := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	um := updated.(Model)
+
+	_, cmd := um.Update(runFirstFlushTick(t, sizeCmd))
+	require.NotNil(t, cmd)
+
+	printed := collectPrintln(cmd)
+	require.Len(t, printed, 1, "flush must be a single atomic print; got: %v", printed)
+	banner := strings.Index(printed[0], "Pulumi Neo")
+	prompt := strings.Index(printed[0], "deploy prod")
+	require.NotEqual(t, -1, banner, "flush must contain the welcome banner")
+	require.NotEqual(t, -1, prompt, "flush must contain the initial-prompt block")
+	assert.Less(t, banner, prompt, "welcome banner must precede the initial-prompt block")
+	assert.False(t, strings.HasPrefix(printed[0], "\n"),
+		"the flush is the first thing printed and must not open with a blank line")
 }
 
 func TestModel_Update_UIPulumiEnd_CommitsRenderedToScrollback(t *testing.T) {
