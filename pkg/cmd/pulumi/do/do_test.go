@@ -1186,3 +1186,104 @@ func TestFlagUsage(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeAttributeLiteralsIntoPCL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		source string
+		attrs  map[string]string
+		want   string
+	}{
+		{
+			name:   "empty file adds attribute",
+			source: "",
+			attrs: map[string]string{
+				"name": `"example"`,
+			},
+			want: `name = "example"
+`,
+		},
+		{
+			name:   "single line without trailing newline adds attribute",
+			source: `name = "example"`,
+			attrs: map[string]string{
+				"size": "3",
+			},
+			want: `name = "example"
+size = 3
+`,
+		},
+		{
+			name:   "overwrites existing attribute",
+			source: `name = "old"` + "\n",
+			attrs: map[string]string{
+				"name": `"new"`,
+			},
+			want: `name = "new"
+`,
+		},
+		{
+			name: "adds new attribute alongside existing attributes",
+			source: `name = "example"
+enabled = true
+`,
+			attrs: map[string]string{
+				"size": "3",
+			},
+			want: `name    = "example"
+enabled = true
+size    = 3
+`,
+		},
+		{
+			name: "overwrites one attribute and adds another",
+			source: `name = "old"
+size = 1
+`,
+			attrs: map[string]string{
+				"name":    `"new"`,
+				"enabled": "false",
+			},
+			want: `name    = "new"
+size    = 1
+enabled = false
+`,
+		},
+		{
+			name: "preserves blocks and comments",
+			source: `# keep this
+name = "old"
+options {
+    protect = true
+}
+`,
+			attrs: map[string]string{
+				"name": `"new"`,
+			},
+			want: `# keep this
+name = "new"
+options {
+  protect = true
+}
+`,
+		},
+		{
+			name:   "nil attrs leaves source unchanged",
+			source: `name = "example"` + "\n",
+			attrs:  nil,
+			want:   `name = "example"` + "\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := mergeAttributeLiteralsIntoPCL([]byte(tt.source), "inputs.pcl", "input", tt.attrs)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(got))
+		})
+	}
+}
