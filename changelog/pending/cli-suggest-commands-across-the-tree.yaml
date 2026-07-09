@@ -3,4 +3,4 @@ body: Suggest closely-matching commands from the whole command tree when an unkn
   command is entered, and accept `list` and `ls` interchangeably on list commands
 component: cli
 custom:
-    PR: ""
+    PR: "23848"
