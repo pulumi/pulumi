@@ -1186,3 +1186,118 @@ func TestFlagUsage(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeAttributeLiteralsIntoPCL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		source          string
+		attrs           map[string]string
+		wantContains    []string
+		wantNotContains []string
+	}{
+		{
+			name:   "empty file adds attribute",
+			source: "",
+			attrs: map[string]string{
+				"name": `"example"`,
+			},
+			wantContains: []string{`name = "example"`},
+		},
+		{
+			name:   "single line without trailing newline adds attribute",
+			source: `name = "example"`,
+			attrs: map[string]string{
+				"size": "3",
+			},
+			wantContains: []string{
+				`name = "example"`,
+				`size = 3`,
+			},
+		},
+		{
+			name:   "overwrites existing attribute",
+			source: `name = "old"` + "\n",
+			attrs: map[string]string{
+				"name": `"new"`,
+			},
+			wantContains:    []string{`name = "new"`},
+			wantNotContains: []string{`name = "old"`},
+		},
+		{
+			name: "adds new attribute alongside existing attributes",
+			source: `name = "example"
+enabled = true
+`,
+			attrs: map[string]string{
+				"size": "3",
+			},
+			wantContains: []string{
+				`name    = "example"`,
+				`enabled = true`,
+				`size    = 3`,
+			},
+		},
+		{
+			name: "overwrites one attribute and adds another",
+			source: `name = "old"
+size = 1
+`,
+			attrs: map[string]string{
+				"name":    `"new"`,
+				"enabled": "false",
+			},
+			wantContains: []string{
+				`name    = "new"`,
+				`size    = 1`,
+				`enabled = false`,
+			},
+			wantNotContains: []string{`name = "old"`},
+		},
+		{
+			name: "preserves blocks and comments",
+			source: `# keep this
+name = "old"
+options {
+    protect = true
+}
+`,
+			attrs: map[string]string{
+				"name": `"new"`,
+			},
+			wantContains: []string{
+				`# keep this`,
+				`name = "new"`,
+				`options {`,
+				`protect = true`,
+			},
+			wantNotContains: []string{`name = "old"`},
+		},
+		{
+			name:   "nil attrs leaves source unchanged",
+			source: `name = "example"` + "\n",
+			attrs:  nil,
+			wantContains: []string{
+				`name = "example"` + "\n",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := mergeAttributeLiteralsIntoPCL([]byte(tt.source), "inputs.pcl", "input", tt.attrs)
+			require.NoError(t, err)
+			gotString := string(got)
+
+			for _, want := range tt.wantContains {
+				assert.Contains(t, gotString, want)
+			}
+			for _, notWant := range tt.wantNotContains {
+				assert.NotContains(t, gotString, notWant)
+			}
+		})
+	}
+}

@@ -483,11 +483,6 @@ func mergeAttributeLiteralsIntoPCL(
 	if len(attrs) == 0 {
 		return source, nil
 	}
-	// hclwrite refuses to append a new attribute after a body whose last argument lacks a
-	// trailing newline; normalize before parsing so tiny one-liners like `name = "x"` round-trip.
-	if len(source) > 0 && source[len(source)-1] != '\n' {
-		source = append(append([]byte{}, source...), '\n')
-	}
 	file, diags := hclwrite.ParseConfig(source, filename, hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return nil, diags
