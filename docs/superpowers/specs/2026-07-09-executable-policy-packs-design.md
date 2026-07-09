@@ -107,9 +107,11 @@ workflow, symmetric with Go provider development; the CLI never compiles anythin
 
 ### Artifact format
 
-Each platform's artifact is a `.tar.gz` containing exactly `PulumiPolicy.yaml` and that
-platform's binary — no sources, no other platforms' binaries — nested under `package/`
-so the existing extraction code works unchanged. The tarball preserves the executable
+Each platform's artifact is a `.tar.gz` containing `PulumiPolicy.yaml`, that platform's
+binary, and — when the pack has one — `package.json` (the nodejs policy SDK reads it
+from the pack directory at boot for version metadata; verified empirically). No
+sources, no other platforms' binaries. Files are nested under `package/` so the
+existing extraction code works unchanged. The tarball preserves the executable
 bit; on non-Windows platforms extraction additionally `chmod +x`es the declared binary
 defensively.
 

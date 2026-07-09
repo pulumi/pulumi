@@ -58,8 +58,9 @@ func validateExecutableMatrix(packDir string, binaries map[string]string) error 
 }
 
 // buildExecutablePlatformTarball builds the artifact for one platform of an
-// executable policy pack: a gzipped tarball containing only the pack manifest
-// and that platform's binary, nested under the standard "package" directory.
+// executable policy pack: a gzipped tarball containing the pack manifest,
+// that platform's binary, and package.json when present, nested under the
+// standard "package" directory.
 func buildExecutablePlatformTarball(packDir, binaryRelPath string) ([]byte, error) {
 	stage, err := os.MkdirTemp("", "pulumi-policy-artifact-")
 	if err != nil {
@@ -71,6 +72,15 @@ func buildExecutablePlatformTarball(packDir, binaryRelPath string) ([]byte, erro
 		filepath.Join(packDir, "PulumiPolicy.yaml"),
 		filepath.Join(stage, "PulumiPolicy.yaml"), 0o644); err != nil {
 		return nil, err
+	}
+	// The nodejs policy SDK reads the pack's package.json at boot for version
+	// metadata, so ship it alongside the binary when the pack has one.
+	if _, err := os.Stat(filepath.Join(packDir, "package.json")); err == nil {
+		if err := copyFile(
+			filepath.Join(packDir, "package.json"),
+			filepath.Join(stage, "package.json"), 0o644); err != nil {
+			return nil, err
+		}
 	}
 	if err := os.MkdirAll(filepath.Dir(filepath.Join(stage, binaryRelPath)), 0o755); err != nil {
 		return nil, err
