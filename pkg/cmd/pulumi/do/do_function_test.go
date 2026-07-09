@@ -133,6 +133,7 @@ Flags:
   -h, --help                   help for do
       --input string           Format of the configuration files (default "yaml")
       --input-file string      Path to a file containing function inputs
+      --output string          Output format for resource operation results (supported: default, json)
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --param1 string          To set param1 things (alias for --input:param1)
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
