@@ -94,6 +94,11 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	if res.ListInputs != nil {
 		cmd.AddCommand(pc.newResourceListCommand(res))
 	}
+	// `upsert` is stateful-only: it adds a snippet to the stack and runs the deployment engine.
+	// In stateless mode it isn't meaningful and shouldn't show up.
+	if !pc.stateless {
+		cmd.AddCommand(pc.newResourceUpsertCommand(res))
+	}
 	return cmd
 }
 

@@ -60,6 +60,7 @@ func NewDoCmd(
 	loadConverterPlugin func(
 		*plugin.Context, string, func(sev diag.Severity, msg string),
 	) (plugin.Converter, error),
+	runStatefulUpdate RunStatefulUpdateFunc,
 ) *cobra.Command {
 	if pluginFromSource == nil {
 		pluginFromSource = func(
@@ -285,6 +286,7 @@ func NewDoCmd(
 			ws:                ws,
 			lm:                lm,
 			sink:              sink,
+			runStatefulUpdate: runStatefulUpdate,
 		}).newCommand()
 		if err != nil {
 			cleanup()
@@ -522,6 +524,11 @@ type packageCommand struct {
 	ws   pkgWorkspace.Context
 	lm   cmdBackend.LoginManager
 	sink diag.Sink
+
+	// runStatefulUpdate drives `backend.UpdateStack` for stateful subcommands (currently `upsert`).
+	// Nil in stateless mode or when the caller (tests, prod bootstrap) hasn't provided an
+	// implementation. See RunStatefulUpdateFunc in do_resource_upsert.go.
+	runStatefulUpdate RunStatefulUpdateFunc
 }
 
 // evalContext builds the PCL evaluation context from the workspace state we captured at construction
