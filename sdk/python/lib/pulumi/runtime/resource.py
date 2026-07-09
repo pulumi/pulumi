@@ -40,6 +40,7 @@ from .rpc import _expand_dependencies, serialize_property
 from .settings import (
     _get_callbacks,
     _get_rpc_manager,
+    _sync_monitor_supports_state_migrations,
     _sync_monitor_supports_transforms,
     monitor_supports_error_hooks,
     monitor_supports_resource_hooks,
@@ -1058,6 +1059,20 @@ def register_resource(
                 for transform in opts.transforms:
                     callbacks.append(callback_server.register_transform(transform))
 
+            state_migration_callbacks: list[callback_pb2.Callback] = []
+            if opts.state_migrations:
+                if not _sync_monitor_supports_state_migrations():
+                    raise Exception(
+                        "The Pulumi CLI does not support state migrations. Please update the Pulumi CLI."
+                    )
+                callback_server = await _get_callbacks()
+                if callback_server is None:
+                    raise Exception("Callback server not initialized")
+                for migration in opts.state_migrations:
+                    state_migration_callbacks.append(
+                        callback_server.register_state_migration(migration)
+                    )
+
             property_dependencies = {}
             for key, deps in resolver.property_dependencies.items():
                 property_dependencies[key] = (
@@ -1151,6 +1166,7 @@ def register_resource(
                 sourcePosition=source_position,
                 stackTrace=stack_trace,
                 transforms=callbacks,
+                state_migrations=state_migration_callbacks,
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
                 hooks=hooks,

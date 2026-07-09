@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import traceback
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
         Alias,
         ResourceOptions,
         ResourceTransform,
+        StateMigration,
     )
     from ..resource_hooks import ErrorHook, ResourceHook
 
@@ -70,11 +72,14 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
     _transforms: dict[Union[ResourceTransform, InvokeTransform], str]
 
+    _state_migrations: dict[StateMigration, str]
+
     def __init__(self, monitor: resource_pb2_grpc.ResourceMonitorStub):
         log.debug("Creating CallbackServicer")
         _CallbackServicer._servicers.append(self)
         self._callbacks = {}
         self._transforms = {}
+        self._state_migrations = {}
         self._monitor = monitor
         self._server = aio.server(options=_GRPC_CHANNEL_OPTIONS)
         callback_pb2_grpc.add_CallbacksServicer_to_server(self, self._server)
@@ -203,6 +208,53 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         token = str(uuid.uuid4())
         self._callbacks[token] = cb
         self._transforms[transform] = token
+        return callback_pb2.Callback(
+            token=token,
+            target=self._target,
+        )
+
+    def register_state_migration(
+        self, migration: StateMigration
+    ) -> callback_pb2.Callback:
+        # If this migration function has already been registered, return it.
+        token = self._state_migrations.get(migration)
+        if token is not None:
+            return callback_pb2.Callback(token=token, target=self._target)
+
+        from ..resource import (
+            StateMigrationArgs,
+            StateMigrationResult,
+        )
+
+        async def cb(s: bytes) -> Message:
+            request: resource_pb2.StateMigrationRequest = (
+                resource_pb2.StateMigrationRequest.FromString(s)
+            )
+
+            args = StateMigrationArgs(
+                urn=request.urn,
+                old_state=json.loads(request.old_state),
+            )
+
+            maybeAwaitable = migration(args)
+            result: Optional[StateMigrationResult] = None
+            if isinstance(maybeAwaitable, Awaitable):
+                result = await maybeAwaitable
+            else:
+                result = maybeAwaitable
+
+            if result is None:
+                # No new state means the migration left the state unchanged.
+                return resource_pb2.StateMigrationResponse()
+
+            return resource_pb2.StateMigrationResponse(
+                new_state=json.dumps(result.new_state).encode("utf-8"),
+                successors=result.successors or {},
+            )
+
+        token = str(uuid.uuid4())
+        self._callbacks[token] = cb
+        self._state_migrations[migration] = token
         return callback_pb2.Callback(
             token=token,
             target=self._target,

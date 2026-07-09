@@ -13,13 +13,23 @@
 # limitations under the License.
 
 import asyncio
+import json
 import grpc
 
 import pytest
 
-from pulumi.resource import ResourceTransformArgs
+from pulumi.resource import (
+    ResourceTransformArgs,
+    StateMigrationArgs,
+    StateMigrationResult,
+)
 from pulumi.runtime._callbacks import _CallbackServicer
+from pulumi.runtime.proto.callback_pb2 import CallbackInvokeRequest
 from pulumi.runtime.proto.provider_pb2 import InvokeRequest
+from pulumi.runtime.proto.resource_pb2 import (
+    StateMigrationRequest,
+    StateMigrationResponse,
+)
 from pulumi.runtime.proto.resource_pb2_grpc import ResourceMonitorServicer
 
 from ..grpc_stubs import monitor_servicer_stub, callback_servicer_stub
@@ -73,5 +83,77 @@ async def test_callback_servicer_transform_errors():
                 assert "lib/test/runtime/test_callbacks.py" in str(e)
                 assert "in transform_cancelled_error" in str(e)
                 assert 'CancelledError("noes")' in str(e)
+
+            await servicer.shutdown()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(60)
+async def test_callback_servicer_state_migration():
+    """
+    Tests that state migration callbacks round-trip the checkpoint-format JSON state and the
+    successor mapping, including a many-to-one fold, and that returning None leaves the state
+    unchanged.
+    """
+
+    comp_urn = "urn:pulumi:stack::proj::my:module:Comp::comp"
+    child_a_urn = "urn:pulumi:stack::proj::my:module:Comp$pkg:m:typA::childA"
+    child_b_urn = "urn:pulumi:stack::proj::my:module:Comp$pkg:m:typA::childB"
+    child_c_urn = "urn:pulumi:stack::proj::my:module:Comp$pkg:m:typA::childC"
+    old_state = [
+        {"urn": comp_urn, "type": "my:module:Comp"},
+        {"urn": child_a_urn, "type": "pkg:m:typA", "custom": True, "id": "id-a"},
+        {"urn": child_b_urn, "type": "pkg:m:typA", "custom": True, "id": "id-b"},
+    ]
+
+    def migrate_fold(args: StateMigrationArgs):
+        assert args.urn == comp_urn
+        assert args.old_state == old_state
+        new_state = [dict(args.old_state[0]), dict(args.old_state[1])]
+        new_state[1]["urn"] = child_c_urn
+        return StateMigrationResult(
+            new_state=new_state,
+            successors={child_a_urn: child_c_urn, child_b_urn: child_c_urn},
+        )
+
+    async def migrate_noop(args: StateMigrationArgs):
+        return None
+
+    async with monitor_servicer_stub(ResourceMonitorServicer()) as monitor_stub:
+        servicer = _CallbackServicer(monitor_stub)
+        servicer._servicers.remove(
+            servicer
+        )  # Remove this servicer from the global list, we manage the shutdown ourselves
+        cb_fold = servicer.register_state_migration(migrate_fold)
+        cb_noop = servicer.register_state_migration(migrate_noop)
+
+        # Registering the same callable again returns the same token.
+        assert servicer.register_state_migration(migrate_fold).token == cb_fold.token
+
+        async with callback_servicer_stub(servicer) as stub:
+            migration_request = StateMigrationRequest(
+                urn=comp_urn, old_state=json.dumps(old_state).encode("utf-8")
+            )
+            request = CallbackInvokeRequest(
+                token=cb_fold.token, request=migration_request.SerializeToString()
+            )
+            result = await stub.Invoke(request)
+            response = StateMigrationResponse.FromString(result.response)
+            new_state = json.loads(response.new_state)
+            assert new_state[0]["urn"] == comp_urn
+            assert new_state[1]["urn"] == child_c_urn
+            assert dict(response.successors) == {
+                child_a_urn: child_c_urn,
+                child_b_urn: child_c_urn,
+            }
+
+            request = CallbackInvokeRequest(
+                token=cb_noop.token, request=migration_request.SerializeToString()
+            )
+            result = await stub.Invoke(request)
+            response = StateMigrationResponse.FromString(result.response)
+            # An unchanged state is signaled by an empty new_state.
+            assert response.new_state == b""
+            assert len(response.successors) == 0
 
             await servicer.shutdown()
