@@ -353,11 +353,20 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{"name": resource.NewProperty("in")},
+							Outputs: resource.PropertyMap{"name": resource.NewProperty("out")},
+						},
+					}, nil
+				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-					deleted = true
 					assert.Equal(t, resource.ID("res-1"), req.ID)
-					assert.Empty(t, req.Inputs)
-					assert.Empty(t, req.Outputs)
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
+					deleted = true
 					return plugin.DeleteResponse{}, nil
 				},
 			},
@@ -624,6 +633,15 @@ func TestDoCmdResourceDeleteDryRun(t *testing.T) {
 	cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
 		spec: doResourceSpec(false),
 		MockProvider: plugin.MockProvider{
+			ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{
+					ReadResult: plugin.ReadResult{
+						ID:      req.ID,
+						Inputs:  resource.PropertyMap{"name": resource.NewProperty("read")},
+						Outputs: resource.PropertyMap{"name": resource.NewProperty("read")},
+					},
+				}, nil
+			},
 			DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 				require.Fail(t, "Delete should not be called with --dry-run")
 				return plugin.DeleteResponse{}, nil
@@ -838,7 +856,18 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 		cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{"name": resource.NewProperty("in")},
+							Outputs: resource.PropertyMap{"name": resource.NewProperty("out")},
+						},
+					}, nil
+				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
 					return plugin.DeleteResponse{}, nil
 				},
 			},

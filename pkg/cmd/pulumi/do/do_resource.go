@@ -344,7 +344,29 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 				return err
 			}
 			urn := resourceURN(res)
-			id := resource.ID(args[0])
+
+			// First we need to read the resource. The ID given here is an "import id", while the actual
+			// Delete call needs the real ID + any inputs/outputs. terraform-pf bridge for example will fail to
+			// delete if just passed the ID and no state.
+			response, err := pc.provider.Read(ctx, plugin.ReadRequest{
+				URN:    urn,
+				Name:   urn.Name(),
+				Type:   urn.Type(),
+				ID:     resource.ID(args[0]),
+				Inputs: resource.PropertyMap{},
+				State:  resource.PropertyMap{},
+			})
+			if err != nil {
+				return err
+			}
+			if response.Outputs == nil {
+				return fmt.Errorf("resource %q was not found", args[0])
+			}
+			id := response.ID
+			if id == "" {
+				id = resource.ID(args[0])
+			}
+
 			if err := pc.confirm(cmd, formatDeleteSummary(res, id, pc.dryrun), string(id), yes); err != nil {
 				return err
 			}
@@ -352,6 +374,7 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			if pc.dryrun {
 				return nil
 			}
+
 			return pc.runDisplayedStep(cmd, displayedStep{
 				Op:  deploy.OpDelete,
 				Old: operationState(urn, id, nil, nil),
@@ -361,8 +384,8 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 					Name:    urn.Name(),
 					Type:    urn.Type(),
 					ID:      id,
-					Inputs:  resource.PropertyMap{},
-					Outputs: resource.PropertyMap{},
+					Inputs:  response.Inputs,
+					Outputs: response.Outputs,
 				})
 				return nil, err
 			})
