@@ -60,11 +60,15 @@ func newPolicyPublishCmd() *cobra.Command {
 		Required: 0,
 	})
 
+	cmd.PersistentFlags().StringVar(&policyPublishCmd.tag, "tag", "",
+		"For policy packs with runtime \"oci\": the image tag to publish (defaults to the pack version)")
+
 	return cmd
 }
 
 type policyPublishCmd struct {
 	getwd func() (string, error)
+	tag   string
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
@@ -157,6 +161,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		Root:       root,
 		PlugCtx:    plugctx,
 		PolicyPack: proj,
+		Tag:        cmd.tag,
 		Scopes:     backend.CancellationScopes,
 		Metadata:   m,
 	})

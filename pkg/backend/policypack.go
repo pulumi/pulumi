@@ -29,6 +29,10 @@ type PublishOperation struct {
 	PolicyPack *workspace.PolicyPackProject
 	Scopes     CancellationScopeSource
 
+	// Tag is the image tag to publish for policy packs with runtime "oci"
+	// (defaults to the pack's version). Ignored for other runtimes.
+	Tag string
+
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
 	Metadata map[string]string

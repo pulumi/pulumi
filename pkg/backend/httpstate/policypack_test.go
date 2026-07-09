@@ -24,9 +24,41 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestOCIPublishRefs(t *testing.T) {
+	t.Parallel()
+
+	proj := func(repo, version string) *workspace.PolicyPackProject {
+		return &workspace.PolicyPackProject{
+			Runtime: workspace.NewProjectRuntimeInfo("oci", map[string]any{"repository": repo}),
+			Version: version,
+		}
+	}
+
+	// Tag from --tag wins.
+	ref, err := ociPublishRef(proj("ghcr.io/acme/pack", "1.0.0"), "rc1")
+	require.NoError(t, err)
+	assert.Equal(t, "ghcr.io/acme/pack:rc1", ref)
+
+	// Tag defaults to the pack version.
+	ref, err = ociPublishRef(proj("ghcr.io/acme/pack", "1.0.0"), "")
+	require.NoError(t, err)
+	assert.Equal(t, "ghcr.io/acme/pack:1.0.0", ref)
+
+	// No tag and no version: loud error.
+	_, err = ociPublishRef(proj("ghcr.io/acme/pack", ""), "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--tag")
+
+	// Missing repository: loud error.
+	_, err = ociPublishRef(&workspace.PolicyPackProject{}, "rc1")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "repository")
+}
 
 func TestEscValueToInterface(t *testing.T) {
 	t.Parallel()
