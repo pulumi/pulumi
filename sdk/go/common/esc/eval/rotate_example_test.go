@@ -56,6 +56,7 @@ values:
 		&testEnvironments{},
 		execContext,
 		nil,
+		EvalOptions{},
 	)
 
 	// writeback state patches

@@ -41,6 +41,7 @@ func TestExpressionAt(t *testing.T) { //nolint:paralleltest,lll // non-thread-sa
 		testEnvironments{},
 		execContext,
 		false,
+		eval.EvalOptions{},
 	)
 	require.Empty(t, diags)
 

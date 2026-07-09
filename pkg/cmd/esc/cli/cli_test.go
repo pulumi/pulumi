@@ -430,6 +430,7 @@ func (c *testPulumiClient) checkEnvironment(
 		envLoader,
 		execContext,
 		showSecrets,
+		eval.EvalOptions{TraceMode: eval.TraceModeFull},
 	)
 	diags.Extend(checkDiags...)
 	return checked, mapDiags(diags), nil
@@ -461,7 +462,16 @@ func (c *testPulumiClient) openEnvironment(
 		return "", nil, fmt.Errorf("initializing the ESC exec context: %w", err)
 	}
 
-	openEnv, evalDiags := eval.EvalEnvironment(ctx, name, decl, rot128{}, providers, envLoader, execContext)
+	openEnv, evalDiags := eval.EvalEnvironment(
+		ctx,
+		name,
+		decl,
+		rot128{},
+		providers,
+		envLoader,
+		execContext,
+		eval.EvalOptions{TraceMode: eval.TraceModeFull},
+	)
 	diags.Extend(evalDiags...)
 
 	if diags.HasErrors() {
