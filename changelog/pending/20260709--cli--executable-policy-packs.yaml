@@ -2,3 +2,5 @@ component: cli
 kind: feat
 body: "Add support for `runtime: executable` policy packs, which run pre-built per-platform binaries without requiring a language toolchain on the consumer machine"
 time: 2026-07-09T00:00:00.000000+00:00
+custom:
+    PR: "23852"
