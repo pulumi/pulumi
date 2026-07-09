@@ -1389,47 +1389,51 @@ func TestGetProviderAttachPort(t *testing.T) {
 	})
 }
 
-func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
+// Test that a gRPC error carrying an ErrorResourceInitFailed detail is translated into a
+// partial-failure response (status, ID, live state) and an *InitError. The engine relies on this
+// translation to run error hooks and to record the live state of partially-created resources.
+func TestProvider_PartialFailure(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux")
+
+	liveProperties := resource.PropertyMap{"out": resource.NewProperty("live-output")}
+	liveInputs := resource.PropertyMap{"in": resource.NewProperty("live-input")}
+
+	mliveProperties, err := MarshalProperties(liveProperties, MarshalOptions{})
+	require.NoError(t, err)
+	mliveInputs, err := MarshalProperties(liveInputs, MarshalOptions{})
+	require.NoError(t, err)
+
+	initFailed := func(reason string) error {
+		detail := pulumirpc.ErrorResourceInitFailed{
+			Id:                  "some-id",
+			Properties:          mliveProperties,
+			Inputs:              mliveInputs,
+			Reasons:             []string{reason},
+			RefreshBeforeUpdate: true,
+		}
+		return rpcerror.WithDetails(rpcerror.New(codes.Unknown, reason), &detail)
+	}
 
 	client := &stubClient{
 		ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
 			return &pulumirpc.ConfigureResponse{}, nil
 		},
 		CreateF: func(req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
-			reasons := []string{"create issue"}
-			detail := pulumirpc.ErrorResourceInitFailed{
-				Id:                  "some-id",
-				Reasons:             reasons,
-				RefreshBeforeUpdate: true,
-			}
-			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
+			return nil, initFailed("create issue")
 		},
 		ReadF: func(req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
-			reasons := []string{"read issue"}
-			detail := pulumirpc.ErrorResourceInitFailed{
-				Id:                  "some-id",
-				Reasons:             reasons,
-				RefreshBeforeUpdate: true,
-			}
-			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
+			return nil, initFailed("read issue")
 		},
 		UpdateF: func(req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
-			reasons := []string{"update issue"}
-			detail := pulumirpc.ErrorResourceInitFailed{
-				Id:                  "some-id",
-				Reasons:             reasons,
-				RefreshBeforeUpdate: true,
-			}
-			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
+			return nil, initFailed("update issue")
 		},
 	}
 
 	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
-	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+	_, err = p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err, "configure failed")
 
 	var initErr *InitError
@@ -1440,9 +1444,14 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 		Type:       urn.Type(),
 		Properties: resource.PropertyMap{},
 	})
-	assert.True(t, createResp.RefreshBeforeUpdate)
-	assert.ErrorAs(t, err, &initErr, "expected an InitError")
+	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"create issue"}, initErr.Reasons)
+	assert.Equal(t, CreateResponse{
+		ID:                  "some-id",
+		Properties:          liveProperties,
+		Status:              resource.StatusPartialFailure,
+		RefreshBeforeUpdate: true,
+	}, createResp)
 
 	readResp, err := p.Read(t.Context(), ReadRequest{
 		URN:    urn,
@@ -1452,9 +1461,17 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 		Inputs: resource.PropertyMap{},
 		State:  resource.PropertyMap{},
 	})
-	assert.True(t, readResp.RefreshBeforeUpdate)
-	assert.ErrorAs(t, err, &initErr, "expected an InitError")
+	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"read issue"}, initErr.Reasons)
+	assert.Equal(t, ReadResponse{
+		ReadResult: ReadResult{
+			ID:                  "some-id",
+			Inputs:              liveInputs,
+			Outputs:             liveProperties,
+			RefreshBeforeUpdate: true,
+		},
+		Status: resource.StatusPartialFailure,
+	}, readResp)
 
 	updateResp, err := p.Update(t.Context(), UpdateRequest{
 		URN:        urn,
@@ -1465,7 +1482,11 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 		OldOutputs: resource.PropertyMap{},
 		NewInputs:  resource.PropertyMap{},
 	})
-	assert.True(t, updateResp.RefreshBeforeUpdate)
-	assert.ErrorAs(t, err, &initErr, "expected an InitError")
+	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"update issue"}, initErr.Reasons)
+	assert.Equal(t, UpdateResponse{
+		Properties:          liveProperties,
+		Status:              resource.StatusPartialFailure,
+		RefreshBeforeUpdate: true,
+	}, updateResp)
 }
