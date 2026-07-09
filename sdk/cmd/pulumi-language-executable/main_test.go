@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -125,4 +127,84 @@ func TestRunIsRefused(t *testing.T) {
 	_, err := (&executableLanguageHost{}).Run(t.Context(), &pulumirpc.RunRequest{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "cannot run Pulumi programs")
+}
+
+// AboutResponse.Executable is an absolute path to a language runtime binary. This host has none,
+// so it must report nothing rather than something path-shaped that isn't a path.
+func TestAboutReportsNoRuntime(t *testing.T) {
+	t.Parallel()
+
+	about, err := (&executableLanguageHost{}).About(t.Context(), &pulumirpc.AboutRequest{})
+	require.NoError(t, err)
+	assert.Empty(t, about.Executable)
+	assert.Empty(t, about.Version)
+}
+
+type recordingRunPluginServer struct {
+	grpc.ServerStream
+	ctx       context.Context
+	responses []*pulumirpc.RunPluginResponse
+}
+
+func (s *recordingRunPluginServer) Context() context.Context { return s.ctx }
+
+func (s *recordingRunPluginServer) Send(resp *pulumirpc.RunPluginResponse) error {
+	s.responses = append(s.responses, resp)
+	return nil
+}
+
+func (s *recordingRunPluginServer) exitCode(t *testing.T) int32 {
+	t.Helper()
+	for _, resp := range s.responses {
+		if code, ok := resp.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
+			return code.Exitcode
+		}
+	}
+	t.Fatal("no exit code was sent to the engine")
+	return 0
+}
+
+func writeExecutablePackBinary(t *testing.T, script string) (packDir, binRel string) {
+	t.Helper()
+	packDir = t.TempDir()
+	binRel = filepath.Join("bin", "policy")
+	require.NoError(t, os.MkdirAll(filepath.Join(packDir, "bin"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(packDir, binRel), []byte(script), 0o755))
+	return packDir, binRel
+}
+
+func TestRunPluginPropagatesExitCode(t *testing.T) {
+	if goruntime.GOOS == "windows" {
+		t.Skip("the test pack binary is a shell script")
+	}
+	t.Parallel()
+
+	packDir, binRel := writeExecutablePackBinary(t, "#!/bin/sh\nexit 3\n")
+	server := &recordingRunPluginServer{ctx: t.Context()}
+
+	err := (&executableLanguageHost{}).RunPlugin(&pulumirpc.RunPluginRequest{
+		Info: programInfo(t, packDir, map[string]string{workspace.CurrentPlatform(): binRel}),
+		Pwd:  packDir,
+	}, server)
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(3), server.exitCode(t))
+}
+
+func TestRunPluginMissingPlatformIsLoud(t *testing.T) {
+	t.Parallel()
+
+	other := "linux-amd64"
+	if workspace.CurrentPlatform() == other {
+		other = "darwin-arm64"
+	}
+	server := &recordingRunPluginServer{ctx: t.Context()}
+
+	err := (&executableLanguageHost{}).RunPlugin(&pulumirpc.RunPluginRequest{
+		Info: programInfo(t, t.TempDir(), map[string]string{other: filepath.Join("bin", "policy")}),
+	}, server)
+
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "does not provide a binary for "+workspace.CurrentPlatform())
+	assert.Empty(t, server.responses)
 }

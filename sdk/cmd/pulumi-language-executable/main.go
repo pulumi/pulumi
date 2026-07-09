@@ -47,17 +47,17 @@ import (
 type executableLanguageHost struct {
 	pulumirpc.UnimplementedLanguageRuntimeServer
 
-	engineAddress string
-	cancel        context.CancelFunc
+	cancel context.CancelFunc
 }
 
+// The engine address is required by the protocol but unused here: the pack binary receives it
+// through RunPlugin's args, not from this host.
 func (host *executableLanguageHost) Handshake(
 	ctx context.Context, req *pulumirpc.LanguageHandshakeRequest,
 ) (*pulumirpc.LanguageHandshakeResponse, error) {
 	if req.GetEngineAddress() == "" {
 		return nil, errors.New("handshake request must contain an engine address")
 	}
-	host.engineAddress = req.EngineAddress
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
 }
 
@@ -72,10 +72,12 @@ func (host *executableLanguageHost) Cancel(context.Context, *emptypb.Empty) (*em
 	return &emptypb.Empty{}, nil
 }
 
+// There is no language runtime underpinning this host, so there is no executable or version to
+// report. AboutResponse.Executable is an absolute path to a runtime binary, not a platform.
 func (host *executableLanguageHost) About(
 	context.Context, *pulumirpc.AboutRequest,
 ) (*pulumirpc.AboutResponse, error) {
-	return &pulumirpc.AboutResponse{Executable: workspace.CurrentPlatform()}, nil
+	return &pulumirpc.AboutResponse{}, nil
 }
 
 // Run is what distinguishes a program runtime from this one. An executable pack is an analyzer plugin, not a
@@ -219,10 +221,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterLanguageRuntimeServer(srv, &executableLanguageHost{
-				engineAddress: engineAddress,
-				cancel:        cancel,
-			})
+			pulumirpc.RegisterLanguageRuntimeServer(srv, &executableLanguageHost{cancel: cancel})
 			return nil
 		},
 		Options: rpcutil.TracingServerInterceptorOptions(nil),

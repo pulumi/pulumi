@@ -124,9 +124,11 @@ bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display
 build:: export GOBIN=$(shell realpath ./bin)
 build:: build_proto .make/ensure/go bin/pulumi bin/pulumi-language-executable bin/pulumi-display.wasm
 
-install:: bin/pulumi bin/pulumi-language-executable
-	cp bin/pulumi $(PULUMI_BIN)/pulumi
-	cp bin/pulumi-language-executable $(PULUMI_BIN)/pulumi-language-executable
+install:: bin/pulumi
+	cp $< $(PULUMI_BIN)/pulumi
+
+install:: bin/pulumi-language-executable
+	cp $< $(PULUMI_BIN)/pulumi-language-executable
 
 build_debug::
 	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
@@ -137,11 +139,13 @@ build_cover::
 		-coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/... \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
-install_cover:: build_cover
+install_cover:: build_cover bin/pulumi-language-executable
 	cp bin/pulumi $(PULUMI_BIN)
+	cp bin/pulumi-language-executable $(PULUMI_BIN)
 
 dist::
 	cd pkg && go install -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+	cd sdk && go install -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ./cmd/pulumi-language-executable
 
 .PHONY: brew
 # NOTE: the brew target intentionally avoids the dependency on `build`, as each language SDK has its own brew target
