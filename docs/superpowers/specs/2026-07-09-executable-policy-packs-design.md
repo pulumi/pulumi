@@ -80,19 +80,26 @@ iterating locally does not need the linux binary.
 
 ### Engine boot
 
-In `plugin.NewPolicyAnalyzer` (`sdk/go/common/resource/plugin/analyzer_plugin.go`), add
-a third boot branch ahead of the existing language-host and legacy-shim
-(`pulumi-analyzer-policy-<runtime>`) modes: when `proj.Runtime.Name() == "executable"`,
+The engine gets **no** new code. Runtime-specific logic belongs in language runtime
+plugins, not in the engine, so `executable` ships as a bundled language plugin:
+`pulumi-language-executable` (`sdk/cmd/pulumi-language-executable`).
 
-1. Look up `runtime.GOOS-runtime.GOARCH` in the validated binaries map. Missing entry →
-   loud, actionable error naming the pack, the host platform, and the platforms the
-   pack does declare.
-2. Exec the binary via the existing `newPlugin` machinery
-   (`sdk/go/common/resource/plugin/plugin.go`) with args `[host.ServerAddr()]` — the
-   same exec, first-stdout-line port handshake, and gRPC dial used by analyzer plugins
+`plugin.NewPolicyAnalyzer` already resolves a language plugin for the pack's runtime and
+delegates to it via `RunPlugin`; `executable` simply takes that existing path. The plugin
+then:
+
+1. Looks up `runtime.GOOS-runtime.GOARCH` in the validated binaries map from the
+   `ProgramInfo` runtime options. Missing entry → loud, actionable error naming the host
+   platform and the platforms the pack does declare.
+2. Execs the binary, streaming its stdout/stderr back to the engine, which reads the port
+   from the first stdout line and dials it — the same handshake used by analyzer plugins
    today.
-3. Environment comes from the existing `constructEnv` (config, stack metadata), minus
-   nodejs special-casing.
+
+Because `executable` is not a language, `Run` and the codegen/`Pack`/`Link` half of the
+`LanguageRuntime` protocol are unimplemented; `InstallDependencies` has nothing to install
+and only marks the binary executable. `pulumi-language-executable` is added to
+`workspace.IsPluginBundled` so it is found next to the `pulumi` binary and never
+downloaded.
 
 `ConfigureStack` and all downstream analyzer calls are unchanged — the pack is just
 another `pulumirpc.Analyzer` client.
@@ -100,7 +107,7 @@ another `pulumirpc.Analyzer` client.
 ### Local dev
 
 `--policy-pack ./dir` works with no additional changes once boot works:
-`LoadLocalPolicyPackAnalyzers` → `Host.PolicyAnalyzer` → new branch. Build-first
+`LoadLocalPolicyPackAnalyzers` → `Host.PolicyAnalyzer` → language plugin → exec. Build-first
 workflow, symmetric with Go provider development; the CLI never compiles anything.
 
 ## Section 2: Install and download (consumer path)
@@ -139,9 +146,11 @@ evaluator, TF policy check, Deployments executor) will download through this sam
 
 ### Install
 
-`installRequiredPolicy` (`pkg/backend/httpstate/policypack.go`) keeps its
-ExtractTGZ → rename → reload-manifest flow. For `runtime: executable` it stops after the
-manifest reload: no language runtime lookup, no `InstallDependencies`, just the chmod.
+`installRequiredPolicy` (`pkg/backend/httpstate/policypack.go`) is unchanged: it keeps its
+ExtractTGZ → rename → reload-manifest → `InstallDependencies` flow. For `runtime: executable`
+the language plugin's `InstallDependencies` installs nothing and only marks the binary
+executable. The same holds for `policy.InstallPluginDependencies` (`pulumi install` in a pack
+directory), which needs no executable-specific branch either.
 Install location and naming (`~/.pulumi/policies/<org>/pulumi-analyzer-<name>-v<version>/`)
 are unchanged, so `Installed()` checks and the install manager need no modification.
 
@@ -227,9 +236,8 @@ silent skips are unacceptable.
 
 - **Unit:**
   - Binaries-map parsing/validation table tests in `sdk/go/common/workspace`.
-  - Boot-branch selection tests in `analyzer_plugin.go` (executable vs language-host vs
-    legacy shim).
-  - Install short-circuit test (no `InstallDependencies` call for executable packs).
+  - Platform selection, escaping-path rejection, `Run` refusal, and the
+    `InstallDependencies` chmod in `sdk/cmd/pulumi-language-executable`.
   - Publish matrix-validation tests (missing linux-amd64, missing file, undeclared host
     platform).
   - apitype JSON round-trip tests.

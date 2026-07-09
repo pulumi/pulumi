@@ -17,6 +17,7 @@ package workspace
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -50,7 +51,28 @@ func CurrentPlatform() string {
 // policy pack's runtime options. Paths are relative to the pack directory, in the platform's
 // native separator form.
 func (proj *PolicyPackProject) ExecutableBinaries() (map[string]string, error) {
-	raw, has := proj.Runtime.Options()["binaries"]
+	return ParseExecutableBinaries(proj.Runtime.Options())
+}
+
+// SelectPlatformBinary returns the binary path declared for the host platform, or an error
+// naming the platforms the pack does support.
+func SelectPlatformBinary(binaries map[string]string) (string, error) {
+	platform := CurrentPlatform()
+	binary, ok := binaries[platform]
+	if !ok {
+		return "", fmt.Errorf(
+			"this policy pack does not provide a binary for %s; it supports: %s. "+
+				"The pack must be republished with a %s binary to run on this machine",
+			platform, strings.Join(sortedKeys(binaries), ", "), platform)
+	}
+	return binary, nil
+}
+
+// ParseExecutableBinaries validates the "binaries" runtime option of an executable policy pack
+// and returns the platform-to-binary-path map. Paths are relative to the pack directory, in the
+// platform's native separator form.
+func ParseExecutableBinaries(options map[string]any) (map[string]string, error) {
+	raw, has := options["binaries"]
 	if !has {
 		return nil, errors.New(
 			"executable policy packs require a 'binaries' map of platform to binary path in the runtime options")
@@ -65,7 +87,7 @@ func (proj *PolicyPackProject) ExecutableBinaries() (map[string]string, error) {
 	for platform, v := range m {
 		if !validExecutablePlatforms[platform] {
 			return nil, fmt.Errorf("unknown platform %q in 'binaries'; valid platforms are: %s",
-				platform, strings.Join(sortedPlatforms(validExecutablePlatforms), ", "))
+				platform, strings.Join(sortedKeys(validExecutablePlatforms), ", "))
 		}
 		path, ok := v.(string)
 		if !ok || path == "" {
@@ -83,11 +105,6 @@ func (proj *PolicyPackProject) ExecutableBinaries() (map[string]string, error) {
 	return binaries, nil
 }
 
-func sortedPlatforms(set map[string]bool) []string {
-	platforms := make([]string, 0, len(set))
-	for p := range set {
-		platforms = append(platforms, p)
-	}
-	slices.Sort(platforms)
-	return platforms
+func sortedKeys[V any](m map[string]V) []string {
+	return slices.Sorted(maps.Keys(m))
 }

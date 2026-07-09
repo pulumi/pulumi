@@ -115,6 +115,25 @@ func buildExecutableTestPack(t *testing.T) (packDir, binRel string) {
 	return packDir, binRel
 }
 
+// buildLanguageExecutable builds pulumi-language-executable and returns the directory holding it.
+// Callers put it on PATH, the same way a real CLI install makes the bundled plugin discoverable.
+func buildLanguageExecutable(t *testing.T) string {
+	binDir := t.TempDir()
+	binName := "pulumi-language-executable"
+	if goruntime.GOOS == "windows" {
+		binName += ".exe"
+	}
+	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "sdk"))
+	require.NoError(t, err)
+
+	cmd := exec.Command("go", "build", "-o", filepath.Join(binDir, binName), "./cmd/pulumi-language-executable")
+	cmd.Dir = sdkDir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	return binDir
+}
+
 func writeExecutableManifest(t *testing.T, packDir string, binaries map[string]string) {
 	var sb strings.Builder
 	sb.WriteString("runtime:\n  name: executable\n  options:\n    binaries:\n")
@@ -125,7 +144,8 @@ func writeExecutableManifest(t *testing.T, packDir string, binaries map[string]s
 }
 
 func TestAnalyzerSpawnExecutable(t *testing.T) {
-	t.Parallel()
+	binDir := buildLanguageExecutable(t)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	d := diagtest.LogSink(t)
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
@@ -147,7 +167,8 @@ func TestAnalyzerSpawnExecutable(t *testing.T) {
 }
 
 func TestAnalyzerSpawnExecutableMissingPlatform(t *testing.T) {
-	t.Parallel()
+	binDir := buildLanguageExecutable(t)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	d := diagtest.LogSink(t)
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
