@@ -1044,6 +1044,7 @@ func TestGroupCommandsRejectUnknownSubcommands(t *testing.T) {
 		args    []string
 		wantErr string
 	}{
+		{args: []string{"env", "lisst"}, wantErr: `unknown command "lisst" for "pulumi env"`},
 		{args: []string{"env", "bogus"}, wantErr: `unknown command "bogus" for "pulumi env"`},
 		{args: []string{"esc", "bogus"}, wantErr: `unknown command "bogus" for "pulumi env"`},
 		{args: []string{"env", "provider", "bogus"}, wantErr: "unknown command"},
