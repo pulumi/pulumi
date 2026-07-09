@@ -183,11 +183,20 @@ func PromptUser(
 	colorization colors.Colorization,
 	surveyAskOpts ...survey.AskOpt,
 ) string {
-	response, err := PromptUserErr(msg, options, defaultOption, colorization, surveyAskOpts...)
-	if err != nil {
-		return ""
-	}
+	response, _ := PromptUserErr(msg, options, defaultOption, colorization, surveyAskOpts...)
 	return response
+}
+
+// SurveyStdio routes survey prompts through the given streams when they are file-backed (survey
+// needs real file handles for terminal control), and returns nothing otherwise so survey falls
+// back to its defaults.
+func SurveyStdio(in io.Reader, out io.Writer) []survey.AskOpt {
+	fin, inOK := in.(terminal.FileReader)
+	fout, outOK := out.(terminal.FileWriter)
+	if !inOK || !outOK {
+		return nil
+	}
+	return []survey.AskOpt{survey.WithStdio(fin, fout, fout)}
 }
 
 // PromptUserErr is like PromptUser but returns the survey error (for example the user pressing
