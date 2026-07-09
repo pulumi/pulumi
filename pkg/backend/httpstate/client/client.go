@@ -27,11 +27,13 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"maps"
 	"math/bits"
 	"net/http"
 	"net/url"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -2002,40 +2004,9 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		return "", err
 	}
 
-	policies := make([]apitype.Policy, len(analyzerInfo.Policies))
-	for i, policy := range analyzerInfo.Policies {
-		configSchema, err := convertPolicyConfigSchema(policy.ConfigSchema)
-		if err != nil {
-			return "", err
-		}
-
-		policies[i] = apitype.Policy{
-			Name:             policy.Name,
-			DisplayName:      policy.DisplayName,
-			Description:      policy.Description,
-			EnforcementLevel: policy.EnforcementLevel,
-			Message:          policy.Message,
-			ConfigSchema:     configSchema,
-			Severity:         policy.Severity,
-			Framework:        convertPolicyComplianceFramework(policy.Framework),
-			Tags:             policy.Tags,
-			RemediationSteps: policy.RemediationSteps,
-			URL:              policy.URL,
-		}
-	}
-
-	req := apitype.CreatePolicyPackRequest{
-		Name:        analyzerInfo.Name,
-		DisplayName: analyzerInfo.DisplayName,
-		VersionTag:  analyzerInfo.Version,
-		Policies:    policies,
-		Description: analyzerInfo.Description,
-		Readme:      analyzerInfo.Readme,
-		Provider:    analyzerInfo.Provider,
-		Tags:        analyzerInfo.Tags,
-		Repository:  analyzerInfo.Repository,
-		Runtime:     runtime,
-		Metadata:    metadata,
+	req, err := buildCreatePolicyPackRequest(runtime, analyzerInfo, metadata, nil)
+	if err != nil {
+		return "", err
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -2047,7 +2018,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	fmt.Printf("Publishing %q%s to %q\n", analyzerInfo.Name, versionMsg, orgName)
 
 	var resp apitype.CreatePolicyPackResponse
-	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
+	err = pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
 		return "", fmt.Errorf("Publish policy pack failed: %w", err)
 	}
@@ -2089,6 +2060,109 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	}
 
 	return version, nil
+}
+
+// buildCreatePolicyPackRequest converts an analyzer's policy metadata into the wire request used
+// to create a new PolicyPack version. platforms is non-nil only for executable policy packs, which
+// publish one artifact per platform instead of a single archive.
+func buildCreatePolicyPackRequest(
+	runtime string, analyzerInfo plugin.AnalyzerInfo, metadata map[string]string, platforms []string,
+) (apitype.CreatePolicyPackRequest, error) {
+	policies := make([]apitype.Policy, len(analyzerInfo.Policies))
+	for i, policy := range analyzerInfo.Policies {
+		configSchema, err := convertPolicyConfigSchema(policy.ConfigSchema)
+		if err != nil {
+			return apitype.CreatePolicyPackRequest{}, err
+		}
+
+		policies[i] = apitype.Policy{
+			Name:             policy.Name,
+			DisplayName:      policy.DisplayName,
+			Description:      policy.Description,
+			EnforcementLevel: policy.EnforcementLevel,
+			Message:          policy.Message,
+			ConfigSchema:     configSchema,
+			Severity:         policy.Severity,
+			Framework:        convertPolicyComplianceFramework(policy.Framework),
+			Tags:             policy.Tags,
+			RemediationSteps: policy.RemediationSteps,
+			URL:              policy.URL,
+		}
+	}
+
+	return apitype.CreatePolicyPackRequest{
+		Name:        analyzerInfo.Name,
+		DisplayName: analyzerInfo.DisplayName,
+		VersionTag:  analyzerInfo.Version,
+		Policies:    policies,
+		Description: analyzerInfo.Description,
+		Readme:      analyzerInfo.Readme,
+		Provider:    analyzerInfo.Provider,
+		Tags:        analyzerInfo.Tags,
+		Repository:  analyzerInfo.Repository,
+		Runtime:     runtime,
+		Metadata:    metadata,
+		Platforms:   platforms,
+	}, nil
+}
+
+// PublishPolicyPackPlatforms publishes an executable policy pack with one artifact per platform,
+// uploading each to a per-platform presigned URL returned by the service. It returns the
+// published version. Unlike PublishPolicyPack, a version tag is required: executable policy
+// packs have no legacy client that omits it.
+func (pc *Client) PublishPolicyPackPlatforms(ctx context.Context, orgName string,
+	runtime string, analyzerInfo plugin.AnalyzerInfo, platformArchives map[string][]byte,
+	metadata map[string]string,
+) (string, error) {
+	if analyzerInfo.Version == "" {
+		return "", errors.New("a version is required to publish an executable policy pack")
+	}
+	if err := validatePolicyPackVersion(analyzerInfo.Version); err != nil {
+		return "", err
+	}
+
+	platforms := slices.Sorted(maps.Keys(platformArchives))
+	req, err := buildCreatePolicyPackRequest(runtime, analyzerInfo, metadata, platforms)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Printf("Publishing %q - version %s to %q\n", analyzerInfo.Name, analyzerInfo.Version, orgName)
+
+	var resp apitype.CreatePolicyPackResponse
+	if err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp); err != nil {
+		return "", fmt.Errorf("Publish policy pack failed: %w", err)
+	}
+
+	if len(resp.PlatformUploadURIs) == 0 {
+		return "", errors.New(
+			"this Pulumi service version does not support executable policy packs; " +
+				"upgrade the service or publish the pack with a language runtime instead")
+	}
+
+	for _, platform := range platforms {
+		upload, ok := resp.PlatformUploadURIs[platform]
+		if !ok {
+			return "", fmt.Errorf("the service did not return an upload location for platform %s", platform)
+		}
+		putReq, err := http.NewRequest(http.MethodPut, upload.UploadURI, bytes.NewReader(platformArchives[platform]))
+		if err != nil {
+			return "", fmt.Errorf("failed to upload policy pack artifact for %s: %w", platform, err)
+		}
+		for k, v := range upload.RequiredHeaders {
+			putReq.Header.Add(k, v)
+		}
+		if _, err := pc.restClient.HTTPClient().Do(putReq, retryAllMethods); err != nil {
+			return "", fmt.Errorf("failed to upload policy pack artifact for %s: %w", platform, err)
+		}
+	}
+
+	if err := pc.restCall(ctx, "POST",
+		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, analyzerInfo.Version), nil, nil, nil); err != nil {
+		return "", fmt.Errorf("Request to signal completion of the publish operation failed: %w", err)
+	}
+
+	return analyzerInfo.Version, nil
 }
 
 // convertPolicyConfigSchema converts a policy's schema from the analyzer to the apitype.
