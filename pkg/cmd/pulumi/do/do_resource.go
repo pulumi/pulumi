@@ -185,9 +185,8 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 			}
 			if pc.dryrun {
 				return pc.runDisplayedStep(cmd, displayedStep{
-					Op:          deploy.OpCreate,
-					New:         operationState(urn, "", nil, nil),
-					ShowChanges: true,
+					Op:  deploy.OpCreate,
+					New: operationState(urn, "", nil, nil),
 				}, func() (*resource.State, error) {
 					if _, err := prepare(); err != nil {
 						return nil, err

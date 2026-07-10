@@ -35,14 +35,12 @@ type displayedStep struct {
 	Diffs        []resource.PropertyKey
 	DetailedDiff map[string]plugin.PropertyDiff
 	Preview      bool
-	ShowChanges  bool
 }
 
 func (pc *packageCommand) previewDisplayedStep(
 	cmd *cobra.Command, step displayedStep, call func() (*resource.State, error),
 ) error {
 	step.Preview = true
-	step.ShowChanges = true
 	return pc.runDisplayedStep(cmd, step, call)
 }
 
@@ -69,7 +67,7 @@ func (pc *packageCommand) runDisplayedStep(
 		Stderr:              stderr,
 		ShowSecrets:         pc.showSecrets,
 		ShowReads:           true,
-		ShowResourceChanges: step.ShowChanges || len(step.Diffs) > 0 || len(step.DetailedDiff) > 0,
+		ShowResourceChanges: preview || len(step.Diffs) > 0 || len(step.DetailedDiff) > 0,
 		SuppressProgress:    true,
 		SuppressStackRow:    true,
 	}
