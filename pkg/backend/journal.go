@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
@@ -634,7 +635,7 @@ func NewSnapshotJournaler(
 			Manifest:          baseSnap.Manifest,
 			SecretsManager:    baseSnap.SecretsManager,
 			Resources:         make([]*resource.State, 0),
-			PendingOperations: make([]resource.Operation, 0),
+			PendingOperations: make([]pkgresource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
 			Snippets:          baseSnap.Snippets,
 		}
@@ -783,7 +784,7 @@ func NewJournaler(
 			Manifest:          baseSnap.Manifest,
 			SecretsManager:    baseSnap.SecretsManager,
 			Resources:         make([]*resource.State, 0),
-			PendingOperations: make([]resource.Operation, 0),
+			PendingOperations: make([]pkgresource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
 		}
 		// Copy the resources from the base snapshot to the new snapshot.

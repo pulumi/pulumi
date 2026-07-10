@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -284,9 +285,9 @@ func TestStackCommands(t *testing.T) {
 		// Let's say that the the CLI crashed during the deletion of the last resource and we've now got
 		// invalid resources in the snapshot.
 		res := snap.Resources[len(snap.Resources)-1]
-		snap.PendingOperations = append(snap.PendingOperations, resource.Operation{
+		snap.PendingOperations = append(snap.PendingOperations, pkgresource.Operation{
 			Resource: res,
-			Type:     resource.OperationTypeDeleting,
+			Type:     pkgresource.OperationTypeDeleting,
 		})
 		v3deployment, err := stack.SerializeDeployment(t.Context(), snap, false /* showSecrets */)
 		require.NoError(t, err)

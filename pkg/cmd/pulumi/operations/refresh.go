@@ -36,6 +36,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -311,7 +312,7 @@ func NewRefreshCmd() *cobra.Command {
 			// We remove remaining pending creates
 			if clearPendingCreates && hasPendingCreates(snap) {
 				// Remove all pending creates.
-				removePendingCreates := func(op resource.Operation) (*resource.Operation, error) {
+				removePendingCreates := func(op pkgresource.Operation) (*pkgresource.Operation, error) {
 					return nil, nil
 				}
 				err := filterMapPendingCreates(ctx, s, opts.Display, yes, removePendingCreates)
@@ -523,7 +524,7 @@ func NewRefreshCmd() *cobra.Command {
 	return cmd
 }
 
-type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
+type editPendingOp = func(op pkgresource.Operation) (*pkgresource.Operation, error)
 
 // filterMapPendingCreates applies f to each pending create. If f returns nil, then the op
 // is deleted. Otherwise is replaced by the returned op.
@@ -531,12 +532,12 @@ func filterMapPendingCreates(
 	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
 ) error {
 	return state.TotalStateEdit(ctx, s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
-		var pending []resource.Operation
+		var pending []pkgresource.Operation
 		for _, op := range snap.PendingOperations {
 			if op.Resource == nil {
 				return errors.New("found operation without resource")
 			}
-			if op.Type != resource.OperationTypeCreating {
+			if op.Type != pkgresource.OperationTypeCreating {
 				pending = append(pending, op)
 				continue
 			}
@@ -567,10 +568,10 @@ func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opt
 	for i := 0; i < len(importToCreates); i += 2 {
 		alteredOps[importToCreates[i]] = importToCreates[i+1]
 	}
-	err := filterMapPendingCreates(ctx, s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
+	err := filterMapPendingCreates(ctx, s, opts, yes, func(op pkgresource.Operation) (*pkgresource.Operation, error) {
 		if id, ok := alteredOps[string(op.Resource.URN)]; ok {
 			op.Resource.ID = resource.ID(id)
-			op.Type = resource.OperationTypeImporting
+			op.Type = pkgresource.OperationTypeImporting
 			delete(alteredOps, string(op.Resource.URN))
 			return &op, nil
 		}
@@ -588,14 +589,14 @@ func hasPendingCreates(snap *deploy.Snapshot) bool {
 		return false
 	}
 	for _, op := range snap.PendingOperations {
-		if op.Type == resource.OperationTypeCreating {
+		if op.Type == pkgresource.OperationTypeCreating {
 			return true
 		}
 	}
 	return false
 }
 
-func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, error) {
+func interactiveFixPendingCreate(op pkgresource.Operation) (*pkgresource.Operation, error) {
 	for {
 		option := ""
 		options := []string{
@@ -623,7 +624,7 @@ func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, er
 			}, &id, nil)
 			if err == nil {
 				op.Resource.ID = resource.ID(id)
-				op.Type = resource.OperationTypeImporting
+				op.Type = pkgresource.OperationTypeImporting
 				return &op, nil
 			}
 		default:

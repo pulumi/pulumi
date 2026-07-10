@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/go-test/deep"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -35,12 +36,12 @@ import (
 // IDs, names, and properties; their dependencies; and more.  A snapshot is a diffable entity and can be used to create
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot struct {
-	Manifest          Manifest             // a deployment manifest of versions, checksums, and so on.
-	SecretsManager    secrets.Manager      // the manager to use use when serializing this snapshot.
-	Resources         []*resource.State    // fetches all resources and their associated states.
-	PendingOperations []resource.Operation // all currently pending resource operations.
-	Metadata          SnapshotMetadata     // metadata associated with the snapshot.
-	Snippets          []resource.Snippet   // any PCL snippets associated with the snapshot.
+	Manifest          Manifest                // a deployment manifest of versions, checksums, and so on.
+	SecretsManager    secrets.Manager         // the manager to use use when serializing this snapshot.
+	Resources         []*resource.State       // fetches all resources and their associated states.
+	PendingOperations []pkgresource.Operation // all currently pending resource operations.
+	Metadata          SnapshotMetadata        // metadata associated with the snapshot.
+	Snippets          []resource.Snippet      // any PCL snippets associated with the snapshot.
 	// Extension-parameterization blobs keyed by content hash.
 	Extensions map[apitype.ExtensionRef]apitype.Extension
 }
@@ -65,7 +66,7 @@ type SnapshotIntegrityErrorMetadata struct {
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
 // This property is not checked; for verification, please refer to the VerifyIntegrity function below.
 func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
-	resources []*resource.State, ops []resource.Operation,
+	resources []*resource.State, ops []pkgresource.Operation,
 	metadata SnapshotMetadata, snippets []resource.Snippet,
 	extensions map[apitype.ExtensionRef]apitype.Extension,
 ) *Snapshot {
@@ -340,7 +341,7 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 			len(snap.PendingOperations), snapPendingOps.String(), len(expected.PendingOperations), expectedPendingOps.String())
 	}
 
-	pendingOpsMap := make(map[resource.URN][]resource.Operation)
+	pendingOpsMap := make(map[resource.URN][]pkgresource.Operation)
 
 	for _, mop := range expected.PendingOperations {
 		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
