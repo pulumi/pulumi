@@ -969,6 +969,7 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	if rm.supportsFeatureID("sendsOptionsToHooks") {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
 	}
+	features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING)
 	return features
 }
 
@@ -1090,6 +1091,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    keepResources,
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1310,6 +1312,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1435,6 +1438,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		KeepUnknowns:     true,
 		KeepSecrets:      req.GetAcceptSecrets(),
 		KeepResources:    req.GetAcceptResources(),
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1469,6 +1473,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			KeepSecrets:        true,
 			KeepResources:      true,
 			KeepOutputValues:   true,
+			KeepByteString:     cb.AcceptsByteString,
 			WorkingDirectory:   rm.workingDirectory,
 			ComputeAssetHashes: true,
 		}
@@ -1546,6 +1551,7 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   cb.AcceptsByteString,
 			WorkingDirectory: rm.workingDirectory,
 		}
 
@@ -1671,6 +1677,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   cb.AcceptsByteString,
 		}
 		if newInputs != nil {
 			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
@@ -1772,6 +1779,7 @@ func (rm *resmon) wrapErrorHookCallback(
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   cb.AcceptsByteString,
 		}
 		if newInputs != nil {
 			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
@@ -2995,6 +3003,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		KeepUnknowns:     true,
 		KeepSecrets:      req.GetAcceptSecrets(),
 		KeepResources:    req.GetAcceptResources(),
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {

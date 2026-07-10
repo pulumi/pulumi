@@ -361,9 +361,10 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			marshalOpts := plugin.MarshalOptions{
-				KeepUnknowns:  true,
-				KeepSecrets:   true,
-				KeepResources: true,
+				KeepUnknowns:   true,
+				KeepSecrets:    true,
+				KeepResources:  true,
+				KeepByteString: true,
 			}
 			obj, err := plugin.MarshalProperties(argsPV.ObjectValue(), marshalOpts)
 			if err != nil {
@@ -371,8 +372,9 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			request := &pulumirpc.ResourceInvokeRequest{
-				Tok:  token,
-				Args: obj,
+				Tok:               token,
+				Args:              obj,
+				AcceptsByteString: true,
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
@@ -551,6 +553,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				KeepSecrets:      true,
 				KeepResources:    true,
 				KeepOutputValues: true,
+				KeepByteString:   true,
 			}
 			obj, err := plugin.MarshalProperties(argsPM, marshalOpts)
 			if err != nil {
@@ -558,8 +561,9 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			request := &pulumirpc.ResourceCallRequest{
-				Tok:  fun.Token,
-				Args: obj,
+				Tok:               fun.Token,
+				Args:              obj,
+				AcceptsByteString: true,
 			}
 
 			var dependsOn []resource.URN
