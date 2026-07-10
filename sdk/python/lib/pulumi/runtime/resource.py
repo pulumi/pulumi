@@ -1205,7 +1205,15 @@ def register_resource(
         try:
             log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
 
-            resolve_urn(resp.urn, True, False, None)
+            # If the engine reported that the resource failed or was skipped, synthesize an
+            # exception so downstream outputs fault. This allows `Output.recover` to intercept
+            # the failure.
+            result_failed = resp.result != resource_pb2.Result.SUCCESS
+            register_exn: Optional[Exception] = None
+            if result_failed:
+                register_exn = Exception(f"resource {name} [{ty}] failed to register")
+
+            resolve_urn(resp.urn, True, False, register_exn)
             resolve_urn_called = True
 
             if resolve_id is not None:
@@ -1213,7 +1221,7 @@ def register_resource(
                 # empty string, we should treat it as unknown. TFBridge in particular is known to send
                 # the empty string as an ID when doing a preview.
                 is_known = bool(resp.id)
-                resolve_id(resp.id, is_known, False, None)
+                resolve_id(resp.id, is_known, False, register_exn)
                 resolve_id_called = True
 
             property_deps = {}
@@ -1223,17 +1231,20 @@ def register_resource(
                     urns = list(v.urns)
                     property_deps[k] = set(map(new_dependency, urns))
 
-            keep_unknowns = resp.result == resource_pb2.Result.SUCCESS
-            rpc.resolve_outputs(
-                res,
-                resolver.serialized_props,
-                resp.object,
-                property_deps,
-                resolvers,
-                custom,
-                transform_using_type_metadata,
-                keep_unknowns,
-            )
+            if register_exn is not None:
+                rpc.resolve_outputs_due_to_exception(resolvers, register_exn)
+            else:
+                keep_unknowns = resp.result == resource_pb2.Result.SUCCESS
+                rpc.resolve_outputs(
+                    res,
+                    resolver.serialized_props,
+                    resp.object,
+                    property_deps,
+                    resolvers,
+                    custom,
+                    transform_using_type_metadata,
+                    keep_unknowns,
+                )
             resolve_outputs_called = True
 
         except Exception as exn:
