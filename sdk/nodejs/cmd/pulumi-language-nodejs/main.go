@@ -84,6 +84,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3/noderesolver"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
@@ -272,6 +274,8 @@ type nodeLanguageHost struct {
 	// why it must stay disabled for real projects.
 	installCacheDir   string
 	installCacheLocks gsync.Map[string, *sync.Mutex]
+
+	resolveNode func(ctx context.Context, out io.Writer) (noderesolver.Result, error)
 }
 
 type nodeOptions struct {
@@ -379,6 +383,11 @@ func newLanguageHost(
 		runtime:         runtime,
 		cancelCtx:       ctx,
 		cancelFunc:      cancel,
+		resolveNode: func(ctx context.Context, out io.Writer) (noderesolver.Result, error) {
+			spec := noderesolver.Default()
+			spec.Output = out
+			return noderesolver.ResolveWith(ctx, spec)
+		},
 	}
 }
 
@@ -818,15 +827,9 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 	defer pipes.shutdown()
 
-	runtimeExec := host.runtime
-	if runtimeExec == "nodejs" {
-		runtimeExec = "node"
-	}
-	runtimeBin, err := exec.LookPath(runtimeExec)
+	runtimeBin, err := host.resolveRuntimeBin(ctx, os.Stderr)
 	if err != nil {
-		return &pulumirpc.RunResponse{
-			Error: fmt.Sprintf("could not find %s on the $PATH: %s", runtimeExec, err.Error()),
-		}, nil
+		return &pulumirpc.RunResponse{Error: err.Error()}, nil
 	}
 
 	if host.runtime == "bun" {
@@ -1210,6 +1213,11 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
+	// Resolved for its side effect: on node-less machines this puts the managed
+	// toolchain on the PATH the package manager is about to search.
+	if _, err := host.resolveRuntimeBin(ctx, stdout); err != nil {
+		return err
+	}
 	if err := host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, stdout, stderr); err != nil {
 		return err
 	}
@@ -1597,11 +1605,7 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 	}
 
-	runtimeExec := host.runtime
-	if runtimeExec == "nodejs" {
-		runtimeExec = "node"
-	}
-	runtimeBin, err := exec.LookPath(runtimeExec)
+	runtimeBin, err := host.resolveRuntimeBin(ctx, stderr)
 	if err != nil {
 		return err
 	}

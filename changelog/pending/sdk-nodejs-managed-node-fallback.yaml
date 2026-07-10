@@ -1,0 +1,8 @@
+component: sdk/nodejs
+kind: feature
+body: Nodejs programs, plugins, and policy packs now run without a locally installed
+  Node.js. When node is not on the PATH, the language host downloads a pinned,
+  checksum-verified Node.js LTS into ~/.pulumi/node/ and uses it. Set
+  PULUMI_NODE_DOWNLOAD_URL to use a mirror, or PULUMI_DISABLE_MANAGED_NODE=true to
+  disable the fallback.
+time: 2026-07-10T18:33:32.000000Z
