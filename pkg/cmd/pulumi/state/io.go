@@ -19,10 +19,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
+	"unicode"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -159,6 +162,77 @@ func TotalStateEdit(
 	return backend.ImportStackDeployment(ctx, s, dep)
 }
 
+// listURNsHint tells the user how to find the URNs of the resources in a stack's state. stack may be empty to
+// refer to the current stack.
+func listURNsHint(stack string) string {
+	var stackFlag string
+	if stack != "" {
+		stackFlag = " --stack " + stack
+	}
+	return fmt.Sprintf("To list the resource URNs in the stack, run `pulumi stack --show-urns%[1]s`; "+
+		"to inspect the full state, run `pulumi stack export%[1]s`.", stackFlag)
+}
+
+// snapshotURNs returns the distinct URNs of the resources in the snapshot, which may be nil.
+func snapshotURNs(snap *deploy.Snapshot) []resource.URN {
+	if snap == nil {
+		return nil
+	}
+	seen := map[resource.URN]struct{}{}
+	urns := slice.Prealloc[resource.URN](len(snap.Resources))
+	for _, res := range snap.Resources {
+		if _, ok := seen[res.URN]; !ok {
+			seen[res.URN] = struct{}{}
+			urns = append(urns, res.URN)
+		}
+	}
+	return urns
+}
+
+// similarURNs returns up to limit candidate URNs ordered by their edit distance to the given URN, keeping only
+// those within a distance proportional to the URN's length.
+func similarURNs(candidates []resource.URN, urn resource.URN, limit int) []resource.URN {
+	op := levenshtein.DefaultOptionsWithSub
+	op.Matches = func(r1, r2 rune) bool {
+		return unicode.ToLower(r1) == unicode.ToLower(r2)
+	}
+	threshold := max(2, len(urn)/4)
+
+	type scored struct {
+		urn      resource.URN
+		distance int
+	}
+	var ranked []scored
+	for _, candidate := range candidates {
+		distance := levenshtein.DistanceForStrings([]rune(string(urn)), []rune(string(candidate)), op)
+		if distance <= threshold {
+			ranked = append(ranked, scored{urn: candidate, distance: distance})
+		}
+	}
+	sort.SliceStable(ranked, func(i, j int) bool { return ranked[i].distance < ranked[j].distance })
+
+	urns := slice.Prealloc[resource.URN](min(limit, len(ranked)))
+	for _, c := range ranked[:min(limit, len(ranked))] {
+		urns = append(urns, c.urn)
+	}
+	return urns
+}
+
+// resourceNotFoundError builds the error returned when a URN does not match any of the candidate URNs eligible for
+// the operation, suggesting close-matching candidates and how to list the URNs in the state.
+func resourceNotFoundError(candidates []resource.URN, urn resource.URN) error {
+	var msg strings.Builder
+	fmt.Fprintf(&msg, "No such resource %q exists in the current state\n", urn)
+	if suggestions := similarURNs(candidates, urn, 3); len(suggestions) > 0 {
+		msg.WriteString("Did you mean:\n")
+		for _, suggestion := range suggestions {
+			fmt.Fprintf(&msg, "  %s\n", suggestion)
+		}
+	}
+	msg.WriteString(listURNsHint(""))
+	return errors.New(msg.String())
+}
+
 // locateStackResource attempts to find a unique resource associated with the given URN in the given snapshot. If the
 // given URN is ambiguous and this is an interactive terminal, it prompts the user to select one of the resources in
 // the list of resources with identical URNs to operate upon.
@@ -166,7 +240,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	candidateResources := edit.LocateResource(snap, urn)
 	switch {
 	case len(candidateResources) == 0: // resource was not found
-		return nil, fmt.Errorf("No such resource %q exists in the current state", urn)
+		return nil, resourceNotFoundError(snapshotURNs(snap), urn)
 	case len(candidateResources) == 1: // resource was unambiguously found
 		return candidateResources[0], nil
 	}
@@ -221,7 +295,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 func resolveStateResourceArg(opts display.Options, snap *deploy.Snapshot, arg string) (*resource.State, error) {
 	urn := resource.URN(arg)
 	if !urn.IsValid() {
-		return nil, fmt.Errorf("%q is not a valid resource URN", arg)
+		return nil, fmt.Errorf("%q is not a valid resource URN\n%s", arg, listURNsHint(""))
 	}
 	return locateStackResource(opts, snap, urn)
 }

@@ -29,14 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// BackendInstance is used to inject a backend mock from tests.
-var BackendInstance backend.Backend
-
 func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
-	if BackendInstance != nil {
-		return false, nil
-	}
-
 	// Try to read the current project
 	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
@@ -54,10 +47,6 @@ func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 func NonInteractiveCurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 ) (backend.Backend, error) {
-	if BackendInstance != nil {
-		return BackendInstance, nil
-	}
-
 	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
@@ -72,10 +61,6 @@ func CurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 	opts display.Options,
 ) (backend.Backend, error) {
-	if BackendInstance != nil {
-		return BackendInstance, nil
-	}
-
 	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)

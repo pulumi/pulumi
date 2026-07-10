@@ -1,0 +1,6 @@
+component: cli/env
+kind: fix
+body: Submit the change request created by `pulumi env open-request` so it is pending approval instead of being left as an unsubmitted draft
+time: 2026-07-06T00:00:00.000000+00:00
+custom:
+    PR: "23802"

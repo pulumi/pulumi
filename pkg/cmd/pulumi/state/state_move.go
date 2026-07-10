@@ -251,7 +251,8 @@ func (cmd *stateMoveCmd) Run(
 	}
 
 	if len(resourcesToMove) == 0 {
-		return errors.New("no resources found to move")
+		return fmt.Errorf("no resources found to move\n%s",
+			listURNsHint(string(source.Ref().FullyQualifiedName())))
 	}
 
 	sourceDepGraph := graph.NewDependencyGraph(sourceSnapshot.Resources)

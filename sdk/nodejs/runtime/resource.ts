@@ -777,13 +777,22 @@ export function registerResource(
                         };
                     }
 
-                    resop.resolveURN(resp.getUrn(), err);
+                    // If the engine reported that the resource failed or was skipped, synthesize
+                    // an error so downstream outputs reject. This allows `pulumi.recover` to
+                    // intercept the failure.
+                    const resultFailed = resp.getResult() !== resproto.Result.SUCCESS;
+                    let effectiveErr = err;
+                    if (!effectiveErr && resultFailed) {
+                        effectiveErr = new Error(`resource ${name} [${t}] failed to register`);
+                    }
+
+                    resop.resolveURN(resp.getUrn(), effectiveErr);
 
                     // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
                     // undefined so that later parts of our system don't have to deal with values like 'null'.
                     if (resop.resolveID) {
                         const id = resp.getId() || undefined;
-                        resop.resolveID(id, id !== undefined, err);
+                        resop.resolveID(id, id !== undefined, effectiveErr);
                     }
 
                     const deps: Record<string, Resource[]> = {};
@@ -796,7 +805,6 @@ export function registerResource(
                     }
 
                     // Now resolve the output properties.
-                    const keepUnknowns = resp.getResult() !== resproto.Result.SUCCESS;
                     await resolveOutputs(
                         res,
                         t,
@@ -805,8 +813,8 @@ export function registerResource(
                         resp.getObject(),
                         deps,
                         resop.resolvers,
-                        err,
-                        keepUnknowns,
+                        effectiveErr,
+                        resultFailed,
                     );
                     done();
                 });

@@ -1,0 +1,4 @@
+component: cli/do
+kind: fix
+body: Fix calling delete on PF resources that need read called first
+time: 2026-07-09T10:25:41.25996+01:00

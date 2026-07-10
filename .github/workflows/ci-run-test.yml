@@ -158,6 +158,8 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
+      - name: Configure dependency cooldown
+        uses: ./.github/actions/dependency-cooldown
       # Frees ~24GiB; test jobs run out of disk otherwise (#17470). The bulk of
       # the cleanup runs in the background, overlapping the setup steps below.
       # The "Wait for disk cleanup" step joins it before tests run.
@@ -202,10 +204,19 @@ jobs:
             .gocache.tmp
       - name: Prime Go cache
         if: ${{ ! steps.setup-go.outputs.cache-hit }}
-        # Compile every test to ensure we populate a good cache entry.
+        # Compile every test to ensure we populate a good cache entry. The
+        # sdk is also built with -trimpath: the Go language host compiles
+        # test programs with -trimpath (see compileProgram in
+        # sdk/go/pulumi-language-go), and Go's build cache keys entries on
+        # build flags — without these entries the first program build in a
+        # job rebuilds the SDK's whole dependency graph mid-test. Persisted
+        # caches saved before this line existed lack the entries and never
+        # heal on their own; delete them (or otherwise rotate the cache key)
+        # so every matrix cell re-primes.
         run: |
           ( cd sdk && go test -run "_________" ./... )
           ( cd pkg && go test -run "_________" ./... )
+          ( cd sdk && go build -trimpath ./... )
       - name: Install delve
         run: |
           go install github.com/go-delve/delve/cmd/dlv@latest

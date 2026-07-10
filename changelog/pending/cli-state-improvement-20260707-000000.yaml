@@ -1,0 +1,6 @@
+component: cli/state
+kind: improvement
+body: Improve the error message when a resource URN is not found in the state for `pulumi state` commands, suggesting close-matching URNs and how to list the URNs in the stack
+time: 2026-07-07T00:00:00.000000+00:00
+custom:
+    PR: "23812"

@@ -1,4 +1,0 @@
-component: cli
-kind: fix
-body: Don't miscopy out archives
-time: 2026-07-06T13:26:15.737376+02:00

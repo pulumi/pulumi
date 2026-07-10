@@ -143,9 +143,11 @@ func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []
 
 	// Build a map of URNs to resources, excluding those pending deletion.
 	urnToResource := make(map[resource.URN]*resource.State)
+	eligibleURNs := slice.Prealloc[resource.URN](len(snap.Resources))
 	for _, res := range snap.Resources {
 		if !res.Delete {
 			urnToResource[res.URN] = res
+			eligibleURNs = append(eligibleURNs, res.URN)
 		}
 	}
 
@@ -157,7 +159,7 @@ func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []
 			res.Protect = false
 			resourceCount++
 		} else {
-			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
+			errs = append(errs, resourceNotFoundError(eligibleURNs, urn))
 		}
 	}
 

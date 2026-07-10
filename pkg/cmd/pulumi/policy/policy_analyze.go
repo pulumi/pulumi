@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backendsecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -44,7 +45,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -150,7 +150,7 @@ func newPolicyAnalyzeCmd(
 					// redacted so analysis still runs; policies then see "[secret]". A non-secrets
 					// failure recurs identically below, so we surface the original err.
 					var redactErr error
-					snap, redactErr = stack.DeserializeUntypedDeployment(ctx, &deployment, blindingSecretsProvider{})
+					snap, redactErr = stack.DeserializeUntypedDeployment(ctx, &deployment, backendsecrets.BlindingProvider)
 					if redactErr != nil {
 						return fmt.Errorf("deserializing deployment from %s: %w", file, err)
 					}
@@ -284,49 +284,6 @@ func stackReferenceForFile(snap *deploy.Snapshot) backend.StackReference {
 		ref.StringV = "<multiple>"
 	}
 	return ref
-}
-
-// blindingSecretsProvider builds secrets managers that redact every secret to
-// config.BlindingCrypter's "[secret]" sentinel instead of decrypting it. --file mode falls
-// back to it when the real provider can't decrypt a state file offline (e.g. a service-backed
-// export with no local login), so analysis runs instead of failing.
-type blindingSecretsProvider struct{}
-
-func (blindingSecretsProvider) OfType(
-	_ context.Context, ty string, state json.RawMessage,
-) (secrets.Manager, error) {
-	return blindingSecretsManager{ty: ty, state: state}, nil
-}
-
-type blindingSecretsManager struct {
-	ty    string
-	state json.RawMessage
-}
-
-func (m blindingSecretsManager) Type() string                { return m.ty }
-func (m blindingSecretsManager) State() json.RawMessage      { return m.state }
-func (m blindingSecretsManager) Encrypter() config.Encrypter { return config.BlindingCrypter }
-func (m blindingSecretsManager) Decrypter() config.Decrypter { return redactingDecrypter{} }
-
-type redactingDecrypter struct{}
-
-// DecryptValue returns config.BlindingCrypter's "[secret]" sentinel, JSON-encoded:
-// deployment deserialization unmarshals each decrypted plaintext as a JSON value, so the
-// bare sentinel (not valid JSON) can't be returned directly.
-func (redactingDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	redacted, err := config.BlindingCrypter.DecryptValue(ctx, ciphertext)
-	if err != nil {
-		return "", err
-	}
-	plaintext, err := json.Marshal(redacted)
-	if err != nil {
-		return "", err
-	}
-	return string(plaintext), nil
-}
-
-func (d redactingDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return config.DefaultBatchDecrypt(ctx, d, ciphertexts)
 }
 
 // analyzeEvents implements deploy.PolicyEvents and writes human-readable output.
@@ -486,8 +443,8 @@ func (e *analyzeEvents) OnPolicyRemediation(
 		PolicyName:        rem.PolicyName,
 		PolicyPackName:    rem.PolicyPackName,
 		PolicyPackVersion: rem.PolicyPackVersion,
-		Before:            resource.ToResourcePropertyMap(before),
-		After:             resource.ToResourcePropertyMap(after),
+		Before:            before,
+		After:             after,
 	}))
 }
 

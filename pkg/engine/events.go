@@ -218,8 +218,8 @@ type PolicyRemediationEventPayload struct {
 	PolicyName        string
 	PolicyPackName    string
 	PolicyPackVersion string
-	Before            resource.PropertyMap
-	After             resource.PropertyMap
+	Before            property.Map
+	After             property.Map
 }
 
 // PolicyLoadEventPayload is the payload for an event with type `policy-load`.
@@ -500,6 +500,12 @@ func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
 	}
 }
 
+// MakeStepEventStateMetadata converts a resource state into the event metadata engine events
+// carry, redacting property values the same way real engine events do.
+func MakeStepEventStateMetadata(state *resource.State, showSecrets bool) *StepEventStateMetadata {
+	return makeStepEventStateMetadata(state, false /*debug*/, showSecrets)
+}
+
 func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, showSecrets bool) StepEventMetadata {
 	contract.Assertf(op == step.Op() || step.Op() == deploy.OpRefresh,
 		"step must be %v or %v, got %v", op, deploy.OpRefresh, step.Op())
@@ -689,8 +695,8 @@ func (e *eventEmitter) policyRemediationEvent(urn resource.URN, t plugin.Remedia
 		PolicyName:        t.PolicyName,
 		PolicyPackName:    t.PolicyPackName,
 		PolicyPackVersion: t.PolicyPackVersion,
-		Before:            resource.ToResourcePropertyMap(before),
-		After:             resource.ToResourcePropertyMap(after),
+		Before:            before,
+		After:             after,
 	}))
 }
 

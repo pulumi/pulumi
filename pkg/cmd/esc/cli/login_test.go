@@ -268,6 +268,7 @@ func TestFilestateBackend(t *testing.T) { //nolint:paralleltest,lll // non-threa
 	})}
 	err := esc.getCachedClient(t.Context())
 	assert.ErrorContains(t, err, "does not support Pulumi ESC")
+	assert.ErrorContains(t, err, "log into the Pulumi Cloud backend")
 }
 
 func TestEnvVarOverridesAccounts(t *testing.T) {

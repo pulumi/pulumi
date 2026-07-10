@@ -1,11 +1,11 @@
 config hookTestFile "string" {}
 config hookPreviewFile "string" {}
 
-hook "createHook" {
+hook resource "createHook" {
     command = ["touch", hookTestFile]
 }
 
-hook "previewHook" {
+hook resource "previewHook" {
     command = ["touch", "${hookPreviewFile}_${args.name}"]
     onDryRun = true
 }

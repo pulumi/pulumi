@@ -79,6 +79,41 @@ on:
         description: "GCP service account, required to run tests against GCP"
 
 jobs:
+  # Computes the cheap outputs every other job fans out from. This job must stay fast: the
+  # build and lint jobs wait only on it, not on the matrix job, whose test partitioning
+  # requires compiling the test binaries.
+  setup:
+    name: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Compute version set and build targets
+        id: setup
+        run: |
+          VERSION_SET=$(./scripts/get-job-matrix.py \
+            generate-version-set \
+            --version-set current
+          )
+          echo "::group::Version set"
+          echo "$VERSION_SET" | yq -P '.'
+          echo "::endgroup::"
+          printf '%s' "${VERSION_SET}" | ./.github/scripts/set-output version-set
+
+          BUILD_TARGETS='[
+              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-latest" }
+          ]'
+          printf '%s' "${BUILD_TARGETS}" | ./.github/scripts/set-output build-targets
+    outputs:
+      version-set: "${{ fromJson(steps.setup.outputs.version-set) }}"
+      build-targets: "${{ fromJson(steps.setup.outputs.build-targets) }}"
+
   matrix:
     runs-on: ubuntu-latest
     strategy:
@@ -114,13 +149,6 @@ jobs:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
-      - uses: ./.github/actions/retry
-        with:
-          action: jdx/mise-action@v2
-          with: |
-            experimental: true
-      - name: Install CLI
-        run: SDKS='' make install
       - name: build matrix
         id: matrix
         env:
@@ -143,14 +171,6 @@ jobs:
           readarray -td' ' VERSION_SETS_TO_TEST < <(echo -n "$TEST_VERSION_SETS"); declare -p VERSION_SETS_TO_TEST;
           readarray -td' ' INTEGRATION_PLATFORMS < <(echo -n "$INPUT_INTEGRATION_TEST_PLATFORMS"); declare -p INTEGRATION_PLATFORMS;
           readarray -td' ' ACCEPTANCE_PLATFORMS < <(echo -n "$INPUT_ACCEPTANCE_TEST_PLATFORMS"); declare -p ACCEPTANCE_PLATFORMS;
-          BUILD_TARGETS='[
-              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
-              { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
-              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
-              { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
-              { "os": "darwin",  "arch": "amd64", "build-platform": "ubuntu-latest" },
-              { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-latest" }
-          ]'
 
           CODEGEN_TESTS_FLAG=--codegen-tests
           PKG_UNIT_TEST_PARTITIONS=7
@@ -247,13 +267,6 @@ jobs:
           fi
           echo "::endgroup::"
 
-          echo "::group::Version set variable"
-          VERSION_SET=$(./scripts/get-job-matrix.py \
-            generate-version-set \
-            --version-set current
-          )
-          echo "::endgroup::"
-
           echo "::group::Unit test matrix"
           echo "$UNIT_TEST_MATRIX" | yq -P '.'
           echo "::endgroup::"
@@ -266,9 +279,6 @@ jobs:
           echo "::group::acceptance test matrix macos"
           echo "$ACCEPTANCE_TEST_MATRIX_MACOS" | yq -P '.'
           echo "::endgroup::"
-          echo "::group::Version set"
-          echo "$VERSION_SET" | yq -P '.'
-          echo "::endgroup::"
 
           echo "::group::Set outputs"
           # Pipe matrix values via stdin: they can exceed the 128 KiB per-argument limit
@@ -277,35 +287,31 @@ jobs:
           printf '%s' "${INTEGRATION_TEST_MATRIX}" | ./.github/scripts/set-output integration-test-matrix
           printf '%s' "${ACCEPTANCE_TEST_MATRIX_WIN}" | ./.github/scripts/set-output acceptance-test-matrix-win
           printf '%s' "${ACCEPTANCE_TEST_MATRIX_MACOS}" | ./.github/scripts/set-output acceptance-test-matrix-macos
-          printf '%s' "${VERSION_SET}" | ./.github/scripts/set-output version-set
-          printf '%s' "${BUILD_TARGETS}" | ./.github/scripts/set-output build-targets
           echo "::endgroup::"
     outputs:
       unit-test-matrix: "${{ fromJson(steps.matrix.outputs.unit-test-matrix) }}"
       integration-test-matrix: "${{ fromJson(steps.matrix.outputs.integration-test-matrix) }}"
       acceptance-test-matrix-win: "${{ fromJson(steps.matrix.outputs.acceptance-test-matrix-win) }}"
       acceptance-test-matrix-macos: "${{ fromJson(steps.matrix.outputs.acceptance-test-matrix-macos) }}"
-      version-set: "${{ fromJson(steps.matrix.outputs.version-set) }}"
-      build-targets: "${{ fromJson(steps.matrix.outputs.build-targets) }}"
 
   lint:
     name: Lint
-    needs: [matrix]
+    needs: [setup]
     if: ${{ inputs.lint }}
     uses: ./.github/workflows/ci-lint.yml
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     with:
       ref: ${{ inputs.ref }}
-      version-set: ${{ needs.matrix.outputs.version-set }}
+      version-set: ${{ needs.setup.outputs.version-set }}
 
   build-binaries:
     name: build binaries
-    needs: [matrix]
+    needs: [setup]
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
       matrix:
-        target: ${{ fromJson(needs.matrix.outputs.build-targets) }}
+        target: ${{ fromJson(needs.setup.outputs.build-targets) }}
     uses: ./.github/workflows/ci-build-binaries.yml
     with:
       ref: ${{ inputs.ref }}
@@ -313,7 +319,7 @@ jobs:
       os: ${{ matrix.target.os }}
       arch: ${{ matrix.target.arch }}
       build-platform: ${{ matrix.target.build-platform }}
-      version-set: ${{ needs.matrix.outputs.version-set }}
+      version-set: ${{ needs.setup.outputs.version-set }}
       enable-coverage: ${{ inputs.enable-coverage }}
       # Windows and Linux need CGO and cross compile support to support -race. So for now only enable it for darwin and amd64 linux.
       enable-race-detection: ${{ matrix.target.os == 'darwin' || (matrix.target.os == 'linux' && matrix.target.arch == 'amd64') }}
@@ -322,7 +328,7 @@ jobs:
 
   build-display-wasm-module:
     name: build display WASM module
-    needs: [matrix]
+    needs: [setup]
     uses: ./.github/workflows/ci-build-binaries.yml
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
@@ -332,19 +338,19 @@ jobs:
       os: js
       arch: wasm
       build-platform: "ubuntu-latest"
-      version-set: ${{ needs.matrix.outputs.version-set }}
+      version-set: ${{ needs.setup.outputs.version-set }}
     secrets: inherit
 
   build-sdks:
     name: Build SDKs
-    needs: [matrix]
+    needs: [setup]
     uses: ./.github/workflows/ci-build-sdks.yml
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
-      version-set: ${{ needs.matrix.outputs.version-set }}
+      version-set: ${{ needs.setup.outputs.version-set }}
     secrets: inherit
 
   # Tests that can run concurrently with builds.
@@ -460,7 +466,7 @@ jobs:
   fuzz-test:
     name: Fuzz Test
     uses: ./.github/workflows/ci-run-test.yml
-    needs: [matrix]
+    needs: [setup]
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
@@ -470,7 +476,7 @@ jobs:
       is-integration-test: false
       enable-coverage: false
       test-retries: ${{ inputs.test-retries }}
-      version-set: ${{ needs.matrix.outputs.version-set }}
+      version-set: ${{ needs.setup.outputs.version-set }}
       continue-on-error: ${{ inputs.fuzz-test-optional }}
     secrets: inherit
 
@@ -543,12 +549,12 @@ jobs:
   build-release-binaries:
     # This overwrites the previously built testing binaries with versions without coverage.
     name: Rebuild binaries
-    needs: [matrix]
+    needs: [setup]
     if: ${{ inputs.enable-coverage }}
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
       matrix:
-        target: ${{ fromJson(needs.matrix.outputs.build-targets) }}
+        target: ${{ fromJson(needs.setup.outputs.build-targets) }}
     uses: ./.github/workflows/ci-build-binaries.yml
     with:
       ref: ${{ inputs.ref }}
@@ -556,6 +562,6 @@ jobs:
       os: ${{ matrix.target.os }}
       arch: ${{ matrix.target.arch }}
       build-platform: ${{ matrix.target.build-platform }}
-      version-set: ${{ needs.matrix.outputs.version-set }}
+      version-set: ${{ needs.setup.outputs.version-set }}
       enable-coverage: false
     secrets: inherit

@@ -372,9 +372,13 @@ func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
 		}
 	}
 
-	// Error on any other attribute
+	// Error on any other attribute. Error hooks always run on failures of actual operations,
+	// so onDryRun and ignoreErrors do not apply to them.
+	valid := []string{"onDryRun", "ignoreErrors", "command"}
+	if node.Kind == HookKindError {
+		valid = []string{"command"}
+	}
 	for _, i := range block.Body.Items {
-		valid := []string{"onDryRun", "ignoreErrors", "command"}
 		switch item := i.(type) {
 		case *model.Attribute:
 			if !slices.Contains(valid, item.Name) {
