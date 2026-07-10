@@ -41,6 +41,31 @@ type fakeACPCaller struct{}
 
 func (fakeACPCaller) Call(context.Context, string, any, any) error { return nil }
 
+func TestNeoACPIdentityAdvertisesTerminalLogin(t *testing.T) {
+	t.Parallel()
+
+	// The single advertised auth method is terminal-typed: editors run our
+	// launch binary with these args (`pulumi login`) in a real terminal. The id
+	// is wire-visible and must stay stable for editors that persist it.
+	identity := neoACPIdentity()
+	require.Len(t, identity.AuthMethods, 1)
+	m := identity.AuthMethods[0]
+	assert.Equal(t, "pulumi-login", m.ID)
+	assert.Equal(t, acp.AuthMethodTypeTerminal, m.Type)
+	assert.Equal(t, []string{"login"}, m.Args)
+	assert.Empty(t, m.Env)
+	assert.NotEmpty(t, m.Description, "description doubles as the degraded-method guidance")
+
+	// The pre-stabilization terminal-auth meta mirrors the typed fields with an
+	// explicit command (our own binary) for editors that only execute the meta
+	// form (e.g. current stable Zed).
+	meta, ok := m.Meta[acp.MetaKeyTerminalAuth].(acp.TerminalAuthMeta)
+	require.True(t, ok, "terminal-auth meta must be advertised")
+	assert.Equal(t, "pulumi login", meta.Label)
+	assert.NotEmpty(t, meta.Command)
+	assert.Equal(t, []string{"login"}, meta.Args)
+}
+
 func TestBuildACPHandlersRoutesWritesToEditor(t *testing.T) {
 	t.Parallel()
 

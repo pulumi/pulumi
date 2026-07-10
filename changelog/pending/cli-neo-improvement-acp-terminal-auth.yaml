@@ -1,0 +1,6 @@
+component: cli/neo
+kind: improvement
+body: Advertise terminal-based authentication (`pulumi login`) from the Neo ACP agent so ACP clients can launch the login flow
+time: 2026-07-09T10:00:00.000000+00:00
+custom:
+    PR: ""

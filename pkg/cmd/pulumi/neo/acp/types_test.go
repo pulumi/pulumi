@@ -57,3 +57,34 @@ func TestSessionUpdateDiscriminators(t *testing.T) {
 		})
 	}
 }
+
+// TestAuthMethodWireShape verifies the typed-auth fields marshal when set and
+// disappear when zero, so a degraded (untyped) method advertises exactly the
+// pre-typed-auth wire shape.
+func TestAuthMethodWireShape(t *testing.T) {
+	t.Parallel()
+
+	terminal := AuthMethod{
+		ID:   "m1",
+		Name: "Terminal login",
+		Type: AuthMethodTypeTerminal,
+		Args: []string{"login"},
+		Env:  map[string]string{"A": "1"},
+		Meta: map[string]any{MetaKeyTerminalAuth: TerminalAuthMeta{
+			Label:   "log in",
+			Command: "agent",
+			Args:    []string{"login"},
+		}},
+	}
+	raw, err := json.Marshal(terminal)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{
+		"id":"m1","name":"Terminal login","type":"terminal","args":["login"],"env":{"A":"1"},
+		"_meta":{"terminal-auth":{"label":"log in","command":"agent","args":["login"]}}
+	}`, string(raw))
+
+	degraded := AuthMethod{ID: "m1", Name: "Terminal login"}
+	raw, err = json.Marshal(degraded)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"id":"m1","name":"Terminal login"}`, string(raw))
+}

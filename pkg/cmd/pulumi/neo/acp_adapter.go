@@ -38,18 +38,39 @@ import (
 
 // neoACPIdentity is how the adapter introduces itself to the editor on the ACP
 // initialize handshake: the agent name/title and the single auth method we
-// advertise. Authentication cannot run an interactive browser login over the
-// stdio JSON-RPC channel, so it only verifies that a prior `pulumi login`
-// session exists (see acpDelegate.CheckAuth).
-var neoACPIdentity = acp.Identity{
-	Name:  "pulumi-neo",
-	Title: "Pulumi Neo",
-	AuthMethods: []acp.AuthMethod{{
-		ID:   "pulumi-login",
-		Name: "Pulumi login",
-		Description: "Authenticate by running `pulumi login` in a terminal. " +
-			"Neo uses your existing Pulumi Cloud session.",
-	}},
+// advertise. The method is terminal-typed: an editor that supports terminal
+// auth runs `pulumi login` (our launch command with Args swapped in) in a real
+// terminal, since an interactive login cannot run over the stdio JSON-RPC
+// channel. The same flow is duplicated as pre-stabilization terminal-auth meta
+// for editors (e.g. current stable Zed) that execute that instead of the typed
+// fields; there the command is explicit, so we name our own binary. For editors
+// without either mechanism the agent degrades the method to the untyped form
+// and the description tells the user to run `pulumi login` themselves; in
+// every case `authenticate` only verifies that a login session exists (see
+// acpDelegate.CheckAuth).
+func neoACPIdentity() acp.Identity {
+	// Fall back to resolution via PATH if we can't name our own binary.
+	command := "pulumi"
+	if exe, err := os.Executable(); err == nil {
+		command = exe
+	}
+	return acp.Identity{
+		Name:  "pulumi-neo",
+		Title: "Pulumi Neo",
+		AuthMethods: []acp.AuthMethod{{
+			ID:   "pulumi-login",
+			Name: "Pulumi login",
+			Description: "Authenticate by running `pulumi login` in a terminal. " +
+				"Neo uses your existing Pulumi Cloud session.",
+			Type: acp.AuthMethodTypeTerminal,
+			Args: []string{"login"},
+			Meta: map[string]any{acp.MetaKeyTerminalAuth: acp.TerminalAuthMeta{
+				Label:   "pulumi login",
+				Command: command,
+				Args:    []string{"login"},
+			}},
+		}},
+	}
 }
 
 // errNeoAuthRequired wraps acp.ErrAuthRequired with the Pulumi-specific message
@@ -67,7 +88,9 @@ var errNeoAuthRequired = fmt.Errorf(
 // Authentication defaults to the CLI's existing Pulumi Cloud session, exactly
 // like `pulumi neo`: the agent never prompts interactively (that would corrupt
 // the JSON-RPC stream on stdout) and instead surfaces an auth-required error
-// the editor can act on when no login is present.
+// the editor can act on when no login is present — by running the advertised
+// terminal auth method (`pulumi login`) when it supports that, or by showing
+// the method's description otherwise.
 func newNeoACPCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:    "acp",
@@ -76,7 +99,7 @@ func newNeoACPCmd() *cobra.Command {
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			agent := acp.NewAgent(neoACPIdentity, version.Version, &acpDelegate{
+			agent := acp.NewAgent(neoACPIdentity(), version.Version, &acpDelegate{
 				ws:       pkgWorkspace.Instance,
 				baseCtx:  ctx,
 				sessions: map[string]*acpSession{},

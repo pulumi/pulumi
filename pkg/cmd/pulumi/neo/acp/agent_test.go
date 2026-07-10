@@ -31,11 +31,22 @@ import (
 const testAuthMethod = "test-login"
 
 // testIdentity is the agent identity used across these tests, standing in for
-// whatever an embedding application (e.g. neo) injects via NewAgent.
+// whatever an embedding application (e.g. neo) injects via NewAgent. The auth
+// method is terminal-typed so initialize tests can observe capability-based
+// degradation.
 var testIdentity = Identity{
-	Name:        "test-agent",
-	Title:       "Test Agent",
-	AuthMethods: []AuthMethod{{ID: testAuthMethod, Name: "Test login"}},
+	Name:  "test-agent",
+	Title: "Test Agent",
+	AuthMethods: []AuthMethod{{
+		ID:   testAuthMethod,
+		Name: "Test login",
+		Type: AuthMethodTypeTerminal,
+		Args: []string{"login"},
+		Env:  map[string]string{"TEST_LOGIN": "1"},
+		Meta: map[string]any{MetaKeyTerminalAuth: map[string]any{
+			"label": "test login", "command": "test-agent", "args": []any{"login"},
+		}},
+	}},
 }
 
 // newTestPeers wires an agent connection to a client connection over an
@@ -86,6 +97,7 @@ func TestInitializeNegotiatesAndCapturesCapabilities(t *testing.T) {
 		ClientCapabilities: ClientCapabilities{
 			FS:       FileSystemCapability{ReadTextFile: true, WriteTextFile: true},
 			Terminal: true,
+			Auth:     AuthCapability{Terminal: true},
 		},
 		ClientInfo: &Implementation{Name: "test-editor", Version: "1.0"},
 	}, &res)
@@ -94,8 +106,9 @@ func TestInitializeNegotiatesAndCapturesCapabilities(t *testing.T) {
 	assert.Equal(t, ProtocolVersion, res.ProtocolVersion)
 	require.NotNil(t, res.AgentInfo)
 	assert.Equal(t, "v3.999.0", res.AgentInfo.Version)
+	// The client supports terminal auth, so the method is advertised as-is.
 	require.Len(t, res.AuthMethods, 1)
-	assert.Equal(t, testAuthMethod, res.AuthMethods[0].ID)
+	assert.Equal(t, testIdentity.AuthMethods[0], res.AuthMethods[0])
 
 	// The editor's capabilities are captured for later tool routing. (The Call
 	// above completing gives the necessary happens-before for this direct read.)
@@ -105,6 +118,35 @@ func TestInitializeNegotiatesAndCapturesCapabilities(t *testing.T) {
 	assert.True(t, caps.FS.WriteTextFile)
 	assert.True(t, caps.FS.ReadTextFile)
 	assert.True(t, caps.Terminal)
+	assert.True(t, caps.Auth.Terminal)
+}
+
+func TestInitializeDegradesTerminalAuthMethods(t *testing.T) {
+	t.Parallel()
+
+	agent := NewAgent(testIdentity, "v3.999.0", &fakeDelegate{})
+	client := newTestPeers(t, agent)
+
+	// Without auth.terminal, expect the degraded (untyped) form.
+	var res InitializeResult
+	err := client.Call(t.Context(), "initialize", InitializeParams{
+		ProtocolVersion:    ProtocolVersion,
+		ClientCapabilities: ClientCapabilities{Terminal: true},
+	}, &res)
+	require.NoError(t, err)
+
+	require.Len(t, res.AuthMethods, 1)
+	got := res.AuthMethods[0]
+	assert.Equal(t, testAuthMethod, got.ID)
+	assert.Equal(t, "Test login", got.Name)
+	assert.Empty(t, got.Type)
+	assert.Empty(t, got.Args)
+	assert.Empty(t, got.Env)
+	// Meta survives degrade: pre-stabilization terminal-auth clients may not
+	// declare auth.terminal, and others ignore unknown "_meta" keys by spec.
+	assert.Contains(t, got.Meta, MetaKeyTerminalAuth)
+	// The identity itself is not mutated by degradation.
+	assert.Equal(t, AuthMethodTypeTerminal, testIdentity.AuthMethods[0].Type)
 }
 
 func TestAuthenticateAcknowledgesWhenLoggedIn(t *testing.T) {
@@ -128,6 +170,18 @@ func TestAuthenticateAuthRequiredMapsToCode(t *testing.T) {
 	var rpcErr *jsonrpc2.Error
 	require.ErrorAs(t, err, &rpcErr)
 	assert.EqualValues(t, codeAuthRequired, rpcErr.Code)
+}
+
+func TestAuthenticateUnknownMethodIDIsInvalidParams(t *testing.T) {
+	t.Parallel()
+
+	agent := NewAgent(testIdentity, "v3.0.0", &fakeDelegate{})
+	client := newTestPeers(t, agent)
+
+	err := client.Call(t.Context(), "authenticate", AuthenticateParams{MethodID: "bogus"}, nil)
+	var rpcErr *jsonrpc2.Error
+	require.ErrorAs(t, err, &rpcErr)
+	assert.EqualValues(t, jsonrpc2.CodeInvalidParams, rpcErr.Code)
 }
 
 func TestUnknownMethodIsMethodNotFound(t *testing.T) {

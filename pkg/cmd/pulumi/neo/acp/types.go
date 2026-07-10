@@ -57,7 +57,19 @@ type ClientCapabilities struct {
 	// FS reports the editor's filesystem read/write support.
 	FS FileSystemCapability `json:"fs"`
 	// Terminal reports whether the editor can run commands via the terminal/*
-	// methods on the agent's behalf.
+	// methods on the agent's behalf. Distinct from Auth.Terminal, which is about
+	// running the agent's login flow in an editor terminal.
+	Terminal bool `json:"terminal,omitempty"`
+	// Auth reports which typed auth methods the editor can execute.
+	Auth AuthCapability `json:"auth"`
+}
+
+// AuthCapability reports the editor's support for typed authentication methods
+// (https://agentclientprotocol.com/rfds/auth-methods).
+type AuthCapability struct {
+	// Terminal reports whether the editor can run a terminal-typed auth method:
+	// re-launching the agent binary in a real terminal with the method's
+	// args/env for an interactive setup flow.
 	Terminal bool `json:"terminal,omitempty"`
 }
 
@@ -96,11 +108,46 @@ type PromptCapabilities struct {
 	EmbeddedContext bool `json:"embeddedContext,omitempty"`
 }
 
+// AuthMethodTypeTerminal marks an AuthMethod whose setup is an interactive
+// terminal flow: the client re-launches the agent binary in a real terminal,
+// with the method's Args and Env replacing the configured launch values for
+// that run only. Only advertised to clients that declare the auth.terminal
+// capability (see AuthCapability).
+const AuthMethodTypeTerminal = "terminal"
+
 // AuthMethod is one authentication option the agent advertises on initialize.
 type AuthMethod struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
+	// Type identifies how the client executes the method
+	// (https://agentclientprotocol.com/rfds/auth-methods). Empty means the
+	// spec-default "agent": the agent authenticates by itself when the client
+	// calls `authenticate`.
+	Type string `json:"type,omitempty"`
+	// Args and Env apply to terminal-typed methods: they replace the agent's
+	// configured launch arguments and extend its environment for the setup run.
+	Args []string          `json:"args,omitempty"`
+	Env  map[string]string `json:"env,omitempty"`
+	// Meta is the spec's implementation-specific extension point; clients
+	// ignore keys they don't recognize. See MetaKeyTerminalAuth.
+	Meta map[string]any `json:"_meta,omitempty"`
+}
+
+// MetaKeyTerminalAuth is the AuthMethod.Meta key carrying a TerminalAuthMeta.
+const MetaKeyTerminalAuth = "terminal-auth"
+
+// TerminalAuthMeta is the pre-stabilization form of terminal auth, honored by
+// editors (e.g. current stable Zed) that predate the typed AuthMethod fields:
+// the client runs Command with Args/Env in a real terminal. Unlike the typed
+// form, Command names the binary explicitly — the client substitutes nothing
+// into its configured launch command. Advertise it under MetaKeyTerminalAuth
+// alongside the typed fields until the RFD stabilizes.
+type TerminalAuthMeta struct {
+	Label   string            `json:"label"`
+	Command string            `json:"command"`
+	Args    []string          `json:"args,omitempty"`
+	Env     map[string]string `json:"env,omitempty"`
 }
 
 // AuthenticateParams is the client→agent `authenticate` request, naming the

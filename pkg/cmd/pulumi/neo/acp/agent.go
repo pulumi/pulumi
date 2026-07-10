@@ -17,6 +17,8 @@ package acp
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/sourcegraph/jsonrpc2"
@@ -142,21 +144,54 @@ func (a *Agent) initialize(req *jsonrpc2.Request) (any, error) {
 			Title:   a.identity.Title,
 			Version: a.version,
 		},
-		AuthMethods: a.identity.AuthMethods,
+		AuthMethods: advertisedAuthMethods(a.identity.AuthMethods, params.ClientCapabilities),
 	}, nil
 }
 
-// authenticate handles the `authenticate` request. Interactive browser login
-// cannot run over the stdio JSON-RPC channel, so authenticate cannot perform a
-// login itself; instead it verifies via the Delegate that a usable session
-// already exists, mapping its absence to the ACP "Authentication required" error
-// so the editor can tell the user how to authenticate at the point it asked. (For
-// Neo this is a prior `pulumi login`.) session/new performs the same check, so
+// advertisedAuthMethods tailors the identity's auth methods to the client's
+// capabilities. A terminal-typed method is advertised as-is only when the
+// client declared the auth.terminal capability; otherwise it is degraded to the
+// untyped (agent-default) form — Type/Args/Env cleared, ID/Name/Description
+// kept — so the editor still surfaces the method's description telling the user
+// how to authenticate out of band. IDs are stable across the two forms. Meta is
+// kept even on degrade: clients ignore unrecognized "_meta" keys by spec, and
+// editors that support only the pre-stabilization terminal-auth meta (see
+// MetaKeyTerminalAuth) may not declare the auth.terminal capability.
+func advertisedAuthMethods(methods []AuthMethod, caps ClientCapabilities) []AuthMethod {
+	if caps.Auth.Terminal {
+		return methods
+	}
+	degraded := make([]AuthMethod, len(methods))
+	for i, m := range methods {
+		if m.Type == AuthMethodTypeTerminal {
+			m.Type, m.Args, m.Env = "", nil, nil
+		}
+		degraded[i] = m
+	}
+	return degraded
+}
+
+// authenticate handles the `authenticate` request. Login itself happens outside
+// this channel — for a terminal-typed method the client runs the agent's setup
+// command (for Neo: `pulumi login`) in a real terminal, since an interactive
+// login cannot run over the stdio JSON-RPC stream. authenticate then verifies
+// via the Delegate that a usable session exists, mapping its absence to the ACP
+// "Authentication required" error so the editor can tell the user how to
+// authenticate at the point it asked. session/new performs the same check, so
 // auth stays gated even if credentials lapse between calls. Returns null on
 // success.
 func (a *Agent) authenticate(ctx context.Context, req *jsonrpc2.Request) (any, error) {
-	if _, err := decodeParams[AuthenticateParams](req); err != nil {
+	params, err := decodeParams[AuthenticateParams](req)
+	if err != nil {
 		return nil, err
+	}
+	// Method IDs survive capability degrading (see advertisedAuthMethods), so
+	// validate against the identity list directly.
+	if !slices.ContainsFunc(a.identity.AuthMethods, func(m AuthMethod) bool { return m.ID == params.MethodID }) {
+		return nil, &jsonrpc2.Error{
+			Code:    jsonrpc2.CodeInvalidParams,
+			Message: fmt.Sprintf("unknown auth method id %q", params.MethodID),
+		}
 	}
 	if err := a.delegate.CheckAuth(ctx); err != nil {
 		return nil, mapDelegateErr(err)
