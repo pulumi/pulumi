@@ -82,6 +82,7 @@ func (w currentFileWriter) Write(p []byte) (int, error) {
 func StartLogging(
 	ctx context.Context,
 	sm secrets.Manager,
+	command string,
 ) (*Logger, error) {
 	logsDir, err := workspace.GetPulumiPath("logs")
 	if err != nil {
@@ -94,7 +95,11 @@ func StartLogging(
 	RotateLogs(logsDir)
 
 	ts := time.Now().Format("20060102T150405")
-	name := fmt.Sprintf("pulumi-%s-%d.log", ts, os.Getpid())
+	name := fmt.Sprintf("pulumi-%s-%d", ts, os.Getpid())
+	if command != "" {
+		name += "-" + strings.ReplaceAll(command, " ", "_")
+	}
+	name += ".log"
 	filePath := filepath.Join(logsDir, name)
 
 	f, err := os.Create(filePath)

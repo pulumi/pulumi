@@ -101,8 +101,19 @@ type logEntry struct {
 	stack     string    // decoded stack name; empty for CLI-level logs
 	timestamp time.Time // timestamp parsed from the filename
 	updateID  string    // update ID, or PID for CLI-level logs; may be empty
+	command   string    // CLI command that produced the log; only for CLI-level logs
 	cliLevel  bool      // true if the file was a CLI-level log (pulumi- prefix)
 	size      int64
+}
+
+func (e logEntry) stackDisplay() string {
+	if e.stack != "" {
+		return e.stack
+	}
+	if e.command != "" {
+		return "(cli: " + e.command + ")"
+	}
+	return "(cli)"
 }
 
 func listLogs(logsDir string) ([]logEntry, error) {
@@ -128,13 +139,14 @@ func listLogs(logsDir string) ([]logEntry, error) {
 			continue
 		}
 		path := filepath.Join(logsDir, e.Name())
-		stack, updateID, cliLevel := parseLogName(e.Name())
+		stack, updateID, command, cliLevel := parseLogName(e.Name())
 		entries = append(entries, logEntry{
 			path:      path,
 			name:      e.Name(),
 			stack:     stack,
 			timestamp: ts,
 			updateID:  updateID,
+			command:   command,
 			cliLevel:  cliLevel,
 			size:      info.Size(),
 		})
@@ -147,10 +159,10 @@ func listLogs(logsDir string) ([]logEntry, error) {
 	return entries, nil
 }
 
-func parseLogName(name string) (stack, updateID string, cliLevel bool) {
+func parseLogName(name string) (stack, updateID, command string, cliLevel bool) {
 	loc := logTimestampRe.FindStringIndex(name)
 	if loc == nil {
-		return "", "", false
+		return "", "", "", false
 	}
 
 	prefix := strings.TrimSuffix(name[:loc[0]], "-")
@@ -158,9 +170,14 @@ func parseLogName(name string) (stack, updateID string, cliLevel bool) {
 	suffix = strings.TrimPrefix(suffix, "-")
 
 	if prefix == "pulumi" {
-		return "", suffix, true
+		pid := suffix
+		if i := strings.Index(suffix, "-"); i >= 0 {
+			pid = suffix[:i]
+			command = strings.ReplaceAll(suffix[i+1:], "_", " ")
+		}
+		return "", pid, command, true
 	}
-	return strings.ReplaceAll(prefix, "+", "/"), suffix, false
+	return strings.ReplaceAll(prefix, "+", "/"), suffix, "", false
 }
 
 func printLogsTable(out io.Writer, logsDir string, entries []logEntry) error {
@@ -171,10 +188,7 @@ func printLogsTable(out io.Writer, logsDir string, entries []logEntry) error {
 
 	rows := slice.Prealloc[cmdutil.TableRow](len(entries))
 	for _, e := range entries {
-		stack := e.stack
-		if stack == "" {
-			stack = "(cli)"
-		}
+		stack := e.stackDisplay()
 
 		updateID := e.updateID
 		if updateID == "" {
@@ -207,6 +221,7 @@ type logEntryListJSON struct {
 	Timestamp string `json:"timestamp"`
 	UpdateID  string `json:"updateId,omitempty"`
 	PID       string `json:"pid,omitempty"`
+	Command   string `json:"command,omitempty"`
 	Size      int64  `json:"size"`
 }
 
@@ -222,6 +237,7 @@ func printLogsJSON(out io.Writer, entries []logEntry) error {
 		}
 		if e.cliLevel {
 			row.PID = e.updateID
+			row.Command = e.command
 		} else {
 			row.UpdateID = e.updateID
 		}
