@@ -12,20 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package testing_test
+package testing
 
 import (
 	"testing"
 
 	"pgregory.net/rapid"
-
-	resourcetesting "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
 )
 
 func TestLiteralArchiveGeneratorProducesValidArchives(t *testing.T) {
 	t.Parallel()
 
 	rapid.Check(t, func(t *rapid.T) {
-		resourcetesting.LiteralArchiveGenerator(3).Draw(t, "archive")
+		LiteralArchiveGenerator(3).Draw(t, "archive")
 	})
 }
