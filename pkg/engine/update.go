@@ -1176,9 +1176,14 @@ func (acts *updateActions) OnRebuiltBaseState() error {
 }
 
 func (acts *updateActions) OnStateMigration(
-	removed []*pkgresource.State, migrated []*pkgresource.State, successors map[resource.URN]resource.URN,
+	urn resource.URN, removed []*pkgresource.State, migrated []*pkgresource.State,
+	successors map[resource.URN]resource.URN,
 ) error {
-	return acts.Context.SnapshotManager.StateMigration(removed, migrated, successors)
+	if err := acts.Context.SnapshotManager.StateMigration(removed, migrated, successors); err != nil {
+		return err
+	}
+	acts.Opts.Events.stateMigrationEvent(urn, removed, migrated, successors)
+	return nil
 }
 
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
@@ -1404,8 +1409,10 @@ func (acts *previewActions) OnRebuiltBaseState() error {
 }
 
 func (acts *previewActions) OnStateMigration(
-	removed []*pkgresource.State, migrated []*pkgresource.State, successors map[resource.URN]resource.URN,
+	urn resource.URN, removed []*pkgresource.State, migrated []*pkgresource.State,
+	successors map[resource.URN]resource.URN,
 ) error {
+	acts.Opts.Events.stateMigrationEvent(urn, removed, migrated, successors)
 	return nil
 }
 

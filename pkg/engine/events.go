@@ -58,7 +58,7 @@ type EventPayload interface {
 		ResourcePreEventPayload | ResourceOutputsEventPayload | ResourceOperationFailedPayload |
 		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload | StartDebuggingEventPayload |
 		PolicyAnalyzeSummaryEventPayload | PolicyRemediateSummaryEventPayload | PolicyAnalyzeStackSummaryEventPayload |
-		ProgressEventPayload | ErrorEventPayload
+		ProgressEventPayload | ErrorEventPayload | StateMigrationEventPayload
 }
 
 func NewCancelEvent() Event {
@@ -110,6 +110,8 @@ func NewEvent[T EventPayload](payload T) Event {
 		typ = ProgressEvent
 	case ErrorEventPayload:
 		typ = ErrorEvent
+	case StateMigrationEventPayload:
+		typ = StateMigrationEvent
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -141,6 +143,7 @@ const (
 	StartDebuggingEvent            EventType = "debugging-start"
 	ProgressEvent                  EventType = "progress"
 	ErrorEvent                     EventType = "error"
+	StateMigrationEvent            EventType = "state-migration"
 )
 
 // ProgressType is the type of download occurring.
@@ -183,6 +186,9 @@ func (e Event) Internal() bool {
 func (e Event) Ephemeral() bool {
 	switch e.payload.(type) {
 	case ProgressEventPayload:
+		return true
+	case StateMigrationEventPayload:
+		// TODO: ephemeral for now, should probably add support for it in Cloud.
 		return true
 	default:
 		return false
@@ -336,6 +342,22 @@ type ResourcePreEventPayload struct {
 
 type ErrorEventPayload struct {
 	Error string
+}
+
+// StateMigrationEventPayload is the payload for an event with type `state-migration`, emitted when a state
+// migration attached to a resource registration rewrites the prior state of the resource and its descendants
+// before the engine diffs them.
+type StateMigrationEventPayload struct {
+	// URN is the resource whose registration carried the migrations.
+	URN resource.URN
+	// Migrated is the number of prior resources that were handed to the migrations.
+	Migrated int
+	// Added holds the URNs of state entries introduced by the migration.
+	Added []resource.URN
+	// Removed holds the URNs that were removed from the state.
+	Removed []resource.URN
+	// Successors maps every removed URN to the returned URN that succeeds it.
+	Successors map[resource.URN]resource.URN
 }
 
 // StepEventMetadata contains the metadata associated with a step the engine is performing.
@@ -611,6 +633,52 @@ func (e *eventEmitter) resourcePreEvent(
 		Debug:    debug,
 		Internal: internal,
 	}))
+}
+
+func (e *eventEmitter) stateMigrationEvent(
+	urn resource.URN, removed, migrated []*pkgresource.State,
+	successors map[resource.URN]resource.URN,
+) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.sendEvent(NewEvent(summarizeStateMigration(urn, removed, migrated, successors)))
+}
+
+func summarizeStateMigration(
+	urn resource.URN, prior, migrated []*pkgresource.State,
+	successors map[resource.URN]resource.URN,
+) StateMigrationEventPayload {
+	migratedURNs := make(map[resource.URN]bool, len(migrated))
+	for _, state := range migrated {
+		migratedURNs[state.URN] = true
+	}
+
+	priorURNs := make(map[resource.URN]bool, len(prior))
+	payload := StateMigrationEventPayload{
+		URN:        urn,
+		Migrated:   len(prior),
+		Successors: make(map[resource.URN]resource.URN, len(successors)),
+	}
+	for _, state := range prior {
+		priorURNs[state.URN] = true
+		if migratedURNs[state.URN] {
+			continue
+		}
+		payload.Removed = append(payload.Removed, state.URN)
+		if successor, ok := successors[state.URN]; ok {
+			payload.Successors[state.URN] = successor
+		}
+	}
+	for _, state := range migrated {
+		if !priorURNs[state.URN] {
+			payload.Added = append(payload.Added, state.URN)
+		}
+	}
+	if len(payload.Successors) == 0 {
+		payload.Successors = nil
+	}
+
+	return payload
 }
 
 func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {

@@ -274,6 +274,22 @@ func TestStateMigrationRenameChild(t *testing.T) {
 	snap, err = runUpdate(t, env.plan, snap,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
 			assert.Equal(t, map[display.StepOp]int{deploy.OpSame: 3}, successOps(entries))
+			var migrationEvents []StateMigrationEventPayload
+			for _, e := range events {
+				if e.Type == StateMigrationEvent {
+					migrationEvents = append(migrationEvents, e.Payload().(StateMigrationEventPayload))
+				}
+			}
+			// The applied migration is reported through a dedicated engine event.
+			require.Len(t, migrationEvents, 1)
+			{
+				payload := migrationEvents[0]
+				assert.Equal(t, compURN, payload.URN)
+				assert.Equal(t, 2, payload.Migrated)
+				assert.Equal(t, []resource.URN{childBURN}, payload.Added)
+				assert.Equal(t, []resource.URN{childAURN}, payload.Removed)
+				assert.Equal(t, map[resource.URN]resource.URN{childAURN: childBURN}, payload.Successors)
+			}
 			return err
 		})
 	require.NoError(t, err)
@@ -296,8 +312,8 @@ func TestStateMigrationRenameChild(t *testing.T) {
 	assert.Contains(t, snapURNs(snap), childBURN)
 }
 
-// TestStateMigrationProtectedRename tests that protection follows state through an explicit successor. A migration
-// does not delete or unmanage the old resource, so protection does not need to be cleared first.
+// TestStateMigrationProtectedRename tests that protection follows state through an explicit successor. The old
+// resource continues through the successor, so protection does not need to be cleared first.
 func TestStateMigrationProtectedRename(t *testing.T) {
 	t.Parallel()
 
@@ -946,6 +962,80 @@ func TestStateMigrationAliasedRootRename(t *testing.T) {
 	assert.NotContains(t, urns, childAURN)
 }
 
+// TestStateMigrationDisplay is a display test for state migrations: steps 1 and 2 apply successive renames and
+// display the explicit successor mapping for each.
+func TestStateMigrationDisplay(t *testing.T) {
+	t.Parallel()
+
+	env := newStateMigrationEnv(t)
+	env.plan.Options.SkipDisplayTests = false
+	project := env.plan.GetProject()
+
+	// Step 0: initial install of the component with childA.
+	snap, err := lt.TestOp(Update).RunStep(
+		project, env.plan.GetTarget(t, nil), env.plan.Options, false, env.plan.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Step 1: childA is renamed to childB by a migration; the resource keeps its identity.
+	env.childName = "childB"
+	env.migrations = func(t *testing.T, callbacks *deploytest.CallbackServer) []*pulumirpc.Callback {
+		return []*pulumirpc.Callback{renameMigration(t, callbacks, "childA", "childB")}
+	}
+	snap, err = lt.TestOp(Update).RunStep(
+		project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	// Step 2: childB is renamed again to childC.
+	env.childName = "childC"
+	env.migrations = func(t *testing.T, callbacks *deploytest.CallbackServer) []*pulumirpc.Callback {
+		return []*pulumirpc.Callback{renameMigration(t, callbacks, "childB", "childC")}
+	}
+	_, err = lt.TestOp(Update).RunStep(
+		project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient, nil, "2")
+	require.NoError(t, err)
+}
+
+// TestStateMigrationEchoNoOp tests that a migration which returns its input unchanged (rather than nil) — the
+// common "check whether already migrated, otherwise return the input" idiom — is treated as a no-op, even when
+// the state contains secrets that serialize asymmetrically across the JSON round-trip.
+func TestStateMigrationEchoNoOp(t *testing.T) {
+	t.Parallel()
+
+	env := newStateMigrationEnv(t)
+	env.childInputs = resource.PropertyMap{
+		"foo":    resource.NewProperty("bar"),
+		"secret": resource.MakeSecret(resource.NewProperty("shh")),
+	}
+	project := env.plan.GetProject()
+
+	snap, err := lt.TestOp(Update).Run(
+		project, env.plan.GetTarget(t, nil), env.plan.Options, false, env.plan.BackendClient, nil)
+	require.NoError(t, err)
+
+	// A migration that echoes its input back verbatim, on every run.
+	env.migrations = func(t *testing.T, callbacks *deploytest.CallbackServer) []*pulumirpc.Callback {
+		callback, err := callbacks.Allocate(
+			StateMigrationFunction(func(
+				urn resource.URN, resources []apitype.ResourceV3,
+			) ([]apitype.ResourceV3, map[resource.URN]resource.URN, error) {
+				return resources, nil, nil
+			}))
+		require.NoError(t, err)
+		return []*pulumirpc.Callback{callback}
+	}
+
+	_, err = lt.TestOp(Update).Run(project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient,
+		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
+			assert.Equal(t, map[display.StepOp]int{deploy.OpSame: 3}, successOps(entries))
+			for _, e := range events {
+				assert.NotEqual(t, StateMigrationEvent, e.Type,
+					"an echo migration must not emit a state-migration event")
+			}
+			return err
+		})
+	require.NoError(t, err)
+}
+
 // TestStateMigrationSkippedDuringDestroy tests that migrations do not run during destroy --run-program.
 func TestStateMigrationSkippedDuringDestroy(t *testing.T) {
 	t.Parallel()
@@ -1310,8 +1400,8 @@ func TestStateMigrationNestedComponents(t *testing.T) {
 	})
 }
 
-// TestStateMigrationAcrossTypes tests that an explicit successor authorizes a type change. The old state remains
-// managed through the successor, so it is neither treated as an unverified import nor reported as unmanaged.
+// TestStateMigrationAcrossTypes tests that an explicit successor authorizes a type change, so the new state is not
+// treated as an unverified import.
 func TestStateMigrationAcrossTypes(t *testing.T) {
 	t.Parallel()
 
@@ -1369,7 +1459,7 @@ func TestStateMigrationAcrossTypes(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
 
-	var sawImportWarning, sawUnmanagedWarning bool
+	var sawImportWarning bool
 	snap, err = runUpdate(t, p, snap,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
 			for _, e := range events {
@@ -1381,9 +1471,6 @@ func TestStateMigrationAcrossTypes(t *testing.T) {
 					if strings.Contains(payload.Message, "cannot verify") {
 						sawImportWarning = true
 					}
-					if strings.Contains(payload.Message, "will NOT be deleted") {
-						sawUnmanagedWarning = true
-					}
 				}
 			}
 			return err
@@ -1393,5 +1480,4 @@ func TestStateMigrationAcrossTypes(t *testing.T) {
 	assert.Contains(t, urns, childBTypBURN)
 	assert.NotContains(t, urns, childAURN)
 	assert.False(t, sawImportWarning, "an explicit successor authorizes the type-changing continuation")
-	assert.False(t, sawUnmanagedWarning, "a successor keeps the prior resource managed")
 }

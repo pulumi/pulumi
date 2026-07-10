@@ -330,6 +330,38 @@ export interface StartDebuggingEvent {
 }
 
 /**
+ * {@link StateMigrationEvent} is emitted when a state migration attached to a resource
+ * registration rewrites the prior state of the resource and its descendants before the engine
+ * diffs them.
+ */
+export interface StateMigrationEvent {
+    /**
+     * The URN of the resource whose registration carried the migrations.
+     */
+    urn: string;
+
+    /**
+     * The number of prior resources that were handed to the migrations.
+     */
+    migrated: number;
+
+    /**
+     * The URNs of state entries introduced by the migration.
+     */
+    added?: string[];
+
+    /**
+     * The URNs that were removed from the state.
+     */
+    removed?: string[];
+
+    /**
+     * Maps every removed URN to the returned URN that succeeds it.
+     */
+    successors?: Record<string, string>;
+}
+
+/**
  * A Pulumi engine event, such as a change to a resource or diagnostic message.
  * This is intended to capture a discriminated union -- exactly one event field
  * will be non-nil.
@@ -405,4 +437,10 @@ export interface EngineEvent {
      * A debugging event, if the engine event represents a debugging message.
      */
     startDebuggingEvent?: StartDebuggingEvent;
+
+    /**
+     * A state migration event, if this engine event represents a state migration rewriting the
+     * prior state of a resource and its descendants before the engine diffs them.
+     */
+    stateMigrationEvent?: StateMigrationEvent;
 }

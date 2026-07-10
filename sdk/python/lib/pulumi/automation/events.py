@@ -536,6 +536,43 @@ class StartDebuggingEvent(BaseEvent):
         return cls(data.get("config", {}))
 
 
+class StateMigrationEvent(BaseEvent):
+    """
+    StateMigrationEvent is emitted when a state migration attached to a resource registration
+    rewrites the prior state of the resource and its descendants before the engine diffs them.
+
+    :param urn: The URN of the resource whose registration carried the migrations.
+    :param migrated: The number of prior resources that were handed to the migrations.
+    :param added: The URNs of state entries introduced by the migration.
+    :param removed: The URNs that were removed from the state.
+    :param successors: Maps every removed URN to the returned URN that succeeds it.
+    """
+
+    def __init__(
+        self,
+        urn: str,
+        migrated: int,
+        added: Optional[list[str]] = None,
+        removed: Optional[list[str]] = None,
+        successors: Optional[Mapping[str, str]] = None,
+    ):
+        self.urn = urn
+        self.migrated = migrated
+        self.added = added
+        self.removed = removed
+        self.successors = successors
+
+    @classmethod
+    def from_json(cls, data: dict) -> "StateMigrationEvent":
+        return cls(
+            urn=data.get("urn", ""),
+            migrated=data.get("migrated", 0),
+            added=data.get("added"),
+            removed=data.get("removed"),
+            successors=data.get("successors"),
+        )
+
+
 class EngineEvent(BaseEvent):
     """
     EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
@@ -565,6 +602,7 @@ class EngineEvent(BaseEvent):
         res_op_failed_event: Optional[ResOpFailedEvent] = None,
         policy_event: Optional[PolicyEvent] = None,
         start_debugging_event: Optional[StartDebuggingEvent] = None,
+        state_migration_event: Optional[StateMigrationEvent] = None,
     ):
         self.sequence = sequence
         self.timestamp = timestamp
@@ -578,6 +616,7 @@ class EngineEvent(BaseEvent):
         self.res_op_failed_event = res_op_failed_event
         self.policy_event = policy_event
         self.start_debugging_event = start_debugging_event
+        self.state_migration_event = state_migration_event
 
     @classmethod
     def from_json(cls, data: dict) -> "EngineEvent":
@@ -590,6 +629,7 @@ class EngineEvent(BaseEvent):
         res_op_failed_event = data.get("resOpFailedEvent")
         policy_event = data.get("policyEvent")
         start_debugging_event = data.get("startDebuggingEvent")
+        state_migration_event = data.get("stateMigrationEvent")
 
         return cls(
             sequence=data.get("sequence", 0),
@@ -628,6 +668,11 @@ class EngineEvent(BaseEvent):
             start_debugging_event=(
                 StartDebuggingEvent.from_json(start_debugging_event)
                 if start_debugging_event
+                else None
+            ),
+            state_migration_event=(
+                StateMigrationEvent.from_json(state_migration_event)
+                if state_migration_event
                 else None
             ),
         )

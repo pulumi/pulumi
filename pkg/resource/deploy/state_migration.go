@@ -167,8 +167,7 @@ func (sg *stepGenerator) applyStateMigrations(
 	allSuccessors := make(map[resource.URN]resource.URN)
 	changed := false
 	for i, migrate := range migrations {
-		sg.deployment.Diag().Infof(diag.Message(urn,
-			"running state migration (%d of %d) for %s"), i+1, len(migrations), urn)
+		logging.V(5).Infof("StateMigration: running state migration (%d of %d) for %s", i+1, len(migrations), urn)
 
 		newJSON, successors, err := migrate(ctx, urn, currentJSON)
 		if err != nil {
@@ -807,7 +806,7 @@ func (sg *stepGenerator) commitStateMigration(
 	// Notify the snapshot manager before the in-memory base state is mutated: it resolves the removed states
 	// against the current (pre-splice) base snapshot.
 	if d.events != nil {
-		if err := d.events.OnStateMigration(members, rewrittenMigrated, successors); err != nil {
+		if err := d.events.OnStateMigration(urn, members, rewrittenMigrated, successors); err != nil {
 			return fmt.Errorf("state migration for %s: %w", urn, err)
 		}
 	}

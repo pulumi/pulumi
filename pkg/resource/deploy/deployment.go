@@ -255,12 +255,11 @@ type StepExecutorEvents interface {
 	OnSnapshotWrite(base *Snapshot) error
 	OnRebuiltBaseState() error
 	// OnStateMigration is called just before a state migration splices migrated states into the deployment's
-	// base snapshot. removed holds the prior states that are being removed from the base snapshot (in snapshot
-	// order) and migrated holds the states replacing them, which are inserted at the position of the last
-	// removed state. successors maps removed URNs to their canonical replacements. The base snapshot has not yet
-	// been mutated when this is called.
+	// base snapshot. urn is the resource whose registration carried the migrations; removed holds the prior states
+	// being removed from the base snapshot, and migrated holds the states replacing them. Successors maps removed
+	// URNs to their canonical replacements. The base snapshot has not yet been mutated when this is called.
 	OnStateMigration(
-		removed []*pkgresource.State, migrated []*pkgresource.State,
+		urn resource.URN, removed []*pkgresource.State, migrated []*pkgresource.State,
 		successors map[resource.URN]resource.URN,
 	) error
 	OnResourceStepPre(step Step) (any, error)

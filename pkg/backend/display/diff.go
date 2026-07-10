@@ -152,11 +152,17 @@ func RenderDiffEvent(event engine.Event, resourcesErrored int,
 		return renderDiffPolicyRemediationEvent(event.Payload().(engine.PolicyRemediationEventPayload), "", true, opts)
 	case engine.PolicyViolationEvent:
 		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), "", "", opts)
+	case engine.StateMigrationEvent:
+		return renderDiffStateMigrationEvent(event.Payload().(engine.StateMigrationEventPayload), opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
 	}
+}
+
+func renderDiffStateMigrationEvent(payload engine.StateMigrationEventPayload, opts Options) string {
+	return fmt.Sprintf("    %s: %s\n", payload.URN.Name(), stateMigrationDescription(payload, opts))
 }
 
 func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {

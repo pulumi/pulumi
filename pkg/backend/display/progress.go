@@ -211,6 +211,8 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 		return event.Payload().(engine.PolicyRemediationEventPayload).ResourceURN, nil
 	case engine.PolicyViolationEvent:
 		return event.Payload().(engine.PolicyViolationEventPayload).ResourceURN, nil
+	case engine.StateMigrationEvent:
+		return event.Payload().(engine.StateMigrationEventPayload).URN, nil
 	default:
 		return "", nil
 	}
@@ -1397,6 +1399,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.PolicyRemediationEvent:
 		// record this remediation so we print it at the end.
 		row.RecordPolicyRemediationEvent(event)
+	case engine.StateMigrationEvent:
+		// record this migration so the row can show what it did.
+		row.RecordStateMigrationEvent(event)
 	default:
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}

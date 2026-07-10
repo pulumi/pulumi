@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/stretchr/testify/assert"
@@ -91,6 +92,38 @@ func TestSummaryEventResultRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	payload := roundTripped.Payload().(engine.SummaryEventPayload)
 	assert.Equal(t, original.Result, payload.Result)
+}
+
+func TestStateMigrationEventRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	componentURN := resource.URN("urn:pulumi:test::test::example:index:Component::component")
+	childAURN := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Child::a")
+	childBURN := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Child::b")
+	childCURN := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Child::c")
+	original := engine.StateMigrationEventPayload{
+		URN:      componentURN,
+		Migrated: 3,
+		Added:    []resource.URN{childCURN},
+		Removed:  []resource.URN{childAURN, childBURN},
+		Successors: map[resource.URN]resource.URN{
+			childAURN: childCURN,
+			childBURN: childCURN,
+		},
+	}
+
+	apiEvent, err := ConvertEngineEvent(engine.NewEvent(original), false /* showSecrets */)
+	require.NoError(t, err)
+	require.NotNil(t, apiEvent.StateMigrationEvent)
+	assert.Equal(t, map[string]string{
+		string(childAURN): string(childCURN),
+		string(childBURN): string(childCURN),
+	}, apiEvent.StateMigrationEvent.Successors)
+
+	roundTripped, err := ConvertJSONEvent(apiEvent)
+	require.NoError(t, err)
+	payload := roundTripped.Payload().(engine.StateMigrationEventPayload)
+	assert.Equal(t, original, payload)
 }
 
 // TestConvertJSONEventExhaustive tests that all fields of the EngineEvent type are handled by ConvertJSONEvent.
