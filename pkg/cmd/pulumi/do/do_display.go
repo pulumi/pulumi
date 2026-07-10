@@ -37,19 +37,12 @@ type displayedStep struct {
 	Preview      bool
 }
 
-func (pc *packageCommand) previewDisplayedStep(
-	cmd *cobra.Command, step displayedStep, call func() (*resource.State, error),
-) error {
-	step.Preview = true
-	return pc.runDisplayedStep(cmd, step, call)
-}
-
 func (pc *packageCommand) runDisplayedStep(
 	cmd *cobra.Command, step displayedStep, call func() (*resource.State, error),
 ) error {
 	preview := (pc.dryrun || step.Preview) && step.Op != deploy.OpRead
 
-	if pc.jsonOut {
+	if pc.jsonOut && !step.Preview {
 		state, err := call()
 		if err != nil || state == nil {
 			return err

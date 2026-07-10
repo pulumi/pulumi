@@ -167,22 +167,6 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 				}
 				return resultState(urn, id, nil, response.Properties, res), nil
 			}
-			if pc.jsonOut {
-				if _, err := prepare(); err != nil {
-					return err
-				}
-				summary, err := formatCreateSummary(res, checked, pc.showSecrets)
-				if err != nil {
-					return err
-				}
-				if err := pc.confirm(cmd, summary, "create", yes); err != nil {
-					return err
-				}
-				return pc.runDisplayedStep(cmd, displayedStep{
-					Op:  deploy.OpCreate,
-					New: operationState(urn, "", nil, nil),
-				}, create)
-			}
 			if pc.dryrun {
 				return pc.runDisplayedStep(cmd, displayedStep{
 					Op:  deploy.OpCreate,
@@ -194,9 +178,10 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 					return create()
 				})
 			}
-			if err := pc.previewDisplayedStep(cmd, displayedStep{
-				Op:  deploy.OpCreate,
-				New: operationState(urn, "", nil, nil),
+			if err := pc.runDisplayedStep(cmd, displayedStep{
+				Op:      deploy.OpCreate,
+				New:     operationState(urn, "", nil, nil),
+				Preview: true,
 			}, prepare); err != nil {
 				return err
 			}
@@ -576,14 +561,6 @@ func (pc *packageCommand) printListResults(cmd *cobra.Command, results []plugin.
 func errStatefulNotImplemented(op string) error {
 	return fmt.Errorf("`%s` is not yet implemented in stateful mode; pass --stateless to use the "+
 		"direct-provider implementation", op)
-}
-
-func formatCreateSummary(res *schema.Resource, inputs resource.PropertyMap, showSecrets bool) (string, error) {
-	body, err := jsonifyProperty(resource.NewProperty(inputs), showSecrets)
-	if err != nil {
-		return "", fmt.Errorf("format inputs: %w", err)
-	}
-	return fmt.Sprintf("This will create %s with the following inputs:\n%s", res.Token, body), nil
 }
 
 func formatDeleteSummary(res *schema.Resource, id resource.ID, dryrun bool) string {

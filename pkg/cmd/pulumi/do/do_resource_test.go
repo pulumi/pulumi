@@ -245,9 +245,11 @@ size = 2
   "size": 2,
   "extra": "hidden"
 }`, stdout.String())
+	assert.Contains(t, stderr.String(), "+ 1 to create")
+	assert.Contains(t, stderr.String(), `name: "example"`)
 	assert.NotContains(t, stderr.String(), "creating")
 	assert.NotContains(t, stderr.String(), "Outputs:")
-	assert.NotContains(t, stderr.String(), "Resources:")
+	assert.NotContains(t, stderr.String(), "+ 1 created")
 }
 
 func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
