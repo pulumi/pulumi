@@ -144,6 +144,8 @@ var expectedFailures = map[string]string{
 	"l2-id-type": "codegen isn't keeping track of ID right now",
 
 	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
+
+	"l2-failed-create-recover-continue-on-error": "Go SDK output recovery is not implemented",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
