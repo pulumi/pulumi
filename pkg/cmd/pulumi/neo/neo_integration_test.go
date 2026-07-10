@@ -580,7 +580,7 @@ func TestRunNeoIntegration_PropagatesReadProjectError(t *testing.T) {
 
 	// Override the workspace to surface a non-NotFound error from ReadProject.
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return nil, "", errors.New("synthetic ReadProject failure")
 		},
 	}

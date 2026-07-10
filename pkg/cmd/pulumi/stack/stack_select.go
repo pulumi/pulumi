@@ -54,7 +54,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// Try to read the current project
-			project, root, err := ws.ReadProject()
+			project, root, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}

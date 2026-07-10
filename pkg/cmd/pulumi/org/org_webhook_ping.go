@@ -92,7 +92,7 @@ func newOrgWebhookPingCmd() *cobra.Command {
 }
 
 func (c *orgWebhookPingCmd) run(ctx context.Context, webhookName string) error {
-	project, _, err := c.ws.ReadProject()
+	project, _, err := c.ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}

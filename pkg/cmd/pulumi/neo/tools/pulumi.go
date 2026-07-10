@@ -232,7 +232,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 	defer func() { _ = os.Chdir(prevDir) }()
 
-	proj, root, err := p.Workspace.ReadProject()
+	proj, root, err := p.Workspace.ReadProject("")
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("reading project: %w", err))
 	}

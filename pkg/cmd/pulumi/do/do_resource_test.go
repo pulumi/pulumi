@@ -925,13 +925,13 @@ func providerFlagStackContext(
 
 	proj := &workspace.Project{Name: tokens.PackageName("proj")}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return proj, t.TempDir(), nil
 		},
-		// `do` populates evalContext.Stack from ws.New().Settings().Stack via currentStackIdentity;
+		// `do` populates evalContext.Stack from ws.New("").Settings().Stack via currentStackIdentity;
 		// that determines whether configureProvider considers us "in a stack context". PULUMI_STACK
 		// above only feeds the parallel path used by state.CurrentStack — both have to agree.
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "myorg/proj/dev"}

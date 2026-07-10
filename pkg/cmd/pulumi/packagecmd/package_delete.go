@@ -69,7 +69,7 @@ You must have publish permissions for the package to delete it.`,
 				return backenderr.ErrNonInteractiveRequiresYes
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return fmt.Errorf("failed to determine current project: %w", err)
 			}

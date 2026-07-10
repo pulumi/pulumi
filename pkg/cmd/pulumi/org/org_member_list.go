@@ -133,7 +133,7 @@ func defaultOrgMemberListClientFactory(
 	ws := pkgWorkspace.Instance
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, "", err
 	}

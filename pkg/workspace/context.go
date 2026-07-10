@@ -55,16 +55,13 @@ type Context interface {
 
 var Instance Context = &workspaceContext{}
 
-// workspaceContext implements Context. dir, when non-empty, roots project and
-// workspace-settings detection; when empty, the process working directory is
-// used.
 type workspaceContext struct{}
 
-func (c *workspaceContext) New(dir string) (W, error) {
+func (*workspaceContext) New(dir string) (W, error) {
 	return newW(dir)
 }
 
-func (c *workspaceContext) ReadProject(dir string) (*workspace.Project, string, error) {
+func (*workspaceContext) ReadProject(dir string) (*workspace.Project, string, error) {
 	path, err := workspace.DetectProjectPathFrom(dir)
 	if err != nil {
 		return nil, "", err

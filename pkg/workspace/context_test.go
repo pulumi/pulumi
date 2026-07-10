@@ -29,7 +29,7 @@ import (
 // TestNewContextFromReadsProjectAtDir verifies a dir-scoped Context detects the
 // project by searching upwards from its directory, independent of the process
 // working directory (the test never chdirs into the project).
-func TestNewContextFromReadsProjectAtDir(t *testing.T) {
+func TestReadProjectReadsProjectAtDir(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
@@ -52,7 +52,7 @@ func TestNewContextFromReadsProjectAtDir(t *testing.T) {
 	assert.Equal(t, realRoot, realDir)
 }
 
-func TestNewContextFromNoProject(t *testing.T) {
+func TestReadProjectNoProject(t *testing.T) {
 	t.Parallel()
 
 	// An empty directory (outside any Pulumi project) yields ErrProjectNotFound,
