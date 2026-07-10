@@ -165,7 +165,7 @@ func TestResolveTaskTarget_UsesStackFlag(t *testing.T) {
 	ws := &pkgWorkspace.MockContext{}
 	project := &workspace.Project{Name: tokens.PackageName("my-proj")}
 
-	target, err := resolveTaskTarget(t.Context(), ws, be, project, "prod", "")
+	target, err := resolveTaskTarget(t.Context(), ws, be, project, "prod", "", "")
 	require.NoError(t, err)
 	assert.Equal(t, "default-org", target.org)
 	assert.Equal(t, "my-proj", target.project)
@@ -185,7 +185,7 @@ func TestResolveTaskTarget_OrgFlagOverridesDefault(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{}
-	target, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "explicit")
+	target, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "explicit", "")
 	require.NoError(t, err)
 	assert.Equal(t, "explicit", target.org)
 }
@@ -198,7 +198,7 @@ func TestResolveTaskTarget_FallsBackToBackendDefaultOrg(t *testing.T) {
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "backend-default", nil }
 
 	ws := &pkgWorkspace.MockContext{}
-	target, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
+	target, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "", "")
 	require.NoError(t, err)
 	assert.Equal(t, "backend-default", target.org)
 }
@@ -214,7 +214,7 @@ func TestResolveTaskTarget_ErrorsWhenOrgUnresolvable(t *testing.T) {
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "", nil }
 
 	ws := &pkgWorkspace.MockContext{}
-	_, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
+	_, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pass --org")
 }
@@ -229,7 +229,7 @@ func TestResolveTaskTarget_DefaultOrgLookupErrorIsWrapped(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{}
-	_, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
+	_, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "determining default organization")
 	assert.Contains(t, err.Error(), "boom")
@@ -245,7 +245,7 @@ func TestResolveTaskTarget_InvalidStackReferenceErrors(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{}
-	_, err := resolveTaskTarget(t.Context(), ws, be, nil, "bad/stack/name/here", "")
+	_, err := resolveTaskTarget(t.Context(), ws, be, nil, "bad/stack/name/here", "", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid stack")
 }
@@ -257,7 +257,7 @@ func TestResolveTaskTarget_OmitsProjectNameWhenProjectNil(t *testing.T) {
 	// `pulumi neo` can be run outside a project — resolveTaskTarget must tolerate
 	// a nil project and return an empty projectName rather than panicking.
 	be := newFakeBackend()
-	target, err := resolveTaskTarget(t.Context(), ws(), be, nil, "", "explicit")
+	target, err := resolveTaskTarget(t.Context(), ws(), be, nil, "", "explicit", "")
 	require.NoError(t, err)
 	assert.Equal(t, "explicit", target.org)
 	assert.Empty(t, target.project)
@@ -298,7 +298,7 @@ func TestResolveTaskTarget_StackFlagOwnerWinsOverDefaultOrg(t *testing.T) {
 		return "", nil
 	}
 
-	target, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "")
+	target, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "", "")
 	require.NoError(t, err)
 	assert.Equal(t, "otherorg", target.org)
 	assert.Equal(t, "dev", target.stackName())
@@ -337,7 +337,7 @@ func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
 		},
 	}
 
-	target, err := resolveTaskTarget(t.Context(), wsCtx, be, nil, "", "")
+	target, err := resolveTaskTarget(t.Context(), wsCtx, be, nil, "", "", "")
 	require.NoError(t, err)
 	assert.Equal(t, "otherorg", target.org)
 	assert.Equal(t, "dev", target.stackName())
@@ -354,7 +354,7 @@ func TestResolveTaskTarget_OrgFlagOverridesStackOwner(t *testing.T) {
 	be := newFakeBackend()
 	be.ParseStackReferenceF = parseQualifiedStackRefF
 
-	target, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "explicit")
+	target, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "explicit", "")
 	require.NoError(t, err)
 	assert.Equal(t, "explicit", target.org)
 	assert.Equal(t, "dev", target.stackName())

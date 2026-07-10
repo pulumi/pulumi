@@ -282,6 +282,9 @@ func NewNeoCmd() *cobra.Command {
 		"Working directory for local tool execution (defaults to the current directory)")
 	cmd.AddCommand(resumeCmd)
 
+	// `pulumi neo acp` runs Neo as an Agent Client Protocol agent over stdio.
+	cmd.AddCommand(newNeoACPCmd())
+
 	return cmd
 }
 
@@ -408,7 +411,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 	}
 	opts.cwdFlag = rt.cwd
 
-	target, err := resolveTaskTarget(ctx, rt.ws, rt.cloudBe, rt.project, opts.stackName, opts.orgFlag)
+	target, err := resolveTaskTarget(ctx, rt.ws, rt.cloudBe, rt.project, opts.stackName, opts.orgFlag, "")
 	if err != nil {
 		return err
 	}
@@ -1104,7 +1107,8 @@ func (t taskTarget) stackName() string {
 
 // resolveTaskTarget figures out the org, project, and stack to attach to the new Neo task. The
 // stack flag is optional — if it's empty we try the currently selected stack and fall back to a
-// project-only attachment if there isn't one.
+// project-only attachment if there isn't one. dir roots the current-stack lookup; when empty the
+// process working directory is used.
 //
 // Org resolution: --org wins if provided; otherwise we use the owner carried
 // by the stack reference (so a workspace-selected `otherorg/proj/dev` keeps
@@ -1116,7 +1120,7 @@ func resolveTaskTarget(
 	ws pkgWorkspace.Context,
 	be httpstate.Backend,
 	project *workspace.Project,
-	stackName, orgFlag string,
+	stackName, orgFlag, dir string,
 ) (taskTarget, error) {
 	var t taskTarget
 	if project != nil {
@@ -1136,7 +1140,7 @@ func resolveTaskTarget(
 			}
 		}
 	} else {
-		s, err := state.CurrentStack(ctx, ws, be)
+		s, err := state.CurrentStackAt(ctx, ws, be, dir)
 		if err == nil && s != nil {
 			t.ref = s.Ref()
 			if owned, ok := s.Ref().(stackRefWithOrg); ok {
