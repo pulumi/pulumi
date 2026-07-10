@@ -26,6 +26,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine/encryptedlog"
+	backendlogging "github.com/pulumi/pulumi/pkg/v3/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestParseLogName(t *testing.T) {
@@ -130,6 +132,25 @@ func TestListLogs(t *testing.T) {
 	require.Equal(t, "", entries[2].stack)
 	require.True(t, entries[2].cliLevel)
 	require.Equal(t, "9999", entries[2].updateID)
+}
+
+func TestListLogsExcludesOwnLog(t *testing.T) {
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	l, err := backendlogging.StartLogging(t.Context(), nil)
+	require.NoError(t, err)
+	defer l.Close()
+
+	logsDir, err := workspace.GetPulumiPath("logs")
+	require.NoError(t, err)
+
+	otherPath := filepath.Join(logsDir, "dev-20260401T120000.log")
+	require.NoError(t, os.WriteFile(otherPath, []byte("x"), 0o600))
+
+	entries, err := listLogs(logsDir)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Equal(t, otherPath, entries[0].path)
 }
 
 func TestListLogsMissingDir(t *testing.T) {
