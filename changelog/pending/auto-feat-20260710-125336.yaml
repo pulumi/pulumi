@@ -1,0 +1,4 @@
+component: auto
+kind: feat
+body: Add `import` to the generated automation APIs for NodeJS, Python and Go
+time: 2026-07-10T12:53:36.88836+02:00
