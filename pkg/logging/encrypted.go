@@ -56,6 +56,10 @@ func RenameCurrentLogger(stackName, updateID string) error {
 	return currentLogger.rename(stackName, updateID)
 }
 
+func CurrentLogFilePath() string {
+	return currentLogger.FilePath()
+}
+
 // Logger captures output to a log file on disk, optionally encrypted.
 type Logger struct {
 	mu        sync.Mutex

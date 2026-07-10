@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	backendlogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -125,9 +126,15 @@ func listLogs(logsDir string) ([]logEntry, error) {
 		return nil, fmt.Errorf("reading log directory %s: %w", logsDir, err)
 	}
 
+	ownLog := backendlogging.CurrentLogFilePath()
+
 	entries := slice.Prealloc[logEntry](len(dirEntries))
 	for _, e := range dirEntries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".log") {
+			continue
+		}
+		path := filepath.Join(logsDir, e.Name())
+		if path == ownLog {
 			continue
 		}
 		ts, ok := parseLogTimestamp(e.Name())
@@ -138,7 +145,6 @@ func listLogs(logsDir string) ([]logEntry, error) {
 		if err != nil {
 			continue
 		}
-		path := filepath.Join(logsDir, e.Name())
 		stack, updateID, command, cliLevel := parseLogName(e.Name())
 		entries = append(entries, logEntry{
 			path:      path,
