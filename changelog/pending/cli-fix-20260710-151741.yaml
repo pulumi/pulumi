@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Avoid `pulumi logs <command>` showing the log for the currently running command
+time: 2026-07-10T15:17:41.868061515+02:00
