@@ -59,6 +59,13 @@ pkg/engine/lifecycletest/testdata/rapid/
 **/package-lock.json
 **/pnpm-lock.yaml
 
+# ...except for the yarn-based integration test fixtures, where a committed
+# yarn.lock pins dependencies (yarn classic has no release-age cooldown).
+!tests/integration/nodejs/npm-and-yarn-workspaces/yarn.lock
+!tests/integration/nodejs/yarn-workspaces-nohoist/yarn.lock
+!tests/integration/nodejs/packageadd_yarn/yarn.lock
+!tests/integration/packageadd-tsc/program-yarn/yarn.lock
+
 # By default, we don't check in Pipfile.lock files
 **/Pipfile.lock
 

@@ -2752,7 +2752,7 @@ func TestNodejsSourcemapTest(t *testing.T) {
 		e.SetEnvVars("NODE_OPTIONS=--localstorage-file=./jest-storage")
 	}
 
-	_, stderr := e.RunCommandExpectError("yarn", "test")
+	_, stderr := e.RunCommandExpectError("npm", "test")
 
 	expectedTrace := `a failing test so we can inspect the stacktrace reported by jest
 
