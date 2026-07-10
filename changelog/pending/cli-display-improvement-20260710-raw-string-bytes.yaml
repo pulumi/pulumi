@@ -3,3 +3,5 @@ kind: improvement
 body: Render strings containing non-UTF8 bytes as b"<base64>" in diffs and JSON
   output
 time: 2026-07-10T09:00:00-07:00
+custom:
+  PR: "23870"
