@@ -37,6 +37,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
@@ -311,11 +312,11 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 func showFunctionInfo(
 	pp *schema.PartialPackage, moduleName, functionName string, stdout io.Writer, color colors.Colorization,
 ) error {
-	var tokens []string
+	var memberTokens []string
 	for it := pp.Functions().Range(); it.Next(); {
-		tokens = append(tokens, it.Token())
+		memberTokens = append(memberTokens, it.Token())
 	}
-	token, err := findMemberToken(tokens, "function", moduleName, functionName)
+	token, err := findMemberToken(pp, memberTokens, "function", moduleName, functionName)
 	if err != nil {
 		return err
 	}
@@ -356,11 +357,11 @@ func showFunctionInfo(
 func showResourceInfo(
 	pp *schema.PartialPackage, moduleName, resourceName string, stdout io.Writer, color colors.Colorization,
 ) error {
-	var tokens []string
+	var memberTokens []string
 	for it := pp.Resources().Range(); it.Next(); {
-		tokens = append(tokens, it.Token())
+		memberTokens = append(memberTokens, it.Token())
 	}
-	token, err := findMemberToken(tokens, "resource", moduleName, resourceName)
+	token, err := findMemberToken(pp, memberTokens, "resource", moduleName, resourceName)
 	if err != nil {
 		return err
 	}
@@ -387,14 +388,14 @@ func showResourceInfo(
 
 // findMemberToken resolves the full token of a resource or function from its unqualified name,
 // optionally disambiguated by module.
-func findMemberToken(tokens []string, kind, moduleName, name string) (string, error) {
+func findMemberToken(pp *schema.PartialPackage, memberTokens []string, kind, moduleName, name string) (string, error) {
 	var found string
-	for _, token := range tokens {
-		if memberName(token) != name {
+	for _, token := range memberTokens {
+		if !tokens.Token(token).HasModuleMember() || string(tokens.Type(token).Name()) != name {
 			continue
 		}
 		if moduleName != "" {
-			if tokenModule(token) == moduleName {
+			if tokenModule(pp, token) == moduleName {
 				return token, nil
 			}
 			continue
@@ -410,18 +411,11 @@ func findMemberToken(tokens []string, kind, moduleName, name string) (string, er
 	return found, nil
 }
 
-// memberName returns the type-name segment of a Pulumi token (e.g. "aws:s3/bucket:Bucket" ->
-// "Bucket").
-func memberName(token string) string {
-	parts := strings.Split(token, ":")
-	return parts[len(parts)-1]
-}
-
-// tokenModule returns the simplified module of a Pulumi token (e.g. "aws:s3/bucket:Bucket" -> "s3").
-func tokenModule(token string) string {
-	parts := strings.Split(token, ":")
-	if len(parts) < 3 {
-		return ""
+// tokenModule returns the module of a Pulumi token per the package's module format, mapping the
+// root module back to its "index" spelling so it can be matched against --module index.
+func tokenModule(pp *schema.PartialPackage, token string) string {
+	if module := pp.TokenToModule(token); module != "" {
+		return module
 	}
-	return strings.Split(parts[1], "/")[0]
+	return "index"
 }

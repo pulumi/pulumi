@@ -108,7 +108,7 @@ func TestBoundProperties(t *testing.T) {
 func TestWriteProperties(t *testing.T) {
 	t.Parallel()
 
-	t.Run("sorts, marks required, and adds the inputs footnote", func(t *testing.T) {
+	t.Run("writes in the given order, marks required, and adds the inputs footnote", func(t *testing.T) {
 		t.Parallel()
 		var b strings.Builder
 		WriteProperties(&b, colors.Never, "Inputs", []Property{
@@ -117,8 +117,8 @@ func TestWriteProperties(t *testing.T) {
 			{Name: "tags", Type: "[]string"},
 		}, Inputs)
 		assert.Equal(t, "Inputs:\n"+
-			" - name (string*): The name.\n"+
 			" - size (integer)\n"+
+			" - name (string*): The name.\n"+
 			" - tags ([]string)\n"+
 			"Inputs marked with '*' are required\n", b.String())
 	})

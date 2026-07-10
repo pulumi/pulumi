@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -99,23 +98,18 @@ func Summarize(description string) string {
 	description = langChoiceSpanRegexp.ReplaceAllString(description, "$1")
 
 	var summary strings.Builder
-	started := false
-	for _, line := range strings.Split(description, "\n") {
+	for _, line := range strings.Split(strings.TrimSpace(description), "\n") {
 		if strings.TrimSpace(line) == "" {
-			if started {
-				// A blank line ends the first paragraph.
-				break
-			}
-			// Skip leading blank lines.
-			continue
+			// A blank line ends the first paragraph.
+			break
 		}
-		started = true
 		summary.WriteString(line + " ")
 	}
 	return strings.TrimSpace(summary.String())
 }
 
-// WriteProperties writes a titled, alphabetically-sorted property section. Each property renders as
+// WriteProperties writes a titled property section in the order given; sorting is the caller's
+// responsibility. Each property renders as
 //
 //   - <bold name> (<underline type>[<underline *>]): <summary>
 //
@@ -124,12 +118,8 @@ func Summarize(description string) string {
 func WriteProperties(w io.Writer, c colors.Colorization, title string, props []Property, kind Kind) {
 	fmt.Fprintln(w, Bold(c, title)+":")
 
-	sorted := make([]Property, len(props))
-	copy(sorted, props)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Name < sorted[j].Name })
-
 	marked := false
-	for _, prop := range sorted {
+	for _, prop := range props {
 		marker := ""
 		if prop.Required {
 			marker = "*"
