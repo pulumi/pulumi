@@ -70,12 +70,12 @@ func (mockInstallContext) GetPlugins(context.Context) ([]workspace.PluginInfo, e
 	return nil, nil
 }
 
-func (m mockInstallContext) New() (pkgWorkspace.W, error) {
+func (m mockInstallContext) New(string) (pkgWorkspace.W, error) {
 	m.t.Error("New should not be called")
 	return nil, assert.AnError
 }
 
-func (m mockInstallContext) ReadProject() (*workspace.Project, string, error) {
+func (m mockInstallContext) ReadProject(string) (*workspace.Project, string, error) {
 	m.t.Error("ReadProject should not be called")
 	return nil, "", assert.AnError
 }
@@ -178,13 +178,15 @@ func TestProviderFromSource(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, pluginHost.Close()) }()
 		pctx, err := plugin.NewContext(
-			t.Context(), nil, nil, pluginHost, nil, t.TempDir(), nil, false, nil)
+			t.Context(), nil, nil, pluginHost, nil, t.TempDir(), nil, false, nil,
+		)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, pctx.Close()) }()
 
 		provider, spec, err := providerFromSource(
 			pctx, inputSource, nil,
-			env.NewEnv(env.MapStore{"PULUMI_EXPERIMENTAL": "true"}), 0, installCtx)
+			env.NewEnv(env.MapStore{"PULUMI_EXPERIMENTAL": "true"}), 0, installCtx,
+		)
 		require.NoError(t, err)
 		return provider, spec
 	}

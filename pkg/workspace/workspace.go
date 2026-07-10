@@ -63,19 +63,9 @@ func upsertIntoCache(key string, w W) {
 	cache[key] = w
 }
 
-// newW creates a new workspace using the current working directory. Requires a Pulumi.yaml file be present in the
-// folder hierarchy between the current working directory and the .pulumi folder.
-func newW() (W, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	return newWFrom(cwd)
-}
-
-// newWFrom creates a new workspace rooted at dir. Requires a Pulumi.yaml file be present in the
+// newW creates a new workspace rooted at dir. Requires a Pulumi.yaml file be present in the
 // folder hierarchy between dir and the .pulumi folder.
-func newWFrom(dir string) (W, error) {
+func newW(dir string) (W, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err

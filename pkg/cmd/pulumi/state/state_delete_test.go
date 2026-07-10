@@ -74,7 +74,7 @@ func TestStateDeleteMultipleURNs(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -143,7 +143,7 @@ func TestStateDeleteMultipleURNsResolvesDependencyOrder(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -208,7 +208,7 @@ func TestStateDeleteParentAndChild(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -261,7 +261,7 @@ func TestStateDeleteInvalidURN(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{Name: "proj"}, "/testing/project", nil
 		},
 	}
@@ -305,7 +305,7 @@ func TestStateDeleteURNNotFound(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{Name: "proj"}, "/testing/project", nil
 		},
 	}
@@ -392,7 +392,7 @@ func TestStateDeleteURN(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -446,7 +446,7 @@ func TestStateDeleteDependency(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -505,7 +505,7 @@ func TestStateDeleteProtected(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -578,7 +578,7 @@ func TestStateDeleteAll(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil

@@ -35,11 +35,12 @@ func TestNewContextFromReadsProjectAtDir(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(
 		filepath.Join(root, "Pulumi.yaml"),
-		[]byte("name: ctx-test\nruntime: yaml\n"), 0o600))
+		[]byte("name: ctx-test\nruntime: yaml\n"), 0o600,
+	))
 	nested := filepath.Join(root, "sub", "dir")
 	require.NoError(t, os.MkdirAll(nested, 0o755))
 
-	proj, dir, err := NewContextFrom(nested).ReadProject()
+	proj, dir, err := Instance.ReadProject(nested)
 	require.NoError(t, err)
 	assert.Equal(t, "ctx-test", string(proj.Name))
 	// The project root is where Pulumi.yaml lives, possibly symlink-resolved on
@@ -56,7 +57,7 @@ func TestNewContextFromNoProject(t *testing.T) {
 
 	// An empty directory (outside any Pulumi project) yields ErrProjectNotFound,
 	// matching Instance's sentinel so callers' errors.Is checks behave the same.
-	_, _, err := NewContextFrom(t.TempDir()).ReadProject()
+	_, _, err := Instance.ReadProject(t.TempDir())
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, workspace.ErrProjectNotFound))
 }

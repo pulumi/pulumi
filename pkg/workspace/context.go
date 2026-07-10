@@ -16,7 +16,6 @@ package workspace
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -27,12 +26,12 @@ import (
 type Context interface {
 	// New creates a new workspace using the current working directory. Requires a Pulumi.yaml file be present
 	// in the folder hierarchy between the current working directory and the .pulumi folder.
-	New() (W, error)
+	New(dir string) (W, error)
 
 	// ReadProject attempts to detect and read a Pulumi project for the current workspace. If the
 	// project is successfully detected and read, it is returned along with the path to its containing
 	// directory, which will be used as the root of the project's Pulumi program.
-	ReadProject() (*workspace.Project, string, error)
+	ReadProject(dir string) (*workspace.Project, string, error)
 
 	// LoadPluginProjectAt reads a plugin project definition in the given directory. If no project is found,
 	// [workspace.ErrPluginNotFound] is returned.
@@ -56,39 +55,16 @@ type Context interface {
 
 var Instance Context = &workspaceContext{}
 
-// NewContextFrom returns a Context rooted at dir: project detection and
-// workspace settings resolve by searching upwards from dir rather than from
-// the process working directory. Path-explicit and machine-global operations
-// (plugin loading, stored credentials) behave identically to Instance. Use it
-// when the effective working directory is supplied by a caller — e.g. an
-// ACP editor handing the CLI a session cwd — instead of the process's own.
-func NewContextFrom(dir string) Context {
-	return &workspaceContext{dir: dir}
-}
-
 // workspaceContext implements Context. dir, when non-empty, roots project and
 // workspace-settings detection; when empty, the process working directory is
 // used.
-type workspaceContext struct {
-	dir string
+type workspaceContext struct{}
+
+func (c *workspaceContext) New(dir string) (W, error) {
+	return newW(dir)
 }
 
-func (c *workspaceContext) New() (W, error) {
-	if c.dir != "" {
-		return newWFrom(c.dir)
-	}
-	return newW()
-}
-
-func (c *workspaceContext) ReadProject() (*workspace.Project, string, error) {
-	dir := c.dir
-	if dir == "" {
-		var err error
-		dir, err = os.Getwd()
-		if err != nil {
-			return nil, "", err
-		}
-	}
+func (c *workspaceContext) ReadProject(dir string) (*workspace.Project, string, error) {
 	path, err := workspace.DetectProjectPathFrom(dir)
 	if err != nil {
 		return nil, "", err

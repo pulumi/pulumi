@@ -347,8 +347,8 @@ runtime: nodejs
 
 func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
 	return &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) { return nil, readProjectErr },
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		NewF: func(string) (pkgWorkspace.W, error) { return nil, readProjectErr },
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return nil, "", readProjectErr
 		},
 	}
