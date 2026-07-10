@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -55,14 +56,44 @@ type Context interface {
 
 var Instance Context = &workspaceContext{}
 
-type workspaceContext struct{}
+// NewContextFrom returns a Context rooted at dir: project detection and
+// workspace settings resolve by searching upwards from dir rather than from
+// the process working directory. Path-explicit and machine-global operations
+// (plugin loading, stored credentials) behave identically to Instance. Use it
+// when the effective working directory is supplied by a caller — e.g. an
+// ACP editor handing the CLI a session cwd — instead of the process's own.
+func NewContextFrom(dir string) Context {
+	return &workspaceContext{dir: dir}
+}
 
-func (*workspaceContext) New() (W, error) {
+// workspaceContext implements Context. dir, when non-empty, roots project and
+// workspace-settings detection; when empty, the process working directory is
+// used.
+type workspaceContext struct {
+	dir string
+}
+
+func (c *workspaceContext) New() (W, error) {
+	if c.dir != "" {
+		return newWFrom(c.dir)
+	}
 	return newW()
 }
 
-func (*workspaceContext) ReadProject() (*workspace.Project, string, error) {
-	proj, path, err := workspace.DetectProjectAndPath()
+func (c *workspaceContext) ReadProject() (*workspace.Project, string, error) {
+	dir := c.dir
+	if dir == "" {
+		var err error
+		dir, err = os.Getwd()
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	path, err := workspace.DetectProjectPathFrom(dir)
+	if err != nil {
+		return nil, "", err
+	}
+	proj, err := workspace.LoadProject(path)
 	if err != nil {
 		return nil, "", err
 	}

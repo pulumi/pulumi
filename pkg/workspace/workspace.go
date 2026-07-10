@@ -70,23 +70,28 @@ func newW() (W, error) {
 	if err != nil {
 		return nil, err
 	}
+	return newWFrom(cwd)
+}
 
-	absDir, err := filepath.Abs(cwd)
+// newWFrom creates a new workspace rooted at dir. Requires a Pulumi.yaml file be present in the
+// folder hierarchy between dir and the .pulumi folder.
+func newWFrom(dir string) (W, error) {
+	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
 	}
-	cwd = absDir
+	dir = absDir
 
-	if w, ok := loadFromCache(cwd); ok {
+	if w, ok := loadFromCache(dir); ok {
 		return w, nil
 	}
 
-	path, err := workspace.DetectProjectPathFrom(cwd)
+	path, err := workspace.DetectProjectPathFrom(dir)
 	if err != nil {
 		return nil, err
 	} else if path == "" {
 		return nil, fmt.Errorf("no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-			"created a project yet, use `pulumi new` to do so", cwd)
+			"created a project yet, use `pulumi new` to do so", dir)
 	}
 
 	proj, err := workspace.LoadProject(path)
@@ -104,7 +109,7 @@ func newW() (W, error) {
 		return nil, fmt.Errorf("unable to read workspace settings: %w", err)
 	}
 
-	upsertIntoCache(cwd, w)
+	upsertIntoCache(dir, w)
 	return w, nil
 }
 
