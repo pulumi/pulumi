@@ -41,6 +41,12 @@ type Shell struct {
 	DefaultTimeout time.Duration
 	// allowedRoots is Cwd followed by any extra roots passed to NewShell.
 	allowedRoots []string
+	// OnExec, when non-nil, runs the command in place of local execution. dir is
+	// the already-resolved, root-validated working directory and timeout the
+	// effective timeout. The Neo ACP adapter sets this to run the command in the
+	// editor's terminal (terminal/*). It returns the same ShellResult this tool
+	// produces locally. A nil OnExec runs the command on this machine.
+	OnExec func(ctx context.Context, command, dir string, timeout time.Duration) (ShellResult, error)
 }
 
 // NewShell creates a Shell handler with sensible defaults. The working directory is
@@ -97,6 +103,9 @@ func (s *Shell) Invoke(ctx context.Context, method string, args json.RawMessage)
 	if err != nil {
 		return nil, err
 	}
+	if s.OnExec != nil {
+		return s.OnExec(ctx, p.Command, dir, timeout)
+	}
 	return s.run(ctx, p.Command, dir, timeout)
 }
 
@@ -121,9 +130,46 @@ func childEnvWithAgent(parent []string) []string {
 	return append(out, "AI_AGENT=neo")
 }
 
-// maxOutputBytes is the maximum number of bytes captured from stdout or stderr.
-// Output beyond this limit is silently discarded and "truncated" is set in the result.
-const maxOutputBytes = 1 << 20 // 1 MiB
+// ShellInvocation wraps a shell command string in the platform shell used to run
+// it: `sh -c` on Unix, `cmd /C` on Windows. Both the local runner here and the
+// Neo ACP editor-terminal runner call this so the two paths invoke commands
+// identically.
+func ShellInvocation(command string) (program string, args []string) {
+	if runtime.GOOS == "windows" {
+		return "cmd", []string{"/C", command}
+	}
+	return "sh", []string{"-c", command}
+}
+
+// ShellResult is the structured outcome of running a shell command and the
+// canonical shape the `shell` tool returns to the agent. Both the local runner
+// and the ACP editor-terminal runner return it directly, so the wire shape can't
+// drift between them. Its JSON tags define that wire shape: stdout, stderr, and
+// exit_code are always present; error and the boolean flags appear only when set.
+type ShellResult struct {
+	Stdout   string `json:"stdout"`
+	Stderr   string `json:"stderr"`
+	ExitCode int    `json:"exit_code"`
+	// Err is a transport/exec failure that isn't an exit code (e.g. the command
+	// could not be started). Omitted when empty.
+	Err       string `json:"error,omitempty"`
+	Truncated bool   `json:"truncated,omitempty"`
+	TimedOut  bool   `json:"timed_out,omitempty"`
+}
+
+// TimeoutError is the error the shell tool returns when a command exceeds its
+// timeout. Both the local runner and the Neo ACP editor-terminal runner return
+// it, so the agent sees the same failure whichever path ran the command.
+func TimeoutError(timeout time.Duration) error {
+	return fmt.Errorf("shell command timed out after %s", timeout)
+}
+
+// MaxOutputBytes is the maximum number of bytes captured from stdout or stderr.
+// Output beyond this limit is silently discarded and "truncated" is set in the
+// result. It is the canonical capture cap for the shell tool: the Neo ACP
+// adapter passes it to editor-run terminals too, so truncation behaves
+// identically on both paths.
+const MaxOutputBytes = 1 << 20 // 1 MiB
 
 // cappedBuffer is a bytes.Buffer that stops accepting writes after a limit.
 type cappedBuffer struct {
@@ -145,16 +191,12 @@ func (c *cappedBuffer) Write(p []byte) (int, error) {
 	return c.buf.Write(p)
 }
 
-func (s *Shell) run(ctx context.Context, command string, dir string, timeout time.Duration) (any, error) {
+func (s *Shell) run(ctx context.Context, command string, dir string, timeout time.Duration) (ShellResult, error) {
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(runCtx, "cmd", "/C", command)
-	} else {
-		cmd = exec.CommandContext(runCtx, "sh", "-c", command)
-	}
+	program, args := ShellInvocation(command)
+	cmd := exec.CommandContext(runCtx, program, args...)
 	cmd.Dir = dir
 	cmd.Env = childEnvWithAgent(os.Environ())
 
@@ -171,32 +213,29 @@ func (s *Shell) run(ctx context.Context, command string, dir string, timeout tim
 	// grace period instead of blocking forever on the inherited pipes.
 	cmd.WaitDelay = 5 * time.Second
 
-	stdout := &cappedBuffer{limit: maxOutputBytes}
-	stderr := &cappedBuffer{limit: maxOutputBytes}
+	stdout := &cappedBuffer{limit: MaxOutputBytes}
+	stderr := &cappedBuffer{limit: MaxOutputBytes}
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
 	err := cmd.Run()
 
-	result := map[string]any{
-		"stdout":    stdout.buf.String(),
-		"stderr":    stderr.buf.String(),
-		"exit_code": 0,
+	res := ShellResult{
+		Stdout:    stdout.buf.String(),
+		Stderr:    stderr.buf.String(),
+		Truncated: stdout.truncated || stderr.truncated,
 	}
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			result["exit_code"] = exitErr.ExitCode()
+			res.ExitCode = exitErr.ExitCode()
 		} else {
-			result["error"] = err.Error()
+			res.Err = err.Error()
 		}
 	}
-	if stdout.truncated || stderr.truncated {
-		result["truncated"] = true
-	}
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
-		result["timed_out"] = true
-		return result, fmt.Errorf("shell command timed out after %s", timeout)
+		res.TimedOut = true
+		return res, TimeoutError(timeout)
 	}
-	return result, nil
+	return res, nil
 }
