@@ -264,6 +264,19 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Error: p.Error,
 		}
 
+	case engine.StateMigrationEvent:
+		p, ok := e.Payload().(engine.StateMigrationEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.StateMigrationEvent = &apitype.StateMigrationEvent{
+			URN:       string(p.URN),
+			Migrated:  p.Migrated,
+			Added:     urnsToStrings(p.Added),
+			Removed:   urnsToStrings(p.Removed),
+			Unmanaged: urnsToStrings(p.Unmanaged),
+		}
+
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
 	}
@@ -532,6 +545,16 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Error: p.Error,
 		})
 
+	case apiEvent.StateMigrationEvent != nil:
+		p := apiEvent.StateMigrationEvent
+		event = engine.NewEvent(engine.StateMigrationEventPayload{
+			URN:       resource.URN(p.URN),
+			Migrated:  p.Migrated,
+			Added:     stringsToURNs(p.Added),
+			Removed:   stringsToURNs(p.Removed),
+			Unmanaged: stringsToURNs(p.Unmanaged),
+		})
+
 	default:
 		return event, errors.New("unknown event type")
 	}
@@ -635,4 +658,26 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		InitErrors:     md.InitErrors,
 		HideDiffs:      md.HideDiffs,
 	}
+}
+
+func urnsToStrings(urns []resource.URN) []string {
+	if urns == nil {
+		return nil
+	}
+	strs := make([]string, len(urns))
+	for i, urn := range urns {
+		strs[i] = string(urn)
+	}
+	return strs
+}
+
+func stringsToURNs(strs []string) []resource.URN {
+	if strs == nil {
+		return nil
+	}
+	urns := make([]resource.URN, len(strs))
+	for i, s := range strs {
+		urns[i] = resource.URN(s)
+	}
+	return urns
 }

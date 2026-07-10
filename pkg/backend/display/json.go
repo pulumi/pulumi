@@ -241,6 +241,10 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 		case engine.ErrorEvent:
 			// Error events are not for display, so we skip them here.
 			continue
+		case engine.StateMigrationEvent:
+			// State migrations rewrite prior state before diffing; the resulting plan already
+			// reflects them, so they don't contribute to the digest.
+			continue
 		default:
 			contract.Failf("unknown event type '%s'", e.Type)
 		}

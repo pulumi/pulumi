@@ -1,0 +1,8 @@
+    comp: state migrated: 2 resources, 1 removed from state
+    <{%fg 3%}>warning: urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childB is no longer managed by Pulumi (the resource is NOT deleted)<{%reset%}>
+<{%reset%}>  urn:pulumi:test::test::my:module:Comp::comp: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

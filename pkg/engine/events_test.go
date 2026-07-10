@@ -35,3 +35,13 @@ func TestTryCloseEventChan(t *testing.T) {
 	assert.Equal(t, true, tryCloseEventChan(c))
 	assert.Equal(t, false, tryCloseEventChan(c))
 }
+
+// TestStateMigrationEventEphemeral guards that state-migration events are ephemeral, so they are shown in the
+// display and the live event stream but never persisted or uploaded to the Pulumi Cloud service, which older
+// service versions do not recognize.
+func TestStateMigrationEventEphemeral(t *testing.T) {
+	t.Parallel()
+	e := NewEvent(StateMigrationEventPayload{URN: "urn:pulumi:test::test::my:module:Comp::comp"})
+	assert.True(t, e.Ephemeral(), "state-migration events must be ephemeral so they are not uploaded")
+	assert.False(t, e.Internal())
+}

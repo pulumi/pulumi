@@ -152,11 +152,31 @@ func RenderDiffEvent(event engine.Event, resourcesErrored int,
 		return renderDiffPolicyRemediationEvent(event.Payload().(engine.PolicyRemediationEventPayload), "", true, opts)
 	case engine.PolicyViolationEvent:
 		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), "", "", opts)
+	case engine.StateMigrationEvent:
+		return renderDiffStateMigrationEvent(event.Payload().(engine.StateMigrationEventPayload), opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
 	}
+}
+
+func renderDiffStateMigrationEvent(payload engine.StateMigrationEventPayload, opts Options) string {
+	var msg strings.Builder
+	fmt.Fprintf(&msg, "    %s: state migrated: %d %s", payload.URN.Name(),
+		payload.Migrated, english.PluralWord(payload.Migrated, "resource", ""))
+	if c := len(payload.Added); c > 0 {
+		fmt.Fprintf(&msg, ", +%d added", c)
+	}
+	if c := len(payload.Removed); c > 0 {
+		fmt.Fprintf(&msg, ", %d removed from state", c)
+	}
+	msg.WriteString("\n")
+	for _, urn := range payload.Unmanaged {
+		msg.WriteString(opts.Color.Colorize(fmt.Sprintf("    %swarning: %s is no longer managed by Pulumi "+
+			"(the resource is NOT deleted)%s\n", colors.SpecWarning, urn, colors.Reset)))
+	}
+	return msg.String()
 }
 
 func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {

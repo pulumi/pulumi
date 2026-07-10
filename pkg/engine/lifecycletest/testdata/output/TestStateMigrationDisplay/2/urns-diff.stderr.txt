@@ -1,0 +1,1 @@
+<{%fg 3%}>warning: <{%reset%}><{%reset%}>state migration for urn:pulumi:test::test::my:module:Comp::comp removed urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childB from the state; the underlying cloud resource will NOT be deleted<{%reset%}>

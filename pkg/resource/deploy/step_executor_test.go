@@ -115,7 +115,9 @@ func (e *mockEvents) OnRebuiltBaseState() error {
 	return nil
 }
 
-func (e *mockEvents) OnStateMigration(removed []*resource.State, migrated []*resource.State) error {
+func (e *mockEvents) OnStateMigration(
+	urn resource.URN, removed []*resource.State, migrated []*resource.State,
+) error {
 	return nil
 }
 

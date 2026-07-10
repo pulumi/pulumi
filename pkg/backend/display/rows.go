@@ -65,6 +65,7 @@ type ResourceRow interface {
 	RecordDiagEvent(diagEvent engine.Event)
 	RecordPolicyViolationEvent(diagEvent engine.Event)
 	RecordPolicyRemediationEvent(diagEvent engine.Event)
+	RecordStateMigrationEvent(event engine.Event)
 }
 
 // Implementation of a Row, used for the header of the grid.
@@ -135,6 +136,7 @@ type resourceRowData struct {
 	diagInfo                  *DiagInfo
 	policyPayloads            []engine.PolicyViolationEventPayload
 	policyRemediationPayloads []engine.PolicyRemediationEventPayload
+	stateMigrationPayloads    []engine.StateMigrationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -250,6 +252,12 @@ func (data *resourceRowData) PolicyRemediationPayloads() []engine.PolicyRemediat
 func (data *resourceRowData) RecordPolicyRemediationEvent(event engine.Event) {
 	tPayload := event.Payload().(engine.PolicyRemediationEventPayload)
 	data.policyRemediationPayloads = append(data.policyRemediationPayloads, tPayload)
+}
+
+// RecordStateMigrationEvent records a state migration with the resourceRowData.
+func (data *resourceRowData) RecordStateMigrationEvent(event engine.Event) {
+	payload := event.Payload().(engine.StateMigrationEventPayload)
+	data.stateMigrationPayloads = append(data.stateMigrationPayloads, payload)
 }
 
 type column int
@@ -413,6 +421,10 @@ func (data *resourceRowData) getInfoColumn() string {
 		appendDiagMessage("[" + changes + "]")
 	}
 
+	for _, migration := range data.stateMigrationPayloads {
+		appendDiagMessage("[" + renderStateMigration(migration) + "]")
+	}
+
 	diagInfo := data.diagInfo
 	if data.display.done.Load() {
 		// If we are done, show a summary of how many messages were printed.
@@ -562,4 +574,22 @@ func writePropertyKeys(b io.StringWriter, keys []string, op display.StepOp) {
 
 		writeString(b, colors.Reset)
 	}
+}
+
+// renderStateMigration produces the compact description of a state migration shown in a resource row's info
+// column, e.g. "state migrated: 3 resources, +1 added, 1 removed from state".
+func renderStateMigration(payload engine.StateMigrationEventPayload) string {
+	msg := fmt.Sprintf("%sstate migrated: %d %s%s", colors.SpecInfo,
+		payload.Migrated, english.PluralWord(payload.Migrated, "resource", ""), colors.Reset)
+	if c := len(payload.Added); c > 0 {
+		msg += fmt.Sprintf(", %s+%d added%s", colors.SpecInfo, c, colors.Reset)
+	}
+	if c := len(payload.Removed); c > 0 {
+		color := colors.SpecInfo
+		if len(payload.Unmanaged) > 0 {
+			color = colors.SpecWarning
+		}
+		msg += fmt.Sprintf(", %s%d removed from state%s", color, c, colors.Reset)
+	}
+	return msg
 }

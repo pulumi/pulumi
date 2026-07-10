@@ -269,12 +269,26 @@ func TestStateMigrationRenameChild(t *testing.T) {
 	snap, err = runUpdate(t, env.plan, snap,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
 			assert.Equal(t, map[display.StepOp]int{deploy.OpSame: 3}, successOps(entries))
+			var migrationEvents []StateMigrationEventPayload
 			for _, e := range events {
 				if e.Type == DiagEvent {
 					payload := e.Payload().(DiagEventPayload)
 					// A rename keeps the resource's identity, so no unmanaged-resource warning is emitted.
 					assert.NotContains(t, payload.Message, "will NOT be deleted")
 				}
+				if e.Type == StateMigrationEvent {
+					migrationEvents = append(migrationEvents, e.Payload().(StateMigrationEventPayload))
+				}
+			}
+			// The applied migration is reported through a dedicated engine event.
+			require.Len(t, migrationEvents, 1)
+			{
+				payload := migrationEvents[0]
+				assert.Equal(t, compURN, payload.URN)
+				assert.Equal(t, 2, payload.Migrated)
+				assert.Equal(t, []resource.URN{childBURN}, payload.Added)
+				assert.Equal(t, []resource.URN{childAURN}, payload.Removed)
+				assert.Empty(t, payload.Unmanaged)
 			}
 			return err
 		})
@@ -335,6 +349,7 @@ func TestStateMigrationForget(t *testing.T) {
 	}
 
 	var sawForgetWarning bool
+	var migrationEvents []StateMigrationEventPayload
 	snap, err = runUpdate(t, env.plan, snap,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
 			// No delete step may run for the forgotten resource. (The now-unused default provider is
@@ -351,12 +366,21 @@ func TestStateMigrationForget(t *testing.T) {
 						sawForgetWarning = true
 					}
 				}
+				if e.Type == StateMigrationEvent {
+					migrationEvents = append(migrationEvents, e.Payload().(StateMigrationEventPayload))
+				}
 			}
 			return err
 		})
 	require.NoError(t, err)
 	assert.NotContains(t, snapURNs(snap), childAURN)
 	assert.True(t, sawForgetWarning, "expected a warning diagnostic about the forgotten resource")
+	// The forgotten resource's identity left the state entirely, so the event reports it as unmanaged.
+	require.Len(t, migrationEvents, 1)
+	{
+		assert.Equal(t, []resource.URN{childAURN}, migrationEvents[0].Removed)
+		assert.Equal(t, []resource.URN{childAURN}, migrationEvents[0].Unmanaged)
+	}
 }
 
 // TestStateMigrationChained tests that multiple migrations compose: each receives the previous one's output.
@@ -809,6 +833,100 @@ func TestStateMigrationAliasedRootRename(t *testing.T) {
 	assert.Contains(t, urns, newChildURN)
 	assert.NotContains(t, urns, compURN)
 	assert.NotContains(t, urns, childAURN)
+}
+
+// TestStateMigrationDisplay is a display test for state migrations: step 1 applies a rename
+// migration (row annotation, no warning) and step 2 applies a forget migration (row annotation
+// with an unmanaged-resource warning).
+func TestStateMigrationDisplay(t *testing.T) {
+	t.Parallel()
+
+	env := newStateMigrationEnv(t)
+	env.plan.Options.SkipDisplayTests = false
+	project := env.plan.GetProject()
+
+	// Step 0: initial install of the component with childA.
+	snap, err := lt.TestOp(Update).RunStep(
+		project, env.plan.GetTarget(t, nil), env.plan.Options, false, env.plan.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Step 1: childA is renamed to childB by a migration; the resource keeps its identity.
+	env.childName = "childB"
+	env.migrations = func(t *testing.T, callbacks *deploytest.CallbackServer) []*pulumirpc.Callback {
+		return []*pulumirpc.Callback{renameMigration(t, callbacks, "childA", "childB")}
+	}
+	snap, err = lt.TestOp(Update).RunStep(
+		project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	// Step 2: childB is forgotten by a migration; the resource becomes unmanaged.
+	env.registerChild = false
+	env.migrations = func(t *testing.T, callbacks *deploytest.CallbackServer) []*pulumirpc.Callback {
+		callback, err := callbacks.Allocate(
+			StateMigrationFunction(func(
+				urn resource.URN, resources []apitype.ResourceV3,
+			) ([]apitype.ResourceV3, []resource.URN, error) {
+				var kept []apitype.ResourceV3
+				var forgotten []resource.URN
+				for _, res := range resources {
+					if res.URN == childBURN {
+						forgotten = append(forgotten, res.URN)
+						continue
+					}
+					kept = append(kept, res)
+				}
+				if len(forgotten) == 0 {
+					return nil, nil, nil
+				}
+				return kept, forgotten, nil
+			}))
+		require.NoError(t, err)
+		return []*pulumirpc.Callback{callback}
+	}
+	_, err = lt.TestOp(Update).RunStep(
+		project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient, nil, "2")
+	require.NoError(t, err)
+}
+
+// TestStateMigrationEchoNoOp tests that a migration which returns its input unchanged (rather than nil) — the
+// common "check whether already migrated, otherwise return the input" idiom — is treated as a no-op, even when
+// the state contains secrets that serialize asymmetrically across the JSON round-trip.
+func TestStateMigrationEchoNoOp(t *testing.T) {
+	t.Parallel()
+
+	env := newStateMigrationEnv(t)
+	env.childInputs = resource.PropertyMap{
+		"foo":    resource.NewProperty("bar"),
+		"secret": resource.MakeSecret(resource.NewProperty("shh")),
+	}
+	project := env.plan.GetProject()
+
+	snap, err := lt.TestOp(Update).Run(
+		project, env.plan.GetTarget(t, nil), env.plan.Options, false, env.plan.BackendClient, nil)
+	require.NoError(t, err)
+
+	// A migration that echoes its input back verbatim, on every run.
+	env.migrations = func(t *testing.T, callbacks *deploytest.CallbackServer) []*pulumirpc.Callback {
+		callback, err := callbacks.Allocate(
+			StateMigrationFunction(func(
+				urn resource.URN, resources []apitype.ResourceV3,
+			) ([]apitype.ResourceV3, []resource.URN, error) {
+				return resources, nil, nil
+			}))
+		require.NoError(t, err)
+		return []*pulumirpc.Callback{callback}
+	}
+
+	_, err = lt.TestOp(Update).Run(project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient,
+		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
+			assert.Equal(t, map[display.StepOp]int{deploy.OpSame: 3}, successOps(entries))
+			for _, e := range events {
+				assert.NotEqual(t, StateMigrationEvent, e.Type,
+					"an echo migration must not emit a state-migration event")
+			}
+			return err
+		})
+	require.NoError(t, err)
 }
 
 // TestStateMigrationSkippedDuringDestroy tests that migrations do not run during destroy --run-program, so a

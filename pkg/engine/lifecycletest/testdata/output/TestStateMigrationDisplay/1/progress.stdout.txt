@@ -1,0 +1,13 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> my:module:Comp comp <{%bold%}><{%reset%}><{%reset%}> [<{%fg 5%}>state migrated: 2 resources<{%reset%}>, <{%fg 5%}>+1 added<{%reset%}>, <{%fg 5%}>1 removed from state<{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> my:module:Comp comp <{%bold%}><{%reset%}><{%reset%}> [<{%fg 5%}>state migrated: 2 resources<{%reset%}>, <{%fg 5%}>+1 added<{%reset%}>, <{%fg 5%}>1 removed from state<{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA childB <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> my:module:Comp comp <{%reset%}><{%reset%}> [<{%fg 5%}>state migrated: 2 resources<{%reset%}>, <{%fg 5%}>+1 added<{%reset%}>, <{%fg 5%}>1 removed from state<{%reset%}>]
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

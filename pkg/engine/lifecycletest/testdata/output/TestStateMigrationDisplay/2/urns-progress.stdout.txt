@@ -1,0 +1,17 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::my:module:Comp::comp <{%bold%}><{%reset%}><{%reset%}> [<{%fg 5%}>state migrated: 2 resources<{%reset%}>, <{%fg 3%}>1 removed from state<{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::my:module:Comp::comp <{%bold%}><{%reset%}><{%reset%}> [<{%fg 5%}>state migrated: 2 resources<{%reset%}>, <{%fg 3%}>1 removed from state<{%reset%}>]; <{%fg 3%}>warning: <{%reset%}><{%reset%}>state migration for urn:pulumi:test::test::my:module:Comp::comp removed urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childB from the state; the underlying cloud resource will NOT be deleted<{%reset%}>
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::my:module:Comp::comp <{%bold%}><{%reset%}><{%reset%}> [<{%fg 5%}>state migrated: 2 resources<{%reset%}>, <{%fg 3%}>1 removed from state<{%reset%}>]; <{%fg 3%}>warning: <{%reset%}><{%reset%}>state migration for urn:pulumi:test::test::my:module:Comp::comp removed urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childB from the state; the underlying cloud resource will NOT be deleted<{%reset%}>
+ <{%reset%}>  <{%reset%}> urn:pulumi:test::test::my:module:Comp::comp <{%reset%}><{%reset%}> [<{%fg 5%}>state migrated: 2 resources<{%reset%}>, <{%fg 3%}>1 removed from state<{%reset%}>]; 1 <{%fg 3%}>warning<{%reset%}>
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>urn:pulumi:test::test::my:module:Comp::comp:<{%reset%}>
+    <{%fg 3%}>warning: <{%reset%}><{%reset%}>state migration for urn:pulumi:test::test::my:module:Comp::comp removed urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childB from the state; the underlying cloud resource will NOT be deleted<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

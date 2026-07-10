@@ -333,6 +333,22 @@ const (
 	PluginInstall ProgressType = "plugin-install"
 )
 
+// StateMigrationEvent is emitted when a state migration attached to a resource registration rewrites the
+// prior state of the resource and its descendants before the engine diffs them.
+type StateMigrationEvent struct {
+	// URN is the resource whose registration carried the migrations.
+	URN string `json:"urn"`
+	// Migrated is the number of prior resources that were handed to the migrations.
+	Migrated int `json:"migrated"`
+	// Added holds the URNs of state entries introduced by the migration.
+	Added []string `json:"added,omitempty"`
+	// Removed holds the URNs that were removed from the state (renames as well as forgets).
+	Removed []string `json:"removed,omitempty"`
+	// Unmanaged holds the subset of Removed whose resources' identities left the state entirely: the
+	// underlying cloud resources are no longer managed by Pulumi. They are NOT deleted.
+	Unmanaged []string `json:"unmanaged,omitempty"`
+}
+
 // EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
 // message. EngineEvent is a discriminated union of all possible event types, and exactly one
 // field will be non-nil.
@@ -366,6 +382,7 @@ type EngineEvent struct {
 	StartDebuggingEvent            *StartDebuggingEvent            `json:"startDebuggingEvent,omitempty"`
 	ProgressEvent                  *ProgressEvent                  `json:"progressEvent,omitempty"`
 	ErrorEvent                     *ErrorEvent                     `json:"errorEvent,omitempty"`
+	StateMigrationEvent            *StateMigrationEvent            `json:"stateMigrationEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.
