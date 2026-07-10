@@ -1,0 +1,4 @@
+component: programgen
+kind: fix
+body: Deduplicate identical apply arguments to avoid unnecessary Promise.all/pulumi.all/Output.All in generated code
+time: 2026-07-10T10:57:06.279085+01:00
