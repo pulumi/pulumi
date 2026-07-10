@@ -500,8 +500,12 @@ func TestRenderDiffPolicyRemediationEventUsesDisplayResourceTypeName(t *testing.
 		PolicyName:        "tag-policy",
 		PolicyPackName:    "foo-policy-pack",
 		PolicyPackVersion: "0.0.6",
-		Before:            resource.PropertyMap{"tag": resource.NewProperty("before")},
-		After:             resource.PropertyMap{"tag": resource.NewProperty("after")},
+		Before: property.NewMap(map[string]property.Value{
+			"tag": property.New("before"),
+		}),
+		After: property.NewMap(map[string]property.Value{
+			"tag": property.New("after"),
+		}),
 	}
 
 	output := renderDiffPolicyRemediationEvent(payload, "", false, Options{Color: colors.Never})
