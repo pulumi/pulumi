@@ -1220,7 +1220,8 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
-	if err := host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, opts.production, stdout, stderr); err != nil {
+	err = host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, opts.production, stdout, stderr)
+	if err != nil {
 		return err
 	}
 
