@@ -102,7 +102,8 @@ var expectedFailures = map[string]string{
 	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
-	"l3-range-invoke-output-traversal":   "pulumi#12507: range loop variable captured by reference; indexed output resolves with the wrong index", //nolint:lll
+	"l3-range-invoke-output-traversal":   "pulumi#12507: range loop variable captured by reference; indexed output resolves with the wrong index",                  //nolint:lll
+	"l2-raw-string-bytes":                "the Node.js SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
