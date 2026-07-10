@@ -443,8 +443,8 @@ func (e *analyzeEvents) OnPolicyRemediation(
 		PolicyName:        rem.PolicyName,
 		PolicyPackName:    rem.PolicyPackName,
 		PolicyPackVersion: rem.PolicyPackVersion,
-		Before:            resource.ToResourcePropertyMap(before),
-		After:             resource.ToResourcePropertyMap(after),
+		Before:            before,
+		After:             after,
 	}))
 }
 

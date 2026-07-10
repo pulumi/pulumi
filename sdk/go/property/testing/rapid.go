@@ -37,8 +37,8 @@ func Value(maxDepth int) *rapid.Generator[property.Value] {
 	for i := 1; i < maxDepth; i++ {
 		value = rapid.OneOf(
 			Primitive(),
-			ArrayOf(value),
-			MapOf(value),
+			rapid.Map(ArrayOf(value), property.New),
+			rapid.Map(MapOf(value), property.New),
 			SecretOf(value),
 			DependenciesOf(value),
 		)
@@ -158,9 +158,9 @@ func contentHash(parts ...string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func Array(maxDepth int) *rapid.Generator[property.Value] { return ArrayOf(Value(maxDepth - 1)) }
+func Array(maxDepth int) *rapid.Generator[property.Array] { return ArrayOf(Value(maxDepth - 1)) }
 
-func Map(maxDepth int) *rapid.Generator[property.Value] { return MapOf(Value(maxDepth - 1)) }
+func Map(maxDepth int) *rapid.Generator[property.Map] { return MapOf(Value(maxDepth - 1)) }
 
 func Secret(maxDepth int) *rapid.Generator[property.Value] { return SecretOf(Value(maxDepth - 1)) }
 
@@ -168,15 +168,15 @@ func Dependencies(maxDepth int) *rapid.Generator[property.Value] {
 	return DependenciesOf(Value(maxDepth - 1))
 }
 
-func ArrayOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
-	return rapid.Custom(func(t *rapid.T) property.Value {
-		return property.New(rapid.SliceOf(value).Draw(t, "V"))
+func ArrayOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Array] {
+	return rapid.Custom(func(t *rapid.T) property.Array {
+		return property.NewArray(rapid.SliceOf(value).Draw(t, "V"))
 	})
 }
 
-func MapOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Value] {
-	return rapid.Custom(func(t *rapid.T) property.Value {
-		return property.New(rapid.MapOf(
+func MapOf(value *rapid.Generator[property.Value]) *rapid.Generator[property.Map] {
+	return rapid.Custom(func(t *rapid.T) property.Map {
+		return property.NewMap(rapid.MapOf(
 			rapid.String(),
 			value,
 		).Draw(t, "V"))

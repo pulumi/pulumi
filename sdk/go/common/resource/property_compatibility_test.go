@@ -109,3 +109,16 @@ func TestConversionThroughGRPC(t *testing.T) {
 		})
 	}
 }
+
+func TestDiffCompatibility(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		a := pTest.Map(10).Draw(t, "round-trip value a")
+		b := pTest.Map(10).Draw(t, "round-trip value b")
+
+		assert.Equal(t,
+			resource.ToResourceObjectDiff(a.Diff(b)),
+			resource.ToResourcePropertyMap(a).Diff(resource.ToResourcePropertyMap(b)))
+	})
+}
