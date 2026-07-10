@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
@@ -928,7 +929,8 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 			if isPrimitive(diff.Old) && isPrimitive(diff.New) {
 				titleFunc(p)
 
-				if diff.Old.IsString() && diff.New.IsString() {
+				if diff.Old.IsString() && diff.New.IsString() &&
+					utf8.ValidString(diff.Old.StringValue()) && utf8.ValidString(diff.New.StringValue()) {
 					p.printTextDiff(diff.Old.StringValue(), diff.New.StringValue())
 					return
 				}
@@ -977,6 +979,10 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.writef("%g", number)
 		}
 	} else if v.IsString() {
+		if !utf8.ValidString(v.StringValue()) {
+			p.writeVerbatim(rawStringBytesDisplay(v.StringValue()))
+			return
+		}
 		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
 			p.writef("(%s) ", kind)
 			p.printPropertyValue(vv)
