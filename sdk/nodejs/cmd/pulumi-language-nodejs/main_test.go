@@ -416,6 +416,56 @@ func setupFiles(t *testing.T, files []filePathAndContents) string {
 	return dir
 }
 
+func TestAbout(t *testing.T) {
+	t.Parallel()
+
+	t.Run("With typescript installed", func(t *testing.T) {
+		t.Parallel()
+
+		testDir := setupFiles(t, []filePathAndContents{
+			{
+				path:    "package.json",
+				content: `{ "name": "test", "dependencies": { "typescript": "^5.4.5" } }`,
+			},
+			{
+				path:    filepath.Join("node_modules", "typescript", "package.json"),
+				content: `{ "name": "typescript", "version": "5.4.5", "main": "./lib/typescript.js" }`,
+			},
+		})
+		host := &nodeLanguageHost{runtime: "nodejs"}
+		resp, err := host.About(t.Context(), &pulumirpc.AboutRequest{
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    testDir,
+				ProgramDirectory: testDir,
+				EntryPoint:       ".",
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, "5.4.5", resp.Metadata["typescriptVersion"])
+	})
+
+	t.Run("Without typescript installed", func(t *testing.T) {
+		t.Parallel()
+
+		testDir := setupFiles(t, []filePathAndContents{
+			{
+				path:    "package.json",
+				content: `{ "name": "test" }`,
+			},
+		})
+		host := &nodeLanguageHost{runtime: "nodejs"}
+		resp, err := host.About(t.Context(), &pulumirpc.AboutRequest{
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    testDir,
+				ProgramDirectory: testDir,
+				EntryPoint:       ".",
+			},
+		})
+		require.NoError(t, err)
+		require.NotContains(t, resp.Metadata, "typescriptVersion")
+	})
+}
+
 func TestGetProgramDependencies(t *testing.T) {
 	t.Parallel()
 

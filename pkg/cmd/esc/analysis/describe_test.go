@@ -42,6 +42,7 @@ func TestDescribe(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe s
 		testEnvironments{},
 		execContext,
 		false,
+		eval.EvalOptions{},
 	)
 	require.Empty(t, diags)
 
@@ -128,6 +129,7 @@ func TestDescribeOpen(t *testing.T) { //nolint:paralleltest,lll // non-thread-sa
 		testEnvironments{},
 		execContext,
 		false,
+		eval.EvalOptions{},
 	)
 	require.Empty(t, diags)
 

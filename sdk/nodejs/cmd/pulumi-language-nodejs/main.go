@@ -1393,7 +1393,7 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		return nil, fmt.Errorf("could not find executable %q: %w", runtimeExec, err)
 	}
 
-	var runtimeVersion, pmVersion string
+	var runtimeVersion, pmVersion, tsVersion string
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
@@ -1416,6 +1416,22 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		pmVersion = version.String()
 		return nil
 	})
+	g.Go(func() error {
+		// Report the TypeScript version the program would load. We resolve it via the runtime's
+		// module resolution from the program directory, since that is how it is loaded at run
+		// time; a `tsc` on PATH may be a different installation. Reading package.json avoids
+		// loading the whole compiler.
+		cmd := exec.CommandContext(ctx, runtimeExec, "-e",
+			"console.log(require('typescript/package.json').version)")
+		cmd.Dir = req.Info.ProgramDirectory
+		out, err := cmd.Output()
+		if err != nil {
+			// Don't fail if we could not determine the typescript version
+			return nil
+		}
+		tsVersion = strings.TrimSpace(string(out))
+		return nil
+	})
 
 	if err := g.Wait(); err != nil {
 		return &pulumirpc.AboutResponse{
@@ -1426,13 +1442,18 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		}, nil
 	}
 
+	metadata := map[string]string{
+		"packagemanager":        pm.Name(),
+		"packagemanagerVersion": pmVersion,
+	}
+	if tsVersion != "" {
+		metadata["typescriptVersion"] = tsVersion
+	}
+
 	return &pulumirpc.AboutResponse{
 		Executable: runtimeExecutable,
 		Version:    runtimeVersion,
-		Metadata: map[string]string{
-			"packagemanager":        pm.Name(),
-			"packagemanagerVersion": pmVersion,
-		},
+		Metadata:   metadata,
 	}, nil
 }
 

@@ -35,6 +35,8 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -217,7 +219,7 @@ func (s *neoFakeServer) sawStreamConnect() bool {
 // kept gctx alive, Session.Run blocked on `<-ctx.Done` forever, and g.Wait
 // hung — this test would time out instead of completing.
 //
-//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, newTeaProgram, isInteractive)
+//nolint:paralleltest,lll // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, newTeaProgram, isInteractive)
 func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	isolateWorkspace(t) // PULUMI_STACK="", PULUMI_HOME=t.TempDir()
 
@@ -227,8 +229,7 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	// constructor; it reads no global state and performs no I/O at construction.
 	pc := client.NewClient(srv.server.URL, "", false, nil)
 
-	// Fake backend wired with the real client. CurrentBackend short-circuits
-	// to BackendInstance when set, bypassing all login / cloud-URL resolution.
+	// Fake backend wired with the real client.
 	be := newFakeBackend()
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
@@ -236,9 +237,24 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 		return "test-user", []string{"test-org"}, nil, nil
 	}
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -365,9 +381,24 @@ func installNeoTestEnv(t *testing.T, srv *neoFakeServer, interactive bool) {
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -385,7 +416,7 @@ func installNeoTestEnv(t *testing.T, srv *neoFakeServer, interactive bool) {
 // CreateNeoTask, console URL print, Session construction, session.Run) had no
 // coverage.
 //
-//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, isInteractive)
+//nolint:paralleltest // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, isInteractive)
 func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 	isolateWorkspace(t)
 	srv := newNeoFakeServer(t)
@@ -448,9 +479,26 @@ func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
 	isolateWorkspace(t)
 
 	// A bare MockBackend deliberately doesn't implement httpstate.Backend.
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = &backend.MockBackend{}
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	be := &backend.MockBackend{}
+
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string,
+			*workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -569,9 +617,24 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -600,7 +663,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 // goroutine, p.Run would block until the test deadline even though createTask
 // had already errored.
 //
-//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, newTeaProgram, isInteractive)
+//nolint:paralleltest,lll // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, newTeaProgram, isInteractive)
 func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 	isolateWorkspace(t)
 
@@ -621,9 +684,24 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}

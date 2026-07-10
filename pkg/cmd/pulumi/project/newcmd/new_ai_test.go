@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
@@ -33,7 +32,7 @@ import (
 func TestErrorsOnNonHTTPBackend(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
@@ -66,7 +65,7 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 		"please log in to Pulumi Cloud to use Pulumi AI")
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
@@ -86,7 +85,7 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 		}
 	}
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},

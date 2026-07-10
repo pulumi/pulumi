@@ -105,7 +105,6 @@ func TestFilterOnName(t *testing.T) {
 				}, nil
 			},
 		}
-		testutil.MockBackendInstance(t, mockBackend)
 
 		testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 			CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -153,7 +152,6 @@ func TestFilterOnName(t *testing.T) {
 				}
 			},
 		}
-		testutil.MockBackendInstance(t, mockBackend)
 
 		testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 			CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -206,7 +204,6 @@ func TestMultipleTemplateSources_OrgTemplates(t *testing.T) {
 			}, nil
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
 
 	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -250,8 +247,8 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 				ProjectName:        "template3",
 				ProjectDescription: "An ASP.NET application running a simple container in a EKS Cluster",
 			}},
-			orgTemplate{t: template1, org: "org1", source: source, backend: cmdBackend.BackendInstance},
-			orgTemplate{t: template2, org: "org1", source: source, backend: cmdBackend.BackendInstance},
+			orgTemplate{t: template1, org: "org1", source: source, backend: mockBackend},
+			orgTemplate{t: template2, org: "org1", source: source, backend: mockBackend},
 		},
 		template)
 }
@@ -272,7 +269,6 @@ func TestSurfaceListTemplateErrors_OrgTemplates(t *testing.T) {
 			return apitype.ListOrgTemplatesResponse{}, somethingWentWrong
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
 
 	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -318,7 +314,6 @@ func TestSurfaceListTemplateErrors_RegistryTemplates(t *testing.T) {
 	mockBackend := &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
 	}
-	testutil.MockBackendInstance(t, mockBackend)
 
 	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -360,7 +355,6 @@ func TestSurfaceOnEmptyError_OrgTemplates(t *testing.T) {
 			return apitype.ListOrgTemplatesResponse{}, nil
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
 
 	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -406,7 +400,6 @@ func TestSurfaceOnEmptyError_RegistryTemplates(t *testing.T) {
 			return mockRegistry
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
 
 	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -477,7 +470,6 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 			}, nil
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
 
 	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -503,7 +495,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 	template, err := source.Templates()
 	require.NoError(t, err)
 	assert.Equal(t,
-		[]Template{orgTemplate{t: template1, org: "org1", source: source, backend: cmdBackend.BackendInstance}},
+		[]Template{orgTemplate{t: template1, org: "org1", source: source, backend: mockBackend}},
 		template)
 	t.Cleanup(func() {
 		require.NoError(t, source.Close())
@@ -583,8 +575,13 @@ func createMockRegistrySource(
 	mockBackend := &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
 
 	return newImpl(ctx, "name1",
 		ScopeAll, workspace.TemplateKindPulumiProject,
@@ -695,8 +692,18 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 	mockBackend := &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
 
 	source := newImpl(ctx, "", ScopeAll, workspace.TemplateKindPulumiProject,
 		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
@@ -759,8 +766,18 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 	mockBackend := &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
 
 	source := newImpl(ctx, "target", ScopeAll, workspace.TemplateKindPulumiProject,
 		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
@@ -839,8 +856,18 @@ func TestRegistryTemplateResolution(t *testing.T) {
 	mockBackend := &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
 
 	testCases := []struct {
 		name                string
@@ -1035,8 +1062,18 @@ func TestVersionedTemplateResolution(t *testing.T) {
 	mockBackend := &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
 
 	testCases := []struct {
 		name                string
@@ -1155,8 +1192,18 @@ func TestVCSBackedTemplateRejectsVersion(t *testing.T) {
 	mockBackend := &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
 
 	source := newImpl(ctx, "github/pulumi/pulumi%2Ftemplates%2Ftypescript@1.0.0",
 		ScopeAll, workspace.TemplateKindPulumiProject,

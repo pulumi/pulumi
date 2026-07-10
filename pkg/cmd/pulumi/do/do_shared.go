@@ -31,6 +31,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc/codes"
@@ -252,44 +253,11 @@ func unionVariantMatches(prop resource.PropertyValue, typ schema.Type) bool {
 	return false
 }
 
-// evaluatePCLFile reads, binds, and evaluates a PCL input file against a caller-supplied schema. The bind callback
-// decides how the parsed file is type-checked (function vs. resource) and returns the schema property list used to
-// coerce values during evaluation.
-func evaluatePCLFile(
-	path, fileType string,
-	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
-	evalContext functionEvalContext,
-	inputFlags map[string]inputFlagValue,
-) (resource.PropertyMap, error) {
-	// When no input file is supplied we still run the bind step against an empty file so that the schema's
-	// required-input check fires.
-	var input io.Reader
-	filename := path
-	if path == "" {
-		input = strings.NewReader("")
-		filename = fmt.Sprintf("<no %s file>", fileType)
-	} else {
-		f, err := os.Open(path)
-		if err != nil {
-			return nil, fmt.Errorf("open %s file: %w", fileType, err)
-		}
-		defer contract.IgnoreClose(f)
-		input = f
-	}
-
-	attributeLiterals, err := inputFlagLiterals(inputFlags)
-	if err != nil {
-		return nil, err
-	}
-	return evaluatePCL(input, filename, fileType, bind, evalContext, attributeLiterals)
-}
-
 func evaluatePCL(
 	input io.Reader,
 	filename, fileType string,
 	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
 	evalContext functionEvalContext,
-	attributeLiterals map[string]string,
 ) (resource.PropertyMap, error) {
 	parser := hclsyntax.NewParser()
 	if err := parser.ParseFile(input, filename); err != nil {
@@ -300,9 +268,6 @@ func evaluatePCL(
 	}
 	contract.Assertf(len(parser.Files) == 1, "Should be one PCL file")
 	file := parser.Files[0]
-	if err := mergeAttributeLiterals(file, filename, fileType, attributeLiterals); err != nil {
-		return nil, err
-	}
 
 	attrs, inputType, properties, diagnostics := bind(file)
 	if diagnostics.HasErrors() {
@@ -360,40 +325,65 @@ func evaluateFile(
 	evalContext functionEvalContext,
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
+	var pcl []byte
+	var filename string
+	var literals map[string]string
 	if path == "" || inputFormat == "" || inputFormat == "pcl" {
-		return evaluatePCLFile(path, fileType, bind, evalContext, inputFlags)
-	}
-
-	converter, err := loadConverter(inputFormat)
-	if err != nil {
-		return nil, fmt.Errorf("load %s input converter: %w", inputFormat, err)
-	}
-	defer contract.IgnoreClose(converter)
-
-	source, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read %s file: %w", fileType, err)
-	}
-	resp, err := converter.ConvertSnippet(ctx, &plugin.ConvertSnippetRequest{
-		Filename:     path,
-		Source:       source,
-		TargetLoader: loaderTarget,
-		Package:      packageDescriptor,
-		Token:        token,
-		Attributes:   inputFlagAttributes(inputFlags),
-	})
-	if err != nil {
-		if status.Code(err) == codes.Unimplemented {
-			return nil, fmt.Errorf(
-				"%s %s converter does not support snippet conversion; use pcl format or try installing a newer %s converter",
-				inputFormat, fileType, inputFormat)
+		var err error
+		filename = path
+		if path == "" {
+			// Bind still runs against an empty file so the schema's required-input check fires.
+			filename = fmt.Sprintf("<no %s file>", fileType)
+		} else {
+			pcl, err = os.ReadFile(path)
+			if err != nil {
+				return nil, fmt.Errorf("open %s file: %w", fileType, err)
+			}
 		}
-		return nil, fmt.Errorf("generate PCL from %s file: %w", fileType, err)
+		literals, err = inputFlagLiterals(inputFlags)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		converter, err := loadConverter(inputFormat)
+		if err != nil {
+			return nil, fmt.Errorf("load %s input converter: %w", inputFormat, err)
+		}
+		defer contract.IgnoreClose(converter)
+
+		source, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("read %s file: %w", fileType, err)
+		}
+		resp, err := converter.ConvertSnippet(ctx, &plugin.ConvertSnippetRequest{
+			Filename:     path,
+			Source:       source,
+			TargetLoader: loaderTarget,
+			Package:      packageDescriptor,
+			Token:        token,
+			Attributes:   inputFlagAttributes(inputFlags),
+		})
+		if err != nil {
+			if status.Code(err) == codes.Unimplemented {
+				return nil, fmt.Errorf(
+					"%s %s converter does not support snippet conversion; use pcl format or try installing a newer %s converter",
+					inputFormat, fileType, inputFormat)
+			}
+			return nil, fmt.Errorf("generate PCL from %s file: %w", fileType, err)
+		}
+		if resp.Diagnostics.HasErrors() {
+			return nil, resp.Diagnostics
+		}
+		pcl = resp.Source
+		filename = resp.Filename
+		literals = resp.Attributes
 	}
-	if resp.Diagnostics.HasErrors() {
-		return nil, resp.Diagnostics
+
+	merged, err := mergeAttributeLiteralsIntoPCL(pcl, filename, fileType, literals)
+	if err != nil {
+		return nil, err
 	}
-	return evaluatePCL(bytes.NewReader(resp.Source), resp.Filename, fileType, bind, evalContext, resp.Attributes)
+	return evaluatePCL(bytes.NewReader(merged), filename, fileType, bind, evalContext)
 }
 
 func evaluateFunctionFile(
@@ -481,37 +471,49 @@ func inputFlagLiterals(inputFlags map[string]inputFlagValue) (map[string]string,
 	return attrs, nil
 }
 
-func mergeAttributeLiterals(
-	file *hclsyntax.File, filename, fileType string, attributes map[string]string,
-) error {
-	if len(attributes) == 0 {
-		return nil
+// mergeAttributeLiteralsIntoPCL merges `name = literal` attribute assignments into source at the
+// top level and returns the resulting PCL bytes. Each entry in attrs is a name and a serialized
+// PCL literal (e.g. `"foo"`, `42`, `true`) — the same shape converter plugins return from
+// ConvertSnippet and that inputFlagLiterals produces for --input-* flags. Uses hclwrite so an
+// existing attribute of the same name is replaced in place rather than duplicated, and non-flag
+// content (blocks, comments, formatting) survives the round trip.
+func mergeAttributeLiteralsIntoPCL(
+	source []byte, filename, fileType string, attrs map[string]string,
+) ([]byte, error) {
+	if len(attrs) == 0 {
+		return source, nil
 	}
-
-	names := make([]string, 0, len(attributes))
-	for name := range attributes {
+	// hclwrite needs a blank line after a one-line file with no trailing newline; otherwise a
+	// newly-added attribute can be appended to the existing attribute's token stream.
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
+	}
+	file, diags := hclwrite.ParseConfig(source, filename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	body := file.Body()
+	names := make([]string, 0, len(attrs))
+	for name := range attrs {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-
-	var overlay strings.Builder
-	for _, name := range names {
-		fmt.Fprintf(&overlay, "%s = %s\n", name, attributes[name])
-	}
-
-	parser := hclsyntax.NewParser()
 	overlayName := fmt.Sprintf("%s flags for %s", fileType, filename)
-	if err := parser.ParseFile(strings.NewReader(overlay.String()), overlayName); err != nil {
-		return fmt.Errorf("parse %s flags: %w", fileType, err)
+	for _, name := range names {
+		overlay, diags := hclwrite.ParseConfig(
+			[]byte(fmt.Sprintf("%s = %s\n", name, attrs[name])), overlayName, hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			return nil, fmt.Errorf("parse %s flag %s: %w", fileType, name, diags)
+		}
+		attr := overlay.Body().GetAttribute(name)
+		if attr == nil {
+			return nil, fmt.Errorf("parse %s flag %s: no attribute produced", fileType, name)
+		}
+		body.SetAttributeRaw(name, attr.Expr().BuildTokens(nil))
 	}
-	if parser.Diagnostics.HasErrors() {
-		return parser.Diagnostics
-	}
-	contract.Assertf(len(parser.Files) == 1, "Should be one PCL flags file")
-	for name, attr := range parser.Files[0].Body.Attributes {
-		file.Body.Attributes[name] = attr
-	}
-	return nil
+	out := file.Bytes()
+	return out, nil
 }
 
 func pclLiteral(flag inputFlagValue) (string, error) {

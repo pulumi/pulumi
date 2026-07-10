@@ -25,8 +25,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestParseTagFilter(t *testing.T) {
@@ -142,7 +147,7 @@ func TestListStacksPagination(t *testing.T) {
 		},
 	}
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -150,6 +155,19 @@ func TestListStacksPagination(t *testing.T) {
 			requestIdx := len(requestsMade) - 1
 			response := cannedResponses[requestIdx]
 			return response.summaries, response.outContToken, nil
+		},
+	}
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
@@ -196,7 +214,7 @@ func TestListStacksPagination(t *testing.T) {
 func TestListStacksJsonProgress(t *testing.T) {
 	mockTime := time.Unix(1, 0)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -225,6 +243,19 @@ func TestListStacksJsonProgress(t *testing.T) {
 		},
 		SupportsProgressF: func() bool {
 			return true
+		},
+	}
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
@@ -265,7 +296,7 @@ func TestListStacksJsonProgress(t *testing.T) {
 func TestListStacksJsonNoProgress(t *testing.T) {
 	mockTime := time.Unix(1, 0)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -287,6 +318,19 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 		},
 		SupportsProgressF: func() bool {
 			return false
+		},
+	}
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 

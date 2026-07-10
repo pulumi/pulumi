@@ -817,6 +817,7 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 					"beforeCreate", "afterCreate",
 					"beforeUpdate", "afterUpdate",
 					"beforeDelete", "afterDelete",
+					"onError",
 				}
 				obj, isObj := item.Value.(*model.ObjectConsExpression)
 				if !isObj {
@@ -840,12 +841,38 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 							Subject:  kv.Key.SyntaxNode().Range().Ptr(),
 						})
 					}
-					if _, isList := kv.Value.(*model.TupleConsExpression); !isList {
+					list, isList := kv.Value.(*model.TupleConsExpression)
+					if !isList {
 						diagnostics = append(diagnostics, &hcl.Diagnostic{
 							Severity: hcl.DiagError,
 							Summary:  invalidHooksMsg,
 							Subject:  kv.Value.SyntaxNode().Range().Ptr(),
 						})
+						continue
+					}
+					// The kind of each referenced hook must match the binding: `onError` takes
+					// error hooks, the lifecycle bindings take resource hooks.
+					for _, expr := range list.Expressions {
+						trav, isTrav := expr.(*model.ScopeTraversalExpression)
+						if !isTrav || len(trav.Parts) == 0 {
+							continue
+						}
+						hook, isHook := trav.Parts[0].(*Hook)
+						if !isHook {
+							continue
+						}
+						wantKind := HookKindResource
+						if hookType == "onError" {
+							wantKind = HookKindError
+						}
+						if hook.Kind != wantKind {
+							diagnostics = append(diagnostics, &hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary: fmt.Sprintf("cannot bind %s hook '%s' to '%s'",
+									hook.Kind, hook.Name(), hookType),
+								Subject: expr.SyntaxNode().Range().Ptr(),
+							})
+						}
 					}
 				}
 				continue // skip generic type check; structural validation is done above

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:govet // This file is deprecated and will be removed in a future release.
 package provider
 
 import (
@@ -22,22 +23,32 @@ import (
 )
 
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.HostClient].
+//
+//go:fix inline
 type HostClient = sdkprovider.HostClient
 
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.Options].
+//
+//go:fix inline
 type Options = sdkprovider.Options
 
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.NewHostClient].
+//
+//go:fix inline
 func NewHostClient(addr string) (*HostClient, error) {
 	return sdkprovider.NewHostClient(addr)
 }
 
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.Main].
+//
+//go:fix inline
 func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderServer, error)) error {
 	return sdkprovider.Main(name, provMaker)
 }
 
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.MainContext].
+//
+//go:fix inline
 func MainContext(
 	ctx context.Context,
 	name string,
@@ -47,11 +58,15 @@ func MainContext(
 }
 
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.MainWithOptions].
+//
+//go:fix inline
 func MainWithOptions(opts Options) error {
 	return sdkprovider.MainWithOptions(opts)
 }
 
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.ComponentMain].
+//
+//go:fix inline
 func ComponentMain(
 	name string,
 	version string,
