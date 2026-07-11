@@ -270,6 +270,77 @@ func (s *Stack) Up(ctx context.Context) (Result, error) {
 	return Result{Changes: changes, Outputs: outs}, nil
 }
 
+// UpMany converges several stacks as one coordinated multistack operation. The backend derives a
+// cross-stack dependency graph from the StackReferences in the members' snapshots and schedules
+// them topologically -- parallel within a dependency level -- so a member that reads another's
+// outputs waits for it. This is cross-stack ordering with no dependsOn: the caller lists the
+// members and the engine orders them. Each stack's Result is keyed by its stack name.
+func UpMany(ctx context.Context, specs []Options) (map[string]Result, error) {
+	return runMany(ctx, specs, false /*preview*/)
+}
+
+// PreviewMany is UpMany's dry run: it plans all the members together, cascading cross-stack
+// references, and returns their projected changes and outputs without converging anything.
+func PreviewMany(ctx context.Context, specs []Options) (map[string]Result, error) {
+	return runMany(ctx, specs, true /*preview*/)
+}
+
+func runMany(ctx context.Context, specs []Options, preview bool) (map[string]Result, error) {
+	if len(specs) == 0 {
+		return map[string]Result{}, nil
+	}
+	entries := make([]backend.MultistackEntry, len(specs))
+	stacks := make([]*Stack, len(specs))
+	for i, o := range specs {
+		s, err := Select(ctx, o)
+		if err != nil {
+			return nil, err
+		}
+		op, err := s.operation(ctx, preview)
+		if err != nil {
+			return nil, err
+		}
+		entries[i] = backend.MultistackEntry{Stack: s.stack, Op: op, Dir: o.WorkDir}
+		stacks[i] = s
+	}
+
+	run := backend.MultistackUpdate
+	if preview {
+		run = backend.MultistackPreview
+	}
+	results, err := run(ctx, entries, backend.MultistackOptions{
+		Engine:      specs[0].Engine,
+		DisplayOpts: backenddisplay.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[string]Result, len(stacks))
+	for _, s := range stacks {
+		name := s.stack.Ref().Name().String()
+		res := Result{}
+		if r := results[string(s.stack.Ref().FullyQualifiedName())]; r != nil {
+			if r.Error != nil {
+				return nil, fmt.Errorf("stack %s: %w", name, r.Error)
+			}
+			res.Changes = r.Changes
+			if preview {
+				res.Outputs = projectedStackOutputs(r.Plan)
+			}
+		}
+		if !preview {
+			outs, oerr := s.Outputs(ctx)
+			if oerr != nil {
+				return nil, oerr
+			}
+			res.Outputs = outs
+		}
+		out[name] = res
+	}
+	return out, nil
+}
+
 // Destroy tears down all of the stack's resources. (The backend's destroy path does not
 // surface a streaming event channel, so OnEvent does not fire for Destroy.)
 func (s *Stack) Destroy(ctx context.Context) (display.ResourceChanges, error) {
