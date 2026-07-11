@@ -47,6 +47,11 @@ type defaultProviders struct {
 	requests        chan defaultProviderRequest
 	providerRegChan chan<- *registerResourceEvent
 	cancel          <-chan bool
+
+	// goalStack and goalProject override the deployment-level stack/project in Goals
+	// for multistack deployments where each source has its own stack/project.
+	goalStack   tokens.QName
+	goalProject tokens.PackageName
 }
 
 type defaultProviderResponse struct {

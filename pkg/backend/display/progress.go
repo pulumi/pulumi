@@ -1343,7 +1343,7 @@ func (display *ProgressDisplay) ensureParentRow(metadata *engine.StepEventMetada
 		return
 	}
 	parentURN := metadata.Res.Parent
-	if parentURN == "" || parentURN == display.stackUrn {
+	if parentURN == "" || display.stackUrns[parentURN] {
 		return
 	}
 	if _, has := display.eventUrnToResourceRow[parentURN]; has {
@@ -1619,7 +1619,6 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 				display:              display,
 				tick:                 display.currentTick,
 				diagInfo:             &DiagInfo{},
-				policyPayloads:       policyPayloads,
 				step:                 engine.StepEventMetadata{URN: urn, Op: deploy.OpSame},
 				hideRowIfUnnecessary: false,
 			}

@@ -983,7 +983,7 @@ func NewMultistackSnapshotManager(
 	secretsManager secrets.Manager,
 	baseSnap *deploy.Snapshot,
 ) *SnapshotManager {
-	mgr := NewSnapshotManager(persister, secretsManager, baseSnap)
+	mgr := NewSnapshotManager(persister, secretsManager, baseSnap, nil)
 	mgr.skipIntegrityChecks = true
 	return mgr
 }

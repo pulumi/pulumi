@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -43,7 +44,7 @@ type MultistackEntry struct {
 // MultistackContext provides the execution context for a multistack engine operation.
 type MultistackContext struct {
 	Cancel           *context.Context
-	Events           chan<- Event          // unified events channel
+	Events           chan<- Event               // unified events channel
 	SnapshotManagers map[string]SnapshotManager // stack FQN → per-stack manager (nil for preview)
 	BackendClient    deploy.BackendClient
 	ParentSpan       opentracing.SpanContext
@@ -122,9 +123,9 @@ func MultistackUpdate(
 		// Create a plugin context for the deployment (needed for provider operations during destroy).
 		projinfo := &Projinfo{Proj: entries[0].Project, Root: entries[0].Root}
 		_, _, plugctx, err := ProjectInfoContext(
-			projinfo, opts.Host,
+			context.Background(), projinfo, opts.Host,
 			deployOpts.Diag, deployOpts.StatusDiag,
-			nil, /* debugContext */
+			nil,                                           /* debugContext */
 			opts.DisableProviderPreview, tracingSpan, nil, /* config */
 		)
 		if err != nil {
@@ -145,7 +146,7 @@ func MultistackUpdate(
 			}
 
 			pwd, main, plugctx, err := ProjectInfoContext(
-				projinfo, opts.Host,
+				context.Background(), projinfo, opts.Host,
 				deployOpts.Diag, deployOpts.StatusDiag,
 				nil, /* debugContext */
 				opts.DisableProviderPreview, tracingSpan, decConfig,
@@ -178,7 +179,7 @@ func MultistackUpdate(
 				Parallel:                  opts.Parallel,
 				DisableResourceReferences: opts.DisableResourceReferences,
 				DisableOutputValues:       opts.DisableOutputValues,
-			}, panicErrs)
+			}, panicErrs, nil /* observer */, nil /* dumpToFile */)
 
 			sources[i] = source
 		}
@@ -254,7 +255,6 @@ func MultistackUpdate(
 		plugctxs[0], deplOpts, actions, syntheticTarget, mergedSnapshot,
 		nil, /* plan */
 		multiSource,
-		nil, /* localPolicyPackPaths */
 		mctx.BackendClient,
 		nil, /* resourceHooks - each source has its own */
 	)
@@ -276,7 +276,7 @@ func MultistackUpdate(
 	changes := actions.Changes()
 
 	// Emit summary event.
-	emitter.summaryEvent(dryRun, actions.MaybeCorrupt(), duration, changes, nil)
+	emitter.summaryEvent(dryRun, actions.MaybeCorrupt(), duration, changes, nil, apitype.OperationResultFromError(walkErr))
 
 	// Close the snapshot manager.
 	if snapshotMgr != nil {
@@ -376,8 +376,8 @@ func (a *multistackPreviewActions) OnPolicyRemediation(
 ) {
 	a.opts.Events.policyRemediationEvent(urn, r, before, after)
 }
-func (a *multistackPreviewActions) OnPolicyAnalyzeSummary(summary plugin.PolicySummary) {}
-func (a *multistackPreviewActions) OnPolicyRemediateSummary(summary plugin.PolicySummary) {}
+func (a *multistackPreviewActions) OnPolicyAnalyzeSummary(summary plugin.PolicySummary)      {}
+func (a *multistackPreviewActions) OnPolicyRemediateSummary(summary plugin.PolicySummary)    {}
 func (a *multistackPreviewActions) OnPolicyAnalyzeStackSummary(summary plugin.PolicySummary) {}
 
 func (a *multistackPreviewActions) Changes() display.ResourceChanges {
@@ -473,8 +473,8 @@ func (a *multistackUpdateActions) OnPolicyRemediation(
 ) {
 	a.opts.Events.policyRemediationEvent(urn, r, before, after)
 }
-func (a *multistackUpdateActions) OnPolicyAnalyzeSummary(summary plugin.PolicySummary) {}
-func (a *multistackUpdateActions) OnPolicyRemediateSummary(summary plugin.PolicySummary) {}
+func (a *multistackUpdateActions) OnPolicyAnalyzeSummary(summary plugin.PolicySummary)      {}
+func (a *multistackUpdateActions) OnPolicyRemediateSummary(summary plugin.PolicySummary)    {}
 func (a *multistackUpdateActions) OnPolicyAnalyzeStackSummary(summary plugin.PolicySummary) {}
 
 func (a *multistackUpdateActions) Changes() display.ResourceChanges {

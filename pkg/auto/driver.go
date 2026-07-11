@@ -277,7 +277,7 @@ func (s *Stack) Destroy(ctx context.Context) (display.ResourceChanges, error) {
 	if err != nil {
 		return nil, err
 	}
-	return backend.DestroyStack(ctx, s.stack, op)
+	return backend.DestroyStack(ctx, s.stack, op, nil)
 }
 
 // Outputs reads the stack's current outputs from its latest snapshot.

@@ -352,7 +352,7 @@ func NewDestroyCmd() *cobra.Command {
 				SecretsManager:     sm,
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
-			})
+			}, nil)
 
 			out := cmd.OutOrStdout()
 			if destroyErr == nil && protectedCount > 0 && !jsonDisplay && output != "json" {

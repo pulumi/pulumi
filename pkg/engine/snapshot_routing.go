@@ -157,7 +157,7 @@ func (r *RoutingSnapshotManager) Write(base *deploy.Snapshot) error {
 			manifest = orig.Manifest
 		}
 
-		snap := deploy.NewSnapshot(manifest, sm, cleaned, ops, deploy.SnapshotMetadata{})
+		snap := deploy.NewSnapshot(manifest, sm, cleaned, ops, deploy.SnapshotMetadata{}, nil)
 		if err := mgr.Write(snap); err != nil {
 			return fmt.Errorf("writing snapshot for stack %q: %w", fqn, err)
 		}
