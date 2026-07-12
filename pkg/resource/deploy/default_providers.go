@@ -165,8 +165,14 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
 		goal: resource.NewGoal{
-			Type:                    sdkproviders.MakeProviderType(req.Package()),
-			Name:                    req.DefaultName(),
+			Type: sdkproviders.MakeProviderType(req.Package()),
+			Name: req.DefaultName(),
+			// Namespace the default provider to this source's stack/project so that, when N stacks
+			// are co-deployed into one synthetic deployment, each member's default provider gets its
+			// own URN instead of every member colliding on the deployment-level project. Zero in the
+			// single-stack case (matches the deployment), so its URN is unchanged.
+			Stack:                   d.goalStack,
+			Project:                 d.goalProject,
 			Custom:                  true,
 			Properties:              inputs,
 			Parent:                  "",

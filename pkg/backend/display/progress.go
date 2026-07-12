@@ -1219,6 +1219,9 @@ func sortedStackUrns(stackUrns map[resource.URN]bool, labels map[string]string) 
 // stackLabel returns the display label for a stack URN. If StackLabels is set (multistack mode),
 // uses the logical name (e.g., "vpc"); otherwise falls back to the project name from the URN.
 func stackLabel(urn resource.URN, labels map[string]string) string {
+	if urn == "" {
+		return ""
+	}
 	project := string(urn.Project())
 	if labels != nil {
 		if label, ok := labels[project]; ok {
@@ -1651,10 +1654,14 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 // findStackRootForURN finds the stack root URN that a resource belongs to by matching
 // the stack and project portions of the URN. Falls back to the primary stack URN.
 func (display *ProgressDisplay) findStackRootForURN(urn resource.URN) resource.URN {
-	for stackUrn := range display.stackUrns {
-		// Match if the resource's stack and project match the root's stack and project.
-		if stackUrn != "" && urn.Stack() == stackUrn.Stack() && urn.Project() == stackUrn.Project() {
-			return stackUrn
+	// A row without a URN yet (a synthetic root, a summary placeholder) has no stack to match on;
+	// urn.Stack() would panic on an empty URN, so fall back to the primary stack root.
+	if urn != "" {
+		for stackUrn := range display.stackUrns {
+			// Match if the resource's stack and project match the root's stack and project.
+			if stackUrn != "" && urn.Stack() == stackUrn.Stack() && urn.Project() == stackUrn.Project() {
+				return stackUrn
+			}
 		}
 	}
 	return display.primaryStackUrn

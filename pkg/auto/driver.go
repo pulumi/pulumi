@@ -274,20 +274,21 @@ func (s *Stack) Up(ctx context.Context) (Result, error) {
 // cross-stack dependency graph from the StackReferences in the members' snapshots and schedules
 // them topologically -- parallel within a dependency level -- so a member that reads another's
 // outputs waits for it. This is cross-stack ordering with no dependsOn: the caller lists the
-// members and the engine orders them. Each stack's Result is keyed by its stack name.
-func UpMany(ctx context.Context, specs []Options) (map[string]Result, error) {
+// members and the engine orders them. Results are returned in the same order as specs (stack
+// names can repeat across a set -- every environment is "dev" -- so position, not name, is the key).
+func UpMany(ctx context.Context, specs []Options) ([]Result, error) {
 	return runMany(ctx, specs, false /*preview*/)
 }
 
 // PreviewMany is UpMany's dry run: it plans all the members together, cascading cross-stack
-// references, and returns their projected changes and outputs without converging anything.
-func PreviewMany(ctx context.Context, specs []Options) (map[string]Result, error) {
+// references, and returns their projected changes and outputs (in spec order) without converging.
+func PreviewMany(ctx context.Context, specs []Options) ([]Result, error) {
 	return runMany(ctx, specs, true /*preview*/)
 }
 
-func runMany(ctx context.Context, specs []Options, preview bool) (map[string]Result, error) {
+func runMany(ctx context.Context, specs []Options, preview bool) ([]Result, error) {
 	if len(specs) == 0 {
-		return map[string]Result{}, nil
+		return []Result{}, nil
 	}
 	entries := make([]backend.MultistackEntry, len(specs))
 	stacks := make([]*Stack, len(specs))
@@ -316,13 +317,12 @@ func runMany(ctx context.Context, specs []Options, preview bool) (map[string]Res
 		return nil, err
 	}
 
-	out := make(map[string]Result, len(stacks))
-	for _, s := range stacks {
-		name := s.stack.Ref().Name().String()
+	out := make([]Result, len(stacks))
+	for i, s := range stacks {
 		res := Result{}
 		if r := results[string(s.stack.Ref().FullyQualifiedName())]; r != nil {
 			if r.Error != nil {
-				return nil, fmt.Errorf("stack %s: %w", name, r.Error)
+				return nil, fmt.Errorf("stack %s: %w", s.stack.Ref().Name().String(), r.Error)
 			}
 			res.Changes = r.Changes
 			if preview {
@@ -336,7 +336,7 @@ func runMany(ctx context.Context, specs []Options, preview bool) (map[string]Res
 			}
 			res.Outputs = outs
 		}
-		out[name] = res
+		out[i] = res
 	}
 	return out, nil
 }

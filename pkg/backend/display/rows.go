@@ -366,10 +366,18 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		return columns
 	}
 
+	// A synthetic multistack root row can arrive before its stack's first event, with no URN yet;
+	// guard the type/name so an empty URN renders blank rather than panicking on urn.Type().
+	var typ, name string
+	if urn != "" {
+		typ = urn.Type().DisplayName()
+		name = escapeURN(urn.Name())
+	}
+
 	columns := make([]string, 5)
 	columns[opColumn] = data.display.getStepOpLabel(step, done)
-	columns[typeColumn] = urn.Type().DisplayName()
-	columns[nameColumn] = escapeURN(urn.Name())
+	columns[typeColumn] = typ
+	columns[nameColumn] = name
 	columns[statusColumn] = data.display.getStepStatus(step, done, failed, interrupted)
 	columns[infoColumn] = data.getInfoColumn()
 	return columns

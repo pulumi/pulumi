@@ -168,18 +168,24 @@ func MultistackUpdate(
 
 			resourceHooks := deploy.NewResourceHooks(plugctx.DialOptions)
 
-			source := deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
+			runinfo := &deploy.EvalRunInfo{
 				Proj:        entry.Project,
 				Pwd:         pwd,
 				Program:     main,
 				ProjectRoot: entry.Root,
 				Target:      entry.Target,
-			}, defaultProviderVersions, resourceHooks, deploy.EvalSourceOptions{
+			}
+			evalOpts := deploy.EvalSourceOptions{
 				DryRun:                    dryRun,
 				Parallel:                  opts.Parallel,
 				DisableResourceReferences: opts.DisableResourceReferences,
 				DisableOutputValues:       opts.DisableOutputValues,
-			}, panicErrs, nil /* observer */, nil /* dumpToFile */)
+			}
+			// The last arg is the runner that launches this member's language runtime; the
+			// single-stack path builds it via NewProgramSource. Passing nil nil-derefs in forkRun.
+			program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
+			source := deploy.NewEvalSource(plugctx, runinfo, defaultProviderVersions, resourceHooks,
+				evalOpts, panicErrs, nil, program)
 
 			sources[i] = source
 		}
