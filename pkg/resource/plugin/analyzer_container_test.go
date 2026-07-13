@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -87,17 +88,18 @@ type fakeHost struct {
 func (h *fakeHost) ServerAddr() string                 { return h.addr }
 func (h *fakeHost) AttachDebugger(spec DebugSpec) bool { return false }
 
-func TestNewPolicyAnalyzerAttachMode(t *testing.T) {
+func TestAttachPolicyAnalyzer(t *testing.T) {
+	t.Parallel()
 	addr := startFakeAnalyzer(t)
 	_, portStr, err := net.SplitHostPort(addr)
 	require.NoError(t, err)
-	t.Setenv(EnvPolicyPackAttach, "attach-pack:"+portStr)
+	port, err := strconv.Atoi(portStr)
+	require.NoError(t, err)
 
 	ctx, err := NewContext(t.Context(), nil, nil, &MockHost{}, nil, t.TempDir(), nil, false, nil)
 	require.NoError(t, err)
 
-	a, err := NewPolicyAnalyzer(&fakeHost{addr: "127.0.0.1:1"}, ctx, "attach-pack",
-		t.TempDir() /* no manifest needed: attach short-circuits */, nil, nil)
+	a, err := AttachPolicyAnalyzer(&fakeHost{addr: "127.0.0.1:1"}, ctx, "attach-pack", port, nil)
 	require.NoError(t, err)
 
 	info, err := a.GetAnalyzerInfo(t.Context())

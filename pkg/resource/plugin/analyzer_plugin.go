@@ -115,13 +115,13 @@ func NewPolicyAnalyzer(
 	if port, err := GetPolicyPackAttachPort(name); err != nil {
 		return nil, err
 	} else if port != nil {
-		return attachPolicyAnalyzer(host, ctx, name, *port, opts)
+		return AttachPolicyAnalyzer(host, ctx, name, *port, opts)
 	}
 
 	// A digest-pinned image ref (server-enforced OCI pack): boot the container
 	// directly; there is no local pack directory or manifest.
 	if opts != nil && opts.ImageRef != "" {
-		return newOCIPolicyAnalyzer(host, ctx, name, opts.ImageRef, "" /*version*/, "" /*description*/, opts)
+		return NewContainerPolicyAnalyzer(host, ctx, name, opts.ImageRef, "" /*version*/, "" /*description*/, opts)
 	}
 
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
@@ -141,7 +141,7 @@ func NewPolicyAnalyzer(
 		if proj.Description != nil {
 			description = *proj.Description
 		}
-		return newOCIPolicyAnalyzer(host, ctx, name, image, proj.Version, description, opts)
+		return NewContainerPolicyAnalyzer(host, ctx, name, image, proj.Version, description, opts)
 	}
 
 	handshake := func(

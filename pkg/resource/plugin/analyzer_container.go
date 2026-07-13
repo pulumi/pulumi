@@ -82,11 +82,11 @@ func localOCIImageRef(proj *workspace.PolicyPackProject, path string) (string, e
 	return ref, err
 }
 
-// newOCIPolicyAnalyzer launches the pack image in a container and connects to
-// its analyzer. version and description come from the pack's PulumiPolicy.yaml
+// NewContainerPolicyAnalyzer launches the pack image in a container and connects to its analyzer.
+// version and description come from the pack's PulumiPolicy.yaml
 // manifest when one was loaded (local packs); both are empty for a
 // digest-pinned ImageRef publish/install, which has no manifest to read.
-func newOCIPolicyAnalyzer(
+func NewContainerPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, image string, version, description string,
 	opts *PolicyAnalyzerOptions,
 ) (Analyzer, error) {
@@ -125,7 +125,7 @@ func newOCIPolicyAnalyzer(
 
 	// Handshake with an engine address the container can reach.
 	engineAddr := oci.EngineAddressFor(mode, host.ServerAddr())
-	if err := ociHandshake(ctx.Request(), client, name, engineAddr); err != nil {
+	if err := containerHandshake(ctx.Request(), client, name, engineAddr); err != nil {
 		contract.IgnoreClose(conn)
 		contract.IgnoreClose(container)
 		return nil, err
@@ -149,9 +149,9 @@ func newOCIPolicyAnalyzer(
 	}, nil
 }
 
-// attachPolicyAnalyzer connects to a policy pack that is already running at a
+// AttachPolicyAnalyzer connects to a policy pack that is already running at a
 // known loopback port (PULUMI_POLICY_PACK_ATTACH).
-func attachPolicyAnalyzer(
+func AttachPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, port int, opts *PolicyAnalyzerOptions,
 ) (Analyzer, error) {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
@@ -162,7 +162,7 @@ func attachPolicyAnalyzer(
 	}
 	client := pulumirpc.NewAnalyzerClient(conn)
 
-	if err := ociHandshake(ctx.Request(), client, name, host.ServerAddr()); err != nil {
+	if err := containerHandshake(ctx.Request(), client, name, host.ServerAddr()); err != nil {
 		contract.IgnoreClose(conn)
 		return nil, err
 	}
@@ -177,11 +177,11 @@ func attachPolicyAnalyzer(
 	}, nil
 }
 
-// ociHandshake performs the analyzer handshake over an established connection.
+// containerHandshake performs the analyzer handshake over an established connection.
 // Containerized/attached packs get no Root/ProgramDirectory: host paths are
 // meaningless inside the pack's filesystem. Unimplemented is tolerated, as in
 // the process-launch path.
-func ociHandshake(
+func containerHandshake(
 	reqCtx context.Context, client pulumirpc.AnalyzerClient, name tokens.QName, engineAddr string,
 ) error {
 	_, err := client.Handshake(reqCtx, &pulumirpc.AnalyzerHandshakeRequest{
