@@ -198,6 +198,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts ProgramOptions) (map[
 	for componentDir, component := range program.CollectComponents() {
 		componentFilename := filepath.Base(componentDir)
 		componentName := component.DeclarationName()
+		pcl.MapProvidersAsResources(component.Program)
 		componentGenerator := &generator{
 			program:     component.Program,
 			isComponent: true,
