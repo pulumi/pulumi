@@ -366,6 +366,12 @@ func closeEnough(a, b string) bool {
 // the minimum number of single-rune insertions, deletions, substitutions, and
 // adjacent transpositions, compared case-insensitively. Unlike plain
 // Levenshtein, a swapped pair like "lsit" for "list" costs 1, not 2.
+//
+// Dynamic programming over prefix pairs: each cell takes the cheapest way an
+// edit sequence could end — delete a's last rune, insert b's, match or
+// substitute the last runes, or, when the prefixes end in the same two runes
+// swapped, transpose them. The transposition case reads two rows up, hence
+// the full matrix rather than the usual two rows.
 func editDistance(a, b string) int {
 	ra, rb := []rune(strings.ToLower(a)), []rune(strings.ToLower(b))
 
