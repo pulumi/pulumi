@@ -454,6 +454,15 @@ func NoSDKCodegenChecks() bool {
 	return genSDKOnly
 }
 
+// runToolchainChecks reports whether the post-generation checks (compile, unit test) should run.
+// The checks invoke real language toolchains — e.g. `go build` over each generated SDK and its
+// full dependency graph — which is expensive, and their results do not depend on the host
+// platform, so CI only pays for them on Linux. All platforms still validate the generated files
+// against the goldens.
+func runToolchainChecks() bool {
+	return os.Getenv("CI") == "" || runtime.GOOS == "linux"
+}
+
 func init() {
 	noChecks := false
 	if env, ok := os.LookupEnv("PULUMI_TEST_SDK_NO_CHECKS"); ok {
@@ -627,6 +636,10 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			//nolint:paralleltest // test functions are ordered
 			for _, check := range checkOrder {
 				t.Run(check, func(t *testing.T) {
+					if !runToolchainChecks() {
+						t.Skip("Skipping toolchain checks: their results are platform-independent, " +
+							"so they only run on Linux in CI.")
+					}
 					if tt.ShouldSkipTest(opts.Language, check) {
 						t.Skip()
 					}
