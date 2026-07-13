@@ -368,25 +368,34 @@ func closeEnough(a, b string) bool {
 // Levenshtein, a swapped pair like "lsit" for "list" costs 1, not 2.
 func editDistance(a, b string) int {
 	ra, rb := []rune(strings.ToLower(a)), []rune(strings.ToLower(b))
-	d := make([][]int, len(ra)+1)
-	for i := range d {
-		d[i] = make([]int, len(rb)+1)
-		d[i][0] = i
+
+	// dist[i][j] is the edit distance between the first i runes of a and the
+	// first j runes of b, so dist[i][0] = i (delete everything) and
+	// dist[0][j] = j (insert everything).
+	dist := make([][]int, len(ra)+1)
+	for i := range dist {
+		dist[i] = make([]int, len(rb)+1)
+		dist[i][0] = i
 	}
 	for j := 1; j <= len(rb); j++ {
-		d[0][j] = j
+		dist[0][j] = j
 	}
+
 	for i := 1; i <= len(ra); i++ {
 		for j := 1; j <= len(rb); j++ {
-			cost := 1
-			if ra[i-1] == rb[j-1] {
-				cost = 0
+			deletion := dist[i-1][j] + 1
+			insertion := dist[i][j-1] + 1
+			substitution := dist[i-1][j-1]
+			if ra[i-1] != rb[j-1] {
+				substitution++
 			}
-			d[i][j] = min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1]+cost)
+			dist[i][j] = min(deletion, insertion, substitution)
+			// The last two runes of each prefix appear swapped: one
+			// transposition on top of whatever preceded them.
 			if i > 1 && j > 1 && ra[i-1] == rb[j-2] && ra[i-2] == rb[j-1] {
-				d[i][j] = min(d[i][j], d[i-2][j-2]+1)
+				dist[i][j] = min(dist[i][j], dist[i-2][j-2]+1)
 			}
 		}
 	}
-	return d[len(ra)][len(rb)]
+	return dist[len(ra)][len(rb)]
 }
