@@ -110,18 +110,13 @@ func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
 	hasPlugin func(workspace.PluginDescriptor) bool,
 ) (Analyzer, error) {
-	// Attach mode: the pack is already running (e.g. as a pod sidecar, or
-	// under a debugger); connect to it instead of launching anything.
-	if port, err := GetPolicyPackAttachPort(name); err != nil {
-		return nil, err
-	} else if port != nil {
-		return AttachPolicyAnalyzer(host, ctx, name, *port, opts)
-	}
-
-	// A digest-pinned image ref (server-enforced OCI pack): boot the container
-	// directly; there is no local pack directory or manifest.
+	// Container-image and attached packs never reach this function: the
+	// containerHost decorator (pkg/host/containerhost.go) intercepts them at
+	// the Host seam and launches or dials the pack itself. Hitting the checks
+	// below means the plugin host was not wrapped with host.NewContainerHost.
 	if opts != nil && opts.ImageRef != "" {
-		return NewContainerPolicyAnalyzer(host, ctx, name, opts.ImageRef, "" /*version*/, "" /*description*/, opts)
+		return nil, fmt.Errorf("policy pack %q is a container image (%s), which this host cannot launch; "+
+			"the plugin host must be wrapped with host.NewContainerHost", name, opts.ImageRef)
 	}
 
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
@@ -130,18 +125,9 @@ func NewPolicyAnalyzer(
 		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", policyPackPath, err)
 	}
 
-	// A local OCI pack (`--policy-pack ./dir`): run the locally built image
-	// named by the manifest's image option (tagged with the pack version).
 	if proj.Runtime.Name() == "oci" {
-		image, err := localOCIImageRef(proj, policyPackPath)
-		if err != nil {
-			return nil, err
-		}
-		var description string
-		if proj.Description != nil {
-			description = *proj.Description
-		}
-		return NewContainerPolicyAnalyzer(host, ctx, name, image, proj.Version, description, opts)
+		return nil, fmt.Errorf("policy pack %q has runtime \"oci\", which this host cannot launch; "+
+			"the plugin host must be wrapped with host.NewContainerHost", name)
 	}
 
 	handshake := func(

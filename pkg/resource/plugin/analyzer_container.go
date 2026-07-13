@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
@@ -68,19 +67,6 @@ func GetPolicyPackAttachPort(name tokens.QName) (*int, error) {
 }
 
 const analyzerReadyTimeout = 2 * time.Minute
-
-// localOCIImageRef resolves the image to run for a local `--policy-pack ./dir`
-// OCI pack. The image must have been built locally (the CLI never builds or
-// implicitly pulls for local packs).
-func localOCIImageRef(proj *workspace.PolicyPackProject, path string) (string, error) {
-	image, _ := proj.Runtime.Options()["image"].(string)
-	if image == "" {
-		return "", fmt.Errorf("policy pack at %q has runtime \"oci\" but no \"image\" runtime option; "+
-			"set runtime.options.image in PulumiPolicy.yaml to the pack's registry image", path)
-	}
-	ref, _, err := oci.ResolveRef(image, proj.Version, "")
-	return ref, err
-}
 
 // NewContainerPolicyAnalyzer launches the pack image in a container and connects to its analyzer.
 // version and description come from the pack's PulumiPolicy.yaml

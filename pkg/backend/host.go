@@ -38,10 +38,14 @@ func DefaultHostFactory(reg registry.Registry) engine.HostFactory {
 	return func(
 		ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext,
 	) (plugin.Host, error) {
-		return pkghost.New(ctx, d, statusD, debug,
+		pluginHost, err := pkghost.New(ctx, d, statusD, debug,
 			pkgWorkspace.EnsureLanguageInstalled,
 			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 			resolver)
+		if err != nil {
+			return nil, err
+		}
+		return pkghost.NewContainerHost(pluginHost), nil
 	}
 }
 

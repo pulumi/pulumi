@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plugin
+package host
 
 import (
 	"os"
@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -30,6 +31,10 @@ import (
 )
 
 const integrationImage = "pulumi-test/oci-policy-pack:integration"
+
+// fakeAnalyzerDir is the shared fake-analyzer build context; it stays with the
+// launcher package it exercises.
+const fakeAnalyzerDir = "../resource/plugin/oci/testdata/fake-analyzer"
 
 func requireDocker(t *testing.T) *oci.Runtime {
 	t.Helper()
@@ -45,43 +50,47 @@ func requireDocker(t *testing.T) *oci.Runtime {
 
 func buildIntegrationImage(t *testing.T, rt *oci.Runtime) {
 	t.Helper()
-	dir := filepath.Join("oci", "testdata", "fake-analyzer")
+	bin := filepath.Join(fakeAnalyzerDir, "fake-analyzer")
 
-	build := exec.Command("go", "build", "-o", filepath.Join(dir, "fake-analyzer"), "./"+dir)
+	build := exec.Command("go", "build", "-o", "fake-analyzer", ".")
+	build.Dir = fakeAnalyzerDir
 	build.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux")
 	out, err := build.CombinedOutput()
 	require.NoError(t, err, "building fake analyzer: %s", out)
-	t.Cleanup(func() { _ = os.Remove(filepath.Join(dir, "fake-analyzer")) })
+	t.Cleanup(func() { _ = os.Remove(bin) })
 
-	img := exec.Command(rt.Path, "build", "-t", integrationImage, dir)
+	img := exec.Command(rt.Path, "build", "-t", integrationImage, fakeAnalyzerDir)
 	out, err = img.CombinedOutput()
 	require.NoError(t, err, "building image: %s", out)
 }
 
-func TestOCIPolicyPackEndToEnd(t *testing.T) {
+func TestContainerHostEndToEnd(t *testing.T) {
 	t.Parallel()
 	rt := requireDocker(t)
 	buildIntegrationImage(t, rt)
 
-	// A local pack directory whose manifest points at the built image.
+	// A local pack directory whose manifest points at the built image. No tag
+	// in the image option: the pack version is the tag.
 	packDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(packDir, "PulumiPolicy.yaml"), []byte(
 		"runtime:\n  name: oci\n  options:\n    image: pulumi-test/oci-policy-pack\nversion: integration\n"), 0o600))
 
-	pctx, err := NewContext(t.Context(), nil, nil, &MockHost{}, nil, t.TempDir(), nil, false, nil)
+	base := &plugin.MockHost{ServerAddrF: func() string { return "127.0.0.1:1" }}
+	h := NewContainerHost(base)
+	pctx, err := plugin.NewContext(t.Context(), nil, nil, h, nil, t.TempDir(), nil, false, nil)
 	require.NoError(t, err)
 
-	a, err := NewPolicyAnalyzer(&fakeHost{addr: "127.0.0.1:1"}, pctx, "oci-integration-pack", packDir, nil, nil)
+	a, err := h.PolicyAnalyzer(pctx, "oci-integration-pack", packDir, nil)
 	require.NoError(t, err)
-	// Stop the container even if an assertion below aborts the test; Close is
-	// idempotent, so the happy-path Close below is unaffected.
+	// Reap the container even if an assertion below aborts the test; Close is
+	// idempotent, so the happy-path ReleaseContext below is unaffected.
 	t.Cleanup(func() { _ = a.Close() })
 
 	info, err := a.GetAnalyzerInfo(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "oci-integration-pack", info.Name)
 
-	analyzeResp, err := a.Analyze(t.Context(), AnalyzerResource{
+	analyzeResp, err := a.Analyze(t.Context(), plugin.AnalyzerResource{
 		URN:        resource.URN("urn:pulumi:stack::proj::aws:s3/bucket:Bucket::b"),
 		Type:       tokens.Type("aws:s3/bucket:Bucket"),
 		Name:       "b",
@@ -91,13 +100,14 @@ func TestOCIPolicyPackEndToEnd(t *testing.T) {
 	require.Len(t, analyzeResp.Diagnostics, 1)
 	assert.Equal(t, "ran-in-container", analyzeResp.Diagnostics[0].Message)
 
-	require.NoError(t, a.Close())
+	// ReleaseContext is the production teardown path (Context.Close calls it):
+	// it must stop the container the decorator booted for this context.
+	require.NoError(t, h.ReleaseContext(pctx))
 
-	// The container must be gone after Close (launched with --rm). Ctrl-C /
-	// engine shutdown reach the same path: the host closes its analyzers,
-	// which invokes this Close — so this assertion also covers the spec's
+	// The container must be gone (launched with --rm). Ctrl-C / engine
+	// shutdown reach the same path, so this also covers the spec's
 	// cancellation requirement (no orphaned containers on interrupt).
 	out, err := exec.Command(rt.Path, "ps", "--filter", "label="+oci.LabelKey, "--format", "{{.ID}}").Output()
 	require.NoError(t, err)
-	assert.Empty(t, string(out), "no policy pack containers should survive Close")
+	assert.Empty(t, string(out), "no policy pack containers should survive ReleaseContext")
 }
