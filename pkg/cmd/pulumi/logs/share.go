@@ -32,19 +32,25 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine/encryptedlog"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func newShareCmd(ws pkgWorkspace.Context) *cobra.Command {
+func newShareCmd(
+	ws pkgWorkspace.Context,
+	stack *string,
+	createEncryptionSession func(ctx context.Context, ws pkgWorkspace.Context) (string, []byte, error),
+) *cobra.Command {
 	var includeSecrets bool
 	var latest bool
 
 	cmd := &cobra.Command{
-		Use:   "share [filename]",
+		Use:   "share",
 		Short: "Re-encrypt a log file for sharing with Pulumi support",
 		Long: "Create a copy of a log file that can be safely shared with\n" +
 			"Pulumi support. The log content is re-encrypted with a key\n" +
@@ -57,10 +63,9 @@ func newShareCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"\n" +
 			"By default, secret values in the log are redacted. Use\n" +
 			"--include-secrets to include them in the shared log.",
-		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			stackName, _ := cmd.Flags().GetString("stack")
+			stackName := *stack
 
 			var filename string
 			if len(args) > 0 {
@@ -122,6 +127,11 @@ func newShareCmd(ws pkgWorkspace.Context) *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "filename"}},
+		Required:  0,
+	})
 
 	cmd.Flags().BoolVar(&latest, "latest", false,
 		"Share the most recent log file without prompting")
@@ -212,27 +222,24 @@ func writeEncryptedLog(outPath string, sessionID string, sessionKey []byte, plai
 
 	key, err := encryptedlog.NewPreparedKey(sessionKey, []byte(sessionID))
 	if err != nil {
-		os.Remove(outPath)
+		contract.IgnoreError(os.Remove(outPath))
 		return fmt.Errorf("preparing encryption key: %w", err)
 	}
 	w, err := encryptedlog.NewWriterFromKey(outFile, key)
 	if err != nil {
-		os.Remove(outPath)
+		contract.IgnoreError(os.Remove(outPath))
 		return fmt.Errorf("creating encrypted writer: %w", err)
 	}
 	if _, err := w.Write(plaintext); err != nil {
-		os.Remove(outPath)
+		contract.IgnoreError(os.Remove(outPath))
 		return fmt.Errorf("writing shared log: %w", err)
 	}
 	if err := w.Close(); err != nil {
-		os.Remove(outPath)
+		contract.IgnoreError(os.Remove(outPath))
 		return fmt.Errorf("closing shared log: %w", err)
 	}
 	return nil
 }
-
-// createEncryptionSession is a variable so tests can replace it with a mock.
-var createEncryptionSession = createEncryptionSessionFromAPI
 
 func createEncryptionSessionFromAPI(
 	ctx context.Context, ws pkgWorkspace.Context,

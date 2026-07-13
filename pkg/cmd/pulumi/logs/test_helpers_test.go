@@ -71,6 +71,6 @@ func assertFileDoesNotContain(t *testing.T, path, substr string) {
 	t.Helper()
 	data, err := os.ReadFile(path)
 	require.NoError(t, err, "reading %s", path)
-	require.False(t, strings.Contains(string(data), substr),
+	require.NotContains(t, string(data), substr,
 		"expected %s to NOT contain %q", path, substr)
 }

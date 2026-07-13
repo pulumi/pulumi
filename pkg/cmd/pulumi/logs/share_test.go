@@ -16,31 +16,16 @@ package logs
 
 import (
 	"bytes"
-	"context"
 	"crypto/rand"
 	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var testSessionKey = make([]byte, 32)
-
-func init() {
-	// Generate a random test session key.
-	if _, err := rand.Read(testSessionKey); err != nil {
-		panic(err)
-	}
-
-	createEncryptionSession = func(_ context.Context, _ pkgWorkspace.Context) (string, []byte, error) {
-		return "mock-session-id", testSessionKey, nil
-	}
-}
 
 func TestShareGzipLogIntegration(t *testing.T) {
 	t.Parallel()

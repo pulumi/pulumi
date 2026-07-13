@@ -200,7 +200,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	logsCmd.AddCommand(newDecryptCmd(ws))
 	logsCmd.AddCommand(newListCmd())
 	logsCmd.AddCommand(newRemoveCmd())
-	logsCmd.AddCommand(newShareCmd(ws))
+	logsCmd.AddCommand(newShareCmd(ws, &stackName, createEncryptionSessionFromAPI))
 
 	logsCmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
