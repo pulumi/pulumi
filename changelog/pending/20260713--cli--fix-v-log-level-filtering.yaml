@@ -1,0 +1,6 @@
+component: cli
+kind: fix
+body: Respect the -v log level again so that without -v only warnings and errors are written to stderr
+time: 2026-07-13T00:00:00+00:00
+custom:
+  PR: "23910"
