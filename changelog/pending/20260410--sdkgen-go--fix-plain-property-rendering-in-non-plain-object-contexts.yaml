@@ -1,4 +1,6 @@
-changes:
-- type: fix
-  scope: sdkgen/go
-  description: Fix Go codegen for plain properties nested inside non-plain objects
+component: sdkgen/go
+kind: fix
+body: Fix Go codegen for plain properties nested inside non-plain objects
+time: 2026-04-10T11:17:55Z
+custom:
+    PR: "22524"
