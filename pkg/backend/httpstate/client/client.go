@@ -1599,7 +1599,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	}
 
 	if !env.DisableJournaling.Value() {
-		req.JournalVersion = 1
+		req.JournalVersion = apitype.LatestJournalVersion
 	}
 
 	var resp apitype.StartUpdateResponse

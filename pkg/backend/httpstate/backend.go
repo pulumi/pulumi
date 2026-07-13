@@ -1885,6 +1885,14 @@ func (b *cloudBackend) createAndStartUpdate(
 		}
 		return client.UpdateIdentifier{}, updateMetadata{}, err
 	}
+	// The service echoes back the negotiated journal version, which is expected to be no greater than the
+	// version we requested. Clamp defensively: a service advertising a newer protocol than this client knows
+	// how to emit must not make us journal entries in a format we cannot produce.
+	if journalVersion > apitype.LatestJournalVersion {
+		logging.V(3).Infof("clamping negotiated journal version %d to %d",
+			journalVersion, apitype.LatestJournalVersion)
+		journalVersion = apitype.LatestJournalVersion
+	}
 	// Any non-preview update will be considered part of the stack's update history.
 	if action != apitype.PreviewUpdate {
 		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
