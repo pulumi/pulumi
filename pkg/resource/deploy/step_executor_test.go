@@ -115,6 +115,12 @@ func (e *mockEvents) OnRebuiltBaseState() error {
 	return nil
 }
 
+func (e *mockEvents) OnStateMigration(
+	removed []*pkgresource.State, migrated []*pkgresource.State, successors map[resource.URN]resource.URN,
+) error {
+	return nil
+}
+
 var _ Events = (*mockEvents)(nil)
 
 func TestStepExecutor(t *testing.T) {

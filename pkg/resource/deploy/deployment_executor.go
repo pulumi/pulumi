@@ -236,6 +236,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 
 	// Set up a step generator and executor for this deployment.
 	ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, false)
+	// State migrations rewrite the deployment's base state mid-deployment; the step generator pauses the step
+	// executor while doing so.
+	ex.stepGen.stepExecLock = ex.stepExec
 
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.

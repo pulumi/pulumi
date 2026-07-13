@@ -29,6 +29,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -1174,6 +1175,12 @@ func (acts *updateActions) OnRebuiltBaseState() error {
 	return acts.Context.SnapshotManager.RebuiltBaseState()
 }
 
+func (acts *updateActions) OnStateMigration(
+	removed []*pkgresource.State, migrated []*pkgresource.State, successors map[resource.URN]resource.URN,
+) error {
+	return acts.Context.SnapshotManager.StateMigration(removed, migrated, successors)
+}
+
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
@@ -1393,6 +1400,12 @@ func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
 }
 
 func (acts *previewActions) OnRebuiltBaseState() error {
+	return nil
+}
+
+func (acts *previewActions) OnStateMigration(
+	removed []*pkgresource.State, migrated []*pkgresource.State, successors map[resource.URN]resource.URN,
+) error {
 	return nil
 }
 

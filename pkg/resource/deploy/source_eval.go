@@ -937,6 +937,8 @@ func (rm *resmon) supportsFeatureID(id string) bool {
 		return true
 	case "sendsOptionsToHooks":
 		return true
+	case "stateMigrations":
+		return true
 	}
 	return false
 }
@@ -981,6 +983,9 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	}
 	if rm.supportsFeatureID("sendsOptionsToHooks") {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
+	}
+	if rm.supportsFeatureID("stateMigrations") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS)
 	}
 	return features
 }
