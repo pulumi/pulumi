@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -40,40 +41,20 @@ import (
 )
 
 func resourceSchemaHelp(res *schema.Resource) string {
+	color := cmdutil.GetGlobalColorization()
 	var b strings.Builder
-	writeProperties := func(title string, properties []*schema.Property, includeRequired bool) {
-		if len(properties) == 0 {
-			return
-		}
+	writeSection := func(title string, properties []*schema.Property, kind schemainfo.Kind) {
 		if b.Len() > 0 {
-			trimmed := strings.TrimSuffix(b.String(), "\n")
-			b.Reset()
-			b.WriteString(trimmed)
-			b.WriteString("\n\n")
+			// WriteProperties output ends in a newline; add one more to separate sections.
+			b.WriteByte('\n')
 		}
-		b.WriteString(title)
-		b.WriteString(":\n")
-		for _, property := range properties {
-			fmt.Fprintf(&b, "  %s (%s", property.Name, unwrapType(property.Type))
-			if includeRequired {
-				if property.IsRequired() {
-					b.WriteString(", required")
-				} else {
-					b.WriteString(", optional")
-				}
-			}
-			b.WriteString(")")
-			if property.Comment != "" {
-				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(cleanComment(property.Comment), "\n", " "))
-			}
-			b.WriteString("\n")
-		}
+		schemainfo.WriteProperties(&b, color, title, schemainfo.BoundProperties(properties), kind)
 	}
 
-	writeProperties("Inputs", res.InputProperties, true)
-	writeProperties("Outputs", res.Properties, false)
-	if res.ListInputs != nil {
-		writeProperties("List Inputs", res.ListInputs.Properties, true)
+	writeSection("Inputs", res.InputProperties, schemainfo.Inputs)
+	writeSection("Outputs", res.Properties, schemainfo.Outputs)
+	if res.ListInputs != nil && len(res.ListInputs.Properties) > 0 {
+		writeSection("List Inputs", res.ListInputs.Properties, schemainfo.ListInputs)
 	}
 	return strings.TrimSuffix(b.String(), "\n")
 }
@@ -131,32 +112,26 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 				return err
 			}
 			ctx := cmd.Context()
-			if err := pc.configureProvider(cmd, ctx); err != nil {
-				return err
-			}
 			urn := resourceURN(res)
-			inputs, err := evaluateResourceFile(
-				ctx, inputFile, "input", pc.format, res, pc.evalContext(),
-				pc.converter, pc.loaderTarget, pc.packageDescriptor,
-				collectInputFlags(cmd, "input", res.InputProperties))
-			if err != nil {
-				return fmt.Errorf("parse input file: %w", err)
+			var checked resource.PropertyMap
+			prepare := func() (*resource.State, error) {
+				if err := pc.configureProvider(cmd, ctx); err != nil {
+					return nil, err
+				}
+				inputs, err := evaluateResourceFile(
+					ctx, inputFile, "input", pc.format, res, pc.evalContext(),
+					pc.converter, pc.loaderTarget, pc.packageDescriptor,
+					collectInputFlags(cmd, "input", res.InputProperties))
+				if err != nil {
+					return nil, fmt.Errorf("parse input file: %w", err)
+				}
+				checked, err = pc.checkResourceInputs(ctx, urn, res, nil, inputs)
+				if err != nil {
+					return nil, err
+				}
+				return operationState(urn, "", checked, nil), nil
 			}
-			checked, err := pc.checkResourceInputs(ctx, urn, res, nil, inputs)
-			if err != nil {
-				return err
-			}
-			summary, err := formatCreateSummary(res, checked, pc.showSecrets)
-			if err != nil {
-				return err
-			}
-			if err := pc.confirm(cmd, summary, "create", yes); err != nil {
-				return err
-			}
-			return pc.runDisplayedStep(cmd, displayedStep{
-				Op:  deploy.OpCreate,
-				New: operationState(urn, "", nil, nil),
-			}, func() (*resource.State, error) {
+			create := func() (*resource.State, error) {
 				response, err := pc.provider.Create(ctx, plugin.CreateRequest{
 					URN:        urn,
 					Name:       urn.Name(),
@@ -172,7 +147,32 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 					id = resource.ID("[unknown]")
 				}
 				return resultState(urn, id, nil, response.Properties, res), nil
-			})
+			}
+			if pc.dryrun {
+				return pc.runDisplayedStep(cmd, displayedStep{
+					Op:  deploy.OpCreate,
+					New: operationState(urn, "", nil, nil),
+				}, func() (*resource.State, error) {
+					if _, err := prepare(); err != nil {
+						return nil, err
+					}
+					return create()
+				})
+			}
+			if err := pc.runDisplayedStep(cmd, displayedStep{
+				Op:      deploy.OpCreate,
+				New:     operationState(urn, "", nil, nil),
+				Preview: true,
+			}, prepare); err != nil {
+				return err
+			}
+			if err := pc.confirm(cmd, "", "create", yes); err != nil {
+				return err
+			}
+			return pc.runDisplayedStep(cmd, displayedStep{
+				Op:  deploy.OpCreate,
+				New: operationState(urn, "", checked, nil),
+			}, create)
 		},
 	}
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
@@ -569,14 +569,6 @@ func (pc *packageCommand) printListResults(cmd *cobra.Command, results []plugin.
 func errStatefulNotImplemented(op string) error {
 	return fmt.Errorf("`%s` is not yet implemented in stateful mode; pass --stateless to use the "+
 		"direct-provider implementation", op)
-}
-
-func formatCreateSummary(res *schema.Resource, inputs resource.PropertyMap, showSecrets bool) (string, error) {
-	body, err := jsonifyProperty(resource.NewProperty(inputs), showSecrets)
-	if err != nil {
-		return "", fmt.Errorf("format inputs: %w", err)
-	}
-	return fmt.Sprintf("This will create %s with the following inputs:\n%s", res.Token, body), nil
 }
 
 func formatDeleteSummary(res *schema.Resource, id resource.ID, dryrun bool) string {

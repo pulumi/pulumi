@@ -38,6 +38,7 @@ func TestParseLogName(t *testing.T) {
 		filename string
 		stack    string
 		updateID string
+		command  string
 		cliLevel bool
 	}{
 		{
@@ -45,6 +46,30 @@ func TestParseLogName(t *testing.T) {
 			filename: "pulumi-20260401T120000-12345.log",
 			stack:    "",
 			updateID: "12345",
+			cliLevel: true,
+		},
+		{
+			name:     "cli-level with pid and command",
+			filename: "pulumi-20260401T120000-12345-about.log",
+			stack:    "",
+			updateID: "12345",
+			command:  "about",
+			cliLevel: true,
+		},
+		{
+			name:     "cli-level with multi-word command",
+			filename: "pulumi-20260401T120000-12345-stack_ls.log",
+			stack:    "",
+			updateID: "12345",
+			command:  "stack ls",
+			cliLevel: true,
+		},
+		{
+			name:     "cli-level with hyphenated command",
+			filename: "pulumi-20260401T120000-12345-gen-completion.log",
+			stack:    "",
+			updateID: "12345",
+			command:  "gen-completion",
 			cliLevel: true,
 		},
 		{
@@ -80,9 +105,10 @@ func TestParseLogName(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			stack, updateID, cliLevel := parseLogName(tc.filename)
+			stack, updateID, command, cliLevel := parseLogName(tc.filename)
 			require.Equal(t, tc.stack, stack)
 			require.Equal(t, tc.updateID, updateID)
+			require.Equal(t, tc.command, command)
 			require.Equal(t, tc.cliLevel, cliLevel)
 		})
 	}
@@ -95,6 +121,9 @@ func TestListLogs(t *testing.T) {
 
 	cliPath := filepath.Join(dir, "pulumi-20260401T100000-9999.log")
 	require.NoError(t, os.WriteFile(cliPath, []byte("plain"), 0o600))
+
+	cliCmdPath := filepath.Join(dir, "pulumi-20260401T090000-8888-stack_ls.log")
+	require.NoError(t, os.WriteFile(cliCmdPath, []byte("plain"), 0o600))
 
 	devPath := filepath.Join(dir, "acme+proj+dev-20260401T120000-u-1.log")
 	require.NoError(t, os.WriteFile(devPath, []byte(encryptedlog.Magic), 0o600))
@@ -114,7 +143,7 @@ func TestListLogs(t *testing.T) {
 
 	entries, err := listLogs(dir)
 	require.NoError(t, err)
-	require.Len(t, entries, 3)
+	require.Len(t, entries, 4)
 
 	require.Equal(t, "acme+proj+dev-20260401T120000-u-1.log", entries[0].name)
 	require.Equal(t, devPath, entries[0].path)
@@ -132,12 +161,20 @@ func TestListLogs(t *testing.T) {
 	require.Equal(t, "", entries[2].stack)
 	require.True(t, entries[2].cliLevel)
 	require.Equal(t, "9999", entries[2].updateID)
+	require.Equal(t, "", entries[2].command)
+
+	require.Equal(t, "pulumi-20260401T090000-8888-stack_ls.log", entries[3].name)
+	require.Equal(t, cliCmdPath, entries[3].path)
+	require.Equal(t, "", entries[3].stack)
+	require.True(t, entries[3].cliLevel)
+	require.Equal(t, "8888", entries[3].updateID)
+	require.Equal(t, "stack ls", entries[3].command)
 }
 
 func TestListLogsExcludesOwnLog(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
-	l, err := backendlogging.StartLogging(t.Context(), nil)
+	l, err := backendlogging.StartLogging(t.Context(), nil, "")
 	require.NoError(t, err)
 	defer l.Close()
 
@@ -189,6 +226,7 @@ func TestPrintLogsJSON(t *testing.T) {
 			stack:     "",
 			timestamp: ts2,
 			updateID:  "9999",
+			command:   "stack ls",
 			cliLevel:  true,
 			size:      7,
 		},
@@ -211,6 +249,8 @@ func TestPrintLogsJSON(t *testing.T) {
 	require.Empty(t, got[1].Stack)
 	require.Empty(t, got[1].UpdateID)
 	require.Equal(t, "9999", got[1].PID)
+	require.Equal(t, "stack ls", got[1].Command)
+	require.Empty(t, got[0].Command)
 }
 
 func TestPrintLogsTableEmpty(t *testing.T) {
@@ -244,6 +284,7 @@ func TestPrintLogsTableRenders(t *testing.T) {
 	dir := t.TempDir()
 	devPath := filepath.Join(dir, "acme+proj+dev-20260401T120000-u-1.log")
 	cliPath := filepath.Join(dir, "pulumi-20260401T100000-9999.log")
+	cliCmdPath := filepath.Join(dir, "pulumi-20260401T090000-8888-about.log")
 
 	entries := []logEntry{
 		{
@@ -263,6 +304,16 @@ func TestPrintLogsTableRenders(t *testing.T) {
 			cliLevel:  true,
 			size:      512,
 		},
+		{
+			path:      cliCmdPath,
+			name:      "pulumi-20260401T090000-8888-about.log",
+			stack:     "",
+			timestamp: ts.Add(-3 * time.Hour),
+			updateID:  "8888",
+			command:   "about",
+			cliLevel:  true,
+			size:      256,
+		},
 	}
 
 	var buf bytes.Buffer
@@ -273,8 +324,10 @@ func TestPrintLogsTableRenders(t *testing.T) {
 		"STACK", "CREATED", "UPDATE ID", "SIZE", "FILE",
 		"acme/proj/dev", "u-1",
 		"(cli)", "9999",
+		"(cli: about)", "8888",
 		devPath,
 		cliPath,
+		cliCmdPath,
 	} {
 		require.Contains(t, out, want, "missing %q in output:\n%s", want, out)
 	}

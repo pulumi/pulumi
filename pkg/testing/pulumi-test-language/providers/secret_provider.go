@@ -28,7 +28,8 @@ import (
 
 // A small provider with a single resource "Resource" that has a "public" and "private" field, plus two nested
 // objects "privateData" and "publicData" that have the same fields. The "private" fields are marked secret at
-// various levels. these fields are marked secret at various levels.
+// various levels. The resource also has secret-marked collection fields: arrays and maps of both plain strings
+// ("privateArray", "privateMap") and object types ("privateDataArray", "privateDataMap").
 type SecretProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -95,8 +96,49 @@ func (p *SecretProvider) GetSchema(
 				Ref:  "#/types/secret:index:Data",
 			},
 		},
+		"privateArray": {
+			Secret: true,
+			TypeSpec: schema.TypeSpec{
+				Type: "array",
+				Items: &schema.TypeSpec{
+					Type: "string",
+				},
+			},
+		},
+		"privateMap": {
+			Secret: true,
+			TypeSpec: schema.TypeSpec{
+				Type: "object",
+				AdditionalProperties: &schema.TypeSpec{
+					Type: "string",
+				},
+			},
+		},
+		"privateDataArray": {
+			Secret: true,
+			TypeSpec: schema.TypeSpec{
+				Type: "array",
+				Items: &schema.TypeSpec{
+					Type: "ref",
+					Ref:  "#/types/secret:index:Data",
+				},
+			},
+		},
+		"privateDataMap": {
+			Secret: true,
+			TypeSpec: schema.TypeSpec{
+				Type: "object",
+				AdditionalProperties: &schema.TypeSpec{
+					Type: "ref",
+					Ref:  "#/types/secret:index:Data",
+				},
+			},
+		},
 	}
-	resourceRequired := []string{"private", "public", "privateData", "publicData"}
+	resourceRequired := []string{
+		"private", "public", "privateData", "publicData",
+		"privateArray", "privateMap", "privateDataArray", "privateDataMap",
+	}
 
 	pkg := schema.PackageSpec{
 		Name:    "secret",
@@ -199,14 +241,31 @@ func (p *SecretProvider) Check(
 		return nil
 	}
 
-	// isSecretString and isSecretObject require the outermost wrapper to be a secret,
-	// but accept any number of additional secret layers beneath it.
+	// isSecretString, isSecretObject and isSecretArray require the outermost wrapper to be a
+	// secret, but accept any number of additional secret layers beneath it.
 	isSecretString := func(v resource.PropertyValue) bool {
 		return v.IsSecret() && unsecret(v).IsString()
 	}
 
 	isSecretObject := func(v resource.PropertyValue) bool {
 		return v.IsSecret() && unsecret(v).IsObject()
+	}
+
+	isSecretArray := func(v resource.PropertyValue) bool {
+		return v.IsSecret() && unsecret(v).IsArray()
+	}
+
+	// isDataObject reports whether v unwraps to a Data object: exactly a "private" and a
+	// "public" field, each unwrapping to a string.
+	isDataObject := func(v resource.PropertyValue) bool {
+		v = unsecret(v)
+		if !v.IsObject() {
+			return false
+		}
+		data := v.ObjectValue()
+		return len(data) == 2 &&
+			unsecret(data["private"]).IsString() &&
+			unsecret(data["public"]).IsString()
 	}
 
 	check := assertField(req.News, "privateData", "secret object", isSecretObject)
@@ -227,8 +286,64 @@ func (p *SecretProvider) Check(
 	if check != nil {
 		return *check, nil
 	}
+	check = assertField(req.News, "privateArray", "secret array of strings", func(v resource.PropertyValue) bool {
+		if !isSecretArray(v) {
+			return false
+		}
+		for _, elem := range unsecret(v).ArrayValue() {
+			if !unsecret(elem).IsString() {
+				return false
+			}
+		}
+		return true
+	})
+	if check != nil {
+		return *check, nil
+	}
+	check = assertField(req.News, "privateMap", "secret map of strings", func(v resource.PropertyValue) bool {
+		if !isSecretObject(v) {
+			return false
+		}
+		for _, value := range unsecret(v).ObjectValue() {
+			if !unsecret(value).IsString() {
+				return false
+			}
+		}
+		return true
+	})
+	if check != nil {
+		return *check, nil
+	}
+	check = assertField(req.News, "privateDataArray", "secret array of Data", func(v resource.PropertyValue) bool {
+		if !isSecretArray(v) {
+			return false
+		}
+		for _, elem := range unsecret(v).ArrayValue() {
+			if !isDataObject(elem) {
+				return false
+			}
+		}
+		return true
+	})
+	if check != nil {
+		return *check, nil
+	}
+	check = assertField(req.News, "privateDataMap", "secret map of Data", func(v resource.PropertyValue) bool {
+		if !isSecretObject(v) {
+			return false
+		}
+		for _, value := range unsecret(v).ObjectValue() {
+			if !isDataObject(value) {
+				return false
+			}
+		}
+		return true
+	})
+	if check != nil {
+		return *check, nil
+	}
 
-	if len(req.News) != 4 {
+	if len(req.News) != 8 {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil

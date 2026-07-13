@@ -112,18 +112,19 @@ func TestDoCmdResourceHelpListsOperations(t *testing.T) {
 A test resource.
 
 Inputs:
-  enabled (boolean, optional)
-  name (string, required) - The resource name.
-  size (integer, optional)
+ - enabled (boolean)
+ - name (string*): The resource name.
+ - size (integer)
+Inputs marked with '*' are required
 
 Outputs:
-  enabled (boolean)
-  extra (string)
-  name (string)
-  size (integer)
+ - enabled (boolean)
+ - extra (string)
+ - name (string)
+ - size (integer)
 
 List Inputs:
-  prefix (string, optional)
+ - prefix (string)
 
 Usage:
   do azure:index:myResource [command]
@@ -165,15 +166,16 @@ func TestDoCmdResourceHelpOmitsListWithoutListInputs(t *testing.T) {
 A test resource.
 
 Inputs:
-  enabled (boolean, optional)
-  name (string, required) - The resource name.
-  size (integer, optional)
+ - enabled (boolean)
+ - name (string*): The resource name.
+ - size (integer)
+Inputs marked with '*' are required
 
 Outputs:
-  enabled (boolean)
-  extra (string)
-  name (string)
-  size (integer)
+ - enabled (boolean)
+ - extra (string)
+ - name (string)
+ - size (integer)
 
 Usage:
   do azure:index:myResource [command]
@@ -247,9 +249,11 @@ size = 2
   "size": 2,
   "extra": "hidden"
 }`, stdout.String())
+	assert.Contains(t, stderr.String(), "+ 1 to create")
+	assert.Contains(t, stderr.String(), `name: "example"`)
 	assert.NotContains(t, stderr.String(), "creating")
 	assert.NotContains(t, stderr.String(), "Outputs:")
-	assert.NotContains(t, stderr.String(), "Resources:")
+	assert.NotContains(t, stderr.String(), "+ 1 created")
 }
 
 func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
@@ -721,7 +725,9 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			"--input", "pcl", "--input-file", inputFile,
 		})
 		require.NoError(t, cmd.Execute())
-		assert.Contains(t, stderr.String(), "This will create azure:index:myResource")
+		assert.Contains(t, stderr.String(), "+ azure:index:myResource: (create)")
+		assert.Contains(t, stderr.String(), `name: "example"`)
+		assert.Contains(t, stderr.String(), "+ 1 to create")
 		assert.Contains(t, stderr.String(), "azure:index:myResource myResource creating")
 		assert.Contains(t, stderr.String(), "azure:index:myResource myResource created")
 		assert.Contains(t, stderr.String(), "+ 1 created")

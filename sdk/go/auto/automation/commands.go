@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optcancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optnew"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorg"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorggetdefault"
@@ -109,6 +110,241 @@ func (a *API) Cancel(
 	args := []string{}
 	if stackName != nil {
 		args = append(args, fmt.Sprint(*stackName))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Import corresponds to `pulumi import`.
+//
+// Import resources into an existing stack.
+//
+// Resources that are not managed by Pulumi can be imported into a Pulumi stack
+// using this command. A definition for each resource will be printed to stdout
+// in the language used by the project associated with the stack; these definitions
+// should be added to the Pulumi program. The resources are protected from deletion
+// by default.
+//
+// Should you want to import your resource(s) without protection, you can pass
+// `--protect=false` as an argument to the command. This will leave all resources unprotected.
+//
+// A single resource may be specified in the command line arguments or a set of
+// resources may be specified by a JSON file.
+//
+// If using the command line args directly, the type token, name, id and optional flags
+// must be provided.  For example:
+//
+//	pulumi import 'aws:iam/user:User' name id
+//
+// The type token and property used for resource lookup are available in the Import section of
+// the resource's API documentation in the Pulumi Registry (https://www.pulumi.com/registry/).
+// To fully specify parent and/or provider, substitute the <urn> for each into the following:
+//
+//	pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'
+//
+// When importing multiple resources at once the `--file` option can be used to pass a JSON file
+// containing multiple resources:
+//
+//	pulumi import --file import.json
+//
+// Where import.json is a file that matches the following JSON format:
+//
+//	{
+//	    "resources": [
+//	        {
+//	            "type": "aws:ec2/vpc:Vpc",
+//	            "name": "application-vpc",
+//	            "id": "vpc-0ad77710973388316"
+//	        },
+//	        ...
+//	        {
+//	            ...
+//	        }
+//	    ],
+//	}
+//
+// The full import file schema references can be found in the [import documentation](https://www.pulumi.com/docs/iac/adopting-pulumi/import/#bulk-import-operations).
+//
+// The import JSON file can be generated from a Pulumi program by running
+//
+//	pulumi preview --import-file import.json
+//
+// This will create entries for all resources that need creating from the preview, filling
+// in the name, type, parent and provider information and just requiring you to fill in the
+// resource IDs.
+func (a *API) Import(
+	ctx context.Context,
+	arg []string,
+	opts ...optimport.Option,
+) (base.CommandResult, error) {
+	o := optimport.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"import"}
+
+	final = append(final, "--skip-preview")
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.Debug {
+		final = append(final, "--debug")
+	}
+
+	if o.Diff {
+		final = append(final, "--diff")
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.ExecAgent != "" {
+		final = append(final, "--exec-agent", fmt.Sprint(o.ExecAgent))
+	}
+
+	if o.ExecKind != "" {
+		final = append(final, "--exec-kind", fmt.Sprint(o.ExecKind))
+	}
+
+	if o.File != "" {
+		final = append(final, "--file", fmt.Sprint(o.File))
+	}
+
+	if o.From != "" {
+		final = append(final, "--from", fmt.Sprint(o.From))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.GenerateCode {
+		final = append(final, "--generate-code")
+	}
+
+	if o.GenerateResources != "" {
+		final = append(final, "--generate-resources", fmt.Sprint(o.GenerateResources))
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Message != "" {
+		final = append(final, "--message", fmt.Sprint(o.Message))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Out != "" {
+		final = append(final, "--out", fmt.Sprint(o.Out))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Parallel != 0 {
+		final = append(final, "--parallel", fmt.Sprint(o.Parallel))
+	}
+
+	if o.Parent != "" {
+		final = append(final, "--parent", fmt.Sprint(o.Parent))
+	}
+
+	if o.PreviewOnly {
+		final = append(final, "--preview-only")
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	for _, v := range o.Properties {
+		final = append(final, "--properties", fmt.Sprint(v))
+	}
+
+	if o.Protect {
+		final = append(final, "--protect")
+	}
+
+	if o.Provider != "" {
+		final = append(final, "--provider", fmt.Sprint(o.Provider))
+	}
+
+	if o.SkipPluginPreInstall {
+		final = append(final, "--skip-plugin-pre-install")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.SuppressOutputs {
+		final = append(final, "--suppress-outputs")
+	}
+
+	if o.SuppressPermalink != "" {
+		final = append(final, "--suppress-permalink", fmt.Sprint(o.SuppressPermalink))
+	}
+
+	if o.SuppressProgress {
+		final = append(final, "--suppress-progress")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Urns {
+		final = append(final, "--urns")
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	for _, v := range arg {
+		args = append(args, fmt.Sprint(v))
 	}
 	if len(args) > 0 {
 		final = append(final, "--")

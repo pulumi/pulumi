@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Show command name for cli commands when running any command that lists logs
+time: 2026-07-10T16:47:44.139555064+02:00

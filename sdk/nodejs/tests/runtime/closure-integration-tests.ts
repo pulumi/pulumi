@@ -118,6 +118,8 @@ async function run(
     await copyDir(path.join(sdkRoot, "tests", "runtime", "testdata", "closure-tests"), tmpDir);
 
     await install(packageManager, tmpDir, pnpmVersion);
+    // Install the codepaths-app fixture used by the computeCodePaths test.
+    await install(packageManager, path.join(tmpDir, "codepaths-app"), pnpmVersion);
 
     await execa("npx", ["--no-install", "tsc"], { cwd: tmpDir });
 
