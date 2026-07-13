@@ -420,9 +420,9 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 	assert.Equal(t, "1.2.3", provInputs["version"])
 }
 
-// TestBuildImportFile_DuplicateNames test that if we try to import resources with the same name we add a
-// suffix to their names to make them unique.
-func TestBuildImportFile_DuplicateNames(t *testing.T) {
+// TestBuildImportFile_DuplicateNamesDifferentTypes tests that resources with the same name but different types keep
+// their logical names, because their URNs are distinct.
+func TestBuildImportFile_DuplicateNamesDifferentTypes(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
@@ -459,7 +459,7 @@ func TestBuildImportFile_DuplicateNames(t *testing.T) {
 	// There should be nothing in the name table
 	require.Len(t, importFile.NameTable, 0)
 
-	// And there should be the two expected resource in the resources table
+	// And there should be the two expected resources in the resources table
 	require.Len(t, importFile.Resources, 2)
 	expected := importSpec{
 		ID:      "<PLACEHOLDER>",
@@ -469,9 +469,66 @@ func TestBuildImportFile_DuplicateNames(t *testing.T) {
 	}
 	assert.Equal(t, expected, importFile.Resources[0])
 	expected = importSpec{
+		ID:      "<PLACEHOLDER>",
+		Type:    "pkg:index:typB",
+		Name:    "res",
+		Version: "1.2.3",
+	}
+	assert.Equal(t, expected, importFile.Resources[1])
+}
+
+// TestBuildImportFile_DuplicateNames test that if we try to import resources with the same type and name we add a
+// suffix to their import file names to make them unique.
+func TestBuildImportFile_DuplicateNames(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
+
+	// Pretend the root stack already exists
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpSame),
+	})
+
+	// Set the default provider (if any)
+	provider := addDefaultProvider(t, "pkg:i:t", events)
+
+	// And then create one resource of one type
+	stateA := makeStateMetadata(t, "res", "pkg:index:typ", true, stateOptions{})
+	stateA.Provider = provider
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, stateA),
+	})
+
+	// And then create another resource of the same type and name
+	stateB := makeStateMetadata(t, "res", "pkg:index:typ", true, stateOptions{})
+	stateB.Provider = provider
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, stateB),
+	})
+
+	// Finally, close the events channel to signal that we're done
+	close(events)
+
+	importFile, err := importFilePromise.Result(t.Context())
+	require.NoError(t, err)
+
+	// There should be nothing in the name table
+	require.Len(t, importFile.NameTable, 0)
+
+	// And there should be the two expected resource in the resources table
+	require.Len(t, importFile.Resources, 2)
+	expected := importSpec{
+		ID:      "<PLACEHOLDER>",
+		Type:    "pkg:index:typ",
+		Name:    "res",
+		Version: "1.2.3",
+	}
+	assert.Equal(t, expected, importFile.Resources[0])
+	expected = importSpec{
 		ID:          "<PLACEHOLDER>",
-		Type:        "pkg:index:typB",
-		Name:        "resTypB",
+		Type:        "pkg:index:typ",
+		Name:        "resTyp",
 		LogicalName: "res",
 		Version:     "1.2.3",
 	}
@@ -495,14 +552,14 @@ func TestBuildImportFile_NameConflict(t *testing.T) {
 	provider := addDefaultProvider(t, "pkg:i:t", events)
 
 	// And then create one resource of one type
-	stateA := makeStateMetadata(t, "res", "pkg:index:typA", true, stateOptions{})
+	stateA := makeStateMetadata(t, "res", "pkg:index:typ", true, stateOptions{})
 	stateA.Provider = provider
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeMetadata(deploy.OpCreate, stateA),
 	})
 
-	// And then create another resource of a different type but the same name
-	stateB := makeStateMetadata(t, "res", "pkg:index:typB", true, stateOptions{})
+	// And then create another resource of the same type and name
+	stateB := makeStateMetadata(t, "res", "pkg:index:typ", true, stateOptions{})
 	stateB.Provider = provider
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeMetadata(deploy.OpCreate, stateB),
@@ -510,7 +567,7 @@ func TestBuildImportFile_NameConflict(t *testing.T) {
 
 	// And then create another resource that would conflict with the default name we'd have picked for the
 	// second resource.
-	stateC := makeStateMetadata(t, "resTypB", "pkg:index:typB", true, stateOptions{})
+	stateC := makeStateMetadata(t, "resTyp", "pkg:index:typ", true, stateOptions{})
 	stateC.Provider = provider
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeMetadata(deploy.OpCreate, stateC),
@@ -529,23 +586,23 @@ func TestBuildImportFile_NameConflict(t *testing.T) {
 	require.Len(t, importFile.Resources, 3)
 	expected := importSpec{
 		ID:      "<PLACEHOLDER>",
-		Type:    "pkg:index:typA",
+		Type:    "pkg:index:typ",
 		Name:    "res",
 		Version: "1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[0])
 	expected = importSpec{
 		ID:          "<PLACEHOLDER>",
-		Type:        "pkg:index:typB",
-		Name:        "resTypB2",
+		Type:        "pkg:index:typ",
+		Name:        "resTyp2",
 		LogicalName: "res",
 		Version:     "1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[1])
 	expected = importSpec{
 		ID:      "<PLACEHOLDER>",
-		Type:    "pkg:index:typB",
-		Name:    "resTypB",
+		Type:    "pkg:index:typ",
+		Name:    "resTyp",
 		Version: "1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[2])

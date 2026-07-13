@@ -89,10 +89,14 @@ func buildImportFile(
 			NameTable: map[string]resource.URN{},
 		}
 
-		// A mapping of names to the index of the resourceSpec in imports.Resources that used it. We have to
-		// fix up names _as we go_ because we're mapping over the event stream, and it would be pretty
+		// A mapping of type/name pairs to the index of the resourceSpec in imports.Resources that used it. We have
+		// to fix up names _as we go_ because we're mapping over the event stream, and it would be pretty
 		// inefficient to wait for the whole thing to finish before building the import specs.
-		takenNames := map[string]int{}
+		type typeName struct {
+			typ  tokens.Type
+			name string
+		}
+		takenNames := map[typeName]int{}
 
 		// We want to prefer using the urns name for the source name, but if it conflicts with other resources
 		// we'll auto suffix it, first with the type, then with rising numbers. This function does that
@@ -104,7 +108,7 @@ func buildImportFile(
 			name = baseName
 
 			counter := 2
-			for _, has := takenNames[name]; has; _, has = takenNames[name] {
+			for _, has := takenNames[typeName{typ: typ, name: name}]; has; _, has = takenNames[typeName{typ: typ, name: name}] {
 				name = fmt.Sprintf("%s%d", baseName, counter)
 				counter++
 			}
@@ -120,8 +124,10 @@ func buildImportFile(
 
 			urn := preEvent.Metadata.URN
 			name := urn.Name()
-			if i, has := takenNames[name]; has {
-				// Another resource already has this name, lets check if that was it's original name or if it was a rename
+			nameKey := typeName{typ: urn.Type(), name: name}
+			if i, has := takenNames[nameKey]; has {
+				// Another resource already has this type/name pair, lets check if that was it's original name or
+				// if it was a rename.
 				importI := imports.Resources[i]
 				if importI.LogicalName != "" {
 					// i was renamed, so we're going to go backwards rename it again and then we can use our name for this resource.
@@ -139,9 +145,9 @@ func buildImportFile(
 						imports.NameTable[newName] = urn
 					}
 					// Fix up takenNames incase this is hit again
-					takenNames[newName] = i
+					takenNames[typeName{typ: importI.Type, name: newName}] = i
 				} else {
-					// i just had the same name as us, lets find a new one
+					// i just had the same type/name pair as us, lets find a new name
 					name = uniqueName(name, urn.Type())
 				}
 			}
@@ -258,7 +264,7 @@ func buildImportFile(
 				logicalName = urn.Name()
 			}
 
-			takenNames[name] = len(imports.Resources)
+			takenNames[typeName{typ: new.Type, name: name}] = len(imports.Resources)
 			imports.Resources = append(imports.Resources, importSpec{
 				Type:              new.Type,
 				Name:              name,
