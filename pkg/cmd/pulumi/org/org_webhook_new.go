@@ -123,8 +123,9 @@ func newOrgWebhookNewCmdWith(
 	}
 
 	cmd := &cobra.Command{
-		Use:   "new",
-		Short: "[EXPERIMENTAL] Create a new organization webhook",
+		Use:     "new",
+		Aliases: []string{"create", "setup"},
+		Short:   "[EXPERIMENTAL] Create a new organization webhook",
 		Long: "[EXPERIMENTAL] Create a new organization webhook.\n" +
 			"\n" +
 			"Creates a webhook that delivers events for the specified organization\n" +

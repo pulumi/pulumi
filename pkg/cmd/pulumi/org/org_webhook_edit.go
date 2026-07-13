@@ -73,8 +73,9 @@ func newOrgWebhookEditCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "edit",
-		Short: "[EXPERIMENTAL] Update an organization webhook's configuration",
+		Use:     "edit",
+		Aliases: []string{"update", "modify"},
+		Short:   "[EXPERIMENTAL] Update an organization webhook's configuration",
 		Long: "[EXPERIMENTAL] Update an organization webhook's configuration.\n" +
 			"\n" +
 			"Modifies an existing webhook. Only the flags you pass are changed;\n" +
