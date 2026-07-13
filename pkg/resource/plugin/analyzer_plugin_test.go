@@ -17,28 +17,8 @@ package plugin
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
-
-func TestHasStackContext(t *testing.T) {
-	t.Parallel()
-
-	var nilOpts *PolicyAnalyzerOptions
-	assert.False(t, nilOpts.hasStackContext())
-	assert.False(t, (&PolicyAnalyzerOptions{}).hasStackContext())
-	assert.False(t, (&PolicyAnalyzerOptions{ImageRef: "ghcr.io/acme/pack@sha256:abc"}).hasStackContext(),
-		"a publish/install boot carries only the image ref, no stack to configure")
-
-	assert.True(t, (&PolicyAnalyzerOptions{Stack: "dev"}).hasStackContext())
-	assert.True(t, (&PolicyAnalyzerOptions{Project: "proj"}).hasStackContext())
-	assert.True(t, (&PolicyAnalyzerOptions{Organization: "org"}).hasStackContext())
-	assert.True(t, (&PolicyAnalyzerOptions{
-		Config: map[config.Key]string{config.MustMakeKey("ns", "k"): "v"},
-	}).hasStackContext())
-}
 
 func TestConstructEnvWithAdditionalEnv(t *testing.T) {
 	t.Parallel()

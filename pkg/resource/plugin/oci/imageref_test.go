@@ -85,3 +85,29 @@ func TestResolveRef(t *testing.T) {
 		})
 	}
 }
+
+func TestSplitRef(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		ref, repo, tag, digest string
+	}{
+		{"ghcr.io/acme/pack", "ghcr.io/acme/pack", "", ""},
+		{"ghcr.io/acme/pack:1.0.0", "ghcr.io/acme/pack", "1.0.0", ""},
+		{"ghcr.io/acme/pack@sha256:abc", "ghcr.io/acme/pack", "", "sha256:abc"},
+		{"ghcr.io/acme/pack:1.0.0@sha256:abc", "ghcr.io/acme/pack", "1.0.0", "sha256:abc"},
+		{"localhost:5000/pack", "localhost:5000/pack", "", ""},
+		{"localhost:5000/pack:1.0.0", "localhost:5000/pack", "1.0.0", ""},
+		{"pack:1.0.0", "pack", "1.0.0", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.ref, func(t *testing.T) {
+			t.Parallel()
+			repo, tag, digest := splitRef(tt.ref)
+			assert.Equal(t, tt.repo, repo)
+			assert.Equal(t, tt.tag, tag)
+			assert.Equal(t, tt.digest, digest)
+		})
+	}
+}

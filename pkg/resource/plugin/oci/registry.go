@@ -56,13 +56,7 @@ func (r *Runtime) ResolveDigest(ctx context.Context, ref string) (string, error)
 	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &digests); err != nil {
 		return "", fmt.Errorf("resolving digest for %s: unexpected inspect output %q: %w", ref, out, err)
 	}
-	repo := ref
-	if i := strings.Index(repo, "@"); i >= 0 {
-		repo = repo[:i]
-	}
-	if i := strings.LastIndex(repo, ":"); i > strings.LastIndex(repo, "/") {
-		repo = repo[:i]
-	}
+	repo, _, _ := splitRef(ref)
 	var found []string
 	for _, d := range digests {
 		if !strings.Contains(d, "@sha256:") {

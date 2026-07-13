@@ -414,6 +414,21 @@ func ociPublishRef(proj *workspace.PolicyPackProject, tag string) (string, error
 	return ref, nil
 }
 
+// retargetRefFromAnalyzer fetches the pack's metadata from a booted analyzer
+// and points pack.ref at the name and version the pack declares, which is what
+// publishing registers under (not whatever the local directory was called).
+func (pack *cloudPolicyPack) retargetRefFromAnalyzer(
+	ctx context.Context, analyzer plugin.Analyzer,
+) (plugin.AnalyzerInfo, error) {
+	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
+	if err != nil {
+		return plugin.AnalyzerInfo{}, err
+	}
+	pack.ref.name = tokens.QName(analyzerInfo.Name)
+	pack.ref.versionTag = analyzerInfo.Version
+	return analyzerInfo, nil
+}
+
 // publishOCI publishes a policy pack whose artifact is a container image the
 // author has already built and pushed: resolve the tag to its digest, verify
 // the platform matrix, boot the image for metadata (which doubles as a boot
@@ -453,21 +468,17 @@ func (pack *cloudPolicyPack) publishOCI(ctx context.Context, op backend.PublishO
 	}
 
 	fmt.Println("Obtaining policy metadata from policy pack image")
-	abs, err := filepath.Abs(op.PlugCtx.Pwd)
+	analyzer, err := plugin.NewContainerPolicyAnalyzer(op.PlugCtx.Host, op.PlugCtx, tokens.QName(taggedRef),
+		plugin.ContainerPack{Image: digestRef}, nil /*opts*/)
 	if err != nil {
 		return err
 	}
-	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(op.PlugCtx, tokens.QName(abs), op.PlugCtx.Pwd,
-		&plugin.PolicyAnalyzerOptions{ImageRef: digestRef})
+	defer contract.IgnoreClose(analyzer)
+
+	analyzerInfo, err := pack.retargetRefFromAnalyzer(ctx, analyzer)
 	if err != nil {
 		return err
 	}
-	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
-	if err != nil {
-		return err
-	}
-	pack.ref.name = tokens.QName(analyzerInfo.Name)
-	pack.ref.versionTag = analyzerInfo.Version
 
 	fmt.Printf("Registering %s\n", digestRef)
 	publishedVersion, err := pack.cl.RegisterPolicyPackImage(
@@ -503,14 +514,10 @@ func (pack *cloudPolicyPack) Publish(
 		return err
 	}
 
-	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
+	analyzerInfo, err := pack.retargetRefFromAnalyzer(ctx, analyzer)
 	if err != nil {
 		return err
 	}
-
-	// Update the name and version tag from the metadata.
-	pack.ref.name = tokens.QName(analyzerInfo.Name)
-	pack.ref.versionTag = analyzerInfo.Version
 
 	fmt.Println("Compressing policy pack")
 

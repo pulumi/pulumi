@@ -86,11 +86,24 @@ func NewContainerPolicyAnalyzer(
 			name, err, pack.Image)
 	}
 
-	conn, err := dialAnalyzerWithRetry(ctx.Request(), container.Addr, analyzerReadyTimeout,
+	// On any error below, tear down whatever came up so the container never
+	// outlives a failed boot.
+	var conn *grpc.ClientConn
+	booted := false
+	defer func() {
+		if booted {
+			return
+		}
+		if conn != nil {
+			contract.IgnoreClose(conn)
+		}
+		contract.IgnoreClose(container)
+	}()
+
+	conn, err = dialAnalyzerWithRetry(ctx.Request(), container.Addr, analyzerReadyTimeout,
 		func() bool { return container.Running(ctx.Request()) },
 		func() string { return container.Logs(ctx.Request()) })
 	if err != nil {
-		contract.IgnoreClose(container)
 		return nil, fmt.Errorf("policy pack %q: %w", name, err)
 	}
 
@@ -99,17 +112,14 @@ func NewContainerPolicyAnalyzer(
 	// Handshake with an engine address the container can reach.
 	engineAddr := oci.EngineAddressFor(mode, host.ServerAddr())
 	if err := containerHandshake(ctx.Request(), client, name, engineAddr); err != nil {
-		contract.IgnoreClose(conn)
-		contract.IgnoreClose(container)
 		return nil, err
 	}
 
 	if err := configureStack(ctx, client, name, opts); err != nil {
-		contract.IgnoreClose(conn)
-		contract.IgnoreClose(container)
 		return nil, err
 	}
 
+	booted = true
 	return &analyzer{
 		name:        name,
 		client:      client,

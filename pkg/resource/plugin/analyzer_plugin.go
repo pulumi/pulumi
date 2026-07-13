@@ -286,24 +286,13 @@ func NewPolicyAnalyzer(
 	}, nil
 }
 
-// hasStackContext reports whether opts carries stack context worth sending to
-// the analyzer via ConfigureStack. Tags/DryRun/ConfigSecretKeys are
-// intentionally not part of this predicate: no caller sets any of those
-// without also setting Stack/Project/Organization (engine/update.go always
-// sets Project).
-func (opts *PolicyAnalyzerOptions) hasStackContext() bool {
-	return opts != nil &&
-		(opts.Stack != "" || opts.Project != "" || opts.Organization != "" || len(opts.Config) > 0)
-}
-
-// configureStack sends the stack context to the analyzer if opts carries any. We might not have
-// options, or opts might carry no stack context -- for example when running `pulumi policy
-// publish`, we are not running in the context of a project or stack, just booting the pack to
-// call GetAnalyzerInfo.
+// configureStack sends the stack context to the analyzer. We might not have options -- for
+// example when running `pulumi policy publish`, we are not running in the context of a project
+// or stack, just booting the pack to call GetAnalyzerInfo.
 func configureStack(
 	ctx *Context, client pulumirpc.AnalyzerClient, name tokens.QName, opts *PolicyAnalyzerOptions,
 ) error {
-	if !opts.hasStackContext() {
+	if opts == nil {
 		return nil
 	}
 

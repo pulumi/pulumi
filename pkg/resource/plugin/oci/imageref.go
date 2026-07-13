@@ -51,15 +51,14 @@ func ResolveRef(image, version, tagOverride string) (ref string, tagged bool, er
 	if image == "" {
 		return "", false, errors.New("no image specified")
 	}
-	if strings.Contains(image, "@") {
+	repo, tag, digest := splitRef(image)
+	if digest != "" {
 		if tagOverride != "" {
 			return "", false, fmt.Errorf("image %q is digest-pinned; --tag cannot override it", image)
 		}
 		return image, true, nil
 	}
-	// A ":" after the last "/" is a tag; before it, a registry port.
-	lastSlash := strings.LastIndex(image, "/")
-	if strings.Contains(image[lastSlash+1:], ":") {
+	if tag != "" {
 		if tagOverride != "" {
 			return "", false, fmt.Errorf("image %q already has a tag; --tag cannot override it", image)
 		}
@@ -67,10 +66,24 @@ func ResolveRef(image, version, tagOverride string) (ref string, tagged bool, er
 	}
 	switch {
 	case tagOverride != "":
-		return image + ":" + tagOverride, true, nil
+		return repo + ":" + tagOverride, true, nil
 	case version != "":
-		return image + ":" + version, true, nil
+		return repo + ":" + version, true, nil
 	default:
-		return image + ":latest", false, nil
+		return repo + ":latest", false, nil
 	}
+}
+
+// splitRef splits an image reference into its repository, optional tag, and
+// optional digest ("repo[:tag][@digest]"). A ":" after the last "/" is a tag;
+// before it, a registry port.
+func splitRef(ref string) (repo, tag, digest string) {
+	repo = ref
+	if i := strings.Index(repo, "@"); i >= 0 {
+		repo, digest = repo[:i], repo[i+1:]
+	}
+	if i := strings.LastIndex(repo, ":"); i > strings.LastIndex(repo, "/") {
+		repo, tag = repo[:i], repo[i+1:]
+	}
+	return repo, tag, digest
 }
