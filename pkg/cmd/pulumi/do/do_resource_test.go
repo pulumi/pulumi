@@ -247,9 +247,11 @@ size = 2
   "size": 2,
   "extra": "hidden"
 }`, stdout.String())
+	assert.Contains(t, stderr.String(), "+ 1 to create")
+	assert.Contains(t, stderr.String(), `name: "example"`)
 	assert.NotContains(t, stderr.String(), "creating")
 	assert.NotContains(t, stderr.String(), "Outputs:")
-	assert.NotContains(t, stderr.String(), "Resources:")
+	assert.NotContains(t, stderr.String(), "+ 1 created")
 }
 
 func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
@@ -721,7 +723,9 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			"--input", "pcl", "--input-file", inputFile,
 		})
 		require.NoError(t, cmd.Execute())
-		assert.Contains(t, stderr.String(), "This will create azure:index:myResource")
+		assert.Contains(t, stderr.String(), "+ azure:index:myResource: (create)")
+		assert.Contains(t, stderr.String(), `name: "example"`)
+		assert.Contains(t, stderr.String(), "+ 1 to create")
 		assert.Contains(t, stderr.String(), "azure:index:myResource myResource creating")
 		assert.Contains(t, stderr.String(), "azure:index:myResource myResource created")
 		assert.Contains(t, stderr.String(), "+ 1 created")
