@@ -172,3 +172,14 @@ func TestDialAnalyzerWithRetryFailsFastOnExit(t *testing.T) {
 	assert.Contains(t, fmt.Sprintf("%v", err), "container crashed: OOM")
 	assert.Less(t, time.Since(start), 10*time.Second, "should fail fast, not wait out the timeout")
 }
+
+func TestNewPolicyAnalyzerRejectsAttachOnUnwrappedHost(t *testing.T) {
+	t.Setenv(EnvPolicyPackAttach, "attach-pack:12345")
+
+	ctx, err := NewContext(t.Context(), nil, nil, &MockHost{}, nil, t.TempDir(), nil, false, nil)
+	require.NoError(t, err)
+
+	_, err = NewPolicyAnalyzer(&fakeHost{addr: "127.0.0.1:1"}, ctx, "attach-pack", t.TempDir(), nil, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "host.NewContainerHost")
+}

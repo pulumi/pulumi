@@ -114,6 +114,13 @@ func NewPolicyAnalyzer(
 	// containerHost decorator (pkg/host/containerhost.go) intercepts them at
 	// the Host seam and launches or dials the pack itself. Hitting the checks
 	// below means the plugin host was not wrapped with host.NewContainerHost.
+	if port, err := GetPolicyPackAttachPort(name); err != nil {
+		return nil, err
+	} else if port != nil {
+		return nil, fmt.Errorf("policy pack %q is listed in %s, which this host cannot attach to; "+
+			"the plugin host must be wrapped with host.NewContainerHost", name, EnvPolicyPackAttach)
+	}
+
 	if opts != nil && opts.ImageRef != "" {
 		return nil, fmt.Errorf("policy pack %q is a container image (%s), which this host cannot launch; "+
 			"the plugin host must be wrapped with host.NewContainerHost", name, opts.ImageRef)

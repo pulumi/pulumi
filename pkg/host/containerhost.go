@@ -60,7 +60,10 @@ type containerAnalyzerEntry struct {
 }
 
 // NewContainerHost wraps base with container-image policy pack support. The
-// wrapper is a no-op for deployments that reference no container packs.
+// wrapper is a no-op for deployments that reference no container packs. Every
+// host whose PolicyAnalyzer can receive policy packs must be wrapped;
+// NewPolicyAnalyzer rejects container and attach packs that reach an
+// unwrapped host.
 func NewContainerHost(base plugin.Host) plugin.Host {
 	return &containerHost{
 		Host:      base,

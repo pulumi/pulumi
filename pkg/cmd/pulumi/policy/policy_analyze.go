@@ -107,6 +107,7 @@ func newPolicyAnalyzeCmd(
 					if err != nil {
 						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
 					}
+					pluginHost = pkghost.NewContainerHost(pluginHost)
 					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
 						pluginHost, nil, cwd, nil, true, nil)
 					if err != nil {
