@@ -123,6 +123,13 @@ func TestSuggestCommands(t *testing.T) {
 		assert.Empty(t, got)
 	})
 
+	t.Run("transposition typo", func(t *testing.T) {
+		t.Parallel()
+		got := suggestCommands(find("org", "member"), []string{"lsit"})
+		require.NotEmpty(t, got)
+		assert.Equal(t, "pulumi org member list", got[0])
+	})
+
 	t.Run("hidden commands are not suggested", func(t *testing.T) {
 		t.Parallel()
 		got := suggestCommands(newSuggestionsTestTree(), []string{"secret-cmd"})
@@ -243,6 +250,30 @@ func TestHasSyntheticRun(t *testing.T) {
 	assert.False(t, HasSyntheticRun(find("import")), "runnable leaf")
 	assert.False(t, HasSyntheticRun(find("stack", "export")), "nested runnable leaf")
 	assert.False(t, HasSyntheticRun(nil), "nil command")
+}
+
+func TestEditDistance(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		a, b string
+		want int
+	}{
+		{"list", "list", 0},
+		{"lsit", "list", 1},   // adjacent transposition
+		{"stakc", "stack", 1}, // adjacent transposition
+		{"lisst", "list", 1},  // insertion
+		{"lit", "list", 1},    // deletion
+		{"lost", "list", 1},   // substitution
+		{"LIST", "list", 0},   // case-insensitive
+		{"", "list", 4},
+		{"abcd", "dbca", 2}, // non-adjacent swap still costs 2
+		{"up", "rm", 2},
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.want, editDistance(c.a, c.b), "editDistance(%q, %q)", c.a, c.b)
+		assert.Equal(t, c.want, editDistance(c.b, c.a), "editDistance(%q, %q)", c.b, c.a)
+	}
 }
 
 func TestNormalize(t *testing.T) {
