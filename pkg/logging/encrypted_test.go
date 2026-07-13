@@ -63,7 +63,7 @@ func (loggingSecretsManager) Decrypter() config.Decrypter { return loggingCrypte
 func TestUpgradeToEncryptedDoesNotDeadlock(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
-	l, err := StartLogging(t.Context(), nil)
+	l, err := StartLogging(t.Context(), nil, "")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = l.Close() })
 
@@ -137,13 +137,25 @@ func TestUpgradeToEncryptedDoesNotDeadlock(t *testing.T) {
 //
 // RenameCurrentLogger must therefore return nil even when the log file is already
 // closed.
+func TestStartLoggingFileNameIncludesCommand(t *testing.T) {
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	l, err := StartLogging(t.Context(), nil, "stack ls")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = l.Close() })
+
+	base := filepath.Base(l.FilePath())
+	require.True(t, strings.HasPrefix(base, "pulumi-"), "unexpected log file name %q", base)
+	require.True(t, strings.HasSuffix(base, "-stack_ls.log"), "unexpected log file name %q", base)
+}
+
 func TestRenameToleratesClosedLogFile(t *testing.T) {
 	if runtime.GOOS != "windows" && os.Geteuid() == 0 {
 		t.Skip("root bypasses directory permissions, so the rename failure cannot be simulated")
 	}
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
-	l, err := StartLogging(t.Context(), nil)
+	l, err := StartLogging(t.Context(), nil, "")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = l.Close() })
 
@@ -186,7 +198,7 @@ func failNextLogRename(t *testing.T, path string) (restore func()) {
 func TestRenameWhileWriting(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
-	l, err := StartLogging(t.Context(), nil)
+	l, err := StartLogging(t.Context(), nil, "")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = l.Close() })
 

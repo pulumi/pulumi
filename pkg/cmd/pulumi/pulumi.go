@@ -326,7 +326,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// encrypted). Engine operations may upgrade to encrypted logging
 			// when a secrets manager becomes available.
 			var logErr error
-			autoLogger, logErr = backendlogging.StartLogging(cmd.Context(), nil /* sm */)
+			autoLogger, logErr = backendlogging.StartLogging(cmd.Context(), nil /* sm */, commandPath)
 			if logErr != nil {
 				slog.Info("automatic logging unavailable", "err", logErr)
 			}

@@ -308,10 +308,7 @@ func formatLogChoices(entries []logEntry) ([]string, map[string]string) {
 	rows := make([]row, len(entries))
 	stackWidth, createdWidth := 0, 0
 	for i, e := range entries {
-		stack := e.stack
-		if stack == "" {
-			stack = "(cli)"
-		}
+		stack := e.stackDisplay()
 		updateID := e.updateID
 		if updateID == "" {
 			updateID = "—"
