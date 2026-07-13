@@ -1,0 +1,6 @@
+component: sdk
+kind: fix
+body: Precompose filenames to NFC on macOS when matching ignore patterns during archive creation, mirroring git's core.precomposeunicode so composed patterns match decomposed filenames
+time: 2026-06-12T00:00:00.000000+00:00
+custom:
+    PR: "23566"
