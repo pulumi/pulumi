@@ -400,21 +400,23 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 	return pack.b
 }
 
-// ociPublishRef resolves the tagged ref to publish: the manifest's repository
-// plus the --tag argument (defaulting to the pack version).
+// ociPublishRef resolves the tagged ref to publish from the manifest's image
+// option, the pack version, and --tag.
 func ociPublishRef(proj *workspace.PolicyPackProject, tag string) (string, error) {
-	repo, _ := proj.Runtime.Options()["repository"].(string)
-	if repo == "" {
-		return "", errors.New(`policy packs with runtime "oci" must set the "repository" runtime option ` +
-			`in PulumiPolicy.yaml (the pack's registry repository, e.g. ghcr.io/acme/policy-packs/security)`)
+	image, _ := proj.Runtime.Options()["image"].(string)
+	if image == "" {
+		return "", errors.New(`policy packs with runtime "oci" must set the "image" runtime option ` +
+			`in PulumiPolicy.yaml (the pack's registry image, e.g. ghcr.io/acme/policy-packs/security)`)
 	}
-	if tag == "" {
-		tag = proj.Version
+	ref, tagged, err := oci.ResolveRef(image, proj.Version, tag)
+	if err != nil {
+		return "", err
 	}
-	if tag == "" {
-		return "", errors.New("no image tag to publish: pass --tag or set `version` in PulumiPolicy.yaml")
+	if !tagged {
+		return "", errors.New("no image tag to publish: pass --tag, tag the image in runtime.options.image, " +
+			"or set `version` in PulumiPolicy.yaml")
 	}
-	return repo + ":" + tag, nil
+	return ref, nil
 }
 
 // publishOCI publishes a policy pack whose artifact is a container image the

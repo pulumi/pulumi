@@ -32,9 +32,9 @@ import (
 func TestOCIPublishRefs(t *testing.T) {
 	t.Parallel()
 
-	proj := func(repo, version string) *workspace.PolicyPackProject {
+	proj := func(image, version string) *workspace.PolicyPackProject {
 		return &workspace.PolicyPackProject{
-			Runtime: workspace.NewProjectRuntimeInfo("oci", map[string]any{"repository": repo}),
+			Runtime: workspace.NewProjectRuntimeInfo("oci", map[string]any{"image": image}),
 			Version: version,
 		}
 	}
@@ -49,15 +49,22 @@ func TestOCIPublishRefs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ghcr.io/acme/pack:1.0.0", ref)
 
-	// No tag and no version: loud error.
+	// An explicit tag in the image pins.
+	ref, err = ociPublishRef(proj("ghcr.io/acme/pack:dev", "1.0.0"), "")
+	require.NoError(t, err)
+	assert.Equal(t, "ghcr.io/acme/pack:dev", ref)
+
+	// No tag anywhere: loud error.
 	_, err = ociPublishRef(proj("ghcr.io/acme/pack", ""), "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--tag")
 
-	// Missing repository: loud error.
-	_, err = ociPublishRef(&workspace.PolicyPackProject{}, "rc1")
+	// Missing image: loud error.
+	_, err = ociPublishRef(&workspace.PolicyPackProject{
+		Runtime: workspace.NewProjectRuntimeInfo("oci", nil),
+	}, "rc1")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "repository")
+	assert.Contains(t, err.Error(), "image")
 }
 
 func TestEscValueToInterface(t *testing.T) {

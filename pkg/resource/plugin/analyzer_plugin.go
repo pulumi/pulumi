@@ -131,7 +131,7 @@ func NewPolicyAnalyzer(
 	}
 
 	// A local OCI pack (`--policy-pack ./dir`): run the locally built image
-	// named by the manifest's repository (tagged with the pack version).
+	// named by the manifest's image option (tagged with the pack version).
 	if proj.Runtime.Name() == "oci" {
 		image, err := localOCIImageRef(proj, policyPackPath)
 		if err != nil {

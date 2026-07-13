@@ -70,20 +70,16 @@ func GetPolicyPackAttachPort(name tokens.QName) (*int, error) {
 const analyzerReadyTimeout = 2 * time.Minute
 
 // localOCIImageRef resolves the image to run for a local `--policy-pack ./dir`
-// OCI pack: <repository>:<version>, falling back to :latest when the manifest
-// has no version. The image must have been built locally (the CLI never
-// builds or implicitly pulls for local packs).
+// OCI pack. The image must have been built locally (the CLI never builds or
+// implicitly pulls for local packs).
 func localOCIImageRef(proj *workspace.PolicyPackProject, path string) (string, error) {
-	repo, _ := proj.Runtime.Options()["repository"].(string)
-	if repo == "" {
-		return "", fmt.Errorf("policy pack at %q has runtime \"oci\" but no \"repository\" runtime option; "+
-			"set runtime.options.repository in PulumiPolicy.yaml to the pack's registry repository", path)
+	image, _ := proj.Runtime.Options()["image"].(string)
+	if image == "" {
+		return "", fmt.Errorf("policy pack at %q has runtime \"oci\" but no \"image\" runtime option; "+
+			"set runtime.options.image in PulumiPolicy.yaml to the pack's registry image", path)
 	}
-	tag := proj.Version
-	if tag == "" {
-		tag = "latest"
-	}
-	return repo + ":" + tag, nil
+	ref, _, err := oci.ResolveRef(image, proj.Version, "")
+	return ref, err
 }
 
 // newOCIPolicyAnalyzer launches the pack image in a container and connects to

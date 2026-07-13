@@ -66,7 +66,7 @@ func TestOCIPolicyPackEndToEnd(t *testing.T) {
 	// A local pack directory whose manifest points at the built image.
 	packDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(packDir, "PulumiPolicy.yaml"), []byte(
-		"runtime:\n  name: oci\n  options:\n    repository: pulumi-test/oci-policy-pack\nversion: integration\n"), 0o600))
+		"runtime:\n  name: oci\n  options:\n    image: pulumi-test/oci-policy-pack\nversion: integration\n"), 0o600))
 
 	pctx, err := NewContext(t.Context(), nil, nil, &MockHost{}, nil, t.TempDir(), nil, false, nil)
 	require.NoError(t, err)
