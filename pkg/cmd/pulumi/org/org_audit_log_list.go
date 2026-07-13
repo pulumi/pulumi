@@ -86,9 +86,8 @@ func newOrgAuditLogListCmdWith(factory orgAuditLogListClientFactory) *cobra.Comm
 	args.outputFormat = defaultOrgAuditLogListOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"ls"},
-		Short:   "[EXPERIMENTAL] List audit log events for an organization",
+		Use:   "list",
+		Short: "[EXPERIMENTAL] List audit log events for an organization",
 		Long: "[EXPERIMENTAL] List audit log events for an organization.\n" +
 			"\n" +
 			"Returns audit log events for the organization. Results may be filtered\n" +

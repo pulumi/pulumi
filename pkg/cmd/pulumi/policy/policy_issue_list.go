@@ -84,9 +84,8 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 	args.outputFormat = defaultPolicyIssueListOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"ls"},
-		Short:   "[EXPERIMENTAL] List all policy issues for an organization",
+		Use:   "list",
+		Short: "[EXPERIMENTAL] List all policy issues for an organization",
 		Long: "[EXPERIMENTAL] List all policy issues for an organization.\n" +
 			"\n" +
 			"Returns a list of policy issues for the organization. Each issue\n" +

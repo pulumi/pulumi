@@ -81,9 +81,8 @@ func newDeploymentListCmdWith(factory deploymentListClientFactory) *cobra.Comman
 	}
 
 	cmd := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"ls"},
-		Short:   "[EXPERIMENTAL] List deployments for a stack",
+		Use:   "list",
+		Short: "[EXPERIMENTAL] List deployments for a stack",
 		Long: "[EXPERIMENTAL] List deployments for a stack.\n" +
 			"\n" +
 			"Returns deployments for the selected stack, showing each deployment's ID,\n" +

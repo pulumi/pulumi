@@ -66,9 +66,8 @@ func newOrgWebhookDeliveryListCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"ls"},
-		Short:   "[EXPERIMENTAL] List recent deliveries for an organization webhook",
+		Use:   "list",
+		Short: "[EXPERIMENTAL] List recent deliveries for an organization webhook",
 		Long: "[EXPERIMENTAL] List recent deliveries for an organization webhook.\n" +
 			"\n" +
 			"Returns the recent delivery history for a specific webhook. Each\n" +

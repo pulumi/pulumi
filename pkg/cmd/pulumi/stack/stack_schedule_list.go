@@ -57,10 +57,9 @@ func newStackScheduleListCmdWith(factory stackScheduleListClientFactory) *cobra.
 	}
 
 	cmd := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"ls"},
-		Short:   "[EXPERIMENTAL] List all scheduled actions configured for a stack",
-		Long:    "[EXPERIMENTAL] List all scheduled actions configured for a stack.",
+		Use:   "list",
+		Short: "[EXPERIMENTAL] List all scheduled actions configured for a stack",
+		Long:  "[EXPERIMENTAL] List all scheduled actions configured for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if factory == nil {
 				factory = defaultStackScheduleListClientFactory
