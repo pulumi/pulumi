@@ -19,9 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/blang/semver"
@@ -159,29 +157,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 //
 // For example, `PULUMI_DEBUG_LANGUAGES=go:12345,dotnet:678` will result in 12345 for go and 678 for dotnet.
 func GetLanguageAttachPort(runtime string) (*int, error) {
-	var optAttach string
-
-	if languagesEnvVar, has := os.LookupEnv("PULUMI_DEBUG_LANGUAGES"); has {
-		for _, provider := range strings.Split(languagesEnvVar, ",") {
-			parts := strings.SplitN(provider, ":", 2)
-
-			if parts[0] == runtime {
-				optAttach = parts[1]
-				break
-			}
-		}
-	}
-
-	if optAttach == "" {
-		return nil, nil
-	}
-
-	port, err := strconv.Atoi(optAttach)
-	if err != nil {
-		return nil, fmt.Errorf("Expected a numeric port, got %s in PULUMI_DEBUG_LANGUAGES: %w",
-			optAttach, err)
-	}
-	return &port, nil
+	return attachPortFromEnv("PULUMI_DEBUG_LANGUAGES", runtime)
 }
 
 func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOption {

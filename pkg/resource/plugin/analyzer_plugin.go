@@ -53,9 +53,8 @@ type analyzer struct {
 	client  pulumirpc.AnalyzerClient
 	version string
 
-	// closeFn, when set, is used by Close instead of closing plug. Used by the
-	// OCI/attach boot paths, which have no *Plugin (and thus no child process)
-	// to close.
+	// closeFn releases whatever the analyzer runs on: the plugin child process,
+	// a container, or an attached connection.
 	closeFn func() error
 
 	// The description from the policy pack's PulumiPolicy.yaml file (if present).
@@ -97,9 +96,10 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 
 	return &analyzer{
-		name:   name,
-		plug:   plug,
-		client: pulumirpc.NewAnalyzerClient(plug.Conn),
+		name:    name,
+		plug:    plug,
+		client:  pulumirpc.NewAnalyzerClient(plug.Conn),
+		closeFn: plug.Close,
 	}, nil
 }
 
@@ -112,18 +112,13 @@ func NewPolicyAnalyzer(
 ) (Analyzer, error) {
 	// Container-image and attached packs never reach this function: the
 	// containerHost decorator (pkg/host/containerhost.go) intercepts them at
-	// the Host seam and launches or dials the pack itself. Hitting the checks
-	// below means the plugin host was not wrapped with host.NewContainerHost.
-	if port, err := GetPolicyPackAttachPort(name); err != nil {
+	// the Host seam and launches or dials the pack itself. Hitting one of the
+	// container guards means the plugin host was not wrapped with
+	// host.NewContainerHost.
+	if reason, err := containerPackReason(name, opts); err != nil {
 		return nil, err
-	} else if port != nil {
-		return nil, fmt.Errorf("policy pack %q is listed in %s, which this host cannot attach to; "+
-			"the plugin host must be wrapped with host.NewContainerHost", name, EnvPolicyPackAttach)
-	}
-
-	if opts != nil && opts.ImageRef != "" {
-		return nil, fmt.Errorf("policy pack %q is a container image (%s), which this host cannot launch; "+
-			"the plugin host must be wrapped with host.NewContainerHost", name, opts.ImageRef)
+	} else if reason != "" {
+		return nil, errContainerHostRequired(name, reason)
 	}
 
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
@@ -133,8 +128,7 @@ func NewPolicyAnalyzer(
 	}
 
 	if proj.Runtime.Name() == "oci" {
-		return nil, fmt.Errorf("policy pack %q has runtime \"oci\", which this host cannot launch; "+
-			"the plugin host must be wrapped with host.NewContainerHost", name)
+		return nil, errContainerHostRequired(name, `has runtime "oci"`)
 	}
 
 	handshake := func(
@@ -273,7 +267,18 @@ func NewPolicyAnalyzer(
 		client:      client,
 		version:     proj.Version,
 		description: description,
+		closeFn:     plug.Close,
 	}, nil
+}
+
+// hasStackContext reports whether opts carries stack context worth sending to
+// the analyzer via ConfigureStack. Tags/DryRun/ConfigSecretKeys are
+// intentionally not part of this predicate: no caller sets any of those
+// without also setting Stack/Project/Organization (engine/update.go always
+// sets Project).
+func (opts *PolicyAnalyzerOptions) hasStackContext() bool {
+	return opts != nil &&
+		(opts.Stack != "" || opts.Project != "" || opts.Organization != "" || len(opts.Config) > 0)
 }
 
 // configureStack sends the stack context to the analyzer if opts carries any. We might not have
@@ -283,13 +288,7 @@ func NewPolicyAnalyzer(
 func configureStack(
 	ctx *Context, client pulumirpc.AnalyzerClient, name tokens.QName, opts *PolicyAnalyzerOptions,
 ) error {
-	if opts == nil {
-		return nil
-	}
-	// Tags/DryRun/ConfigSecretKeys are intentionally not part of this guard: no
-	// caller sets any of those without also setting Stack/Project/Organization
-	// (engine/update.go always sets Project).
-	if opts.Stack == "" && opts.Project == "" && opts.Organization == "" && len(opts.Config) == 0 {
+	if !opts.hasStackContext() {
 		return nil
 	}
 
@@ -330,8 +329,9 @@ func configureStack(
 
 func NewAnalyzerWithClient(name tokens.QName, client pulumirpc.AnalyzerClient) Analyzer {
 	return &analyzer{
-		name:   name,
-		client: client,
+		name:    name,
+		client:  client,
+		closeFn: func() error { return nil },
 	}
 }
 
@@ -702,15 +702,10 @@ func (a *analyzer) Configure(ctx context.Context, policyConfig map[string]Analyz
 	return nil
 }
 
-// Close tears down the underlying plugin RPC connection and process.
+// Close tears down whatever the analyzer runs on: the plugin RPC connection
+// and process, a container, or an attached connection.
 func (a *analyzer) Close() error {
-	if a.closeFn != nil {
-		return a.closeFn()
-	}
-	if a.plug == nil {
-		return nil
-	}
-	return a.plug.Close()
+	return a.closeFn()
 }
 
 // Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.

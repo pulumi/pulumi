@@ -175,6 +175,30 @@ var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy 
 // errPluginNotFound is returned when we try to execute a plugin but it is not found on disk.
 var errPluginNotFound = errors.New("plugin not found")
 
+// attachPortFromEnv looks up key in a comma-separated "<key>:<port>" list held
+// in the environment variable envVar (the shared format of the plugin attach
+// variables: PULUMI_DEBUG_PROVIDERS, PULUMI_DEBUG_LANGUAGES,
+// PULUMI_POLICY_PACK_ATTACH), returning the port, or nil if key is not listed.
+func attachPortFromEnv(envVar, key string) (*int, error) {
+	val, has := os.LookupEnv(envVar)
+	if !has {
+		return nil, nil
+	}
+	for _, entry := range strings.Split(val, ",") {
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) != 2 || parts[0] != key {
+			continue
+		}
+		port, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return nil, fmt.Errorf("expected a numeric port for %q in %s, got %q: %w",
+				key, envVar, parts[1], err)
+		}
+		return &port, nil
+	}
+	return nil, nil
+}
+
 func dialPlugin[T any](
 	ctx context.Context,
 	portNum int,

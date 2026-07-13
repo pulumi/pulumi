@@ -22,7 +22,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -144,29 +143,7 @@ func (p *provider) getPluginConfig(ctx context.Context) (pluginProtocol, pluginC
 // by pkg. If the user has requested to attach to a live provider, returns the port number from the
 // env var. For example, `PULUMI_DEBUG_PROVIDERS=aws:12345,gcp:678` will result in 12345 for aws.
 func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
-	var optAttach string
-
-	if providersEnvVar, has := os.LookupEnv("PULUMI_DEBUG_PROVIDERS"); has {
-		for _, provider := range strings.Split(providersEnvVar, ",") {
-			parts := strings.SplitN(provider, ":", 2)
-
-			if parts[0] == pkg.String() {
-				optAttach = parts[1]
-				break
-			}
-		}
-	}
-
-	if optAttach == "" {
-		return nil, nil
-	}
-
-	port, err := strconv.Atoi(optAttach)
-	if err != nil {
-		return nil, fmt.Errorf("Expected a numeric port, got %s in PULUMI_DEBUG_PROVIDERS: %w",
-			optAttach, err)
-	}
-	return &port, nil
+	return attachPortFromEnv("PULUMI_DEBUG_PROVIDERS", pkg.String())
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the

@@ -2083,7 +2083,7 @@ func TestClient_WithRefresh(t *testing.T) {
 	})
 }
 
-func TestPublishPolicyPackWithImageRef(t *testing.T) {
+func TestRegisterPolicyPackImage(t *testing.T) {
 	t.Parallel()
 
 	var gotCreate apitype.CreatePolicyPackRequest
@@ -2109,9 +2109,9 @@ func TestPublishPolicyPackWithImageRef(t *testing.T) {
 
 	client := newMockClient(server)
 
-	version, err := client.PublishPolicyPack(t.Context(), "acme", "oci",
+	version, err := client.RegisterPolicyPackImage(t.Context(), "acme",
 		plugin.AnalyzerInfo{Name: "security", Version: "1.2.3"},
-		nil, "ghcr.io/acme/security@sha256:abc", nil)
+		"ghcr.io/acme/security@sha256:abc", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "1.2.3", version)
 	assert.Equal(t, "ghcr.io/acme/security@sha256:abc", gotCreate.ImageRef)
@@ -2120,7 +2120,7 @@ func TestPublishPolicyPackWithImageRef(t *testing.T) {
 	assert.False(t, sawComplete, "no publish-complete call for image-ref publishes")
 }
 
-func TestPublishPolicyPackWithImageRefUnsupportedByService(t *testing.T) {
+func TestRegisterPolicyPackImageUnsupportedByService(t *testing.T) {
 	t.Parallel()
 
 	var sawUpload, sawComplete bool
@@ -2144,9 +2144,9 @@ func TestPublishPolicyPackWithImageRefUnsupportedByService(t *testing.T) {
 
 	client := newMockClient(server)
 
-	_, err := client.PublishPolicyPack(t.Context(), "acme", "oci",
+	_, err := client.RegisterPolicyPackImage(t.Context(), "acme",
 		plugin.AnalyzerInfo{Name: "security", Version: "1.2.3"},
-		nil, "ghcr.io/acme/security@sha256:abc", nil)
+		"ghcr.io/acme/security@sha256:abc", nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not support OCI policy packs")
 	assert.False(t, sawUpload, "no tarball upload should be attempted")

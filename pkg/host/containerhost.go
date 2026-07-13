@@ -74,14 +74,6 @@ func NewContainerHost(base plugin.Host) plugin.Host {
 func (h *containerHost) PolicyAnalyzer(
 	ctx *plugin.Context, name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
-	boot, err := h.dispatch(name, path, opts)
-	if err != nil {
-		return nil, err
-	}
-	if boot == nil {
-		return h.Host.PolicyAnalyzer(ctx, name, path, opts)
-	}
-
 	h.bootMu.Lock()
 	defer h.bootMu.Unlock()
 
@@ -100,6 +92,9 @@ func (h *containerHost) PolicyAnalyzer(
 	// releases against the same key it booted under.
 	refCtx := ctx.LifetimeContext()
 
+	// Only container analyzers are ever cached here, so a hit means an
+	// identical call already dispatched to a container boot — the (manifest
+	// parsing) dispatch below only runs once per boot, not once per call.
 	h.mu.Lock()
 	if entry, has := h.analyzers[key]; has {
 		entry.refs[refCtx] = struct{}{}
@@ -107,6 +102,14 @@ func (h *containerHost) PolicyAnalyzer(
 		return entry.analyzer, nil
 	}
 	h.mu.Unlock()
+
+	boot, err := h.dispatch(name, path, opts)
+	if err != nil {
+		return nil, err
+	}
+	if boot == nil {
+		return h.Host.PolicyAnalyzer(ctx, name, path, opts)
+	}
 
 	analyzer, err := boot(ctx)
 	if err != nil {
@@ -142,7 +145,7 @@ func (h *containerHost) dispatch(
 	// directly; there is no local pack directory or manifest.
 	if opts != nil && opts.ImageRef != "" {
 		return func(ctx *plugin.Context) (plugin.Analyzer, error) {
-			return plugin.NewContainerPolicyAnalyzer(h, ctx, name, opts.ImageRef, "", "", opts)
+			return plugin.NewContainerPolicyAnalyzer(h, ctx, name, plugin.ContainerPack{Image: opts.ImageRef}, opts)
 		}, nil
 	}
 
@@ -156,30 +159,19 @@ func (h *containerHost) dispatch(
 	if err != nil || proj.Runtime.Name() != "oci" {
 		return nil, nil
 	}
-	ref, err := localImageRef(proj, path)
+	// The image must have been built locally (the CLI never builds or
+	// implicitly pulls for local packs).
+	ref, _, err := oci.RefForPack(proj, "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("policy pack at %q: %w", path, err)
 	}
-	var description string
+	pack := plugin.ContainerPack{Image: ref, Version: proj.Version}
 	if proj.Description != nil {
-		description = *proj.Description
+		pack.Description = *proj.Description
 	}
 	return func(ctx *plugin.Context) (plugin.Analyzer, error) {
-		return plugin.NewContainerPolicyAnalyzer(h, ctx, name, ref, proj.Version, description, opts)
+		return plugin.NewContainerPolicyAnalyzer(h, ctx, name, pack, opts)
 	}, nil
-}
-
-// localImageRef resolves the image to run for a local `--policy-pack ./dir`
-// pack. The image must have been built locally (the CLI never builds or
-// implicitly pulls for local packs).
-func localImageRef(proj *workspace.PolicyPackProject, path string) (string, error) {
-	image, _ := proj.Runtime.Options()["image"].(string)
-	if image == "" {
-		return "", fmt.Errorf("policy pack at %q has runtime \"oci\" but no \"image\" runtime option; "+
-			"set runtime.options.image in PulumiPolicy.yaml to the pack's registry image", path)
-	}
-	ref, _, err := oci.ResolveRef(image, proj.Version, "")
-	return ref, err
 }
 
 func (h *containerHost) ReleaseContext(ctx *plugin.Context) error {

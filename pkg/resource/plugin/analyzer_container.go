@@ -17,9 +17,6 @@ package plugin
 import (
 	"context"
 	"fmt"
-	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"google.golang.org/grpc"
@@ -47,34 +44,47 @@ const EnvPolicyPackAttach = "PULUMI_POLICY_PACK_ATTACH"
 // GetPolicyPackAttachPort returns the attach port for the named policy pack
 // from EnvPolicyPackAttach, or nil if the pack is not listed.
 func GetPolicyPackAttachPort(name tokens.QName) (*int, error) {
-	envVar, has := os.LookupEnv(EnvPolicyPackAttach)
-	if !has {
-		return nil, nil
+	return attachPortFromEnv(EnvPolicyPackAttach, string(name))
+}
+
+// containerPackReason reports why a pack must be booted by a container-capable
+// host, or "" when the ordinary process-launch path applies. The manifest
+// runtime is the caller's to check: attach and image-ref packs have no local
+// manifest to consult.
+func containerPackReason(name tokens.QName, opts *PolicyAnalyzerOptions) (string, error) {
+	if port, err := GetPolicyPackAttachPort(name); err != nil {
+		return "", err
+	} else if port != nil {
+		return "is listed in " + EnvPolicyPackAttach, nil
 	}
-	for _, entry := range strings.Split(envVar, ",") {
-		parts := strings.SplitN(entry, ":", 2)
-		if len(parts) != 2 || parts[0] != string(name) {
-			continue
-		}
-		port, err := strconv.Atoi(parts[1])
-		if err != nil {
-			return nil, fmt.Errorf("expected a numeric port for %q in %s, got %q: %w",
-				parts[0], EnvPolicyPackAttach, parts[1], err)
-		}
-		return &port, nil
+	if opts != nil && opts.ImageRef != "" {
+		return fmt.Sprintf("is a container image (%s)", opts.ImageRef), nil
 	}
-	return nil, nil
+	return "", nil
+}
+
+// errContainerHostRequired is the error for a container or attach pack
+// reaching a host that cannot boot one.
+func errContainerHostRequired(name tokens.QName, reason string) error {
+	return fmt.Errorf("policy pack %q %s, which this host cannot run; "+
+		"the plugin host must be wrapped with host.NewContainerHost", name, reason)
 }
 
 const analyzerReadyTimeout = 2 * time.Minute
 
+// ContainerPack identifies the container image a policy pack runs as. Version
+// and Description come from the pack's PulumiPolicy.yaml manifest when one was
+// loaded (local packs); both are empty for a digest-pinned image-ref
+// publish/install, which has no manifest to read.
+type ContainerPack struct {
+	Image       string
+	Version     string
+	Description string
+}
+
 // NewContainerPolicyAnalyzer launches the pack image in a container and connects to its analyzer.
-// version and description come from the pack's PulumiPolicy.yaml
-// manifest when one was loaded (local packs); both are empty for a
-// digest-pinned ImageRef publish/install, which has no manifest to read.
 func NewContainerPolicyAnalyzer(
-	host Host, ctx *Context, name tokens.QName, image string, version, description string,
-	opts *PolicyAnalyzerOptions,
+	host Host, ctx *Context, name tokens.QName, pack ContainerPack, opts *PolicyAnalyzerOptions,
 ) (Analyzer, error) {
 	rt, err := oci.DetectRuntime(nil)
 	if err != nil {
@@ -88,7 +98,7 @@ func NewContainerPolicyAnalyzer(
 	}
 
 	container, err := rt.Launch(ctx.Request(), oci.LaunchOptions{
-		Image:    image,
+		Image:    pack.Image,
 		PackName: string(name),
 		Env:      packEnv,
 		Mode:     mode,
@@ -96,7 +106,7 @@ func NewContainerPolicyAnalyzer(
 	if err != nil {
 		return nil, fmt.Errorf("policy pack %q: %w "+
 			"(for a local pack, build and tag the image as %q first -- the CLI never builds it)",
-			name, err, image)
+			name, err, pack.Image)
 	}
 
 	conn, err := dialAnalyzerWithRetry(ctx.Request(), container.Addr, analyzerReadyTimeout,
@@ -126,8 +136,8 @@ func NewContainerPolicyAnalyzer(
 	return &analyzer{
 		name:        name,
 		client:      client,
-		version:     version,
-		description: description,
+		version:     pack.Version,
+		description: pack.Description,
 		closeFn: func() error {
 			contract.IgnoreClose(conn)
 			return container.Close()

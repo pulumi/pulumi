@@ -403,12 +403,7 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 // ociPublishRef resolves the tagged ref to publish from the manifest's image
 // option, the pack version, and --tag.
 func ociPublishRef(proj *workspace.PolicyPackProject, tag string) (string, error) {
-	image, _ := proj.Runtime.Options()["image"].(string)
-	if image == "" {
-		return "", errors.New(`policy packs with runtime "oci" must set the "image" runtime option ` +
-			`in PulumiPolicy.yaml (the pack's registry image, e.g. ghcr.io/acme/policy-packs/security)`)
-	}
-	ref, tagged, err := oci.ResolveRef(image, proj.Version, tag)
+	ref, tagged, err := oci.RefForPack(proj, tag)
 	if err != nil {
 		return "", err
 	}
@@ -475,8 +470,8 @@ func (pack *cloudPolicyPack) publishOCI(ctx context.Context, op backend.PublishO
 	pack.ref.versionTag = analyzerInfo.Version
 
 	fmt.Printf("Registering %s\n", digestRef)
-	publishedVersion, err := pack.cl.PublishPolicyPack(
-		ctx, pack.ref.orgName, "oci", analyzerInfo, nil /*dirArchive*/, digestRef, op.Metadata)
+	publishedVersion, err := pack.cl.RegisterPolicyPackImage(
+		ctx, pack.ref.orgName, analyzerInfo, digestRef, op.Metadata)
 	if err != nil {
 		return err
 	}
@@ -545,7 +540,7 @@ func (pack *cloudPolicyPack) Publish(
 	fmt.Println("Uploading policy pack to Pulumi service")
 
 	publishedVersion, err := pack.cl.PublishPolicyPack(
-		ctx, pack.ref.orgName, runtime, analyzerInfo, bytes.NewReader(packTarball), "", op.Metadata)
+		ctx, pack.ref.orgName, runtime, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
 	if err != nil {
 		return err
 	}

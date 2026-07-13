@@ -18,7 +18,21 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// RefForPack resolves the image reference a policy pack manifest denotes,
+// combining the manifest's "image" runtime option, the pack version, and an
+// explicit tag override via ResolveRef.
+func RefForPack(proj *workspace.PolicyPackProject, tagOverride string) (ref string, tagged bool, err error) {
+	image, _ := proj.Runtime.Options()["image"].(string)
+	if image == "" {
+		return "", false, errors.New(`policy packs with runtime "oci" must set runtime.options.image ` +
+			`in PulumiPolicy.yaml to the pack's registry image, e.g. ghcr.io/acme/policy-packs/security`)
+	}
+	return ResolveRef(image, proj.Version, tagOverride)
+}
 
 // ResolveRef computes the effective image reference for a policy pack from the
 // manifest's "image" runtime option, the pack version, and an explicit tag
