@@ -120,8 +120,10 @@ func verbosityLevel(verbose int) slog.Level {
 		return LevelTrace
 	case verbose >= 10:
 		return slog.LevelDebug
-	default:
+	case verbose >= 1:
 		return slog.LevelInfo
+	default:
+		return slog.LevelWarn
 	}
 }
 
