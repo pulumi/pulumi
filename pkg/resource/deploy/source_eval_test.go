@@ -169,8 +169,9 @@ func (g *testRegEvent) Done(result *RegisterResult) {
 	g.result = result
 }
 
-func (g *testRegEvent) Extension() *apitype.Extension      { return g.extension }
-func (g *testRegEvent) ExtensionRef() apitype.ExtensionRef { return g.extensionRef }
+func (g *testRegEvent) Extension() *apitype.Extension             { return g.extension }
+func (g *testRegEvent) ExtensionRef() apitype.ExtensionRef        { return g.extensionRef }
+func (g *testRegEvent) StateMigrations() []StateMigrationFunction { return nil }
 
 func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {

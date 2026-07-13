@@ -386,6 +386,14 @@ type TransformInvokeFunction func(
 	opts *pulumirpc.TransformInvokeOptions,
 ) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error)
 
+// A state migration function that can be applied to the prior state of a resource and the prior state of all
+// resources transitively parented to it. oldState is a JSON-encoded array of apitype.ResourceV3 values. The
+// returned newState is the transformed array, or nil if the prior state is unchanged. successors maps each URN
+// removed from oldState to the URN in newState that assumes its role.
+type StateMigrationFunction func(
+	ctx context.Context, urn resource.URN, oldState []byte,
+) (newState []byte, successors map[resource.URN]resource.URN, err error)
+
 type CallbacksClient struct {
 	pulumirpc.CallbacksClient
 
@@ -413,6 +421,10 @@ type resmon struct {
 
 	pendingTransforms     map[string][]TransformFunction // pending transformation functions for a constructed resource
 	pendingTransformsLock sync.Mutex
+
+	// pending state migration functions for a constructed resource
+	pendingStateMigrations     map[string][]StateMigrationFunction
+	pendingStateMigrationsLock sync.Mutex
 
 	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
 	parentsLock sync.Mutex
@@ -519,6 +531,7 @@ func newResourceMonitor(
 		workingDirectory:        src.runinfo.Pwd,
 		sourcePositions:         newSourcePositions(src.runinfo.ProjectRoot),
 		pendingTransforms:       map[string][]TransformFunction{},
+		pendingStateMigrations:  map[string][]StateMigrationFunction{},
 		parents:                 map[resource.URN]resource.URN{},
 		resGoals:                map[resource.URN]pkgresource.Goal{},
 		componentProviders:      map[resource.URN]map[string]string{},
@@ -1524,6 +1537,48 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 	}, nil
 }
 
+// Wrap the state migration callback so the engine can call the callback server, which will then execute the
+// function.  The wrapper takes care of all the necessary marshalling and unmarshalling.
+func (rm *resmon) wrapStateMigrationCallback(cb *pulumirpc.Callback) (StateMigrationFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	token := cb.Token
+	return func(ctx context.Context, urn resource.URN, oldState []byte) ([]byte, map[resource.URN]resource.URN, error) {
+		logging.V(5).Infof("StateMigration: urn=%v", urn)
+
+		request, err := proto.Marshal(&pulumirpc.StateMigrationRequest{
+			Urn:      string(urn),
+			OldState: oldState,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("marshaling state migration request: %w", err)
+		}
+
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   token,
+			Request: request,
+		})
+		if err != nil {
+			logging.V(5).Infof("state migration callback error: %v", err)
+			return nil, nil, err
+		}
+
+		var response pulumirpc.StateMigrationResponse
+		if err := proto.Unmarshal(resp.Response, &response); err != nil {
+			return nil, nil, fmt.Errorf("unmarshaling state migration response: %w", err)
+		}
+
+		successors := make(map[resource.URN]resource.URN, len(response.Successors))
+		for oldURN, newURN := range response.Successors {
+			successors[resource.URN(oldURN)] = resource.URN(newURN)
+		}
+		return response.NewState, successors, nil
+	}, nil
+}
+
 // Wrap the transform callback so the engine can call the callback server, which will then execute the function.  The
 // wrapper takes care of all the necessary marshalling and unmarshalling.
 func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (TransformInvokeFunction, error) {
@@ -2349,6 +2404,33 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		opts = newOpts
 	}
 
+	// Collect the state migrations registered for this resource. A registration for a constructed resource
+	// reuses the migrations saved by the remote registration that requested construction, mirroring the pending
+	// transform handoff above.
+	var stateMigrations []StateMigrationFunction
+	err = func() error {
+		rm.pendingStateMigrationsLock.Lock()
+		defer rm.pendingStateMigrationsLock.Unlock()
+
+		if pending, ok := rm.pendingStateMigrations[pendingKey]; ok {
+			delete(rm.pendingStateMigrations, pendingKey)
+			stateMigrations = pending
+		} else {
+			stateMigrations, err = slice.MapError(req.StateMigrations, rm.wrapStateMigrationCallback)
+			if err != nil {
+				return err
+			}
+			// We only need to save this for remote calls
+			if remote && len(stateMigrations) > 0 {
+				rm.pendingStateMigrations[pendingKey] = stateMigrations
+			}
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, fmt.Errorf("collect state migrations: %w", err)
+	}
+
 	// We handle updating the providers map to include the providers field of the parent if
 	// both the current resource and its parent is a component resource.
 	func() {
@@ -2828,10 +2910,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{
-			goal:         goal,
-			done:         make(chan *RegisterResult),
-			extension:    ext,
-			extensionRef: extRef,
+			goal:            goal,
+			done:            make(chan *RegisterResult),
+			extension:       ext,
+			extensionRef:    extRef,
+			stateMigrations: stateMigrations,
 		}
 
 		select {
@@ -3105,10 +3188,11 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 }
 
 type registerResourceEvent struct {
-	goal         *pkgresource.Goal    // the resource goal state produced by the iterator.
-	done         chan *RegisterResult // the channel to communicate with after the resource state is available.
-	extension    *apitype.Extension   // optional extension data if this came from an extension package
-	extensionRef apitype.ExtensionRef // extension reference
+	goal            *pkgresource.Goal        // the resource goal state produced by the iterator.
+	done            chan *RegisterResult     // the channel to communicate with after the resource state is available.
+	extension       *apitype.Extension       // optional extension data if this came from an extension package
+	extensionRef    apitype.ExtensionRef     // extension reference
+	stateMigrations []StateMigrationFunction // state migrations to apply to the prior state before diffing.
 }
 
 var _ RegisterResourceEvent = (*registerResourceEvent)(nil)
@@ -3125,6 +3209,10 @@ func (g *registerResourceEvent) Extension() *apitype.Extension {
 
 func (g *registerResourceEvent) ExtensionRef() apitype.ExtensionRef {
 	return g.extensionRef
+}
+
+func (g *registerResourceEvent) StateMigrations() []StateMigrationFunction {
+	return g.stateMigrations
 }
 
 func (g *registerResourceEvent) Done(result *RegisterResult) {

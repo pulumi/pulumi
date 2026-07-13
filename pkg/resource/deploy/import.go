@@ -172,11 +172,12 @@ func NewImportDeployment(
 
 type noopEvent int
 
-func (noopEvent) event()                             {}
-func (noopEvent) Goal() *pkgresource.Goal            { return nil }
-func (noopEvent) Done(result *RegisterResult)        {}
-func (noopEvent) Extension() *apitype.Extension      { return nil }
-func (noopEvent) ExtensionRef() apitype.ExtensionRef { return "" }
+func (noopEvent) event()                                    {}
+func (noopEvent) Goal() *pkgresource.Goal                   { return nil }
+func (noopEvent) Done(result *RegisterResult)               {}
+func (noopEvent) Extension() *apitype.Extension             { return nil }
+func (noopEvent) ExtensionRef() apitype.ExtensionRef        { return "" }
+func (noopEvent) StateMigrations() []StateMigrationFunction { return nil }
 
 type noopOutputsEvent resource.URN
 
