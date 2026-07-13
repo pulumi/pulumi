@@ -113,6 +113,178 @@ export class API {
         return this.__run(options, __final);
     }
 
+    import(options: PulumiImportOptions, ...arg: string[]): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("import");
+
+        const __flags: string[] = [];
+
+        __flags.push("--skip-preview");
+        __flags.push("--yes");
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.debug) {
+            __flags.push("--debug");
+        }
+
+        if (options.diff) {
+            __flags.push("--diff");
+        }
+
+        if (options.execAgent != null) {
+            __flags.push("--exec-agent", "" + options.execAgent);
+        }
+
+        if (options.execKind != null) {
+            __flags.push("--exec-kind", "" + options.execKind);
+        }
+
+        if (options.file != null) {
+            __flags.push("--file", "" + options.file);
+        }
+
+        if (options.from != null) {
+            __flags.push("--from", "" + options.from);
+        }
+
+        if (options.generateCode) {
+            __flags.push("--generate-code");
+        }
+
+        if (options.generateResources != null) {
+            __flags.push("--generate-resources", "" + options.generateResources);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.message != null) {
+            __flags.push("--message", "" + options.message);
+        }
+
+        if (options.out != null) {
+            __flags.push("--out", "" + options.out);
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        if (options.parallel != null) {
+            __flags.push("--parallel", "" + options.parallel);
+        }
+
+        if (options.parent != null) {
+            __flags.push("--parent", "" + options.parent);
+        }
+
+        if (options.previewOnly) {
+            __flags.push("--preview-only");
+        }
+
+        for (const __item of options.properties ?? []) {
+            if (__item != null) {
+                __flags.push("--properties", "" + __item);
+            }
+        }
+
+        if (options.protect) {
+            __flags.push("--protect");
+        }
+
+        if (options.provider != null) {
+            __flags.push("--provider", "" + options.provider);
+        }
+
+        if (options.skipPluginPreInstall) {
+            __flags.push("--skip-plugin-pre-install");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.suppressOutputs) {
+            __flags.push("--suppress-outputs");
+        }
+
+        if (options.suppressPermalink != null) {
+            __flags.push("--suppress-permalink", "" + options.suppressPermalink);
+        }
+
+        if (options.suppressProgress) {
+            __flags.push("--suppress-progress");
+        }
+
+        if (options.urns) {
+            __flags.push("--urns");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (arg != null) {
+            for (const __item of arg ?? []) {
+                __arguments.push("" + __item);
+            }
+        }
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
     new(options: PulumiNewOptions, templateOrUrl?: string): ReturnType<API["__run"]> {
         const __final: string[] = [];
         __final.push("new");
@@ -635,6 +807,80 @@ export interface PulumiCancelOptions extends BaseOptions {
     stack?: string;
 }
 
+/** Options for the `pulumi import` command. */
+export interface PulumiImportOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Print detailed debugging output during resource operations */
+    debug?: boolean;
+    /** Display operation as a rich diff showing the overall change */
+    diff?: boolean;
+    execAgent?: string;
+    execKind?: string;
+    /** The path to a JSON-encoded file containing a list of resources to import */
+    file?: string;
+    /** Invoke a converter to import the resources */
+    from?: string;
+    /** Generate resource declaration code for the imported resources */
+    generateCode?: boolean;
+    /** When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path */
+    generateResources?: string;
+    /** Serialize the import diffs, operations, and overall output as JSON */
+    json?: boolean;
+    /** Optional message to associate with the update operation */
+    message?: string;
+    /** The path to the file that will contain the generated resource declarations */
+    out?: string;
+    /** Output format. Supported values are: default, json */
+    output?: string;
+    /** Allow P resource operations to run in parallel at once (1 for no parallelism). */
+    parallel?: number;
+    /** The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource */
+    parent?: string;
+    /** Only show a preview of the import, but don't perform the import itself */
+    previewOnly?: boolean;
+    /** The property names to use for the import in the format name1,name2 */
+    properties?: string[];
+    /** Allow resources to be imported with protection from deletion enabled */
+    protect?: boolean;
+    /** The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource */
+    provider?: string;
+    /** Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine */
+    skipPluginPreInstall?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+    /** Suppress display of stack outputs (in case they contain sensitive values) */
+    suppressOutputs?: boolean;
+    /** Suppress display of the state permalink */
+    suppressPermalink?: string;
+    /** Suppress display of periodic progress dots */
+    suppressProgress?: boolean;
+    /** Display full URNs instead of short resource names */
+    urns?: boolean;
+}
+
 /** Options for the `pulumi new` command. */
 export interface PulumiNewOptions extends BaseOptions {
     /** Colorize output. Choices are: always, never, raw, auto */
@@ -773,7 +1019,7 @@ export interface PulumiOrgSearchOptions extends BaseOptions {
     delimiter?: string;
     /** Name of the organization to search. Defaults to the current user's default organization. */
     org?: string;
-    /** Output format. Supported formats are 'table', 'json', 'csv', and 'yaml'. */
+    /** Output format. Supported values are: default, json, yaml and csv */
     output?: string;
     /**
      * A Pulumi Query to send to Pulumi Cloud for resource search.May be formatted as a single query, or multiple:
@@ -814,7 +1060,7 @@ export interface PulumiOrgSearchAiOptions extends BaseOptions {
     delimiter?: string;
     /** Organization name to search within */
     org?: string;
-    /** Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'. */
+    /** Output format. Supported values are: default, json, yaml and csv */
     output?: string;
     /** Plaintext natural language query */
     query?: string;
