@@ -445,7 +445,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		},
 	}
 
-	// Make `pulumi --version` print the same output as `pulumi version`.
 	cmd.SetVersionTemplate("{{.Version}}\n")
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",

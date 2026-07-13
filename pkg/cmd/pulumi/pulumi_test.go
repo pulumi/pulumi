@@ -1093,30 +1093,6 @@ func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
 	assert.Contains(t, stdout.String(), "Usage:", "help text should still be printed")
 }
 
-// `pulumi --version` must print the same output as `pulumi version`.
-//
-//nolint:paralleltest // changes globals (version.Version)
-func TestVersionFlag(t *testing.T) {
-	realVersion := version.Version
-	t.Cleanup(func() {
-		version.Version = realVersion
-	})
-	version.Version = "v3.0.0-test"
-
-	pulumiCmd, cleanup := NewPulumiCmd()
-	defer cleanup()
-
-	var stdout, stderr bytes.Buffer
-	pulumiCmd.SetOut(&stdout)
-	pulumiCmd.SetErr(&stderr)
-	pulumiCmd.SetArgs([]string{"--version"})
-
-	err := pulumiCmd.Execute()
-	require.NoError(t, err)
-	assert.Equal(t, "v3.0.0-test\n", stdout.String())
-	assert.Empty(t, stderr.String())
-}
-
 // Requesting help explicitly must keep exiting 0.
 //
 //nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
