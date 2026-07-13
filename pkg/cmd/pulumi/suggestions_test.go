@@ -65,6 +65,13 @@ func TestUnknownCommandSuggestions(t *testing.T) {
 			wantErr:         `unknown command "expor" for "pulumi stack"`,
 			wantSuggestions: []string{"pulumi stack export"},
 		},
+		{
+			// Four levels deep: the resolved path words all count toward the
+			// score, so the sibling under the same deep group wins.
+			args:            []string{"stack", "webhook", "delivery", "lst"},
+			wantErr:         `unknown command "lst" for "pulumi stack webhook delivery"`,
+			wantSuggestions: []string{"pulumi stack webhook delivery list"},
+		},
 	}
 
 	for _, c := range cases {
@@ -195,6 +202,25 @@ func TestSuggestCommands(t *testing.T) {
 		t.Parallel()
 		got := suggestCommands(find("env"), []string{"lisst"})
 		assert.Equal(t, []string{"pulumi env ls"}, got)
+	})
+
+	t.Run("two words reach a deep command from the root", func(t *testing.T) {
+		t.Parallel()
+		// `stack webhook list` outscores everything: `webhook` and `list`
+		// both match exactly and only `stack` goes untyped. The `webhook`
+		// groups themselves also match the failing word, but land too far
+		// below the winner to be offered alongside it.
+		got := suggestCommands(root, []string{"webhook", "list"})
+		assert.Equal(t, []string{"pulumi stack webhook list"}, got)
+	})
+
+	t.Run("one word is not enough for a deep command", func(t *testing.T) {
+		t.Parallel()
+		// `new` matches `stack webhook new` and `org webhook new` exactly,
+		// but two untyped path words each cost a point, dropping the score
+		// below the cutoff: deep commands need more typed context.
+		got := suggestCommands(root, []string{"new"})
+		assert.Empty(t, got)
 	})
 
 	t.Run("hidden commands are not suggested", func(t *testing.T) {
