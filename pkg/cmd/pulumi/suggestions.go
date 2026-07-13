@@ -85,14 +85,14 @@ func installUnknownCommandHandling(c *cobra.Command) {
 			return result.BailErrorf("%q requires a subcommand", cmd.CommandPath())
 		}
 	default:
-		// A runnable command with subcommands (`stack`, `org`, ...):
+		// A runnable command with subcommands (`stack`, `config`, ...):
 		// positional args may be legitimate, so only treat them as an
 		// attempted subcommand when the command's own argument specification
-		// cannot accept that many.
+		// cannot accept that many, and blame the first arg past the spec.
 		orig := c.Args
 		c.Args = func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 && exceedsArgSpec(cmd, args) {
-				return unknownCommandError(cmd, args)
+			if extra := argsPastSpec(cmd, args); len(extra) > 0 {
+				return unknownCommandError(cmd, extra)
 			}
 			if orig != nil {
 				return orig(cmd, args)
@@ -102,16 +102,16 @@ func installUnknownCommandHandling(c *cobra.Command) {
 	}
 }
 
-// exceedsArgSpec reports whether the command's constrictor argument
-// specification cannot accept this many positional arguments, meaning the
-// first one past the spec must be an attempted subcommand. Commands without a
-// spec never escalate, so their own validators still apply.
-func exceedsArgSpec(cmd *cobra.Command, args []string) bool {
+// argsPastSpec returns the positional arguments beyond what the command's
+// constrictor argument specification can accept; the first of these must be
+// an attempted subcommand. Commands without a spec never escalate, so their
+// own validators still apply.
+func argsPastSpec(cmd *cobra.Command, args []string) []string {
 	spec, err := constrictor.ExtractArgs(cmd)
-	if err != nil {
-		return false
+	if err != nil || spec.Variadic || len(args) <= len(spec.Arguments) {
+		return nil
 	}
-	return !spec.Variadic && len(args) > len(spec.Arguments)
+	return args[len(spec.Arguments):]
 }
 
 const maxSuggestions = 3

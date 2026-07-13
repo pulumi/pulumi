@@ -1033,10 +1033,12 @@ func TestParseRootPersistentFlags(t *testing.T) {
 	}
 }
 
-// Group commands (commands with subcommands but no run function) must fail with a
-// non-zero exit code when given an unknown subcommand, rather than printing help
-// and exiting 0. See https://github.com/spf13/cobra's execute(): non-runnable
-// commands return flag.ErrHelp before args are ever validated.
+// Commands with subcommands must fail with a non-zero exit code when given an
+// unknown subcommand, rather than printing help and exiting 0. This covers
+// both group commands (no run function), which cobra's execute() would
+// otherwise short-circuit with flag.ErrHelp before args are ever validated,
+// and runnable parents such as `stack`, where an arg past the command's
+// argument specification can only be an attempted subcommand.
 //
 //nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
 func TestGroupCommandsRejectUnknownSubcommands(t *testing.T) {
@@ -1050,6 +1052,8 @@ func TestGroupCommandsRejectUnknownSubcommands(t *testing.T) {
 		{args: []string{"env", "provider", "bogus"}, wantErr: "unknown command"},
 		{args: []string{"stack", "tag", "bogus"}, wantErr: `unknown command "bogus" for "pulumi stack tag"`},
 		{args: []string{"plugin", "bogus"}, wantErr: `unknown command "bogus" for "pulumi plugin"`},
+		{args: []string{"stack", "bogus"}, wantErr: `unknown command "bogus" for "pulumi stack"`},
+		{args: []string{"config", "bogus"}, wantErr: `unknown command "bogus" for "pulumi config"`},
 	}
 
 	for _, c := range cases {

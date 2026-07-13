@@ -22,6 +22,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
 // Unknown commands must be met with suggestions drawn from the whole command
@@ -55,6 +57,13 @@ func TestUnknownCommandSuggestions(t *testing.T) {
 			args:            []string{"env", "lisst"},
 			wantErr:         `unknown command "lisst" for "pulumi env"`,
 			wantSuggestions: []string{"pulumi env ls"},
+		},
+		{
+			// `stack` is runnable and has subcommands, so this exercises the
+			// argument-specification path rather than the group-command path.
+			args:            []string{"stack", "expor"},
+			wantErr:         `unknown command "expor" for "pulumi stack"`,
+			wantSuggestions: []string{"pulumi stack export"},
 		},
 	}
 
@@ -211,6 +220,38 @@ func TestSuggestCommands(t *testing.T) {
 		got := suggestCommands(crowded, []string{"things"})
 		assert.LessOrEqual(t, len(got), maxSuggestions)
 	})
+}
+
+// A runnable command with subcommands may accept legitimate positional args.
+// Only the args past its argument specification can be an attempted
+// subcommand, and the error must blame the first of those, not the first arg
+// outright.
+func TestRunnableParentBlamesArgPastSpec(t *testing.T) {
+	t.Parallel()
+
+	parent := &cobra.Command{Use: "thing", RunE: func(*cobra.Command, []string) error { return nil }}
+	constrictor.AttachArguments(parent, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "name"}},
+	})
+	parent.AddCommand(&cobra.Command{Use: "export", Run: func(*cobra.Command, []string) {}})
+	root := &cobra.Command{Use: "pulumi"}
+	root.AddCommand(parent)
+	installUnknownCommandHandling(root)
+
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+
+	root.SetArgs([]string{"thing", "myname", "expor"})
+	err := root.Execute()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, `unknown command "expor" for "pulumi thing"`)
+	assert.ErrorContains(t, err, "pulumi thing export")
+	assert.NotContains(t, err.Error(), "myname")
+
+	// Args within the specification alone must still reach the command.
+	root.SetArgs([]string{"thing", "myname"})
+	require.NoError(t, root.Execute())
 }
 
 func TestNormalize(t *testing.T) {
