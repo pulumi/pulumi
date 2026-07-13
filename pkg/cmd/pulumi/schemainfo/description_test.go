@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package do
+package schemainfo
 
 import (
 	"strings"
@@ -95,7 +95,7 @@ func TestRenderDescriptionRunsCleanly(t *testing.T) {
 
 	// renderDescription pushes the cleaned Markdown through glamour; make sure that path does not
 	// panic and still drops the example content.
-	out := renderDescription("Intro.\n\n## Example Usage\n\n```go\nx := 1\n```")
+	out := RenderDescription("Intro.\n\n## Example Usage\n\n```go\nx := 1\n```")
 	assert.Contains(t, out, "Intro.")
 	assert.NotContains(t, out, "Example Usage")
 }
@@ -116,7 +116,7 @@ func TestRenderMarkdownStyled(t *testing.T) {
 		assert.Contains(t, []string{"\x1b[1m", "\x1b[3m", "\x1b[4m", "\x1b[1;3m", "\x1b[0m"}, seq)
 	}
 	// Blockquotes carry the `│ ` rail, in the default text color.
-	assert.Contains(t, stripANSI(out), "│ Note:")
+	assert.Contains(t, stripEscapes(out), "│ Note:")
 	// Strong text and headings are bold.
 	assert.Contains(t, out, "\x1b[1mNote:\x1b[0m")
 	assert.Contains(t, out, "\x1b[1mNotes\x1b[0m")
@@ -130,7 +130,7 @@ func TestRenderMarkdownStyled(t *testing.T) {
 	// Text is wrapped at eighty columns, a link and its URL always share a line, and continuation
 	// lines of a blockquote keep the rail.
 	quoteLines := 0
-	for _, line := range strings.Split(stripANSI(out), "\n") {
+	for _, line := range strings.Split(stripEscapes(out), "\n") {
 		assert.LessOrEqual(t, len([]rune(line)), 80)
 		if strings.Contains(line, "S3 on Outposts") {
 			assert.Contains(t, line, "S3 on Outposts (https://example.com/outposts)")

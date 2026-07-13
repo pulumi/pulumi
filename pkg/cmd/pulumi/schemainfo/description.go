@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package do
+package schemainfo
 
 import (
 	"regexp"
@@ -72,7 +72,7 @@ func helpMarkdownStyle(styled bool) ansi.StyleConfig {
 }
 
 // droppedHelpSections are the lower-cased titles of heading sections that only document SDK
-// authoring or importing, and so are removed from `do` help.
+// authoring or importing, and so are removed from the rendered help.
 var droppedHelpSections = map[string]bool{
 	"example usage": true,
 	"example":       true,
@@ -83,8 +83,8 @@ var droppedHelpSections = map[string]bool{
 // the schema glued them to the end of the preceding paragraph rather than starting a new line.
 var gluedHeadingRegexp = regexp.MustCompile(`(?i)#{2,4}\s*(?:Example Usage|Import|Example)\b[^\n]*`)
 
-// renderDescription prepares a schema resource/function description for display in `do` help.
-func renderDescription(comment string) string {
+// RenderDescription prepares a schema resource/function description for display in CLI help.
+func RenderDescription(comment string) string {
 	md := descriptionMarkdown(comment)
 	if md == "" {
 		return ""
@@ -167,7 +167,7 @@ func descriptionMarkdown(comment string) string {
 	md := schema.RenderDocsToString(source, node)
 
 	md = gluedHeadingRegexp.ReplaceAllString(md, "")
-	md = cleanComment(md)
+	md = CleanComment(md)
 	return strings.TrimSpace(md)
 }
 

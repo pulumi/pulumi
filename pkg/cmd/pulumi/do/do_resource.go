@@ -65,7 +65,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 
 	shorthelp := fmt.Sprintf("Operate on the %s resource", name)
 	longhelp := shorthelp + "."
-	if description := renderDescription(res.Comment); description != "" {
+	if description := schemainfo.RenderDescription(res.Comment); description != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, description)
 	}
 	if schemaHelp := resourceSchemaHelp(res); schemaHelp != "" {
