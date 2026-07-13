@@ -1,5 +1,7 @@
 kind: improvement
-body: Accept `list` and `ls` interchangeably on list commands
+body: Align `env` commands with the CLI naming guidelines, making `list`, `remove` and
+    `move` the canonical names with `ls`, `rm`, `delete` and `mv` kept as aliases, and
+    accept `list` and `ls` interchangeably on all other list commands
 component: cli
 custom:
     PR: "23901"

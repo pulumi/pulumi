@@ -32,8 +32,8 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:     "ls",
-		Aliases: []string{"list"},
+		Use:     "list",
+		Aliases: []string{"ls"},
 		Short:   "List environments.",
 		Long: "List environments\n" +
 			"\n" +
