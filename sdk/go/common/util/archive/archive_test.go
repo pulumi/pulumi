@@ -119,24 +119,22 @@ func TestIgnoreNestedGitignore(t *testing.T) {
 		fileContents{name: "pkg/node_modules/pulumi/excluded/excluded.txt", shouldRetain: false})
 }
 
-// TestIgnorePrecomposesUnicode verifies that, on a filesystem that decomposes
-// Unicode, a .gitignore pattern authored in composed (NFC) form still matches a
-// file whose name the filesystem hands back decomposed (NFD) — mirroring git's
-// core.precomposeunicode. The package-level flag is forced on so the behavior is
-// exercised regardless of the host OS.
-//
-//nolint:paralleltest // mutates package-level precomposeUnicodeFS
+// TestIgnorePrecomposesUnicode verifies that a .gitignore pattern authored in
+// composed (NFC) form matches a directory whose name is stored decomposed (NFD)
+// on disk — mirroring git's core.precomposeunicode. This is macOS-only behavior:
+// precomposeUnicode normalizes readdir output to NFC there and is a no-op
+// elsewhere, so the test only runs on darwin.
 func TestIgnorePrecomposesUnicode(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: filesystem Unicode normalization is ambiguous there")
+	t.Parallel()
+
+	if runtime.GOOS != "darwin" {
+		t.Skip("precomposeUnicode only normalizes on macOS")
 	}
 
-	saved := precomposeUnicodeFS
-	precomposeUnicodeFS = true
-	t.Cleanup(func() { precomposeUnicodeFS = saved })
-
-	// "café" — the directory is created on disk in NFD form (decomposed "e" +
-	// combining acute), while the .gitignore pattern uses NFC (precomposed "é").
+	// The directory is created on disk in NFD (decomposed) form while the
+	// .gitignore pattern uses NFC (precomposed). APFS preserves the exact bytes
+	// we write, so readdir hands the name back in NFD; the match then succeeds
+	// only because precomposeUnicode brings it back to NFC before matching.
 	nfc := norm.NFC.String("café")
 	nfd := norm.NFD.String("café")
 	require.NotEqual(t, nfc, nfd, "expected NFC and NFD forms to differ")

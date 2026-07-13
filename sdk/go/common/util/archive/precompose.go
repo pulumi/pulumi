@@ -20,28 +20,21 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-// precomposeUnicodeFS reports whether directory-entry names read from the
-// filesystem should be precomposed to NFC before we match them against ignore
-// patterns. macOS stores filenames in a decomposed (roughly NFD) form, so the
-// name "café" read back from readdir is a different byte sequence than the
-// composed (NFC) "café" a user typically types into a .gitignore — and our
-// pattern matching is byte/rune-exact. Git solves this with
-// core.precomposeunicode, which precomposes readdir output to NFC and defaults
-// to on for macOS; we mirror that gating so our ignore matching agrees with
-// git's on the same filesystem.
-//
-// It is a var rather than a const so tests can exercise the precompose path on
-// hosts that don't decompose.
-var precomposeUnicodeFS = runtime.GOOS == "darwin"
-
 // precomposeUnicode returns name in NFC form on filesystems that decompose
-// Unicode (see [precomposeUnicodeFS]), and otherwise returns it unchanged.
-// Normalizing only there mirrors git: on a decomposing filesystem the NFC name
-// still resolves to the same file (lookup is normalization-insensitive), while
-// on a byte-preserving filesystem rewriting the name could point at a file that
-// doesn't exist.
+// Unicode (macOS), and otherwise returns it unchanged. macOS stores filenames
+// in a decomposed (roughly NFD) form, so the name "café" read back from readdir
+// is a different byte sequence than the composed (NFC) "café" a user typically
+// types into a .gitignore — and our pattern matching is byte/rune-exact. Git
+// solves this with core.precomposeunicode, which precomposes readdir output to
+// NFC and defaults to on for macOS; we mirror that gating so our ignore matching
+// agrees with git's on the same filesystem.
+//
+// Normalizing only on macOS also mirrors git for correctness: on a decomposing
+// filesystem the NFC name still resolves to the same file (lookup is
+// normalization-insensitive), while on a byte-preserving filesystem rewriting
+// the name could point at a file that doesn't exist.
 func precomposeUnicode(name string) string {
-	if !precomposeUnicodeFS {
+	if runtime.GOOS != "darwin" {
 		return name
 	}
 	return norm.NFC.String(name)
