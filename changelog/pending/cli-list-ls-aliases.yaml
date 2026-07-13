@@ -1,3 +1,5 @@
 kind: improvement
 body: Accept `list` and `ls` interchangeably on list commands
 component: cli
+custom:
+    PR: "23901"
