@@ -511,7 +511,7 @@ func runConvert(
 			return fmt.Errorf("changing the working directory: %w", err)
 		}
 
-		proj, root, err := ws.ReadProject(cwd)
+		proj, root, err := ws.ReadProject(outDir)
 		if err != nil {
 			return err
 		}
