@@ -109,6 +109,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	for componentDir, component := range program.CollectComponents() {
 		componentFilename := strings.ReplaceAll(filepath.Base(componentDir), "-", "_")
 		componentName := component.DeclarationName()
+		pcl.MapProvidersAsResources(component.Program)
 		componentGenerator, err := newGenerator(component.Program)
 		if err != nil {
 			return files, componentGenerator.diagnostics, err

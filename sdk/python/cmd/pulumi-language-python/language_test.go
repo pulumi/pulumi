@@ -221,6 +221,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					if config.typechecker == "pyright" &&
 						(tt == "l3-component-simple" ||
 							tt == "l3-rewrite-conversions" ||
+							tt == "l3-component-provider" ||
 							tt == "l3-component-config-primitives" ||
 							tt == "l3-component-config-objects" ||
 							tt == "l3-resource-keyword-overlap") {
