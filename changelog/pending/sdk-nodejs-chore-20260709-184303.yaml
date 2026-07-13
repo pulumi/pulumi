@@ -1,4 +1,0 @@
-component: sdk/nodejs
-kind: chore
-body: Report the TypeScript version in `pulumi about`
-time: 2026-07-09T18:43:03.136109+02:00
