@@ -260,6 +260,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	cmd = &cobra.Command{
 		Use:           "pulumi",
 		Short:         "Pulumi command line",
+		Version:       version.Version,
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Long: "Pulumi - Modern Infrastructure as Code\n" +
@@ -443,6 +444,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 		},
 	}
+
+	// Make `pulumi --version` print the same output as `pulumi version`.
+	cmd.SetVersionTemplate("{{.Version}}\n")
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",
 		"Run pulumi as if it had been started in another directory")
