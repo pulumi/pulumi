@@ -22,6 +22,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// RuntimeName is the PulumiPolicy.yaml runtime name declaring a
+// container-image policy pack.
+const RuntimeName = "oci"
+
 // RefForPack resolves the image reference a policy pack manifest denotes,
 // combining the manifest's "image" runtime option, the pack version, and an
 // explicit tag override via ResolveRef.

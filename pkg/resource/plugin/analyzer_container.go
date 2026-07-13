@@ -47,29 +47,6 @@ func GetPolicyPackAttachPort(name tokens.QName) (*int, error) {
 	return attachPortFromEnv(EnvPolicyPackAttach, string(name))
 }
 
-// containerPackReason reports why a pack must be booted by a container-capable
-// host, or "" when the ordinary process-launch path applies. The manifest
-// runtime is the caller's to check: attach and image-ref packs have no local
-// manifest to consult.
-func containerPackReason(name tokens.QName, opts *PolicyAnalyzerOptions) (string, error) {
-	if port, err := GetPolicyPackAttachPort(name); err != nil {
-		return "", err
-	} else if port != nil {
-		return "is listed in " + EnvPolicyPackAttach, nil
-	}
-	if opts != nil && opts.ImageRef != "" {
-		return fmt.Sprintf("is a container image (%s)", opts.ImageRef), nil
-	}
-	return "", nil
-}
-
-// errContainerHostRequired is the error for a container or attach pack
-// reaching a host that cannot boot one.
-func errContainerHostRequired(name tokens.QName, reason string) error {
-	return fmt.Errorf("policy pack %q %s, which this host cannot run; "+
-		"the plugin host must be wrapped with host.NewContainerHost", name, reason)
-}
-
 const analyzerReadyTimeout = 2 * time.Minute
 
 // ContainerPack identifies the container image a policy pack runs as. Version

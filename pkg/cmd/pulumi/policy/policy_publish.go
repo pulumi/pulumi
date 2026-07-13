@@ -140,7 +140,6 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	if err != nil {
 		return err
 	}
-	pluginHost = pkghost.NewContainerHost(pluginHost)
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
 	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), pluginHost, pwd, projinfo.Root,

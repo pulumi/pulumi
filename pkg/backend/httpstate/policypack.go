@@ -483,7 +483,7 @@ func (pack *cloudPolicyPack) publishOCI(ctx context.Context, op backend.PublishO
 func (pack *cloudPolicyPack) Publish(
 	ctx context.Context, op backend.PublishOperation,
 ) error {
-	if op.PolicyPack.Runtime.Name() == "oci" {
+	if op.PolicyPack.Runtime.Name() == oci.RuntimeName {
 		return pack.publishOCI(ctx, op)
 	}
 

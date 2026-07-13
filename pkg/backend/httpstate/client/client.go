@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -2037,7 +2038,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 func (pc *Client) RegisterPolicyPackImage(ctx context.Context, orgName string,
 	analyzerInfo plugin.AnalyzerInfo, imageRef string, metadata map[string]string,
 ) (string, error) {
-	resp, version, err := pc.createPolicyPack(ctx, orgName, "oci", analyzerInfo, imageRef, metadata)
+	resp, version, err := pc.createPolicyPack(ctx, orgName, oci.RuntimeName, analyzerInfo, imageRef, metadata)
 	if err != nil {
 		return "", err
 	}

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
@@ -64,7 +65,10 @@ func buildIntegrationImage(t *testing.T, rt *oci.Runtime) {
 	require.NoError(t, err, "building image: %s", out)
 }
 
-func TestContainerHostEndToEnd(t *testing.T) {
+// TestContainerPolicyPackEndToEnd boots a local runtime "oci" pack through the
+// production path — defaultHost.PolicyAnalyzer dispatching to a container
+// launch — and verifies the host's teardown reaps the container.
+func TestContainerPolicyPackEndToEnd(t *testing.T) {
 	t.Parallel()
 	rt := requireDocker(t)
 	buildIntegrationImage(t, rt)
@@ -75,16 +79,15 @@ func TestContainerHostEndToEnd(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(packDir, "PulumiPolicy.yaml"), []byte(
 		"runtime:\n  name: oci\n  options:\n    image: pulumi-test/oci-policy-pack\nversion: integration\n"), 0o600))
 
-	base := &plugin.MockHost{ServerAddrF: func() string { return "127.0.0.1:1" }}
-	h := NewContainerHost(base)
-	pctx, err := plugin.NewContext(t.Context(), nil, nil, h, nil, t.TempDir(), nil, false, nil)
+	d := diagtest.LogSink(t)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, h.Close()) }()
+	pctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
 	require.NoError(t, err)
 
 	a, err := h.PolicyAnalyzer(pctx, "oci-integration-pack", packDir, nil)
 	require.NoError(t, err)
-	// Reap the container even if an assertion below aborts the test; Close is
-	// idempotent, so the happy-path ReleaseContext below is unaffected.
-	t.Cleanup(func() { _ = a.Close() })
 
 	info, err := a.GetAnalyzerInfo(t.Context())
 	require.NoError(t, err)
@@ -101,7 +104,7 @@ func TestContainerHostEndToEnd(t *testing.T) {
 	assert.Equal(t, "ran-in-container", analyzeResp.Diagnostics[0].Message)
 
 	// ReleaseContext is the production teardown path (Context.Close calls it):
-	// it must stop the container the decorator booted for this context.
+	// it must stop the container booted for this context.
 	require.NoError(t, h.ReleaseContext(pctx))
 
 	// The container must be gone (launched with --rm). Ctrl-C / engine

@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -173,13 +175,37 @@ func TestDialAnalyzerWithRetryFailsFastOnExit(t *testing.T) {
 	assert.Less(t, time.Since(start), 10*time.Second, "should fail fast, not wait out the timeout")
 }
 
-func TestNewPolicyAnalyzerRejectsAttachOnUnwrappedHost(t *testing.T) {
-	t.Setenv(EnvPolicyPackAttach, "attach-pack:12345")
+func TestNewPolicyAnalyzerAttachDispatch(t *testing.T) {
+	addr := startFakeAnalyzer(t)
+	_, port, err := net.SplitHostPort(addr)
+	require.NoError(t, err)
+	t.Setenv(EnvPolicyPackAttach, "attach-pack:"+port)
 
 	ctx, err := NewContext(t.Context(), nil, nil, &MockHost{}, nil, t.TempDir(), nil, false, nil)
 	require.NoError(t, err)
 
-	_, err = NewPolicyAnalyzer(&fakeHost{addr: "127.0.0.1:1"}, ctx, "attach-pack", t.TempDir(), nil, nil)
+	// Attach packs have no local directory or manifest; the empty path must
+	// not be consulted.
+	a, err := NewPolicyAnalyzer(&fakeHost{addr: "127.0.0.1:1"}, ctx, "attach-pack", "", nil, nil)
+	require.NoError(t, err)
+
+	info, err := a.GetAnalyzerInfo(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, "fake-pack", info.Name)
+	require.NoError(t, a.Close())
+}
+
+func TestNewPolicyAnalyzerLocalPackMissingImage(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(t.Context(), nil, nil, &MockHost{}, nil, t.TempDir(), nil, false, nil)
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "PulumiPolicy.yaml"),
+		[]byte("runtime:\n  name: oci\n"), 0o600))
+
+	_, err = NewPolicyAnalyzer(&fakeHost{addr: "127.0.0.1:1"}, ctx, "oci-pack", dir, nil, nil)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "host.NewContainerHost")
+	assert.Contains(t, err.Error(), "runtime.options.image")
 }

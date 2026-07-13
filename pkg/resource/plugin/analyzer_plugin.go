@@ -44,6 +44,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
 )
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
@@ -110,15 +112,18 @@ func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
 	hasPlugin func(workspace.PluginDescriptor) bool,
 ) (Analyzer, error) {
-	// Container-image and attached packs never reach this function: the
-	// containerHost decorator (pkg/host/containerhost.go) intercepts them at
-	// the Host seam and launches or dials the pack itself. Hitting one of the
-	// container guards means the plugin host was not wrapped with
-	// host.NewContainerHost.
-	if reason, err := containerPackReason(name, opts); err != nil {
+	// Attach mode: the pack is already running (a pod sidecar, or under a
+	// debugger); connect instead of launching. Attach and image-ref packs have
+	// no local pack directory or manifest to consult.
+	if port, err := GetPolicyPackAttachPort(name); err != nil {
 		return nil, err
-	} else if reason != "" {
-		return nil, errContainerHostRequired(name, reason)
+	} else if port != nil {
+		return AttachPolicyAnalyzer(host, ctx, name, *port, opts)
+	}
+
+	// A digest-pinned image ref (server-enforced pack): boot the container.
+	if opts != nil && opts.ImageRef != "" {
+		return NewContainerPolicyAnalyzer(host, ctx, name, ContainerPack{Image: opts.ImageRef}, opts)
 	}
 
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
@@ -127,8 +132,18 @@ func NewPolicyAnalyzer(
 		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", policyPackPath, err)
 	}
 
-	if proj.Runtime.Name() == "oci" {
-		return nil, errContainerHostRequired(name, `has runtime "oci"`)
+	if proj.Runtime.Name() == oci.RuntimeName {
+		// The image must have been built locally (the CLI never builds or
+		// implicitly pulls for local packs).
+		ref, _, err := oci.RefForPack(proj, "")
+		if err != nil {
+			return nil, fmt.Errorf("policy pack at %q: %w", policyPackPath, err)
+		}
+		pack := ContainerPack{Image: ref, Version: proj.Version}
+		if proj.Description != nil {
+			pack.Description = *proj.Description
+		}
+		return NewContainerPolicyAnalyzer(host, ctx, name, pack, opts)
 	}
 
 	handshake := func(
