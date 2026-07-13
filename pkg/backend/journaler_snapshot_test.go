@@ -50,7 +50,7 @@ func MockJournalSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotM
 	journal, err := NewSnapshotJournaler(
 		t.Context(), sp, baseSnap.SecretsManager, secretsProvider, baseSnap)
 	require.NoError(t, err)
-	snap, err := engine.NewJournalSnapshotManager(journal, baseSnap, baseSnap.SecretsManager)
+	snap, err := engine.NewJournalSnapshotManager(journal, baseSnap, baseSnap.SecretsManager, apitype.LatestJournalVersion)
 	require.NoError(t, err)
 	return snap, sp
 }
@@ -1044,7 +1044,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsJournaling(t 
 		t.Context(), sp, snap.SecretsManager, secretsProvider, snap)
 	require.NoError(t, err)
 
-	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
+	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager, apitype.LatestJournalVersion)
 	require.NoError(t, err)
 
 	err = sm.Close()
@@ -1067,7 +1067,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsJournaling(t *t
 		t.Context(), sp, snap.SecretsManager, secretsProvider, snap)
 	require.NoError(t, err)
 
-	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
+	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager, apitype.LatestJournalVersion)
 	require.NoError(t, err)
 
 	err = sm.Close()
@@ -1091,7 +1091,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	journal, err := NewSnapshotJournaler(
 		t.Context(), sp, snap.SecretsManager, secretsProvider, snap)
 	require.NoError(t, err)
-	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
+	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager, apitype.LatestJournalVersion)
 	require.NoError(t, err)
 
 	err = sm.Close()
@@ -1115,7 +1115,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJ
 	journal, err := NewSnapshotJournaler(
 		t.Context(), sp, snap.SecretsManager, secretsProvider, snap)
 	require.NoError(t, err)
-	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager)
+	sm, err := engine.NewJournalSnapshotManager(journal, snap, snap.SecretsManager, apitype.LatestJournalVersion)
 	require.NoError(t, err)
 
 	err = sm.Close()

@@ -18,6 +18,7 @@ import (
 	"errors"
 	"sync"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -57,6 +58,23 @@ func (c *CombinedManager) RebuiltBaseState() error {
 	var errs []error
 	for i, m := range c.Managers {
 		if err := m.RebuiltBaseState(); err != nil {
+			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+				c.appendError(err)
+			} else {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (c *CombinedManager) StateMigration(
+	removed []*pkgresource.State, migrated []*pkgresource.State,
+	successors map[resource.URN]resource.URN,
+) error {
+	var errs []error
+	for i, m := range c.Managers {
+		if err := m.StateMigration(removed, migrated, successors); err != nil {
 			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
 				c.appendError(err)
 			} else {

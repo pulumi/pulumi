@@ -32,6 +32,7 @@ const (
 	JournalEntryKindRebuiltBaseState      JournalEntryKind = 7
 	JournalEntryKindExtensionParameterize JournalEntryKind = 8
 	JournalEntryKindSnippets              JournalEntryKind = 9
+	JournalEntryKindStateMigration        JournalEntryKind = 10
 )
 
 func (k JournalEntryKind) String() string {
@@ -56,6 +57,8 @@ func (k JournalEntryKind) String() string {
 		return "extension-parameterize"
 	case JournalEntryKindSnippets:
 		return "snippets"
+	case JournalEntryKindStateMigration:
+		return "state-migration"
 	default:
 		return "invalid"
 	}
@@ -106,6 +109,15 @@ type JournalEntry struct {
 	// non-UTF8 bytes. Such strings inside secrets are invisible after encryption, so the fact must be
 	// recorded at serialization time for replay to gate rebuilt deployments on the byteString feature.
 	RequiresByteString bool `json:"requiresByteString,omitempty"`
+	// RemoveOlds holds the indices (in increasing order) of the resources in the base snapshot that a state
+	// migration removes. Only set for JournalEntryKindStateMigration entries.
+	RemoveOlds []int64 `json:"removeOlds,omitempty"`
+	// States holds the resources a state migration splices into the base snapshot, in order. They take the
+	// position of the last removed resource. Only set for JournalEntryKindStateMigration entries.
+	States []ResourceV3 `json:"states,omitempty"`
+	// Successors maps each removed resource URN to the URN of the state that succeeds it. It is used to rewrite
+	// references to removed resources during replay. Only set for JournalEntryKindStateMigration entries.
+	Successors map[string]string `json:"successors,omitempty"`
 }
 
 func (e JournalEntry) String() string {
@@ -147,6 +159,15 @@ func (e JournalEntry) String() string {
 	}
 	if e.Snippets != nil {
 		fmt.Fprintf(&sb, ", snippets(%v)", len(e.Snippets))
+	}
+	if e.RemoveOlds != nil {
+		fmt.Fprintf(&sb, ", removeOlds(%v)", len(e.RemoveOlds))
+	}
+	if e.States != nil {
+		fmt.Fprintf(&sb, ", states(%v)", len(e.States))
+	}
+	if e.Successors != nil {
+		fmt.Fprintf(&sb, ", successors(%v)", len(e.Successors))
 	}
 
 	return sb.String()

@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
@@ -91,8 +92,33 @@ func SerializeJournalEntry(
 		}
 	}
 
+	var migratedStates []apitype.ResourceV3
+	if je.MigratedStates != nil {
+		migratedStates = make([]apitype.ResourceV3, len(je.MigratedStates))
+		for i, migrated := range je.MigratedStates {
+			s, encodedByteString, err := stack.SerializeResource(ctx, migrated, enc, false)
+			if err != nil {
+				return apitype.JournalEntry{}, fmt.Errorf("serializing migrated resource state: %w", err)
+			}
+			migratedStates[i] = s
+			requiresByteString = requiresByteString || encodedByteString
+		}
+	}
+	successors := make(map[string]string, len(je.Successors))
+	for oldURN, newURN := range je.Successors {
+		successors[string(oldURN)] = string(newURN)
+	}
+
+	// State-migration entries carry fields (RemoveOlds/States) and require replay semantics that only exist in
+	// journal format version 2, so stamp them accordingly. A consumer that gates on the per-entry version then
+	// rejects or skips them rather than misinterpreting their indices as version-1 entries.
+	entryVersion := 1
+	if je.Kind == engine.JournalEntryStateMigration {
+		entryVersion = 2
+	}
+
 	serializedEntry := apitype.JournalEntry{
-		Version:               1,
+		Version:               entryVersion,
 		Kind:                  apitype.JournalEntryKind(je.Kind),
 		SequenceID:            je.SequenceID,
 		OperationID:           je.OperationID,
@@ -110,8 +136,10 @@ func SerializeJournalEntry(
 		ExtensionRef:          je.ExtensionRef,
 		Extension:             je.Extension,
 		Snippets:              snippets,
-
-		RequiresByteString: requiresByteString,
+		RequiresByteString:    requiresByteString,
+		RemoveOlds:            je.RemoveOlds,
+		States:                migratedStates,
+		Successors:            successors,
 	}
 
 	return serializedEntry, nil
@@ -143,6 +171,12 @@ type JournalReplayer struct {
 	// non-UTF8 bytes. It is tracked here because such strings inside secrets cannot be detected from
 	// the serialized resources this replayer holds.
 	requiresByteString bool
+	// hasStateMigration indicates whether any of the journal entries were state migrations. Like refreshes,
+	// state migrations rewrite the base snapshot, so dependencies must be rebuilt when generating the deployment.
+	hasStateMigration bool
+	// stateMigrationSuccessors accumulates old-to-new URN mappings from state migration entries. The mappings are
+	// applied to the final replayed resource set so they also affect resource operations recorded before a migration.
+	stateMigrationSuccessors map[resource.URN]resource.URN
 
 	// index is the current index in the new resource list.
 	index int64
@@ -168,6 +202,7 @@ func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
 		operationIDToResourceIndex: make(map[int64]int64),
 		incompleteOps:              make(map[int64]apitype.JournalEntry),
 		newResources:               make([]*apitype.ResourceV3, 0),
+		stateMigrationSuccessors:   make(map[resource.URN]resource.URN),
 		extensions:                 make(map[apitype.ExtensionRef]apitype.Extension),
 		base:                       base,
 	}
@@ -271,9 +306,257 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {
 		r.operationIDToResourceIndex = make(map[int64]int64)
 		r.incompleteOps = make(map[int64]apitype.JournalEntry)
 		r.newResources = make([]*apitype.ResourceV3, 0)
+		r.stateMigrationSuccessors = make(map[resource.URN]resource.URN)
 		r.extensions = make(map[apitype.ExtensionRef]apitype.Extension)
 	case apitype.JournalEntryKindExtensionParameterize:
 		r.extensions[*entry.ExtensionRef] = *entry.Extension
+	case apitype.JournalEntryKindStateMigration:
+		r.applyStateMigration(entry)
+	}
+	return nil
+}
+
+// applyStateMigration rewrites the replayer's base snapshot as described by a state migration entry: the
+// resources at the entry's RemoveOlds indices are removed and the entry's States are inserted at the position of
+// the last removed resource. All bookkeeping keyed by base snapshot indices is remapped to the rewritten base so
+// that entries recorded before and after the migration keep referring to the right resources.
+func (r *JournalReplayer) applyStateMigration(entry apitype.JournalEntry) {
+	if len(entry.RemoveOlds) == 0 {
+		return
+	}
+	r.hasStateMigration = true
+	for oldURN, newURN := range entry.Successors {
+		r.stateMigrationSuccessors[resource.URN(oldURN)] = resource.URN(newURN)
+	}
+
+	removed := make(map[int64]struct{}, len(entry.RemoveOlds))
+	for _, index := range entry.RemoveOlds {
+		removed[index] = struct{}{}
+	}
+	last := entry.RemoveOlds[len(entry.RemoveOlds)-1]
+
+	newIndices := make(map[int64]int64, len(r.base.Resources))
+	resources := make([]apitype.ResourceV3, 0, len(r.base.Resources)-len(entry.RemoveOlds)+len(entry.States))
+	for i, res := range r.base.Resources {
+		if _, ok := removed[int64(i)]; ok {
+			if int64(i) == last {
+				resources = append(resources, entry.States...)
+			}
+			continue
+		}
+		newIndices[int64(i)] = int64(len(resources))
+		resources = append(resources, res)
+	}
+	// The base snapshot object may be shared with the journaler, which replays all entries from scratch on
+	// every save: rebase onto a copy rather than mutating it in place, mirroring what Write entries do.
+	newBase := *r.base
+	newBase.Resources = resources
+	r.base = &newBase
+
+	remapSet := func(set map[int64]struct{}) map[int64]struct{} {
+		remapped := make(map[int64]struct{}, len(set))
+		for index := range set {
+			if newIndex, ok := newIndices[index]; ok {
+				remapped[newIndex] = struct{}{}
+			}
+		}
+		return remapped
+	}
+	r.toDeleteInSnapshot = remapSet(r.toDeleteInSnapshot)
+	r.markAsDeletion = remapSet(r.markAsDeletion)
+	r.markAsPendingReplacement = remapSet(r.markAsPendingReplacement)
+
+	toReplace := make(map[int64]*apitype.ResourceV3, len(r.toReplaceInSnapshot))
+	for index, state := range r.toReplaceInSnapshot {
+		if newIndex, ok := newIndices[index]; ok {
+			toReplace[newIndex] = state
+		}
+	}
+	r.toReplaceInSnapshot = toReplace
+}
+
+// rewriteStateMigrationReferences rewrites references to migrated resource URNs after journal replay has assembled
+// the final resource set. Applying the mappings at the end also covers resource operations that completed before the
+// component carrying the migration was registered.
+func rewriteStateMigrationReferences(
+	resources []apitype.ResourceV3,
+	successors map[resource.URN]resource.URN,
+) error {
+	if len(successors) == 0 {
+		return nil
+	}
+
+	fixURN := func(urn resource.URN) (resource.URN, error) {
+		seen := make(map[resource.URN]bool)
+		for urn != "" {
+			if seen[urn] {
+				return "", fmt.Errorf("state migration successor cycle at %s", urn)
+			}
+			seen[urn] = true
+			next, ok := successors[urn]
+			if !ok {
+				return urn, nil
+			}
+			urn = next
+		}
+		return urn, nil
+	}
+
+	byURN := make(map[resource.URN]*apitype.ResourceV3, len(resources))
+	for i := range resources {
+		byURN[resources[i].URN] = &resources[i]
+	}
+
+	rewriteURNs := func(urns []resource.URN) ([]resource.URN, error) {
+		if len(urns) == 0 {
+			return urns, nil
+		}
+		result := make([]resource.URN, 0, len(urns))
+		seen := make(map[resource.URN]bool, len(urns))
+		for _, urn := range urns {
+			fixed, err := fixURN(urn)
+			if err != nil {
+				return nil, err
+			}
+			if !seen[fixed] {
+				seen[fixed] = true
+				result = append(result, fixed)
+			}
+		}
+		return result, nil
+	}
+
+	var rewritePropertyValue func(any) (any, error)
+	rewritePropertyValue = func(value any) (any, error) {
+		switch value := value.(type) {
+		case []any:
+			result := make([]any, len(value))
+			for i, element := range value {
+				var err error
+				result[i], err = rewritePropertyValue(element)
+				if err != nil {
+					return nil, err
+				}
+			}
+			return result, nil
+		case map[string]any:
+			result := make(map[string]any, len(value))
+			for key, element := range value {
+				var err error
+				result[key], err = rewritePropertyValue(element)
+				if err != nil {
+					return nil, err
+				}
+			}
+			if result[string(resource.SigKey)] == resource.ResourceReferenceSig {
+				if urn, ok := result["urn"].(string); ok {
+					fixed, err := fixURN(resource.URN(urn))
+					if err != nil {
+						return nil, err
+					}
+					result["urn"] = string(fixed)
+					if target, ok := byURN[fixed]; ok {
+						if target.Custom {
+							result["id"] = string(target.ID)
+						} else {
+							delete(result, "id")
+						}
+					}
+				}
+			}
+			if result[string(resource.SigKey)] == resource.OutputValueSig {
+				if dependencies, ok := result["dependencies"].([]any); ok {
+					rewritten := make([]any, 0, len(dependencies))
+					seen := make(map[resource.URN]bool, len(dependencies))
+					for _, dependency := range dependencies {
+						urn, ok := dependency.(string)
+						if !ok {
+							rewritten = append(rewritten, dependency)
+							continue
+						}
+						fixed, err := fixURN(resource.URN(urn))
+						if err != nil {
+							return nil, err
+						}
+						if !seen[fixed] {
+							seen[fixed] = true
+							rewritten = append(rewritten, string(fixed))
+						}
+					}
+					result["dependencies"] = rewritten
+				}
+			}
+			return result, nil
+		}
+		return value, nil
+	}
+
+	for i := range resources {
+		state := &resources[i]
+		var err error
+		state.Parent, err = fixURN(state.Parent)
+		if err != nil {
+			return err
+		}
+		state.Dependencies, err = rewriteURNs(state.Dependencies)
+		if err != nil {
+			return err
+		}
+		for key, dependencies := range state.PropertyDependencies {
+			state.PropertyDependencies[key], err = rewriteURNs(dependencies)
+			if err != nil {
+				return err
+			}
+		}
+		state.DeletedWith, err = fixURN(state.DeletedWith)
+		if err != nil {
+			return err
+		}
+		state.ReplaceWith, err = rewriteURNs(state.ReplaceWith)
+		if err != nil {
+			return err
+		}
+		state.ViewOf, err = fixURN(state.ViewOf)
+		if err != nil {
+			return err
+		}
+		if state.Provider != "" {
+			ref, err := providers.ParseReference(state.Provider)
+			if err != nil {
+				return fmt.Errorf("parsing provider reference %q: %w", state.Provider, err)
+			}
+			providerURN, err := fixURN(ref.URN())
+			if err != nil {
+				return err
+			}
+			providerID := ref.ID()
+			if provider, ok := byURN[providerURN]; ok {
+				providerID = provider.ID
+			}
+			fixed, err := providers.NewReference(providerURN, providerID)
+			if err != nil {
+				return fmt.Errorf("rewriting provider reference %q: %w", state.Provider, err)
+			}
+			state.Provider = fixed.String()
+		}
+		if state.Inputs != nil {
+			rewrittenInputs, err := rewritePropertyValue(state.Inputs)
+			if err != nil {
+				return err
+			}
+			state.Inputs = rewrittenInputs.(map[string]any)
+		}
+		if state.Outputs != nil {
+			rewrittenOutputs, err := rewritePropertyValue(state.Outputs)
+			if err != nil {
+				return err
+			}
+			state.Outputs = rewrittenOutputs.(map[string]any)
+		}
+		state.ReplacementTrigger, err = rewritePropertyValue(state.ReplacementTrigger)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -404,8 +687,12 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 		}
 	}
 
-	if r.hasRefresh {
-		// Rebuild dependencies if we had a refresh, as refreshes may delete resources,
+	if err := rewriteStateMigrationReferences(resources, r.stateMigrationSuccessors); err != nil {
+		return apitype.TypedDeployment{}, fmt.Errorf("rewriting state migration references: %w", err)
+	}
+
+	if r.hasRefresh || r.hasStateMigration {
+		// Rebuild dependencies if we had a refresh or a state migration, as both may remove resources,
 		// which may cause other resources to have dangling dependencies.
 		rebuildDependencies(resources)
 	}

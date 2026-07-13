@@ -39,7 +39,7 @@ func TestJournalExtensionParameterize(t *testing.T) {
 	t.Parallel()
 
 	journal := &captureJournal{}
-	sm, err := NewJournalSnapshotManager(journal, nil, b64.NewBase64SecretsManager())
+	sm, err := NewJournalSnapshotManager(journal, nil, b64.NewBase64SecretsManager(), apitype.LatestJournalVersion)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, sm.Close()) })
 

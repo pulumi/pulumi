@@ -17,6 +17,7 @@ package engine
 import (
 	"io"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -32,6 +33,16 @@ type SnapshotManager interface {
 	// RebuiltBaseState is called to inform the SnapshotManager that the engine has rebuilt
 	// the base state after a refresh
 	RebuiltBaseState() error
+
+	// StateMigration is called just before a state migration splices migrated states into the engine's base
+	// snapshot: the removed states are removed from the base snapshot and the migrated states are inserted in
+	// their stead, at the position of the last removed state. It is called before the engine mutates the base
+	// snapshot, so implementations can resolve the removed states against the current base. An error aborts
+	// the migration before any state is changed.
+	StateMigration(
+		removed []*pkgresource.State, migrated []*pkgresource.State,
+		successors map[resource.URN]resource.URN,
+	) error
 
 	// SetSnippets replaces the PCL snippets that should be persisted with the next snapshot.
 	SetSnippets(snippets []resource.Snippet) error

@@ -18,6 +18,7 @@ import (
 	"errors"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
@@ -49,6 +50,12 @@ func (m *MockSnapshotManager) RebuiltBaseState() error {
 	if m.RebuiltBaseStateF != nil {
 		return m.RebuiltBaseStateF()
 	}
+	return nil
+}
+
+func (m *MockSnapshotManager) StateMigration(
+	removed []*pkgresource.State, migrated []*pkgresource.State, _ map[resource.URN]resource.URN,
+) error {
 	return nil
 }
 
