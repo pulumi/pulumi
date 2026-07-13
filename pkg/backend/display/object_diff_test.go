@@ -164,7 +164,7 @@ func Test_PrintObject(t *testing.T) {
 			true,
 		},
 		{
-			"raw_string_bytes",
+			"byte_string",
 			resource.NewPropertyMapFromMap(map[string]any{
 				"bytes": resource.NewProperty("\x00hello \x80\xfe\xff world\xf0\x28"),
 			}),

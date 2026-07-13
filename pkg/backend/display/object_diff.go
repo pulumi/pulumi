@@ -980,7 +980,7 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 		}
 	} else if v.IsString() {
 		if !utf8.ValidString(v.StringValue()) {
-			p.writeVerbatim(rawStringBytesDisplay(v.StringValue()))
+			p.writeVerbatim(byteStringDisplay(v.StringValue()))
 			return
 		}
 		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
