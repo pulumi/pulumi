@@ -516,6 +516,64 @@ func TestModel_Update_CtrlEWithDraftMovesCursorEnd(t *testing.T) {
 	assert.Equal(t, 5, um.textInput.Column(), "Ctrl+E must move to line end")
 }
 
+func TestModel_Update_DraftEditingKeysUseTextareaKeymap(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ctrl+d deletes forward instead of arming quit", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("abc")
+		m.textInput.CursorStart()
+
+		updated, cmd := m.Update(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
+		um := updated.(Model)
+
+		assert.Equal(t, "bc", um.textInput.Value())
+		assert.False(t, um.ctrlCArmed)
+		assert.Nil(t, cmd)
+	})
+
+	t.Run("meta+f moves forward one word", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("hello world")
+		m.textInput.CursorStart()
+
+		updated, _ := m.Update(tea.KeyPressMsg{Code: 'f', Mod: tea.ModMeta})
+		um := updated.(Model)
+
+		assert.Equal(t, 5, um.textInput.Column())
+	})
+
+	t.Run("meta+b moves backward one word", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("hello world")
+		m.textInput.MoveToEnd()
+
+		updated, _ := m.Update(tea.KeyPressMsg{Code: 'b', Mod: tea.ModMeta})
+		um := updated.(Model)
+
+		assert.Equal(t, 6, um.textInput.Column())
+	})
+
+	t.Run("cmd+backspace deletes backward one word", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("hello world")
+		m.textInput.MoveToEnd()
+
+		updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace, Mod: tea.ModSuper})
+		um := updated.(Model)
+
+		assert.Equal(t, "hello ", um.textInput.Value())
+	})
+}
+
 func TestModel_Update_KeyCtrlC_TimeoutDisarms(t *testing.T) {
 	t.Parallel()
 

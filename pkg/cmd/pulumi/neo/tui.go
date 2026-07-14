@@ -412,6 +412,38 @@ func (m *Model) recallInput(s string) {
 	m.textInput.MoveToEnd()
 }
 
+func addKeyAliases(binding *key.Binding, aliases ...string) {
+	binding.SetKeys(append(binding.Keys(), aliases...)...)
+}
+
+func (m Model) draftEditingKey(msg tea.KeyPressMsg) bool {
+	if m.textInput.Value() == "" {
+		return false
+	}
+
+	km := m.textInput.KeyMap
+	return key.Matches(msg,
+		km.CharacterBackward,
+		km.CharacterForward,
+		km.DeleteAfterCursor,
+		km.DeleteBeforeCursor,
+		km.DeleteCharacterBackward,
+		km.DeleteCharacterForward,
+		km.DeleteWordBackward,
+		km.DeleteWordForward,
+		km.LineEnd,
+		km.LineStart,
+		km.InputBegin,
+		km.InputEnd,
+		km.WordBackward,
+		km.WordForward,
+		km.CapitalizeWordForward,
+		km.LowercaseWordForward,
+		km.UppercaseWordForward,
+		km.TransposeCharacterBackward,
+	)
+}
+
 // historyPrev steps to an older prompt. It returns true when it handled the
 // key (so the caller swallows it). The first step out of the live draft
 // stashes that draft in historyDraft so a later Down can restore it.
@@ -498,6 +530,9 @@ func NewModel(cfg ModelConfig) Model {
 		key.WithKeys("shift+enter", "alt+enter", "ctrl+j"),
 		key.WithHelp("shift+enter / alt+enter / ctrl+j", "newline"),
 	)
+	addKeyAliases(&ti.KeyMap.WordForward, "meta+f")
+	addKeyAliases(&ti.KeyMap.WordBackward, "meta+b")
+	addKeyAliases(&ti.KeyMap.DeleteWordBackward, "meta+backspace", "super+backspace")
 	ti.Focus()
 
 	sp := spinner.New(
@@ -668,6 +703,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// When the user is editing a draft, let textarea keep ownership of its
+		// line-editing keymap before app-level shortcuts see the same key.
+		if m.draftEditingKey(msg) {
+			var tiCmd tea.Cmd
+			m.textInput, tiCmd = m.textInput.Update(msg)
+			return m, tiCmd
+		}
+
 		// Ctrl+D mirrors Ctrl+C when the draft is empty: same arm/quit gate,
 		// same cancel-when-busy semantics. Two bindings is friendlier than
 		// picking one and forcing users to discover it.
@@ -712,15 +755,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overlay.SetSize(m.width, m.height)
 			m.overlay.Refresh(m.toolHistory)
 			return m, nil
-		}
-
-		// When the user is editing a draft, keep the terminal editing keys
-		// bound by textarea: Ctrl+A moves to the start of the current line
-		// and Ctrl+E moves to the end.
-		if keyStr == "ctrl+a" && m.textInput.Value() != "" {
-			var tiCmd tea.Cmd
-			m.textInput, tiCmd = m.textInput.Update(msg)
-			return m, tiCmd
 		}
 
 		// Shift+Tab toggles plan mode. The toggle must run before the approval
