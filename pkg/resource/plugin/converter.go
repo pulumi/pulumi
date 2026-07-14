@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -49,6 +50,24 @@ type ResourceImport struct {
 	// Properties lists the input properties to include when generating code for the resource. Defaults to
 	// the resource's required properties.
 	Properties []string
+
+	// Provider is the name of the resource's explicit provider, if any. It must reference a key in the
+	// response's Providers map; resources without a provider are served by an appropriate default
+	// provider.
+	Provider string
+}
+
+// A ProviderImport describes an explicit provider that imported resources reference. The import process
+// will reuse a matching provider already in the stack's state, or create one from these details.
+type ProviderImport struct {
+	// Package is the package name of the provider (e.g. "aws"): the created provider resource will have
+	// the type "pulumi:providers:<package>". The provider's version, download URL, and any
+	// parameterization are taken from the resources that reference it.
+	Package string
+
+	// Inputs holds the configuration inputs for the provider, if known. Absent inputs mean the provider
+	// configures itself from its environment.
+	Inputs resource.PropertyMap
 }
 
 // ResourceParameterization describes the base plugin that a resource's parameterized provider is built
@@ -78,7 +97,10 @@ type ConvertStateRequest struct {
 }
 
 type ConvertStateResponse struct {
-	Resources   []ResourceImport
+	Resources []ResourceImport
+	// Providers holds the explicit providers referenced by resources' Provider fields, keyed by the
+	// names used in those fields.
+	Providers   map[string]ProviderImport
 	Diagnostics hcl.Diagnostics
 }
 

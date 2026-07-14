@@ -22,11 +22,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type testConverterClient struct {
@@ -66,10 +68,29 @@ func (c *testConverterClient) ConvertState(
 				},
 				Parent:     "test:parent",
 				Properties: []string{"prop1", "prop2"},
+				Provider:   "test:provider",
+			},
+		},
+		Providers: map[string]*pulumirpc.ProviderImport{
+			"test:provider": {
+				Package: "aws",
+				Inputs: mustMarshalProperties(resource.PropertyMap{
+					"region": resource.NewProperty("us-east-1"),
+					"secretKey": resource.MakeSecret(
+						resource.NewProperty("shh")),
+				}),
 			},
 		},
 		Diagnostics: c.diagnostics,
 	}, nil
+}
+
+func mustMarshalProperties(m resource.PropertyMap) *structpb.Struct {
+	s, err := MarshalProperties(m, MarshalOptions{KeepSecrets: true})
+	if err != nil {
+		panic(err)
+	}
+	return s
 }
 
 func (c *testConverterClient) ConvertProgram(
@@ -158,6 +179,15 @@ func TestConverterPlugin_State(t *testing.T) {
 	assert.Equal(t, []byte("test:extValue"), res.Extension.Value)
 	assert.Equal(t, "test:parent", res.Parent)
 	assert.Equal(t, []string{"prop1", "prop2"}, res.Properties)
+	assert.Equal(t, "test:provider", res.Provider)
+
+	require.Contains(t, resp.Providers, "test:provider")
+	prov := resp.Providers["test:provider"]
+	assert.Equal(t, "aws", prov.Package)
+	assert.Equal(t, resource.PropertyMap{
+		"region":    resource.NewProperty("us-east-1"),
+		"secretKey": resource.MakeSecret(resource.NewProperty("shh")),
+	}, prov.Inputs)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, hcl.DiagError, diag.Severity)

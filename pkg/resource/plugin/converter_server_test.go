@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
@@ -74,6 +75,16 @@ func (c *testConverter) ConvertState(
 				},
 				Parent:     "test:parent",
 				Properties: []string{"prop1", "prop2"},
+				Provider:   "test:provider",
+			},
+		},
+		Providers: map[string]ProviderImport{
+			"test:provider": {
+				Package: "aws",
+				Inputs: resource.PropertyMap{
+					"region":    resource.NewProperty("us-east-1"),
+					"secretKey": resource.MakeSecret(resource.NewProperty("shh")),
+				},
 			},
 		},
 		Diagnostics: diags,
@@ -169,6 +180,17 @@ func TestConverterServer_State(t *testing.T) {
 	assert.Equal(t, []byte("test:extValue"), res.Extension.Value)
 	assert.Equal(t, "test:parent", res.Parent)
 	assert.Equal(t, []string{"prop1", "prop2"}, res.Properties)
+	assert.Equal(t, "test:provider", res.Provider)
+
+	require.Contains(t, resp.Providers, "test:provider")
+	prov := resp.Providers["test:provider"]
+	assert.Equal(t, "aws", prov.Package)
+	inputs, err := UnmarshalProperties(prov.Inputs, MarshalOptions{KeepSecrets: true})
+	require.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"region":    resource.NewProperty("us-east-1"),
+		"secretKey": resource.MakeSecret(resource.NewProperty("shh")),
+	}, inputs)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, codegenrpc.DiagnosticSeverity_DIAG_ERROR, diag.Severity)

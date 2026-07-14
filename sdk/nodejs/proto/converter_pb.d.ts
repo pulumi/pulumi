@@ -5,6 +5,7 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
+import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
 import * as pulumi_codegen_loader_pb from "./codegen/loader_pb";
 
@@ -66,6 +67,8 @@ export class ResourceImport extends jspb.Message {
     getPropertiesList(): Array<string>;
     setPropertiesList(value: Array<string>): ResourceImport;
     addProperties(value: string, index?: number): string;
+    getProvider(): string;
+    setProvider(value: string): ResourceImport;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceImport.AsObject;
@@ -91,6 +94,33 @@ export namespace ResourceImport {
         extension?: ResourceExtension.AsObject,
         parent: string,
         propertiesList: Array<string>,
+        provider: string,
+    }
+}
+
+export class ProviderImport extends jspb.Message { 
+    getPackage(): string;
+    setPackage(value: string): ProviderImport;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): ProviderImport;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ProviderImport.AsObject;
+    static toObject(includeInstance: boolean, msg: ProviderImport): ProviderImport.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ProviderImport, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ProviderImport;
+    static deserializeBinaryFromReader(message: ProviderImport, reader: jspb.BinaryReader): ProviderImport;
+}
+
+export namespace ProviderImport {
+    export type AsObject = {
+        pb_package: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -160,6 +190,9 @@ export class ConvertStateResponse extends jspb.Message {
     setDiagnosticsList(value: Array<pulumi_codegen_hcl_pb.Diagnostic>): ConvertStateResponse;
     addDiagnostics(value?: pulumi_codegen_hcl_pb.Diagnostic, index?: number): pulumi_codegen_hcl_pb.Diagnostic;
 
+    getProvidersMap(): jspb.Map<string, ProviderImport>;
+    clearProvidersMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertStateResponse.AsObject;
     static toObject(includeInstance: boolean, msg: ConvertStateResponse): ConvertStateResponse.AsObject;
@@ -174,6 +207,8 @@ export namespace ConvertStateResponse {
     export type AsObject = {
         resourcesList: Array<ResourceImport.AsObject>,
         diagnosticsList: Array<pulumi_codegen_hcl_pb.Diagnostic.AsObject>,
+
+        providersMap: Array<[string, ProviderImport.AsObject]>,
     }
 }
 

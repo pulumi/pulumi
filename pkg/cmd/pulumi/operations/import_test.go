@@ -23,6 +23,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -563,6 +564,44 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 	require.NotNil(t, imports[0].ProviderInputs)
 	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].ProviderInputs["region"])
 	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
+}
+
+func TestApplyConverterProviders(t *testing.T) {
+	t.Parallel()
+
+	f, err := makeImportFileFromResourceList([]plugin.ResourceImport{
+		{
+			Type:     "aws:s3/bucket:Bucket",
+			Name:     "thing",
+			ID:       "thing-id",
+			Provider: "aws.us",
+		},
+	})
+	require.NoError(t, err)
+
+	err = applyConverterProviders(t.Context(), &f, map[string]plugin.ProviderImport{
+		"aws.us": {
+			Package: "aws",
+			Inputs: resource.PropertyMap{
+				"region":    resource.NewProperty("us-east-1"),
+				"secretKey": resource.MakeSecret(resource.NewProperty("shh")),
+			},
+		},
+	}, tokens.MustParseStackName("stack"), "proj", sdkconfig.NopEncrypter)
+	require.NoError(t, err)
+
+	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::aws.us")
+	assert.Equal(t, providerURN, f.NameTable["aws.us"])
+
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 1)
+
+	assert.Equal(t, providerURN, imports[0].Provider)
+	require.NotNil(t, imports[0].ProviderInputs)
+	assert.Equal(t, resource.NewProperty("us-east-1"), imports[0].ProviderInputs["region"])
+	// Secret values survive the round trip through the import file's serialized form.
+	assert.Equal(t, resource.MakeSecret(resource.NewProperty("shh")), imports[0].ProviderInputs["secretKey"])
 }
 
 func TestParseImportFileProviderInputsWithoutEntry(t *testing.T) {

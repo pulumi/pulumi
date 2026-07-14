@@ -24,6 +24,7 @@ import (
 	codegen "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -122,7 +123,10 @@ type ResourceImport struct {
 	Parent string `protobuf:"bytes,11,opt,name=parent,proto3" json:"parent,omitempty"`
 	// the input properties to include when generating code for the resource. Defaults to the resource's
 	// required properties.
-	Properties    []string `protobuf:"bytes,12,rep,name=properties,proto3" json:"properties,omitempty"`
+	Properties []string `protobuf:"bytes,12,rep,name=properties,proto3" json:"properties,omitempty"`
+	// the name of the resource's explicit provider, if any. Must reference a key in the response's
+	// providers map; resources without a provider are served by an appropriate default provider.
+	Provider      string `protobuf:"bytes,13,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -241,6 +245,72 @@ func (x *ResourceImport) GetProperties() []string {
 	return nil
 }
 
+func (x *ResourceImport) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+// A ProviderImport describes an explicit provider that imported resources reference. The import process
+// will reuse a matching provider already in the stack's state, or create one from these details.
+type ProviderImport struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// the package name of the provider (e.g. "aws"): the created provider resource will have the type
+	// "pulumi:providers:<package>". The provider's version, download URL, and any parameterization are
+	// taken from the resources that reference it.
+	Package string `protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
+	// the configuration inputs for the provider, if known. Absent inputs mean the provider configures
+	// itself from its environment. Secret values are marked with Pulumi's standard secret signature.
+	Inputs        *structpb.Struct `protobuf:"bytes,2,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProviderImport) Reset() {
+	*x = ProviderImport{}
+	mi := &file_pulumi_converter_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProviderImport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProviderImport) ProtoMessage() {}
+
+func (x *ProviderImport) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_converter_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProviderImport.ProtoReflect.Descriptor instead.
+func (*ProviderImport) Descriptor() ([]byte, []int) {
+	return file_pulumi_converter_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ProviderImport) GetPackage() string {
+	if x != nil {
+		return x.Package
+	}
+	return ""
+}
+
+func (x *ProviderImport) GetInputs() *structpb.Struct {
+	if x != nil {
+		return x.Inputs
+	}
+	return nil
+}
+
 // A ResourceParameterization describes the base plugin that a resource's parameterized provider is built
 // from. The parameterized package name and version are taken from the resource's own type and version.
 type ResourceParameterization struct {
@@ -257,7 +327,7 @@ type ResourceParameterization struct {
 
 func (x *ResourceParameterization) Reset() {
 	*x = ResourceParameterization{}
-	mi := &file_pulumi_converter_proto_msgTypes[2]
+	mi := &file_pulumi_converter_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -269,7 +339,7 @@ func (x *ResourceParameterization) String() string {
 func (*ResourceParameterization) ProtoMessage() {}
 
 func (x *ResourceParameterization) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_converter_proto_msgTypes[2]
+	mi := &file_pulumi_converter_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -282,7 +352,7 @@ func (x *ResourceParameterization) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceParameterization.ProtoReflect.Descriptor instead.
 func (*ResourceParameterization) Descriptor() ([]byte, []int) {
-	return file_pulumi_converter_proto_rawDescGZIP(), []int{2}
+	return file_pulumi_converter_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ResourceParameterization) GetPluginName() string {
@@ -321,7 +391,7 @@ type ResourceExtension struct {
 
 func (x *ResourceExtension) Reset() {
 	*x = ResourceExtension{}
-	mi := &file_pulumi_converter_proto_msgTypes[3]
+	mi := &file_pulumi_converter_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -333,7 +403,7 @@ func (x *ResourceExtension) String() string {
 func (*ResourceExtension) ProtoMessage() {}
 
 func (x *ResourceExtension) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_converter_proto_msgTypes[3]
+	mi := &file_pulumi_converter_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -346,7 +416,7 @@ func (x *ResourceExtension) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceExtension.ProtoReflect.Descriptor instead.
 func (*ResourceExtension) Descriptor() ([]byte, []int) {
-	return file_pulumi_converter_proto_rawDescGZIP(), []int{3}
+	return file_pulumi_converter_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ResourceExtension) GetName() string {
@@ -375,14 +445,17 @@ type ConvertStateResponse struct {
 	// a list of resources to import.
 	Resources []*ResourceImport `protobuf:"bytes,1,rep,name=resources,proto3" json:"resources,omitempty"`
 	// any diagnostics from state conversion.
-	Diagnostics   []*codegen.Diagnostic `protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
+	Diagnostics []*codegen.Diagnostic `protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
+	// the explicit providers referenced by resources' provider fields, keyed by the names used in those
+	// fields. Each key is also used as the name of the provider resource created during import.
+	Providers     map[string]*ProviderImport `protobuf:"bytes,3,rep,name=providers,proto3" json:"providers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ConvertStateResponse) Reset() {
 	*x = ConvertStateResponse{}
-	mi := &file_pulumi_converter_proto_msgTypes[4]
+	mi := &file_pulumi_converter_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -394,7 +467,7 @@ func (x *ConvertStateResponse) String() string {
 func (*ConvertStateResponse) ProtoMessage() {}
 
 func (x *ConvertStateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_converter_proto_msgTypes[4]
+	mi := &file_pulumi_converter_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -407,7 +480,7 @@ func (x *ConvertStateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertStateResponse.ProtoReflect.Descriptor instead.
 func (*ConvertStateResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_converter_proto_rawDescGZIP(), []int{4}
+	return file_pulumi_converter_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ConvertStateResponse) GetResources() []*ResourceImport {
@@ -420,6 +493,13 @@ func (x *ConvertStateResponse) GetResources() []*ResourceImport {
 func (x *ConvertStateResponse) GetDiagnostics() []*codegen.Diagnostic {
 	if x != nil {
 		return x.Diagnostics
+	}
+	return nil
+}
+
+func (x *ConvertStateResponse) GetProviders() map[string]*ProviderImport {
+	if x != nil {
+		return x.Providers
 	}
 	return nil
 }
@@ -447,7 +527,7 @@ type ConvertProgramRequest struct {
 
 func (x *ConvertProgramRequest) Reset() {
 	*x = ConvertProgramRequest{}
-	mi := &file_pulumi_converter_proto_msgTypes[5]
+	mi := &file_pulumi_converter_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -459,7 +539,7 @@ func (x *ConvertProgramRequest) String() string {
 func (*ConvertProgramRequest) ProtoMessage() {}
 
 func (x *ConvertProgramRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_converter_proto_msgTypes[5]
+	mi := &file_pulumi_converter_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -472,7 +552,7 @@ func (x *ConvertProgramRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertProgramRequest.ProtoReflect.Descriptor instead.
 func (*ConvertProgramRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_converter_proto_rawDescGZIP(), []int{5}
+	return file_pulumi_converter_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ConvertProgramRequest) GetSourceDirectory() string {
@@ -527,7 +607,7 @@ type ConvertProgramResponse struct {
 
 func (x *ConvertProgramResponse) Reset() {
 	*x = ConvertProgramResponse{}
-	mi := &file_pulumi_converter_proto_msgTypes[6]
+	mi := &file_pulumi_converter_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -539,7 +619,7 @@ func (x *ConvertProgramResponse) String() string {
 func (*ConvertProgramResponse) ProtoMessage() {}
 
 func (x *ConvertProgramResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_converter_proto_msgTypes[6]
+	mi := &file_pulumi_converter_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -552,7 +632,7 @@ func (x *ConvertProgramResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertProgramResponse.ProtoReflect.Descriptor instead.
 func (*ConvertProgramResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_converter_proto_rawDescGZIP(), []int{6}
+	return file_pulumi_converter_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ConvertProgramResponse) GetDiagnostics() []*codegen.Diagnostic {
@@ -583,7 +663,7 @@ type ConvertSnippetRequest struct {
 
 func (x *ConvertSnippetRequest) Reset() {
 	*x = ConvertSnippetRequest{}
-	mi := &file_pulumi_converter_proto_msgTypes[7]
+	mi := &file_pulumi_converter_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -595,7 +675,7 @@ func (x *ConvertSnippetRequest) String() string {
 func (*ConvertSnippetRequest) ProtoMessage() {}
 
 func (x *ConvertSnippetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_converter_proto_msgTypes[7]
+	mi := &file_pulumi_converter_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -608,7 +688,7 @@ func (x *ConvertSnippetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertSnippetRequest.ProtoReflect.Descriptor instead.
 func (*ConvertSnippetRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_converter_proto_rawDescGZIP(), []int{7}
+	return file_pulumi_converter_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ConvertSnippetRequest) GetFilename() string {
@@ -669,7 +749,7 @@ type ConvertSnippetResponse struct {
 
 func (x *ConvertSnippetResponse) Reset() {
 	*x = ConvertSnippetResponse{}
-	mi := &file_pulumi_converter_proto_msgTypes[8]
+	mi := &file_pulumi_converter_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -681,7 +761,7 @@ func (x *ConvertSnippetResponse) String() string {
 func (*ConvertSnippetResponse) ProtoMessage() {}
 
 func (x *ConvertSnippetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_converter_proto_msgTypes[8]
+	mi := &file_pulumi_converter_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -694,7 +774,7 @@ func (x *ConvertSnippetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertSnippetResponse.ProtoReflect.Descriptor instead.
 func (*ConvertSnippetResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_converter_proto_rawDescGZIP(), []int{8}
+	return file_pulumi_converter_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ConvertSnippetResponse) GetDiagnostics() []*codegen.Diagnostic {
@@ -729,10 +809,10 @@ var File_pulumi_converter_proto protoreflect.FileDescriptor
 
 const file_pulumi_converter_proto_rawDesc = "" +
 	"\n" +
-	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"N\n" +
+	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"N\n" +
 	"\x13ConvertStateRequest\x12#\n" +
 	"\rmapper_target\x18\x01 \x01(\tR\fmapperTarget\x12\x12\n" +
-	"\x04args\x18\x02 \x03(\tR\x04args\"\xb8\x03\n" +
+	"\x04args\x18\x02 \x03(\tR\x04args\"\xd4\x03\n" +
 	"\x0eResourceImport\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x0e\n" +
@@ -748,7 +828,11 @@ const file_pulumi_converter_proto_rawDesc = "" +
 	"\x06parent\x18\v \x01(\tR\x06parent\x12\x1e\n" +
 	"\n" +
 	"properties\x18\f \x03(\tR\n" +
-	"properties\"x\n" +
+	"properties\x12\x1a\n" +
+	"\bprovider\x18\r \x01(\tR\bprovider\"[\n" +
+	"\x0eProviderImport\x12\x18\n" +
+	"\apackage\x18\x01 \x01(\tR\apackage\x12/\n" +
+	"\x06inputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x06inputs\"x\n" +
 	"\x18ResourceParameterization\x12\x1f\n" +
 	"\vplugin_name\x18\x01 \x01(\tR\n" +
 	"pluginName\x12%\n" +
@@ -757,10 +841,14 @@ const file_pulumi_converter_proto_rawDesc = "" +
 	"\x11ResourceExtension\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\fR\x05value\"\x90\x01\n" +
+	"\x05value\x18\x03 \x01(\fR\x05value\"\xb7\x02\n" +
 	"\x14ConvertStateResponse\x127\n" +
 	"\tresources\x18\x01 \x03(\v2\x19.pulumirpc.ResourceImportR\tresources\x12?\n" +
-	"\vdiagnostics\x18\x02 \x03(\v2\x1d.pulumirpc.codegen.DiagnosticR\vdiagnostics\"\x8b\x02\n" +
+	"\vdiagnostics\x18\x02 \x03(\v2\x1d.pulumirpc.codegen.DiagnosticR\vdiagnostics\x12L\n" +
+	"\tproviders\x18\x03 \x03(\v2..pulumirpc.ConvertStateResponse.ProvidersEntryR\tproviders\x1aW\n" +
+	"\x0eProvidersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
+	"\x05value\x18\x02 \x01(\v2\x19.pulumirpc.ProviderImportR\x05value:\x028\x01\"\x8b\x02\n" +
 	"\x15ConvertProgramRequest\x12)\n" +
 	"\x10source_directory\x18\x01 \x01(\tR\x0fsourceDirectory\x12)\n" +
 	"\x10target_directory\x18\x02 \x01(\tR\x0ftargetDirectory\x12#\n" +
@@ -809,43 +897,49 @@ func file_pulumi_converter_proto_rawDescGZIP() []byte {
 	return file_pulumi_converter_proto_rawDescData
 }
 
-var file_pulumi_converter_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_pulumi_converter_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_pulumi_converter_proto_goTypes = []any{
 	(*ConvertStateRequest)(nil),      // 0: pulumirpc.ConvertStateRequest
 	(*ResourceImport)(nil),           // 1: pulumirpc.ResourceImport
-	(*ResourceParameterization)(nil), // 2: pulumirpc.ResourceParameterization
-	(*ResourceExtension)(nil),        // 3: pulumirpc.ResourceExtension
-	(*ConvertStateResponse)(nil),     // 4: pulumirpc.ConvertStateResponse
-	(*ConvertProgramRequest)(nil),    // 5: pulumirpc.ConvertProgramRequest
-	(*ConvertProgramResponse)(nil),   // 6: pulumirpc.ConvertProgramResponse
-	(*ConvertSnippetRequest)(nil),    // 7: pulumirpc.ConvertSnippetRequest
-	(*ConvertSnippetResponse)(nil),   // 8: pulumirpc.ConvertSnippetResponse
-	nil,                              // 9: pulumirpc.ConvertSnippetRequest.AttributesEntry
-	nil,                              // 10: pulumirpc.ConvertSnippetResponse.AttributesEntry
-	(*codegen.Diagnostic)(nil),       // 11: pulumirpc.codegen.Diagnostic
-	(*codegen.GetSchemaRequest)(nil), // 12: codegen.GetSchemaRequest
+	(*ProviderImport)(nil),           // 2: pulumirpc.ProviderImport
+	(*ResourceParameterization)(nil), // 3: pulumirpc.ResourceParameterization
+	(*ResourceExtension)(nil),        // 4: pulumirpc.ResourceExtension
+	(*ConvertStateResponse)(nil),     // 5: pulumirpc.ConvertStateResponse
+	(*ConvertProgramRequest)(nil),    // 6: pulumirpc.ConvertProgramRequest
+	(*ConvertProgramResponse)(nil),   // 7: pulumirpc.ConvertProgramResponse
+	(*ConvertSnippetRequest)(nil),    // 8: pulumirpc.ConvertSnippetRequest
+	(*ConvertSnippetResponse)(nil),   // 9: pulumirpc.ConvertSnippetResponse
+	nil,                              // 10: pulumirpc.ConvertStateResponse.ProvidersEntry
+	nil,                              // 11: pulumirpc.ConvertSnippetRequest.AttributesEntry
+	nil,                              // 12: pulumirpc.ConvertSnippetResponse.AttributesEntry
+	(*structpb.Struct)(nil),          // 13: google.protobuf.Struct
+	(*codegen.Diagnostic)(nil),       // 14: pulumirpc.codegen.Diagnostic
+	(*codegen.GetSchemaRequest)(nil), // 15: codegen.GetSchemaRequest
 }
 var file_pulumi_converter_proto_depIdxs = []int32{
-	2,  // 0: pulumirpc.ResourceImport.parameterization:type_name -> pulumirpc.ResourceParameterization
-	3,  // 1: pulumirpc.ResourceImport.extension:type_name -> pulumirpc.ResourceExtension
-	1,  // 2: pulumirpc.ConvertStateResponse.resources:type_name -> pulumirpc.ResourceImport
-	11, // 3: pulumirpc.ConvertStateResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	11, // 4: pulumirpc.ConvertProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	12, // 5: pulumirpc.ConvertSnippetRequest.package:type_name -> codegen.GetSchemaRequest
-	9,  // 6: pulumirpc.ConvertSnippetRequest.attributes:type_name -> pulumirpc.ConvertSnippetRequest.AttributesEntry
-	11, // 7: pulumirpc.ConvertSnippetResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	10, // 8: pulumirpc.ConvertSnippetResponse.attributes:type_name -> pulumirpc.ConvertSnippetResponse.AttributesEntry
-	0,  // 9: pulumirpc.Converter.ConvertState:input_type -> pulumirpc.ConvertStateRequest
-	5,  // 10: pulumirpc.Converter.ConvertProgram:input_type -> pulumirpc.ConvertProgramRequest
-	7,  // 11: pulumirpc.Converter.ConvertSnippet:input_type -> pulumirpc.ConvertSnippetRequest
-	4,  // 12: pulumirpc.Converter.ConvertState:output_type -> pulumirpc.ConvertStateResponse
-	6,  // 13: pulumirpc.Converter.ConvertProgram:output_type -> pulumirpc.ConvertProgramResponse
-	8,  // 14: pulumirpc.Converter.ConvertSnippet:output_type -> pulumirpc.ConvertSnippetResponse
-	12, // [12:15] is the sub-list for method output_type
-	9,  // [9:12] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	3,  // 0: pulumirpc.ResourceImport.parameterization:type_name -> pulumirpc.ResourceParameterization
+	4,  // 1: pulumirpc.ResourceImport.extension:type_name -> pulumirpc.ResourceExtension
+	13, // 2: pulumirpc.ProviderImport.inputs:type_name -> google.protobuf.Struct
+	1,  // 3: pulumirpc.ConvertStateResponse.resources:type_name -> pulumirpc.ResourceImport
+	14, // 4: pulumirpc.ConvertStateResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	10, // 5: pulumirpc.ConvertStateResponse.providers:type_name -> pulumirpc.ConvertStateResponse.ProvidersEntry
+	14, // 6: pulumirpc.ConvertProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	15, // 7: pulumirpc.ConvertSnippetRequest.package:type_name -> codegen.GetSchemaRequest
+	11, // 8: pulumirpc.ConvertSnippetRequest.attributes:type_name -> pulumirpc.ConvertSnippetRequest.AttributesEntry
+	14, // 9: pulumirpc.ConvertSnippetResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	12, // 10: pulumirpc.ConvertSnippetResponse.attributes:type_name -> pulumirpc.ConvertSnippetResponse.AttributesEntry
+	2,  // 11: pulumirpc.ConvertStateResponse.ProvidersEntry.value:type_name -> pulumirpc.ProviderImport
+	0,  // 12: pulumirpc.Converter.ConvertState:input_type -> pulumirpc.ConvertStateRequest
+	6,  // 13: pulumirpc.Converter.ConvertProgram:input_type -> pulumirpc.ConvertProgramRequest
+	8,  // 14: pulumirpc.Converter.ConvertSnippet:input_type -> pulumirpc.ConvertSnippetRequest
+	5,  // 15: pulumirpc.Converter.ConvertState:output_type -> pulumirpc.ConvertStateResponse
+	7,  // 16: pulumirpc.Converter.ConvertProgram:output_type -> pulumirpc.ConvertProgramResponse
+	9,  // 17: pulumirpc.Converter.ConvertSnippet:output_type -> pulumirpc.ConvertSnippetResponse
+	15, // [15:18] is the sub-list for method output_type
+	12, // [12:15] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_converter_proto_init() }
@@ -859,7 +953,7 @@ func file_pulumi_converter_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_converter_proto_rawDesc), len(file_pulumi_converter_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

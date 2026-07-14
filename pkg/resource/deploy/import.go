@@ -473,15 +473,27 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			inputs = resource.PropertyMap{}
 		}
 
-		// Overlay version/URL/checksums from the Import if present and not already in inputs.
-		if imp.Version != nil {
-			providers.SetProviderVersion(inputs, imp.Version)
+		// Overlay version/URL/checksums/parameterization from the Import, mirroring the default
+		// provider path above. For a parameterized resource this resolves to the base plugin's
+		// name and version plus the parameterization value.
+		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+		if err != nil {
+			return nil, err
 		}
-		if imp.PluginDownloadURL != "" {
-			providers.SetProviderURL(inputs, imp.PluginDownloadURL)
+		req := providers.NewProviderRequest(
+			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+		if v := req.Version(); v != nil {
+			providers.SetProviderVersion(inputs, v)
 		}
-		if len(imp.PluginChecksums) > 0 {
-			providers.SetProviderChecksums(inputs, imp.PluginChecksums)
+		if url := req.PluginDownloadURL(); url != "" {
+			providers.SetProviderURL(inputs, url)
+		}
+		if checksums := req.PluginChecksums(); checksums != nil {
+			providers.SetProviderChecksums(inputs, checksums)
+		}
+		if parameterization := req.Parameterization(); parameterization != nil {
+			providers.SetProviderName(inputs, req.Name())
+			providers.SetProviderParameterization(inputs, parameterization)
 		}
 
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{

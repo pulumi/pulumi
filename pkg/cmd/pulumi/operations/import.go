@@ -106,6 +106,7 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			LogicalName:       res.LogicalName,
 			Parent:            res.Parent,
 			Properties:        res.Properties,
+			Provider:          res.Provider,
 		}
 		if p := res.Parameterization; p != nil {
 			specs[i].Parameterization = &importParameterization{
@@ -127,6 +128,39 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 		NameTable: nameTable,
 		Resources: specs,
 	}, nil
+}
+
+// applyConverterProviders adds the explicit providers returned by a state converter to an import file.
+// Converters reference providers by name only; the URNs those names resolve to can only be constructed
+// here, where the target stack and project are known.
+func applyConverterProviders(
+	ctx context.Context, f *importFile, providerImports map[string]plugin.ProviderImport,
+	stack tokens.StackName, proj tokens.PackageName, enc sdkconfig.Encrypter,
+) error {
+	if len(providerImports) == 0 {
+		return nil
+	}
+	if f.NameTable == nil {
+		f.NameTable = map[string]resource.URN{}
+	}
+	if f.ProviderInputs == nil {
+		f.ProviderInputs = map[string]map[string]any{}
+	}
+	for name, p := range providerImports {
+		if p.Package == "" {
+			return fmt.Errorf("provider %q has no package", name)
+		}
+		f.NameTable[name] = resource.NewURN(
+			stack.Q(), proj, "", providers.MakeProviderType(tokens.Package(p.Package)), name)
+		if p.Inputs != nil {
+			serialized, err := resourcestack.SerializeProperties(ctx, p.Inputs, enc, true /*showSecrets*/)
+			if err != nil {
+				return fmt.Errorf("serializing inputs for provider %q: %w", name, err)
+			}
+			f.ProviderInputs[name] = serialized
+		}
+	}
+	return nil
 }
 
 func makeImportFile(
@@ -816,6 +850,9 @@ func NewImportCmd() *cobra.Command {
 			defer contract.IgnoreClose(pCtx)
 
 			var importFile importFile
+			// Explicit providers returned by a state converter, if any. These are applied to the
+			// import file later, once the target stack is known and their URNs can be constructed.
+			var converterProviders map[string]plugin.ProviderImport
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
 					contract.IgnoreError(cmd.Help())
@@ -906,6 +943,7 @@ func NewImportCmd() *cobra.Command {
 					return err
 				}
 				importFile = f
+				converterProviders = resp.Providers
 			} else {
 				msg := "an inline resource must be specified if no converter or import file is used, missing "
 				if len(args) == 0 {
@@ -1017,6 +1055,11 @@ func NewImportCmd() *cobra.Command {
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
+
+			err = applyConverterProviders(ctx, &importFile, converterProviders, s.Ref().Name(), proj.Name, encrypter)
+			if err != nil {
+				return err
+			}
 
 			imports, nameTable, err := parseImportFile(
 				importFile, s.Ref().Name(), proj.Name, protectResources, decrypter)

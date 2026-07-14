@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -137,6 +138,7 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 			IsComponent:       resource.IsComponent,
 			Parent:            resource.Parent,
 			Properties:        resource.Properties,
+			Provider:          resource.Provider,
 		}
 		if p := resource.Parameterization; p != nil {
 			resources[i].Parameterization = &ResourceParameterization{
@@ -154,6 +156,24 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 		}
 	}
 
+	var providerImports map[string]ProviderImport
+	if len(resp.Providers) > 0 {
+		providerImports = make(map[string]ProviderImport, len(resp.Providers))
+		for name, p := range resp.Providers {
+			var inputs presource.PropertyMap
+			if p.Inputs != nil {
+				inputs, err = UnmarshalProperties(p.Inputs, MarshalOptions{Label: label, KeepSecrets: true})
+				if err != nil {
+					return nil, fmt.Errorf("unmarshaling inputs for provider %q: %w", name, err)
+				}
+			}
+			providerImports[name] = ProviderImport{
+				Package: p.Package,
+				Inputs:  inputs,
+			}
+		}
+	}
+
 	// Translate the rpc diagnostics into hcl.Diagnostics.
 	var diags hcl.Diagnostics
 	for _, rpcDiag := range resp.Diagnostics {
@@ -163,6 +183,7 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	logging.V(7).Infof("%s success", label)
 	return &ConvertStateResponse{
 		Resources:   resources,
+		Providers:   providerImports,
 		Diagnostics: diags,
 	}, nil
 }
