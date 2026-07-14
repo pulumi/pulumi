@@ -15,7 +15,7 @@ The most common commands from there are:
     - esc env get  : Get a property in an environment definition
     - esc env set  : Set a property in an environment definition
     - esc env edit : Edit an environment definition
-    - esc env ls   : List available environments
+    - esc env list : List available environments
     - esc run      : Run a command within the context of an environment
     - esc open     : Open an environment and access its contents
 

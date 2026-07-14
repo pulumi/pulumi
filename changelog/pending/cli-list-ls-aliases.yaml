@@ -1,0 +1,6 @@
+kind: improvement
+body: Align `env` commands with the CLI naming guidelines, making `list`, `remove` and
+    `move` the canonical names with `ls`, `rm`, `delete` and `mv` kept as aliases
+component: cli
+custom:
+    PR: "23901"
