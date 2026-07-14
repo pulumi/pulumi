@@ -2,3 +2,5 @@ component: protobuf
 kind: improvement
 body: Allow state converters to attach imported resources to explicit providers with configuration via the new provider and providers fields in ConvertStateResponse
 time: 2026-07-14T17:01:29.39759+02:00
+custom:
+    PR: "23930"
