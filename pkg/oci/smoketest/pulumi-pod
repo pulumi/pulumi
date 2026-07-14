@@ -36,10 +36,16 @@
 # prefers this wrapper over having the CLI fork itself.
 #
 # Config via env (all optional):
-#   PULUMI_POD_ENGINE_IMAGE     engine/CLI image to run             (default pulumi-cli-oci:latest)
+#   PULUMI_POD_ENGINE_IMAGE     engine/CLI image to run             (default: DEFAULT_ENGINE_IMAGE below)
 #   PULUMI_POD_MOUNT_DIR        host dir mounted at /workspace       (default: cwd) — mount a
 #                               repo root here when the program reads files from a parent dir
 #   PULUMI_POD_PROJECT_SUBPATH  Pulumi.yaml dir relative to the mount (default: the mount root)
+#   PULUMI_POD_PLUGIN_REGISTRY  registry the engine pulls provider images from (host[:port]);
+#                               unset -> a shared local pull-through proxy is started (below)
+#   PULUMI_POD_PROXY_IMAGE      image the proxy runs from  (default: the engine image — the
+#                               proxy is that same pulumi-pod image, run with a different entrypoint)
+#   PULUMI_POD_PROXY            'auto' (default) starts the proxy when no registry is set; 'off' disables it
+#   PULUMI_POD_PROXY_PORT       host port the proxy publishes                        (default: 5005)
 # The whole host environment is forwarded into the engine container, minus a
 # denylist of host-context vars (PATH/HOME/TMPDIR/…, DOCKER_HOST, and the vars this
 # wrapper sets itself). So credentials (AWS_*, GOOGLE_*, …), PULUMI_BACKEND_URL,
@@ -50,9 +56,15 @@
 # Usage: pulumi-pod <pulumi args...>
 set -euo pipefail
 
+# The published pulumi-pod image — ONE artifact carrying the engine (pulumi), the OCI
+# language host, and the provider registry proxy. Set the namespace to wherever
+# publish-images.sh pushed it; this default makes the wrapper PULL instead of building.
+# Override PULUMI_POD_ENGINE_IMAGE to use a local build or a different registry.
+DEFAULT_ENGINE_IMAGE="ghcr.io/pulumi-labs/pulumi-pod:latest"
+
 MOUNT_DIR="${PULUMI_POD_MOUNT_DIR:-$PWD}"
 SUBPATH="${PULUMI_POD_PROJECT_SUBPATH:-}"
-ENGINE_IMAGE="${PULUMI_POD_ENGINE_IMAGE:-pulumi-cli-oci:latest}"
+ENGINE_IMAGE="${PULUMI_POD_ENGINE_IMAGE:-$DEFAULT_ENGINE_IMAGE}"
 
 # The workspace is mounted at /workspace; the project (Pulumi.yaml) is the mount
 # root, or a subpath of it when a parent was mounted for shared libraries. The pod
@@ -81,6 +93,61 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Pull the pod image up front, with visible progress. Otherwise its first pull happens
+# silently inside the detached, output-suppressed proxy start below and looks like a hang.
+if ! docker image inspect "$ENGINE_IMAGE" >/dev/null 2>&1; then
+  echo "pulumi-pod: pulling $ENGINE_IMAGE (first run — this can take a minute)…" >&2
+  docker pull "$ENGINE_IMAGE" >&2 || true
+fi
+
+# Provider images come from an OCI registry the engine pulls from
+# (PULUMI_POD_PLUGIN_REGISTRY threads through the container host's provider-image
+# resolution). Unless the caller points at their own registry, run a shared, long-lived
+# pull-through proxy that synthesizes any released provider image on demand from
+# get.pulumi.com — so no provider images need pre-publishing. The proxy is shared infra
+# (one per host, not per pod): started on first use and left running (stop it with
+# `docker rm -f pulumi-pod-registry-proxy`). It degrades gracefully — if it can't be
+# started, the run continues and the engine uses whatever provider images are already
+# present locally.
+PROXY_MODE="${PULUMI_POD_PROXY:-auto}"
+# The proxy runs from the SAME image as the engine (via --entrypoint registry-proxy), so it
+# defaults to the engine image; override PULUMI_POD_PROXY_IMAGE only to pin a different one.
+PROXY_IMAGE="${PULUMI_POD_PROXY_IMAGE:-$ENGINE_IMAGE}"
+PROXY_NAME="pulumi-pod-registry-proxy"
+PROXY_PORT="${PULUMI_POD_PROXY_PORT:-5005}"
+
+ensure_registry_proxy() {
+  # Reuse a running proxy; otherwise clear any stale one and start fresh. Running the
+  # multi-arch proxy image natively, it synthesizes for its own (== the host's) arch,
+  # so provider images match the local daemon with no configuration.
+  if [ -n "$(docker ps -q --filter "name=^/${PROXY_NAME}$" --filter status=running 2>/dev/null)" ]; then
+    return 0
+  fi
+  docker rm -f "$PROXY_NAME" >/dev/null 2>&1 || true
+  echo "pulumi-pod: starting shared provider registry proxy ($PROXY_NAME) on localhost:$PROXY_PORT" >&2
+  docker run -d --name "$PROXY_NAME" --label "com.pulumi.pod-proxy=1" \
+    --entrypoint registry-proxy -p "$PROXY_PORT:5000" "$PROXY_IMAGE" >/dev/null 2>&1 || return 1
+  # Wait for the distribution API to answer (if curl is present; else give it a moment).
+  if command -v curl >/dev/null 2>&1; then
+    for _ in $(seq 1 30); do
+      curl -sf "http://localhost:$PROXY_PORT/v2/" >/dev/null 2>&1 && return 0
+      sleep 0.5
+    done
+    return 1
+  fi
+  sleep 2
+  return 0
+}
+
+PLUGIN_REGISTRY="${PULUMI_POD_PLUGIN_REGISTRY:-}"
+if [ -z "$PLUGIN_REGISTRY" ] && [ "$PROXY_MODE" != "off" ]; then
+  if ensure_registry_proxy; then
+    PLUGIN_REGISTRY="localhost:$PROXY_PORT"
+  else
+    echo "pulumi-pod: provider registry proxy unavailable; the engine will use only locally-present provider images (set PULUMI_POD_PLUGIN_REGISTRY to use a registry directly)" >&2
+  fi
+fi
+
 docker network create "$NET" >/dev/null
 
 # Forward the whole host environment into the engine container, minus a denylist of
@@ -102,7 +169,7 @@ fwd=()
 for name in $(compgen -e); do
   case "$name" in
     PATH | HOME | PWD | OLDPWD | TMPDIR | SHLVL | TERM | HOSTNAME | DOCKER_HOST | PYTHONPATH | NODE_PATH) continue ;;
-    PULUMI_HOME | PULUMI_POD_MODE | PULUMI_POD_NETWORK | PULUMI_POD_ADVERTISE_HOST | PULUMI_POD_ID) continue ;;
+    PULUMI_HOME | PULUMI_POD_MODE | PULUMI_POD_NETWORK | PULUMI_POD_ADVERTISE_HOST | PULUMI_POD_ID | PULUMI_POD_PLUGIN_REGISTRY) continue ;;
   esac
   fwd+=(-e "$name=${!name}")
 done
@@ -110,6 +177,10 @@ done
 # configured one (a backend URL, or a service access token).
 if [ -z "${PULUMI_BACKEND_URL:-}" ] && [ -z "${PULUMI_ACCESS_TOKEN:-}" ]; then
   fwd+=(-e "PULUMI_BACKEND_URL=file://$POD_HOME")
+fi
+# Point the engine at the resolved provider registry (the local proxy, or the caller's).
+if [ -n "$PLUGIN_REGISTRY" ]; then
+  fwd+=(-e "PULUMI_POD_PLUGIN_REGISTRY=$PLUGIN_REGISTRY")
 fi
 
 # Run the command in the engine container (its ENTRYPOINT is `pulumi`). Capture the

@@ -77,6 +77,9 @@ cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 # what the no---stack commands below exercise.
 export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
 export PULUMI_POD_MOUNT_DIR="$WORK/project"
+# This test pre-builds the provider image into the local daemon, so it wants the
+# bare-ref/local-image path — opt out of the wrapper's default provider-registry proxy.
+export PULUMI_POD_PROXY=off
 
 echo "==> pulumi-pod stack init $STACK (selection persists via mounted PULUMI_HOME)"
 "$WRAPPER" stack init "$STACK"
