@@ -43,7 +43,7 @@ func newRemoveCmd() *cobra.Command {
 
 	command := &cobra.Command{
 		Use:     "remove",
-		Aliases: []string{"rm"},
+		Aliases: []string{"rm", "delete"},
 		Short:   "Remove automatic log files",
 		Long: "Remove automatic log files.\n" +
 			"\n" +

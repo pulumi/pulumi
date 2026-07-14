@@ -381,7 +381,7 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 
 	rmCmd := &cobra.Command{
 		Use:     "remove",
-		Aliases: []string{"rm"},
+		Aliases: []string{"rm", "delete"},
 		Short:   "Remove configuration value",
 		Long: "Remove configuration value.\n\n" +
 			"The `--path` flag can be used to remove a value inside a map or list:\n\n" +
@@ -466,7 +466,7 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 
 	rmAllCmd := &cobra.Command{
 		Use:     "remove-all",
-		Aliases: []string{"rm-all"},
+		Aliases: []string{"rm-all", "delete-all"},
 		Short:   "Remove multiple configuration values",
 		Long: "Remove multiple configuration values.\n\n" +
 			"The `--path` flag indicates that keys should be parsed within maps or lists:\n\n" +

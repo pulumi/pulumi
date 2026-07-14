@@ -42,7 +42,7 @@ func newStackNewCmd() *cobra.Command {
 	var sicmd stackNewCmd
 	cmd := &cobra.Command{
 		Use:     "new",
-		Aliases: []string{"init"},
+		Aliases: []string{"init", "create", "setup"},
 		Short:   "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
