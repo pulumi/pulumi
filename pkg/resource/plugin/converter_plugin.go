@@ -135,6 +135,8 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 			LogicalName:       resource.LogicalName,
 			IsRemote:          resource.IsRemote,
 			IsComponent:       resource.IsComponent,
+			Parent:            resource.Parent,
+			Properties:        resource.Properties,
 		}
 		if p := resource.Parameterization; p != nil {
 			resources[i].Parameterization = &ResourceParameterization{

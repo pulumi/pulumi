@@ -104,6 +104,8 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			Component:         res.IsComponent,
 			Remote:            res.IsRemote,
 			LogicalName:       res.LogicalName,
+			Parent:            res.Parent,
+			Properties:        res.Properties,
 		}
 		if p := res.Parameterization; p != nil {
 			specs[i].Parameterization = &importParameterization{

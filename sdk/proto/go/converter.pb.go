@@ -116,7 +116,13 @@ type ResourceImport struct {
 	// the extension parameterization to apply to the resource's provider, if any. Unlike a replacement
 	// parameterization, the resource's own type is in the base provider's package; the extension is a blob
 	// applied on top of that provider. Mutually exclusive with parameterization.
-	Extension     *ResourceExtension `protobuf:"bytes,10,opt,name=extension,proto3" json:"extension,omitempty"`
+	Extension *ResourceExtension `protobuf:"bytes,10,opt,name=extension,proto3" json:"extension,omitempty"`
+	// the name of the resource's parent, if any. Must reference the name of another resource in the same
+	// response; resources without a parent are parented to the stack root.
+	Parent string `protobuf:"bytes,11,opt,name=parent,proto3" json:"parent,omitempty"`
+	// the input properties to include when generating code for the resource. Defaults to the resource's
+	// required properties.
+	Properties    []string `protobuf:"bytes,12,rep,name=properties,proto3" json:"properties,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -217,6 +223,20 @@ func (x *ResourceImport) GetParameterization() *ResourceParameterization {
 func (x *ResourceImport) GetExtension() *ResourceExtension {
 	if x != nil {
 		return x.Extension
+	}
+	return nil
+}
+
+func (x *ResourceImport) GetParent() string {
+	if x != nil {
+		return x.Parent
+	}
+	return ""
+}
+
+func (x *ResourceImport) GetProperties() []string {
+	if x != nil {
+		return x.Properties
 	}
 	return nil
 }
@@ -712,7 +732,7 @@ const file_pulumi_converter_proto_rawDesc = "" +
 	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"N\n" +
 	"\x13ConvertStateRequest\x12#\n" +
 	"\rmapper_target\x18\x01 \x01(\tR\fmapperTarget\x12\x12\n" +
-	"\x04args\x18\x02 \x03(\tR\x04args\"\x80\x03\n" +
+	"\x04args\x18\x02 \x03(\tR\x04args\"\xb8\x03\n" +
 	"\x0eResourceImport\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x0e\n" +
@@ -724,7 +744,11 @@ const file_pulumi_converter_proto_rawDesc = "" +
 	"\tis_remote\x18\b \x01(\bR\bisRemote\x12O\n" +
 	"\x10parameterization\x18\t \x01(\v2#.pulumirpc.ResourceParameterizationR\x10parameterization\x12:\n" +
 	"\textension\x18\n" +
-	" \x01(\v2\x1c.pulumirpc.ResourceExtensionR\textension\"x\n" +
+	" \x01(\v2\x1c.pulumirpc.ResourceExtensionR\textension\x12\x16\n" +
+	"\x06parent\x18\v \x01(\tR\x06parent\x12\x1e\n" +
+	"\n" +
+	"properties\x18\f \x03(\tR\n" +
+	"properties\"x\n" +
 	"\x18ResourceParameterization\x12\x1f\n" +
 	"\vplugin_name\x18\x01 \x01(\tR\n" +
 	"pluginName\x12%\n" +
