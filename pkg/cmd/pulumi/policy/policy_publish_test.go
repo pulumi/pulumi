@@ -197,21 +197,12 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 func TestPolicyPublishFlagValidation(t *testing.T) {
 	t.Parallel()
 
-	cmd := policyPublishCmd{
-		binaryFlags: []string{"linux-amd64=bin/a"},
-		sourceOnly:  true,
-	}
-	_, _, err := cmd.resolveBinaries()
-	require.ErrorContains(t, err, "--source-only")
-
-	cmd = policyPublishCmd{binaryFlags: []string{"bogus"}}
-	_, _, err = cmd.resolveBinaries()
+	_, err := workspace.ParsePolicyBinaryOverrides([]string{"bogus"})
 	require.ErrorContains(t, err, "expected <os>-<arch>=<path>")
 
-	cmd = policyPublishCmd{binaryFlags: []string{"linux-amd64=bin/a", "darwin-arm64=bin/b"}}
-	binaries, sourceOnly, err := cmd.resolveBinaries()
+	binaries, err := workspace.ParsePolicyBinaryOverrides(
+		[]string{"linux-amd64=bin/a", "darwin-arm64=bin/b"})
 	require.NoError(t, err)
-	require.False(t, sourceOnly)
 	require.Equal(t, map[string]string{
 		"linux-amd64":  filepath.Join("bin", "a"),
 		"darwin-arm64": filepath.Join("bin", "b"),

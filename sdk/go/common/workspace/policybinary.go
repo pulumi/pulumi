@@ -65,42 +65,6 @@ func PolicyBinaryConventionPlatform(name string) (string, bool) {
 	return platform, true
 }
 
-// DiscoverPolicyBinaries scans a policy pack's bin/ directory for binaries built to
-// the pulumi-analyzer-<name>-<os>-<arch>[.exe] convention and returns platform to
-// pack-relative path. It returns an empty map when the pack has no binaries.
-func DiscoverPolicyBinaries(packDir string) (map[string]string, error) {
-	entries, err := os.ReadDir(filepath.Join(packDir, "bin"))
-	if os.IsNotExist(err) {
-		return map[string]string{}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	binaries := map[string]string{}
-	names := map[string]bool{}
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		platform, ok := PolicyBinaryConventionPlatform(e.Name())
-		if !ok {
-			continue
-		}
-		stem := strings.TrimSuffix(strings.TrimPrefix(e.Name(), policyBinaryPrefix), ".exe")
-		parts := strings.Split(stem, "-")
-		names[strings.Join(parts[:len(parts)-2], "-")] = true
-		binaries[platform] = filepath.Join("bin", e.Name())
-	}
-
-	if len(names) > 1 {
-		return nil, fmt.Errorf(
-			"found binaries for more than one policy pack name in bin/: %s",
-			strings.Join(slices.Sorted(maps.Keys(names)), ", "))
-	}
-	return binaries, nil
-}
-
 // ParsePolicyBinaryOverrides parses --binary flag values of the form
 // "<os>-<arch>=<path>" into a platform-to-path map. Paths must be relative to the
 // policy pack directory.

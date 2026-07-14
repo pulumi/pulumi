@@ -50,7 +50,7 @@ func TestValidateBinaryMatrixRequiresLinuxAmd64(t *testing.T) {
 	dir := writeTestPack(t, binaries)
 	err := validateBinaryMatrix(dir, binaries)
 	require.ErrorContains(t, err, workspace.PlatformLinuxAmd64)
-	require.ErrorContains(t, err, "--source-only")
+	require.ErrorContains(t, err, "--binary")
 }
 
 func TestValidateBinaryMatrixRequiresHostPlatform(t *testing.T) {
@@ -63,7 +63,7 @@ func TestValidateBinaryMatrixRequiresHostPlatform(t *testing.T) {
 	dir := writeTestPack(t, binaries)
 	err := validateBinaryMatrix(dir, binaries)
 	require.ErrorContains(t, err, workspace.CurrentPlatform())
-	require.ErrorContains(t, err, "--source-only")
+	require.ErrorContains(t, err, "--binary")
 }
 
 func TestValidateBinaryMatrixMissingFile(t *testing.T) {

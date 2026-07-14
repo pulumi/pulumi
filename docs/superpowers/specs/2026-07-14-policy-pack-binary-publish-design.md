@@ -87,16 +87,15 @@ runs without renaming.
 ## Section 2: Publish flow
 
 **Command:** `pulumi policy publish` — same command; mode determined by whether
-binaries are present.
+`--binary` flags are passed.
 
-**Binary discovery — convention with flag override:**
+**Binary opt-in — explicit flags only, no discovery:**
 
-- Convention: `bin/pulumi-analyzer-<packname>-<os>-<arch>[.exe]` relative to the pack
-  root, built by the author's CI.
-- Override: repeated `--binary <os>-<arch>=<path>` flags, which replace (not merge
-  with) convention discovery.
-- No binaries found → today's source publish, unchanged. Existing packs and CI
-  pipelines keep working with zero changes until an author opts in.
+- Repeated `--binary <os>-<arch>=<path>` flags, each pointing at a pack-relative
+  path built by the author's CI.
+- No `--binary` flags → today's source publish, unchanged. Existing packs and CI
+  pipelines keep working with zero changes until an author opts in. There is no
+  publish-time convention scan of `bin/`.
 
 **Validation at publish (binaries present):**
 
@@ -120,7 +119,7 @@ dependency):**
 - `CreatePolicyPackResponse` gains `platformUploadURIs map[string]string` alongside
   the existing `UploadURI`. Old service ignores the request field and returns only
   `UploadURI`; the CLI then fails loudly ("service does not support binary packs"),
-  with `--source-only` as the workaround. No silent fallback.
+  with re-running without `--binary` as the workaround. No silent fallback.
 - `RequiredPolicy` gains per-platform locations (or the download endpoint takes a
   platform param) — consumed in Section 3.
 
@@ -161,7 +160,7 @@ shapes becomes a loud failure. Deployments needs nothing — the executor runs t
 
 ## Section 4: Testing and rollout
 
-**Unit:** binary discovery (convention scan, flag override, `.exe`, linux-amd64
+**Unit:** binary flag parsing (`--binary` overrides, `.exe`, linux-amd64
 enforcement), publish mode switch, apitype round-trips, shape dispatch
 (binary present / absent / non-executable file).
 
@@ -177,7 +176,7 @@ today's behavior exactly.
 **What lands where:**
 
 1. **pulumi/pulumi (this design's scope):** apitype additions, publish
-   discovery/validation/upload, install resolution, engine dispatch. Mergeable and
+   flag-parsing/validation/upload, install resolution, engine dispatch. Mergeable and
    testable against a mock before any service work — all changes are inert until the
    service returns the new fields.
 2. **Service repo (dependency):** artifacts table (per the Notion doc's

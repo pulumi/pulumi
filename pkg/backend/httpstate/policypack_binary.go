@@ -45,7 +45,7 @@ func validateBinaryMatrix(packDir string, binaries map[string]string) error {
 		return fmt.Errorf(
 			"policy packs published with binaries must include a %s binary: "+
 				"server-side policy evaluation runs on %s; "+
-				"pass --source-only to publish without binaries",
+				"re-run without --binary to publish source only",
 			workspace.PlatformLinuxAmd64, workspace.PlatformLinuxAmd64)
 	}
 	for _, platform := range slices.Sorted(maps.Keys(binaries)) {
@@ -59,7 +59,7 @@ func validateBinaryMatrix(packDir string, binaries map[string]string) error {
 		return fmt.Errorf(
 			"cannot publish from %s: no %s binary was built, "+
 				"which is required to run publish-time conformance checks; "+
-				"pass --source-only to publish without binaries",
+				"re-run without --binary to publish source only",
 			hostPlatform, hostPlatform)
 	}
 	return nil

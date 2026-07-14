@@ -30,46 +30,6 @@ func touch(t *testing.T, path string) {
 	require.NoError(t, os.WriteFile(path, []byte("#!"), 0o755)) //nolint:gosec
 }
 
-func TestDiscoverPolicyBinaries(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	touch(t, filepath.Join(dir, "bin", "pulumi-analyzer-mypack-linux-amd64"))
-	touch(t, filepath.Join(dir, "bin", "pulumi-analyzer-mypack-darwin-arm64"))
-	touch(t, filepath.Join(dir, "bin", "pulumi-analyzer-mypack-windows-amd64.exe"))
-	// Non-matching files are ignored.
-	touch(t, filepath.Join(dir, "bin", "pulumi-analyzer-mypack"))
-	touch(t, filepath.Join(dir, "bin", "helper.sh"))
-
-	binaries, err := DiscoverPolicyBinaries(dir)
-	require.NoError(t, err)
-	assert.Equal(t, map[string]string{
-		"linux-amd64":   filepath.Join("bin", "pulumi-analyzer-mypack-linux-amd64"),
-		"darwin-arm64":  filepath.Join("bin", "pulumi-analyzer-mypack-darwin-arm64"),
-		"windows-amd64": filepath.Join("bin", "pulumi-analyzer-mypack-windows-amd64.exe"),
-	}, binaries)
-}
-
-func TestDiscoverPolicyBinariesEmpty(t *testing.T) {
-	t.Parallel()
-
-	binaries, err := DiscoverPolicyBinaries(t.TempDir())
-	require.NoError(t, err)
-	assert.Empty(t, binaries)
-}
-
-func TestDiscoverPolicyBinariesMixedNames(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	touch(t, filepath.Join(dir, "bin", "pulumi-analyzer-alpha-linux-amd64"))
-	touch(t, filepath.Join(dir, "bin", "pulumi-analyzer-beta-linux-amd64"))
-
-	_, err := DiscoverPolicyBinaries(dir)
-	require.ErrorContains(t, err, "alpha")
-	require.ErrorContains(t, err, "beta")
-}
-
 func TestPolicyBinaryConventionPlatform(t *testing.T) {
 	t.Parallel()
 

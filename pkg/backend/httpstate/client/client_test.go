@@ -2199,5 +2199,5 @@ func TestPublishPolicyPackWithPlatformsUnsupportedService(t *testing.T) {
 		map[string][]byte{"linux-amd64": []byte("b")}, nil)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "does not support policy pack binaries")
-	assert.ErrorContains(t, err, "--source-only")
+	assert.ErrorContains(t, err, "--binary")
 }

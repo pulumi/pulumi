@@ -21,7 +21,7 @@
 - Commit messages end with `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
 - Platform strings are `<GOOS>-<GOARCH>`: `linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`, `windows-amd64`, `windows-arm64`. `linux-amd64` is mandatory at publish. Windows binaries carry `.exe`.
 - Artifact layout (one tarball per platform): `package/PulumiPolicy.yaml` + `package/pulumi-analyzer-<name>[.exe]`.
-- Author build convention: `bin/pulumi-analyzer-<name>-<os>-<arch>[.exe]` relative to the pack root.
+- Author build convention: `bin/pulumi-analyzer-<name>-<os>-<arch>[.exe]` relative to the pack root. This convention is used for local dev exec (`PolicyPackBinary`) and to detect a leaked binary in the source tarball; it is **not** used at publish time — binary publishing only happens when the author passes explicit `--binary <os>-<arch>=<path>` flags.
 
 ---
 
@@ -1342,8 +1342,14 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Modify: `pkg/cmd/pulumi/policy/policy_publish.go:43-168`
 - Test: `pkg/cmd/pulumi/policy/policy_publish_test.go` (check if it exists; if not, create with just this test)
 
+**Decision update:** binary publishing is opt-in via `--binary` only — there is no
+`--source-only` flag and no publish-time convention discovery. No `--binary` flags →
+legacy source publish, always. `resolveBinaries` collapsed into a direct call to
+`workspace.ParsePolicyBinaryOverrides` since it no longer has any branching logic of
+its own.
+
 **Interfaces:**
-- Consumes: `workspace.ParsePolicyBinaryOverrides` (Task 1), `backend.PublishOperation.Binaries/.SourceOnly` (Task 5)
+- Consumes: `workspace.ParsePolicyBinaryOverrides` (Task 1), `backend.PublishOperation.Binaries` (Task 5)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1353,21 +1359,12 @@ Add to `pkg/cmd/pulumi/policy/policy_publish_test.go` (create with package decl 
 func TestPolicyPublishFlagValidation(t *testing.T) {
 	t.Parallel()
 
-	cmd := policyPublishCmd{
-		binaryFlags: []string{"linux-amd64=bin/a"},
-		sourceOnly:  true,
-	}
-	_, _, err := cmd.resolveBinaries()
-	require.ErrorContains(t, err, "--source-only")
-
-	cmd = policyPublishCmd{binaryFlags: []string{"bogus"}}
-	_, _, err = cmd.resolveBinaries()
+	_, err := workspace.ParsePolicyBinaryOverrides([]string{"bogus"})
 	require.ErrorContains(t, err, "expected <os>-<arch>=<path>")
 
-	cmd = policyPublishCmd{binaryFlags: []string{"linux-amd64=bin/a", "darwin-arm64=bin/b"}}
-	binaries, sourceOnly, err := cmd.resolveBinaries()
+	binaries, err := workspace.ParsePolicyBinaryOverrides(
+		[]string{"linux-amd64=bin/a", "darwin-arm64=bin/b"})
 	require.NoError(t, err)
-	require.False(t, sourceOnly)
 	require.Equal(t, map[string]string{
 		"linux-amd64":  filepath.Join("bin", "a"),
 		"darwin-arm64": filepath.Join("bin", "b"),
@@ -1380,59 +1377,40 @@ Imports: `"path/filepath"`, `"testing"`, `"github.com/stretchr/testify/require"`
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd pkg && go test ./cmd/pulumi/policy/ -run TestPolicyPublishFlagValidation -count=1`
-Expected: FAIL — `unknown field binaryFlags` / `undefined: resolveBinaries` (compile error).
+Expected: FAIL — `undefined: workspace` (compile error) until the import is added.
 
 - [ ] **Step 3: Implement**
 
 In `pkg/cmd/pulumi/policy/policy_publish.go`:
 
-3a. Extend the struct and add the resolver:
+3a. The struct carries only the raw flag values — no `sourceOnly` field:
 
 ```go
 type policyPublishCmd struct {
 	getwd func() (string, error)
 
 	binaryFlags []string
-	sourceOnly  bool
-}
-
-// resolveBinaries validates the --binary/--source-only flags and returns explicit
-// binary overrides (nil means discover by convention) and the source-only setting.
-func (cmd *policyPublishCmd) resolveBinaries() (map[string]string, bool, error) {
-	if cmd.sourceOnly && len(cmd.binaryFlags) > 0 {
-		return nil, false, errors.New("--source-only cannot be combined with --binary")
-	}
-	if cmd.sourceOnly {
-		return nil, true, nil
-	}
-	binaries, err := workspace.ParsePolicyBinaryOverrides(cmd.binaryFlags)
-	if err != nil {
-		return nil, false, err
-	}
-	return binaries, false, nil
 }
 ```
 
-3b. In `newPolicyPublishCmd`, register the flags after the `constrictor.AttachArguments` call:
+3b. In `newPolicyPublishCmd`, register the flag after the `constrictor.AttachArguments` call:
 
 ```go
 	cmd.Flags().StringArrayVar(&policyPublishCmd.binaryFlags, "binary", nil,
-		"Pre-built analyzer binary to publish for a platform, as <os>-<arch>=<path> "+
-			"(repeatable; overrides bin/ discovery)")
-	cmd.Flags().BoolVar(&policyPublishCmd.sourceOnly, "source-only", false,
-		"Publish only the source archive, skipping binary discovery")
+		"Pre-built analyzer binary to publish for a platform, as <os>-<arch>=<path>, "+
+			"where <path> is relative to the policy pack directory (repeatable)")
 ```
 
-3c. In `Run`, before constructing `backend.PublishOperation`, call the resolver and thread the values:
+3c. In `Run`, before constructing `backend.PublishOperation`, parse the flags directly:
 
 ```go
-	binaries, sourceOnly, err := cmd.resolveBinaries()
+	binaries, err := workspace.ParsePolicyBinaryOverrides(cmd.binaryFlags)
 	if err != nil {
 		return err
 	}
 ```
 
-and add `Binaries: binaries, SourceOnly: sourceOnly,` to the `backend.PublishOperation{…}` literal.
+and add `Binaries: binaries,` to the `backend.PublishOperation{…}` literal.
 
 The `workspace` import already exists in the file.
 
@@ -1446,7 +1424,7 @@ Expected: PASS (whole package, to catch any broken existing tests).
 ```bash
 mise exec -- make format
 git add pkg/cmd/pulumi/policy/policy_publish.go pkg/cmd/pulumi/policy/policy_publish_test.go
-git commit -m "Add --binary and --source-only flags to pulumi policy publish
+git commit -m "Add --binary flag to pulumi policy publish
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```

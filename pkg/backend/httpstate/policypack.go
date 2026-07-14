@@ -428,16 +428,8 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 func (pack *cloudPolicyPack) Publish(
 	ctx context.Context, op backend.PublishOperation,
 ) error {
-	binaries := op.Binaries
-	if len(binaries) == 0 && !op.SourceOnly {
-		var err error
-		binaries, err = workspace.DiscoverPolicyBinaries(op.PlugCtx.Pwd)
-		if err != nil {
-			return err
-		}
-	}
-	if len(binaries) > 0 {
-		return pack.publishWithBinaries(ctx, op, binaries)
+	if len(op.Binaries) > 0 {
+		return pack.publishWithBinaries(ctx, op, op.Binaries)
 	}
 
 	//
