@@ -2,3 +2,5 @@ component: protobuf
 kind: improvement
 body: Add parent and properties fields to ResourceImport so state converters can express resource hierarchy and property filters
 time: 2026-07-14T16:01:21.472291+02:00
+custom:
+    PR: "23929"
