@@ -56,7 +56,7 @@ func TestUnknownCommandSuggestions(t *testing.T) {
 		{
 			args:            []string{"env", "lisst"},
 			wantErr:         `unknown command "lisst" for "pulumi env"`,
-			wantSuggestions: []string{"pulumi env ls"},
+			wantSuggestions: []string{"pulumi env list"},
 		},
 		{
 			// `stack` is runnable and has subcommands, so this exercises the
@@ -104,7 +104,7 @@ func TestListAliases(t *testing.T) {
 		args     []string
 		wantName string
 	}{
-		{args: []string{"env", "list"}, wantName: "ls"},
+		{args: []string{"env", "ls"}, wantName: "list"},
 		{args: []string{"org", "member", "ls"}, wantName: "list"},
 		{args: []string{"stack", "webhook", "ls"}, wantName: "list"},
 	}
@@ -154,14 +154,14 @@ func newSuggestionsTestTree() *cobra.Command {
 		group("stack",
 			leaf("export"),
 			leaf("import"),
-			leaf("ls", "list"),
+			leaf("list", "ls"),
 			group("webhook", leaf("new"), leaf("list")),
 		),
 		group("org",
 			group("member", leaf("list"), leaf("remove")),
 			group("webhook", leaf("new")),
 		),
-		group("env", leaf("ls", "list"), leaf("get"), leaf("set")),
+		group("env", leaf("list", "ls"), leaf("get"), leaf("set")),
 		leaf("import"),
 		&cobra.Command{Use: "secret-cmd", Hidden: true, Run: func(*cobra.Command, []string) {}},
 	)
@@ -201,7 +201,7 @@ func TestSuggestCommands(t *testing.T) {
 	t.Run("subtree preferred over rest of tree", func(t *testing.T) {
 		t.Parallel()
 		got := suggestCommands(find("env"), []string{"lisst"})
-		assert.Equal(t, []string{"pulumi env ls"}, got)
+		assert.Equal(t, []string{"pulumi env list"}, got)
 	})
 
 	t.Run("two words reach a deep command from the root", func(t *testing.T) {
