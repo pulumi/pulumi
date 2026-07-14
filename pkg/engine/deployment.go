@@ -264,6 +264,12 @@ func newDeployment(
 		contract.IgnoreClose(plugctx)
 		return nil, err
 	}
+	if len(opts.Snippets) > 0 && !opts.DryRun {
+		if err := persistValidatedSnippets(baseCtx, ctx.SnapshotManager, target.Snapshot.Snippets, plugctx); err != nil {
+			contract.IgnoreClose(plugctx)
+			return nil, err
+		}
+	}
 
 	deplOpts := &deploy.Options{
 		ParallelDiff:              opts.ParallelDiff,

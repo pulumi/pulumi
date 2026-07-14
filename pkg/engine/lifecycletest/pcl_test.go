@@ -1763,6 +1763,27 @@ func TestPclSnippetOptionValidation(t *testing.T) {
 			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "delete-missing")
 		require.ErrorContains(t, err, fmt.Sprintf("cannot delete snippet %q: no such snippet in snapshot", snippetID))
 	})
+
+	t.Run("invalid snippet is not persisted", func(t *testing.T) {
+		t.Parallel()
+
+		p := newPlan(t)
+		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
+			snippetID: {
+				Name: "test-resource", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       ``,
+			},
+		}
+
+		snap, err := lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "invalid")
+		require.ErrorContains(t, err, "bind snippet")
+		require.ErrorContains(t, err, "missing required attribute 'propA'")
+		require.NotNil(t, snap)
+		require.Empty(t, snap.Snippets)
+	})
 }
 
 // newPclSnippetTestPlan returns an empty-snapshot TestPlan wired to the standard pkgA snippet
