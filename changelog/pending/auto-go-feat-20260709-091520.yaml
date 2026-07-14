@@ -1,4 +1,0 @@
-component: auto/go
-kind: feat
-body: Support --import-pending-creates for refresh command in Go Automation API for preview refresh and refresh operations
-time: 2026-07-09T09:15:20.993508-04:00

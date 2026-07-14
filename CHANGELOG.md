@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.253.0 (2026-07-14)
+
+### Features
+
+- [auto/go] Support --import-pending-creates for refresh command in Go Automation API for preview refresh and refresh operations [#23833](https://github.com/pulumi/pulumi/pull/23833)
+
+### Bug Fixes
+
+- [sdk] Precompose filenames to NFC on macOS when matching ignore patterns during archive creation, mirroring git's core.precomposeunicode so composed patterns match decomposed filenames [#23566](https://github.com/pulumi/pulumi/pull/23566)
+- [cli] Respect the -v log level again so that without -v only warnings and errors are written to stderr [#23910](https://github.com/pulumi/pulumi/pull/23910)
+- [codegen] Correctly generate provider resources declared inside PCL components for Node.js, Python and Go [#23904](https://github.com/pulumi/pulumi/pull/23904)
+
+### Improvements
+
+- [cli] Add a `--version` flag to the `pulumi` command that prints the version, same as `pulumi version` [#23898](https://github.com/pulumi/pulumi/pull/23898)
+- [cli] Align `env` commands with the CLI naming guidelines, making `list`, `remove` and `move` the canonical names with `ls`, `rm`, `delete` and `mv` kept as aliases [#23901](https://github.com/pulumi/pulumi/pull/23901)
 ## 3.252.0 (2026-07-13)
 
 ### Features
