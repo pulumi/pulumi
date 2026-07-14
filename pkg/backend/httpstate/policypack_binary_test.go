@@ -38,7 +38,7 @@ func writeTestPack(t *testing.T, binaries map[string]string) string {
 	for _, rel := range binaries {
 		p := filepath.Join(dir, rel)
 		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
-		require.NoError(t, os.WriteFile(p, []byte("bin"), 0o755))
+		require.NoError(t, os.WriteFile(p, []byte("bin"), 0o755)) //nolint:gosec
 	}
 	return dir
 }
@@ -108,7 +108,7 @@ func TestBuildBinaryArtifact(t *testing.T) {
 	entries := tarEntries(t, tgz)
 	assert.Contains(t, entries, "package/PulumiPolicy.yaml")
 	assert.Contains(t, entries, "package/pulumi-analyzer-mypack")
-	assert.Len(t, entries, 2)
+	require.Len(t, entries, 2)
 }
 
 func TestBuildBinaryArtifactWindowsSuffix(t *testing.T) {

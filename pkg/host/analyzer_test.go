@@ -122,6 +122,8 @@ func newAnalyzerTestContext(t *testing.T) *plugin.Context {
 }
 
 func TestAnalyzerSpawnBinaryCanonical(t *testing.T) {
+	t.Parallel()
+
 	binName := "pulumi-analyzer-binary-test-pack"
 	if goruntime.GOOS == "windows" {
 		binName += ".exe"
@@ -139,6 +141,8 @@ func TestAnalyzerSpawnBinaryCanonical(t *testing.T) {
 }
 
 func TestAnalyzerSpawnBinaryConvention(t *testing.T) {
+	t.Parallel()
+
 	binName := "pulumi-analyzer-binary-test-pack-" + workspace.CurrentPlatform()
 	if goruntime.GOOS == "windows" {
 		binName += ".exe"

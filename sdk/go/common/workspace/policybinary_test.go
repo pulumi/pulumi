@@ -27,7 +27,7 @@ import (
 func touch(t *testing.T, path string) {
 	t.Helper()
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
-	require.NoError(t, os.WriteFile(path, []byte("#!"), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte("#!"), 0o755)) //nolint:gosec
 }
 
 func TestDiscoverPolicyBinaries(t *testing.T) {
