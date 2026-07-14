@@ -286,11 +286,11 @@ func (w invariantWorkspace) DownloadPlugin(
 	return p, func(success bool) {}, nil
 }
 
-func (w invariantWorkspace) New() (pkgWorkspace.W, error) {
+func (w invariantWorkspace) New(string) (pkgWorkspace.W, error) {
 	return nil, assert.AnError
 }
 
-func (w invariantWorkspace) ReadProject() (*workspace.Project, string, error) {
+func (w invariantWorkspace) ReadProject(string) (*workspace.Project, string, error) {
 	return nil, "", assert.AnError
 }
 

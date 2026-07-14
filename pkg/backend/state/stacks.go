@@ -52,7 +52,12 @@ func getCurrentStackName(ws pkgWorkspace.Context) (string, error) {
 		return stackName, nil
 	}
 
-	w, err := ws.New()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("getting current working directory: %w", err)
+	}
+
+	w, err := ws.New(cwd)
 	if err != nil {
 		return "", err
 	}
@@ -83,8 +88,13 @@ func getStackNameWithLegacyOrgNameIfNeeded(b backend.Backend, stackName string) 
 
 // SetCurrentStack changes the current stack to the given stack name.
 func SetCurrentStack(ws pkgWorkspace.Context, name string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting current working directory: %w", err)
+	}
+
 	// Switch the current workspace to that stack.
-	w, err := ws.New()
+	w, err := ws.New(cwd)
 	if err != nil {
 		return err
 	}

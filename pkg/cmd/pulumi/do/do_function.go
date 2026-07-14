@@ -21,55 +21,38 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func functionSchemaHelp(fn *schema.Function) string {
+	color := cmdutil.GetGlobalColorization()
 	var b strings.Builder
-	writeProperties := func(title string, properties []*schema.Property, includeRequired bool) {
-		if len(properties) == 0 {
-			return
-		}
+	writeSection := func(title string, properties []*schema.Property, kind schemainfo.Kind) {
 		if b.Len() > 0 {
-			trimmed := strings.TrimSuffix(b.String(), "\n")
-			b.Reset()
-			b.WriteString(trimmed)
-			b.WriteString("\n\n")
+			b.WriteByte('\n')
 		}
-		b.WriteString(title)
-		b.WriteString(":\n")
-		for _, property := range properties {
-			fmt.Fprintf(&b, "  %s (%s", property.Name, unwrapType(property.Type))
-			if includeRequired {
-				if property.IsRequired() {
-					b.WriteString(", required")
-				} else {
-					b.WriteString(", optional")
-				}
-			}
-			b.WriteString(")")
-			if property.Comment != "" {
-				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(cleanComment(property.Comment), "\n", " "))
-			}
-			b.WriteString("\n")
-		}
+		schemainfo.WriteProperties(&b, color, title, schemainfo.BoundProperties(properties), kind)
 	}
 
+	var inputs []*schema.Property
 	if fn.Inputs != nil {
-		writeProperties("Inputs", fn.Inputs.Properties, true)
+		inputs = fn.Inputs.Properties
 	}
+	writeSection("Inputs", inputs, schemainfo.Inputs)
+
 	if fn.Outputs != nil {
-		writeProperties("Outputs", fn.Outputs.Properties, true)
+		writeSection("Outputs", fn.Outputs.Properties, schemainfo.Outputs)
 	} else if fn.ReturnType != nil {
-		if b.Len() > 0 {
-			b.WriteString("\n\n")
-		}
-		fmt.Fprintf(&b, "Outputs:\n  result (%s)\n", unwrapType(fn.ReturnType))
+		b.WriteByte('\n')
+		fmt.Fprintf(&b, "%s: %s\n",
+			schemainfo.Bold(color, "Outputs"), schemainfo.Underline(color, schemainfo.TypeString(fn.ReturnType)))
 	}
 	return strings.TrimSuffix(b.String(), "\n")
 }

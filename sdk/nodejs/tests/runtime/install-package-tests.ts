@@ -204,15 +204,11 @@ async function runTest(
 
     let logs = "";
 
-    // Get the corepack executable from the yarn bin directory, which allows us
-    // to use the version of corepack that's installed as part of our dev
-    // dependencies. This avoids having to install corepack globally or in CI.
-    const { stdout: bin } = await execa("yarn", ["bin"], {});
-    const corepack = path.join(bin.trim(), "corepack");
-
-    // Install the package manager to test.
-    logs += await exec(corepack, ["enable"], { cwd: tmpDir });
-    logs += await exec(corepack, ["use", `${packageManager}@${packageManagerVersion}`], { cwd: tmpDir });
+    // Corepack does not install npm shims by default because npm ships with Node.js, so `corepack enable` on its own
+    // would leave `npm` unshimmed and `corepack use npm@X` would silently no-op. Name the shims explicitly. See
+    // https://github.com/nodejs/corepack#corepack-enable--name
+    logs += await exec("corepack", ["enable", "npm", "pnpm", "yarn"], { cwd: tmpDir });
+    logs += await exec("corepack", ["use", `${packageManager}@${packageManagerVersion}`], { cwd: tmpDir });
 
     const env = {
         PULUMI_CONFIG_PASSPHRASE: "test",
@@ -231,7 +227,10 @@ async function runTest(
             env,
         });
 
-        console.log(`✅ ${packageManager}@${packageManagerVersion}${dependenciesString}`);
+        const actualVersion = await execa(packageManager, ["--version"], { cwd: tmpDir });
+        console.log(
+            `✅ ${packageManager}@${packageManagerVersion}${dependenciesString} (actual version: ${actualVersion.stdout})`,
+        );
     } catch (err) {
         console.log(
             `❌ Failed to run test with ${packageManager}@${packageManagerVersion}${dependenciesString} in ${tmpDir}: ${err}`,

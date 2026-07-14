@@ -23,8 +23,9 @@ import (
 
 func newEnvWebhookRmCmd(env *envCommand) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "rm [<org-name>/][<project-name>/]<environment-name> <webhook-name>",
-		Short: "Remove an environment webhook.",
+		Use:     "remove [<org-name>/][<project-name>/]<environment-name> <webhook-name>",
+		Aliases: []string{"rm", "delete"},
+		Short:   "Remove an environment webhook.",
 		Long: "[EXPERIMENTAL] Remove an environment webhook\n" +
 			"\n" +
 			"This command removes the named webhook from the environment.\n",

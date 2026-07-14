@@ -141,7 +141,7 @@ func NewDoCmd(
 			Color: cmdutil.GetGlobalColorization(),
 		})
 
-		proj, root, err := ws.ReadProject()
+		proj, root, err := ws.ReadProject("")
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return nil, nil, fmt.Errorf("read project: %w", err)
 		}
@@ -473,7 +473,7 @@ to use another format.`,
 // Errors reading the workspace are swallowed: the stack identity is best-effort context for PCL
 // evaluation, not a hard requirement, and `do` must stay usable when no workspace is configured.
 func currentStackIdentity(ws pkgWorkspace.Context) (organization, stack string) {
-	w, err := ws.New()
+	w, err := ws.New("")
 	if err != nil {
 		return "", ""
 	}

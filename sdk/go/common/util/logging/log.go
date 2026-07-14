@@ -75,7 +75,7 @@ func init() {
 // handlerMu held for writing. slog.SetDefault is safe for concurrent use
 // with readers, so no additional synchronisation is needed.
 func rebuildLogger() {
-	var p slog.Handler = formattingHandler{inner: primary}
+	var p slog.Handler = verbosityHandler{inner: formattingHandler{inner: primary}}
 	var h slog.Handler = filteringHandler{inner: &teeHandler{
 		primary:  p,
 		sink:     sinkHandler,
@@ -120,8 +120,10 @@ func verbosityLevel(verbose int) slog.Level {
 		return LevelTrace
 	case verbose >= 10:
 		return slog.LevelDebug
-	default:
+	case verbose >= 1:
 		return slog.LevelInfo
+	default:
+		return slog.LevelWarn
 	}
 }
 
@@ -451,6 +453,42 @@ func FilterString(msg string) string {
 	}
 
 	return msg
+}
+
+// verbosityHandler drops records whose "v" attribute exceeds the requested -v level before they
+// reach the primary log output. Records carry their original pulumi verbosity in the "v"
+// attribute, while their slog levels are bucketed too coarsely (V(1)-V(9) all map to Info) for
+// level-based filtering alone. Only the primary output filters by verbosity; the sink and export
+// handlers receive every record.
+type verbosityHandler struct {
+	inner slog.Handler
+}
+
+func (h verbosityHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.inner.Enabled(ctx, level)
+}
+
+func (h verbosityHandler) Handle(ctx context.Context, r slog.Record) error {
+	drop := false
+	r.Attrs(func(a slog.Attr) bool {
+		if a.Key == "v" && a.Value.Kind() == slog.KindInt64 {
+			drop = a.Value.Int64() > int64(Verbose)
+			return false
+		}
+		return true
+	})
+	if drop {
+		return nil
+	}
+	return h.inner.Handle(ctx, r)
+}
+
+func (h verbosityHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return verbosityHandler{inner: h.inner.WithAttrs(attrs)}
+}
+
+func (h verbosityHandler) WithGroup(name string) slog.Handler {
+	return verbosityHandler{inner: h.inner.WithGroup(name)}
 }
 
 type discardHandler struct{}

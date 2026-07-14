@@ -445,6 +445,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
+	case "recover":
+		g.Fgenf(w, "%.16v.recover(lambda __error: (lambda error: %.v)(str(__error)))", expr.Args[0], expr.Args[1])
 	case "element":
 		g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":

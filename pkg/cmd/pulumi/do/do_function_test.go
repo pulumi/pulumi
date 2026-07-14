@@ -117,13 +117,15 @@ func TestDoCmdWithFunctionHelpArgPrintsHelp(t *testing.T) {
 This is the other function in this package.
 
 Inputs:
-  param1 (string, required) - To set param1 things
-  param2 (Array<number>, optional) - Optional values.
+ - param1 (string*): To set param1 things
+ - param2 (Array<number>): Optional values.
+Inputs marked with '*' are required
 
 Outputs:
-  output1 (string, required) - The first output.
-  output2 (number, optional) - The second output.
-  output3 (boolean, required) - Whether it worked.
+ - output1 (string*): The first output.
+ - output2 (number): The second output.
+ - output3 (boolean*): Whether it worked.
+Outputs marked with '*' are always present
 
 Usage:
   do azure:myModule:myOtherFunction [flags]
@@ -1303,7 +1305,7 @@ func TestDoCmdFunctionInvokeWithProjectContext(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name:    tokens.PackageName("my-project"),
 				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),

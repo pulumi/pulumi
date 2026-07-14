@@ -1,6 +1,0 @@
-component: cli
-kind: fix
-body: Make reading non-secret stack outputs and running `pulumi about` no longer require the passphrase for passphrase-encrypted stacks
-time: 2026-07-07T18:45:45-07:00
-custom:
-    PR: "23820"

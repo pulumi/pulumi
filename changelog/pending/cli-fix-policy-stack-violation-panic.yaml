@@ -1,6 +1,0 @@
-component: cli
-kind: fix
-body: Fix a panic when displaying a stack-level policy violation
-time: 2026-06-24T13:39:15.001560-06:00
-custom:
-    PR: "23692"

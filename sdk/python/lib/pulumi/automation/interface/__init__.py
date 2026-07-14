@@ -122,6 +122,182 @@ class API:
             on_error=on_error,
         )
 
+    def _import(
+        self,
+        *arg: str,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        config_file: Optional[str] = None,
+        debug: bool = False,
+        diff: bool = False,
+        exec_agent: Optional[str] = None,
+        exec_kind: Optional[str] = None,
+        file: Optional[str] = None,
+        _from: Optional[str] = None,
+        generate_code: bool = False,
+        generate_resources: Optional[str] = None,
+        json: bool = False,
+        message: Optional[str] = None,
+        out: Optional[str] = None,
+        output: Optional[str] = None,
+        parallel: Optional[int] = None,
+        parent: Optional[str] = None,
+        preview_only: bool = False,
+        properties: Optional[list[str]] = None,
+        protect: bool = False,
+        provider: Optional[str] = None,
+        skip_plugin_pre_install: bool = False,
+        stack: Optional[str] = None,
+        suppress_outputs: bool = False,
+        suppress_permalink: Optional[str] = None,
+        suppress_progress: bool = False,
+        urns: bool = False,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi import`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param config_file: Use the configuration values in the specified file rather than detecting the file name
+        :param debug: Print detailed debugging output during resource operations
+        :param diff: Display operation as a rich diff showing the overall change
+        :param file: The path to a JSON-encoded file containing a list of resources to import
+        :param _from: Invoke a converter to import the resources
+        :param generate_code: Generate resource declaration code for the imported resources
+        :param generate_resources: When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path
+        :param json: Serialize the import diffs, operations, and overall output as JSON
+        :param message: Optional message to associate with the update operation
+        :param out: The path to the file that will contain the generated resource declarations
+        :param output: Output format. Supported values are: default, json
+        :param parallel: Allow P resource operations to run in parallel at once (1 for no parallelism).
+        :param parent: The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource
+        :param preview_only: Only show a preview of the import, but don't perform the import itself
+        :param properties: The property names to use for the import in the format name1,name2
+        :param protect: Allow resources to be imported with protection from deletion enabled
+        :param provider: The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource
+        :param skip_plugin_pre_install: Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine
+        :param stack: The name of the stack to operate on. Defaults to the current stack
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_permalink: Suppress display of the state permalink
+        :param suppress_progress: Suppress display of periodic progress dots
+        :param urns: Display full URNs instead of short resource names
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("import")
+        __flags = []
+        __flags.append("--skip-preview")
+        __flags.append("--yes")
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if config_file is not None:
+            __flags.extend(["--config-file", str(config_file)])
+        if debug:
+            __flags.append("--debug")
+        if diff:
+            __flags.append("--diff")
+        if exec_agent is not None:
+            __flags.extend(["--exec-agent", str(exec_agent)])
+        if exec_kind is not None:
+            __flags.extend(["--exec-kind", str(exec_kind)])
+        if file is not None:
+            __flags.extend(["--file", str(file)])
+        if _from is not None:
+            __flags.extend(["--from", str(_from)])
+        if generate_code:
+            __flags.append("--generate-code")
+        if generate_resources is not None:
+            __flags.extend(["--generate-resources", str(generate_resources)])
+        if json:
+            __flags.append("--json")
+        if message is not None:
+            __flags.extend(["--message", str(message)])
+        if out is not None:
+            __flags.extend(["--out", str(out)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        if parallel is not None:
+            __flags.extend(["--parallel", str(parallel)])
+        if parent is not None:
+            __flags.extend(["--parent", str(parent)])
+        if preview_only:
+            __flags.append("--preview-only")
+        for __item in properties or []:
+            __flags.extend(["--properties", str(__item)])
+        if protect:
+            __flags.append("--protect")
+        if provider is not None:
+            __flags.extend(["--provider", str(provider)])
+        if skip_plugin_pre_install:
+            __flags.append("--skip-plugin-pre-install")
+        if stack is not None:
+            __flags.extend(["--stack", str(stack)])
+        if suppress_outputs:
+            __flags.append("--suppress-outputs")
+        if suppress_permalink is not None:
+            __flags.extend(["--suppress-permalink", str(suppress_permalink)])
+        if suppress_progress:
+            __flags.append("--suppress-progress")
+        if urns:
+            __flags.append("--urns")
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        for __item in arg:
+            __arguments.append(str(__item))
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
     def new(
         self,
         template_or_url: Optional[str] = None,
@@ -378,7 +554,7 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param delimiter: Delimiter to use when rendering CSV output.
         :param org: Organization name to search within
-        :param output: Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'.
+        :param output: Output format. Supported values are: default, json, yaml and csv
         :param query: Plaintext natural language query
         :param web: Open the search results in a web browser.
         :param cwd: Working directory to run the command in.
@@ -474,7 +650,7 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param delimiter: Delimiter to use when rendering CSV output.
         :param org: Name of the organization to search. Defaults to the current user's default organization.
-        :param output: Output format. Supported formats are 'table', 'json', 'csv', and 'yaml'.
+        :param output: Output format. Supported values are: default, json, yaml and csv
         :param query: A Pulumi Query to send to Pulumi Cloud for resource search.May be formatted as a single query, or multiple:
                 -q "type:aws:s3/bucketv2:BucketV2 modified:>=2023-09-01"
                 -q "type:aws:s3/bucketv2:BucketV2" -q "modified:>=2023-09-01"

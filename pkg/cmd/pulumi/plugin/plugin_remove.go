@@ -41,7 +41,7 @@ func newPluginRemoveCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var yes bool
 	cmd := &cobra.Command{
 		Use:     "remove",
-		Aliases: []string{"rm"},
+		Aliases: []string{"rm", "delete"},
 		Short:   "Remove one or more plugins from the download cache",
 		Long: "Remove one or more plugins from the download cache.\n" +
 			"\n" +

@@ -183,7 +183,7 @@ jobs:
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
     steps:
       - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@v1.0.1
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
       - name: Pulumi Version Details
         id: vars
         run: |

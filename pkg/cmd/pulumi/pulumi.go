@@ -260,6 +260,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	cmd = &cobra.Command{
 		Use:           "pulumi",
 		Short:         "Pulumi command line",
+		Version:       version.Version,
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Long: "Pulumi - Modern Infrastructure as Code\n" +
@@ -326,7 +327,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// encrypted). Engine operations may upgrade to encrypted logging
 			// when a secrets manager becomes available.
 			var logErr error
-			autoLogger, logErr = backendlogging.StartLogging(cmd.Context(), nil /* sm */)
+			autoLogger, logErr = backendlogging.StartLogging(cmd.Context(), nil /* sm */, commandPath)
 			if logErr != nil {
 				slog.Info("automatic logging unavailable", "err", logErr)
 			}
@@ -443,6 +444,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 		},
 	}
+
+	cmd.SetVersionTemplate("{{.Version}}\n")
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",
 		"Run pulumi as if it had been started in another directory")

@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -373,6 +374,54 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, args, "--clear-pending-creates")
+}
+
+func TestRefreshOptsImportPendingCreates(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
+
+	stack, err := NewStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
+	args, _, err := refreshOptsToCmd(
+		&optrefresh.Options{
+			ImportPendingCreates: []optrefresh.PendingCreate{
+				{URN: "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket1", ID: "bucket1-id"},
+				{URN: "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket2", ID: "bucket2-id"},
+			},
+		},
+		&stack,
+		true,
+	)
+	require.NoError(t, err)
+
+	// The URN must be immediately followed by its ID, so assert the exact contiguous sequence.
+	want := []string{
+		"--import-pending-creates=urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket1",
+		"--import-pending-creates=bucket1-id",
+		"--import-pending-creates=urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket2",
+		"--import-pending-creates=bucket2-id",
+	}
+	found := false
+	for i := 0; i+len(want) <= len(args); i++ {
+		if slices.Equal(args[i:i+len(want)], want) {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected contiguous import-pending-creates args, got %v", args)
 }
 
 func TestRename(t *testing.T) {

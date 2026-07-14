@@ -328,7 +328,7 @@ func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
 	}
 
 	wsCtx := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "otherorg/proj/dev"}

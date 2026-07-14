@@ -34,14 +34,15 @@ type displayedStep struct {
 	Old, New     *resource.State
 	Diffs        []resource.PropertyKey
 	DetailedDiff map[string]plugin.PropertyDiff
+	Preview      bool
 }
 
 func (pc *packageCommand) runDisplayedStep(
 	cmd *cobra.Command, step displayedStep, call func() (*resource.State, error),
 ) error {
-	preview := pc.dryrun && step.Op != deploy.OpRead
+	preview := (pc.dryrun || step.Preview) && step.Op != deploy.OpRead
 
-	if pc.jsonOut {
+	if pc.jsonOut && !step.Preview {
 		state, err := call()
 		if err != nil || state == nil {
 			return err
@@ -59,7 +60,7 @@ func (pc *packageCommand) runDisplayedStep(
 		Stderr:              stderr,
 		ShowSecrets:         pc.showSecrets,
 		ShowReads:           true,
-		ShowResourceChanges: len(step.Diffs) > 0 || len(step.DetailedDiff) > 0,
+		ShowResourceChanges: preview || len(step.Diffs) > 0 || len(step.DetailedDiff) > 0,
 		SuppressProgress:    true,
 		SuppressStackRow:    true,
 	}

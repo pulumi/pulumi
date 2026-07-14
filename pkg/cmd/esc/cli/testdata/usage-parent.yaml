@@ -16,7 +16,7 @@ The most common commands from there are:
     - parent esc env get  : Get a property in an environment definition
     - parent esc env set  : Set a property in an environment definition
     - parent esc env edit : Edit an environment definition
-    - parent esc env ls   : List available environments
+    - parent esc env list : List available environments
     - parent esc run      : Run a command within the context of an environment
     - parent esc open     : Open an environment and access its contents
 

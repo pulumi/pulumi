@@ -111,7 +111,7 @@ func TestLoginURLResolution(t *testing.T) {
 		{
 			name: "project backend URL used when no env var",
 			ws: &pkgWorkspace.MockContext{
-				ReadProjectF: func() (*workspace.Project, string, error) {
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
 					return &workspace.Project{
 						Backend: &workspace.ProjectBackend{URL: "https://project-backend.example.com"},
 					}, "", nil
@@ -433,7 +433,8 @@ func TestExtractOIDCDefaults(t *testing.T) {
 			t.Parallel()
 
 			gotOrg, gotTeam, gotUser, err := extractOIDCDefaults(
-				tt.organization, tt.team, tt.user, tt.token)
+				tt.organization, tt.team, tt.user, tt.token,
+			)
 
 			if tt.wantErr {
 				require.Error(t, err)

@@ -118,7 +118,7 @@ func NewWatchCmd() *cobra.Command {
 				return err
 			}
 
-			proj, root, err := ws.ReadProject()
+			proj, root, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}

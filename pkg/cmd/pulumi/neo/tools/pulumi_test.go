@@ -411,7 +411,7 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{Name: "p"}, dir, nil
 		},
 	}
@@ -472,7 +472,7 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 			t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
 
 			ws := &pkgWorkspace.MockContext{
-				ReadProjectF: func() (*workspace.Project, string, error) {
+				ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 					return &workspace.Project{Name: "p"}, dir, nil
 				},
 			}

@@ -445,8 +445,18 @@ func (b *expressionBinder) bindFunctionCallExpression(
 
 	// Bind the function's arguments.
 	args := make([]Expression, len(syntax.Args))
-	for i, syntax := range syntax.Args {
-		arg, argDiagnostics := b.bindExpression(syntax)
+	for i, argSyntax := range syntax.Args {
+		if syntax.Name == "recover" && i == 1 {
+			b.scope = b.scope.Push(argSyntax)
+			ok := b.scope.Define("error", &Variable{Name: "error", VariableType: StringType})
+			contract.Assertf(ok, "error variable already defined")
+			arg, argDiagnostics := b.bindExpression(argSyntax)
+			b.scope = b.scope.Pop()
+			args[i], diagnostics = arg, append(diagnostics, argDiagnostics...)
+			continue
+		}
+
+		arg, argDiagnostics := b.bindExpression(argSyntax)
 		args[i], diagnostics = arg, append(diagnostics, argDiagnostics...)
 	}
 

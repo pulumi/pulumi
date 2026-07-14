@@ -45,9 +45,11 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: sdk/go.mod
-      - uses: miniscruff/changie-action@v2
+      - uses: ./.github/actions/retry
         with:
-          version: v1.21.0
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
       - name: Create PR
         env:
           PULUMI_VERSION: ${{ inputs.version }}

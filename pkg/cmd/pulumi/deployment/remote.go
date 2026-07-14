@@ -186,64 +186,82 @@ type RemoteArgs struct {
 func (r *RemoteArgs) ApplyFlagsForDeploymentCommand(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVar(
 		&r.InheritSettings, "inherit-settings", true,
-		"Inherit deployment settings from the current stack")
+		"Inherit deployment settings from the current stack",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&r.SuppressStreamLogs, "suppress-stream-logs", true,
-		"Suppress log streaming of the deployment job")
+		"Suppress log streaming of the deployment job",
+	)
 	cmd.PersistentFlags().StringArrayVar(
 		&r.EnvVars, "env", []string{},
 		"Environment variables to use in the remote operation of the form NAME=value "+
-			"(e.g. `--env FOO=bar`)")
+			"(e.g. `--env FOO=bar`)",
+	)
 	cmd.PersistentFlags().StringArrayVar(
 		&r.SecretEnvVars, "env-secret", []string{},
 		"Environment variables with secret values to use in the remote operation of the form "+
-			"NAME=secretvalue (e.g. `--env FOO=secret`)")
+			"NAME=secretvalue (e.g. `--env FOO=secret`)",
+	)
 	cmd.PersistentFlags().StringArrayVar(
 		&r.PreRunCommands, "pre-run-command", []string{},
-		"Commands to run before the remote operation")
+		"Commands to run before the remote operation",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&r.SkipInstallDependencies, "skip-install-dependencies", false,
-		"Whether to skip the default dependency installation step")
+		"Whether to skip the default dependency installation step",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitBranch, "git-branch", "",
 		"Git branch to deploy; this is mutually exclusive with --git-commit; "+
-			"either value needs to be specified")
+			"either value needs to be specified",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitCommit, "git-commit", "",
 		"Git commit hash of the commit to deploy (if used, HEAD will be in detached mode); "+
-			"this is mutually exclusive with --git-branch; either value needs to be specified")
+			"this is mutually exclusive with --git-branch; either value needs to be specified",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitRepoDir, "git-repo-dir", "",
 		"The directory to work from in the project's source repository "+
-			"where Pulumi.yaml is located; used when Pulumi.yaml is not in the project source root")
+			"where Pulumi.yaml is located; used when Pulumi.yaml is not in the project source root",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitAuthAccessToken, "git-auth-access-token", "",
-		"Git personal access token")
+		"Git personal access token",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitAuthSSHPrivateKey, "git-auth-ssh-private-key", "",
-		"Git SSH private key; use --git-auth-password for the password, if needed")
+		"Git SSH private key; use --git-auth-password for the password, if needed",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitAuthSSHPrivateKeyPath, "git-auth-ssh-private-key-path", "",
-		"Git SSH private key path; use --git-auth-password for the password, if needed")
+		"Git SSH private key path; use --git-auth-password for the password, if needed",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitAuthPassword, "git-auth-password", "",
-		"Git password; for use with username or with an SSH private key")
+		"Git password; for use with username or with an SSH private key",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitAuthUsername, "git-auth-username", "",
-		"Git username")
+		"Git username",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.ExecutorImage, "executor-image", "",
-		"The Docker image to use for the executor")
+		"The Docker image to use for the executor",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.ExecutorImageUsername, "executor-image-username", "",
-		"The username for the credentials with access to the Docker image to use for the executor")
+		"The username for the credentials with access to the Docker image to use for the executor",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.ExecutorImagePassword, "executor-image-password", "",
-		"The password for the credentials with access to the Docker image to use for the executor")
+		"The password for the credentials with access to the Docker image to use for the executor",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.AgentPoolID, "agent-pool-id", "",
 		"The agent pool to use to run the deployment job. When empty, the Pulumi Cloud shared queue "+
-			"will be used.")
+			"will be used.",
+	)
 }
 
 // Add flags to support remote operations
@@ -254,67 +272,86 @@ func (r *RemoteArgs) ApplyFlags(cmd *cobra.Command) {
 
 	cmd.PersistentFlags().BoolVar(
 		&r.Remote, "remote", false,
-		"[EXPERIMENTAL] Run the operation remotely")
+		"[EXPERIMENTAL] Run the operation remotely",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&r.SuppressStreamLogs, "suppress-stream-logs", false,
-		"[EXPERIMENTAL] Suppress log streaming of the deployment job")
+		"[EXPERIMENTAL] Suppress log streaming of the deployment job",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&r.InheritSettings, "remote-inherit-settings", false,
-		"[EXPERIMENTAL] Inherit deployment settings from the current stack")
+		"[EXPERIMENTAL] Inherit deployment settings from the current stack",
+	)
 	cmd.PersistentFlags().StringArrayVar(
 		&r.EnvVars, "remote-env", []string{},
 		"[EXPERIMENTAL] Environment variables to use in the remote operation of the form NAME=value "+
-			"(e.g. `--remote-env FOO=bar`)")
+			"(e.g. `--remote-env FOO=bar`)",
+	)
 	cmd.PersistentFlags().StringArrayVar(
 		&r.SecretEnvVars, "remote-env-secret", []string{},
 		"[EXPERIMENTAL] Environment variables with secret values to use in the remote operation of the form "+
-			"NAME=secretvalue (e.g. `--remote-env FOO=secret`)")
+			"NAME=secretvalue (e.g. `--remote-env FOO=secret`)",
+	)
 	cmd.PersistentFlags().StringArrayVar(
 		&r.PreRunCommands, "remote-pre-run-command", []string{},
-		"[EXPERIMENTAL] Commands to run before the remote operation")
+		"[EXPERIMENTAL] Commands to run before the remote operation",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&r.SkipInstallDependencies, "remote-skip-install-dependencies", false,
-		"[EXPERIMENTAL] Whether to skip the default dependency installation step")
+		"[EXPERIMENTAL] Whether to skip the default dependency installation step",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitBranch, "remote-git-branch", "",
 		"[EXPERIMENTAL] Git branch to deploy; this is mutually exclusive with --remote-git-commit; "+
-			"either value needs to be specified")
+			"either value needs to be specified",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitCommit, "remote-git-commit", "",
 		"[EXPERIMENTAL] Git commit hash of the commit to deploy (if used, HEAD will be in detached mode); "+
-			"this is mutually exclusive with --remote-git-branch; either value needs to be specified")
+			"this is mutually exclusive with --remote-git-branch; either value needs to be specified",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitRepoDir, "remote-git-repo-dir", "",
 		"[EXPERIMENTAL] The directory to work from in the project's source repository "+
-			"where Pulumi.yaml is located; used when Pulumi.yaml is not in the project source root")
+			"where Pulumi.yaml is located; used when Pulumi.yaml is not in the project source root",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitAuthAccessToken, "remote-git-auth-access-token", "",
-		"[EXPERIMENTAL] Git personal access token")
+		"[EXPERIMENTAL] Git personal access token",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitAuthSSHPrivateKey, "remote-git-auth-ssh-private-key", "",
-		"[EXPERIMENTAL] Git SSH private key; use --remote-git-auth-password for the password, if needed")
+		"[EXPERIMENTAL] Git SSH private key; use --remote-git-auth-password for the password, if needed",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitAuthSSHPrivateKeyPath, "remote-git-auth-ssh-private-key-path", "",
-		"[EXPERIMENTAL] Git SSH private key path; use --remote-git-auth-password for the password, if needed")
+		"[EXPERIMENTAL] Git SSH private key path; use --remote-git-auth-password for the password, if needed",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitAuthPassword, "remote-git-auth-password", "",
-		"[EXPERIMENTAL] Git password; for use with username or with an SSH private key")
+		"[EXPERIMENTAL] Git password; for use with username or with an SSH private key",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.GitAuthUsername, "remote-git-auth-username", "",
-		"[EXPERIMENTAL] Git username")
+		"[EXPERIMENTAL] Git username",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.ExecutorImage, "remote-executor-image", "",
-		"[EXPERIMENTAL] The Docker image to use for the executor")
+		"[EXPERIMENTAL] The Docker image to use for the executor",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.ExecutorImageUsername, "remote-executor-image-username", "",
-		"[EXPERIMENTAL] The username for the credentials with access to the Docker image to use for the executor")
+		"[EXPERIMENTAL] The username for the credentials with access to the Docker image to use for the executor",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.ExecutorImagePassword, "remote-executor-image-password", "",
-		"[EXPERIMENTAL] The password for the credentials with access to the Docker image to use for the executor")
+		"[EXPERIMENTAL] The password for the credentials with access to the Docker image to use for the executor",
+	)
 	cmd.PersistentFlags().StringVar(
 		&r.AgentPoolID, "remote-agent-pool-id", "",
 		"[EXPERIMENTAL] The agent pool to use to run the deployment job. When empty, the Pulumi Cloud shared queue "+
-			"will be used.")
+			"will be used.",
+	)
 }
 
 func ValidateRemoteDeploymentFlags(url string, args RemoteArgs) error {
@@ -396,13 +433,19 @@ func RunDeployment(ctx context.Context, ws pkgWorkspace.Context, cmd *cobra.Comm
 		key, err := os.ReadFile(args.GitAuthSSHPrivateKeyPath)
 		if err != nil {
 			return fmt.Errorf(
-				"reading SSH private key path %q: %w", args.GitAuthSSHPrivateKeyPath, err)
+				"reading SSH private key path %q: %w", args.GitAuthSSHPrivateKeyPath, err,
+			)
 		}
 		sshPrivateKey = string(key)
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting current working directory: %w", err)
+	}
+
 	// Try to read the current project
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject(cwd)
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}

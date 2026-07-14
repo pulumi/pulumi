@@ -68,8 +68,9 @@ func newStackWebhookEditCmdWith(factory stackWebhookEditClientFactory) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "edit",
-		Short: "[EXPERIMENTAL] Update a stack webhook's configuration",
+		Use:     "edit",
+		Aliases: []string{"update", "modify"},
+		Short:   "[EXPERIMENTAL] Update a stack webhook's configuration",
 		Long: "[EXPERIMENTAL] Update a stack webhook's configuration.\n" +
 			"\n" +
 			"Modifies an existing webhook. Only the flags you pass are changed;\n" +

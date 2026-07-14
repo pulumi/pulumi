@@ -1,0 +1,8 @@
+kind: improvement
+body: Align commands with the CLI naming guidelines, adding `ls`, `rm`, `delete`, `mv`,
+    `update`, `modify`, `create` and `setup` aliases to list/remove/move/edit/new
+    commands and making `state remove` and `package remove` the canonical names with
+    `delete` kept as an alias
+component: cli
+custom:
+    PR: "23903"
