@@ -23,7 +23,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
+	"github.com/pulumi/pulumi/pkg/v3/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
