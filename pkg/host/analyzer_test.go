@@ -18,11 +18,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
 
@@ -94,6 +96,63 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 
 	err = analyzer.Close()
 	require.NoError(t, err)
+}
+
+func buildBinaryTestPack(t *testing.T, binRel string) string {
+	packDir := t.TempDir()
+	binPath := filepath.Join(packDir, binRel)
+	require.NoError(t, os.MkdirAll(filepath.Dir(binPath), 0o755))
+	cmd := exec.Command("go", "build", "-o", binPath, "./testdata/analyzer-binary")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+	// The manifest still names a language runtime; the binary must win dispatch.
+	require.NoError(t, os.WriteFile(filepath.Join(packDir, "PulumiPolicy.yaml"),
+		[]byte("runtime: nodejs\n"), 0o600))
+	return packDir
+}
+
+func newAnalyzerTestContext(t *testing.T) *plugin.Context {
+	d := diagtest.LogSink(t)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, h.Close()) })
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
+	return ctx
+}
+
+func TestAnalyzerSpawnBinaryCanonical(t *testing.T) {
+	binName := "pulumi-analyzer-binary-test-pack"
+	if goruntime.GOOS == "windows" {
+		binName += ".exe"
+	}
+	packDir := buildBinaryTestPack(t, binName)
+	ctx := newAnalyzerTestContext(t)
+
+	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", packDir, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, analyzer.Close()) }()
+
+	info, err := analyzer.GetAnalyzerInfo(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "binary-test-pack", info.Name)
+}
+
+func TestAnalyzerSpawnBinaryConvention(t *testing.T) {
+	binName := "pulumi-analyzer-binary-test-pack-" + workspace.CurrentPlatform()
+	if goruntime.GOOS == "windows" {
+		binName += ".exe"
+	}
+	packDir := buildBinaryTestPack(t, filepath.Join("bin", binName))
+	ctx := newAnalyzerTestContext(t)
+
+	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", packDir, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, analyzer.Close()) }()
+
+	info, err := analyzer.GetAnalyzerInfo(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "binary-test-pack", info.Name)
 }
 
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {
