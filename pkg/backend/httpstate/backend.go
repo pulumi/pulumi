@@ -614,6 +614,9 @@ func (m defaultLoginManager) Current(
 	} else if err != nil {
 		logging.V(7).Infof("Could not read default credentials for %q: %v", cloudURL, err)
 	}
+	// Whether a stored user identity existed and the service rejected it. Gates the agent
+	// auto-signup below so a rejected user isn't silently replaced by an anonymous agent account.
+	userAccountRejected := false
 	if err == nil && existingAccount.HasCredential() &&
 		(accessToken == "" || existingAccount.AccessToken == accessToken) {
 		var valid bool
@@ -632,6 +635,14 @@ func (m defaultLoginManager) Current(
 
 			return &existingAccount, nil
 		}
+
+		// validateStoredAccount reports invalid either for a genuine server rejection or for a token
+		// that expired locally with no refresh token — the latter being the only non-rejection case.
+		// Treat everything but that case as a rejection of a real identity.
+		tokenInfo := existingAccount.TokenInformation
+		locallyExpiredNoRefresh := tokenInfo != nil && tokenInfo.ExpiresAt != nil &&
+			tokenInfo.ExpiresAt.Before(time.Now()) && existingAccount.RefreshToken == ""
+		userAccountRejected = !locallyExpiredNoRefresh
 	}
 
 	// We either have no token saved, or PULUMI_ACCESS_TOKEN
@@ -642,6 +653,15 @@ func (m defaultLoginManager) Current(
 		if agent != "" {
 			if err != nil && hasExplicitPulumiPathEnv() {
 				return nil, err
+			}
+			if userAccountRejected {
+				// The service rejected the stored user credentials. Don't sign up a new anonymous
+				// agent account in their place — that would silently swap the user's identity.
+				// Mirrors the agent-account guard in currentOrSignupAgentAccount.
+				logging.V(7).Infof("Stored user credentials for %q were rejected; not creating an agent account", cloudURL)
+				return nil, fmt.Errorf(
+					"stored credentials for %q can no longer authenticate; ask the user to run `pulumi login`: %w",
+					cloudURL, errors.Join(ErrUnauthorized, backenderr.LoginRequiredError{}))
 			}
 			logging.V(7).Infof("Detected agent mode (%s); checking shared agent credentials", agent)
 			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent, agent)
