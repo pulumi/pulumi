@@ -60,11 +60,36 @@ func newPolicyPublishCmd() *cobra.Command {
 		Required: 0,
 	})
 
+	cmd.Flags().StringArrayVar(&policyPublishCmd.binaryFlags, "binary", nil,
+		"Pre-built analyzer binary to publish for a platform, as <os>-<arch>=<path> "+
+			"(repeatable; overrides bin/ discovery)")
+	cmd.Flags().BoolVar(&policyPublishCmd.sourceOnly, "source-only", false,
+		"Publish only the source archive, skipping binary discovery")
+
 	return cmd
 }
 
 type policyPublishCmd struct {
 	getwd func() (string, error)
+
+	binaryFlags []string
+	sourceOnly  bool
+}
+
+// resolveBinaries validates the --binary/--source-only flags and returns explicit
+// binary overrides (nil means discover by convention) and the source-only setting.
+func (cmd *policyPublishCmd) resolveBinaries() (map[string]string, bool, error) {
+	if cmd.sourceOnly && len(cmd.binaryFlags) > 0 {
+		return nil, false, errors.New("--source-only cannot be combined with --binary")
+	}
+	if cmd.sourceOnly {
+		return nil, true, nil
+	}
+	binaries, err := workspace.ParsePolicyBinaryOverrides(cmd.binaryFlags)
+	if err != nil {
+		return nil, false, err
+	}
+	return binaries, false, nil
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
@@ -149,6 +174,11 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	// e.g. the current source code control commit information.
 	m := metadata.GetPolicyPublishMetadata(root)
 
+	binaries, sourceOnly, err := cmd.resolveBinaries()
+	if err != nil {
+		return err
+	}
+
 	//
 	// Attempt to publish the PolicyPack.
 	//
@@ -159,6 +189,8 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		PolicyPack: proj,
 		Scopes:     backend.CancellationScopes,
 		Metadata:   m,
+		Binaries:   binaries,
+		SourceOnly: sourceOnly,
 	})
 	if err != nil {
 		return err
