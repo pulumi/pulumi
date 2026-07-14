@@ -3,4 +3,4 @@ kind: fix
 body: Keep `pulumi neo` connected during quiet periods when the event stream only receives keep-alive heartbeats
 time: 2026-07-14T00:00:00+00:00
 custom:
-  PR: ""
+  PR: "23935"
