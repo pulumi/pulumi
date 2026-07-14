@@ -1,0 +1,6 @@
+kind: improvement
+body: Add a `--version` flag to the `pulumi` command that prints the version, same
+  as `pulumi version`
+component: cli
+custom:
+    PR: "23898"
