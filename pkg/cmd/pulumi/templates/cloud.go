@@ -203,7 +203,8 @@ func (s *Source) getRegistryTemplateByVersion(
 	if template.Source == "github" && strings.HasPrefix(template.Name, "pulumi/templates/") {
 		s.addError(fmt.Errorf(
 			"template '%s' is VCS-backed and does not support specific versions",
-			displayName))
+			displayName,
+		))
 		return
 	}
 
@@ -306,8 +307,14 @@ func (s *Source) getOrgTemplates(
 	ctx context.Context, templateName string,
 	wg *sync.WaitGroup, e env.Env,
 ) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		s.addError(fmt.Errorf("getting current working directory: %w", err))
+		return
+	}
+
 	ws := pkgWorkspace.Instance
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject(cwd)
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		s.addError(fmt.Errorf("could not read the current project: %w", err))
 		return

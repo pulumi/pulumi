@@ -122,7 +122,7 @@ func newOrgWebhookListCmdWith(
 }
 
 func (c *orgWebhookListCmd) run(ctx context.Context) error {
-	project, _, err := c.ws.ReadProject()
+	project, _, err := c.ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}

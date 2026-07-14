@@ -348,7 +348,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	fmt.Fprintln(args.stdout)
 
 	// Load the project, update the name & description, remove the template section, and save it.
-	proj, root, err := ws.ReadProject()
+	proj, root, err := ws.ReadProject("")
 	if err != nil {
 		return err
 	}
@@ -849,7 +849,7 @@ func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args ne
 	opts display.Options,
 ) (string, error) {
 	// Try to read the current project
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return "", err
 	}

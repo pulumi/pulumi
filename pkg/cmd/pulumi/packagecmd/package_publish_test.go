@@ -551,8 +551,8 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 
 func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
 	return &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) { return nil, readProjectErr },
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) { return nil, readProjectErr },
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return nil, "", readProjectErr
 		},
 	}

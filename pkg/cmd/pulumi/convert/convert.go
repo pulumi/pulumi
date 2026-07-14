@@ -123,28 +123,35 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 	constrictor.AttachArguments(cmd, constrictor.UnrestrictedArgs)
 
 	cmd.PersistentFlags().StringVar(
-		&language, "language", "", "Which language plugin to use to generate the Pulumi project")
+		&language, "language", "", "Which language plugin to use to generate the Pulumi project",
+	)
 	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
 		panic("failed to mark 'language' as a required flag")
 	}
 
 	cmd.PersistentFlags().StringVar(
-		&from, "from", "yaml", "Which converter plugin to use to read the source program")
+		&from, "from", "yaml", "Which converter plugin to use to read the source program",
+	)
 
 	cmd.PersistentFlags().StringVar(
-		&outDir, "out", ".", "The output directory to write the converted project to")
+		&outDir, "out", ".", "The output directory to write the converted project to",
+	)
 
 	cmd.PersistentFlags().BoolVar(
-		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
+		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies",
+	)
 
 	cmd.PersistentFlags().StringSliceVar(
-		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion")
+		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion",
+	)
 
 	cmd.PersistentFlags().BoolVar(
-		&strict, "strict", false, "Fail the conversion on errors such as missing variables")
+		&strict, "strict", false, "Fail the conversion on errors such as missing variables",
+	)
 
 	cmd.PersistentFlags().StringVar(
-		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
+		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project",
+	)
 
 	return cmd
 }
@@ -504,7 +511,7 @@ func runConvert(
 			return fmt.Errorf("changing the working directory: %w", err)
 		}
 
-		proj, root, err := ws.ReadProject()
+		proj, root, err := ws.ReadProject(outDir)
 		if err != nil {
 			return err
 		}
@@ -513,13 +520,15 @@ func runConvert(
 		pluginHost, err := pkghost.New(
 			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-			packageworkspace.NewResolverServer(reg))
+			packageworkspace.NewResolverServer(reg),
+		)
 		if err != nil {
 			return err
 		}
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		_, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+		)
 		if err != nil {
 			return err
 		}

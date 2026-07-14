@@ -62,7 +62,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 
 			// Fetch the project.
-			proj, _, err := ws.ReadProject()
+			proj, _, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}

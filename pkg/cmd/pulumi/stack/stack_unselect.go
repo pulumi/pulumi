@@ -34,7 +34,7 @@ func newStackUnselectCmd() *cobra.Command {
 			"This way, next time pulumi needs to execute an operation, the user is prompted with one of the stacks to select\n" +
 			"from.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			currentWorkspace, err := pkgWorkspace.Instance.New()
+			currentWorkspace, err := pkgWorkspace.Instance.New("")
 			if err != nil {
 				return err
 			}

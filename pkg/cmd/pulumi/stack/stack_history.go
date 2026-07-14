@@ -93,7 +93,7 @@ This command displays data about previous updates for a stack.`,
 			}
 			var decrypter config.Decrypter
 			if showSecrets {
-				project, _, err := ws.ReadProject()
+				project, _, err := ws.ReadProject("")
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
 				}

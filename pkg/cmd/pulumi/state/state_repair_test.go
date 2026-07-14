@@ -309,7 +309,7 @@ func newStateRepairCmdFixture(
 	}
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{Backend: &workspace.ProjectBackend{URL: "file://url"}}, "", nil
 		},
 	}

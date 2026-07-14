@@ -203,7 +203,7 @@ func secretsManagerFromStack(ctx context.Context, s backend.Stack) (secrets.Mana
 }
 
 func currentStackName(ws pkgWorkspace.Context) string {
-	w, err := ws.New()
+	w, err := ws.New("")
 	if err != nil {
 		return ""
 	}
