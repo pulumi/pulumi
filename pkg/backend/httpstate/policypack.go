@@ -15,7 +15,6 @@
 package httpstate
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -428,29 +427,40 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 func (pack *cloudPolicyPack) Publish(
 	ctx context.Context, op backend.PublishOperation,
 ) error {
-	if len(op.Binaries) > 0 {
-		return pack.publishWithBinaries(ctx, op, op.Binaries)
-	}
+	var analyzerInfo plugin.AnalyzerInfo
+	var platformArchives map[string][]byte
 
-	//
-	// Get PolicyPack metadata from the plugin.
-	//
+	if len(op.PolicyPack.Binary) > 0 {
+		//
+		// The pack declares pre-built per-platform binaries in its manifest:
+		// conformance-check the host platform's binary and build one artifact per
+		// declared platform, published alongside the source archive.
+		//
+		info, archives, err := buildBinaryArtifacts(ctx, op)
+		if err != nil {
+			return err
+		}
+		analyzerInfo, platformArchives = info, archives
+	} else {
+		//
+		// Get PolicyPack metadata from the plugin.
+		//
+		fmt.Println("Obtaining policy metadata from policy plugin")
 
-	fmt.Println("Obtaining policy metadata from policy plugin")
+		abs, err := filepath.Abs(op.PlugCtx.Pwd)
+		if err != nil {
+			return err
+		}
 
-	abs, err := filepath.Abs(op.PlugCtx.Pwd)
-	if err != nil {
-		return err
-	}
+		analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(op.PlugCtx, tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
+		if err != nil {
+			return err
+		}
 
-	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(op.PlugCtx, tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
-	if err != nil {
-		return err
-	}
-
-	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
-	if err != nil {
-		return err
+		analyzerInfo, err = analyzer.GetAnalyzerInfo(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Update the name and version tag from the metadata.
@@ -459,10 +469,12 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Compressing policy pack")
 
-	runtime := op.PolicyPack.Runtime.Name()
 	packTarball, err := buildSourceTarball(ctx, op)
 	if err != nil {
 		return err
+	}
+	if len(platformArchives) > 0 {
+		warnIfSourceTarballContainsBinaries(packTarball, op.PolicyPack.Binary)
 	}
 
 	//
@@ -472,7 +484,8 @@ func (pack *cloudPolicyPack) Publish(
 	fmt.Println("Uploading policy pack to Pulumi service")
 
 	publishedVersion, err := pack.cl.PublishPolicyPack(
-		ctx, pack.ref.orgName, runtime, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
+		ctx, pack.ref.orgName, op.PolicyPack.Runtime.Name(), analyzerInfo,
+		packTarball, platformArchives, op.Metadata)
 	if err != nil {
 		return err
 	}
@@ -494,7 +507,7 @@ func buildSourceTarball(ctx context.Context, op backend.PublishOperation) ([]byt
 	// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
 	// the same for other runtimes. That way, after unpacking, we can look for the PulumiPolicy.yaml inside the
 	// package directory to determine the runtime of the policy pack.
-	packTarball, err := archive.TGZ(op.PlugCtx.Pwd, "package", true /*useDefaultExcludes*/)
+	packTarball, err := archive.TGZ(op.PlugCtx.Pwd, packageDir, true /*useDefaultExcludes*/)
 	if err != nil {
 		return nil, fmt.Errorf("could not publish policies because of error creating the .tgz: %w", err)
 	}
@@ -588,9 +601,9 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	}
 
 	// Binary packs need no language toolchain: mark the binary executable and stop here.
-	if bin, ok := workspace.PolicyPackBinary(finalDir); ok {
+	if rel, ok := proj.Binary[workspace.CurrentPlatform()]; ok {
 		if goruntime.GOOS != "windows" {
-			if err := os.Chmod(bin, 0o755); err != nil {
+			if err := os.Chmod(filepath.Join(finalDir, filepath.FromSlash(rel)), 0o755); err != nil {
 				return fmt.Errorf("marking policy pack binary executable: %w", err)
 			}
 		}

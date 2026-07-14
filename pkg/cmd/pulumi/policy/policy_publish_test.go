@@ -193,18 +193,3 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 	assertEnvValue(metadata, backend.GitAuthor, "repo-user")
 	assertEnvValue(metadata, backend.GitAuthorEmail, "repo-user@example.com")
 }
-
-func TestPolicyPublishFlagValidation(t *testing.T) {
-	t.Parallel()
-
-	_, err := workspace.ParsePolicyBinaryOverrides([]string{"bogus"})
-	require.ErrorContains(t, err, "expected <os>-<arch>=<path>")
-
-	binaries, err := workspace.ParsePolicyBinaryOverrides(
-		[]string{"linux-amd64=bin/a", "darwin-arm64=bin/b"})
-	require.NoError(t, err)
-	require.Equal(t, map[string]string{
-		"linux-amd64":  filepath.Join("bin", "a"),
-		"darwin-arm64": filepath.Join("bin", "b"),
-	}, binaries)
-}

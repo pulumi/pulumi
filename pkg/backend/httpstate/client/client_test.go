@@ -2125,7 +2125,7 @@ func TestPublishPolicyPackWithPlatforms(t *testing.T) {
 		})
 
 	client := newMockClient(server)
-	version, err := client.PublishPolicyPackWithPlatforms(t.Context(), "acme", "nodejs",
+	version, err := client.PublishPolicyPack(t.Context(), "acme", "nodejs",
 		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
 		[]byte("source-bytes"),
 		map[string][]byte{
@@ -2174,7 +2174,7 @@ func TestPublishPolicyPackWithPlatformsUploadRejected(t *testing.T) {
 		})
 
 	client := newMockClient(server)
-	_, err := client.PublishPolicyPackWithPlatforms(t.Context(), "acme", "nodejs",
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "nodejs",
 		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
 		[]byte("source-bytes"),
 		map[string][]byte{
@@ -2193,11 +2193,56 @@ func TestPublishPolicyPackWithPlatformsUnsupportedService(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	_, err := client.PublishPolicyPackWithPlatforms(t.Context(), "acme", "nodejs",
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "nodejs",
 		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
 		[]byte("source-bytes"),
 		map[string][]byte{"linux-amd64": []byte("b")}, nil)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "does not support policy pack binaries")
-	assert.ErrorContains(t, err, "--binary")
+	assert.ErrorContains(t, err, "'binary'")
+}
+
+func TestPublishPolicyPackSourceOnlyUploadRejected(t *testing.T) {
+	t.Parallel()
+
+	completeCalled := false
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/api/orgs/acme/policypacks", func(rw http.ResponseWriter, req *http.Request) {
+		resp := apitype.CreatePolicyPackResponse{
+			Version:   1,
+			UploadURI: server.URL + "/upload/source",
+		}
+		require.NoError(t, json.NewEncoder(rw).Encode(resp))
+	})
+	mux.HandleFunc("/upload/", func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusForbidden)
+	})
+	mux.HandleFunc("/api/orgs/acme/policypacks/mypack/versions/0.0.1/complete",
+		func(rw http.ResponseWriter, req *http.Request) {
+			completeCalled = true
+		})
+
+	client := newMockClient(server)
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "nodejs",
+		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"}, []byte("source-bytes"), nil, nil)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "source")
+	assert.False(t, completeCalled)
+}
+
+func TestPublishPolicyPackBinariesRequireVersion(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServer(200, `{}`)
+	defer server.Close()
+
+	client := newMockClient(server)
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "nodejs",
+		plugin.AnalyzerInfo{Name: "mypack"}, []byte("source-bytes"),
+		map[string][]byte{"linux-amd64": []byte("b")}, nil)
+	require.ErrorContains(t, err, "version is required")
 }

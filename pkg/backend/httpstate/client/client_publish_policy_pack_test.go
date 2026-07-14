@@ -15,7 +15,6 @@
 package client
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -118,13 +117,13 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 	client := newMockClient(server)
 
 	// Create a mock archive
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := []byte("mock-archive-data")
 
 	// Empty metadata.
 	var metadata map[string]string
 
 	// Call PublishPolicyPack
-	version, err := client.PublishPolicyPack(t.Context(), "test-org", "python", analyzerInfo, archive, metadata)
+	version, err := client.PublishPolicyPack(t.Context(), "test-org", "python", analyzerInfo, archive, nil, metadata)
 	require.NoError(t, err)
 	assert.Equal(t, "1.2.3", version)
 
@@ -219,12 +218,12 @@ func TestPublishPolicyPack_EmptyOptionalFields(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := []byte("mock-archive-data")
 
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, nil, metadata)
 	require.NoError(t, err)
 
 	// Verify required fields are present
@@ -284,7 +283,7 @@ func TestPublishPolicyPack_RuntimeIsForwarded(t *testing.T) {
 
 	client := newMockClient(server)
 	_, err := client.PublishPolicyPack(t.Context(), "test-org", "opa",
-		analyzerInfo, bytes.NewReader([]byte("data")), nil)
+		analyzerInfo, []byte("data"), nil, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "opa", capturedRuntime)
@@ -339,12 +338,12 @@ func TestPublishPolicyPack_LegacyVersionHandling(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := []byte("mock-archive-data")
 
 	// Empty metadata.
 	var metadata map[string]string
 
-	version, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, metadata)
+	version, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, nil, metadata)
 	require.NoError(t, err)
 
 	// Verify that server-assigned version is returned when client version is empty
@@ -436,12 +435,12 @@ func TestPublishPolicyPack_PolicyConfigSchemaConversion(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := []byte("mock-archive-data")
 
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, nil, metadata)
 	require.NoError(t, err)
 
 	// Verify config schema conversion
@@ -518,12 +517,12 @@ func TestPublishPolicyPack_NilConfigSchema(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := []byte("mock-archive-data")
 
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, nil, metadata)
 	require.NoError(t, err)
 
 	// Verify nil config schema is handled correctly
@@ -582,12 +581,12 @@ func TestPublishPolicyPack_NilComplianceFramework(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := []byte("mock-archive-data")
 
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", "", analyzerInfo, archive, nil, metadata)
 	require.NoError(t, err)
 
 	// Verify nil compliance framework is handled correctly

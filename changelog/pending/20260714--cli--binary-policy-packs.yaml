@@ -1,6 +1,6 @@
 component: cli
 kind: feat
-body: "`pulumi policy publish` can now publish pre-built per-platform analyzer binaries alongside the source archive, letting consumers run policy packs without the pack's language toolchain"
+body: "Policy packs can declare pre-built per-platform analyzer binaries via a `binary` option in PulumiPolicy.yaml; `pulumi policy publish` publishes them alongside the source archive, letting consumers run the pack without its language toolchain"
 time: 2026-07-14T00:00:00.000000+00:00
 custom:
     PR: "23933"

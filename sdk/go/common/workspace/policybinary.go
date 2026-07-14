@@ -17,18 +17,11 @@ package workspace
 import (
 	"fmt"
 	"maps"
-	"os"
-	"path/filepath"
+	"path"
 	"runtime"
 	"slices"
 	"strings"
 )
-
-// PlatformLinuxAmd64 is mandatory for binary-published policy packs: server-side
-// policy evaluation runs on linux-amd64.
-const PlatformLinuxAmd64 = "linux-amd64"
-
-const policyBinaryPrefix = "pulumi-analyzer-"
 
 var validPolicyBinaryPlatforms = map[string]bool{
 	"linux-amd64":   true,
@@ -40,84 +33,28 @@ var validPolicyBinaryPlatforms = map[string]bool{
 }
 
 // CurrentPlatform returns the host platform in the "<os>-<arch>" form used to key
-// policy pack binary artifacts.
+// policy pack binaries in a PulumiPolicy.yaml `binary` mapping.
 func CurrentPlatform() string {
 	return runtime.GOOS + "-" + runtime.GOARCH
 }
 
-// PolicyBinaryConventionPlatform reports whether name follows the policy pack binary
-// build convention pulumi-analyzer-<name>-<os>-<arch>[.exe], and if so returns the
-// <os>-<arch> platform it names. Used both to discover a pack's built binaries and to
-// detect one that has leaked into a source archive.
-func PolicyBinaryConventionPlatform(name string) (string, bool) {
-	if !strings.HasPrefix(name, policyBinaryPrefix) {
-		return "", false
-	}
-	stem := strings.TrimSuffix(strings.TrimPrefix(name, policyBinaryPrefix), ".exe")
-	parts := strings.Split(stem, "-")
-	if len(parts) < 3 {
-		return "", false
-	}
-	platform := parts[len(parts)-2] + "-" + parts[len(parts)-1]
-	if !validPolicyBinaryPlatforms[platform] {
-		return "", false
-	}
-	return platform, true
-}
-
-// ParsePolicyBinaryOverrides parses --binary flag values of the form
-// "<os>-<arch>=<path>" into a platform-to-path map. Paths must be relative to the
-// policy pack directory.
-func ParsePolicyBinaryOverrides(flags []string) (map[string]string, error) {
-	binaries := make(map[string]string, len(flags))
-	for _, f := range flags {
-		platform, path, ok := strings.Cut(f, "=")
-		if !ok || path == "" {
-			return nil, fmt.Errorf("invalid --binary value %q: expected <os>-<arch>=<path>", f)
-		}
+// validatePolicyBinaries validates a PulumiPolicy.yaml `binary` mapping: platforms
+// must be known, and paths must be slash-separated and relative to the pack directory.
+func validatePolicyBinaries(binaries map[string]string) error {
+	for _, platform := range slices.Sorted(maps.Keys(binaries)) {
 		if !validPolicyBinaryPlatforms[platform] {
-			return nil, fmt.Errorf("unknown platform %q; valid platforms are: %s",
+			return fmt.Errorf("unknown platform %q in 'binary'; valid platforms are: %s",
 				platform, strings.Join(slices.Sorted(maps.Keys(validPolicyBinaryPlatforms)), ", "))
 		}
-		if filepath.IsAbs(path) || filepath.VolumeName(path) != "" {
-			return nil, fmt.Errorf("binary path for %q must be relative to the policy pack directory", platform)
+		p := binaries[platform]
+		if p == "" {
+			return fmt.Errorf("the 'binary' entry for %s is missing a path", platform)
 		}
-		binaries[platform] = filepath.Clean(filepath.FromSlash(path))
-	}
-	return binaries, nil
-}
-
-// PolicyPackBinary reports whether the policy pack at dir is a binary pack, and if
-// so returns the path of the binary to exec. Installed packs carry the binary at the
-// pack root as pulumi-analyzer-<name>; locally built packs carry it at the build
-// convention path bin/pulumi-analyzer-<name>-<os>-<arch>.
-func PolicyPackBinary(dir string) (string, bool) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return "", false
-	}
-	var rootMatches []string
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasPrefix(e.Name(), policyBinaryPrefix) {
-			continue
+		// Paths are slash-separated; also reject Windows absolute forms (`C:...`, `\...`)
+		// so a manifest authored on Windows fails the same way everywhere.
+		if path.IsAbs(p) || strings.HasPrefix(p, `\`) || (len(p) >= 2 && p[1] == ':') {
+			return fmt.Errorf("the 'binary' path for %s must be relative to the policy pack directory", platform)
 		}
-		rootMatches = append(rootMatches, filepath.Join(dir, e.Name()))
 	}
-	if len(rootMatches) == 1 {
-		return rootMatches[0], true
-	}
-	if len(rootMatches) > 1 {
-		return "", false
-	}
-
-	suffix := ""
-	if runtime.GOOS == "windows" {
-		suffix = ".exe"
-	}
-	matches, err := filepath.Glob(
-		filepath.Join(dir, "bin", policyBinaryPrefix+"*-"+CurrentPlatform()+suffix))
-	if err != nil || len(matches) != 1 {
-		return "", false
-	}
-	return matches[0], true
+	return nil
 }

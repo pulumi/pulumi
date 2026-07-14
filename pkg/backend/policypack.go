@@ -32,11 +32,6 @@ type PublishOperation struct {
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
 	Metadata map[string]string
-
-	// Binaries maps platform ("linux-amd64", ...) to the pack-relative path of a
-	// pre-built analyzer binary to publish for that platform. Empty means publish
-	// the source archive only.
-	Binaries map[string]string
 }
 
 // PolicyPackOperation is used to make various operations against a Policy Pack.

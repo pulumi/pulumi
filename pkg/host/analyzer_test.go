@@ -15,6 +15,7 @@
 package host
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -100,14 +101,14 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 
 func buildBinaryTestPack(t *testing.T, binRel string) string {
 	packDir := t.TempDir()
-	binPath := filepath.Join(packDir, binRel)
+	binPath := filepath.Join(packDir, filepath.FromSlash(binRel))
 	require.NoError(t, os.MkdirAll(filepath.Dir(binPath), 0o755))
 	cmd := exec.Command("go", "build", "-o", binPath, "./testdata/analyzer-binary")
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
-	// The manifest still names a language runtime; the binary must win dispatch.
-	require.NoError(t, os.WriteFile(filepath.Join(packDir, "PulumiPolicy.yaml"),
-		[]byte("runtime: nodejs\n"), 0o600))
+	// The manifest still names a language runtime; the declared binary must win dispatch.
+	manifest := fmt.Sprintf("runtime: nodejs\nbinary:\n  %s: %s\n", workspace.CurrentPlatform(), binRel)
+	require.NoError(t, os.WriteFile(filepath.Join(packDir, "PulumiPolicy.yaml"), []byte(manifest), 0o600))
 	return packDir
 }
 
@@ -121,7 +122,9 @@ func newAnalyzerTestContext(t *testing.T) *plugin.Context {
 	return ctx
 }
 
-func TestAnalyzerSpawnBinaryCanonical(t *testing.T) {
+// TestAnalyzerSpawnBinaryAtRoot spawns a pack laid out like an installed binary
+// artifact: the binary at the pack root under its canonical name.
+func TestAnalyzerSpawnBinaryAtRoot(t *testing.T) {
 	t.Parallel()
 
 	binName := "pulumi-analyzer-binary-test-pack"
@@ -140,14 +143,16 @@ func TestAnalyzerSpawnBinaryCanonical(t *testing.T) {
 	require.Equal(t, "binary-test-pack", info.Name)
 }
 
-func TestAnalyzerSpawnBinaryConvention(t *testing.T) {
+// TestAnalyzerSpawnBinaryInBin spawns a pack laid out like a local build: the binary
+// under bin/, declared in the manifest.
+func TestAnalyzerSpawnBinaryInBin(t *testing.T) {
 	t.Parallel()
 
 	binName := "pulumi-analyzer-binary-test-pack-" + workspace.CurrentPlatform()
 	if goruntime.GOOS == "windows" {
 		binName += ".exe"
 	}
-	packDir := buildBinaryTestPack(t, filepath.Join("bin", binName))
+	packDir := buildBinaryTestPack(t, "bin/"+binName)
 	ctx := newAnalyzerTestContext(t)
 
 	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", packDir, nil, nil)

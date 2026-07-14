@@ -49,52 +49,36 @@ func buildAnalyzerBinaryFixture(t *testing.T, dst string) {
 	require.NoError(t, err, string(out))
 }
 
-// buildBinaryPublishPack lays out a pack with a bin/ convention binary for the host
-// platform, along with the platform-to-path map that would be passed via explicit
-// --binary flags. validateBinaryMatrix also requires a linux-amd64 binary regardless
-// of host platform, so one is added too — as a placeholder file, since conformance
-// only boots the host platform's binary.
-func buildBinaryPublishPack(t *testing.T) (string, map[string]string) {
+// buildBinaryPublishPack lays out a pack whose manifest declares a binary for the host
+// platform (built from the analyzer-binary fixture). validateBinaryMatrix also
+// requires a linux-amd64 binary regardless of host platform, so one is declared too —
+// as a placeholder file, since conformance only boots the host platform's binary.
+func buildBinaryPublishPack(t *testing.T) (string, *workspace.PolicyPackProject) {
 	t.Helper()
 	packDir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(packDir, "PulumiPolicy.yaml"),
-		[]byte("runtime: nodejs\n"), 0o600))
 
 	hostPlatform := workspace.CurrentPlatform()
 	binName := "pulumi-analyzer-mypack-" + hostPlatform
 	if goruntime.GOOS == "windows" {
 		binName += ".exe"
 	}
-	hostRel := filepath.Join("bin", binName)
-	buildAnalyzerBinaryFixture(t, filepath.Join(packDir, hostRel))
+	hostRel := "bin/" + binName
+	buildAnalyzerBinaryFixture(t, filepath.Join(packDir, filepath.FromSlash(hostRel)))
 
 	binaries := map[string]string{hostPlatform: hostRel}
-	if hostPlatform != workspace.PlatformLinuxAmd64 {
-		linuxRel := filepath.Join("bin", "pulumi-analyzer-mypack-linux-amd64")
-		require.NoError(t, os.WriteFile(filepath.Join(packDir, linuxRel), []byte("placeholder"), 0o755)) //nolint:gosec
-		binaries[workspace.PlatformLinuxAmd64] = linuxRel
+	if hostPlatform != platformLinuxAmd64 {
+		linuxRel := "bin/pulumi-analyzer-mypack-linux-amd64"
+		require.NoError(t, os.WriteFile( //nolint:gosec // deliberately executable
+			filepath.Join(packDir, filepath.FromSlash(linuxRel)), []byte("placeholder"), 0o755))
+		binaries[platformLinuxAmd64] = linuxRel
 	}
-	return packDir, binaries
-}
 
-// buildLegacyPublishPack lays out a pack that ships its analyzer as a single binary at
-// the pack root using the pre-existing back-compat convention (pulumi-analyzer-<name>,
-// no platform suffix — see the "policy-opa" style analyzers referenced in
-// resource/plugin/analyzer_plugin.go). Since binary publishing only happens when
-// op.Binaries is explicitly set, this pack takes the legacy, single-archive path even
-// though the analyzer still boots as a plugin binary.
-func buildLegacyPublishPack(t *testing.T) string {
-	t.Helper()
-	packDir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(packDir, "PulumiPolicy.yaml"),
-		[]byte("runtime: nodejs\n"), 0o600))
-
-	binName := "pulumi-analyzer-binary-test-pack"
-	if goruntime.GOOS == "windows" {
-		binName += ".exe"
+	proj := &workspace.PolicyPackProject{
+		Runtime: workspace.NewProjectRuntimeInfo("python", nil),
+		Binary:  binaries,
 	}
-	buildAnalyzerBinaryFixture(t, filepath.Join(packDir, binName))
-	return packDir
+	require.NoError(t, proj.Save(filepath.Join(packDir, "PulumiPolicy.yaml")))
+	return packDir, proj
 }
 
 func newPublishTestPlugCtx(t *testing.T, pwd string) *plugin.Context {
@@ -110,7 +94,7 @@ func newPublishTestPlugCtx(t *testing.T, pwd string) *plugin.Context {
 
 // publishMockService is a mock Pulumi service for the /policypacks create, upload, and
 // complete steps that (*cloudPolicyPack).Publish drives, regardless of whether it goes
-// through the legacy single-archive path or the per-platform binary path.
+// through the source-only path or the per-platform binary path.
 type publishMockService struct {
 	server *httptest.Server
 
@@ -119,11 +103,11 @@ type publishMockService struct {
 	completeCalled bool
 }
 
-// newPublishMockService starts a mock service. withPlatforms, if non-empty, makes the
-// create response return an upload location for each named platform (driving the
-// binary-publish path); otherwise it responds as a service that only understands the
-// legacy single-archive publish.
-func newPublishMockService(t *testing.T, withPlatforms []string) *publishMockService {
+// newPublishMockService starts a mock service that accepts a publish of the named pack
+// at version 0.0.1. withPlatforms, if non-empty, makes the create response return an
+// upload location for each named platform (driving the binary-publish path); otherwise
+// it responds as a service that only understands the single-archive publish.
+func newPublishMockService(t *testing.T, packName string, withPlatforms []string) *publishMockService {
 	t.Helper()
 	m := &publishMockService{uploads: map[string][]byte{}}
 
@@ -153,7 +137,7 @@ func newPublishMockService(t *testing.T, withPlatforms []string) *publishMockSer
 		require.NoError(t, err)
 		m.uploads[key] = body
 	})
-	mux.HandleFunc("/api/orgs/acme/policypacks/binary-test-pack/versions/0.0.1/complete",
+	mux.HandleFunc("/api/orgs/acme/policypacks/"+packName+"/versions/0.0.1/complete",
 		func(rw http.ResponseWriter, req *http.Request) {
 			m.completeCalled = true
 		})
@@ -168,19 +152,18 @@ func newPublishTestPack(cl *client.Client) *cloudPolicyPack {
 	}
 }
 
-func TestPublishWithExplicitBinariesUploadsBinaries(t *testing.T) {
+func TestPublishWithDeclaredBinariesUploadsBinaries(t *testing.T) {
 	t.Parallel()
 
-	packDir, binaries := buildBinaryPublishPack(t)
+	packDir, proj := buildBinaryPublishPack(t)
 	platform := workspace.CurrentPlatform()
-	expectedPlatforms := slices.Sorted(maps.Keys(binaries))
-	mock := newPublishMockService(t, expectedPlatforms)
+	expectedPlatforms := slices.Sorted(maps.Keys(proj.Binary))
+	mock := newPublishMockService(t, "binary-test-pack", expectedPlatforms)
 
 	pack := newPublishTestPack(client.NewClient(mock.server.URL, "test-token", true, nil))
 	op := backend.PublishOperation{
 		PlugCtx:    newPublishTestPlugCtx(t, packDir),
-		PolicyPack: &workspace.PolicyPackProject{Runtime: workspace.NewProjectRuntimeInfo("python", nil)},
-		Binaries:   binaries,
+		PolicyPack: proj,
 	}
 
 	err := pack.Publish(t.Context(), op)
@@ -195,47 +178,43 @@ func TestPublishWithExplicitBinariesUploadsBinaries(t *testing.T) {
 	assert.Contains(t, entries, "package/pulumi-analyzer-binary-test-pack")
 }
 
-func TestPublishWithoutBinariesFlagTakesLegacyPathEvenWithConventionFiles(t *testing.T) {
-	t.Parallel()
+// TestPublishWithoutBinariesTakesSingleArchivePath publishes a pack whose manifest
+// declares no binaries: the analyzer boots through the (fake) language runtime and
+// only the source archive is uploaded.
+func TestPublishWithoutBinariesTakesSingleArchivePath(t *testing.T) {
+	// Build the fake "test" language runtime from the pkg/host fixture and put it on
+	// PATH so the analyzer boots through the language-plugin path.
+	langDir := t.TempDir()
+	langBin := "pulumi-language-test"
+	if goruntime.GOOS == "windows" {
+		langBin += ".exe"
+	}
+	cmd := exec.Command("go", "build", "-o", filepath.Join(langDir, langBin), "../../host/testdata/analyzer-language")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+	t.Setenv("PATH", langDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	// Same pack layout as the explicit-binaries test: it has a bin/ convention
-	// binary, but with no --binary flags (no op.Binaries), Publish must not discover
-	// it and instead take the legacy single-archive path.
-	packDir, _ := buildBinaryPublishPack(t)
-	mock := newPublishMockService(t, nil)
+	packDir := t.TempDir()
+	proj := &workspace.PolicyPackProject{Runtime: workspace.NewProjectRuntimeInfo("test", nil)}
+	require.NoError(t, proj.Save(filepath.Join(packDir, "PulumiPolicy.yaml")))
+
+	// The fake language runtime's analyzer reports name "language-test-pack",
+	// version "0.0.1".
+	mock := newPublishMockService(t, "language-test-pack", nil)
 
 	pack := newPublishTestPack(client.NewClient(mock.server.URL, "test-token", true, nil))
 	op := backend.PublishOperation{
 		PlugCtx:    newPublishTestPlugCtx(t, packDir),
-		PolicyPack: &workspace.PolicyPackProject{Runtime: workspace.NewProjectRuntimeInfo("python", nil)},
+		PolicyPack: proj,
 	}
 
-	err := pack.Publish(t.Context(), op)
+	err = pack.Publish(t.Context(), op)
 	require.NoError(t, err)
 
+	assert.Equal(t, "language-test-pack", mock.createReq.Name)
 	assert.Empty(t, mock.createReq.Platforms)
+	assert.Equal(t, "test", mock.createReq.Runtime)
 	assert.True(t, mock.completeCalled)
 	require.Contains(t, mock.uploads, "source")
 	assert.NotContains(t, mock.uploads, workspace.CurrentPlatform())
-}
-
-func TestPublishLegacyPackTakesSingleArchivePath(t *testing.T) {
-	t.Parallel()
-
-	packDir := buildLegacyPublishPack(t)
-	mock := newPublishMockService(t, nil)
-
-	pack := newPublishTestPack(client.NewClient(mock.server.URL, "test-token", true, nil))
-	op := backend.PublishOperation{
-		PlugCtx:    newPublishTestPlugCtx(t, packDir),
-		PolicyPack: &workspace.PolicyPackProject{Runtime: workspace.NewProjectRuntimeInfo("python", nil)},
-	}
-
-	err := pack.Publish(t.Context(), op)
-	require.NoError(t, err)
-
-	assert.Empty(t, mock.createReq.Platforms)
-	assert.Equal(t, "python", mock.createReq.Runtime)
-	assert.True(t, mock.completeCalled)
-	require.Contains(t, mock.uploads, "source")
 }

@@ -60,17 +60,11 @@ func newPolicyPublishCmd() *cobra.Command {
 		Required: 0,
 	})
 
-	cmd.Flags().StringArrayVar(&policyPublishCmd.binaryFlags, "binary", nil,
-		"Pre-built analyzer binary to publish for a platform, as <os>-<arch>=<path>, "+
-			"where <path> is relative to the policy pack directory (repeatable)")
-
 	return cmd
 }
 
 type policyPublishCmd struct {
 	getwd func() (string, error)
-
-	binaryFlags []string
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
@@ -155,11 +149,6 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	// e.g. the current source code control commit information.
 	m := metadata.GetPolicyPublishMetadata(root)
 
-	binaries, err := workspace.ParsePolicyBinaryOverrides(cmd.binaryFlags)
-	if err != nil {
-		return err
-	}
-
 	//
 	// Attempt to publish the PolicyPack.
 	//
@@ -170,7 +159,6 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		PolicyPack: proj,
 		Scopes:     backend.CancellationScopes,
 		Metadata:   m,
-		Binaries:   binaries,
 	})
 	if err != nil {
 		return err
