@@ -21,8 +21,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -120,4 +122,88 @@ func TestBuildBinaryArtifactWindowsSuffix(t *testing.T) {
 
 	entries := tarEntries(t, tgz)
 	assert.Contains(t, entries, "package/pulumi-analyzer-mypack.exe")
+}
+
+func TestPackLocationSelection(t *testing.T) {
+	t.Parallel()
+
+	platform := workspace.CurrentPlatform()
+
+	t.Run("binary for this platform", func(t *testing.T) {
+		t.Parallel()
+		rp := cloudRequiredPolicy{RequiredPolicy: apitype.RequiredPolicy{
+			Name:          "p",
+			PackLocation:  "source-key",
+			PackLocations: map[string]string{platform: "bin-key"},
+		}}
+		loc, err := rp.packLocation()
+		require.NoError(t, err)
+		assert.Equal(t, "bin-key", loc)
+	})
+
+	t.Run("platform gap falls back to source", func(t *testing.T) {
+		t.Parallel()
+		other := "linux-amd64"
+		if platform == other {
+			other = "darwin-arm64"
+		}
+		rp := cloudRequiredPolicy{RequiredPolicy: apitype.RequiredPolicy{
+			Name:          "p",
+			PackLocation:  "source-key",
+			PackLocations: map[string]string{other: "bin-key"},
+		}}
+		loc, err := rp.packLocation()
+		require.NoError(t, err)
+		assert.Equal(t, "source-key", loc)
+	})
+
+	t.Run("legacy pack", func(t *testing.T) {
+		t.Parallel()
+		rp := cloudRequiredPolicy{RequiredPolicy: apitype.RequiredPolicy{
+			Name:         "p",
+			PackLocation: "source-key",
+		}}
+		loc, err := rp.packLocation()
+		require.NoError(t, err)
+		assert.Equal(t, "source-key", loc)
+	})
+
+	t.Run("binary only, platform missing", func(t *testing.T) {
+		t.Parallel()
+		other := "linux-amd64"
+		if platform == other {
+			other = "darwin-arm64"
+		}
+		rp := cloudRequiredPolicy{RequiredPolicy: apitype.RequiredPolicy{
+			Name:          "p",
+			PackLocations: map[string]string{other: "bin-key"},
+		}}
+		_, err := rp.packLocation()
+		require.ErrorContains(t, err, platform)
+		require.ErrorContains(t, err, other)
+	})
+}
+
+func TestInstallRequiredPolicySkipsDependenciesForBinaryPack(t *testing.T) {
+	t.Parallel()
+
+	rel := filepath.Join("bin", "pulumi-analyzer-mypack-linux-amd64")
+	packDir := writeTestPack(t, map[string]string{"linux-amd64": rel})
+	tgz, err := buildBinaryArtifact(packDir, rel, "mypack", "linux-amd64")
+	require.NoError(t, err)
+
+	finalDir := filepath.Join(t.TempDir(), "installed")
+	// ctx is never used past the binary short-circuit: a nil-host context proves no
+	// language runtime was resolved.
+	err = installRequiredPolicy(nil, finalDir, io.NopCloser(bytes.NewReader(tgz)), io.Discard, io.Discard)
+	require.NoError(t, err)
+
+	bin, ok := workspace.PolicyPackBinary(finalDir)
+	require.True(t, ok)
+	assert.Equal(t, filepath.Join(finalDir, "pulumi-analyzer-mypack"), bin)
+	info, err := os.Stat(bin)
+	require.NoError(t, err)
+	if goruntime.GOOS != "windows" {
+		assert.NotZero(t, info.Mode()&0o111)
+	}
 }
