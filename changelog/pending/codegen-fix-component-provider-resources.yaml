@@ -1,4 +1,0 @@
-component: codegen
-kind: fix
-body: Correctly generate provider resources declared inside PCL components for Node.js, Python and Go
-time: 2026-07-13T00:00:00+00:00
