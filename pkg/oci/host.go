@@ -27,6 +27,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
@@ -68,6 +69,13 @@ type containerHost struct {
 	// channel, so the map needs its own lock.
 	startedMu sync.Mutex
 	started   map[*plugin.Context][]podPlugin
+
+	// pullFlight dedups concurrent pulls of the same image ref, so a background
+	// pre-fetch (see prefetch) and a lazy ensureImage that both want an image run one
+	// `docker pull`, not two — whichever arrives second joins the in-flight pull. Its
+	// zero value is ready to use, so a directly-constructed containerHost needs no
+	// initialization.
+	pullFlight singleflight.Group
 }
 
 // podPlugin is a provider or policy analyzer the container host started as a container for a
@@ -127,7 +135,7 @@ var _ plugin.Host = (*containerHost)(nil)
 func NewContainerHost(
 	base plugin.Host, pod PodManager, engineHost, programImage, pluginRegistry, podID string,
 ) plugin.Host {
-	return &containerHost{
+	h := &containerHost{
 		Host:           base,
 		pod:            pod,
 		engineHost:     engineHost,
@@ -139,6 +147,10 @@ func NewContainerHost(
 			return providerImageRef(pluginRegistry, spec)
 		},
 	}
+	// Warm the provider images the program declares, in the background — a no-op unless
+	// both a program image and a registry are configured. Best-effort; never blocks.
+	h.prefetch()
+	return h
 }
 
 // NewContainerHostFromEnv builds a container host from the pod environment:
@@ -542,8 +554,8 @@ func (h *containerHost) providerContainer(
 // local component, or have not set a registry for a published one.
 //
 // This runs in Provider() (acquire-on-use), which is provably reached for every
-// provider. Hoisting it to a pre-flight ensure step (parallel pre-pull, fail-fast,
-// the `pulumi install` hook) is a natural follow-on — same pull, earlier.
+// provider. prefetch is the pre-flight companion: it warms the same images earlier,
+// in the background, sharing pullImage's dedup so no image is pulled twice.
 func (h *containerHost) ensureImage(ctx context.Context, name, ref string) error {
 	has, err := h.pod.ImageExists(ctx, ref)
 	if err != nil {
@@ -560,11 +572,77 @@ func (h *containerHost) ensureImage(ctx context.Context, name, ref string) error
 			name, ref)
 	}
 	fmt.Fprintf(os.Stderr, "oci: plugin image %s not present — pulling\n", ref)
-	if err := h.pod.PullImage(ctx, ref); err != nil {
+	if err := h.pullImage(ctx, ref); err != nil {
 		return fmt.Errorf("oci: pulling plugin image %s: %w", ref, err)
 	}
 	fmt.Fprintf(os.Stderr, "oci: installed plugin %s by pulling its image\n", ref)
 	return nil
+}
+
+// pullImage ensures ref is present in the local store, deduping concurrent requests for
+// the same ref through pullFlight: a background pre-fetch and a lazy ensureImage that
+// both want the same image run one `docker pull`, and whichever arrives second joins the
+// in-flight pull. The work runs under a detached context because the flight is shared by
+// callers with different lifetimes — a cancelled pre-fetch must not cancel a real ensure
+// riding the same flight.
+func (h *containerHost) pullImage(ctx context.Context, ref string) error {
+	_, err, _ := h.pullFlight.Do(ref, func() (any, error) {
+		c := context.WithoutCancel(ctx)
+		has, err := h.pod.ImageExists(c, ref)
+		if err != nil {
+			return nil, err
+		}
+		if has {
+			return nil, nil
+		}
+		return nil, h.pod.PullImage(c, ref)
+	})
+	return err
+}
+
+// prefetch warms the local image store, in the background, with the provider images the
+// program's baked required-packages manifest declares — so a later lazy ensureImage finds
+// them already present instead of pulling on the critical path. It is a pure best-effort
+// accelerator: it shares pullImage's dedup with lazy pulls (nothing is pulled twice), and
+// every error is logged and swallowed, so correctness stays with lazy discovery. It is a
+// no-op without a program image to read or a registry to pull from. Fired once, from
+// NewContainerHost.
+func (h *containerHost) prefetch() {
+	if h.programImage == "" || h.pluginRegistry == "" {
+		return
+	}
+	// Detached context: pre-fetch is background warming that outlives no particular
+	// request; a still-running pull just warms the shared daemon for the next phase.
+	// (Tying it to the host's lifetime, to cancel on close, is a refinement.)
+	go h.prefetchNow(context.Background())
+}
+
+// prefetchNow performs prefetch's work synchronously (it is what the background goroutine
+// runs, and what tests drive directly). It reads the program image's manifest and pulls
+// each declared provider image concurrently. Entries without a version are skipped: a
+// precise image ref cannot be resolved without one, and lazy discovery will still start
+// the provider when it is actually needed.
+func (h *containerHost) prefetchNow(ctx context.Context) {
+	manifest, err := ReadRequiredPackagesFromImage(ctx, h.pod, h.programImage)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "oci: pre-fetch: reading required-packages manifest: %v\n", err)
+		return
+	}
+	var wg sync.WaitGroup
+	for _, p := range manifest.Plugins {
+		if p.Version == "" {
+			continue
+		}
+		ref := ProviderImageRef(h.pluginRegistry, p.Name, p.Version)
+		wg.Add(1)
+		go func(ref string) {
+			defer wg.Done()
+			if err := h.pullImage(ctx, ref); err != nil {
+				fmt.Fprintf(os.Stderr, "oci: pre-fetch %s: %v\n", ref, err)
+			}
+		}(ref)
+	}
+	wg.Wait()
 }
 
 // PolicyAnalyzer runs a policy pack as a container in the pod and attaches an
