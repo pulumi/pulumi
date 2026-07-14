@@ -1022,7 +1022,7 @@ func TestDispatchUserEvents_DropsUserMessageOnPermanentPostFailure(t *testing.T)
 	assert.Contains(t, warnings[0].Message, "permission denied")
 }
 
-func TestForwardHistoryEventsToUI(t *testing.T) {
+func TestHistoryEventsToUI(t *testing.T) {
 	t.Parallel()
 
 	userBody, err := json.Marshal(apitype.AgentUserEventUserMessage{
@@ -1036,18 +1036,64 @@ func TestForwardHistoryEventsToUI(t *testing.T) {
 		IsFinal: true,
 	})
 	require.NoError(t, err)
+	toolCallArgs := json.RawMessage(`{"file_path":"/tmp/x"}`)
+	toolHandoffBody, err := json.Marshal(apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{
+				ToolCallID:    "call-1",
+				Name:          "filesystem__read",
+				Args:          toolCallArgs,
+				ExecutionMode: toolExecutionModeCLI,
+			},
+		},
+		IsFinal: true,
+	})
+	require.NoError(t, err)
+	execBody, err := json.Marshal(apitype.AgentUserEventExecToolCall{
+		Type:       userEventExecToolCall,
+		ToolCallID: "call-1",
+		Name:       "filesystem__read",
+	})
+	require.NoError(t, err)
+	resultBody, err := json.Marshal(apitype.AgentUserEventToolResult{
+		Type: userEventToolResult,
+		ToolResults: []apitype.AgentUserEventToolResultItem{
+			{
+				ToolCallID: "call-1",
+				Name:       "filesystem__read",
+				Content:    map[string]any{"ok": true},
+			},
+		},
+	})
+	require.NoError(t, err)
 
-	uiCh := make(chan UIEvent, 4)
-	forwardHistoryEventsToUI(uiCh, []apitype.AgentConsoleEvent{
+	events := historyEventsToUI([]apitype.AgentConsoleEvent{
 		{Type: consoleEventUserInput, EventBody: userBody},
+		{Type: consoleEventAgentResponse, EventBody: toolHandoffBody},
+		{Type: consoleEventUserInput, EventBody: execBody},
+		{Type: consoleEventUserInput, EventBody: resultBody},
 		{Type: consoleEventAgentResponse, EventBody: assistantBody},
 	})
 
-	require.Len(t, uiCh, 2)
-	user, ok := (<-uiCh).(UIUserMessage)
+	require.Len(t, events, 5)
+	user, ok := events[0].(UIUserMessage)
 	require.True(t, ok)
 	assert.Equal(t, "historical question", user.Content)
-	assistant, ok := (<-uiCh).(UIAssistantMessage)
+	handoff, ok := events[1].(UIAssistantMessage)
+	require.True(t, ok)
+	assert.True(t, handoff.HasPendingCLIWork)
+	started, ok := events[2].(UIToolStarted)
+	require.True(t, ok)
+	assert.Equal(t, "filesystem__read", started.Name)
+	assert.JSONEq(t, string(toolCallArgs), string(started.Args))
+	completed, ok := events[3].(UIToolCompleted)
+	require.True(t, ok)
+	assert.Equal(t, "filesystem__read", completed.Name)
+	assert.JSONEq(t, string(toolCallArgs), string(completed.Args))
+	assert.False(t, completed.IsError)
+	assert.JSONEq(t, `{"ok":true}`, string(completed.Result))
+	assistant, ok := events[4].(UIAssistantMessage)
 	require.True(t, ok)
 	assert.Equal(t, "historical answer", assistant.Content)
 	assert.True(t, assistant.IsFinal)

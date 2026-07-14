@@ -15,6 +15,7 @@
 package neo
 
 import (
+	"encoding/json"
 	"sort"
 	"strings"
 	"time"
@@ -37,6 +38,12 @@ import (
 // the second press still has to be deliberate but the gate doesn't silently
 // linger across long idle periods.
 const ctrlCArmTimeout = 1500 * time.Millisecond
+
+// minUsableTUIWidth is the floor below which a startup WindowSizeMsg is more
+// likely to be a transient terminal initialization artifact than a useful
+// interactive viewport. Rendering the input at those widths leaves only "Se"
+// from the placeholder in large terminals until the next resize.
+const minUsableTUIWidth = 40
 
 // ctrlCDisarmMsg is the deferred disarm signal scheduled when the user first
 // presses Ctrl+C. It carries the generation it was scheduled under; the
@@ -197,6 +204,13 @@ type ModelConfig struct {
 	// that want to exercise the post-task Ctrl+A / Ctrl+R path without driving
 	// a UISessionURL through the event channel.
 	TaskCreated bool
+	// History seeds the transcript for a resumed session. These events are
+	// applied before the first render so long histories do not flow through the
+	// bounded live EventCh.
+	History []UIEvent
+	// InitialWidth seeds the first render before Bubble Tea sends WindowSizeMsg.
+	// It is also used as a guard against bogus tiny startup resize events.
+	InitialWidth int
 	// HasDarkBackground selects light- or dark-friendly style variants for the
 	// whole TUI, including the textarea. runNeo detects it synchronously before
 	// the program starts and defaults it to dark for terminals it can't probe.
@@ -355,6 +369,11 @@ var (
 	todoListHeader     = lipgloss.NewStyle().Bold(true).Render("⏺ TODO")
 )
 
+func placeholderStyle(hasDarkBackground bool) lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(
+		lipgloss.LightDark(hasDarkBackground)(lipgloss.Color("240"), lipgloss.Color("245")))
+}
+
 // renderLeftBracket decorates content with a left-only bracket border: a
 // "╭─" tick above the first content line, a "│ " prefix on every content
 // line, and a "╰─" tick below the last line. The right edge and full
@@ -461,6 +480,12 @@ func renderIndented(style lipgloss.Style, termWidth int, content string) string 
 
 // NewModel creates a new TUI Model.
 func NewModel(cfg ModelConfig) Model {
+	initialWidth := cfg.InitialWidth
+	if initialWidth <= 0 {
+		initialWidth = 80
+	}
+	initialHeight := 24
+
 	ti := textarea.New()
 	ti.Placeholder = "Send a message..."
 	ti.CharLimit = 4096
@@ -490,6 +515,9 @@ func NewModel(cfg ModelConfig) Model {
 	styles := textarea.DefaultStyles(cfg.HasDarkBackground)
 	styles.Focused.Prompt = promptStyle
 	styles.Blurred.Prompt = promptStyle
+	placeholder := placeholderStyle(cfg.HasDarkBackground)
+	styles.Focused.Placeholder = placeholder
+	styles.Blurred.Placeholder = placeholder
 	ti.SetStyles(styles)
 	// Keep Enter as submit. Shift+Enter / Alt+Enter need kitty keyboard
 	// protocol; Ctrl+J (== LF) is the portable fallback. Trailing backslash
@@ -511,7 +539,7 @@ func NewModel(cfg ModelConfig) Model {
 			workDir:   cfg.WorkDir,
 			username:  cfg.Username,
 			version:   cfg.Version,
-			termWidth: 80,
+			termWidth: initialWidth,
 			greeting:  pickGreeting(cfg.Username),
 		},
 		textInput:         ti,
@@ -519,15 +547,16 @@ func NewModel(cfg ModelConfig) Model {
 		outCh:             cfg.OutCh,
 		busy:              cfg.Busy,
 		spinner:           sp,
-		width:             80,
-		height:            24,
+		width:             initialWidth,
+		height:            initialHeight,
 		hasDarkBackground: cfg.HasDarkBackground,
 		messageSent:       cfg.MessageSent,
 		taskCreated:       cfg.TaskCreated,
 		approvalMode:      cfg.InitialApprovalMode,
 		permissionMode:    cfg.InitialPermissionMode,
-		overlay:           newOverlayModel(80, 24),
+		overlay:           newOverlayModel(initialWidth, initialHeight),
 	}
+	m.textInput.SetWidth(max(m.liveWidth(), 3))
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
 		// findBlockKind. The actual scrollback emission happens on the first
@@ -535,10 +564,11 @@ func NewModel(cfg ModelConfig) Model {
 		// directly rather than via commitBlock: its printlnBlock side effect
 		// would flip hasEmittedScrollback before anything is actually printed,
 		// giving the welcome banner a stray leading blank line.
-		b := block{kind: blockUserMessage, raw: cfg.InitialPrompt}
-		m.renderBlock(&b)
-		m.appendBlock(b)
+		m.stageBlock(block{kind: blockUserMessage, raw: cfg.InitialPrompt})
 		m.pendingUserEchoes = append(m.pendingUserEchoes, cfg.InitialPrompt)
+	}
+	for _, event := range cfg.History {
+		m.applyHistoryEvent(event)
 	}
 	if cfg.Busy {
 		m.blocks = append(m.blocks, block{
@@ -566,8 +596,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		firstSize := !m.sizeReceived
 		m.sizeReceived = true
-		m.width = msg.Width
-		m.height = msg.Height
+		width := msg.Width
+		if firstSize && width < minUsableTUIWidth && m.width >= minUsableTUIWidth {
+			width = m.width
+		}
+		height := msg.Height
+		if height <= 0 {
+			height = m.height
+		}
+		m.width = width
+		m.height = height
 		safeWidth := m.liveWidth()
 		m.welcome.termWidth = safeWidth
 		// SetWidth accounts for the prompt width registered via SetPromptFunc.
@@ -953,14 +991,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.overlayActive {
 			m.overlay.Refresh(m.toolHistory)
 		}
-		marker := toolOKMarker
-		if msg.IsError {
-			marker = toolErrMarker
-		}
-		cmds = append(cmds, m.commitBlock(block{
-			kind:     blockToolComplete,
-			rendered: "  " + marker + " " + styledToolLabel(msg.Name, msg.Args),
-		}))
+		cmds = append(cmds, m.commitBlock(toolCompletedBlock(msg.Name, msg.Args, msg.IsError)))
 		// Keep the busy block alive across the inter-tool gap so the spinner
 		// stays visible while the agent decides its next move.
 		cmds = append(cmds, m.applyBusyForEvent(msg))
@@ -1210,8 +1241,22 @@ func (m Model) viewString() string {
 	if m.approvalPromptText != "" {
 		parts = append(parts, "  "+m.approvalPromptText)
 	}
-	parts = append(parts, m.textInput.View(), hint)
+	parts = append(parts, m.inputView(), hint)
 	return strings.Join(parts, "\n")
+}
+
+func (m Model) inputView() string {
+	ti := m.textInput
+	ti.SetWidth(max(m.liveWidth(), 3))
+	return ti.View()
+}
+
+func (m Model) prepareInitialScrollback(width, height int) (Model, string) {
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: width, Height: height})
+	prepared := updated.(Model)
+	rendered := prepared.committedScrollback()
+	prepared.hasEmittedScrollback = true
+	return prepared, rendered
 }
 
 // modeChips renders the status-bar chips for the three independent mode axes
@@ -1320,6 +1365,147 @@ func isLiveKind(b block) bool {
 }
 
 func isCommittedKind(b block) bool { return !isLiveKind(b) }
+
+func (m *Model) stageBlock(b block) {
+	m.renderBlock(&b)
+	m.appendBlock(b)
+}
+
+func (m *Model) applyHistoryEvent(ev UIEvent) {
+	switch msg := ev.(type) {
+	case UIAssistantMessage:
+		if msg.Content != "" {
+			m.stageBlock(block{kind: blockAssistantFinal, raw: msg.Content})
+		}
+		_ = m.applyBusyForEvent(msg)
+		m.clearStaleHistoryApproval(msg)
+	case UIToolStarted:
+		m.toolHistory = appendToolStart(m.toolHistory, msg.Name, msg.Args)
+		_ = m.applyBusyForEvent(msg)
+	case UIToolProgress:
+		_ = m.applyBusyForEvent(msg)
+	case UIToolCompleted:
+		completeToolCall(m.toolHistory, msg.Name, msg.Result, msg.IsError)
+		m.stageBlock(toolCompletedBlock(msg.Name, msg.Args, msg.IsError))
+		_ = m.applyBusyForEvent(msg)
+	case UIError:
+		_ = m.applyBusyForEvent(msg)
+		m.stageBlock(block{kind: blockError, raw: msg.Message})
+		m.clearStaleHistoryApproval(msg)
+	case UIWarning:
+		_ = m.applyBusyForEvent(msg)
+		m.stageBlock(block{kind: blockWarning, raw: msg.Message})
+	case UIReconnecting, UIReconnected, UIAwaitingApprovals, UIContextCompression:
+		_ = m.applyBusyForEvent(msg)
+	case UICancelled:
+		_ = m.applyBusyForEvent(msg)
+		m.stageBlock(block{kind: blockCancelled, raw: "Session cancelled."})
+		m.clearStaleHistoryApproval(msg)
+	case UITaskIdle:
+		_ = m.applyBusyForEvent(msg)
+		m.clearStaleHistoryApproval(msg)
+	case UISessionURL:
+		m.welcome.consoleURL = msg.URL
+		m.taskCreated = true
+	case UIUserMessage:
+		m.stageBlock(block{kind: blockUserMessage, raw: msg.Content})
+		_ = m.applyBusyForEvent(msg)
+	case UIApprovalRequest:
+		_ = m.applyBusyForEvent(msg)
+		m.pendingApproval = true
+		m.pendingApprovalID = msg.ApprovalID
+		m.pendingApprovalType = msg.ApprovalType
+		m.pendingIsQuestion = false
+		m.textInput.Placeholder = ""
+		m.textInput.Reset()
+		switch {
+		case m.pendingApprovalType == approvalTypePlanExit:
+			m.stageBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription, todos: m.pendingTodos})
+			m.pendingTodos = nil
+			m.approvalPromptText = warningStyle.Render("Approve plan? [y to approve / reason to deny]:")
+		case isAskUserToolName(msg.ToolName):
+			m.pendingIsQuestion = true
+			m.stageBlock(block{kind: blockQuestion, raw: msg.Message})
+			m.approvalPromptText = promptStyle.Render("Your answer:")
+		default:
+			m.stageBlock(block{kind: blockApprovalGeneral, raw: msg.Message})
+			m.approvalPromptText = warningStyle.Render("Approve? [y to approve / reason to deny]:")
+		}
+	case UIApprovalResolved:
+		if m.pendingApproval && msg.ApprovalID == m.pendingApprovalID {
+			m.stageBlock(block{
+				kind:           blockApprovalAuto,
+				approved:       msg.Approved,
+				autoIsQuestion: m.pendingIsQuestion,
+			})
+			m.clearPendingPrompt()
+		}
+	case UIPulumiStart:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx < 0 {
+			m.stageBlock(block{kind: blockPulumiOp, pulumi: &pulumiBlockState{
+				toolName:      msg.ToolName,
+				stackName:     msg.StackName,
+				isPreview:     msg.IsPreview,
+				resourceByURN: map[string]int{},
+			}})
+		}
+		_ = m.applyBusyForEvent(msg)
+	case UIPulumiResource:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			m.blocks[idx].pulumi.addResource(msg.Op, msg.URN, msg.Type, msg.Status)
+			m.renderBlock(&m.blocks[idx])
+		}
+		_ = m.applyBusyForEvent(msg)
+	case UIPulumiDiag:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			st := m.blocks[idx].pulumi
+			st.diags = append(st.diags, pulumiDiagRow{
+				severity: msg.Severity,
+				message:  msg.Message,
+				urn:      msg.URN,
+			})
+			m.renderBlock(&m.blocks[idx])
+		}
+		_ = m.applyBusyForEvent(msg)
+	case UIPulumiEnd:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			st := m.blocks[idx].pulumi
+			st.counts = msg.Counts
+			st.elapsed = msg.Elapsed
+			st.err = msg.Err
+			st.done = true
+			m.renderBlock(&m.blocks[idx])
+		}
+		_ = m.applyBusyForEvent(msg)
+	case UITodoList:
+		if len(msg.Items) > 0 {
+			if m.planMode {
+				m.pendingTodos = msg.Items
+			} else {
+				m.stageBlock(block{kind: blockTodoList, todos: msg.Items})
+			}
+		}
+		_ = m.applyBusyForEvent(msg)
+	}
+}
+
+func toolCompletedBlock(name string, args json.RawMessage, isError bool) block {
+	marker := toolOKMarker
+	if isError {
+		marker = toolErrMarker
+	}
+	return block{
+		kind:     blockToolComplete,
+		rendered: "  " + marker + " " + styledToolLabel(name, args),
+	}
+}
+
+func (m *Model) clearStaleHistoryApproval(ev UIEvent) {
+	if !m.pendingApproval || !isFinalUIEvent(ev) {
+		return
+	}
+	m.clearPendingPrompt()
+}
 
 // commitBlock renders b, appends it to m.blocks, and returns a tea.Cmd that
 // prints the rendered string as new terminal scrollback. Returns nil when the

@@ -166,6 +166,15 @@ func newNeoFakeServer(t *testing.T) *neoFakeServer {
 	// recording lets the test assert the wiring is reachable.
 	mux.HandleFunc("/api/preview/agents/test-org/tasks/task-1",
 		func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(client.NeoTask{
+					TaskID:         "task-1",
+					ApprovalMode:   client.NeoApprovalModeBalanced,
+					PermissionMode: client.NeoPermissionModeReadOnly,
+				})
+				return
+			}
 			body, _ := io.ReadAll(r.Body)
 			s.mu.Lock()
 			s.posts = append(s.posts, recordedPost{path: r.URL.Path, body: body})

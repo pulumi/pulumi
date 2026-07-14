@@ -16,6 +16,7 @@ package neo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -36,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -125,6 +127,14 @@ var (
 	newTeaProgram = func(m tea.Model) *tea.Program { return tea.NewProgram(m) }
 	isInteractive = cmdutil.Interactive
 )
+
+func initialTUIWidth(w io.Writer) int {
+	width := cmdCmd.WriterWidth(w)
+	if width < minUsableTUIWidth {
+		return cmdCmd.WriterWidth(nil)
+	}
+	return width
+}
 
 // NewNeoCmd creates the `pulumi neo` command. This first slice of the command starts a
 // Neo task in `cli` tool execution mode, prints a console URL the user can open in a
@@ -309,18 +319,22 @@ type neoRunOptions struct {
 	disableIntegrations bool
 }
 
-func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) error {
-	// nil lets the server inherit the org's enabled integrations; the empty slice opts out.
-	var enabledIntegrations *[]string
-	if opts.disableIntegrations {
-		enabledIntegrations = &[]string{}
-	}
+type neoRuntime struct {
+	cwd      string
+	ws       pkgWorkspace.Context
+	project  *workspace.Project
+	cloudBe  httpstate.Backend
+	pc       *client.Client
+	handlers map[string]ToolHandler
+	pu       *tools.Pulumi
+}
 
-	if opts.cwdFlag == "" {
+func prepareNeoRuntime(ctx context.Context, stderr io.Writer, cwdFlag string) (*neoRuntime, error) {
+	if cwdFlag == "" {
 		var err error
-		opts.cwdFlag, err = os.Getwd()
+		cwdFlag, err = os.Getwd()
 		if err != nil {
-			return fmt.Errorf("resolving working directory: %w", err)
+			return nil, fmt.Errorf("resolving working directory: %w", err)
 		}
 	}
 
@@ -329,24 +343,53 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 
 	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return err
+		return nil, err
 	}
 
 	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	cloudBe, ok := be.(httpstate.Backend)
 	if !ok {
-		return errors.New("`pulumi neo` requires the Pulumi Cloud backend")
+		return nil, errors.New("`pulumi neo` requires the Pulumi Cloud backend")
 	}
 	pc := cloudBe.Client()
 
 	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
-		return result.FprintBailf(stderr, "%s", msg)
+		return nil, result.FprintBailf(stderr, "%s", msg)
 	}
 
-	target, err := resolveTaskTarget(ctx, ws, cloudBe, project, opts.stackName, opts.orgFlag)
+	handlers, pu, err := newNeoToolHandlers(cwdFlag, ws)
+	if err != nil {
+		return nil, err
+	}
+
+	return &neoRuntime{
+		cwd:      cwdFlag,
+		ws:       ws,
+		project:  project,
+		cloudBe:  cloudBe,
+		pc:       pc,
+		handlers: handlers,
+		pu:       pu,
+	}, nil
+}
+
+func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) error {
+	// nil lets the server inherit the org's enabled integrations; the empty slice opts out.
+	var enabledIntegrations *[]string
+	if opts.disableIntegrations {
+		enabledIntegrations = &[]string{}
+	}
+
+	rt, err := prepareNeoRuntime(ctx, stderr, opts.cwdFlag)
+	if err != nil {
+		return err
+	}
+	opts.cwdFlag = rt.cwd
+
+	target, err := resolveTaskTarget(ctx, rt.ws, rt.cloudBe, rt.project, opts.stackName, opts.orgFlag)
 	if err != nil {
 		return err
 	}
@@ -355,12 +398,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 	// In a debug session, replace the prompt with the seed that points Neo at the failed
 	// operation, folding any positional prompt in as extra guidance.
 	if opts.debugKind != debugNone {
-		opts.prompt = buildDebugPrompt(ctx, cloudBe, target, opts.debugKind, opts.debugID, opts.prompt)
-	}
-
-	handlers, pu, err := newNeoToolHandlers(opts.cwdFlag, ws)
-	if err != nil {
-		return err
+		opts.prompt = buildDebugPrompt(ctx, rt.cloudBe, target, opts.debugKind, opts.debugID, opts.prompt)
 	}
 
 	if opts.printMode || !isInteractive() {
@@ -369,7 +407,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 		}
 		taskPrompt := nonInteractivePromptPreamble + "\n\n" + opts.prompt
 		resp, err := createNeoTaskWithEntityRetry(
-			ctx, pc, orgName, taskPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+			ctx, rt.pc, orgName, taskPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 				ToolExecutionMode:   "cli",
 				ApprovalMode:        opts.approvalMode,
 				PermissionMode:      opts.permissionMode,
@@ -379,7 +417,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 			return err
 		}
 		if !opts.printMode {
-			consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
+			consoleURL := client.CloudConsoleURL(rt.pc.URL(), orgName, "neo", "tasks", resp.TaskID)
 			if consoleURL != "" {
 				fmt.Fprintln(stderr, consoleURL)
 			} else {
@@ -387,8 +425,8 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 			}
 		}
 		session := &Session{
-			Client:   pc,
-			Handlers: handlers,
+			Client:   rt.pc,
+			Handlers: rt.handlers,
 			OrgName:  orgName,
 			TaskID:   resp.TaskID,
 			Log:      stderr,
@@ -403,9 +441,9 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 	defer close(uiCh)
 	outCh := make(chan outboundEvent, 8)
 
-	pu.Sink = newPulumiSinkForUI(uiCh)
+	rt.pu.Sink = newPulumiSinkForUI(uiCh)
 
-	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
+	username, _, _, _ := rt.pc.GetPulumiAccountDetails(ctx)
 
 	// Detect the terminal background once, before bubbletea takes over stdin.
 	// Querying in-band (via tea.RequestBackgroundColor or glamour's auto-style)
@@ -415,6 +453,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 	//
 	//nolint:forbidigo // needs the real terminal fds to query the background; cmd.OutOrStdout() is an io.Writer
 	hasDarkBackground := lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
+	initialWidth := initialTUIWidth(stdout)
 
 	model := NewModel(ModelConfig{
 		Org:                   orgName,
@@ -427,6 +466,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 		InitialPrompt:         opts.prompt,
 		InitialApprovalMode:   opts.approvalMode,
 		InitialPermissionMode: opts.permissionMode,
+		InitialWidth:          initialWidth,
 		HasDarkBackground:     hasDarkBackground,
 	})
 
@@ -468,7 +508,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 				planMode bool,
 			) error {
 				resp, err := createNeoTaskWithEntityRetry(
-					gctx, pc, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+					gctx, rt.pc, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 						ToolExecutionMode:   "cli",
 						ApprovalMode:        createApprovalMode,
 						PermissionMode:      createPermissionMode,
@@ -488,14 +528,14 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 
 				setTaskID(resp.TaskID)
 
-				consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
+				consoleURL := client.CloudConsoleURL(rt.pc.URL(), orgName, "neo", "tasks", resp.TaskID)
 				if consoleURL != "" {
 					sendUI(uiCh, UISessionURL{URL: consoleURL})
 				}
 
 				session := &Session{
-					Client:   pc,
-					Handlers: handlers,
+					Client:   rt.pc,
+					Handlers: rt.handlers,
 					OrgName:  orgName,
 					TaskID:   resp.TaskID,
 					UIEvents: uiCh,
@@ -538,10 +578,10 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 						})
 					},
 					func(ctx context.Context, taskID string, body any) error {
-						return pc.PostNeoTaskUserEvent(ctx, orgName, taskID, body)
+						return rt.pc.PostNeoTaskUserEvent(ctx, orgName, taskID, body)
 					},
 					func(ctx context.Context, taskID string, opts client.UpdateNeoTaskOptions) error {
-						return pc.UpdateNeoTask(ctx, orgName, taskID, opts)
+						return rt.pc.UpdateNeoTask(ctx, orgName, taskID, opts)
 					},
 				)
 			})
@@ -567,39 +607,14 @@ func runNeoResume(
 ) error {
 	_ = stdout
 
-	if cwdFlag == "" {
-		var err error
-		cwdFlag, err = os.Getwd()
-		if err != nil {
-			return fmt.Errorf("resolving working directory: %w", err)
-		}
-	}
-
-	ws := pkgWorkspace.Instance
-	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-
-	project, _, err := ws.ReadProject()
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return err
-	}
-
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	rt, err := prepareNeoRuntime(ctx, stderr, cwdFlag)
 	if err != nil {
 		return err
-	}
-	cloudBe, ok := be.(httpstate.Backend)
-	if !ok {
-		return errors.New("`pulumi neo resume` requires the Pulumi Cloud backend")
-	}
-	pc := cloudBe.Client()
-
-	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
-		return result.FprintBailf(stderr, "%s", msg)
 	}
 
 	orgName := orgFlag
 	if orgName == "" {
-		orgName, err = cloudBe.GetDefaultOrg(ctx)
+		orgName, err = rt.cloudBe.GetDefaultOrg(ctx)
 		if err != nil {
 			return fmt.Errorf("determining default organization: %w", err)
 		}
@@ -608,17 +623,25 @@ func runNeoResume(
 		return errors.New("could not determine an organization for the Neo task; pass --org")
 	}
 
-	handlers, pu, err := newNeoToolHandlers(cwdFlag, ws)
+	task, err := rt.pc.GetNeoTask(ctx, orgName, taskID)
+	if err != nil {
+		return err
+	}
+	approvalMode := task.ApprovalMode
+	if approvalMode == "" {
+		approvalMode = client.NeoApprovalModeManual
+	}
+	permissionMode := task.PermissionMode
+	if permissionMode == "" {
+		permissionMode = client.NeoPermissionModeDefault
+	}
+
+	historyEvents, lastEventID, err := rt.pc.GetNeoTaskEvents(ctx, orgName, taskID)
 	if err != nil {
 		return err
 	}
 
-	historyEvents, lastEventID, err := pc.GetNeoTaskEvents(ctx, orgName, taskID)
-	if err != nil {
-		return err
-	}
-
-	consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", taskID)
+	consoleURL := client.CloudConsoleURL(rt.pc.URL(), orgName, "neo", "tasks", taskID)
 	if consoleURL != "" {
 		fmt.Fprintln(stderr, consoleURL)
 	} else {
@@ -629,12 +652,14 @@ func runNeoResume(
 	}
 
 	if isInteractive() {
-		return runNeoResumeTUI(ctx, stdout, stderr, pc, handlers, pu, orgName, taskID, cwdFlag, historyEvents, lastEventID)
+		return runNeoResumeTUI(
+			ctx, stdout, stderr, rt.pc, rt.handlers, rt.pu, orgName, taskID, rt.cwd,
+			approvalMode, permissionMode, historyEvents, lastEventID)
 	}
 
 	session := &Session{
-		Client:      pc,
-		Handlers:    handlers,
+		Client:      rt.pc,
+		Handlers:    rt.handlers,
 		OrgName:     orgName,
 		TaskID:      taskID,
 		LastEventID: lastEventID,
@@ -650,11 +675,11 @@ func runNeoResumeTUI(
 	handlers map[string]ToolHandler,
 	pu *tools.Pulumi,
 	orgName, taskID, cwdFlag string,
+	approvalMode client.NeoApprovalMode,
+	permissionMode client.NeoPermissionMode,
 	historyEvents []apitype.AgentConsoleEvent,
 	lastEventID string,
 ) error {
-	_ = stdout
-
 	uiCh := make(chan UIEvent, 64)
 	defer close(uiCh)
 	outCh := make(chan outboundEvent, 8)
@@ -663,6 +688,10 @@ func runNeoResumeTUI(
 
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
 
+	//nolint:forbidigo // needs the real terminal fds to query the background; cmd.OutOrStdout() is an io.Writer
+	hasDarkBackground := lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
+	initialWidth := initialTUIWidth(stdout)
+
 	model := NewModel(ModelConfig{
 		Org:                   orgName,
 		WorkDir:               cwdFlag,
@@ -670,11 +699,18 @@ func runNeoResumeTUI(
 		Version:               version.Version,
 		EventCh:               uiCh,
 		OutCh:                 outCh,
-		InitialApprovalMode:   client.NeoApprovalModeManual,
-		InitialPermissionMode: client.NeoPermissionModeDefault,
+		InitialApprovalMode:   approvalMode,
+		InitialPermissionMode: permissionMode,
 		MessageSent:           true,
 		TaskCreated:           true,
+		History:               historyEventsToUI(historyEvents),
+		InitialWidth:          initialWidth,
+		HasDarkBackground:     hasDarkBackground,
 	})
+	model, initialScrollback := model.prepareInitialScrollback(initialWidth, 24)
+	if initialScrollback != "" {
+		fmt.Fprintln(stdout, initialScrollback)
+	}
 
 	p := newTeaProgram(model)
 
@@ -685,8 +721,6 @@ func runNeoResumeTUI(
 			return err
 		},
 		func(g *errgroup.Group, gctx context.Context) {
-			forwardHistoryEventsToUI(uiCh, historyEvents)
-
 			g.Go(func() error {
 				session := &Session{
 					Client:      pc,
@@ -725,15 +759,94 @@ func runNeoResumeTUI(
 	return err
 }
 
-func forwardHistoryEventsToUI(uiCh chan<- UIEvent, events []apitype.AgentConsoleEvent) {
-	session := &Session{UIEvents: uiCh}
+func historyEventsToUI(events []apitype.AgentConsoleEvent) []UIEvent {
+	history := make([]UIEvent, 0, len(events))
+	pendingToolCalls := map[string]apitype.AgentBackendEventToolCall{}
 	for _, event := range events {
 		switch {
 		case event.Type == consoleEventUserInput && len(event.EventBody) > 0:
-			session.forwardUserInputToUI(event.EventBody)
+			history = append(history, historyUIEventsFromUserInput(event.EventBody, pendingToolCalls)...)
 		case event.Type == consoleEventAgentResponse && len(event.EventBody) > 0:
-			session.forwardToUI(event.EventBody)
+			recordHistoricalToolCalls(event.EventBody, pendingToolCalls)
+			history = append(history, uiEventsFromAgentResponse(event.EventBody)...)
 		}
+	}
+	return history
+}
+
+func recordHistoricalToolCalls(
+	eventBody json.RawMessage,
+	pendingToolCalls map[string]apitype.AgentBackendEventToolCall,
+) {
+	var head apitype.AgentBackendEventHeader
+	if err := json.Unmarshal(eventBody, &head); err != nil || head.Type != backendEventAssistantMessage {
+		return
+	}
+	var msg apitype.AgentBackendEventAssistantMessage
+	if err := json.Unmarshal(eventBody, &msg); err != nil {
+		return
+	}
+	for _, call := range msg.ToolCalls {
+		if call.ToolCallID == "" || call.ExecutionMode != toolExecutionModeCLI {
+			continue
+		}
+		pendingToolCalls[call.ToolCallID] = call
+	}
+}
+
+func historyUIEventsFromUserInput(
+	eventBody json.RawMessage,
+	pendingToolCalls map[string]apitype.AgentBackendEventToolCall,
+) []UIEvent {
+	var head apitype.AgentBackendEventHeader
+	if err := json.Unmarshal(eventBody, &head); err != nil {
+		return nil
+	}
+
+	switch head.Type {
+	case userEventExecToolCall:
+		var evt apitype.AgentUserEventExecToolCall
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return nil
+		}
+		call := pendingToolCalls[evt.ToolCallID]
+		name := evt.Name
+		if name == "" {
+			name = call.Name
+		}
+		return []UIEvent{UIToolStarted{
+			Name: name,
+			Args: call.Args,
+		}}
+	case userEventToolResult:
+		var evt apitype.AgentUserEventToolResult
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return nil
+		}
+		events := make([]UIEvent, 0, len(evt.ToolResults))
+		for _, result := range evt.ToolResults {
+			resultRaw, err := json.Marshal(result.Content)
+			if err != nil {
+				resultRaw, _ = json.Marshal(map[string]string{
+					"marshal_error": err.Error(),
+				})
+			}
+			call := pendingToolCalls[result.ToolCallID]
+			delete(pendingToolCalls, result.ToolCallID)
+			name := result.Name
+			if name == "" {
+				name = call.Name
+			}
+			events = append(events, UIToolCompleted{
+				Name:    name,
+				Args:    call.Args,
+				Result:  resultRaw,
+				IsError: result.IsError,
+			})
+		}
+		return events
+	default:
+		return uiEventsFromUserInput(eventBody)
 	}
 }
 
@@ -840,18 +953,24 @@ func dispatchUserEvents(
 		retryTimer = time.NewTimer(delay)
 		retryC = retryTimer.C
 	}
+	flushPending := func() error {
+		retryNow = false
+		stopRetryTimer()
+		var err error
+		pendingMessages, err = flushQueuedUserMessages(ctx, pendingMessages, getTaskID, postEvent, uiCh)
+		if err != nil {
+			return err
+		}
+		if len(pendingMessages) > 0 && retryTimer == nil {
+			scheduleRetry(pendingMessages[0].failures)
+		}
+		return nil
+	}
 
 	for {
 		if retryNow {
-			retryNow = false
-			stopRetryTimer()
-			var err error
-			pendingMessages, err = flushQueuedUserMessages(ctx, pendingMessages, getTaskID, postEvent, uiCh)
-			if err != nil {
+			if err := flushPending(); err != nil {
 				return err
-			}
-			if len(pendingMessages) > 0 && retryTimer == nil {
-				scheduleRetry(pendingMessages[0].failures)
 			}
 		}
 

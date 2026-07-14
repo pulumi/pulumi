@@ -404,22 +404,28 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 		return
 	}
 
+	for _, event := range uiEventsFromAgentResponse(eventBody) {
+		sendUI(s.UIEvents, event)
+	}
+}
+
+func uiEventsFromAgentResponse(eventBody json.RawMessage) []UIEvent {
 	var head apitype.AgentBackendEventHeader
 	if err := json.Unmarshal(eventBody, &head); err != nil {
-		return
+		return nil
 	}
 
 	switch head.Type {
 	case backendEventAssistantMessage:
 		var msg apitype.AgentBackendEventAssistantMessage
 		if err := json.Unmarshal(eventBody, &msg); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIAssistantMessage{
+		events := []UIEvent{UIAssistantMessage{
 			Content:           msg.Content,
 			IsFinal:           msg.IsFinal,
 			HasPendingCLIWork: msg.IsFinal && hasPendingCLIToolCalls(msg.ToolCalls),
-		})
+		}}
 		// todo__TodoWrite is cloud-marked, so it never reaches runBatch / the
 		// UIToolStarted path — forward the args directly as a UITodoList.
 		for _, tc := range msg.ToolCalls {
@@ -427,50 +433,51 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 				continue
 			}
 			if items, ok := parseTodoWriteArgs(tc.Args); ok {
-				sendUI(s.UIEvents, UITodoList{Items: items})
+				events = append(events, UITodoList{Items: items})
 			}
 		}
+		return events
 	case backendEventExecToolCallProgress:
 		var p apitype.AgentBackendEventExecToolCallProgress
 		if err := json.Unmarshal(eventBody, &p); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIToolProgress{Name: p.Name, Message: p.Content})
+		return []UIEvent{UIToolProgress{Name: p.Name, Message: p.Content}}
 	case backendEventError:
 		var e apitype.AgentBackendEventError
 		if err := json.Unmarshal(eventBody, &e); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIError{Message: e.Message})
+		return []UIEvent{UIError{Message: e.Message}}
 	case backendEventWarning:
 		var w apitype.AgentBackendEventWarning
 		if err := json.Unmarshal(eventBody, &w); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIWarning{Message: w.Message})
+		return []UIEvent{UIWarning{Message: w.Message}}
 	case backendEventCancelled:
-		sendUI(s.UIEvents, UICancelled{})
+		return []UIEvent{UICancelled{}}
 	case backendEventUserApprovalRequest:
 		var req apitype.AgentBackendEventUserApprovalRequest
 		if err := json.Unmarshal(eventBody, &req); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIApprovalRequest{
+		return []UIEvent{UIApprovalRequest{
 			ApprovalID:      req.ApprovalID,
 			Message:         req.Message,
 			Sensitivity:     req.Sensitivity,
 			ApprovalType:    req.ApprovalType,
 			PlanDescription: req.Context.PlanDescription,
 			ToolName:        req.Context.ToolName,
-		})
+		}}
 	case backendEventAwaitingApprovals:
-		sendUI(s.UIEvents, UIAwaitingApprovals{})
+		return []UIEvent{UIAwaitingApprovals{}}
 	case backendEventContextCompression:
 		var c apitype.AgentBackendEventContextCompression
 		if err := json.Unmarshal(eventBody, &c); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIContextCompression{Status: c.Status})
+		return []UIEvent{UIContextCompression{Status: c.Status}}
 	case backendEventToolResponse,
 		userEventExecToolCall, // server-side echo of a tool running (same discriminator as the CLI-posted event)
 		backendEventChangeEntities,
@@ -480,6 +487,7 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 		// Tick is self-perpetuating while busy, and m.cancelling persists across
 		// events until a final one arrives.
 	}
+	return nil
 }
 
 // forwardUserInputToUI parses a userInput event body and routes it to the TUI:
@@ -492,30 +500,63 @@ func (s *Session) forwardUserInputToUI(eventBody json.RawMessage) {
 		return
 	}
 
+	for _, event := range uiEventsFromUserInput(eventBody) {
+		sendUI(s.UIEvents, event)
+	}
+}
+
+func uiEventsFromUserInput(eventBody json.RawMessage) []UIEvent {
 	// Peek at the inner type; we reuse AgentBackendEventHeader because it's just
 	// a Type field and the JSON shape on the user-input side matches.
 	var head apitype.AgentBackendEventHeader
 	if err := json.Unmarshal(eventBody, &head); err != nil {
-		return
+		return nil
 	}
 
 	switch head.Type {
 	case userEventUserMessage:
 		var evt apitype.AgentUserEventUserMessage
 		if err := json.Unmarshal(eventBody, &evt); err != nil {
-			return
+			return nil
 		}
 		if evt.Content != "" {
-			sendUI(s.UIEvents, UIUserMessage{Content: evt.Content})
+			return []UIEvent{UIUserMessage{Content: evt.Content}}
 		}
 	case userEventUserConfirmation:
 		var evt apitype.AgentUserEventUserConfirmation
 		if err := json.Unmarshal(eventBody, &evt); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIApprovalResolved{
+		return []UIEvent{UIApprovalResolved{
 			ApprovalID: evt.ApprovalID,
 			Approved:   evt.Approved,
-		})
+		}}
+	case userEventExecToolCall:
+		var evt apitype.AgentUserEventExecToolCall
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return nil
+		}
+		return []UIEvent{UIToolStarted{Name: evt.Name}}
+	case userEventToolResult:
+		var evt apitype.AgentUserEventToolResult
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return nil
+		}
+		events := make([]UIEvent, 0, len(evt.ToolResults))
+		for _, result := range evt.ToolResults {
+			resultRaw, err := json.Marshal(result.Content)
+			if err != nil {
+				resultRaw, _ = json.Marshal(map[string]string{
+					"marshal_error": err.Error(),
+				})
+			}
+			events = append(events, UIToolCompleted{
+				Name:    result.Name,
+				Result:  resultRaw,
+				IsError: result.IsError,
+			})
+		}
+		return events
 	}
+	return nil
 }

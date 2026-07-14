@@ -1622,6 +1622,36 @@ func TestUpdateNeoTask(t *testing.T) {
 	})
 }
 
+func TestGetNeoTask(t *testing.T) {
+	t.Parallel()
+
+	var (
+		gotMethod string
+		gotPath   string
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		gotMethod = req.Method
+		gotPath = req.URL.String()
+		rw.Header().Set("Content-Type", "application/json")
+		_, _ = rw.Write([]byte(`{
+			"taskId": "task_1",
+			"approvalMode": "balanced",
+			"permissionMode": "read-only"
+		}`))
+	}))
+	defer server.Close()
+
+	c := newMockClient(server)
+	task, err := c.GetNeoTask(t.Context(), "my-org", "task_1")
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodGet, gotMethod)
+	assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1", gotPath)
+	assert.Equal(t, "task_1", task.TaskID)
+	assert.Equal(t, NeoApprovalModeBalanced, task.ApprovalMode)
+	assert.Equal(t, NeoPermissionModeReadOnly, task.PermissionMode)
+}
+
 func TestGetNeoTaskEvents(t *testing.T) {
 	t.Parallel()
 

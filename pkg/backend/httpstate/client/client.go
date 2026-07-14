@@ -184,6 +184,14 @@ type NeoTaskResponse struct {
 	TaskID string `json:"taskId"`
 }
 
+// NeoTask represents the fields from an existing Neo task that the CLI needs
+// when reattaching to it.
+type NeoTask struct {
+	TaskID         string            `json:"taskId"`
+	ApprovalMode   NeoApprovalMode   `json:"approvalMode,omitempty"`
+	PermissionMode NeoPermissionMode `json:"permissionMode,omitempty"`
+}
+
 // TemplatePublishOperationID uniquely identifies a template publish operation.
 type TemplatePublishOperationID string
 
@@ -2810,6 +2818,19 @@ func (pc *Client) UpdateNeoTask(
 		return fmt.Errorf("updating Neo task: %w", err)
 	}
 	return nil
+}
+
+// GetNeoTask fetches task metadata for an existing Neo task.
+func (pc *Client) GetNeoTask(ctx context.Context, orgName, taskID string) (*NeoTask, error) {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
+	var resp NeoTask
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, fmt.Errorf("getting Neo task: %w", err)
+	}
+	return &resp, nil
 }
 
 // NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly
