@@ -1661,7 +1661,7 @@ func TestPostNeoTaskUserEvent(t *testing.T) {
 func TestStreamNeoTaskEvents(t *testing.T) {
 	t.Parallel()
 
-	t.Run("ParsesDataFramesAndIgnoresComments", func(t *testing.T) {
+	t.Run("ParsesDataFramesAndReportsComments", func(t *testing.T) {
 		t.Parallel()
 
 		// SSE framing: blank lines delimit events, lines that start with ":" are
@@ -1686,15 +1686,17 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
 		require.NoError(t, err)
 
-		got := make([][]byte, 0, 2)
+		got := make([]NeoStreamEvent, 0, 3)
 		for evt := range stream {
 			require.NoError(t, evt.Err)
-			got = append(got, evt.Data)
+			got = append(got, evt)
 		}
 		assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1/events/stream", gotPath)
-		require.Len(t, got, 2)
-		assert.Equal(t, `{"type":"agentResponse"}`, string(got[0]))
-		assert.Equal(t, "line1\nline2", string(got[1]))
+		require.Len(t, got, 3)
+		assert.True(t, got[0].KeepAlive)
+		assert.Empty(t, got[0].Data)
+		assert.Equal(t, `{"type":"agentResponse"}`, string(got[1].Data))
+		assert.Equal(t, "line1\nline2", string(got[2].Data))
 	})
 
 	t.Run("HTTPErrorSurfacesBeforeStreamStarts", func(t *testing.T) {

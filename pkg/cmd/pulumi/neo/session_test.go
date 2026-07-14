@@ -927,6 +927,48 @@ func TestSession_ReconnectsAfterTransientStreamError(t *testing.T) {
 		"second open must pass the last seen event ID so the service replays missed events")
 }
 
+func TestSession_KeepAliveResetsReconnectBudget(t *testing.T) {
+	t.Parallel()
+
+	t.Cleanup(func(initial, max, budget time.Duration) func() {
+		return func() {
+			reconnectInitialBackoff = initial
+			reconnectMaxBackoff = max
+			reconnectTotalBudget = budget
+		}
+	}(reconnectInitialBackoff, reconnectMaxBackoff, reconnectTotalBudget))
+	reconnectInitialBackoff = 10 * time.Millisecond
+	reconnectMaxBackoff = 10 * time.Millisecond
+	reconnectTotalBudget = 5 * time.Millisecond
+
+	stream1 := make(chan client.NeoStreamEvent, 1)
+	stream2 := make(chan client.NeoStreamEvent, 2)
+	stream3 := make(chan client.NeoStreamEvent, 1)
+	streamer := &reconnectStreamer{streams: []chan client.NeoStreamEvent{stream1, stream2, stream3}}
+
+	stream1 <- client.NeoStreamEvent{Err: &net.OpError{Op: "read", Err: syscall.ECONNRESET}}
+	close(stream1)
+
+	stream2 <- client.NeoStreamEvent{KeepAlive: true}
+	stream2 <- client.NeoStreamEvent{Err: &net.OpError{Op: "read", Err: syscall.ECONNRESET}}
+	close(stream2)
+
+	stream3 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e1",
+	}
+	close(stream3)
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, []string{"", "", ""}, streamer.lastIDs)
+}
+
 func TestSession_PropagatesNonTransientStreamError(t *testing.T) {
 	t.Parallel()
 
