@@ -1,0 +1,6 @@
+component: cli
+kind: fix
+body: Make `pulumi api` validate credentials against the backend it actually uses, honouring PULUMI_BACKEND_URL outside a project directory
+time: 2026-07-13T00:00:00+00:00
+custom:
+  PR: "23917"
