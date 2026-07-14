@@ -614,8 +614,8 @@ func (m defaultLoginManager) Current(
 	} else if err != nil {
 		logging.V(7).Infof("Could not read default credentials for %q: %v", cloudURL, err)
 	}
-	// Whether a stored user identity existed and the service rejected it. Gates the agent
-	// auto-signup below so a rejected user isn't silently replaced by an anonymous agent account.
+	// Whether a stored user identity existed and the service rejected it; gates the agent-signup
+	// branch below.
 	userAccountRejected := false
 	if err == nil && existingAccount.HasCredential() &&
 		(accessToken == "" || existingAccount.AccessToken == accessToken) {
