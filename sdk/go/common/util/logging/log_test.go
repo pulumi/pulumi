@@ -27,6 +27,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 )
 
 func TestInitLogging(t *testing.T) {
@@ -320,4 +322,156 @@ func TestLogToStderrFiltersHigherVerbosity(t *testing.T) {
 	assert.NotContains(t, string(out), "direct v5 hidden")
 	assert.Contains(t, string(out), "unleveled info shows")
 	assert.True(t, sink.saw("v5 hidden"))
+}
+
+// TestRedactingHandlerAppliesOnlyToPrimary verifies attribute values implementing
+// RedactedLogValue are redacted before the primary output, while the sink receives unredacted
+// attributes.
+//
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestRedactingHandlerAppliesOnlyToPrimary(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		SetSinkHandler(nil)
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	sink := &recordingAttrHandler{}
+	SetSinkHandler(sink)
+
+	slog.Info("logging in", "password", redactableSecret("hunter2"))
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "[secret]")
+	assert.NotContains(t, string(out), "hunter2")
+	assert.True(t, sink.sawAttr("password", "hunter2"))
+}
+
+type redactableSecret string
+
+func (s redactableSecret) RedactedLogValue() slog.Value { return slog.StringValue("[secret]") }
+
+type recordingAttrHandler struct {
+	mu    sync.Mutex
+	attrs []slog.Attr
+}
+
+func (h *recordingAttrHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *recordingAttrHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	r.Attrs(func(a slog.Attr) bool {
+		h.attrs = append(h.attrs, a)
+		return true
+	})
+	return nil
+}
+
+func (h *recordingAttrHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h *recordingAttrHandler) WithGroup(string) slog.Handler      { return h }
+
+func (h *recordingAttrHandler) sawAttr(key, value string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, a := range h.attrs {
+		if a.Key == key && a.Value.String() == value {
+			return true
+		}
+	}
+	return false
+}
+
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestLogSecretsDisablesRedaction(t *testing.T) {
+	prevLog, prevV, prevFlow, prevSecrets := LogToStderr, Verbose, LogFlow, LogSecrets
+	t.Cleanup(func() {
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow, LogSecrets = prevLog, prevV, prevFlow, prevSecrets
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	LogSecrets = true
+	slog.Info("logging in", "password", redactableSecret("hunter2"))
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "hunter2")
+	assert.NotContains(t, string(out), "[secret]")
+}
+
+func TestInitLoggingReadsLogSecretsEnv(t *testing.T) { //nolint:paralleltest // mutates global logging state
+	t.Setenv("PULUMI_LOG_SECRETS", "true")
+	prevLog, prevV, prevFlow, prevSecrets := LogToStderr, Verbose, LogFlow, LogSecrets
+	t.Cleanup(func() {
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow, LogSecrets = prevLog, prevV, prevFlow, prevSecrets
+	})
+
+	LogSecrets = false
+	InitLogging(false, 0, false)
+	assert.True(t, LogSecrets)
+}
+
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestSerializedSecretsRedactedBySignature(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	slog.Info("registering", "props", map[string]any{
+		"name": "web",
+		"password": map[string]any{
+			sig.Key:     sig.Secret,
+			"plaintext": "hunter2",
+		},
+	})
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "[secret]")
+	assert.Contains(t, string(out), "web")
+	assert.NotContains(t, string(out), "hunter2")
 }

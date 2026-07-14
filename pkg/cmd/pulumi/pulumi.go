@@ -208,6 +208,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var cwd string
 	var logFlow bool
 	var logToStderr bool
+	var logSecrets bool
 	var tracingFlag string
 	var tracingHeaderFlag string
 	var otelTracesFlag string
@@ -321,6 +322,14 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 
 			logging.InitLogging(logToStderr, verbose, logFlow)
+			if logSecrets {
+				logging.LogSecrets = true
+				if logFlow {
+					if err := os.Setenv("PULUMI_LOG_SECRETS", "true"); err != nil {
+						return err
+					}
+				}
+			}
 
 			// Start automatic logging. At this point we don't have a stack
 			// or secrets manager, so logs will be gzip-compressed (not
@@ -459,6 +468,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Flow log settings to child processes (like plugins)")
 	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false,
 		"Log to stderr instead of to files")
+	cmd.PersistentFlags().BoolVar(&logSecrets, "logsecrets", false,
+		"Include secret values in plaintext log output instead of redacting them")
 	cmd.PersistentFlags().BoolVar(&cmdutil.DisableInteractive, "non-interactive", false,
 		"Disable interactive mode for all commands")
 	cmd.PersistentFlags().StringVar(&tracingFlag, "tracing", "",

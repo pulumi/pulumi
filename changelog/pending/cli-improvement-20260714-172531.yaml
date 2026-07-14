@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Redact secrets in property values in logs. Add a --logsecrets flag to continue logging secrets
+time: 2026-07-14T17:25:31.43918684+02:00
