@@ -502,6 +502,7 @@ type packageCommand struct {
 	providerFile      string
 	providerURN       string
 	format            string
+	timeout           string
 	spec              schema.PackageReference
 	providerDef       *schema.Resource
 	dryrun            bool

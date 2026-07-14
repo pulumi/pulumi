@@ -219,6 +219,7 @@ func TestDoCmdResourceCreate(t *testing.T) {
 			CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				calls = append(calls, "create")
 				assert.Equal(t, "example", req.Properties["name"].StringValue())
+				assert.Equal(t, 90.0, req.Timeout)
 				return plugin.CreateResponse{
 					ID: "res-1",
 					Properties: resource.PropertyMap{
@@ -237,7 +238,7 @@ size = 2
 `)
 	cmd.SetArgs([]string{
 		"--stateless", "azure:index:myResource", "create", "--yes",
-		"--input", "pcl", "--input-file", inputFile, "--output", "json",
+		"--input", "pcl", "--input-file", inputFile, "--output", "json", "--timeout", "1m30s",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -335,6 +336,7 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					assert.Equal(t, resource.ID("res-1"), req.ID)
+					assert.Equal(t, 90.0, req.Timeout)
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "res-1",
@@ -347,7 +349,7 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 			},
 		})
-		cmd.SetArgs([]string{"azure:index:myResource", "read", "res-1", "--output", "json"})
+		cmd.SetArgs([]string{"azure:index:myResource", "read", "res-1", "--output", "json", "--timeout", "1m30s"})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"id":"res-1","name":"read","size":3}`, stdout.String())
@@ -372,12 +374,13 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 					assert.Equal(t, resource.ID("res-1"), req.ID)
 					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
 					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
+					assert.Equal(t, 90.0, req.Timeout)
 					deleted = true
 					return plugin.DeleteResponse{}, nil
 				},
 			},
 		})
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes"})
+		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes", "--timeout", "1m30s"})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.True(t, deleted)
@@ -428,6 +431,7 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 					assert.Equal(t, "new", req.NewInputs["name"].StringValue())
 					assert.Equal(t, 1.0, req.NewInputs["size"].NumberValue())
 					assert.Equal(t, true, req.NewInputs["enabled"].BoolValue())
+					assert.Equal(t, 90.0, req.Timeout)
 					return plugin.UpdateResponse{
 						Properties: resource.PropertyMap{
 							"name":    resource.NewProperty("new"),
@@ -445,7 +449,7 @@ enabled = true
 `)
 		cmd.SetArgs([]string{
 			"--stateless", "azure:index:myResource", "patch", "res-1", "--yes",
-			"--input", "pcl", "--input-file", inputFile, "--output", "json",
+			"--input", "pcl", "--input-file", inputFile, "--output", "json", "--timeout", "1m30s",
 		})
 		err := cmd.Execute()
 		require.NoError(t, err)
@@ -587,6 +591,15 @@ func TestDoCmdResourceList(t *testing.T) {
 		err := cmd.Execute()
 		require.ErrorContains(t, err, "--all and --count are mutually exclusive")
 	})
+}
+
+func TestDoCmdResourceTimeoutInvalidDuration(t *testing.T) {
+	t.Parallel()
+
+	cmd, _, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
+	cmd.SetArgs([]string{"azure:index:myResource", "read", "res-1", "--timeout", "bogus"})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "parse --timeout")
 }
 
 // TestDoCmdResourceNonInteractiveRequiresYes asserts that destructive subcommands refuse to run when the user is
