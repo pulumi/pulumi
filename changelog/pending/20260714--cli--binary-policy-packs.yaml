@@ -3,4 +3,4 @@ kind: feat
 body: "`pulumi policy publish` can now publish pre-built per-platform analyzer binaries alongside the source archive, letting consumers run policy packs without the pack's language toolchain"
 time: 2026-07-14T00:00:00.000000+00:00
 custom:
-    PR: ""
+    PR: "23933"
