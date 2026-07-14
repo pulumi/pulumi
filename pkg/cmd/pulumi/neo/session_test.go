@@ -867,6 +867,25 @@ type reconnectStreamer struct {
 	lastIDs []string
 }
 
+var reconnectTuningTestMu sync.Mutex
+
+func overrideReconnectTuningForTest(t *testing.T, override func()) {
+	t.Helper()
+
+	reconnectTuningTestMu.Lock()
+	initial := reconnectInitialBackoff
+	maxBackoff := reconnectMaxBackoff
+	budget := reconnectTotalBudget
+	override()
+
+	t.Cleanup(func() {
+		reconnectInitialBackoff = initial
+		reconnectMaxBackoff = maxBackoff
+		reconnectTotalBudget = budget
+		reconnectTuningTestMu.Unlock()
+	})
+}
+
 func (r *reconnectStreamer) StreamNeoTaskEvents(
 	_ context.Context, _, _, lastEventID string,
 ) (<-chan client.NeoStreamEvent, error) {
@@ -888,12 +907,13 @@ func (r *reconnectStreamer) PostNeoTaskUserEvent(context.Context, string, string
 }
 
 func TestSession_ReconnectsAfterTransientStreamError(t *testing.T) {
+	t.Parallel()
+
 	// A connection-reset mid-stream must reopen the stream with the last seen
 	// event ID so the service can replay missed events losslessly.
-	t.Cleanup(func(prev time.Duration) func() {
-		return func() { reconnectInitialBackoff = prev }
-	}(reconnectInitialBackoff))
-	reconnectInitialBackoff = 1 * time.Millisecond
+	overrideReconnectTuningForTest(t, func() {
+		reconnectInitialBackoff = 1 * time.Millisecond
+	})
 
 	stream1 := make(chan client.NeoStreamEvent, 2)
 	stream2 := make(chan client.NeoStreamEvent, 2)
@@ -926,16 +946,13 @@ func TestSession_ReconnectsAfterTransientStreamError(t *testing.T) {
 }
 
 func TestSession_KeepAliveResetsReconnectBudget(t *testing.T) {
-	t.Cleanup(func(initial, max, budget time.Duration) func() {
-		return func() {
-			reconnectInitialBackoff = initial
-			reconnectMaxBackoff = max
-			reconnectTotalBudget = budget
-		}
-	}(reconnectInitialBackoff, reconnectMaxBackoff, reconnectTotalBudget))
-	reconnectInitialBackoff = 10 * time.Millisecond
-	reconnectMaxBackoff = 10 * time.Millisecond
-	reconnectTotalBudget = 5 * time.Millisecond
+	t.Parallel()
+
+	overrideReconnectTuningForTest(t, func() {
+		reconnectInitialBackoff = 10 * time.Millisecond
+		reconnectMaxBackoff = 10 * time.Millisecond
+		reconnectTotalBudget = 5 * time.Millisecond
+	})
 
 	stream1 := make(chan client.NeoStreamEvent, 1)
 	stream2 := make(chan client.NeoStreamEvent, 2)
