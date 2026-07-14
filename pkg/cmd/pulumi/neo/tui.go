@@ -660,9 +660,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		}
-		// Ctrl+D mirrors Ctrl+C: same arm/quit gate, same cancel-when-busy
-		// semantics. Two bindings is friendlier than picking one and forcing
-		// users to discover it.
+		// Ctrl+C clears an in-progress draft first, matching the normal line
+		// editing behavior users expect from agent CLIs. With an empty draft,
+		// it falls through to the quit/cancel gate below.
+		if keyStr == "ctrl+c" && m.textInput.Value() != "" {
+			m.textInput.Reset()
+			return m, nil
+		}
+
+		// Ctrl+D mirrors Ctrl+C when the draft is empty: same arm/quit gate,
+		// same cancel-when-busy semantics. Two bindings is friendlier than
+		// picking one and forcing users to discover it.
 		if keyStr == "ctrl+c" || keyStr == "ctrl+d" {
 			if m.ctrlCArmed {
 				return m, tea.Quit
@@ -704,6 +712,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.overlay.SetSize(m.width, m.height)
 			m.overlay.Refresh(m.toolHistory)
 			return m, nil
+		}
+
+		// When the user is editing a draft, keep the terminal editing keys
+		// bound by textarea: Ctrl+A moves to the start of the current line
+		// and Ctrl+E moves to the end.
+		if keyStr == "ctrl+a" && m.textInput.Value() != "" {
+			var tiCmd tea.Cmd
+			m.textInput, tiCmd = m.textInput.Update(msg)
+			return m, tiCmd
 		}
 
 		// Shift+Tab toggles plan mode. The toggle must run before the approval

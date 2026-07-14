@@ -415,6 +415,20 @@ func TestModel_Update_KeyCtrlC_TwoPressesQuit(t *testing.T) {
 	assert.True(t, ok, "second consecutive Ctrl+C must produce a tea.QuitMsg")
 }
 
+func TestModel_Update_KeyCtrlC_WithDraftClearsInput(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.textInput.SetValue("half typed")
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	um := updated.(Model)
+
+	assert.Empty(t, um.textInput.Value(), "Ctrl+C with a draft must clear the textarea")
+	assert.False(t, um.ctrlCArmed, "clearing a draft must not arm the exit prompt")
+	assert.Nil(t, cmd, "clearing a draft must not quit")
+}
+
 func TestModel_Update_KeyCtrlC_FirstPressCancelsWhenBusy(t *testing.T) {
 	t.Parallel()
 
@@ -470,6 +484,38 @@ func TestModel_Update_KeyCtrlC_OtherKeyDisarms(t *testing.T) {
 	}
 }
 
+func TestModel_Update_CtrlAWithDraftMovesCursorStart(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+	m.textInput.SetValue("hello")
+	m.textInput.MoveToEnd()
+	require.Equal(t, 5, m.textInput.Column(), "precondition: cursor starts at the end")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
+	um := updated.(Model)
+
+	assert.Equal(t, 0, um.textInput.Column(), "Ctrl+A with a draft must move to line start")
+	assert.Equal(t, client.NeoApprovalModeManual, um.approvalMode,
+		"Ctrl+A with a draft must not toggle approval mode")
+}
+
+func TestModel_Update_CtrlEWithDraftMovesCursorEnd(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.textInput.SetValue("hello")
+	m.textInput.CursorStart()
+	require.Equal(t, 0, m.textInput.Column(), "precondition: cursor starts at the beginning")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'e', Mod: tea.ModCtrl})
+	um := updated.(Model)
+
+	assert.Equal(t, 5, um.textInput.Column(), "Ctrl+E must move to line end")
+}
+
 func TestModel_Update_KeyCtrlC_TimeoutDisarms(t *testing.T) {
 	t.Parallel()
 
@@ -504,6 +550,11 @@ func TestModel_Update_KeyCtrlC_StaleDisarmIgnored(t *testing.T) {
 	updated, _ = um.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	um = updated.(Model)
 	require.False(t, um.ctrlCArmed)
+
+	updated, _ = um.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	um = updated.(Model)
+	require.False(t, um.ctrlCArmed, "Ctrl+C with a draft must clear before re-arming")
+	require.Empty(t, um.textInput.Value())
 
 	updated, _ = um.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	um = updated.(Model)
