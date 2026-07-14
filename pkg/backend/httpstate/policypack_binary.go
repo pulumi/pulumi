@@ -15,6 +15,9 @@
 package httpstate
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -29,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -40,7 +44,8 @@ func validateBinaryMatrix(packDir string, binaries map[string]string) error {
 	if _, ok := binaries[workspace.PlatformLinuxAmd64]; !ok {
 		return fmt.Errorf(
 			"policy packs published with binaries must include a %s binary: "+
-				"server-side policy evaluation runs on %s",
+				"server-side policy evaluation runs on %s; "+
+				"pass --source-only to publish without binaries",
 			workspace.PlatformLinuxAmd64, workspace.PlatformLinuxAmd64)
 	}
 	for _, platform := range slices.Sorted(maps.Keys(binaries)) {
@@ -53,7 +58,8 @@ func validateBinaryMatrix(packDir string, binaries map[string]string) error {
 	if _, ok := binaries[hostPlatform]; !ok {
 		return fmt.Errorf(
 			"cannot publish from %s: no %s binary was built, "+
-				"which is required to run publish-time conformance checks",
+				"which is required to run publish-time conformance checks; "+
+				"pass --source-only to publish without binaries",
 			hostPlatform, hostPlatform)
 	}
 	return nil
@@ -148,6 +154,10 @@ func (pack *cloudPolicyPack) publishWithBinaries(
 	if err != nil {
 		return fmt.Errorf("conformance check failed: the %s binary did not boot: %w", hostPlatform, err)
 	}
+	// Declared after the stage removal defer so it runs first (defers are LIFO): the
+	// analyzer process must exit before its staged directory is deleted, or removal
+	// fails on Windows and the process otherwise leaks.
+	defer contract.IgnoreClose(analyzer)
 
 	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
 	if err != nil {
@@ -184,6 +194,7 @@ func (pack *cloudPolicyPack) publishWithBinaries(
 	if err != nil {
 		return err
 	}
+	warnIfSourceTarballContainsBinaries(sourceTarball)
 
 	fmt.Println("Uploading policy pack to Pulumi service")
 
@@ -196,4 +207,52 @@ func (pack *cloudPolicyPack) publishWithBinaries(
 
 	fmt.Printf("\nPermalink: %s/%s\n", pack.ref.CloudConsoleURL(), publishedVersion)
 	return nil
+}
+
+// sourceTarballBinaries lists the pack-relative names of any entries under the source
+// tarball's "package/" root that match the pulumi-analyzer-<name>-<os>-<arch>[.exe]
+// build convention. It never returns an error: a tarball it can't parse is reported as
+// having no detected binaries, since this is a best-effort warning, not a gate.
+func sourceTarballBinaries(sourceTarball []byte) []string {
+	gz, err := gzip.NewReader(bytes.NewReader(sourceTarball))
+	if err != nil {
+		return nil
+	}
+	defer gz.Close()
+
+	var found []string
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if err != nil {
+			break
+		}
+		if hdr.Typeflag != tar.TypeReg {
+			continue
+		}
+		name := filepath.ToSlash(hdr.Name)
+		name = strings.TrimPrefix(name, packageDir+"/")
+		if _, ok := workspace.PolicyBinaryConventionPlatform(filepath.Base(name)); ok {
+			found = append(found, name)
+		}
+	}
+	return found
+}
+
+// warnIfSourceTarballContainsBinaries prints a loud warning if the source archive
+// dual-published alongside the platform binaries also contains a built analyzer
+// binary. buildSourceTarball reuses npm pack / gitignore-based archiving, so a pack
+// author who doesn't exclude bin/ can end up shipping an un-conformance-checked binary
+// inside the source fallback, bloating downloads for CLIs too old to use the binary
+// artifacts.
+func warnIfSourceTarballContainsBinaries(sourceTarball []byte) {
+	found := sourceTarballBinaries(sourceTarball)
+	if len(found) == 0 {
+		return
+	}
+	fmt.Fprintf(os.Stderr,
+		"warning: the source archive for this policy pack contains built analyzer binaries (%s); "+
+			"exclude them (e.g. via .npmignore or .gitignore) so they aren't shipped unconformance-checked "+
+			"and bloating the source download\n",
+		strings.Join(found, ", "))
 }

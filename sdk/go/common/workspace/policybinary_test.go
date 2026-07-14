@@ -70,6 +70,27 @@ func TestDiscoverPolicyBinariesMixedNames(t *testing.T) {
 	require.ErrorContains(t, err, "beta")
 }
 
+func TestPolicyBinaryConventionPlatform(t *testing.T) {
+	t.Parallel()
+
+	platform, ok := PolicyBinaryConventionPlatform("pulumi-analyzer-mypack-linux-amd64")
+	require.True(t, ok)
+	assert.Equal(t, "linux-amd64", platform)
+
+	platform, ok = PolicyBinaryConventionPlatform("pulumi-analyzer-mypack-windows-amd64.exe")
+	require.True(t, ok)
+	assert.Equal(t, "windows-amd64", platform)
+
+	_, ok = PolicyBinaryConventionPlatform("pulumi-analyzer-mypack")
+	assert.False(t, ok, "no platform suffix")
+
+	_, ok = PolicyBinaryConventionPlatform("pulumi-analyzer-mypack-freebsd-riscv")
+	assert.False(t, ok, "unknown platform")
+
+	_, ok = PolicyBinaryConventionPlatform("index.js")
+	assert.False(t, ok, "no policy binary prefix")
+}
+
 func TestParsePolicyBinaryOverrides(t *testing.T) {
 	t.Parallel()
 

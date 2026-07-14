@@ -39,6 +39,10 @@ func (a *analyzer) GetAnalyzerInfo(ctx context.Context, req *emptypb.Empty) (*pu
 	return &pulumirpc.AnalyzerInfo{Name: "binary-test-pack", Version: "0.0.1"}, nil
 }
 
+func (a *analyzer) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{Version: "0.0.1"}, nil
+}
+
 func (a *analyzer) Analyze(ctx context.Context, req *pulumirpc.AnalyzeRequest) (*pulumirpc.AnalyzeResponse, error) {
 	return &pulumirpc.AnalyzeResponse{}, nil
 }

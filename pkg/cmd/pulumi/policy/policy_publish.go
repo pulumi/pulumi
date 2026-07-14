@@ -61,7 +61,8 @@ func newPolicyPublishCmd() *cobra.Command {
 	})
 
 	cmd.Flags().StringArrayVar(&policyPublishCmd.binaryFlags, "binary", nil,
-		"Pre-built analyzer binary to publish for a platform, as <os>-<arch>=<path> "+
+		"Pre-built analyzer binary to publish for a platform, as <os>-<arch>=<path>, "+
+			"where <path> is relative to the policy pack directory "+
 			"(repeatable; overrides bin/ discovery)")
 	cmd.Flags().BoolVar(&policyPublishCmd.sourceOnly, "source-only", false,
 		"Publish only the source archive, skipping binary discovery")

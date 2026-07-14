@@ -45,6 +45,26 @@ func CurrentPlatform() string {
 	return runtime.GOOS + "-" + runtime.GOARCH
 }
 
+// PolicyBinaryConventionPlatform reports whether name follows the policy pack binary
+// build convention pulumi-analyzer-<name>-<os>-<arch>[.exe], and if so returns the
+// <os>-<arch> platform it names. Used both to discover a pack's built binaries and to
+// detect one that has leaked into a source archive.
+func PolicyBinaryConventionPlatform(name string) (string, bool) {
+	if !strings.HasPrefix(name, policyBinaryPrefix) {
+		return "", false
+	}
+	stem := strings.TrimSuffix(strings.TrimPrefix(name, policyBinaryPrefix), ".exe")
+	parts := strings.Split(stem, "-")
+	if len(parts) < 3 {
+		return "", false
+	}
+	platform := parts[len(parts)-2] + "-" + parts[len(parts)-1]
+	if !validPolicyBinaryPlatforms[platform] {
+		return "", false
+	}
+	return platform, true
+}
+
 // DiscoverPolicyBinaries scans a policy pack's bin/ directory for binaries built to
 // the pulumi-analyzer-<name>-<os>-<arch>[.exe] convention and returns platform to
 // pack-relative path. It returns an empty map when the pack has no binaries.
@@ -60,18 +80,15 @@ func DiscoverPolicyBinaries(packDir string) (map[string]string, error) {
 	binaries := map[string]string{}
 	names := map[string]bool{}
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasPrefix(e.Name(), policyBinaryPrefix) {
+		if e.IsDir() {
+			continue
+		}
+		platform, ok := PolicyBinaryConventionPlatform(e.Name())
+		if !ok {
 			continue
 		}
 		stem := strings.TrimSuffix(strings.TrimPrefix(e.Name(), policyBinaryPrefix), ".exe")
 		parts := strings.Split(stem, "-")
-		if len(parts) < 3 {
-			continue
-		}
-		platform := parts[len(parts)-2] + "-" + parts[len(parts)-1]
-		if !validPolicyBinaryPlatforms[platform] {
-			continue
-		}
 		names[strings.Join(parts[:len(parts)-2], "-")] = true
 		binaries[platform] = filepath.Join("bin", e.Name())
 	}

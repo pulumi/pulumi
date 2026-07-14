@@ -50,6 +50,7 @@ func TestValidateBinaryMatrixRequiresLinuxAmd64(t *testing.T) {
 	dir := writeTestPack(t, binaries)
 	err := validateBinaryMatrix(dir, binaries)
 	require.ErrorContains(t, err, workspace.PlatformLinuxAmd64)
+	require.ErrorContains(t, err, "--source-only")
 }
 
 func TestValidateBinaryMatrixRequiresHostPlatform(t *testing.T) {
@@ -62,6 +63,7 @@ func TestValidateBinaryMatrixRequiresHostPlatform(t *testing.T) {
 	dir := writeTestPack(t, binaries)
 	err := validateBinaryMatrix(dir, binaries)
 	require.ErrorContains(t, err, workspace.CurrentPlatform())
+	require.ErrorContains(t, err, "--source-only")
 }
 
 func TestValidateBinaryMatrixMissingFile(t *testing.T) {
@@ -122,6 +124,53 @@ func TestBuildBinaryArtifactWindowsSuffix(t *testing.T) {
 
 	entries := tarEntries(t, tgz)
 	assert.Contains(t, entries, "package/pulumi-analyzer-mypack.exe")
+}
+
+func buildTGZ(t *testing.T, files map[string]string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	for name, content := range files {
+		require.NoError(t, tw.WriteHeader(&tar.Header{
+			Name: name,
+			Mode: 0o644,
+			Size: int64(len(content)),
+		}))
+		_, err := tw.Write([]byte(content))
+		require.NoError(t, err)
+	}
+	require.NoError(t, tw.Close())
+	require.NoError(t, gz.Close())
+	return buf.Bytes()
+}
+
+func TestSourceTarballBinariesDetectsConventionNames(t *testing.T) {
+	t.Parallel()
+
+	tgz := buildTGZ(t, map[string]string{
+		"package/PulumiPolicy.yaml":                            "runtime: nodejs\n",
+		"package/bin/pulumi-analyzer-mypack-linux-amd64":       "bin",
+		"package/bin/pulumi-analyzer-mypack-windows-amd64.exe": "bin",
+		"package/index.js":                                     "// not a binary",
+	})
+
+	found := sourceTarballBinaries(tgz)
+	assert.ElementsMatch(t, found, []string{
+		"bin/pulumi-analyzer-mypack-linux-amd64",
+		"bin/pulumi-analyzer-mypack-windows-amd64.exe",
+	})
+}
+
+func TestSourceTarballBinariesNoneFound(t *testing.T) {
+	t.Parallel()
+
+	tgz := buildTGZ(t, map[string]string{
+		"package/PulumiPolicy.yaml": "runtime: nodejs\n",
+		"package/index.js":          "// not a binary",
+	})
+
+	assert.Empty(t, sourceTarballBinaries(tgz))
 }
 
 func TestPackLocationSelection(t *testing.T) {
