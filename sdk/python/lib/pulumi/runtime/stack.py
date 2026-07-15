@@ -17,10 +17,10 @@ Support for automatic stack components.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from inspect import isawaitable
-from typing import Any, Optional
-from collections.abc import Callable
-from collections.abc import Awaitable
+from typing import TYPE_CHECKING, Any, Optional
+
 from google.protobuf import empty_pb2
 import grpc
 
@@ -33,6 +33,7 @@ from ..resource import (
     Resource,
     ResourceTransformation,
     ResourceTransform,
+    export,
 )
 from ..invoke import (
     InvokeTransform,
@@ -53,6 +54,50 @@ from .settings import (
     set_root_resource,
 )
 from .sync_await import _sync_await
+
+if TYPE_CHECKING:
+    from ..output import Inputs
+
+
+_AsyncProgram = Callable[[], Awaitable[Optional["Inputs"]]]
+
+
+def run(program: _AsyncProgram) -> None:
+    """Register an asynchronous entrypoint for the current Pulumi program.
+
+    The entrypoint is invoked and awaited after the program's top-level module
+    code has finished running. Each entry in a mapping returned by the entrypoint
+    is exported as if :func:`pulumi.export` had been called with its key and
+    value. This means returned entries merge with existing exports, overwriting
+    any existing export with the same name. The entrypoint may instead return
+    ``None`` and use :func:`pulumi.export` directly.
+
+    ``pulumi.run`` may only be called once per Pulumi program.
+
+    Example::
+
+        import pulumi
+
+        async def main() -> pulumi.Inputs:
+            value = await some_async_operation()
+            return {"value": value}
+
+        pulumi.run(main)
+
+    :param program: A zero-argument callable that returns an awaitable.
+    """
+    if not callable(program):
+        raise TypeError("pulumi.run expects a callable")
+
+    root = get_root_resource()
+    if not isinstance(root, Stack):
+        from ..errors import RunError
+
+        raise RunError(
+            "pulumi.run may only be called while a Pulumi program is running"
+        )
+
+    root._register_async_program(program)
 
 
 async def _wait_for_shutdown() -> None:
@@ -85,19 +130,23 @@ class ResourceRegistrationFailed(Exception):
     """
 
 
-async def run_pulumi_func(func: Callable[[], None]):
+async def run_pulumi_func(
+    func: Callable[[], Optional[Awaitable[None]]],
+) -> None:
     # Run the function and grab any exception it generates
-    ex = None
+    ex: Optional[BaseException] = None
     try:
-        func()
-    except Exception as e:  # noqa # We re-raise this below
+        result = func()
+        if isawaitable(result):
+            await result
+    except BaseException as e:  # noqa: BLE001 re-raised after runtime cleanup
         ex = e
 
     # Wait for RPCs to complete, then signal and wait for shutdown.
     try:
         await wait_for_rpcs()
         # If func succeeded, let the monitor decide when we should shutdown.
-        if not ex:
+        if ex is None:
             await _wait_for_shutdown()
     finally:
         # Finally, we must always shutdown the callbacks server when we're done.
@@ -105,7 +154,7 @@ async def run_pulumi_func(func: Callable[[], None]):
 
     # By now, all tasks have exited and we're good to go.
     log.debug("run_pulumi_func completed")
-    if ex:
+    if ex is not None:
         # Re-raise ex so the language runtime can report the error.
         raise ex
 
@@ -198,8 +247,24 @@ async def run_in_stack(func: Callable[[], Optional[Awaitable[None]]]):
     is meant for internal runtime use only and is used by the Python SDK entrypoint program.
     """
 
-    def run() -> None:
-        Stack(func)
+    async def run() -> None:
+        stack = Stack()
+        try:
+            result = func()
+            if isawaitable(result):
+                await result
+
+            program = stack._take_async_program()
+            if program is not None:
+                outputs = program()
+                if not isawaitable(outputs):
+                    raise TypeError(
+                        "The function passed to pulumi.run must return an awaitable"
+                    )
+
+                stack._add_program_outputs(await outputs)
+        finally:
+            stack.finish()
 
     await _load_monitor_feature_support()
     await run_pulumi_func(run)
@@ -212,7 +277,10 @@ class Stack(ComponentResource):
 
     outputs: dict[str, Any]
 
-    def __init__(self, func: Callable[[], Optional[Awaitable[None]]]) -> None:
+    def __init__(
+        self,
+        func: Optional[Callable[[], Optional[Awaitable[None]]]] = None,
+    ) -> None:
         # Ensure we don't already have a stack registered.
         if get_root_resource() is not None:
             raise Exception("Only one root Pulumi Stack may be active at once")
@@ -221,12 +289,22 @@ class Stack(ComponentResource):
         name = f"{get_project()}-{get_stack()}"
         super().__init__("pulumi:pulumi:Stack", name, None, None)
 
-        # Invoke the function while this stack is active and then register its outputs. func might return an awaitable
-        # so we need to await it, ideally we'd do this in a standard way but alas back compatibility means we do
-        # everything in stack constructors, so we have to use sync_await here.
-
         self.outputs = {}
+        self._async_program: Optional[_AsyncProgram] = None
+        self._async_program_registration_closed = False
+        self._outputs_registered = False
         set_root_resource(self)
+
+        # Stack historically invoked the program callback and finalized outputs
+        # in its constructor. Keep Stack(func) working for direct callers of this
+        # importable internal class. run_in_stack now creates Stack() and awaits
+        # user code itself.
+        if func is not None:
+            self._run_legacy_callback(func)
+
+    def _run_legacy_callback(
+        self, func: Callable[[], Optional[Awaitable[None]]]
+    ) -> None:
         try:
             awaitable = func()
             # This _should_ be an awaitable but old pulumi executors returned modules here, so we need to handle that
@@ -234,8 +312,36 @@ class Stack(ComponentResource):
             if isawaitable(awaitable):
                 _sync_await(awaitable)
         finally:
-            self.register_outputs(massage(self.outputs, []))
+            self.finish()
             # Intentionally leave this resource installed in case subsequent async work uses it.
+
+    def _register_async_program(self, program: _AsyncProgram) -> None:
+        from ..errors import RunError
+
+        if self._async_program is not None or self._async_program_registration_closed:
+            raise RunError("pulumi.run may only be called once")
+
+        self._async_program = program
+
+    def _take_async_program(self) -> Optional[_AsyncProgram]:
+        self._async_program_registration_closed = True
+        return self._async_program
+
+    def _add_program_outputs(self, outputs: Optional["Inputs"]) -> None:
+        if outputs is None:
+            return
+        for name, value in outputs.items():
+            export(name, value)
+
+    def finish(self) -> None:
+        """Register this stack's outputs exactly once."""
+        if self._outputs_registered:
+            return
+
+        self._async_program_registration_closed = True
+        outputs = massage(self.outputs, [])
+        self._outputs_registered = True
+        self.register_outputs(outputs)
 
     def output(self, name: str, value: Any):
         """

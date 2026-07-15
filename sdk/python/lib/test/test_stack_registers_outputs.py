@@ -93,3 +93,19 @@ async def test_stack_registers_outputs():
         assert stack.outputs["fruit"] == "banana"
     finally:
         settings.configure(old_settings)
+
+
+@pytest.mark.asyncio
+async def test_legacy_stack_awaits_program():
+    settings.reset_options()
+    old_settings = deepcopy(settings.SETTINGS)
+
+    async def program():
+        pulumi.export("fruit", "banana")
+
+    try:
+        Stack(program)
+        stack = get_root_resource()
+        assert stack.outputs == {"fruit": "banana"}
+    finally:
+        settings.configure(old_settings)
