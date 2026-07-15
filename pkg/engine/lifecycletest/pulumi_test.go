@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -673,9 +674,9 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	}
 
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{{
+		PendingOperations: []pkgresource.Operation{{
 			Resource: newResource(urnA, "0", false),
-			Type:     resource.OperationTypeUpdating,
+			Type:     pkgresource.OperationTypeUpdating,
 		}},
 		Resources: []*resource.State{
 			newResource(urnA, "0", false),
@@ -727,9 +728,9 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	}
 
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{{
+		PendingOperations: []pkgresource.Operation{{
 			Resource: newResource(urnA, "0", false),
-			Type:     resource.OperationTypeUpdating,
+			Type:     pkgresource.OperationTypeUpdating,
 		}},
 		Resources: []*resource.State{
 			newResource(urnA, "0", false),
@@ -799,14 +800,14 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	resA := newResource(urnA, "0", false)
 	resB := newResource(urnB, "0", false)
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{
+		PendingOperations: []pkgresource.Operation{
 			{
 				Resource: resA,
-				Type:     resource.OperationTypeUpdating,
+				Type:     pkgresource.OperationTypeUpdating,
 			},
 			{
 				Resource: resB,
-				Type:     resource.OperationTypeCreating,
+				Type:     pkgresource.OperationTypeCreating,
 			},
 		},
 		Resources: []*resource.State{
@@ -837,12 +838,12 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	require.NoError(t, err)
 	// Assert that pending CREATE operation was preserved
 	require.Len(t, new.PendingOperations, 1)
-	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
+	assert.Equal(t, pkgresource.OperationTypeCreating, new.PendingOperations[0].Type)
 	assert.Equal(t, urnB, new.PendingOperations[0].Resource.URN)
 }
 
-func findPendingOperationsByType(opType resource.OperationType, snapshot *deploy.Snapshot) []resource.Operation {
-	var operations []resource.Operation
+func findPendingOperationsByType(opType pkgresource.OperationType, snapshot *deploy.Snapshot) []pkgresource.Operation {
+	var operations []pkgresource.Operation
 	for _, operation := range snapshot.PendingOperations {
 		if operation.Type == opType {
 			operations = append(operations, operation)
@@ -875,14 +876,14 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	}
 
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{
+		PendingOperations: []pkgresource.Operation{
 			{
 				Resource: newResource(urnA, "0", false),
-				Type:     resource.OperationTypeUpdating,
+				Type:     pkgresource.OperationTypeUpdating,
 			},
 			{
 				Resource: newResource(urnB, "1", false),
-				Type:     resource.OperationTypeCreating,
+				Type:     pkgresource.OperationTypeCreating,
 			},
 		},
 		Resources: []*resource.State{
@@ -929,12 +930,12 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	new, _ := op.Run(project, target, options, false, nil, validate)
 	require.NotNil(t, new)
 
-	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
+	assert.Equal(t, pkgresource.OperationTypeCreating, new.PendingOperations[0].Type)
 
 	// Assert that CREATE pending operations are retained
 	// TODO: should revisit whether non-CREATE pending operations should also be retained
 	require.Len(t, new.PendingOperations, 1)
-	createOperations := findPendingOperationsByType(resource.OperationTypeCreating, new)
+	createOperations := findPendingOperationsByType(pkgresource.OperationTypeCreating, new)
 	require.Len(t, createOperations, 1)
 	assert.Equal(t, urnB, createOperations[0].Resource.URN)
 }

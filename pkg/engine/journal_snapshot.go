@@ -20,6 +20,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -158,7 +159,7 @@ type JournalEntry struct {
 	// The resource state associated with this journal entry.
 	State *resource.State
 	// The operation associated with this journal entry, if any.
-	Operation *resource.Operation
+	Operation *pkgresource.Operation
 	// If true, this journal entry can be elided and does not need to be written immediately.
 	ElideWrite bool
 	// If true, this journal entry is part of a refresh operation.
@@ -343,7 +344,7 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 		Manifest:          base.Manifest,
 		SecretsManager:    base.SecretsManager,
 		Resources:         make([]*resource.State, 0, len(base.Resources)),
-		PendingOperations: make([]resource.Operation, 0, len(base.PendingOperations)),
+		PendingOperations: make([]pkgresource.Operation, 0, len(base.PendingOperations)),
 		Metadata:          base.Metadata,
 		Extensions:        base.Extensions,
 		Snippets:          slices.Clone(base.Snippets),
@@ -585,7 +586,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 
 func (sm *JournalSnapshotManager) doCreate(step deploy.Step, operationID int64) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
-	op := resource.NewOperation(step.New(), resource.OperationTypeCreating)
+	op := pkgresource.NewOperation(step.New(), pkgresource.OperationTypeCreating)
 
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
@@ -628,7 +629,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 
 func (sm *JournalSnapshotManager) doUpdate(step deploy.Step, operationID int64) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.URN())
-	op := resource.NewOperation(step.New(), resource.OperationTypeUpdating)
+	op := pkgresource.NewOperation(step.New(), pkgresource.OperationTypeUpdating)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
 	err := sm.addJournalEntry(journalEntry)
@@ -662,7 +663,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 
 func (sm *JournalSnapshotManager) doDelete(step deploy.Step, operationID int64) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
-	op := resource.NewOperation(step.Old(), resource.OperationTypeDeleting)
+	op := pkgresource.NewOperation(step.Old(), pkgresource.OperationTypeDeleting)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
 
@@ -722,7 +723,7 @@ func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error
 
 func (sm *JournalSnapshotManager) doRead(step deploy.Step, operationID int64) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
-	op := resource.NewOperation(step.New(), resource.OperationTypeReading)
+	op := pkgresource.NewOperation(step.New(), pkgresource.OperationTypeReading)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
 	err := sm.addJournalEntry(journalEntry)
@@ -834,7 +835,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 
 func (sm *JournalSnapshotManager) doImport(step deploy.Step, operationID int64) (SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
-	op := resource.NewOperation(step.New(), resource.OperationTypeImporting)
+	op := pkgresource.NewOperation(step.New(), pkgresource.OperationTypeImporting)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
 	err := sm.addJournalEntry(journalEntry)

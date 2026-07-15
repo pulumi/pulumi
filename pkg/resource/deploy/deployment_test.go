@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -40,7 +41,7 @@ func newResource(name string) *resource.State {
 	}
 }
 
-func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapshot {
+func newSnapshot(resources []*resource.State, ops []pkgresource.Operation) *Snapshot {
 	return NewSnapshot(Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
@@ -55,9 +56,9 @@ func TestPendingOperationsDeployment(t *testing.T) {
 	resourceB := newResource("b")
 	snap := newSnapshot([]*resource.State{
 		resourceA,
-	}, []resource.Operation{
+	}, []pkgresource.Operation{
 		{
-			Type:     resource.OperationTypeCreating,
+			Type:     pkgresource.OperationTypeCreating,
 			Resource: resourceB,
 		},
 	})

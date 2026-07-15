@@ -29,6 +29,7 @@ import (
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"go.opentelemetry.io/otel"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/migrate"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -533,7 +534,7 @@ func DeserializeDeploymentV3(
 
 	type deserializedData struct {
 		resources []*resource.State
-		ops       []resource.Operation
+		ops       []pkgresource.Operation
 	}
 
 	data, err := BatchDecrypt(
@@ -550,7 +551,7 @@ func DeserializeDeploymentV3(
 				resources = append(resources, desres)
 			}
 
-			ops := slice.Prealloc[resource.Operation](len(deployment.PendingOperations))
+			ops := slice.Prealloc[pkgresource.Operation](len(deployment.PendingOperations))
 			for _, op := range deployment.PendingOperations {
 				desop, err := DeserializeOperation(op, dec)
 				if err != nil {
@@ -692,7 +693,7 @@ func SerializeResource(
 
 // SerializeOperation serializes a resource in a pending state.
 func SerializeOperation(
-	ctx context.Context, op resource.Operation, enc config.Encrypter, showSecrets bool,
+	ctx context.Context, op pkgresource.Operation, enc config.Encrypter, showSecrets bool,
 ) (apitype.OperationV2, error) {
 	res, err := SerializeResource(ctx, op.Resource, enc, showSecrets)
 	if err != nil {
@@ -920,12 +921,12 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 
 // DeserializeOperation hydrates a pending resource/operation pair.
 func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter,
-) (resource.Operation, error) {
+) (pkgresource.Operation, error) {
 	res, err := DeserializeResource(op.Resource, dec)
 	if err != nil {
-		return resource.Operation{}, err
+		return pkgresource.Operation{}, err
 	}
-	return resource.NewOperation(res, resource.OperationType(op.Type)), nil
+	return pkgresource.NewOperation(res, pkgresource.OperationType(op.Type)), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.
