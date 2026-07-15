@@ -84,8 +84,9 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 		Use:   "upsert <name>",
 		Short: "Create a resource or fully replace an existing one",
 		Long: "Create a resource or fully replace an existing one.\n\n" +
-			"Adds a PCL snippet to the stack for the named resource and runs the deployment engine, " +
-			"targeting only that snippet so no other resources are affected.",
+			"The resource created or replaced is tracked in the stack, " +
+			"so Pulumi can manage its lifecycle. No other resources in " +
+			"the stack are affected when running this command.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if pc.stateless {
@@ -125,8 +126,9 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 			displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
 			stack, err := cmdStack.RequireStack(
 				ctx, pc.sink, pc.ws, pc.lm,
-				"", /*stackName — use currently selected*/
-				cmdStack.LoadOnly, displayOpts, "" /*configFile*/)
+				"",                                 /*stackName — use currently selected*/
+				cmdStack.LoadOnly, displayOpts, "", /*configFile*/
+			)
 			if err != nil {
 				return fmt.Errorf("load stack: %w", err)
 			}
@@ -171,7 +173,7 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 	}
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().StringVar(&inputFormat, "input", "yaml",
-		"Format of the resource inputs file (pcl or a language name supported by an installed converter)")
+		"Format of the resource inputs file (any language name supported by an installed converter)")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", res.InputProperties)
