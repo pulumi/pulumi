@@ -41,6 +41,14 @@ type ResourceImport struct {
 	// Extension is set when an extension parameterization should be applied to the resource's (base)
 	// provider. Mutually exclusive with Parameterization.
 	Extension *ResourceExtension
+
+	// Parent is the name of the resource's parent, if any. It must reference the name of another resource
+	// in the same response; resources without a parent are parented to the stack root.
+	Parent string
+
+	// Properties lists the input properties to include when generating code for the resource. Defaults to
+	// the resource's required properties.
+	Properties []string
 }
 
 // ResourceParameterization describes the base plugin that a resource's parameterized provider is built
