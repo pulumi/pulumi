@@ -1,0 +1,4 @@
+component: protobuf
+kind: improvement
+body: Pass a schema loader target to state converters in ConvertStateRequest
+time: 2026-07-15T16:32:55.154006+02:00

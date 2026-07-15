@@ -16,7 +16,7 @@ from .codegen import hcl_pb2 as pulumi_dot_codegen_dot_hcl__pb2
 from .codegen import loader_pb2 as pulumi_dot_codegen_dot_loader__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\":\n\x13\x43onvertStateRequest\x12\x15\n\rmapper_target\x18\x01 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x02 \x03(\t\"\xc9\x02\n\x0eResourceImport\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\n\n\x02id\x18\x03 \x01(\t\x12\x0f\n\x07version\x18\x04 \x01(\t\x12\x19\n\x11pluginDownloadURL\x18\x05 \x01(\t\x12\x14\n\x0clogical_name\x18\x06 \x01(\t\x12\x14\n\x0cis_component\x18\x07 \x01(\x08\x12\x11\n\tis_remote\x18\x08 \x01(\x08\x12=\n\x10parameterization\x18\t \x01(\x0b\x32#.pulumirpc.ResourceParameterization\x12/\n\textension\x18\n \x01(\x0b\x32\x1c.pulumirpc.ResourceExtension\x12\x0e\n\x06parent\x18\x0b \x01(\t\x12\x12\n\nproperties\x18\x0c \x03(\t\x12\x10\n\x08provider\x18\r \x01(\t\"J\n\x0eProviderImport\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\'\n\x06inputs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"V\n\x18ResourceParameterization\x12\x13\n\x0bplugin_name\x18\x01 \x01(\t\x12\x16\n\x0eplugin_version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"A\n\x11ResourceExtension\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x88\x02\n\x14\x43onvertStateResponse\x12,\n\tresources\x18\x01 \x03(\x0b\x32\x19.pulumirpc.ResourceImport\x12\x32\n\x0b\x64iagnostics\x18\x02 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\x12\x41\n\tproviders\x18\x03 \x03(\x0b\x32..pulumirpc.ConvertStateResponse.ProvidersEntry\x1aK\n\x0eProvidersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12(\n\x05value\x18\x02 \x01(\x0b\x32\x19.pulumirpc.ProviderImport:\x02\x38\x01\"\xac\x01\n\x15\x43onvertProgramRequest\x12\x18\n\x10source_directory\x18\x01 \x01(\t\x12\x18\n\x10target_directory\x18\x02 \x01(\t\x12\x15\n\rmapper_target\x18\x03 \x01(\t\x12\x15\n\rloader_target\x18\x04 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x05 \x03(\t\x12#\n\x1bgenerated_project_directory\x18\x06 \x01(\t\"L\n\x16\x43onvertProgramResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\"\x84\x02\n\x15\x43onvertSnippetRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\x0c\x12\x15\n\rtarget_loader\x18\x03 \x01(\t\x12*\n\x07package\x18\x04 \x01(\x0b\x32\x19.codegen.GetSchemaRequest\x12\r\n\x05token\x18\x05 \x01(\t\x12\x44\n\nattributes\x18\x06 \x03(\x0b\x32\x30.pulumirpc.ConvertSnippetRequest.AttributesEntry\x1a\x31\n\x0f\x41ttributesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xe8\x01\n\x16\x43onvertSnippetResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\x12\x0e\n\x06source\x18\x03 \x01(\x0c\x12\x45\n\nattributes\x18\x04 \x03(\x0b\x32\x31.pulumirpc.ConvertSnippetResponse.AttributesEntry\x1a\x31\n\x0f\x41ttributesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x32\x90\x02\n\tConverter\x12Q\n\x0c\x43onvertState\x12\x1e.pulumirpc.ConvertStateRequest\x1a\x1f.pulumirpc.ConvertStateResponse\"\x00\x12W\n\x0e\x43onvertProgram\x12 .pulumirpc.ConvertProgramRequest\x1a!.pulumirpc.ConvertProgramResponse\"\x00\x12W\n\x0e\x43onvertSnippet\x12 .pulumirpc.ConvertSnippetRequest\x1a!.pulumirpc.ConvertSnippetResponse\"\x00\x42\x34Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"Q\n\x13\x43onvertStateRequest\x12\x15\n\rmapper_target\x18\x01 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x02 \x03(\t\x12\x15\n\rloader_target\x18\x03 \x01(\t\"\xc9\x02\n\x0eResourceImport\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\n\n\x02id\x18\x03 \x01(\t\x12\x0f\n\x07version\x18\x04 \x01(\t\x12\x19\n\x11pluginDownloadURL\x18\x05 \x01(\t\x12\x14\n\x0clogical_name\x18\x06 \x01(\t\x12\x14\n\x0cis_component\x18\x07 \x01(\x08\x12\x11\n\tis_remote\x18\x08 \x01(\x08\x12=\n\x10parameterization\x18\t \x01(\x0b\x32#.pulumirpc.ResourceParameterization\x12/\n\textension\x18\n \x01(\x0b\x32\x1c.pulumirpc.ResourceExtension\x12\x0e\n\x06parent\x18\x0b \x01(\t\x12\x12\n\nproperties\x18\x0c \x03(\t\x12\x10\n\x08provider\x18\r \x01(\t\"J\n\x0eProviderImport\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\'\n\x06inputs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"V\n\x18ResourceParameterization\x12\x13\n\x0bplugin_name\x18\x01 \x01(\t\x12\x16\n\x0eplugin_version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"A\n\x11ResourceExtension\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x88\x02\n\x14\x43onvertStateResponse\x12,\n\tresources\x18\x01 \x03(\x0b\x32\x19.pulumirpc.ResourceImport\x12\x32\n\x0b\x64iagnostics\x18\x02 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\x12\x41\n\tproviders\x18\x03 \x03(\x0b\x32..pulumirpc.ConvertStateResponse.ProvidersEntry\x1aK\n\x0eProvidersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12(\n\x05value\x18\x02 \x01(\x0b\x32\x19.pulumirpc.ProviderImport:\x02\x38\x01\"\xac\x01\n\x15\x43onvertProgramRequest\x12\x18\n\x10source_directory\x18\x01 \x01(\t\x12\x18\n\x10target_directory\x18\x02 \x01(\t\x12\x15\n\rmapper_target\x18\x03 \x01(\t\x12\x15\n\rloader_target\x18\x04 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x05 \x03(\t\x12#\n\x1bgenerated_project_directory\x18\x06 \x01(\t\"L\n\x16\x43onvertProgramResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\"\x84\x02\n\x15\x43onvertSnippetRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\x0c\x12\x15\n\rtarget_loader\x18\x03 \x01(\t\x12*\n\x07package\x18\x04 \x01(\x0b\x32\x19.codegen.GetSchemaRequest\x12\r\n\x05token\x18\x05 \x01(\t\x12\x44\n\nattributes\x18\x06 \x03(\x0b\x32\x30.pulumirpc.ConvertSnippetRequest.AttributesEntry\x1a\x31\n\x0f\x41ttributesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xe8\x01\n\x16\x43onvertSnippetResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\x12\x0e\n\x06source\x18\x03 \x01(\x0c\x12\x45\n\nattributes\x18\x04 \x03(\x0b\x32\x31.pulumirpc.ConvertSnippetResponse.AttributesEntry\x1a\x31\n\x0f\x41ttributesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x32\x90\x02\n\tConverter\x12Q\n\x0c\x43onvertState\x12\x1e.pulumirpc.ConvertStateRequest\x1a\x1f.pulumirpc.ConvertStateResponse\"\x00\x12W\n\x0e\x43onvertProgram\x12 .pulumirpc.ConvertProgramRequest\x1a!.pulumirpc.ConvertProgramResponse\"\x00\x12W\n\x0e\x43onvertSnippet\x12 .pulumirpc.ConvertSnippetRequest\x1a!.pulumirpc.ConvertSnippetResponse\"\x00\x42\x34Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -31,31 +31,31 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _CONVERTSNIPPETRESPONSE_ATTRIBUTESENTRY._options = None
   _CONVERTSNIPPETRESPONSE_ATTRIBUTESENTRY._serialized_options = b'8\001'
   _globals['_CONVERTSTATEREQUEST']._serialized_start=122
-  _globals['_CONVERTSTATEREQUEST']._serialized_end=180
-  _globals['_RESOURCEIMPORT']._serialized_start=183
-  _globals['_RESOURCEIMPORT']._serialized_end=512
-  _globals['_PROVIDERIMPORT']._serialized_start=514
-  _globals['_PROVIDERIMPORT']._serialized_end=588
-  _globals['_RESOURCEPARAMETERIZATION']._serialized_start=590
-  _globals['_RESOURCEPARAMETERIZATION']._serialized_end=676
-  _globals['_RESOURCEEXTENSION']._serialized_start=678
-  _globals['_RESOURCEEXTENSION']._serialized_end=743
-  _globals['_CONVERTSTATERESPONSE']._serialized_start=746
-  _globals['_CONVERTSTATERESPONSE']._serialized_end=1010
-  _globals['_CONVERTSTATERESPONSE_PROVIDERSENTRY']._serialized_start=935
-  _globals['_CONVERTSTATERESPONSE_PROVIDERSENTRY']._serialized_end=1010
-  _globals['_CONVERTPROGRAMREQUEST']._serialized_start=1013
-  _globals['_CONVERTPROGRAMREQUEST']._serialized_end=1185
-  _globals['_CONVERTPROGRAMRESPONSE']._serialized_start=1187
-  _globals['_CONVERTPROGRAMRESPONSE']._serialized_end=1263
-  _globals['_CONVERTSNIPPETREQUEST']._serialized_start=1266
-  _globals['_CONVERTSNIPPETREQUEST']._serialized_end=1526
-  _globals['_CONVERTSNIPPETREQUEST_ATTRIBUTESENTRY']._serialized_start=1477
-  _globals['_CONVERTSNIPPETREQUEST_ATTRIBUTESENTRY']._serialized_end=1526
-  _globals['_CONVERTSNIPPETRESPONSE']._serialized_start=1529
-  _globals['_CONVERTSNIPPETRESPONSE']._serialized_end=1761
-  _globals['_CONVERTSNIPPETRESPONSE_ATTRIBUTESENTRY']._serialized_start=1477
-  _globals['_CONVERTSNIPPETRESPONSE_ATTRIBUTESENTRY']._serialized_end=1526
-  _globals['_CONVERTER']._serialized_start=1764
-  _globals['_CONVERTER']._serialized_end=2036
+  _globals['_CONVERTSTATEREQUEST']._serialized_end=203
+  _globals['_RESOURCEIMPORT']._serialized_start=206
+  _globals['_RESOURCEIMPORT']._serialized_end=535
+  _globals['_PROVIDERIMPORT']._serialized_start=537
+  _globals['_PROVIDERIMPORT']._serialized_end=611
+  _globals['_RESOURCEPARAMETERIZATION']._serialized_start=613
+  _globals['_RESOURCEPARAMETERIZATION']._serialized_end=699
+  _globals['_RESOURCEEXTENSION']._serialized_start=701
+  _globals['_RESOURCEEXTENSION']._serialized_end=766
+  _globals['_CONVERTSTATERESPONSE']._serialized_start=769
+  _globals['_CONVERTSTATERESPONSE']._serialized_end=1033
+  _globals['_CONVERTSTATERESPONSE_PROVIDERSENTRY']._serialized_start=958
+  _globals['_CONVERTSTATERESPONSE_PROVIDERSENTRY']._serialized_end=1033
+  _globals['_CONVERTPROGRAMREQUEST']._serialized_start=1036
+  _globals['_CONVERTPROGRAMREQUEST']._serialized_end=1208
+  _globals['_CONVERTPROGRAMRESPONSE']._serialized_start=1210
+  _globals['_CONVERTPROGRAMRESPONSE']._serialized_end=1286
+  _globals['_CONVERTSNIPPETREQUEST']._serialized_start=1289
+  _globals['_CONVERTSNIPPETREQUEST']._serialized_end=1549
+  _globals['_CONVERTSNIPPETREQUEST_ATTRIBUTESENTRY']._serialized_start=1500
+  _globals['_CONVERTSNIPPETREQUEST_ATTRIBUTESENTRY']._serialized_end=1549
+  _globals['_CONVERTSNIPPETRESPONSE']._serialized_start=1552
+  _globals['_CONVERTSNIPPETRESPONSE']._serialized_end=1784
+  _globals['_CONVERTSNIPPETRESPONSE_ATTRIBUTESENTRY']._serialized_start=1500
+  _globals['_CONVERTSNIPPETRESPONSE_ATTRIBUTESENTRY']._serialized_end=1549
+  _globals['_CONVERTER']._serialized_start=1787
+  _globals['_CONVERTER']._serialized_end=2059
 # @@protoc_insertion_point(module_scope)
