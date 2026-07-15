@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -776,6 +777,40 @@ func TestNewEdge_ErrorReentrant(t *testing.T) {
 		err = dag.NewEdge(n1, n2)
 		require.NoError(t, err, "should allow edge from done to done")
 	})
+}
+
+func TestDAG_Predecessors(t *testing.T) {
+	t.Parallel()
+
+	dag := pdag.New[string]()
+	a := newFinishedNode(dag, "a")
+	b := newFinishedNode(dag, "b")
+	c := newFinishedNode(dag, "c")
+
+	require.NoError(t, dag.NewEdge(a, b))
+	require.NoError(t, dag.NewEdge(a, c))
+	require.NoError(t, dag.NewEdge(b, c))
+
+	assert.Empty(t, slices.Collect(dag.Predecessors(a)))
+	assert.Equal(t, []pdag.Node{a}, slices.Collect(dag.Predecessors(b)))
+	assert.ElementsMatch(t, []pdag.Node{a, b}, slices.Collect(dag.Predecessors(c)))
+}
+
+func TestDAG_Successors(t *testing.T) {
+	t.Parallel()
+
+	dag := pdag.New[string]()
+	a := newFinishedNode(dag, "a")
+	b := newFinishedNode(dag, "b")
+	c := newFinishedNode(dag, "c")
+
+	require.NoError(t, dag.NewEdge(a, b))
+	require.NoError(t, dag.NewEdge(a, c))
+	require.NoError(t, dag.NewEdge(b, c))
+
+	assert.ElementsMatch(t, []pdag.Node{b, c}, slices.Collect(dag.Successors(a)))
+	assert.Equal(t, []pdag.Node{c}, slices.Collect(dag.Successors(b)))
+	assert.Empty(t, slices.Collect(dag.Successors(c)))
 }
 
 func TestWalk_DynamicNodeAddition(t *testing.T) {
