@@ -307,6 +307,7 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 
 type hookScope struct {
 	root *model.Scope
+	kind HookKind
 }
 
 func (s *hookScope) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes, hcl.Diagnostics) {
@@ -324,8 +325,11 @@ func (s *hookScope) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scop
 			"type":       model.StringType,
 			"newInputs":  model.NewMapType(model.DynamicType),
 			"oldInputs":  model.NewMapType(model.DynamicType),
-			"newOutputs": model.NewMapType(model.DynamicType),
 			"oldOutputs": model.NewMapType(model.DynamicType),
+		}
+		// Error hooks fire after an operation fails, so there are no new outputs.
+		if s.kind != HookKindError {
+			properties["newOutputs"] = model.NewMapType(model.DynamicType)
 		}
 
 		scope.Define("args", &model.Variable{
@@ -339,7 +343,7 @@ func (s *hookScope) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scop
 
 func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
 	// Create a child scope that exposes the resource data to the hook.
-	hookScope := &hookScope{root: b.root}
+	hookScope := &hookScope{root: b.root, kind: node.Kind}
 	block, diagnostics := model.BindBlock(node.syntax, hookScope, b.tokens, b.options.modelOptions()...)
 
 	if cmd, ok := block.Body.Attribute("command"); ok {

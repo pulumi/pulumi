@@ -67,6 +67,8 @@ class ResourceImport(google.protobuf.message.Message):
     IS_REMOTE_FIELD_NUMBER: builtins.int
     PARAMETERIZATION_FIELD_NUMBER: builtins.int
     EXTENSION_FIELD_NUMBER: builtins.int
+    PARENT_FIELD_NUMBER: builtins.int
+    PROPERTIES_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type token for the resource."""
     name: builtins.str
@@ -83,6 +85,10 @@ class ResourceImport(google.protobuf.message.Message):
     """true if this is a component resource."""
     is_remote: builtins.bool
     """true if this is a remote resource. Ignored if is_component is false."""
+    parent: builtins.str
+    """the name of the resource's parent, if any. Must reference the name of another resource in the same
+    response; resources without a parent are parented to the stack root.
+    """
     @property
     def parameterization(self) -> global___ResourceParameterization:
         """the replacement parameterization to use for the resource's provider, if any. Set when the resource
@@ -94,6 +100,12 @@ class ResourceImport(google.protobuf.message.Message):
         """the extension parameterization to apply to the resource's provider, if any. Unlike a replacement
         parameterization, the resource's own type is in the base provider's package; the extension is a blob
         applied on top of that provider. Mutually exclusive with parameterization.
+        """
+
+    @property
+    def properties(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """the input properties to include when generating code for the resource. Defaults to the resource's
+        required properties.
         """
 
     def __init__(
@@ -109,9 +121,11 @@ class ResourceImport(google.protobuf.message.Message):
         is_remote: builtins.bool = ...,
         parameterization: global___ResourceParameterization | None = ...,
         extension: global___ResourceExtension | None = ...,
+        parent: builtins.str = ...,
+        properties: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["extension", b"extension", "parameterization", b"parameterization"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["extension", b"extension", "id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "parameterization", b"parameterization", "pluginDownloadURL", b"pluginDownloadURL", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["extension", b"extension", "id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "parameterization", b"parameterization", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ResourceImport = ResourceImport
 

@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -1943,5 +1944,110 @@ func TestUpgradeToOutputValues(t *testing.T) {
 		assert.Equal(t, resource.URN(urn), propU.ResourceReferenceValue().URN)
 		id := propU.ResourceReferenceValue().ID
 		assert.True(t, id.IsComputed())
+	}
+}
+
+func TestByteStringRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	const raw = "\x00hello \x80\xfe\xff world\xf0\x28"
+	pk := resource.PropertyKey("pk")
+	opts := MarshalOptions{KeepByteString: true}
+
+	prop, err := MarshalPropertyValue(pk, resource.NewProperty(raw), opts)
+	require.NoError(t, err)
+	assert.Equal(t, &structpb.Value{
+		Kind: &structpb.Value_StructValue{
+			StructValue: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					resource.SigKey: structpb.NewStringValue(resource.ByteStringSig),
+					"value":         structpb.NewStringValue("AGhlbGxvIID+/yB3b3JsZPAo"),
+				},
+			},
+		},
+	}, prop)
+
+	// The whole point of the encoding is that the resulting protobuf value is valid on the wire.
+	_, err = proto.Marshal(prop)
+	require.NoError(t, err)
+
+	val, err := UnmarshalPropertyValue(pk, prop, opts)
+	require.NoError(t, err)
+	assert.Equal(t, resource.NewProperty(raw), *val)
+}
+
+func TestByteStringValidUTF8Unchanged(t *testing.T) {
+	t.Parallel()
+
+	pk := resource.PropertyKey("pk")
+	opts := MarshalOptions{KeepByteString: true}
+
+	prop, err := MarshalPropertyValue(pk, resource.NewProperty("héllo wörld"), opts)
+	require.NoError(t, err)
+	assert.Equal(t, structpb.NewStringValue("héllo wörld"), prop)
+}
+
+func TestByteStringUnsupported(t *testing.T) {
+	t.Parallel()
+
+	pk := resource.PropertyKey("pk")
+	_, err := MarshalPropertyValue(pk, resource.NewProperty("\x80"), MarshalOptions{})
+	assert.EqualError(t, err,
+		"the value of property \"pk\" is a string that contains non-UTF8 bytes, which the receiver does not support")
+}
+
+func TestByteStringInSecretRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	const raw = "\x80\xfe\xff"
+	pk := resource.PropertyKey("pk")
+	opts := MarshalOptions{KeepSecrets: true, KeepByteString: true}
+
+	prop, err := MarshalPropertyValue(pk, resource.MakeSecret(resource.NewProperty(raw)), opts)
+	require.NoError(t, err)
+	_, err = proto.Marshal(prop)
+	require.NoError(t, err)
+
+	val, err := UnmarshalPropertyValue(pk, prop, opts)
+	require.NoError(t, err)
+	assert.Equal(t, resource.MakeSecret(resource.NewProperty(raw)), *val)
+}
+
+func TestByteStringMalformed(t *testing.T) {
+	t.Parallel()
+
+	pk := resource.PropertyKey("pk")
+
+	cases := []struct {
+		name string
+		obj  map[string]any
+		want string
+	}{
+		{
+			name: "missing value",
+			obj:  map[string]any{resource.SigKey: resource.ByteStringSig},
+			want: "malformed byte string for \"pk\": missing value",
+		},
+		{
+			name: "value not a string",
+			obj:  map[string]any{resource.SigKey: resource.ByteStringSig, "value": true},
+			want: "malformed byte string for \"pk\": value is not a string",
+		},
+		{
+			name: "value not base64",
+			obj:  map[string]any{resource.SigKey: resource.ByteStringSig, "value": "!!!"},
+			want: "malformed byte string for \"pk\": value is not valid base64: illegal base64 data at input byte 0",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			prop, err := MarshalPropertyValue(pk,
+				resource.NewProperty(resource.NewPropertyMapFromMap(c.obj)), MarshalOptions{})
+			require.NoError(t, err)
+			_, err = UnmarshalPropertyValue(pk, prop, MarshalOptions{})
+			assert.EqualError(t, err, c.want)
+		})
 	}
 }

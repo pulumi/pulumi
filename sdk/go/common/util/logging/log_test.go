@@ -68,6 +68,33 @@ func TestInitLoggingIgnoresLogToStderrWithOTel(t *testing.T) {
 	assert.Equal(t, discardHandler{}, primary)
 }
 
+// TestInitLoggingSkipsLogFileWithOTel verifies that no local log file is
+// created when logs are exported over OTel: the engine receives the records
+// and writes them to its own log output.
+func TestInitLoggingSkipsLogFileWithOTel(t *testing.T) { //nolint:paralleltest // mutates global logging state
+	t.Setenv("PULUMI_LOG_OTLP_ENDPOINT", "127.0.0.1:1")
+
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	prevPath, prevFile := logFilePath, logFile
+	t.Cleanup(func() {
+		shutdownExportHandler()
+		handlerMu.Lock()
+		primary = discardHandler{}
+		logFilePath, logFile = prevPath, prevFile
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	InitLogging(false, 9, false)
+
+	handlerMu.RLock()
+	defer handlerMu.RUnlock()
+	require.NotNil(t, exportHandler)
+	assert.Equal(t, discardHandler{}, primary)
+	assert.Equal(t, prevPath, logFilePath)
+}
+
 func TestFilter(t *testing.T) {
 	t.Parallel()
 
