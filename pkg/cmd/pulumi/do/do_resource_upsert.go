@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
@@ -89,14 +90,9 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 			"the stack are affected when running this command.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if pc.stateless {
-				// Defensive: upsert isn't registered in stateless mode, but guard in case the tree
-				// ever changes.
-				return errors.New("`upsert` requires stateful mode (do not pass --stateless)")
-			}
-			if pc.runStatefulUpdate == nil {
-				return errors.New("stateful `upsert` is not wired up in this build")
-			}
+			contract.Assertf(!pc.stateless, "upsert should not be registered in stateless mode")
+			contract.Assertf(pc.runStatefulUpdate != nil, "stateful `upsert` is not wired up in this build")
+
 			if pc.proj == nil {
 				return errors.New("`upsert` requires a Pulumi project (run inside a project directory)")
 			}
