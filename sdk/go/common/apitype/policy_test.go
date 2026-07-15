@@ -45,11 +45,9 @@ func TestPolicyPackPlatformFieldsRoundTrip(t *testing.T) {
 	var rp RequiredPolicy
 	require.NoError(t, json.Unmarshal([]byte(`{
 		"name": "p",
-		"packLocation": "legacy-key",
-		"packLocations": {"linux-amd64": "key-linux"}
+		"packLocation": "legacy-key"
 	}`), &rp))
 	assert.Equal(t, "legacy-key", rp.PackLocation)
-	assert.Equal(t, map[string]string{"linux-amd64": "key-linux"}, rp.PackLocations)
 }
 
 func TestPolicyPackPlatformFieldsOmitted(t *testing.T) {
@@ -61,5 +59,5 @@ func TestPolicyPackPlatformFieldsOmitted(t *testing.T) {
 
 	b, err = json.Marshal(RequiredPolicy{Name: "p"})
 	require.NoError(t, err)
-	assert.NotContains(t, string(b), "packLocations")
+	assert.NotContains(t, string(b), "packLocation")
 }

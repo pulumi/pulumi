@@ -110,11 +110,6 @@ type RequiredPolicy struct {
 	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation,omitempty"`
 
-	// PackLocations maps platform ("linux-amd64", ...) to a download location for
-	// that platform's binary artifact. Set only for packs published with binary
-	// artifacts; PackLocation remains the source archive.
-	PackLocations map[string]string `json:"packLocations,omitempty"`
-
 	// The configuration that is to be passed to the Policy Pack. This is map a of policies
 	// mapped to their configuration. Each individual configuration must comply with the
 	// JSON schema for each Policy within the Policy Pack.
