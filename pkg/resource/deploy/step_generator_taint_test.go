@@ -42,7 +42,7 @@ func TestTaintedResourceIsTargetedForReplace(t *testing.T) {
 	urn := resource.NewURN("test", "test", "", "test:test:Test", "myresource")
 
 	// Test 1: Non-tainted resource should not be targeted for replace
-	oldState := &resource.State{
+	oldState := &pkgresource.State{
 		URN:   urn,
 		Taint: false,
 	}
@@ -75,14 +75,14 @@ func TestTaintedResourceWithExplicitReplaceTarget(t *testing.T) {
 	}
 
 	// Test 1: Explicitly targeted resource should be replaced even if not tainted
-	oldState1 := &resource.State{
+	oldState1 := &pkgresource.State{
 		URN:   urn1,
 		Taint: false,
 	}
 	assert.True(t, sg.isTargetedReplace(urn1, oldState1), "Explicitly targeted resource should be replaced")
 
 	// Test 2: Tainted resource should be replaced even if not explicitly targeted
-	oldState2 := &resource.State{
+	oldState2 := &pkgresource.State{
 		URN:   urn2,
 		Taint: true,
 	}
@@ -118,7 +118,7 @@ func TestTaintedResourceDiff(t *testing.T) {
 	}
 
 	// Create a tainted resource
-	oldState := resource.NewState{
+	oldState := pkgresource.NewState{
 		Type:                    urn.Type(),
 		URN:                     urn,
 		Custom:                  false,
@@ -212,7 +212,7 @@ func TestTaintedProviderResource(t *testing.T) {
 
 	// Create a tainted provider resource
 	providerURN := resource.NewURN("test", "test", "", "pulumi:providers:aws", "default")
-	providerState := &resource.State{
+	providerState := &pkgresource.State{
 		URN:    providerURN,
 		Type:   providers.MakeProviderType("aws"),
 		Custom: true,
@@ -280,7 +280,7 @@ func TestTaintInteractionWithReplaceTargets(t *testing.T) {
 				deployment: deployment,
 			}
 
-			oldState := &resource.State{
+			oldState := &pkgresource.State{
 				URN:   urn,
 				Taint: tt.tainted,
 			}
@@ -354,7 +354,7 @@ func TestDiffWithTaintedResource(t *testing.T) {
 			}
 
 			// Create a tainted resource
-			oldState := resource.NewState{
+			oldState := pkgresource.NewState{
 				Type:                    urn.Type(),
 				URN:                     urn,
 				Custom:                  false,

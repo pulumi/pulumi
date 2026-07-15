@@ -21,6 +21,8 @@ import (
 	"runtime"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -41,15 +43,15 @@ func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 	// Arrange.
 	cases := []struct {
 		name      string
-		resources []*resource.State
+		resources []*pkgresource.State
 	}{
 		{
 			name:      "empty",
-			resources: []*resource.State{},
+			resources: []*pkgresource.State{},
 		},
 		{
 			name: "no dependencies",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{URN: "a"},
 				{URN: "b"},
 				{URN: "c"},
@@ -57,7 +59,7 @@ func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 		},
 		{
 			name: "valid dependencies",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{URN: "a"},
 				{URN: "b", Dependencies: []resource.URN{"a"}},
 				{URN: "c", Dependencies: []resource.URN{"b"}},
@@ -67,7 +69,7 @@ func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			fx := newStateRepairCmdFixture(t, []*resource.State{})
+			fx := newStateRepairCmdFixture(t, []*pkgresource.State{})
 
 			// Act.
 			err := fx.cmd.run(t.Context())
@@ -89,7 +91,7 @@ func TestStateRepair_ConfirmationIncludesReorderSummary(t *testing.T) {
 	}
 
 	// Arrange.
-	fx := newStateRepairCmdFixture(t, []*resource.State{
+	fx := newStateRepairCmdFixture(t, []*pkgresource.State{
 		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
 		{URN: "a", Type: "simple:index:Resource"},
 	})
@@ -114,7 +116,7 @@ func TestStateRepair_ConfirmationIncludesModificationSummary(t *testing.T) {
 	}
 
 	// Arrange.
-	fx := newStateRepairCmdFixture(t, []*resource.State{
+	fx := newStateRepairCmdFixture(t, []*pkgresource.State{
 		{URN: "c", Type: "simple:index:Resource", Dependencies: []resource.URN{"d"}},
 	})
 
@@ -138,7 +140,7 @@ func TestStateRepair_ConfirmationIncludesCombinedSummaries(t *testing.T) {
 	}
 
 	// Arrange.
-	fx := newStateRepairCmdFixture(t, []*resource.State{
+	fx := newStateRepairCmdFixture(t, []*pkgresource.State{
 		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
 		{URN: "a", Type: "simple:index:Resource"},
 		{URN: "c", Type: "simple:index:Resource", Dependencies: []resource.URN{"d"}},
@@ -164,7 +166,7 @@ func TestStateRepair_PromptsForConfirmationAndCancels(t *testing.T) {
 	}
 
 	// Arrange.
-	fx := newStateRepairCmdFixture(t, []*resource.State{
+	fx := newStateRepairCmdFixture(t, []*pkgresource.State{
 		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
 		{URN: "a", Type: "simple:index:Resource"},
 	})
@@ -189,7 +191,7 @@ func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 	}
 
 	// Arrange.
-	fx := newStateRepairCmdFixture(t, []*resource.State{
+	fx := newStateRepairCmdFixture(t, []*pkgresource.State{
 		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
 		{URN: "a", Type: "simple:index:Resource"},
 	})
@@ -208,7 +210,7 @@ func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 //nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
 func TestStateRepair_SkipsConfirmationIfYesFlagIsSet(t *testing.T) {
 	// Arrange.
-	fx := newStateRepairCmdFixture(t, []*resource.State{
+	fx := newStateRepairCmdFixture(t, []*pkgresource.State{
 		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
 		{URN: "a", Type: "simple:index:Resource"},
 	})
@@ -228,7 +230,7 @@ func TestStateRepair_DoesNotWriteIfRepairFails(t *testing.T) {
 	// Arrange.
 	//
 	// Dangling provider references can't be fixed, so this snapshot should fail to repair.
-	fx := newStateRepairCmdFixture(t, []*resource.State{
+	fx := newStateRepairCmdFixture(t, []*pkgresource.State{
 		{
 			URN:      "a",
 			Type:     "simple:index:Resource",
@@ -249,7 +251,7 @@ func TestStateRepair_DoesNotWriteIfRepairFails(t *testing.T) {
 //nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
 func TestStateRepair_RepairsSnapshots(t *testing.T) {
 	// Arrange.
-	fx := newStateRepairCmdFixture(t, []*resource.State{
+	fx := newStateRepairCmdFixture(t, []*pkgresource.State{
 		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
 		{URN: "a", Type: "simple:index:Resource"},
 	})
@@ -277,7 +279,7 @@ type stateRepairCmdFixture struct {
 
 func newStateRepairCmdFixture(
 	t *testing.T,
-	resources []*resource.State,
+	resources []*pkgresource.State,
 ) *stateRepairCmdFixture {
 	fx := &stateRepairCmdFixture{
 		stdin:  &mockFileReader{fd: 0},

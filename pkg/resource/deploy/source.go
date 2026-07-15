@@ -105,8 +105,8 @@ type RegisterResourceEvent interface {
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State  *resource.State // the resource state.
-	Result ResultState     // the result of the registration.
+	State  *pkgresource.State // the resource state.
+	Result ResultState        // the result of the registration.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.
@@ -145,10 +145,10 @@ type ReadResourceEvent interface {
 	// The source position of the resource read
 	SourcePosition() string
 	// The stack grace at the time of the read
-	StackTrace() []resource.StackFrame
+	StackTrace() []pkgresource.StackFrame
 }
 
 type ReadResult struct {
-	State  *resource.State
+	State  *pkgresource.State
 	Result ResultState
 }

@@ -84,11 +84,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 )
@@ -465,7 +466,7 @@ func writeFrameworkTestFunction(
 //
 //	s := &deploy.Snapshot{}
 //
-//	res0 := &resource.State{
+//	res0 := &pkgresource.State{
 //	  Type: ...,
 //	  URN: ...,
 //	  ...
@@ -533,7 +534,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 
 			g.writeLine("")
 			g.writeBlock(
-				varFor(r.URN())+" := &resource.State{",
+				varFor(r.URN())+" := &pkgresource.State{",
 				func(g *generator) {
 					g.writeLinef("Type:               \"%s\",", r.Type)
 					g.writeLinef("URN:                \"%s\",", r.URN())

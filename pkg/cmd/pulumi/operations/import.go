@@ -24,6 +24,8 @@ import (
 	"os"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
@@ -620,14 +622,14 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		}
 	}()
 
-	resourceTable := map[resource.URN]*resource.State{}
+	resourceTable := map[resource.URN]*pkgresource.State{}
 	for _, r := range snap.Resources {
 		if !r.Delete {
 			resourceTable[r.URN] = r
 		}
 	}
 
-	var resources []*resource.State
+	var resources []*pkgresource.State
 	for _, i := range imports {
 		var parentType tokens.Type
 		if i.Parent != "" {

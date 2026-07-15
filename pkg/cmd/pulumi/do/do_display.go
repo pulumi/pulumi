@@ -17,6 +17,8 @@ package do
 import (
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/spf13/cobra"
 
 	backenddisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -31,14 +33,14 @@ import (
 
 type displayedStep struct {
 	Op           display.StepOp
-	Old, New     *resource.State
+	Old, New     *pkgresource.State
 	Diffs        []resource.PropertyKey
 	DetailedDiff map[string]plugin.PropertyDiff
 	Preview      bool
 }
 
 func (pc *packageCommand) runDisplayedStep(
-	cmd *cobra.Command, step displayedStep, call func() (*resource.State, error),
+	cmd *cobra.Command, step displayedStep, call func() (*pkgresource.State, error),
 ) error {
 	preview := (pc.dryrun || step.Preview) && step.Op != deploy.OpRead
 
@@ -135,8 +137,8 @@ func (s displayedStep) metadata(showSecrets bool) engine.StepEventMetadata {
 	}
 }
 
-func operationState(urn resource.URN, id resource.ID, inputs, outputs resource.PropertyMap) *resource.State {
-	return &resource.State{
+func operationState(urn resource.URN, id resource.ID, inputs, outputs resource.PropertyMap) *pkgresource.State {
+	return &pkgresource.State{
 		Type:    urn.Type(),
 		URN:     urn,
 		Custom:  true,

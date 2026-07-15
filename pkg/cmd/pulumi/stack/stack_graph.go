@@ -21,6 +21,8 @@ import (
 	"slices"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -211,7 +213,7 @@ func (edge *parentEdge) Color() string {
 // are calculated on-demand using the combination of the graph and the state.
 type dependencyVertex struct {
 	graph         *dependencyGraph
-	resource      *resource.State
+	resource      *pkgresource.State
 	incomingEdges []graph.Edge
 	outgoingEdges []graph.Edge
 	useShortName  bool

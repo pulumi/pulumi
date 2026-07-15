@@ -49,7 +49,7 @@ func TestImportDeployment(t *testing.T) {
 			var decrypterCalled bool
 			_, err := NewImportDeployment(&plugin.Context{}, &Options{}, nil, &Target{
 				Snapshot: &Snapshot{
-					Resources: []*resource.State{
+					Resources: []*pkgresource.State{
 						{
 							URN:    "urn:pulumi:stack::project::type::oldName",
 							Custom: true,
@@ -237,7 +237,7 @@ func TestImporter(t *testing.T) {
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					olds: map[resource.URN]*resource.State{
+					olds: map[resource.URN]*pkgresource.State{
 						providerURN: {
 							URN:  providerURN,
 							ID:   "existing-id",
@@ -332,7 +332,7 @@ func TestImporter(t *testing.T) {
 					},
 					deployment: &Deployment{
 						prev: &Snapshot{
-							Resources: []*resource.State{
+							Resources: []*pkgresource.State{
 								{
 									URN: "some-urn",
 								},
@@ -381,7 +381,7 @@ func TestImporter(t *testing.T) {
 					},
 					deployment: &Deployment{
 						prev: &Snapshot{
-							Resources: []*resource.State{
+							Resources: []*pkgresource.State{
 								{
 									Delete: true,
 								},

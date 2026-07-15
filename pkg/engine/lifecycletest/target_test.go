@@ -23,6 +23,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
@@ -1687,13 +1689,13 @@ func generateParentedTestDependencyGraph(t *testing.T, p *lt.TestPlan) (
 
 	newResource := func(urn, parent resource.URN, id resource.ID,
 		dependencies []resource.URN, propertyDeps propertyDependencies,
-	) *resource.State {
+	) *pkgresource.State {
 		return newResource(urn, parent, id, "", dependencies, propertyDeps,
 			nil, urn.Type() != resTypeComponent)
 	}
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			newResource(urnA, "", "", nil, nil),
 			newResource(urnB, "", "", nil, nil),
 			newResource(urnC, "", "2", nil, nil),
@@ -1872,7 +1874,7 @@ func destroySpecificTargetsWithChildren(
 
 func newResource(urn, parent resource.URN, id resource.ID, provider string, dependencies []resource.URN,
 	propertyDeps propertyDependencies, outputs resource.PropertyMap, custom bool,
-) *resource.State {
+) *pkgresource.State {
 	inputs := resource.PropertyMap{}
 	for k := range propertyDeps {
 		inputs[k] = resource.NewProperty("foo")
@@ -1881,7 +1883,7 @@ func newResource(urn, parent resource.URN, id resource.ID, provider string, depe
 		outputs = resource.PropertyMap{}
 	}
 
-	return &resource.State{
+	return &pkgresource.State{
 		Type:                 urn.Type(),
 		URN:                  urn,
 		Custom:               custom,
@@ -1944,7 +1946,7 @@ func TestTargetedCreateDefaultProvider(t *testing.T) {
 }
 
 // Returns the resource with the matching URN, or nil.
-func findResourceByURN(rs []*resource.State, urn resource.URN) *resource.State {
+func findResourceByURN(rs []*pkgresource.State, urn resource.URN) *pkgresource.State {
 	for _, r := range rs {
 		if r.URN == urn {
 			return r

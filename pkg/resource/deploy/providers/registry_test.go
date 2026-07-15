@@ -22,6 +22,8 @@ import (
 	"sync"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 
 	"github.com/blang/semver"
@@ -185,13 +187,13 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 	})
 }
 
-func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMap) *resource.State {
+func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMap) *pkgresource.State {
 	typ := providers.MakeProviderType(tokens.Package(pkg))
 	urn := resource.NewURN("test", "test", "", typ, name)
 	if inputs == nil {
 		inputs = resource.PropertyMap{}
 	}
-	return &resource.State{
+	return &pkgresource.State{
 		Type:   typ,
 		URN:    urn,
 		Custom: true,
@@ -214,7 +216,7 @@ func TestNewRegistryNoOldState(t *testing.T) {
 func TestNewRegistryOldState(t *testing.T) {
 	t.Parallel()
 
-	olds := []*resource.State{
+	olds := []*pkgresource.State{
 		// Two providers from package A, each with a unique name and ID
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgA", "b", "id2", false, nil),
@@ -274,7 +276,7 @@ func TestNewRegistryOldState(t *testing.T) {
 func TestCRUD(t *testing.T) {
 	t.Parallel()
 
-	olds := []*resource.State{
+	olds := []*pkgresource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgB", "a", "id1", false, nil),
 		newProviderState("pkgC", "a", "id1", false, nil),
@@ -439,7 +441,7 @@ func TestCRUD(t *testing.T) {
 func TestCRUDPreview(t *testing.T) {
 	t.Parallel()
 
-	olds := []*resource.State{
+	olds := []*pkgresource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgB", "a", "id1", false, nil),
 		newProviderState("pkgC", "a", "id1", false, nil),

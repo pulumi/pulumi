@@ -61,7 +61,7 @@ type JournalSnapshotManager struct {
 	// newResources is a map of resources that have been added to the snapshot in this plan, keyed by the resource
 	// state.  This is used to track the added resources and their operation IDs, allowing us too delete
 	// them later if necessary.
-	newResources gsync.Map[*resource.State, int64]
+	newResources gsync.Map[*pkgresource.State, int64]
 	// A counter used to generate unique operation IDs for journal entries. Note that we use these
 	// sequential IDs to track the order of operations. This matters for reconstructing the Snapshot,
 	// because we need to know which operations were applied first, so dependencies are resolved correctly.
@@ -157,7 +157,7 @@ type JournalEntry struct {
 	// The operation ID of the new resource that should be marked as deleted.
 	DeleteNew *int64
 	// The resource state associated with this journal entry.
-	State *resource.State
+	State *pkgresource.State
 	// The operation associated with this journal entry, if any.
 	Operation *pkgresource.Operation
 	// If true, this journal entry can be elided and does not need to be written immediately.
@@ -256,7 +256,7 @@ func (sm *JournalSnapshotManager) SetSnippets(snippets []resource.Snippet) error
 //
 // The first return value if set is the index in the base snapshot, the second one is the operation ID.  Only
 // one of them will be set.
-func (sm *JournalSnapshotManager) findResourceInNewOrOld(toFind *resource.State) (*int64, *int64) {
+func (sm *JournalSnapshotManager) findResourceInNewOrOld(toFind *pkgresource.State) (*int64, *int64) {
 	if sm.baseSnapshot != nil {
 		for i, res := range sm.baseSnapshot.Resources {
 			if res == toFind {
@@ -343,7 +343,7 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 	snapCopy := &deploy.Snapshot{
 		Manifest:          base.Manifest,
 		SecretsManager:    base.SecretsManager,
-		Resources:         make([]*resource.State, 0, len(base.Resources)),
+		Resources:         make([]*pkgresource.State, 0, len(base.Resources)),
 		PendingOperations: make([]pkgresource.Operation, 0, len(base.PendingOperations)),
 		Metadata:          base.Metadata,
 		Extensions:        base.Extensions,

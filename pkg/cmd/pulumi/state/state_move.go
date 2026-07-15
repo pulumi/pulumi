@@ -22,6 +22,8 @@ import (
 	"os"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -226,7 +228,7 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.SecretsManager = destSecretManager
 	}
 
-	resourcesToMove := make(map[string]*resource.State)
+	resourcesToMove := make(map[string]*pkgresource.State)
 	providersToCopy := make(map[string]bool)
 	unmatchedArgs := mapset.NewSet(args...)
 	rootStackURN := ""
@@ -292,8 +294,8 @@ func (cmd *stateMoveCmd) Run(
 	// so that resources with relationships are in the right order.  Also check which
 	// resources are remaining in the source stack, now that we know all resources
 	// that are going to be moved.
-	remainingResources := make(map[string]*resource.State)
-	var resourcesToMoveOrdered []*resource.State
+	remainingResources := make(map[string]*pkgresource.State)
+	var resourcesToMoveOrdered []*pkgresource.State
 	for _, res := range sourceSnapshot.Resources {
 		if _, ok := resourcesToMove[string(res.URN)]; ok {
 			resourcesToMoveOrdered = append(resourcesToMoveOrdered, res)
@@ -306,7 +308,7 @@ func (cmd *stateMoveCmd) Run(
 	// that need to be copied, remove all the resources that need
 	// to be removed, and break the dependencies that are no
 	// longer valid.
-	var providers []*resource.State
+	var providers []*pkgresource.State
 	var brokenSourceDependencies []brokenDependency
 	i := 0
 	for _, res := range sourceSnapshot.Resources {
@@ -340,10 +342,10 @@ func (cmd *stateMoveCmd) Run(
 		}
 		rootStack = stack.CreateRootStackResource(
 			dest.Ref().Name().Q(), tokens.PackageName(projectName))
-		destSnapshot.Resources = append([]*resource.State{rootStack}, destSnapshot.Resources...)
+		destSnapshot.Resources = append([]*pkgresource.State{rootStack}, destSnapshot.Resources...)
 	}
 
-	destResMap := make(map[urn.URN]*resource.State)
+	destResMap := make(map[urn.URN]*pkgresource.State)
 	for _, res := range destSnapshot.Resources {
 		destResMap[res.URN] = res
 	}
@@ -524,7 +526,7 @@ None of the resources have been moved.  Please fix the error and try again`, err
 	return nil
 }
 
-func resourceMatches(res *resource.State, args []string) string {
+func resourceMatches(res *pkgresource.State, args []string) string {
 	for _, arg := range args {
 		if string(res.URN) == arg {
 			return arg
@@ -549,7 +551,7 @@ type brokenDependency struct {
 	resourceURN    urn.URN
 }
 
-func breakDependencies(res *resource.State, resourcesToMove map[string]*resource.State) []brokenDependency {
+func breakDependencies(res *pkgresource.State, resourcesToMove map[string]*pkgresource.State) []brokenDependency {
 	var brokenDeps []brokenDependency
 
 	var preservedDeps []urn.URN
@@ -561,10 +563,10 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 	_, allDeps := res.GetAllDependencies()
 	for _, dep := range allDeps {
 		switch dep.Type {
-		case resource.ResourceParent:
+		case pkgresource.ResourceParent:
 			// Resources are reparented appropriately later on, so we ignore parent dependencies here.
 			continue
-		case resource.ResourceDependency:
+		case pkgresource.ResourceDependency:
 			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
 					dependencyURN:  dep.URN,
@@ -574,7 +576,7 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 			} else {
 				preservedDeps = append(preservedDeps, dep.URN)
 			}
-		case resource.ResourcePropertyDependency:
+		case pkgresource.ResourcePropertyDependency:
 			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
 					dependencyURN:  dep.URN,
@@ -585,7 +587,7 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 			} else {
 				preservedPropDeps[dep.Key] = append(preservedPropDeps[dep.Key], dep.URN)
 			}
-		case resource.ResourceDeletedWith:
+		case pkgresource.ResourceDeletedWith:
 			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
 					dependencyURN:  dep.URN,
@@ -595,7 +597,7 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 			} else {
 				preservedDeletedWith = dep.URN
 			}
-		case resource.ResourceReplaceWith:
+		case pkgresource.ResourceReplaceWith:
 			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
 					dependencyURN:  dep.URN,
@@ -627,7 +629,7 @@ func renameStackAndProject(urn urn.URN, stack backend.Stack) (urn.URN, error) {
 	return newURN, nil
 }
 
-func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]string) error {
+func rewriteURNs(res *pkgresource.State, dest backend.Stack, rewriteMap map[string]string) error {
 	var err error
 	res.URN, err = renameStackAndProject(res.URN, dest)
 	if err != nil {
@@ -663,15 +665,15 @@ func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]
 		}
 
 		switch dep.Type {
-		case resource.ResourceParent:
+		case pkgresource.ResourceParent:
 			res.Parent = rewrittenURN
-		case resource.ResourceDependency:
+		case pkgresource.ResourceDependency:
 			rewrittenDeps = append(rewrittenDeps, rewrittenURN)
-		case resource.ResourcePropertyDependency:
+		case pkgresource.ResourcePropertyDependency:
 			rewrittenPropDeps[dep.Key] = append(rewrittenPropDeps[dep.Key], rewrittenURN)
-		case resource.ResourceDeletedWith:
+		case pkgresource.ResourceDeletedWith:
 			res.DeletedWith = rewrittenURN
-		case resource.ResourceReplaceWith:
+		case pkgresource.ResourceReplaceWith:
 			res.ReplaceWith = append(res.ReplaceWith, rewrittenURN)
 		}
 	}

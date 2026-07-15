@@ -15,7 +15,7 @@
 // Package rapidimporter provides rapid (property-based) generators for
 // resource state values used by the importer round-trip test.
 //
-// A drawn Sample contains a [resource.State] for a randomly chosen resource
+// A drawn Sample contains a [pkgresource.State] for a randomly chosen resource
 // in the supplied schema package, plus a Snapshot containing all other
 // resources its envelope refers to (provider, optional satellites used as
 // parent / dependency / deletedWith / replaceWith / propertyDependencies
@@ -25,6 +25,8 @@ package rapidimporter
 
 import (
 	"fmt"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
 	"pgregory.net/rapid"
@@ -41,12 +43,12 @@ import (
 // plus any satellite resources referenced by State's envelope.
 type Sample struct {
 	// State is the generated resource being imported.
-	State *resource.State
+	State *pkgresource.State
 	// Snapshot is the surrounding stack snapshot. It contains the provider
 	// resource referenced by State.Provider, and any other resources
 	// referenced by Parent, Dependencies, DeletedWith, ReplaceWith, or
 	// PropertyDependencies. It does not contain State itself.
-	Snapshot []*resource.State
+	Snapshot []*pkgresource.State
 }
 
 // State returns a generator that picks a random custom, non-provider resource
@@ -93,7 +95,7 @@ func drawSample(t *rapid.T, pkg *schema.Package, pickable []*schema.Resource) *S
 
 	typ := tokens.Type(r.Token)
 	name := drawIdentifier(t, "resource-name")
-	state := &resource.State{
+	state := &pkgresource.State{
 		Type:                typ,
 		URN:                 resource.NewURN(stackName, projectName, "", typ, name),
 		Custom:              true,
@@ -113,13 +115,13 @@ func drawSample(t *rapid.T, pkg *schema.Package, pickable []*schema.Resource) *S
 
 	satelliteCount := rapid.IntRange(0, 3).Draw(t, "satellite-count")
 	taken := map[resource.URN]bool{state.URN: true, provider.URN: true}
-	satellites := make([]*resource.State, 0, satelliteCount)
+	satellites := make([]*pkgresource.State, 0, satelliteCount)
 	for i := 0; i < satelliteCount; i++ {
 		s := drawSatellite(t, pickable, provider, taken, i)
 		taken[s.URN] = true
 		satellites = append(satellites, s)
 	}
-	snapshot := make([]*resource.State, 0, 1+len(satellites))
+	snapshot := make([]*pkgresource.State, 0, 1+len(satellites))
 	snapshot = append(snapshot, provider)
 	snapshot = append(snapshot, satellites...)
 
@@ -139,9 +141,9 @@ func drawSample(t *rapid.T, pkg *schema.Package, pickable []*schema.Resource) *S
 }
 
 func drawSatellite(
-	t *rapid.T, pickable []*schema.Resource, provider *resource.State,
+	t *rapid.T, pickable []*schema.Resource, provider *pkgresource.State,
 	taken map[resource.URN]bool, i int,
-) *resource.State {
+) *pkgresource.State {
 	sR := pickable[rapid.IntRange(0, len(pickable)-1).Draw(t, fmt.Sprintf("satellite-%d-resource-idx", i))]
 	sTyp := tokens.Type(sR.Token)
 	urn := rapid.Custom(func(t *rapid.T) resource.URN {
@@ -149,7 +151,7 @@ func drawSatellite(
 		return resource.NewURN(stackName, projectName, "", sTyp, name)
 	}).Filter(func(u resource.URN) bool { return !taken[u] }).
 		Draw(t, fmt.Sprintf("satellite-%d-urn", i))
-	return &resource.State{
+	return &pkgresource.State{
 		Type:     sTyp,
 		URN:      urn,
 		Custom:   true,
@@ -159,7 +161,7 @@ func drawSatellite(
 	}
 }
 
-func drawProviderState(t *rapid.T, pkg *schema.Package) *resource.State {
+func drawProviderState(t *rapid.T, pkg *schema.Package) *pkgresource.State {
 	pkgName := tokens.Package(pkg.Name)
 	typ := tokens.Type("pulumi:providers:" + string(pkgName))
 	name := drawIdentifier(t, "provider-name")
@@ -173,7 +175,7 @@ func drawProviderState(t *rapid.T, pkg *schema.Package) *resource.State {
 	}
 	providers.SetProviderVersion(inputs, version)
 
-	return &resource.State{
+	return &pkgresource.State{
 		Type:   typ,
 		URN:    resource.NewURN(stackName, projectName, "", typ, name),
 		Custom: true,
@@ -182,7 +184,7 @@ func drawProviderState(t *rapid.T, pkg *schema.Package) *resource.State {
 	}
 }
 
-func providerRefString(provider *resource.State) string {
+func providerRefString(provider *pkgresource.State) string {
 	return string(provider.URN) + resource.URNNameDelimiter + string(provider.ID)
 }
 
@@ -230,11 +232,11 @@ func drawAliases(t *rapid.T, typ tokens.Type) []resource.URN {
 	return out
 }
 
-func pickURN(t *rapid.T, satellites []*resource.State, label string) resource.URN {
+func pickURN(t *rapid.T, satellites []*pkgresource.State, label string) resource.URN {
 	return satellites[rapid.IntRange(0, len(satellites)-1).Draw(t, label)].URN
 }
 
-func drawDistinctURNs(t *rapid.T, satellites []*resource.State, label string) []resource.URN {
+func drawDistinctURNs(t *rapid.T, satellites []*pkgresource.State, label string) []resource.URN {
 	n := rapid.IntRange(0, len(satellites)).Draw(t, label+":n")
 	if n == 0 {
 		return nil
@@ -258,7 +260,7 @@ func drawDistinctURNs(t *rapid.T, satellites []*resource.State, label string) []
 func drawPropertyDependencies(
 	t *rapid.T,
 	props []*schema.Property,
-	satellites []*resource.State,
+	satellites []*pkgresource.State,
 ) map[resource.PropertyKey][]resource.URN {
 	if len(props) == 0 {
 		return nil

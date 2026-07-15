@@ -192,7 +192,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 				protect = *g.Protect
 			}
 			s.Done(&RegisterResult{
-				State: resource.NewState{
+				State: pkgresource.NewState{
 					Type:                    g.Type,
 					URN:                     resp.URN,
 					Custom:                  g.Custom,
@@ -542,7 +542,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 			protect = *goal.Protect
 		}
 		reg.Done(&RegisterResult{
-			State: resource.NewState{
+			State: pkgresource.NewState{
 				Type:                    goal.Type,
 				URN:                     urn,
 				Custom:                  goal.Custom,
@@ -819,7 +819,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 			protect = *goal.Protect
 		}
 		reg.Done(&RegisterResult{
-			State: resource.NewState{
+			State: pkgresource.NewState{
 				Type:                    goal.Type,
 				URN:                     urn,
 				Custom:                  goal.Custom,
@@ -937,7 +937,7 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 		goal := reg.Goal()
 		urn := resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
 		reg.Done(&RegisterResult{
-			State: resource.NewState{ //nolint:requiredfield
+			State: pkgresource.NewState{ //nolint:requiredfield
 				Type:               goal.Type,
 				URN:                urn,
 				Custom:             goal.Custom,
@@ -1014,7 +1014,7 @@ func TestRegistrationObserverNotResolvedForUnsuccessfulRegisterResource(t *testi
 					result = tt.resultState
 				}
 				reg.Done(&RegisterResult{
-					State: resource.NewState{ //nolint:requiredfield
+					State: pkgresource.NewState{ //nolint:requiredfield
 						Type:               goal.Type,
 						URN:                urn,
 						Custom:             goal.Custom,
@@ -1096,7 +1096,7 @@ func TestRegistrationObserverNotResolvedForLocalComponentOnRegister(t *testing.T
 		goal := reg.Goal()
 		urn := resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
 		reg.Done(&RegisterResult{
-			State: resource.NewState{ //nolint:requiredfield
+			State: pkgresource.NewState{ //nolint:requiredfield
 				Type:               goal.Type,
 				URN:                urn,
 				Custom:             goal.Custom,
@@ -1153,7 +1153,7 @@ func driveIter(t *testing.T, iter SourceIterator, runInfo *EvalRunInfo) {
 				id = "id"
 			}
 			e.Done(&RegisterResult{
-				State: resource.NewState{ //nolint:requiredfield
+				State: pkgresource.NewState{ //nolint:requiredfield
 					Type:               goal.Type,
 					URN:                urn,
 					Custom:             goal.Custom,
@@ -1353,7 +1353,7 @@ func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
 			id = "id1"
 		}
 		reg.Done(&RegisterResult{
-			State: resource.NewState{ //nolint:requiredfield
+			State: pkgresource.NewState{ //nolint:requiredfield
 				Type:               goal.Type,
 				URN:                urn,
 				Custom:             goal.Custom,
@@ -1518,7 +1518,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 		read := event.(ReadResourceEvent)
 		urn := newURN(read.Type(), read.Name(), read.Parent())
 		read.Done(&ReadResult{
-			State: resource.NewState{
+			State: pkgresource.NewState{
 				Type:                    read.Type(),
 				URN:                     urn,
 				Custom:                  true,
@@ -1652,7 +1652,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 			}
 
 			e.Done(&RegisterResult{
-				State: resource.NewState{
+				State: pkgresource.NewState{
 					Type:                    goal.Type,
 					URN:                     urn,
 					Custom:                  goal.Custom,
@@ -1695,7 +1695,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 		case ReadResourceEvent:
 			urn := newURN(e.Type(), e.Name(), e.Parent())
 			e.Done(&ReadResult{
-				State: resource.NewState{
+				State: pkgresource.NewState{
 					Type:                    e.Type(),
 					URN:                     urn,
 					Custom:                  true,
@@ -1891,7 +1891,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 				case ReadResourceEvent:
 					urn := newURN(event.Type(), event.Name(), event.Parent())
 					event.Done(&ReadResult{
-						State: resource.NewState{
+						State: pkgresource.NewState{
 							Type:                    event.Type(),
 							URN:                     urn,
 							Custom:                  true,
@@ -1933,7 +1933,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 				case RegisterResourceEvent:
 					urn := newURN(event.Goal().Type, event.Goal().Name, event.Goal().Parent)
 					event.Done(&RegisterResult{
-						State: resource.NewState{
+						State: pkgresource.NewState{
 							Type:                    event.Goal().Type,
 							URN:                     urn,
 							Custom:                  true,
@@ -2199,7 +2199,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 						id = "id"
 					}
 					ev.Done(&RegisterResult{
-						State: &resource.State{
+						State: &pkgresource.State{
 							Type:         goal.Type,
 							URN:          newURN(goal.Type, goal.Name, goal.Parent),
 							Custom:       goal.Custom,
@@ -2305,7 +2305,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 			providerSource.registerProvider(ref, noopProvider)
 
 // 			e.Done(&RegisterResult{
-// 				State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
+// 				State: pkgresource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
 // 					goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
 // 					false, nil),
 // 			})
@@ -2314,7 +2314,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 		case ReadResourceEvent:
 // 			urn := newURN(e.Type(), string(e.Name()), e.Parent())
 // 			e.Done(&ReadResult{
-// 				State: resource.NewState(e.Type(), urn, true, false, e.ID(), e.Properties(),
+// 				State: pkgresource.NewState(e.Type(), urn, true, false, e.ID(), e.Properties(),
 // 					resource.PropertyMap{}, e.Parent(), false, false, e.Dependencies(), nil, e.Provider(), nil, false,
 // 					nil),
 // 			})
@@ -2403,7 +2403,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 			}
 
 // 			e.Done(&RegisterResult{
-// 				State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
+// 				State: pkgresource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
 // 					goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
 // 					false, nil),
 // 			})
@@ -3002,7 +3002,7 @@ func TestInvoke(t *testing.T) {
 		go func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
-				State: &resource.State{
+				State: &pkgresource.State{
 					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
@@ -3068,7 +3068,7 @@ func TestInvoke(t *testing.T) {
 		go func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
-				State: &resource.State{
+				State: &pkgresource.State{
 					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
@@ -3148,7 +3148,7 @@ func TestCall(t *testing.T) {
 		go func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
-				State: &resource.State{
+				State: &pkgresource.State{
 					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
@@ -3191,7 +3191,7 @@ func TestCall(t *testing.T) {
 		go func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
-				State: &resource.State{
+				State: &pkgresource.State{
 					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
@@ -3296,7 +3296,7 @@ func TestCall(t *testing.T) {
 		go func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
-				State: &resource.State{
+				State: &pkgresource.State{
 					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
@@ -3364,7 +3364,7 @@ func TestCall(t *testing.T) {
 		go func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
-				State: &resource.State{
+				State: &pkgresource.State{
 					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
@@ -3518,7 +3518,7 @@ func TestReadResource(t *testing.T) {
 			evt := <-regReadChan
 			assert.Equal(t, []resource.PropertyKey{"foo"}, evt.additionalSecretOutputs)
 			evt.done <- &ReadResult{
-				State: &resource.State{},
+				State: &pkgresource.State{},
 			}
 			wg.Done()
 		}()
@@ -3633,7 +3633,7 @@ func TestRegisterResource(t *testing.T) {
 		go func() {
 			evt := <-regChan
 			evt.done <- &RegisterResult{
-				State: &resource.State{},
+				State: &pkgresource.State{},
 			}
 		}()
 		rm := &resmon{}
@@ -3651,7 +3651,7 @@ func TestRegisterResource(t *testing.T) {
 		go func() {
 			evt := <-regChan
 			evt.done <- &RegisterResult{
-				State: &resource.State{},
+				State: &pkgresource.State{},
 			}
 		}()
 		rm := &resmon{}
@@ -3670,7 +3670,7 @@ func TestRegisterResource(t *testing.T) {
 		go func() {
 			evt := <-regChan
 			evt.done <- &RegisterResult{
-				State: &resource.State{},
+				State: &pkgresource.State{},
 			}
 		}()
 		rm := &resmon{}
@@ -3884,7 +3884,7 @@ func TestRegisterResource(t *testing.T) {
 			go func() {
 				evt := <-regChan
 				evt.done <- &RegisterResult{
-					State: &resource.State{},
+					State: &pkgresource.State{},
 				}
 			}()
 			rm := &resmon{
@@ -3919,7 +3919,7 @@ func TestRegisterResource(t *testing.T) {
 				go func() {
 					evt := <-regChan
 					evt.done <- &RegisterResult{
-						State: &resource.State{},
+						State: &pkgresource.State{},
 					}
 				}()
 				rm := &resmon{
@@ -3940,7 +3940,7 @@ func TestRegisterResource(t *testing.T) {
 				go func() {
 					evt := <-regChan
 					evt.done <- &RegisterResult{
-						State: &resource.State{},
+						State: &pkgresource.State{},
 					}
 				}()
 				rm := &resmon{
@@ -3961,7 +3961,7 @@ func TestRegisterResource(t *testing.T) {
 				go func() {
 					evt := <-regChan
 					evt.done <- &RegisterResult{
-						State: &resource.State{},
+						State: &pkgresource.State{},
 					}
 				}()
 				rm := &resmon{
