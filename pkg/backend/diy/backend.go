@@ -1073,12 +1073,9 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 		project, has := newRef.Project()
 		contract.Assertf(has || project == "", "project should be blank for legacy stacks")
 		oldProject, oldHas := oldRef.Project()
-		if !oldHas {
+		if !oldHas && len(chk.Latest.Resources) > 0 {
 			// Legacy refs carry no project, but their URNs still do; scope the rewrite to it.
-			for _, res := range chk.Latest.Resources {
-				oldProject = tokens.Name(res.URN.Project())
-				break
-			}
+			oldProject = tokens.Name(chk.Latest.Resources[0].URN.Project())
 		}
 		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project),
 			edit.RenameStackOptions{
