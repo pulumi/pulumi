@@ -318,6 +318,98 @@ func TestDoCmdResourceUpsertHiddenInStatelessMode(t *testing.T) {
 	assert.NotContains(t, stdout.String(), "upsert")
 }
 
+// TestDoCmdResourceStatefulCreateConstructsSnippet mirrors the upsert-constructs-snippet test but
+// for stateful `create`: the CLI takes a name arg, mints a fresh UUID, hands the snippet to
+// runStatefulUpdate, and the completion line uses "created" rather than "upserted".
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulCreateConstructsSnippet(t *testing.T) {
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{})
+
+	var got StatefulUpdateRequest
+	var called bool
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		called = true
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "create.pcl", `name = "example"`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "create", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	require.True(t, called, "runStatefulUpdate should have been invoked")
+	assert.Equal(t, "myres", got.Snippet.Name)
+	assert.Equal(t, "azure:index:myResource", got.Snippet.Type)
+	assert.Contains(t, got.Snippet.Code, `name = "example"`)
+	require.NotEmpty(t, got.Snippet.UUID)
+	assert.Contains(t, stdout.String(), "created myres")
+	_ = stderr
+}
+
+// TestDoCmdResourceStatefulCreateRejectsExisting checks the invariant that distinguishes create
+// from upsert: if a snippet with the same (Name, Type) already lives in the snapshot, create
+// refuses rather than replacing it in place.
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulCreateRejectsExisting(t *testing.T) {
+	existing := resource.Snippet{
+		UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+		Name: "myres", Type: "azure:index:myResource",
+		Code:       `name = "old"`,
+		Descriptor: resource.PackageDescriptor{Name: "azure"},
+	}
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{Snippets: []resource.Snippet{existing}})
+
+	stub := func(_ context.Context, _ *pflag.FlagSet, _ StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		require.Fail(t, "runStatefulUpdate should not be called when the snippet already exists")
+		return nil, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "create.pcl", `name = "new"`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "create", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile,
+	})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "already exists")
+	require.ErrorContains(t, err, "upsert")
+	_ = stdout
+	_ = stderr
+}
+
+// TestDoCmdResourceCreateStatelessTakesNoNameArg pins the diverging UX between the two `create`
+// variants: stateless `create` uses the resource type's short name (no positional arg), stateful
+// `create` requires an explicit `<name>`.
+func TestDoCmdResourceCreateStatelessTakesNoNameArg(t *testing.T) {
+	t.Parallel()
+
+	cmd, stdout, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
+	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "myres"})
+	err := cmd.Execute()
+	require.Error(t, err, "stateless create should reject a positional name arg")
+	_ = stdout
+}
+
 // TestDoCmdResourceUpsertMergesInputFlags verifies that --input-* flags are merged into the
 // snippet body at the PCL AST layer: the flag value replaces (or is added alongside) attributes
 // from --input-file so what the engine persists matches what the user typed on the command line.
