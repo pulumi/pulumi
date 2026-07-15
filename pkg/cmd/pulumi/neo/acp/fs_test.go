@@ -17,6 +17,9 @@ package acp
 import (
 	"context"
 	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -86,11 +89,33 @@ func TestClientFSReadTextFile(t *testing.T) {
 func TestClientFSReadTextFilePropagatesError(t *testing.T) {
 	t.Parallel()
 
-	wantErr := errors.New("not found")
-	fs := &ClientFS{Caller: &recordingCaller{err: wantErr}, SessionID: "sess_123"}
+	// The file exists on disk, so the editor's failure is not a missing file:
+	// the RPC error must come through unchanged, without fs.ErrNotExist.
+	path := filepath.Join(t.TempDir(), "main.go")
+	require.NoError(t, os.WriteFile(path, []byte("package main"), 0o600))
 
-	_, err := fs.ReadTextFile(t.Context(), "/abs/path/main.go")
+	wantErr := errors.New("editor went away")
+	cfs := &ClientFS{Caller: &recordingCaller{err: wantErr}, SessionID: "sess_123"}
+
+	_, err := cfs.ReadTextFile(t.Context(), path)
 	assert.ErrorIs(t, err, wantErr)
+	assert.NotErrorIs(t, err, fs.ErrNotExist)
+}
+
+func TestClientFSReadTextFileMapsMissingFileToErrNotExist(t *testing.T) {
+	t.Parallel()
+
+	// ACP has no standard "file not found" error code, so when the editor's
+	// read fails and the file isn't on disk either, ReadTextFile must classify
+	// the failure as fs.ErrNotExist — tools.Filesystem.ReadFileOverride's
+	// contract, which the edit tool's creation mode relies on — while keeping
+	// the original RPC error in the chain.
+	rpcErr := errors.New("editor: no such file")
+	cfs := &ClientFS{Caller: &recordingCaller{err: rpcErr}, SessionID: "sess_123"}
+
+	_, err := cfs.ReadTextFile(t.Context(), filepath.Join(t.TempDir(), "missing.go"))
+	assert.ErrorIs(t, err, fs.ErrNotExist)
+	assert.ErrorIs(t, err, rpcErr)
 }
 
 func TestClientFSWriteTextFilePropagatesError(t *testing.T) {
