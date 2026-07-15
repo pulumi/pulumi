@@ -67,3 +67,93 @@ func TestFindAnalyzerBinary(t *testing.T) {
 		require.False(t, ok)
 	})
 }
+
+// otherPlatform returns a valid policy binary platform other than current, with the same
+// windows-ness so its filename carries (or omits) the ".exe" suffix the same way.
+func otherPlatform(current string) string {
+	windows := strings.HasPrefix(current, "windows-")
+	for p := range ValidPolicyBinaryPlatforms {
+		if p != current && strings.HasPrefix(p, "windows-") == windows {
+			return p
+		}
+	}
+	return current
+}
+
+// platformBinName returns the cross-compiled build-directory filename for a platform:
+// pulumi-analyzer-<name>-<os>-<arch>[.exe].
+func platformBinName(name, platform string) string {
+	n := "pulumi-analyzer-" + name + "-" + platform
+	if strings.HasPrefix(platform, "windows-") {
+		n += ".exe"
+	}
+	return n
+}
+
+func writeExecFile(t *testing.T, path string) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(path, []byte("bin"), 0o755)) //nolint:gosec
+}
+
+func TestFindAnalyzerBinaryPlatformAware(t *testing.T) {
+	t.Parallel()
+
+	current := CurrentPlatform()
+	other := otherPlatform(current)
+
+	t.Run("prefers the current-platform binary in a matrix directory", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		writeExecFile(t, filepath.Join(dir, platformBinName("mypack", current)))
+		writeExecFile(t, filepath.Join(dir, platformBinName("mypack", other)))
+		got, ok := FindAnalyzerBinary(dir)
+		require.True(t, ok)
+		assert.Equal(t, filepath.Join(dir, platformBinName("mypack", current)), got)
+	})
+
+	t.Run("a binary only for another platform is not runnable", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		writeExecFile(t, filepath.Join(dir, platformBinName("mypack", other)))
+		_, ok := FindAnalyzerBinary(dir)
+		require.False(t, ok)
+	})
+}
+
+func TestResolveAnalyzerBinary(t *testing.T) {
+	t.Parallel()
+
+	// The bare installed-artifact name for this platform (".exe" on Windows).
+	bareName := AnalyzerBinaryName("mypack", CurrentPlatform())
+
+	t.Run("direct executable file is used as-is", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		bin := filepath.Join(dir, platformBinName("mypack", CurrentPlatform()))
+		writeExecFile(t, bin)
+		gotBin, gotDir, ok := ResolveAnalyzerBinary(bin)
+		require.True(t, ok)
+		assert.Equal(t, bin, gotBin)
+		assert.Equal(t, dir, gotDir)
+	})
+
+	t.Run("directory containing a binary", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		bin := filepath.Join(dir, bareName)
+		writeExecFile(t, bin)
+		gotBin, gotDir, ok := ResolveAnalyzerBinary(dir)
+		require.True(t, ok)
+		assert.Equal(t, bin, gotBin)
+		assert.Equal(t, dir, gotDir)
+	})
+
+	t.Run("directory without a binary", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "index.js"), []byte("//"), 0o600))
+		_, gotDir, ok := ResolveAnalyzerBinary(dir)
+		require.False(t, ok)
+		assert.Equal(t, dir, gotDir)
+	})
+}

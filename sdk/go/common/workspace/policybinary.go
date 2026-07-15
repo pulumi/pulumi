@@ -56,12 +56,30 @@ func CurrentPlatform() string {
 	return runtime.GOOS + "-" + runtime.GOARCH
 }
 
+// ResolveAnalyzerBinary resolves a policy pack path (as passed to `--policy-pack`) to a
+// pre-built analyzer binary. The path may be the analyzer executable itself — used
+// directly, for local development against a freshly built binary — or a directory
+// containing one by the naming convention. It returns the binary path, the effective
+// pack directory (the file's parent for a direct executable, or the directory itself),
+// and whether a binary was found.
+func ResolveAnalyzerBinary(path string) (binary string, dir string, ok bool) {
+	if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+		return path, filepath.Dir(path), true
+	}
+	if bin, found := FindAnalyzerBinary(path); found {
+		return bin, path, true
+	}
+	return "", path, false
+}
+
 // FindAnalyzerBinary returns a pre-built analyzer binary in dir runnable on the current
-// platform, if one is present. Binary policy packs ship a single "pulumi-analyzer-<name>"
-// executable ("pulumi-analyzer-<name>.exe" on Windows) at the pack root, exec'd directly
-// like a provider plugin — no manifest read required. A directory with no such binary (a
-// source checkout, or a language pack) returns false so the pack runs through its
-// language runtime instead.
+// platform, if one is present. It prefers a binary named for the current platform
+// ("pulumi-analyzer-<name>-<os>-<arch>", ".exe" on Windows) — the cross-compiled build
+// directory layout — and otherwise falls back to a bare "pulumi-analyzer-<name>" (the
+// single-platform installed-artifact layout). A binary named for a different platform is
+// never runnable here, and a directory with no runnable binary (a source checkout, or
+// only other-platform binaries) returns false so the pack runs through its language
+// runtime instead.
 func FindAnalyzerBinary(dir string) (string, bool) {
 	matches, err := filepath.Glob(filepath.Join(dir, AnalyzerBinaryPrefix+"*"))
 	if err != nil {
@@ -69,6 +87,8 @@ func FindAnalyzerBinary(dir string) (string, bool) {
 	}
 	sort.Strings(matches)
 	windows := strings.HasPrefix(CurrentPlatform(), "windows-")
+
+	var candidates []string
 	for _, m := range matches {
 		info, err := os.Stat(m)
 		if err != nil || info.IsDir() {
@@ -79,7 +99,29 @@ func FindAnalyzerBinary(dir string) (string, bool) {
 		if windows != strings.EqualFold(filepath.Ext(m), ".exe") {
 			continue
 		}
-		return m, true
+		candidates = append(candidates, m)
+	}
+
+	platformSuffix := "-" + CurrentPlatform()
+	for _, m := range candidates {
+		if strings.HasSuffix(strings.TrimSuffix(filepath.Base(m), ".exe"), platformSuffix) {
+			return m, true
+		}
+	}
+	for _, m := range candidates {
+		if !hasPlatformSuffix(strings.TrimSuffix(filepath.Base(m), ".exe")) {
+			return m, true
+		}
 	}
 	return "", false
+}
+
+// hasPlatformSuffix reports whether name ends with "-<os>-<arch>" for a known platform.
+func hasPlatformSuffix(name string) bool {
+	for platform := range ValidPolicyBinaryPlatforms {
+		if strings.HasSuffix(name, "-"+platform) {
+			return true
+		}
+	}
+	return false
 }

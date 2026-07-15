@@ -159,6 +159,28 @@ func TestAnalyzerSpawnBinaryInBinNotDiscovered(t *testing.T) {
 	require.ErrorContains(t, err, "failed to load Pulumi policy project")
 }
 
+// TestAnalyzerSpawnBinaryByFilePath points --policy-pack directly at the analyzer
+// executable file itself (not its directory) — the local-dev workflow of running a
+// freshly built binary.
+func TestAnalyzerSpawnBinaryByFilePath(t *testing.T) {
+	t.Parallel()
+
+	binName := "pulumi-analyzer-binary-test-pack-" + goruntime.GOOS + "-" + goruntime.GOARCH
+	if goruntime.GOOS == "windows" {
+		binName += ".exe"
+	}
+	packDir := buildBinaryAnalyzerPack(t, binName)
+	ctx := newAnalyzerTestContext(t)
+
+	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", filepath.Join(packDir, binName), nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, analyzer.Close()) }()
+
+	info, err := analyzer.GetAnalyzerInfo(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "binary-test-pack", info.Name)
+}
+
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	d := diagtest.LogSink(t)
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)

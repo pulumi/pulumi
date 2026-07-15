@@ -106,12 +106,17 @@ func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
 	hasPlugin func(workspace.PluginDescriptor) bool,
 ) (Analyzer, error) {
+	// A --policy-pack path may point directly at a pre-built analyzer executable (local
+	// development against a freshly built binary) or at a pack directory. Resolve to the
+	// binary and the effective pack directory before dispatching.
+	binPath, packDir, isBinary := workspace.ResolveAnalyzerBinary(policyPackPath)
+
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*pulumirpc.AnalyzerHandshakeResponse, error) {
 		// For analyzers the root directory and program directory are the location of the PulumiPolicy.yaml _not_ the
 		// location of the shim plugin.
-		dir := policyPackPath
+		dir := packDir
 		client := pulumirpc.NewAnalyzerClient(conn)
 
 		req := pulumirpc.AnalyzerHandshakeRequest{
@@ -138,19 +143,19 @@ func NewPolicyAnalyzer(
 	var plug *Plugin
 	var proj *workspace.PolicyPackProject
 	var err error
-	if binPath, ok := workspace.FindAnalyzerBinary(policyPackPath); ok {
+	if isBinary {
 		// Binary packs ship a bare analyzer executable and need no manifest or language
 		// host: exec it directly, exactly as a provider plugin would be.
-		plug, _, err = newPlugin(ctx, policyPackPath, binPath, fmt.Sprintf("%v (analyzer)", name),
+		plug, _, err = newPlugin(ctx, packDir, binPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr(), "."}, analyzerPluginEnv(opts),
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	} else if proj, err = workspace.LoadPolicyPack(
-		filepath.Join(policyPackPath, "PulumiPolicy.yaml")); err != nil {
-		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", policyPackPath, err)
+		filepath.Join(packDir, "PulumiPolicy.yaml")); err != nil {
+		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", packDir, err)
 	} else if languagePluginFound(ctx, proj, hasPlugin) {
 		// Source pack with a language plugin: use RunPlugin to invoke the policy pack.
-		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
+		plug, _, err = newPlugin(ctx, ctx.Pwd, packDir, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, analyzerPluginEnv(opts),
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
@@ -160,7 +165,7 @@ func NewPolicyAnalyzer(
 		// language plugins), but have to leave this in to ensure things like
 		// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time
 		// they could probably be moved to just be language runtimes like the rest).
-		plug, err = newBootstrapAnalyzerPlugin(host, ctx, name, policyPackPath, proj, opts, handshake)
+		plug, err = newBootstrapAnalyzerPlugin(host, ctx, name, packDir, proj, opts, handshake)
 	}
 
 	if err != nil {
