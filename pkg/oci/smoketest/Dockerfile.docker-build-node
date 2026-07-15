@@ -1,13 +1,13 @@
 # Program image for the docker-build (buildkit) smoke test, driven from a Node
 # host. A real language image (Node base + npm deps + the bootstrap shim) that
-# ALSO bakes a build context at /workspace/app. The docker-build provider is
-# workspace-coupled, so it runs *from this image* (run-from-program-image) and
-# resolves the build context from /workspace/app.
+# ALSO bakes a build context at /workspace/app. The docker-build provider runs from
+# its OWN image, as every provider but `command` does; it resolves the build context
+# from /workspace/app through the shared /workspace mount, which this image seeds.
 #
-# Note what is NOT here: unlike the classic `docker` provider's program image,
-# there is no docker CLI. docker-build uses an embedded buildkit client and reaches
-# the daemon directly over the socket the pod projects in — the program image only
-# has to carry the build context.
+# Note what is NOT here: there is no docker CLI. docker-build uses an embedded
+# buildkit client and reaches the daemon directly over the socket the pod projects
+# in (the docker-socket capability) — the program image only has to carry the build
+# context.
 #
 # --ignore-scripts skips @pulumi/docker-build's `pulumi plugin install` install
 # hook: we don't want it pulling the plugin into the image, since the engine

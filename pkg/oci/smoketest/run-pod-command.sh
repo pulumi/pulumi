@@ -1,21 +1,24 @@
 #!/usr/bin/env bash
 #
-# Workspace-coupled-provider smoke test (design Phase 5). Proves the
-# run-from-program-image model: a provider that needs the program's filesystem
-# and toolchain (here `command`) runs *from the program image* with its binary
-# injected, rather than from its own image or via a copied workspace volume.
+# Run-from-program-image provider smoke test (design Phase 5). Exercises the
+# run-from-program-image model: a provider that needs the program's ambient
+# toolchain (here `command`) runs *from the program image* with its binary
+# injected, rather than from its own image as every other provider does.
 #
 # It also proves environment projection: the engine forwards a stand-in credential
 # (OCI_SMOKE_FAKE_CRED) that the program image lacks, the container host projects
 # the engine's environment onto the provider container, and the program reads the
 # credential back — the path a real cloud provider's credentials would take.
 #
-# The program uses command.local.Command to `cat /workspace/marker` — a file
-# baked into the PROGRAM image and present in no provider image. For the command
-# to succeed, the provider must run rooted in the program's filesystem. The engine
-# (in pod mode) sees `command` is workspace-coupled, copies the stock command
-# binary out of its provider image into an ephemeral volume, and runs it from the
-# program image (PULUMI_POD_PROGRAM_IMAGE) on the engine's netns, then attaches.
+# The program uses command.local.Command to `cat /workspace/marker` — a file baked
+# into the PROGRAM image. The engine (in pod mode) sees `command` runs from the
+# program image, copies the stock command binary out of its provider image into an
+# ephemeral volume, and runs it from the program image (PULUMI_POD_PROGRAM_IMAGE)
+# on the engine's netns, then attaches.
+#
+# Note the marker read is not a control for that placement — /workspace is the
+# shared volume the program image seeds, so any provider would read it (see
+# Dockerfile.command). Exercising the toolchain is what would isolate it.
 #
 # Pipeline:
 #   1. cross-compile this branch's pulumi + pulumi-language-oci; build the engine
@@ -71,7 +74,7 @@ cleanup() {
 trap cleanup EXIT
 
 if ! docker info >/dev/null 2>&1; then
-  echo "!! docker daemon not available — cannot run workspace-coupled-provider test"
+  echo "!! docker daemon not available — cannot run run-from-program-image provider test"
   exit 1
 fi
 
@@ -98,7 +101,7 @@ cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 # Drive the deployment with the wrapper — it bootstraps the pod (network, engine
 # container, PULUMI_POD_* contract, mounts, teardown) and defaults the backend +
 # stack state into the mounted dir. PULUMI_POD_PROGRAM_IMAGE is forwarded so the
-# workspace-coupled command provider runs from the program image.
+# command provider runs from the program image.
 export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
 export PULUMI_POD_MOUNT_DIR="$WORK/project"
 export PULUMI_POD_PROGRAM_IMAGE="$PROGRAM_IMAGE"
@@ -116,7 +119,7 @@ echo "==> pulumi-pod: stack init + up + output (engine runs command FROM the pro
 MARKER="$("$WRAPPER" stack output marker)"
 
 echo "==> asserting the command provider ran from the program image and read the workspace"
-if ! grep -q 'oci: provider command is workspace-coupled' "$WORK/up.log"; then
+if ! grep -q "oci: provider command needs the program's toolchain" "$WORK/up.log"; then
   echo "!! the engine did not run command from the program image"
   exit 1
 fi
@@ -135,4 +138,4 @@ if [ "$CRED" != "$EXPECTED_CRED" ]; then
   exit 1
 fi
 echo "    cred = $CRED (projected from the engine env onto the provider container)"
-echo "==> workspace-coupled-provider smoke test PASS — workspace + projected-env (credentials)"
+echo "==> run-from-program-image provider smoke test PASS — workspace + projected-env (credentials)"

@@ -1,5 +1,5 @@
 name: oci-smoketest-docker
-description: Smoke test for an image-building workspace-coupled provider in the OCI pod model
+description: Smoke test for an image-building provider in the OCI pod model
 runtime:
   name: oci
   options:

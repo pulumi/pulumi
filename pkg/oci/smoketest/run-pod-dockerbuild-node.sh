@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 #
-# docker-build (buildkit) smoke test — the workspace-coupled provider "real prize",
-# driven from a *Node* host program. This validates the one provider archetype left
-# unproven: docker-build, which (unlike the classic `docker` provider) uses an
-# embedded buildkit client rather than shelling out to the docker CLI. Driving it
-# from Node sidesteps the docker-build Go SDK's module-consumability snag — the
-# pod execution model is identical regardless of host language.
+# docker-build (buildkit) smoke test — the image-build "real prize", driven from a
+# *Node* host program. This validates the one provider archetype left unproven:
+# docker-build, which (unlike the classic `docker` provider) uses an embedded
+# buildkit client rather than shelling out to the docker CLI. Driving it from Node
+# sidesteps the docker-build Go SDK's module-consumability snag — the pod execution
+# model is identical regardless of host language.
 #
-# The engine (pod mode) sees `docker-build` is workspace-coupled, so it runs the
-# provider FROM the program image (which carries the build context at
-# /workspace/app — but NO docker CLI, since buildkit is embedded), and — because
-# docker-build declares the `docker-socket` capability — projects the pod's
-# /var/run/docker.sock into it. The provider builds the image straight against the
-# daemon's buildkit and, with `load: true`, exports it into the daemon's image
-# store — so the artifact is real and inspectable, not a cache-only build.
+# The engine (pod mode) runs `docker-build` from its OWN image, as it does every
+# provider but `command`, with the shared /workspace volume mounted — so it resolves
+# the build context the program image seeded at /workspace/app (no docker CLI is
+# needed anywhere, since buildkit is embedded). Because docker-build declares the
+# `docker-socket` capability, the pod projects its /var/run/docker.sock into it. The
+# provider builds the image straight against the daemon's buildkit and, with
+# `load: true`, exports it into the daemon's image store — so the artifact is real
+# and inspectable, not a cache-only build.
 #
 # This also answers the open question from the design doc: docker-build's embedded
 # buildkit drives the *same* projected docker socket we already use for the classic
@@ -24,8 +25,8 @@
 #      image (Dockerfile.cli) and the Node program image (Dockerfile.docker-build-node)
 #   2. download + wrap the stock docker-build provider binary into an image
 #   3. create a pod network, run `pulumi up` in the engine container
-#   4. assert the provider ran workspace-coupled, got the socket, and a real image
-#      landed in the daemon's store
+#   4. assert the provider resolved the context off the shared mount, got the
+#      socket, and a real image landed in the daemon's store
 #
 # Usage: run-pod-dockerbuild-node.sh
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).

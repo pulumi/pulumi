@@ -17,10 +17,12 @@
 // things a provider container gets in the OCI pod model:
 //
 //  1. The program's own *filesystem*: it reads a file baked into the program
-//     image's workspace (/workspace/marker), proving the command provider ran
-//     rooted in the program's filesystem (run-from-program-image) — a file that
-//     exists only in the program image, not in the provider image or a copied
-//     volume, and that needs the program's toolchain, not just its files.
+//     image's workspace (/workspace/marker). Note this shows only that the
+//     provider sees the program's workspace, not that it ran rooted in the
+//     program's filesystem — /workspace is the shared volume the program image
+//     seeds, so a provider running from its own image reads it too. The program's
+//     ambient toolchain is what run-from-program-image actually supplies, and this
+//     test does not yet isolate it (see Dockerfile.command).
 //  2. The engine's projected *environment*: it reads a credential-like variable
 //     (OCI_SMOKE_FAKE_CRED) that the engine has but the program image does not.
 //     The only way it reaches the provider is the container host projecting the

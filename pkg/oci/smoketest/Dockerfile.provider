@@ -6,10 +6,11 @@
 # debugging and CA certs for providers that call cloud APIs.
 #
 # The binary lives at /plugin/provider — a directory — for two reasons:
-#   - stateless providers run this image directly, via the ENTRYPOINT;
-#   - workspace-coupled providers (command, docker-build) don't run this image at
-#     all: the container host copies /plugin's contents into a volume (the
-#     dir-oriented CopyFromImage) and runs the binary from the *program* image.
+#   - almost every provider runs this image directly, via the ENTRYPOINT;
+#   - `command` doesn't run this image at all: it runs from the *program* image for
+#     the binaries on the program's PATH (see runsFromProgramImage), so the container
+#     host copies /plugin's contents into a volume (the dir-oriented CopyFromImage)
+#     and runs the binary from there instead.
 # Keeping it in a directory lets one image serve both paths unchanged.
 FROM alpine:3
 RUN apk add --no-cache ca-certificates

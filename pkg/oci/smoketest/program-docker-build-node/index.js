@@ -12,19 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A Node Pulumi program for the docker-build (buildkit) smoke test — the
-// workspace-coupled provider "real prize", now driven from a *Node* host to
-// sidestep the docker-build Go SDK's module-consumability snag. It builds a
-// container image with @pulumi/docker-build from a context (/workspace/app) baked
-// into the program image.
+// A Node Pulumi program for the image-build smoke test's buildkit half, driven
+// from a *Node* host to sidestep the docker-build Go SDK's module-consumability
+// snag. It builds a container image with @pulumi/docker-build from a context
+// (/workspace/app) baked into the program image.
 //
 // Unlike the classic `docker` provider (which shells out to `docker build`),
 // docker-build uses an *embedded buildkit client* and talks to the daemon
-// directly — so the program image carries NO docker CLI, only the build context.
-// A successful run proves the docker-build provider ran rooted in the program
-// filesystem (run-from-program-image), resolving the context from a path that
-// exists only in the program image, and reached the daemon through the projected
-// docker socket (the capability mechanism), producing a real, inspectable image.
+// directly — so no docker CLI is needed anywhere: not in the program image, which
+// carries only the build context, and not in the provider's own image either.
+// A successful run proves the docker-build provider — running from its own image,
+// as every provider but `command` does — resolved the build context through the
+// shared /workspace mount that the program image seeds, and reached the daemon
+// through the projected docker socket (the capability mechanism), producing a
+// real, inspectable image.
 "use strict";
 
 const pulumi = require("@pulumi/pulumi");

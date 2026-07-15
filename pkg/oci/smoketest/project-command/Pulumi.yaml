@@ -1,5 +1,5 @@
 name: oci-smoketest-command
-description: Smoke test for a workspace-coupled provider (command) in the OCI pod model
+description: Smoke test for a run-from-program-image provider (command) in the OCI pod model
 runtime:
   name: oci
   options:
