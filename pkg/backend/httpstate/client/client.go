@@ -2021,6 +2021,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 			Tags:             policy.Tags,
 			RemediationSteps: policy.RemediationSteps,
 			URL:              policy.URL,
+			Type:             convertPolicyType(policy.Type),
 		}
 	}
 
@@ -2122,6 +2123,20 @@ func convertPolicyComplianceFramework(f *plugin.AnalyzerPolicyComplianceFramewor
 		Version:       f.Version,
 		Reference:     f.Reference,
 		Specification: f.Specification,
+	}
+}
+
+// convertPolicyType converts a policy's type from the analyzer to the apitype.
+func convertPolicyType(t plugin.AnalyzerPolicyType) apitype.PolicyType {
+	switch t {
+	case plugin.AnalyzerPolicyTypeResource:
+		return apitype.PolicyTypeResource
+	case plugin.AnalyzerPolicyTypeStack:
+		return apitype.PolicyTypeStack
+	case plugin.AnalyzerPolicyTypeUnknown:
+		fallthrough
+	default:
+		return apitype.PolicyTypeUnspecified
 	}
 }
 

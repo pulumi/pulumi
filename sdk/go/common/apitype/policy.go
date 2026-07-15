@@ -133,7 +133,20 @@ type Policy struct {
 
 	// A URL to more information about the policy.
 	URL string `json:"url,omitempty"`
+
+	// Type indicates whether the policy validates a resource or the stack.
+	Type PolicyType `json:"type,omitempty"`
 }
+
+// PolicyType indicates whether a policy validates a single resource or the
+// whole stack.
+type PolicyType string
+
+const (
+	PolicyTypeUnspecified PolicyType = ""
+	PolicyTypeResource    PolicyType = "resource"
+	PolicyTypeStack       PolicyType = "stack"
+)
 
 // PolicyConfigSchema defines the JSON schema of a particular Policy's
 // configuration.
