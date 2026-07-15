@@ -988,7 +988,8 @@ func providerFlagStackContext(
 //
 //nolint:paralleltest // mutates cmdBackend.BackendInstance via providerFlagStackContext.
 func TestDoCmdResourceProviderFlagURNNotInSnapshot(t *testing.T) {
-	cmd, _, _ := providerFlagStackContext(t,
+	cmd, _, _ := providerFlagStackContext(
+		t,
 		&testProvider{spec: doResourceSpec(false)},
 		&deploy.Snapshot{}, // empty snapshot — no resources
 	)
@@ -1056,7 +1057,8 @@ func TestDoCmdResourceProviderFlagURNNotAProvider(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cmd, _, _ := providerFlagStackContext(t,
+			cmd, _, _ := providerFlagStackContext(
+				t,
 				&testProvider{spec: doResourceSpec(false)},
 				&deploy.Snapshot{Resources: tc.resources},
 			)
@@ -1089,21 +1091,22 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 		},
 	}
 	var gotInputs resource.PropertyMap
-	cmd, _, _ := providerFlagStackContext(t, &testProvider{
-		spec: spec,
-		MockProvider: plugin.MockProvider{
-			ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-				gotInputs = req.Inputs
-				return plugin.ConfigureResponse{}, nil
-			},
-			ReadF: func(_ context.Context, _ plugin.ReadRequest) (plugin.ReadResponse, error) {
-				return plugin.ReadResponse{ReadResult: plugin.ReadResult{
-					ID:      "res-1",
-					Outputs: resource.PropertyMap{"name": resource.NewProperty("hello")},
-				}}, nil
+	cmd, _, _ := providerFlagStackContext(
+		t, &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					gotInputs = req.Inputs
+					return plugin.ConfigureResponse{}, nil
+				},
+				ReadF: func(_ context.Context, _ plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+						ID:      "res-1",
+						Outputs: resource.PropertyMap{"name": resource.NewProperty("hello")},
+					}}, nil
+				},
 			},
 		},
-	},
 		//nolint:requiredfield // Only the fields configureProvider's matcher reads matter here.
 		&deploy.Snapshot{Resources: []*resource.State{
 			(&resource.NewState{
@@ -1121,6 +1124,7 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 	// `tenant` is not supplied here and should fall through from the snapshot's inputs.
 	cmd.SetArgs([]string{
 		"azure:index:myResource", "read", "res-1",
+		"--input", "pcl",
 		"--provider", string(providerURN),
 		"--azure:region", "us-west-2",
 	})
