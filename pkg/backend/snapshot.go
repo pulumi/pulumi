@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
@@ -72,13 +73,13 @@ type SnapshotPersister interface {
 // This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
 // that it creates and expects those mutations to be persisted directly to the snapshot.
 type SnapshotManager struct {
-	persister      SnapshotPersister    // The persister responsible for invalidating and persisting the snapshot
-	baseSnapshot   *deploy.Snapshot     // The base snapshot for this plan
-	secretsManager secrets.Manager      // The default secrets manager to use
-	resources      []*resource.State    // The list of resources operated upon by this plan
-	operations     []resource.Operation // The set of operations known to be outstanding in this plan
-	snippets       []resource.Snippet   // The snippet list to persist with the next snapshot
-	hasSnippets    bool                 // Whether snippets has been set by the engine
+	persister      SnapshotPersister       // The persister responsible for invalidating and persisting the snapshot
+	baseSnapshot   *deploy.Snapshot        // The base snapshot for this plan
+	secretsManager secrets.Manager         // The default secrets manager to use
+	resources      []*resource.State       // The list of resources operated upon by this plan
+	operations     []pkgresource.Operation // The set of operations known to be outstanding in this plan
+	snippets       []resource.Snippet      // The snippet list to persist with the next snapshot
+	hasSnippets    bool                    // Whether snippets has been set by the engine
 
 	// The set of resources that have been operated upon already by this plan. These resources could also have
 	// been added to `resources` by other operations but need to be filtered out before writing the snapshot.
@@ -425,7 +426,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 func (sm *SnapshotManager) doCreate(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
 	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.New(), resource.OperationTypeCreating)
+		sm.markOperationPending(step.New(), pkgresource.OperationTypeCreating)
 		return true
 	})
 	if err != nil {
@@ -469,7 +470,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 func (sm *SnapshotManager) doUpdate(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.URN())
 	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.New(), resource.OperationTypeUpdating)
+		sm.markOperationPending(step.New(), pkgresource.OperationTypeUpdating)
 		return true
 	})
 	if err != nil {
@@ -499,7 +500,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 func (sm *SnapshotManager) doDelete(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
 	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.Old(), resource.OperationTypeDeleting)
+		sm.markOperationPending(step.Old(), pkgresource.OperationTypeDeleting)
 		return true
 	})
 	if err != nil {
@@ -546,7 +547,7 @@ func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error
 func (sm *SnapshotManager) doRead(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
 	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.New(), resource.OperationTypeReading)
+		sm.markOperationPending(step.New(), pkgresource.OperationTypeReading)
 		return true
 	})
 	if err != nil {
@@ -627,7 +628,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 func (sm *SnapshotManager) doImport(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
 	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.New(), resource.OperationTypeImporting)
+		sm.markOperationPending(step.New(), pkgresource.OperationTypeImporting)
 		return true
 	})
 	if err != nil {
@@ -673,9 +674,9 @@ func (sm *SnapshotManager) markNew(state *resource.State) {
 }
 
 // markOperationPending marks a resource as undergoing an operation that will now be considered pending.
-func (sm *SnapshotManager) markOperationPending(state *resource.State, op resource.OperationType) {
+func (sm *SnapshotManager) markOperationPending(state *resource.State, op pkgresource.OperationType) {
 	contract.Requiref(state != nil, "state", "must not be nil")
-	sm.operations = append(sm.operations, resource.NewOperation(state, op))
+	sm.operations = append(sm.operations, pkgresource.NewOperation(state, op))
 	logging.V(9).Infof("SnapshotManager.markPendingOperation(%s, %s)", state.URN, string(op))
 }
 
@@ -744,7 +745,7 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	}
 
 	// Record any pending operations, if there are any outstanding that have not completed yet.
-	var operations []resource.Operation
+	var operations []pkgresource.Operation
 	for _, op := range sm.operations {
 		if !sm.completeOps[op.Resource] {
 			operations = append(operations, op)
@@ -756,7 +757,7 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	// because these must require user intervention to be cleared or resolved.
 	if base := sm.baseSnapshot; base != nil {
 		for _, pendingOperation := range base.PendingOperations {
-			if pendingOperation.Type == resource.OperationTypeCreating {
+			if pendingOperation.Type == pkgresource.OperationTypeCreating {
 				operations = append(operations, pendingOperation)
 			}
 		}

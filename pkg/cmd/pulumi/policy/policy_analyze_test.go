@@ -85,7 +85,7 @@ func newMockBackendForAnalyze() (*backend.MockBackend, *backend.MockStack) {
 // newMockWsAndLm returns a MockContext and MockLoginManager that route through be.
 func newMockWsAndLm(be backend.Backend) (pkgWorkspace.Context, cmdBackend.LoginManager) {
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return nil, "", workspace.ErrProjectNotFound
 		},
 	}

@@ -43,8 +43,9 @@ func newStateDeleteCommand(ws pkgWorkspace.Context, lm backend.LoginManager) *co
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "Deletes one or more resources from a stack's state",
+		Use:     "remove",
+		Aliases: []string{"rm", "delete"},
+		Short:   "Deletes one or more resources from a stack's state",
 		Long: `Deletes one or more resources from a stack's state
 
 This command deletes resources from a stack's state, as long as it is safe to do so. Each resource is specified
@@ -57,7 +58,7 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
-		Example: "pulumi state delete 'urn:pulumi:stage::demo::pkg:index:Type::res-a' " +
+		Example: "pulumi state remove 'urn:pulumi:stage::demo::pkg:index:Type::res-a' " +
 			"'urn:pulumi:stage::demo::pkg:index:Type::res-b'",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

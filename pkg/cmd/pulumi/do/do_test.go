@@ -878,7 +878,7 @@ func TestCurrentStackIdentity(t *testing.T) {
 
 	mockWS := func(stack string, newErr error) *pkgWorkspace.MockContext {
 		return &pkgWorkspace.MockContext{
-			NewF: func() (pkgWorkspace.W, error) {
+			NewF: func(_ string) (pkgWorkspace.W, error) {
 				if newErr != nil {
 					return nil, newErr
 				}
@@ -926,13 +926,13 @@ func TestDoCmdFunctionInvokeWithStackContext(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name:    tokens.PackageName("my-project"),
 				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
 			}, root, nil
 		},
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "acme/my-project/dev"}
@@ -1002,7 +1002,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name:    tokens.PackageName("my-project"),
 				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),

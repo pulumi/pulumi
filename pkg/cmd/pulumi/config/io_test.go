@@ -447,7 +447,8 @@ func TestStackEnvConfig(t *testing.T) {
 	cfg.Config = config.Map{}
 
 	err = workspace.ApplyProjectConfig(
-		ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter, config.NopDecrypter)
+		ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter, config.NopDecrypter,
+	)
 	require.NoError(t, err)
 
 	assert.Equal(t, config.Map{
@@ -729,7 +730,7 @@ func TestParseConfigKey(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "test-project",
 			}, "/test/path", nil

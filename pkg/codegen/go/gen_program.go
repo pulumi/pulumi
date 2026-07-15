@@ -550,6 +550,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 
 		componentFilename := filepath.Base(componentDir)
 		componentName := component.DeclarationName()
+		pcl.MapProvidersAsResources(component.Program)
 		componentGenerator, err := newGenerator(component.Program, opts)
 		componentGenerator.isComponent = true
 		for _, n := range component.Program.Nodes {

@@ -61,9 +61,11 @@ jobs:
           fi
 
           ./.github/scripts/set-output version "${PULUMI_VERSION}"
-      - uses: miniscruff/changie-action@v2
+      - uses: ./.github/actions/retry
         with:
-          version: v1.21.0
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
       - name: Backfill PR numbers in pending changelog entries
         run: |
           python3 scripts/changie-pr-lookup.py

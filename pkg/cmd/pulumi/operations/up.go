@@ -408,7 +408,7 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
-		proj, root, err := ws.ReadProject()
+		proj, root, err := ws.ReadProject("")
 		if err != nil {
 			return err
 		}

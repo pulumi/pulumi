@@ -179,7 +179,7 @@ func printStackTags(w io.Writer, tags map[apitype.StackTagName]string) {
 func newStackTagRemoveCmd(stack *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "remove",
-		Aliases: []string{"rm"},
+		Aliases: []string{"rm", "delete"},
 		Short:   "Remove a stack tag",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

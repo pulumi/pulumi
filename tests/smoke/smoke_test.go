@@ -1366,3 +1366,17 @@ func TestPulumiNewEmptyOperations(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "testing")
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 }
+
+// Test that `pulumi --version` prints the same output as `pulumi version`.
+func TestVersionFlag(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	versionCmdStdout, _ := e.RunCommand("pulumi", "version")
+	versionFlagStdout, _ := e.RunCommand("pulumi", "--version")
+
+	assert.NotEmpty(t, strings.TrimSpace(versionCmdStdout))
+	assert.Equal(t, versionCmdStdout, versionFlagStdout)
+}

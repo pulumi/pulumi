@@ -572,12 +572,6 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	logging.V(7).Infof("*** Starting Update(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Update(preview=%v) complete ***", dryRun)
 
-	if len(opts.Snippets) > 0 && !dryRun && ctx.SnapshotManager != nil {
-		if err := ctx.SnapshotManager.SetSnippets(effectiveSnippets); err != nil {
-			return nil, nil, err
-		}
-	}
-
 	// We skip the target check here because the targeted resource may not exist yet.
 
 	return update(ctx, info, &deploymentOptions{
@@ -589,6 +583,27 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 		DryRun:        dryRun,
 		pluginManager: ctx.PluginManager,
 	})
+}
+
+func persistValidatedSnippets(
+	ctx context.Context,
+	manager SnapshotManager,
+	snippets []resource.Snippet,
+	plugctx *plugin.Context,
+) error {
+	if manager == nil {
+		return nil
+	}
+	loader := schema.NewPluginLoader(plugctx)
+	for _, snippet := range snippets {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := deploy.ValidateSnippet(snippet, loader); err != nil {
+			return err
+		}
+	}
+	return manager.SetSnippets(snippets)
 }
 
 func installPlugins(

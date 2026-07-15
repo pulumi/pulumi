@@ -62,7 +62,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 
 			// Fetch the project.
-			proj, _, err := ws.ReadProject()
+			proj, _, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}
@@ -200,6 +200,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	logsCmd.AddCommand(newDecryptCmd(ws))
 	logsCmd.AddCommand(newListCmd())
 	logsCmd.AddCommand(newRemoveCmd())
+	logsCmd.AddCommand(newShareCmd(ws, &stackName, createEncryptionSessionFromAPI))
 
 	logsCmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",

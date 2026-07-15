@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -30,8 +31,13 @@ import (
 )
 
 func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false, fmt.Errorf("getting current working directory: %w", err)
+	}
+
 	// Try to read the current project
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject(cwd)
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return false, err
 	}

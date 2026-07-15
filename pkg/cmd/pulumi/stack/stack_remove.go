@@ -45,7 +45,7 @@ func newStackRemoveCmd() *cobra.Command {
 	var removeBackups bool
 	cmd := &cobra.Command{
 		Use:     "remove",
-		Aliases: []string{"rm"},
+		Aliases: []string{"rm", "delete"},
 		Short:   "Remove a stack and its configuration",
 		Long: "Remove a stack and its configuration\n" +
 			"\n" +

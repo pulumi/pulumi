@@ -818,7 +818,7 @@ func NewImportCmd() *cobra.Command {
 
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := ws.ReadProject()
+			proj, root, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}

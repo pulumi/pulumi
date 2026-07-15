@@ -15,9 +15,14 @@
 package logging
 
 import (
+	"context"
+	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -143,4 +148,149 @@ func TestLoggingDoesNotConflictWithGlog(t *testing.T) {
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(output))
+}
+
+// TestInitLoggingFiltersVerbosity verifies that the stderr handler filters records logged directly
+// through slog by the -v level: without -v only warnings and errors pass.
+//
+//nolint:paralleltest // mutates global logging state
+func TestInitLoggingFiltersVerbosity(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	enabled := func(level slog.Level) bool {
+		handlerMu.RLock()
+		defer handlerMu.RUnlock()
+		return primary.Enabled(t.Context(), level)
+	}
+
+	InitLogging(true, 0, false)
+	assert.False(t, enabled(slog.LevelInfo))
+	assert.False(t, enabled(slog.LevelDebug))
+	assert.True(t, enabled(slog.LevelWarn))
+	assert.True(t, enabled(slog.LevelError))
+
+	InitLogging(true, 1, false)
+	assert.True(t, enabled(slog.LevelInfo))
+	assert.False(t, enabled(slog.LevelDebug))
+
+	InitLogging(true, 10, false)
+	assert.True(t, enabled(slog.LevelDebug))
+	assert.False(t, enabled(LevelTrace))
+
+	InitLogging(true, 11, false)
+	assert.True(t, enabled(LevelTrace))
+}
+
+// TestLogToStderrRespectsVerbosity verifies that with --logtostderr and no -v, neither V-guarded
+// nor direct slog info records reach stderr — even while a sink handler (as installed for
+// encrypted logs) keeps them flowing — and warnings still show.
+//
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestLogToStderrRespectsVerbosity(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		SetSinkHandler(nil)
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 0, false)
+	os.Stderr = oldStderr
+
+	sink := &recordingHandler{}
+	SetSinkHandler(sink)
+
+	V(9).Infof("guarded info %d", 42)
+	Infof("unguarded info")
+	slog.Info("direct info")
+	Warningf("warning shows")
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.NotContains(t, string(out), "guarded info")
+	assert.NotContains(t, string(out), "unguarded info")
+	assert.NotContains(t, string(out), "direct info")
+	assert.Contains(t, string(out), "warning shows")
+	assert.True(t, sink.saw("guarded info %d"))
+}
+
+type recordingHandler struct {
+	mu   sync.Mutex
+	msgs []string
+}
+
+func (h *recordingHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *recordingHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.msgs = append(h.msgs, r.Message)
+	return nil
+}
+
+func (h *recordingHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h *recordingHandler) WithGroup(string) slog.Handler      { return h }
+
+func (h *recordingHandler) saw(msg string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Contains(h.msgs, msg)
+}
+
+// TestLogToStderrFiltersHigherVerbosity reproduces `pulumi up --logtostderr -v=1` showing v=5
+// records: the primary handler must drop records whose "v" attribute exceeds the requested level,
+// for both the V() wrapper and direct slog calls that carry the attribute.
+//
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestLogToStderrFiltersHigherVerbosity(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		SetSinkHandler(nil)
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	sink := &recordingHandler{}
+	SetSinkHandler(sink)
+
+	V(1).Infof("v1 shows")
+	V(5).Infof("v5 hidden")
+	slog.Info("direct v5 hidden", "v", 5)
+	slog.Info("unleveled info shows")
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "v1 shows")
+	assert.NotContains(t, string(out), "v5 hidden")
+	assert.NotContains(t, string(out), "direct v5 hidden")
+	assert.Contains(t, string(out), "unleveled info shows")
+	assert.True(t, sink.saw("v5 hidden"))
 }

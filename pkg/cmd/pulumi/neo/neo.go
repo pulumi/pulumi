@@ -300,7 +300,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 	ws := pkgWorkspace.Instance
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}

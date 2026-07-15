@@ -49,8 +49,9 @@ func newOrgWebhookRemoveCmd() *cobra.Command {
 	orcmd := &orgWebhookRemoveCmd{}
 
 	cmd := &cobra.Command{
-		Use:   "remove",
-		Short: "[EXPERIMENTAL] Delete an organization webhook",
+		Use:     "remove",
+		Aliases: []string{"rm", "delete"},
+		Short:   "[EXPERIMENTAL] Delete an organization webhook",
 		Long: "[EXPERIMENTAL] Delete an organization webhook.\n" +
 			"\n" +
 			"Permanently removes the specified webhook from the organization.\n" +
@@ -96,7 +97,7 @@ func (c *orgWebhookRemoveCmd) run(ctx context.Context, webhookName string) error
 	}
 
 	ws := pkgWorkspace.Instance
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}

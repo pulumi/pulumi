@@ -34,9 +34,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-// rawStringBytesDisplay renders a string containing bytes that are not valid UTF-8 as b"<base64>",
+// byteStringDisplay renders a string containing bytes that are not valid UTF-8 as b"<base64>",
 // since such strings cannot be represented in JSON or terminal output directly.
-func rawStringBytesDisplay(s string) string {
+func byteStringDisplay(s string) string {
 	return `b"` + base64.StdEncoding.EncodeToString([]byte(s)) + `"`
 }
 
@@ -46,7 +46,7 @@ func rawStringBytesDisplay(s string) string {
 func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.PropertyValue {
 	switch {
 	case v.IsString() && !utf8.ValidString(v.StringValue()):
-		return resource.NewProperty(rawStringBytesDisplay(v.StringValue()))
+		return resource.NewProperty(byteStringDisplay(v.StringValue()))
 	case v.IsArray():
 		new := make([]resource.PropertyValue, len(v.ArrayValue()))
 		for i, e := range v.ArrayValue() {

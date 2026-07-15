@@ -74,7 +74,8 @@ func GetStackConfigurationOrLatest(
 			}
 			return nil, err
 		},
-		configFile)
+		configFile,
+	)
 }
 
 func getStackConfigurationWithFallback(
@@ -95,7 +96,8 @@ func getStackConfigurationWithFallback(
 		cfg, err := fallbackGetConfig(err)
 		if err != nil {
 			return backend.StackConfiguration{}, nil, fmt.Errorf(
-				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)
+				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err,
+			)
 		}
 		workspaceStack = &workspace.ProjectStack{
 			Config: cfg,
@@ -351,7 +353,12 @@ func ParseConfigKey(ws pkgWorkspace.Context, key string, path bool) (config.Key,
 	// As a convenience, we'll treat any key with no delimiter as if:
 	// <program-name>:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
-		proj, _, err := ws.ReadProject()
+		cwd, err := os.Getwd()
+		if err != nil {
+			return config.Key{}, fmt.Errorf("getting current working directory: %w", err)
+		}
+
+		proj, _, err := ws.ReadProject(cwd)
 		if err != nil {
 			return config.Key{}, err
 		}

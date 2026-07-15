@@ -118,7 +118,6 @@ var expectedFailures = map[string]string{
 	"l2-plain": "map literals nested in plain list elements render without a type; generated code does not compile",
 
 	// pulumi/pulumi#18345
-	"l2-map-keys":                         "NonPlainData.InnerData renders as interface{}{} instead of &plain.InnerDataArgs{}",                                           //nolint:lll
 	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
 	"l3-range":                            "list(string) and map(string) config values decoded as raw JSON strings by cfg.Require; cannot range over string as list/map", //nolint:lll
@@ -134,8 +133,9 @@ var expectedFailures = map[string]string{
 
 	"l3-component-config-primitives":     "does not compile; missing necessary casts for pulumi inputs",
 	"l3-component-config-objects":        "does not compile; missing necessary casts for pulumi inputs",
-	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
-	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l3-component-provider":              "does not compile; missing necessary casts for pulumi inputs and untyped component outputs", //nolint:lll
+	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",   //nolint:lll
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",   //nolint:lll
 
 	"l3-range-list-ref": "fails with syntax errors: undefined: err",
 	"l3-range-map-ref":  "fails with syntax errors: mapResource.K1 undefined (type []*nestedobject.Target has no field or method K1)", //nolint:lll

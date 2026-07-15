@@ -127,7 +127,12 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 ) (*workspace.ProjectStack, *workspace.Project, *backend.Stack, error) {
 	opts := display.Options{Color: cmd.color}
 
-	project, _, err := cmd.ws.ReadProject()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("getting current working directory: %w", err)
+	}
+
+	project, _, err := cmd.ws.ReadProject(cwd)
 	if err != nil {
 		return nil, nil, nil, err
 	}
