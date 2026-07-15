@@ -137,11 +137,11 @@ func NewDoCmd(
 		if err != nil {
 			return nil, nil, fmt.Errorf("get working directory: %w", err)
 		}
-		sink := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
+		base := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
 			Color: cmdutil.GetGlobalColorization(),
 		})
-		diagFwd := &forwardingSink{base: sink}
-		statusFwd := &forwardingSink{base: sink}
+		diagFwd := &forwardingSink{base: base}
+		statusFwd := &forwardingSink{base: base}
 
 		proj, root, err := ws.ReadProject("")
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
@@ -171,7 +171,7 @@ func NewDoCmd(
 		}
 
 		pctx, err := plugin.NewContext(
-			ctx, sink, sink, host, nil, wd, nil, false,
+			ctx, diagFwd, statusFwd, host, nil, wd, nil, false,
 			nil)
 		if err != nil {
 			contract.IgnoreClose(host)
@@ -286,7 +286,6 @@ func NewDoCmd(
 			root:              root,
 			ws:                ws,
 			lm:                lm,
-			sink:              sink,
 			diagFwd:           diagFwd,
 			statusFwd:         statusFwd,
 		}).newCommand()
@@ -525,7 +524,6 @@ type packageCommand struct {
 	// can read the referenced provider resource's Inputs. Plumbed from NewDoCmd.
 	ws        pkgWorkspace.Context
 	lm        cmdBackend.LoginManager
-	sink      diag.Sink
 	diagFwd   *forwardingSink
 	statusFwd *forwardingSink
 }

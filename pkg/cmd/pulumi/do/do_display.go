@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 type displayedStep struct {
@@ -90,8 +91,11 @@ func (pc *packageCommand) runDisplayedStep(
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{Metadata: metadata, Planning: preview})
 
 	forward := func(ephemeral bool) diagForwarder {
-		return func(sev diag.Severity, d *diag.Diag, args ...any) {
-			prefix, msg := stringifyDiag(sev, d, args...)
+		return func(sev diag.Severity, d *diag.Diag, args ...any) bool {
+			if sev == diag.Info {
+				return false
+			}
+			prefix, msg := engine.StringifyDiag(sev, d, args...)
 			events <- engine.NewEvent(engine.DiagEventPayload{
 				URN:       urn,
 				Prefix:    logging.FilterString(prefix),
@@ -101,24 +105,29 @@ func (pc *packageCommand) runDisplayedStep(
 				StreamID:  d.StreamID,
 				Ephemeral: ephemeral,
 			})
+			return true
 		}
 	}
 	pc.diagFwd.set(forward(false))
 	pc.statusFwd.set(forward(true))
 
-	result, err := call()
+	state, err := call()
+	if err != nil {
+		err = tidyProviderError(err, urn, subject)
+		pc.diagFwd.Errorf(diag.RawMessage(urn, err.Error()))
+	}
 	pc.diagFwd.clear()
 	pc.statusFwd.clear()
 	if err != nil {
-		err = tidyProviderError(err, urn, subject)
 		events <- engine.NewEvent(engine.ResourceOperationFailedPayload{
 			Metadata: metadata,
 			Status:   resource.StatusOK,
 			Steps:    1,
 		})
+		err = result.BailError(err)
 	} else {
-		if result != nil {
-			metadata.New = engine.MakeStepEventStateMetadata(result, pc.showSecrets)
+		if state != nil {
+			metadata.New = engine.MakeStepEventStateMetadata(state, pc.showSecrets)
 			metadata.Res = metadata.New
 		}
 		events <- engine.NewEvent(engine.ResourceOutputsEventPayload{Metadata: metadata, Planning: preview})

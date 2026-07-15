@@ -15,15 +15,12 @@
 package do
 
 import (
-	"bytes"
-	"fmt"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
-type diagForwarder func(sev diag.Severity, d *diag.Diag, args ...any)
+type diagForwarder func(sev diag.Severity, d *diag.Diag, args ...any) bool
 
 type forwardingSink struct {
 	base diag.Sink
@@ -47,8 +44,7 @@ func (s *forwardingSink) clear() {
 func (s *forwardingSink) Logf(sev diag.Severity, d *diag.Diag, args ...any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.forward != nil {
-		s.forward(sev, d, args...)
+	if s.forward != nil && s.forward(sev, d, args...) {
 		return
 	}
 	s.base.Logf(sev, d, args...)
@@ -59,33 +55,3 @@ func (s *forwardingSink) Infof(d *diag.Diag, args ...any)    { s.Logf(diag.Info,
 func (s *forwardingSink) Infoerrf(d *diag.Diag, args ...any) { s.Logf(diag.Infoerr, d, args...) }
 func (s *forwardingSink) Errorf(d *diag.Diag, args ...any)   { s.Logf(diag.Error, d, args...) }
 func (s *forwardingSink) Warningf(d *diag.Diag, args ...any) { s.Logf(diag.Warning, d, args...) }
-
-func stringifyDiag(sev diag.Severity, d *diag.Diag, args ...any) (string, string) {
-	var prefix bytes.Buffer
-	switch sev {
-	case diag.Debug:
-		prefix.WriteString(colors.SpecDebug)
-	case diag.Error:
-		prefix.WriteString(colors.SpecError)
-	case diag.Warning:
-		prefix.WriteString(colors.SpecWarning)
-	case diag.Info, diag.Infoerr:
-	}
-	if prefix.Len() > 0 {
-		prefix.WriteString(string(sev))
-		prefix.WriteString(": ")
-		prefix.WriteString(colors.Reset)
-	}
-
-	var buffer bytes.Buffer
-	buffer.WriteString(colors.SpecNote)
-	if d.Raw {
-		buffer.WriteString(d.Message)
-	} else {
-		fmt.Fprintf(&buffer, d.Message, args...)
-	}
-	buffer.WriteString(colors.Reset)
-	buffer.WriteRune('\n')
-
-	return prefix.String(), buffer.String()
-}

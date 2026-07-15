@@ -714,7 +714,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 	ctx context.Context, providerURN resource.URN,
 ) (resource.PropertyMap, error) {
 	s, err := cmdStack.RequireStack(
-		ctx, pc.sink, pc.ws, pc.lm,
+		ctx, pc.diagFwd, pc.ws, pc.lm,
 		"", /*stackName — use whatever is currently selected*/
 		cmdStack.LoadOnly, display.Options{Color: cmdutil.GetGlobalColorization()},
 		"", /*configFile*/

@@ -33,12 +33,20 @@ func TestForwardingSink(t *testing.T) {
 	s := &forwardingSink{base: base}
 
 	var forwarded []string
-	s.set(func(sev diag.Severity, d *diag.Diag, args ...any) {
+	s.set(func(sev diag.Severity, d *diag.Diag, args ...any) bool {
+		if sev == diag.Info {
+			return false
+		}
 		forwarded = append(forwarded, string(sev)+": "+d.Message)
+		return true
 	})
 	s.Errorf(diag.RawMessage("", "boom"))
 	assert.Empty(t, buf.String())
 	assert.Equal(t, []string{"error: boom"}, forwarded)
+
+	s.Infof(diag.RawMessage("", "hello"))
+	assert.Contains(t, buf.String(), "hello")
+	require.Len(t, forwarded, 1)
 
 	s.clear()
 	s.Warningf(diag.RawMessage("", "careful"))

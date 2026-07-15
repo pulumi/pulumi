@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -1136,7 +1137,7 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 func TestDoCmdResourceProviderErrorTidied(t *testing.T) {
 	t.Parallel()
 
-	cmd, _, _ := newDoResourceCommand(t, &testProvider{
+	cmd, _, stderr := newDoResourceCommand(t, &testProvider{
 		spec: doResourceSpec(false),
 		MockProvider: plugin.MockProvider{
 			ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -1154,5 +1155,7 @@ func TestDoCmdResourceProviderErrorTidied(t *testing.T) {
 	})
 	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes"})
 	err := cmd.Execute()
-	assert.EqualError(t, err, `deleting azure:index:myResource "res-1": cluster busy`)
+	assert.True(t, result.IsBail(err))
+	assert.ErrorContains(t, err, `deleting azure:index:myResource "res-1": cluster busy`)
+	assert.Contains(t, stderr.String(), `deleting azure:index:myResource "res-1": cluster busy`)
 }
