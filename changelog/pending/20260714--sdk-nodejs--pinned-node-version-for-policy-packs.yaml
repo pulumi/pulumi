@@ -1,5 +1,5 @@
 kind: feat
-body: Policy packs can pin an exact Node.js version via the nodeVersion runtime
+body: Allow policy packs to pin an exact Node.js version via the nodeVersion runtime
     option; the pinned version is downloaded, cached, and always used to run
     the pack
 component: sdk/nodejs
