@@ -30,30 +30,26 @@ import (
 // When the image is BUILT on `up`, though, its ref is not known until the language
 // host builds it — after the container host already read the (empty) environment.
 //
-// So the language host records the built ref to a file the container host reads
-// lazily, the first time a workspace-coupled (`command`) or dynamic provider actually
-// needs the program image. The two processes share the engine container's filesystem,
-// so this is a minimal IPC: the language host writes the file before it starts the
-// program container, hence before the program can register any resource, hence before
-// any provider is started.
+// So the language host records the built ref to a pod-scoped temp file that the
+// container host reads lazily, the first time a workspace-coupled (`command`) or dynamic
+// provider needs the program image. The two processes share the engine container's
+// filesystem and agree on the pod id (PULUMI_POD_ID), so this is a minimal, ephemeral
+// IPC: the language host writes the file before it starts the program container, hence
+// before the program can register any resource, hence before any provider is started.
 //
-// The file lives in the pod's PULUMI_HOME, which is in the MOUNTED project directory
-// and so PERSISTS across pod invocations. That matters for `destroy`: destroy never
-// runs the program (it works from state), so the language host never writes the ref —
-// yet the workspace-coupled and dynamic providers still have to start, from the
-// program image, to delete their resources. Reading the ref last written by `up` is
-// what lets them. When PULUMI_HOME is unset (e.g. a bare harness that sets
-// PULUMI_POD_PROGRAM_IMAGE directly), we fall back to a pod-scoped temp file, which is
-// only ever populated within a single `up`.
+// The file is deliberately EPHEMERAL (pod-scoped, not persisted across invocations): the
+// ref exists only when the program has RUN. That is always true on `up`. It is NOT true
+// on `destroy`, which does not run the program by default — so a program that uses a
+// workspace-coupled or dynamic provider must be destroyed with `--run-program`, which
+// re-runs the program (rebuilding the image and re-writing this ref). The alternative,
+// persisting the ref across pods, was rejected: it is invisible cross-stack global state
+// (one stack's destroy could read another's last-built ref). Requiring `--run-program` is
+// the honest contract, and dynamic providers already need the program on destroy anyway.
 
-// programImageStatePath is the file that holds the built program image ref. It prefers
-// the pod's PULUMI_HOME (persistent across invocations, so a ref written by `up` is
-// still there for a later `destroy`); absent that, a pod-scoped temp file keyed by pod
-// id so concurrent pods on one daemon do not collide.
+// programImageStatePath is the pod-scoped temp file that holds the built program image
+// ref. Keyed by pod id so concurrent pods on one daemon do not collide, and ephemeral so
+// no ref leaks across runs or stacks.
 func programImageStatePath(podID string) string {
-	if home := os.Getenv("PULUMI_HOME"); home != "" {
-		return filepath.Join(home, "oci-program-image")
-	}
 	return filepath.Join(os.TempDir(), "pulumi-pod-program-image-"+podID)
 }
 

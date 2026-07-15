@@ -488,7 +488,9 @@ func (h *containerHost) providerContainer(
 		programImage := h.programImageRef()
 		if programImage == "" {
 			return ContainerConfig{}, fmt.Errorf(
-				"oci: dynamic provider %s needs the program image, but PULUMI_POD_PROGRAM_IMAGE is unset",
+				"oci: dynamic provider %s runs from the program image, which is recorded only when "+
+					"the program runs. On `destroy` the program is not run by default — re-run it with "+
+					"`pulumi destroy --run-program` (or set PULUMI_POD_PROGRAM_IMAGE for a prebuilt image)",
 				descriptor.Name)
 		}
 		fmt.Fprintf(os.Stderr,
@@ -512,7 +514,9 @@ func (h *containerHost) providerContainer(
 		programImage := h.programImageRef()
 		if programImage == "" {
 			return ContainerConfig{}, fmt.Errorf(
-				"oci: provider %s needs the program filesystem, but PULUMI_POD_PROGRAM_IMAGE is unset",
+				"oci: provider %s runs rooted in the program image, which is recorded only when the "+
+					"program runs. On `destroy` the program is not run by default — re-run it with "+
+					"`pulumi destroy --run-program` (or set PULUMI_POD_PROGRAM_IMAGE for a prebuilt image)",
 				descriptor.Name)
 		}
 		// Inject the provider binary into an ephemeral volume, then run it from the
