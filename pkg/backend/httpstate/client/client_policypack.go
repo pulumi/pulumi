@@ -73,7 +73,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	if len(platforms) > 0 && len(resp.PlatformUploadURIs) == 0 {
 		return "", errors.New(
 			"this Pulumi service version does not support policy pack binaries; " +
-				"remove the 'binary' option from PulumiPolicy.yaml to publish source only")
+				"publish without the pre-built binaries to publish source only")
 	}
 
 	//
