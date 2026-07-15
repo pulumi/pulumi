@@ -41,12 +41,12 @@ type Shell struct {
 	DefaultTimeout time.Duration
 	// allowedRoots is Cwd followed by any extra roots passed to NewShell.
 	allowedRoots []string
-	// OnExec, when non-nil, runs the command in place of local execution. dir is
-	// the already-resolved, root-validated working directory and timeout the
+	// ExecOverride, when non-nil, replaces local execution of the command. dir
+	// is the already-resolved, root-validated working directory and timeout the
 	// effective timeout. The Neo ACP adapter sets this to run the command in the
 	// editor's terminal (terminal/*). It returns the same ShellResult this tool
-	// produces locally. A nil OnExec runs the command on this machine.
-	OnExec func(ctx context.Context, command, dir string, timeout time.Duration) (ShellResult, error)
+	// produces locally. When nil, the command runs on this machine.
+	ExecOverride func(ctx context.Context, command, dir string, timeout time.Duration) (ShellResult, error)
 }
 
 // NewShell creates a Shell handler with sensible defaults. The working directory is
@@ -103,8 +103,8 @@ func (s *Shell) Invoke(ctx context.Context, method string, args json.RawMessage)
 	if err != nil {
 		return nil, err
 	}
-	if s.OnExec != nil {
-		return s.OnExec(ctx, p.Command, dir, timeout)
+	if s.ExecOverride != nil {
+		return s.ExecOverride(ctx, p.Command, dir, timeout)
 	}
 	return s.run(ctx, p.Command, dir, timeout)
 }

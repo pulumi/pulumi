@@ -17,7 +17,9 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	iofs "io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,10 +30,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestFilesystem_OnWriteHookDivertsWrites verifies that, when OnWrite is set,
-// the mutating methods commit through the hook instead of touching disk. This
-// is the seam the Neo ACP adapter uses to forward writes to the editor.
-func TestFilesystem_OnWriteHookDivertsWrites(t *testing.T) {
+// TestFilesystem_WriteFileOverrideDivertsWrites verifies that, when
+// WriteFileOverride is set, the mutating methods commit through it instead of
+// touching disk. This is the seam the Neo ACP adapter uses to forward writes
+// to the editor.
+func TestFilesystem_WriteFileOverrideDivertsWrites(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
@@ -43,7 +46,7 @@ func TestFilesystem_OnWriteHookDivertsWrites(t *testing.T) {
 		content string
 	}
 	var writes []captured
-	fs.OnWrite = func(_ context.Context, path, content string) error {
+	fs.WriteFileOverride = func(_ context.Context, path, content string) error {
 		writes = append(writes, captured{path: path, content: content})
 		return nil
 	}
@@ -53,17 +56,99 @@ func TestFilesystem_OnWriteHookDivertsWrites(t *testing.T) {
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"content":"hello"}`, target)))
 	require.NoError(t, err)
 
-	// resolve canonicalizes the path (symlink-evaluated root), so the hook sees
-	// the resolved absolute path rather than the raw temp path.
+	// resolve canonicalizes the path (symlink-evaluated root), so the override
+	// sees the resolved absolute path rather than the raw temp path.
 	realRoot, err := filepath.EvalSymlinks(root)
 	require.NoError(t, err)
 	require.Len(t, writes, 1)
 	assert.Equal(t, filepath.Join(realRoot, "new.txt"), writes[0].path)
 	assert.Equal(t, "hello", writes[0].content)
 
-	// The hook owns the write; nothing was created on disk.
+	// The override owns the write; nothing was created on disk.
 	_, statErr := os.Stat(target)
 	assert.True(t, os.IsNotExist(statErr), "expected no file on disk, stat err: %v", statErr)
+}
+
+// TestFilesystem_EditThroughOverridesEditsBufferOnlyFile verifies that edit
+// derives existence from ReadFileOverride rather than a local stat: a file
+// that exists only in the editor (nothing on disk) is edited in place through
+// the overrides.
+func TestFilesystem_EditThroughOverridesEditsBufferOnlyFile(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	buffer := "hello world\n"
+	fs.ReadFileOverride = func(_ context.Context, _ string) (string, error) {
+		return buffer, nil
+	}
+	var wrote string
+	fs.WriteFileOverride = func(_ context.Context, _, content string) error {
+		wrote = content
+		return nil
+	}
+
+	target := filepath.Join(root, "buffer-only.txt")
+	res := editResult(t, fs, "edit", fmt.Sprintf(
+		`{"file_path":%q,"old_string":"world","new_string":"there"}`, target))
+	assert.Contains(t, res, "Successfully edited file")
+	assert.Equal(t, "hello there\n", wrote)
+
+	_, statErr := os.Stat(target)
+	assert.True(t, os.IsNotExist(statErr), "edit must not touch disk when overrides are set")
+}
+
+// TestFilesystem_EditCreationThroughOverrides verifies creation mode with
+// overrides set: ReadFileOverride reporting fs.ErrNotExist plus an empty
+// old_string creates the file through WriteFileOverride.
+func TestFilesystem_EditCreationThroughOverrides(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	fs.ReadFileOverride = func(_ context.Context, path string) (string, error) {
+		return "", fmt.Errorf("editor: %q: %w", path, iofs.ErrNotExist)
+	}
+	var wrote string
+	fs.WriteFileOverride = func(_ context.Context, _, content string) error {
+		wrote = content
+		return nil
+	}
+
+	target := filepath.Join(root, "new.txt")
+	res := editResult(t, fs, "edit", fmt.Sprintf(
+		`{"file_path":%q,"old_string":"","new_string":"seeded"}`, target))
+	assert.Contains(t, res, "Successfully created file")
+	assert.Equal(t, "seeded", wrote)
+}
+
+// TestFilesystem_EditReadOverrideGenericErrorDoesNotCreate verifies that only
+// fs.ErrNotExist enables creation mode: any other read failure surfaces as an
+// error instead of clobbering a file whose contents simply couldn't be read.
+func TestFilesystem_EditReadOverrideGenericErrorDoesNotCreate(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	readErr := errors.New("editor went away")
+	fs.ReadFileOverride = func(_ context.Context, _ string) (string, error) {
+		return "", readErr
+	}
+	fs.WriteFileOverride = func(_ context.Context, _, _ string) error {
+		t.Fatal("a failed read must not trigger a write")
+		return nil
+	}
+
+	_, err = fs.Invoke(t.Context(), "edit", json.RawMessage(fmt.Sprintf(
+		`{"file_path":%q,"old_string":"","new_string":"seeded"}`,
+		filepath.Join(root, "new.txt"))))
+	require.ErrorIs(t, err, readErr)
 }
 
 func TestFilesystem_WriteThenReadAbsolutePath(t *testing.T) {

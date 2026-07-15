@@ -51,25 +51,35 @@ import (
 // Either way we canonicalize the result and reject anything that lands outside the allowed
 // roots, so the agent can never read or write files outside Root or the configured extras
 // (e.g. /tmp).
+//
+// ReadFileOverride and WriteFileOverride divert per-file content I/O (see their docs), but
+// directory enumeration has no override: directory_tree, grep, and the file-discovery walk
+// in content_replace always list local disk, because the ACP protocol the overrides exist
+// for offers file read/write requests only — no directory listing or stat. With overrides
+// set, those methods therefore discover files on disk while reading and writing their
+// contents through the overrides.
 type Filesystem struct {
 	// Root is the user's working directory. Relative paths are joined against it.
 	Root string
 	// allowedRoots is Root followed by any extra roots passed to NewFilesystem.
 	allowedRoots []string
-	// OnWrite, when non-nil, performs the actual file write for the tool's
-	// mutating methods (write, edit, content_replace) in place of writing to
-	// local disk. path is the resolved absolute path; content is the full new
-	// file contents. The Neo ACP adapter sets this to route writes through the
-	// editor's fs/write_text_file request, so changes surface as native diffs
-	// and the editor (not the CLI) owns the on-disk mutation. A nil OnWrite
-	// writes straight to disk, creating parent directories as needed.
-	OnWrite func(ctx context.Context, path, content string) error
-	// OnRead, when non-nil, supplies the full contents of path in place of
-	// reading local disk for the read method. The Neo ACP adapter sets this to
-	// fetch via the editor's fs/read_text_file request, so reads see the
-	// editor's unsaved buffer. The tool still applies its own offset/limit
-	// slicing to the returned content. A nil OnRead reads from disk.
-	OnRead func(ctx context.Context, path string) (string, error)
+	// WriteFileOverride, when non-nil, replaces the default local-disk write for
+	// the tool's mutating methods (write, edit, content_replace). path is the
+	// resolved absolute path; content is the full new file contents. The Neo ACP
+	// adapter sets this to route writes through the editor's fs/write_text_file
+	// request, so changes surface as native diffs and the editor (not the CLI)
+	// owns the on-disk mutation. When nil, writes go straight to disk, creating
+	// parent directories as needed.
+	WriteFileOverride func(ctx context.Context, path, content string) error
+	// ReadFileOverride, when non-nil, replaces the default local-disk read
+	// wherever the tool needs file contents (read, and the read-modify-write in
+	// edit and content_replace). The Neo ACP adapter sets this to fetch via the
+	// editor's fs/read_text_file request, so reads see the editor's unsaved
+	// buffer. The tool still applies its own offset/limit slicing to the
+	// returned content. A missing file must be reported with an error satisfying
+	// errors.Is(err, fs.ErrNotExist) — edit relies on that to decide between
+	// editing and creating a file. When nil, reads come from disk.
+	ReadFileOverride func(ctx context.Context, path string) (string, error)
 }
 
 // NewFilesystem creates a Filesystem handler rooted at the given absolute directory.
@@ -244,11 +254,11 @@ func (f *Filesystem) write(ctx context.Context, p, content string) (writeResult,
 }
 
 // getFile returns the full contents of the resolved absolute path abs. When
-// OnRead is set the read is delegated to it (the ACP adapter fetches via the
-// editor's fs/read_text_file); otherwise it reads from local disk.
+// ReadFileOverride is set the read is delegated to it (the ACP adapter fetches
+// via the editor's fs/read_text_file); otherwise it reads from local disk.
 func (f *Filesystem) getFile(ctx context.Context, abs string) (string, error) {
-	if f.OnRead != nil {
-		return f.OnRead(ctx, abs)
+	if f.ReadFileOverride != nil {
+		return f.ReadFileOverride(ctx, abs)
 	}
 	b, err := os.ReadFile(abs)
 	if err != nil {
@@ -257,13 +267,14 @@ func (f *Filesystem) getFile(ctx context.Context, abs string) (string, error) {
 	return string(b), nil
 }
 
-// putFile commits content to the resolved absolute path abs. When OnWrite is set
-// the write is delegated to it (the ACP adapter forwards it to the editor as
-// fs/write_text_file, which creates missing parents itself); otherwise it writes
-// to local disk, creating parent directories as needed.
+// putFile commits content to the resolved absolute path abs. When
+// WriteFileOverride is set the write is delegated to it (the ACP adapter
+// forwards it to the editor as fs/write_text_file, which creates missing
+// parents itself); otherwise it writes to local disk, creating parent
+// directories as needed.
 func (f *Filesystem) putFile(ctx context.Context, abs, content string) error {
-	if f.OnWrite != nil {
-		return f.OnWrite(ctx, abs, content)
+	if f.WriteFileOverride != nil {
+		return f.WriteFileOverride(ctx, abs, content)
 	}
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 		return err
@@ -298,38 +309,26 @@ func (f *Filesystem) edit(ctx context.Context, p editArgs) (string, error) {
 		return "Error: Parameter 'expected_replacements' must be a non-negative number", nil
 	}
 
-	info, statErr := os.Stat(abs)
-	fileExists := statErr == nil
-	if statErr != nil && !os.IsNotExist(statErr) {
-		return "", statErr
-	}
-
-	// Creation mode: file doesn't exist and old_string is empty.
-	if !fileExists && p.OldString == "" {
-		if err := f.putFile(ctx, abs, p.NewString); err != nil {
-			return "", err
+	// Read through getFile so an ACP-backed edit matches and diffs against the
+	// same content it will write back (the editor's buffer), not stale disk.
+	// Existence is derived from the read rather than a local stat so a file that
+	// exists only in the editor is edited, not clobbered by creation mode.
+	original, readErr := f.getFile(ctx, abs)
+	if readErr != nil {
+		// Creation mode: file doesn't exist and old_string is empty.
+		if p.OldString == "" && errors.Is(readErr, fs.ErrNotExist) {
+			if err := f.putFile(ctx, abs, p.NewString); err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("Successfully created file: %s (%d bytes)", p.FilePath, len(p.NewString)), nil
 		}
-		return fmt.Sprintf("Successfully created file: %s (%d bytes)", p.FilePath, len(p.NewString)), nil
-	}
-
-	if !fileExists {
-		return "", statErr
-	}
-	if info.IsDir() {
-		return "", fmt.Errorf("path %q is a directory, not a file", p.FilePath)
+		return "", readErr
 	}
 
 	// Whitespace-only old_string on an existing file is ambiguous — reject it rather
 	// than silently matching every run of whitespace in the file.
 	if strings.TrimSpace(p.OldString) == "" {
 		return "Error: Parameter 'old_string' cannot be empty for existing files", nil
-	}
-
-	// Read through getFile so an ACP-backed edit matches and diffs against the
-	// same content it will write back (the editor's buffer), not stale disk.
-	original, err := f.getFile(ctx, abs)
-	if err != nil {
-		return "", err
 	}
 	if !utf8.ValidString(original) {
 		return "Error: Cannot edit binary file: " + p.FilePath, nil
