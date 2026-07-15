@@ -896,9 +896,15 @@ func (h *containerHost) Close() error {
 	return errors.Join(h.pod.Cleanup(cleanupCtx), h.Host.Close())
 }
 
-// scrapeServingPort follows a provider container's logs until it prints the port
+// scrapeServingPort follows a plugin container's logs until it prints the port
 // line of the plugin handshake — a bare integer on its own line — ignoring any
 // interleaved diagnostics. It gives up after a timeout or once output ends.
+//
+// When no port arrives, the container's own output is the only account of why (a
+// crash, a compile error in the plugin's source, a bad entrypoint), and this is the
+// one place it is read. So the non-port lines are kept and reported in the error
+// rather than discarded: without them the failure surfaces as a message about ports,
+// which says nothing about the actual fault.
 func scrapeServingPort(ctx context.Context, pod PodManager, c Container) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -909,14 +915,27 @@ func scrapeServingPort(ctx context.Context, pod PodManager, c Container) (int, e
 	}
 	defer rc.Close()
 
+	// Keep only the tail: a plugin that never handshakes may print without bound until
+	// the timeout, and the last lines are the ones that explain the exit.
+	const maxOutputLines = 50
+	var output []string
 	scanner := bufio.NewScanner(rc)
 	for scanner.Scan() {
-		if port, err := strconv.Atoi(strings.TrimSpace(scanner.Text())); err == nil {
+		line := scanner.Text()
+		if port, err := strconv.Atoi(strings.TrimSpace(line)); err == nil {
 			return port, nil
+		}
+		output = append(output, line)
+		if len(output) > maxOutputLines {
+			output = output[1:]
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return 0, err
 	}
-	return 0, errors.New("container output ended before a port was printed")
+	if len(output) == 0 {
+		return 0, errors.New("container output ended before a port was printed, and it printed nothing")
+	}
+	return 0, fmt.Errorf("container output ended before a port was printed; its output was:\n%s",
+		strings.Join(output, "\n"))
 }
