@@ -480,19 +480,17 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if err != nil {
 			return nil, err
 		}
-		req := providers.NewProviderRequest(
-			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
-		if v := req.Version(); v != nil {
-			providers.SetProviderVersion(inputs, v)
+		if version != nil {
+			providers.SetProviderVersion(inputs, version)
 		}
-		if url := req.PluginDownloadURL(); url != "" {
-			providers.SetProviderURL(inputs, url)
+		if imp.PluginDownloadURL != "" {
+			providers.SetProviderURL(inputs, imp.PluginDownloadURL)
 		}
-		if checksums := req.PluginChecksums(); checksums != nil {
-			providers.SetProviderChecksums(inputs, checksums)
+		if len(imp.PluginChecksums) > 0 {
+			providers.SetProviderChecksums(inputs, imp.PluginChecksums)
 		}
-		if parameterization := req.Parameterization(); parameterization != nil {
-			providers.SetProviderName(inputs, req.Name())
+		if parameterization != nil {
+			providers.SetProviderName(inputs, pkg)
 			providers.SetProviderParameterization(inputs, parameterization)
 		}
 

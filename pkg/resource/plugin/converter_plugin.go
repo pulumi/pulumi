@@ -156,21 +156,18 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 		}
 	}
 
-	var providerImports map[string]ProviderImport
-	if len(resp.Providers) > 0 {
-		providerImports = make(map[string]ProviderImport, len(resp.Providers))
-		for name, p := range resp.Providers {
-			var inputs presource.PropertyMap
-			if p.Inputs != nil {
-				inputs, err = UnmarshalProperties(p.Inputs, MarshalOptions{Label: label, KeepSecrets: true})
-				if err != nil {
-					return nil, fmt.Errorf("unmarshaling inputs for provider %q: %w", name, err)
-				}
+	providerImports := make(map[string]ProviderImport, len(resp.Providers))
+	for name, p := range resp.Providers {
+		var inputs presource.PropertyMap
+		if p.Inputs != nil {
+			inputs, err = UnmarshalProperties(p.Inputs, MarshalOptions{Label: label, KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling inputs for provider %q: %w", name, err)
 			}
-			providerImports[name] = ProviderImport{
-				Package: p.Package,
-				Inputs:  inputs,
-			}
+		}
+		providerImports[name] = ProviderImport{
+			Package: p.Package,
+			Inputs:  inputs,
 		}
 	}
 

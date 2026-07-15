@@ -77,21 +77,18 @@ func (c *converterServer) ConvertState(ctx context.Context,
 		}
 	}
 
-	var providerImports map[string]*pulumirpc.ProviderImport
-	if len(resp.Providers) > 0 {
-		providerImports = make(map[string]*pulumirpc.ProviderImport, len(resp.Providers))
-		for name, p := range resp.Providers {
-			var inputs *structpb.Struct
-			if p.Inputs != nil {
-				inputs, err = MarshalProperties(p.Inputs, MarshalOptions{KeepSecrets: true})
-				if err != nil {
-					return nil, fmt.Errorf("marshaling inputs for provider %q: %w", name, err)
-				}
+	providerImports := make(map[string]*pulumirpc.ProviderImport, len(resp.Providers))
+	for name, p := range resp.Providers {
+		var inputs *structpb.Struct
+		if p.Inputs != nil {
+			inputs, err = MarshalProperties(p.Inputs, MarshalOptions{KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("marshaling inputs for provider %q: %w", name, err)
 			}
-			providerImports[name] = &pulumirpc.ProviderImport{
-				Package: p.Package,
-				Inputs:  inputs,
-			}
+		}
+		providerImports[name] = &pulumirpc.ProviderImport{
+			Package: p.Package,
+			Inputs:  inputs,
 		}
 	}
 

@@ -140,9 +140,6 @@ func applyConverterProviders(
 	if len(providerImports) == 0 {
 		return nil
 	}
-	if f.NameTable == nil {
-		f.NameTable = map[string]resource.URN{}
-	}
 	if f.ProviderInputs == nil {
 		f.ProviderInputs = map[string]map[string]any{}
 	}
