@@ -289,15 +289,15 @@ func buildACPHandlers(
 	if caps.FS.WriteTextFile || caps.FS.ReadTextFile {
 		cfs := &acp.ClientFS{Caller: caller, SessionID: sessionID}
 		if caps.FS.WriteTextFile {
-			lt.fs.OnWrite = cfs.WriteTextFile
+			lt.fs.WriteFileOverride = cfs.WriteTextFile
 		}
 		if caps.FS.ReadTextFile {
-			lt.fs.OnRead = cfs.ReadTextFile
+			lt.fs.ReadFileOverride = cfs.ReadTextFile
 		}
 	}
 	if caps.Terminal {
 		ct := &acp.ClientTerminal{Caller: caller, SessionID: sessionID}
-		lt.sh.OnExec = func(
+		lt.sh.ExecOverride = func(
 			ctx context.Context, command, dir string, timeout time.Duration,
 		) (tools.ShellResult, error) {
 			return runInEditorTerminal(ctx, ct, command, dir, timeout)
@@ -310,7 +310,7 @@ func buildACPHandlers(
 // the result like the local shell tool, through the shared tools.ShellResult so
 // the wire shape stays identical. The editor merges stdout and stderr, so the
 // combined stream is reported as stdout and stderr is left empty. It is wired
-// into tools.Shell.OnExec by buildACPHandlers.
+// into tools.Shell.ExecOverride by buildACPHandlers.
 func runInEditorTerminal(
 	ctx context.Context, ct *acp.ClientTerminal, command, dir string, timeout time.Duration,
 ) (tools.ShellResult, error) {

@@ -81,8 +81,8 @@ func TestBuildACPHandlersRoutesWritesToEditor(t *testing.T) {
 
 	fs, ok := handlers["filesystem"].(*tools.Filesystem)
 	require.True(t, ok)
-	require.NotNil(t, fs.OnWrite, "fs.writeTextFile capability should route writes through the editor")
-	assert.Nil(t, fs.OnRead, "fs.readTextFile was not advertised, so reads stay local")
+	require.NotNil(t, fs.WriteFileOverride, "fs.writeTextFile capability should route writes through the editor")
+	assert.Nil(t, fs.ReadFileOverride, "fs.readTextFile was not advertised, so reads stay local")
 }
 
 func TestBuildACPHandlersRoutesReadsToEditor(t *testing.T) {
@@ -96,8 +96,8 @@ func TestBuildACPHandlersRoutesReadsToEditor(t *testing.T) {
 
 	fs, ok := handlers["filesystem"].(*tools.Filesystem)
 	require.True(t, ok)
-	require.NotNil(t, fs.OnRead, "fs.readTextFile capability should route reads through the editor")
-	assert.Nil(t, fs.OnWrite, "fs.writeTextFile was not advertised, so writes stay local")
+	require.NotNil(t, fs.ReadFileOverride, "fs.readTextFile capability should route reads through the editor")
+	assert.Nil(t, fs.WriteFileOverride, "fs.writeTextFile was not advertised, so writes stay local")
 }
 
 func TestBuildACPHandlersLocalWhenNoFSCapability(t *testing.T) {
@@ -110,12 +110,12 @@ func TestBuildACPHandlersLocalWhenNoFSCapability(t *testing.T) {
 
 	fs, ok := handlers["filesystem"].(*tools.Filesystem)
 	require.True(t, ok)
-	assert.Nil(t, fs.OnWrite, "without the capability, writes stay local")
-	assert.Nil(t, fs.OnRead, "without the capability, reads stay local")
+	assert.Nil(t, fs.WriteFileOverride, "without the capability, writes stay local")
+	assert.Nil(t, fs.ReadFileOverride, "without the capability, reads stay local")
 
 	sh, ok := handlers["shell"].(*tools.Shell)
 	require.True(t, ok)
-	assert.Nil(t, sh.OnExec, "without the terminal capability, shell stays local")
+	assert.Nil(t, sh.ExecOverride, "without the terminal capability, shell stays local")
 }
 
 func TestBuildACPHandlersRoutesShellToTerminal(t *testing.T) {
@@ -128,7 +128,7 @@ func TestBuildACPHandlersRoutesShellToTerminal(t *testing.T) {
 
 	sh, ok := handlers["shell"].(*tools.Shell)
 	require.True(t, ok)
-	require.NotNil(t, sh.OnExec, "terminal capability should route shell commands through the editor")
+	require.NotNil(t, sh.ExecOverride, "terminal capability should route shell commands through the editor")
 }
 
 // recordingFSCaller answers the agent's outbound fs/* requests: it records the
