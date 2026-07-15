@@ -286,6 +286,9 @@ type nodeOptions struct {
 	packagemanager npm.PackageManagerType
 	// Skip devDependencies when installing dependencies.
 	production bool
+	// Exact Node.js version to download and run policy packs with,
+	// instead of node from the PATH.
+	nodeVersion string
 }
 
 func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
@@ -348,6 +351,12 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 	} else {
 		nodeOptions.packagemanager = npm.AutoPackageManager
 	}
+
+	nodeVersion, err := parseNodeVersionOption(options, runtime, nodeOptions.packagemanager)
+	if err != nil {
+		return nodeOptions, err
+	}
+	nodeOptions.nodeVersion = nodeVersion
 
 	if runtime == "bun" {
 		// Bun handles TypeScript natively; ts-node is not used, so PULUMI_NODEJS_TYPESCRIPT must not be set.
@@ -1188,7 +1197,17 @@ func (host *nodeLanguageHost) InstallDependencies(
 	)
 	defer otelSpan.End()
 
-	if req.UseLanguageVersionTools {
+	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
+	if err != nil {
+		return fmt.Errorf("failed to parse options: %w", err)
+	}
+
+	pinned, err := pinnedNode(ctx, opts, req.IsPlugin, stdout)
+	if err != nil {
+		return err
+	}
+
+	if req.UseLanguageVersionTools && pinned == nil {
 		// Look for a .nvmrc or .node-version file, install the version specified in it, and set it
 		// as the default nodejs version.
 		if err := installNodeVersion(req.Info.ProgramDirectory, stdout); err != nil {
@@ -1214,14 +1233,14 @@ func (host *nodeLanguageHost) InstallDependencies(
 		workspaceRoot = newWorkspaceRoot
 	}
 
-	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
-	if err != nil {
-		return fmt.Errorf("failed to parse options: %w", err)
-	}
 	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
-	err = host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, opts.production, stdout, stderr)
-	if err != nil {
+	if pinned != nil {
+		if err := pinnedNpmInstall(ctx, *pinned, workspaceRoot, opts.production, stdout, stderr); err != nil {
+			return err
+		}
+	} else if err := host.installShared(
+		ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, opts.production, stdout, stderr); err != nil {
 		return err
 	}
 
@@ -1629,21 +1648,36 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 	}
 
-	runtimeExec := host.runtime
-	if runtimeExec == "nodejs" {
-		runtimeExec = "node"
-	}
-	runtimeBin, err := exec.LookPath(runtimeExec)
-	if err != nil {
-		return err
-	}
-
 	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
 	if err != nil {
 		return err
 	}
 
+	isAnalyzer := req.Kind == string(apitype.AnalyzerPlugin)
+
+	runtimeExec := host.runtime
+	if runtimeExec == "nodejs" {
+		runtimeExec = "node"
+	}
+
+	pinned, err := pinnedNode(ctx, opts, isAnalyzer, stderr)
+	if err != nil {
+		return err
+	}
+	var runtimeBin string
+	if pinned != nil {
+		runtimeBin = pinned.Node
+	} else {
+		runtimeBin, err = exec.LookPath(runtimeExec)
+		if err != nil {
+			return err
+		}
+	}
+
 	env := req.Env
+	if pinned != nil {
+		env = prependPathInEnv(env, pinned.BinDir)
+	}
 	if opts.typescript {
 		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
 	}
@@ -1652,7 +1686,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	}
 
 	var runPath string
-	if req.Kind == string(apitype.AnalyzerPlugin) {
+	if isAnalyzer {
 		// Policy packs (i.e. kind=analyzer) need to be treated specially for back compatibility reasons. We
 		// used to have a dedicated shim plugin "pulumi-analyzer-policy" that would start policy packs up, but
 		// now we just let the nodejs RunPlugin code handle that logic.
@@ -1696,7 +1730,7 @@ func (host *nodeLanguageHost) RunPlugin(
 
 	args = append(args, nodeargs...)
 	// For policy analyzers we need to send the program directory as an argument _last_, for everything else it comes first
-	if req.Kind == string(apitype.AnalyzerPlugin) {
+	if isAnalyzer {
 		args = append(args, req.Args...)
 		args = append(args, req.Info.ProgramDirectory)
 	} else {
@@ -1708,7 +1742,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	// get that info we need to connect to the engine as a policy pack so that we can get the StackConfiguration call,
 	// we then need to wait for the _real_ policy pack to start up and shim all it's other request/responses.
 	var policyPackServer *sdk.PolicyProxy
-	if req.Kind == string(apitype.AnalyzerPlugin) {
+	if isAnalyzer {
 		policyPackServer, stdout, err = sdk.NewPolicyProxy(ctx, stdout)
 		if err != nil {
 			return fmt.Errorf("could not start policy pack proxy: %w", err)
@@ -1743,7 +1777,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	cmd := exec.CommandContext(ctx, runtimeBin, args...)
 	// node policy packs used to always run with the working directory set to the policy pack directory, not
 	// the main working directory. We need to continue that for backwards compatibility.
-	if req.Kind == string(apitype.AnalyzerPlugin) {
+	if isAnalyzer {
 		cmd.Dir = req.Info.ProgramDirectory
 	} else {
 		cmd.Dir = req.Pwd

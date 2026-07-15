@@ -1168,6 +1168,36 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
 }
 
+func TestPinnedNodePolicyPack(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("single_resource")
+	e.ImportDirectory("policy")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	stackName, err := resource.NewUniqueHex("pinned-node-policy-pack", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "pinned_node_policy_pack"), "npm", "install")
+	require.NoError(t, err)
+
+	e.InstallDependencies()
+
+	stdout, _, err := e.GetCommandResults(
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "pinned_node_policy_pack",
+	)
+	assert.Error(t, err)
+	assert.Contains(t, stdout, "error: update failed")
+	// The violation message proves the pack executed on the pinned version,
+	// not whatever node is on the PATH.
+	assert.Contains(t, stdout, "policy pack running on node v22.12.0")
+}
+
 func TestBunMandatoryPolicyPack(t *testing.T) {
 	t.Parallel()
 

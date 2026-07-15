@@ -1,0 +1,5 @@
+runtime:
+  name: nodejs
+  options:
+    nodeVersion: 22.12.0
+description: Policy pack that reports the Node version it runs on.

@@ -1017,3 +1017,33 @@ func TestNodeInstall(t *testing.T) {
 	require.Equal(t, "use 20.1.2 --install-if-missing", commands[0])
 	require.Equal(t, "alias 20.1.2 default", commands[1])
 }
+
+func TestParseOptionsNodeVersion(t *testing.T) {
+	t.Parallel()
+
+	opts, err := parseOptions(map[string]any{"nodeVersion": "22.12.0"}, "nodejs")
+	require.NoError(t, err)
+	assert.Equal(t, "22.12.0", opts.nodeVersion)
+
+	opts, err = parseOptions(map[string]any{}, "nodejs")
+	require.NoError(t, err)
+	assert.Empty(t, opts.nodeVersion)
+
+	for _, bad := range []string{"v22.12.0", "22", "22.12", "^22.12.0", "lts/iron", "22.12.0-rc.1"} {
+		_, err = parseOptions(map[string]any{"nodeVersion": bad}, "nodejs")
+		assert.ErrorContains(t, err, "exact version", "input %q", bad)
+	}
+
+	_, err = parseOptions(map[string]any{"nodeVersion": 22}, "nodejs")
+	assert.ErrorContains(t, err, "must be a string")
+
+	_, err = parseOptions(map[string]any{"nodeVersion": "22.12.0"}, "bun")
+	assert.ErrorContains(t, err, "bun")
+
+	_, err = parseOptions(map[string]any{"nodeVersion": "22.12.0", "packagemanager": "pnpm"}, "nodejs")
+	assert.ErrorContains(t, err, "npm")
+
+	opts, err = parseOptions(map[string]any{"nodeVersion": "22.12.0", "packagemanager": "npm"}, "nodejs")
+	require.NoError(t, err)
+	assert.Equal(t, "22.12.0", opts.nodeVersion)
+}
