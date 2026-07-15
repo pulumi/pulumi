@@ -187,12 +187,15 @@ from the parameters, as in:
 			//
 			// This is wrong, but its less wrong then producing a Pulumi.yaml that `pulumi` can't process
 			// (#21348).
+			//
 			if plugin.IsLocalPluginPath(cmd.Context(), packageSpec.Source) {
 				f, err := os.Stat(packageSpec.Source)
 				if err != nil && !errors.Is(err, os.ErrNotExist) {
 					return err
 				}
-				if !f.IsDir() {
+				// A source that does not exist on disk leaves f nil above (ErrNotExist is
+				// tolerated), so there is nothing to condense.
+				if f != nil && !f.IsDir() {
 					if pkg.Parameterization == nil {
 						packageSpec.Source = pkg.Name
 						if pkg.Version != nil {

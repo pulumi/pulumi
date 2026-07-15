@@ -1,9 +1,15 @@
 # Multi-arch pulumi-pod image for PUBLISHING — the whole pod runtime in ONE artifact.
 #
-# It bakes three binaries from this branch:
-#   - pulumi               the engine/CLI (the default entrypoint)
-#   - pulumi-language-oci   the OCI language host
-#   - registry-proxy        the pull-through provider registry proxy
+# It bakes from this branch:
+#   - pulumi                    the engine/CLI (the default entrypoint)
+#   - pulumi-language-oci       the OCI language host
+#   - registry-proxy            the pull-through provider registry proxy
+#   - pulumi-language-{go,nodejs,python}
+#         the dev-language hosts the OCI host delegates SDK generation to, so
+#         `pulumi package add` works in the pod. Only their codegen runs here, which is
+#         in-process Go (bind the schema, write files) — so the binaries alone suffice and
+#         this image still needs no Go/Node/Python toolchain. Built from this branch, not
+#         fetched from a release, so codegen and the generated SDK cannot skew apart.
 #
 # The engine runs by default (ENTRYPOINT pulumi). The proxy runs from the SAME image with
 # `docker run --entrypoint registry-proxy …`, so one pulled image serves both roles and
@@ -16,5 +22,8 @@ FROM docker:cli
 ARG TARGETARCH
 COPY pulumi-cli-linux-$TARGETARCH /usr/local/bin/pulumi
 COPY pulumi-language-oci-linux-$TARGETARCH /usr/local/bin/pulumi-language-oci
+COPY pulumi-language-go-linux-$TARGETARCH /usr/local/bin/pulumi-language-go
+COPY pulumi-language-nodejs-linux-$TARGETARCH /usr/local/bin/pulumi-language-nodejs
+COPY pulumi-language-python-linux-$TARGETARCH /usr/local/bin/pulumi-language-python
 COPY registry-proxy-linux-$TARGETARCH /usr/local/bin/registry-proxy
 ENTRYPOINT ["pulumi"]

@@ -2,7 +2,9 @@
 #
 # publish-images.sh — EMIT (don't run) the plan to publish the pulumi-pod image: ONE
 # multi-arch artifact that bakes this branch's engine (pulumi CLI), the OCI language host
-# (pulumi-language-oci), AND the pull-through provider registry proxy (registry-proxy).
+# (pulumi-language-oci), the dev-language hosts SDK generation delegates to
+# (pulumi-language-{go,nodejs,python}), AND the pull-through provider registry proxy
+# (registry-proxy).
 #
 #   <base>/pulumi-pod:<version>
 #
@@ -37,9 +39,31 @@ fi
 
 SMOKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG_DIR="$(cd "$SMOKE_DIR/../.." && pwd)"                 # the pkg/ Go module (CLI + host)
+ROOT_DIR="$(cd "$PKG_DIR/.." && pwd)"                     # the repo root (the SDK modules)
 PROXY_DIR="$(cd "$SMOKE_DIR/registry-proxy" && pwd)"     # the proxy's own Go module
 
+# The dev-language hosts, as <module-dir-relative-to-root>:<binary-name>. Each is its own
+# Go module, so each builds from its own directory.
+DELEGATE_HOSTS="
+sdk/go/pulumi-language-go:pulumi-language-go
+sdk/nodejs/cmd/pulumi-language-nodejs:pulumi-language-nodejs
+sdk/python/cmd/pulumi-language-python:pulumi-language-python
+"
+
 POD_REF="$REGISTRY_BASE/pulumi-pod:$VERSION"
+
+# Expand the delegate-host builds here, at emit time, so the plan stays flat and
+# inspectable — every command it will run is visible in the output, with no loop or
+# indirection to unpick.
+DELEGATE_BUILDS=""
+for entry in $DELEGATE_HOSTS; do
+  dir="${entry%%:*}"
+  bin="${entry##*:}"
+  for arch in amd64 arm64; do
+    DELEGATE_BUILDS="$DELEGATE_BUILDS( cd \"\$ROOT_DIR/$dir\" && GOWORK=off GOOS=linux GOARCH=$arch CGO_ENABLED=0 go build -o \"\$WORK/$bin-linux-$arch\" . )
+"
+  done
+done
 
 # Emit a self-contained plan. Values are baked into variables at the top; the body is flat
 # so it reads top-to-bottom. Runtime-only refs ($WORK, and the vars just set) are escaped
@@ -52,6 +76,7 @@ set -e
 
 POD_REF="$POD_REF"
 PKG_DIR="$PKG_DIR"
+ROOT_DIR="$ROOT_DIR"
 PROXY_DIR="$PROXY_DIR"
 POD_DOCKERFILE="$SMOKE_DIR/Dockerfile.pod.publish"
 WORK="\$(mktemp -d)"
@@ -62,6 +87,8 @@ echo "==> cross-compiling engine binaries (linux/amd64, linux/arm64)"
 ( cd "\$PKG_DIR" && GOWORK=off GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o "\$WORK/pulumi-language-oci-linux-amd64" ./cmd/pulumi-language-oci )
 ( cd "\$PKG_DIR" && GOWORK=off GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o "\$WORK/pulumi-language-oci-linux-arm64" ./cmd/pulumi-language-oci )
 
+echo "==> cross-compiling dev-language hosts for SDK generation (linux/amd64, linux/arm64)"
+$DELEGATE_BUILDS
 echo "==> cross-compiling registry-proxy (linux/amd64, linux/arm64)"
 ( cd "\$PROXY_DIR" && GOWORK=off GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o "\$WORK/registry-proxy-linux-amd64" . )
 ( cd "\$PROXY_DIR" && GOWORK=off GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o "\$WORK/registry-proxy-linux-arm64" . )

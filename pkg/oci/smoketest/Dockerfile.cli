@@ -6,10 +6,25 @@
 # docker CLI lets the in-container language host start sibling program and
 # provider containers through the mounted host docker socket.
 #
-# The build context must contain the cross-compiled linux binaries
-# (pulumi-cli-linux, pulumi-language-oci-linux); run-pod.sh produces them.
+# It also carries the dev-language hosts the OCI host delegates SDK generation to
+# (`pulumi package add`). Only their codegen runs here, which is in-process Go — so the
+# binary is enough and this image needs no Go/Node/Python toolchain.
+#
+# It carries the registry proxy as well, mirroring the published pulumi-pod image: one
+# image, two roles, selected by entrypoint (the wrapper runs the proxy from the engine
+# image via --entrypoint registry-proxy). Without it a local engine image has no proxy, and
+# local components tag bare rather than registry-qualified — a silent divergence from how a
+# published run behaves.
+#
+# The build context must contain the cross-compiled linux binaries (pulumi-cli-linux,
+# pulumi-language-oci-linux, pulumi-language-go-linux, registry-proxy-linux);
+# lib-engine.sh's build_engine_image produces them.
 FROM alpine:3
 RUN apk add --no-cache docker-cli ca-certificates
 COPY pulumi-cli-linux /usr/local/bin/pulumi
 COPY pulumi-language-oci-linux /usr/local/bin/pulumi-language-oci
+COPY pulumi-language-go-linux /usr/local/bin/pulumi-language-go
+COPY pulumi-language-nodejs-linux /usr/local/bin/pulumi-language-nodejs
+COPY pulumi-language-python-linux /usr/local/bin/pulumi-language-python
+COPY registry-proxy-linux /usr/local/bin/registry-proxy
 ENTRYPOINT ["pulumi"]
