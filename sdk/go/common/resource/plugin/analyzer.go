@@ -64,6 +64,25 @@ type Analyzer interface {
 	Cancel(ctx context.Context) error
 }
 
+// AnalyzerStackConfigureArgs carries the per-stack configuration the engine
+// sends to an analyzer before analysis begins.
+type AnalyzerStackConfigureArgs struct {
+	Stack            string
+	Project          string
+	Organization     string
+	DryRun           bool
+	Tags             map[string]string
+	Config           map[string]string
+	ConfigSecretKeys []string
+}
+
+// StackConfigurableAnalyzer is optionally implemented by analyzers that want to
+// receive per-stack configuration. Analyzers that do not implement it keep the
+// default no-op ConfigureStack behavior.
+type StackConfigurableAnalyzer interface {
+	ConfigureStack(ctx context.Context, args AnalyzerStackConfigureArgs) error
+}
+
 // AnalyzerResource mirrors a resource that is passed to `Analyze`.
 type AnalyzerResource struct {
 	URN        resource.URN

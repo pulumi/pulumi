@@ -268,8 +268,21 @@ func (a *analyzerServer) Handshake(
 }
 
 func (a *analyzerServer) ConfigureStack(
-	context.Context, *pulumirpc.AnalyzerStackConfigureRequest,
+	ctx context.Context, req *pulumirpc.AnalyzerStackConfigureRequest,
 ) (*pulumirpc.AnalyzerStackConfigureResponse, error) {
+	if sc, ok := a.analyzer.(StackConfigurableAnalyzer); ok {
+		if err := sc.ConfigureStack(ctx, AnalyzerStackConfigureArgs{
+			Stack:            req.GetStack(),
+			Project:          req.GetProject(),
+			Organization:     req.GetOrganization(),
+			DryRun:           req.GetDryRun(),
+			Tags:             req.GetTags(),
+			Config:           req.GetConfig(),
+			ConfigSecretKeys: req.GetConfigSecretKeys(),
+		}); err != nil {
+			return nil, err
+		}
+	}
 	return &pulumirpc.AnalyzerStackConfigureResponse{}, nil
 }
 
