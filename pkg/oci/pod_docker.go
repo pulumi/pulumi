@@ -132,6 +132,13 @@ func (m *dockerPodManager) RunContainer(ctx context.Context, cfg ContainerConfig
 	if cfg.HostGateway {
 		args = append(args, "--add-host=host.docker.internal:host-gateway")
 	}
+	// Pin the working directory, overriding whatever WORKDIR the image happens to set.
+	// Every long-lived pod member asks for WorkspaceMountPath here, which is what makes a
+	// relative path mean the same thing to the program that writes it and the provider
+	// that reads it (see WorkspaceMountPath).
+	if cfg.WorkingDir != "" {
+		args = append(args, "-w", cfg.WorkingDir)
+	}
 	// Emit env in sorted key order so the argv is deterministic (and testable).
 	for _, k := range sortedKeys(cfg.Env) {
 		args = append(args, "-e", k+"="+cfg.Env[k])

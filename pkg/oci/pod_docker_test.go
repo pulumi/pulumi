@@ -56,6 +56,10 @@ func TestRunContainerArgs(t *testing.T) {
 		Image:   "pulumi/python:3.12",
 		Name:    "program",
 		Network: "pulumi-pod-p1-net",
+		// Every long-lived pod member pins this, and it must beat the image's own
+		// WORKDIR: a relative asset path only resolves to the same bytes on both sides
+		// if writer and reader share a working directory.
+		WorkingDir: WorkspaceMountPath,
 		// Intentionally out of alphabetical order to prove the argv is sorted.
 		Env:        map[string]string{"PULUMI_STACK": "dev", "PULUMI_PROJECT": "demo"},
 		Volumes:    []VolumeMount{{Source: "pulumi-pod-p1-vol-workspace", Target: "/app", ReadOnly: true}},
@@ -72,6 +76,7 @@ func TestRunContainerArgs(t *testing.T) {
 		"run", "-d", "--name", "pulumi-pod-p1-program", "--label", "com.pulumi.pod=p1",
 		"--network", "pulumi-pod-p1-net",
 		"--privileged",
+		"-w", "/workspace",
 		"-e", "PULUMI_PROJECT=demo", "-e", "PULUMI_STACK=dev", // sorted by key
 		"-v", "pulumi-pod-p1-vol-workspace:/app:ro",
 		"--entrypoint", "python",
