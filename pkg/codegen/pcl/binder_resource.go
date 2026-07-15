@@ -17,6 +17,7 @@ package pcl
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -29,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -608,7 +608,7 @@ func (b *binder) typecheckBaseResourceAttributes(
 		}
 	}
 
-	for _, k := range maputil.SortedKeys(objectType.Properties) {
+	for _, k := range slices.Sorted(maps.Keys(objectType.Properties)) {
 		typ := objectType.Properties[k]
 		if model.IsOptionalType(typ) || attrNames.Has(k) {
 			// The type is present or optional. No error.
