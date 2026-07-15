@@ -52,21 +52,16 @@ type ResourceImport struct {
 	Properties []string
 
 	// Provider is the name of the resource's explicit provider, if any. It must reference a key in the
-	// response's Providers map; resources without a provider are served by an appropriate default
-	// provider.
+	// response's Providers map.
 	Provider string
 }
 
-// A ProviderImport describes an explicit provider that imported resources reference. The import process
-// will reuse a matching provider already in the stack's state, or create one from these details.
+// A ProviderImport describes an explicit provider that imported resources reference. The provider's
+// version, download URL, and any parameterization are taken from the resources that reference it.
 type ProviderImport struct {
-	// Package is the package name of the provider (e.g. "aws"): the created provider resource will have
-	// the type "pulumi:providers:<package>". The provider's version, download URL, and any
-	// parameterization are taken from the resources that reference it.
+	// Package is the package name of the provider (e.g. "aws").
 	Package string
-
-	// Inputs holds the configuration inputs for the provider, if known. Absent inputs mean the provider
-	// configures itself from its environment.
+	// Inputs holds the configuration inputs for the provider, if known.
 	Inputs resource.PropertyMap
 }
 
@@ -97,9 +92,7 @@ type ConvertStateRequest struct {
 }
 
 type ConvertStateResponse struct {
-	Resources []ResourceImport
-	// Providers holds the explicit providers referenced by resources' Provider fields, keyed by the
-	// names used in those fields.
+	Resources   []ResourceImport
 	Providers   map[string]ProviderImport
 	Diagnostics hcl.Diagnostics
 }

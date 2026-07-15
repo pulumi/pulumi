@@ -471,10 +471,6 @@ func TestImporterParameterizedProvider(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestImporterParameterizedExplicitProvider is the explicit-provider version of
-// TestImporterParameterizedProvider: a resource referencing an explicit provider by URN must still
-// carry its parameterization over to the created provider, so the registry boots the base plugin
-// rather than looking for a plugin named after the parameterized package.
 func TestImporterParameterizedExplicitProvider(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())

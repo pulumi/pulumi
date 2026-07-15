@@ -131,8 +131,8 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 }
 
 // applyConverterProviders adds the explicit providers returned by a state converter to an import file.
-// Converters reference providers by name only; the URNs those names resolve to can only be constructed
-// here, where the target stack and project are known.
+// Converters reference providers by name only; their URNs are constructed here, where the target stack
+// and project are known.
 func applyConverterProviders(
 	ctx context.Context, f *importFile, providerImports map[string]plugin.ProviderImport,
 	stack tokens.StackName, proj tokens.PackageName, enc sdkconfig.Encrypter,
@@ -847,8 +847,6 @@ func NewImportCmd() *cobra.Command {
 			defer contract.IgnoreClose(pCtx)
 
 			var importFile importFile
-			// Explicit providers returned by a state converter, if any. These are applied to the
-			// import file later, once the target stack is known and their URNs can be constructed.
 			var converterProviders map[string]plugin.ProviderImport
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {

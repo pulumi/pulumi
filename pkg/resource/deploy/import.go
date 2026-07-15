@@ -473,9 +473,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			inputs = resource.PropertyMap{}
 		}
 
-		// Overlay version/URL/checksums/parameterization from the Import, mirroring the default
-		// provider path above. For a parameterized resource this resolves to the base plugin's
-		// name and version plus the parameterization value.
+		// Overlay version/URL/checksums/parameterization from the Import if present and not already
+		// in inputs.
 		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
 		if err != nil {
 			return nil, err
