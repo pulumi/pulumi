@@ -344,6 +344,12 @@ func InitStack(
 	return CreateStack(ctx, sink, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig, configFile)
 }
 
+// ErrSaveStackConfig wraps `SaveProjectStack` errors that occur in `CreateStack` after the
+// backend stack has already been successfully created. Callers can detect this case via
+// `errors.Is(err, ErrSaveStackConfig)` to know that the backend stack exists despite the error
+// (e.g. so they can clean it up).
+var ErrSaveStackConfig = errors.New("saving stack config")
+
 // CreateStack creates a stack with the given name, and optionally selects it as the current.
 func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference,
@@ -421,7 +427,7 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	if needsSave {
 		err = SaveProjectStack(ctx, stack, ps, configFile)
 		if err != nil {
-			return nil, fmt.Errorf("saving stack config: %w", err)
+			return nil, fmt.Errorf("%w: %w", ErrSaveStackConfig, err)
 		}
 	}
 
