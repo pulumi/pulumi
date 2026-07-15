@@ -210,6 +210,26 @@ func TestPlanEntriesClampVocabulary(t *testing.T) {
 	assert.Equal(t, acp.PlanEntry{Content: "unknown", Status: "pending", Priority: "medium"}, plan.Entries[2])
 }
 
+// TestPlanEntriesSortedByIndex verifies plan entries are emitted in the
+// agent's intended order even when the items arrive out of Index order, the
+// same contract the TUI's renderTodoLines applies to this slice.
+func TestPlanEntriesSortedByIndex(t *testing.T) {
+	t.Parallel()
+
+	var tr toolTracker
+	u, ok := tr.translate(UITodoList{Items: []UITodoItem{
+		{Content: "third", Status: "pending", Priority: "low", Index: 2},
+		{Content: "first", Status: "completed", Priority: "high", Index: 0},
+		{Content: "second", Status: "in_progress", Priority: "medium", Index: 1},
+	}})
+	require.True(t, ok)
+	plan := u.(acp.PlanUpdate)
+	require.Len(t, plan.Entries, 3)
+	assert.Equal(t, acp.PlanEntry{Content: "first", Status: "completed", Priority: "high"}, plan.Entries[0])
+	assert.Equal(t, acp.PlanEntry{Content: "second", Status: "in_progress", Priority: "medium"}, plan.Entries[1])
+	assert.Equal(t, acp.PlanEntry{Content: "third", Status: "pending", Priority: "low"}, plan.Entries[2])
+}
+
 func TestToolStartHasReadableTitleAndLocation(t *testing.T) {
 	t.Parallel()
 

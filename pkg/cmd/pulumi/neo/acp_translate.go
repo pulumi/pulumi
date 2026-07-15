@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
@@ -143,13 +144,17 @@ func textContent(s string) []acp.ToolCallContent {
 	return []acp.ToolCallContent{{Type: "content", Content: acp.ContentBlock{Type: "text", Text: s}}}
 }
 
-// planEntries maps Neo todo items to ACP plan entries. Neo's priority and status
+// planEntries maps Neo todo items to ACP plan entries, sorted by Index so the
+// agent's intended ordering survives JSON round-tripping (the same contract the
+// TUI's renderTodoLines applies to this slice). Neo's priority and status
 // vocabularies match ACP today, but ACP requires a valid value from its enums on
 // every entry, so we clamp on egress: a backend that drifts (an empty priority, a
 // new status) can't make us emit a spec-invalid plan that the editor may reject.
 func planEntries(items []UITodoItem) []acp.PlanEntry {
-	out := make([]acp.PlanEntry, 0, len(items))
-	for _, it := range items {
+	sorted := append([]UITodoItem(nil), items...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Index < sorted[j].Index })
+	out := make([]acp.PlanEntry, 0, len(sorted))
+	for _, it := range sorted {
 		out = append(out, acp.PlanEntry{
 			Content:  it.Content,
 			Priority: clampPlanPriority(it.Priority),

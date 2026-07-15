@@ -86,7 +86,7 @@ func TestPumpQueueCloseDeliversQueued(t *testing.T) {
 	q := newPumpQueue()
 	q.push(finishAction("before1"))
 	q.push(finishAction("before2"))
-	q.close()
+	q.close(nil)
 	q.push(finishAction("after"))
 
 	a, ok := q.pop()
@@ -100,6 +100,28 @@ func TestPumpQueueCloseDeliversQueued(t *testing.T) {
 	assert.False(t, ok, "a push after close must be dropped and pop must report done")
 }
 
+// TestPumpQueueCloseDeliversFinal is the structural guarantee close provides:
+// the final turn result passed to close is delivered after everything already
+// queued, and a second close cannot enqueue another.
+func TestPumpQueueCloseDeliversFinal(t *testing.T) {
+	t.Parallel()
+
+	q := newPumpQueue()
+	q.push(finishAction("queued"))
+	q.close(&turnResult{reason: "final"})
+	q.close(&turnResult{reason: "again"})
+
+	a, ok := q.pop()
+	require.True(t, ok)
+	assert.Equal(t, acp.StopReason("queued"), a.finish.reason)
+	a, ok = q.pop()
+	require.True(t, ok)
+	assert.Equal(t, acp.StopReason("final"), a.finish.reason)
+
+	_, ok = q.pop()
+	assert.False(t, ok, "a second close must not deliver another turn result")
+}
+
 func TestPumpQueueCloseUnblocksWaitingPop(t *testing.T) {
 	t.Parallel()
 
@@ -110,7 +132,7 @@ func TestPumpQueueCloseUnblocksWaitingPop(t *testing.T) {
 		done <- ok
 	}()
 
-	q.close()
+	q.close(nil)
 	select {
 	case ok := <-done:
 		assert.False(t, ok, "close must wake a blocked pop and report done")
