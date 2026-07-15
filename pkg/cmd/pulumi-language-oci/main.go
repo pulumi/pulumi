@@ -301,7 +301,7 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 	pod := oci.NewDockerPodManager(podID)
 
 	// Record the built program image ref so the container host — a separate process in
-	// this engine container that starts providers — can run workspace-coupled (`command`)
+	// this engine container that starts providers — can run run-from-program-image (`command`)
 	// and dynamic providers from it. When the image is a prebuilt tag the container host
 	// reads it from PULUMI_POD_PROGRAM_IMAGE; when it is built on `up`, the ref is not
 	// known until now, so we hand it over through the pod-scoped state file. This runs

@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A Pulumi program for the image-build smoke test — the workspace-coupled
-// provider "real prize". It builds a container image with the `docker` provider
-// from a build context (/workspace/app) baked into the program image. A
-// successful run proves two things at once: the docker provider ran *rooted in
-// the program filesystem* (run-from-program-image), so it resolved the build
-// context (and used the docker CLI) from paths that exist only in the program
-// image; and it reached the docker daemon through the projected docker socket
-// (the capability mechanism).
+// A Pulumi program for the image-build smoke test — the "real prize" for a provider
+// that needs things from outside its own image. It builds a container image with the
+// `docker` provider from a build context (/workspace/app) baked into the program
+// image. A successful run proves two things at once: the docker provider resolved a
+// build context that exists only because the *program's* image seeded the shared
+// workspace, reaching it through the mount every provider gets; and it reached the
+// docker daemon through the projected docker socket (the capability mechanism).
+//
+// The provider runs from its OWN image, which carries its docker CLI (see
+// Dockerfile.docker-provider) — that CLI is the provider's toolchain, not the
+// program's. Whether that is the right call is still open (#56): running it from the
+// program image, as `command` does, remains arguable.
 //
 // The classic `docker` provider is used rather than `docker-build` only because
 // the latter's Go SDK is not cleanly consumable via go modules right now; the pod

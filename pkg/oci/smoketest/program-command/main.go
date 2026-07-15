@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A Pulumi program for the workspace-coupled-provider smoke test. It uses the
+// A Pulumi program for the run-from-program-image provider smoke test. It uses the
 // `command` provider — which shells out to the local toolchain — to exercise two
 // things a provider container gets in the OCI pod model:
 //

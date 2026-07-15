@@ -129,17 +129,18 @@ func TestProviderContainerDynamicRunsFromProgramImage(t *testing.T) {
 	require.Empty(t, cfg.Entrypoint, "the image's bootstrap shim selects the entrypoint via the role env")
 }
 
-// workspaceCoupled — the "runs from the program image" archetype — is now exactly the set
-// of providers that exec arbitrary user toolchain: just `command`. docker and docker-build
-// carry their own tooling in their own image and reach the workspace through the shared
-// mount, so they are NOT workspace-coupled (they run from their own image).
-func TestWorkspaceCoupledIsOnlyCommand(t *testing.T) {
+// The "runs from the program image" archetype is exactly the set of providers that exec
+// arbitrary user toolchain: just `command`. docker and docker-build carry their own tooling
+// in their own image and reach the workspace through the shared mount, so they run from
+// their own image. Every provider mounts the workspace, so the workspace is emphatically
+// NOT what distinguishes this set.
+func TestRunsFromProgramImageIsOnlyCommand(t *testing.T) {
 	t.Parallel()
-	require.True(t, workspaceCoupled("command"))
-	require.False(t, workspaceCoupled("docker"))
-	require.False(t, workspaceCoupled("docker-build"))
-	require.False(t, workspaceCoupled("aws"))
-	require.False(t, workspaceCoupled("cloudflare"))
+	require.True(t, runsFromProgramImage("command"))
+	require.False(t, runsFromProgramImage("docker"))
+	require.False(t, runsFromProgramImage("docker-build"))
+	require.False(t, runsFromProgramImage("aws"))
+	require.False(t, runsFromProgramImage("cloudflare"))
 }
 
 // A stateless provider runs from its own image but must still resolve the program's

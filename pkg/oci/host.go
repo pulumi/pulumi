@@ -55,7 +55,7 @@ type containerHost struct {
 
 	pod            PodManager
 	engineHost     string                                  // engine container name; providers share its netns
-	programImage   string                                  // program image; workspace-coupled providers run from it
+	programImage   string                                  // program image; run-from-program-image providers run from it
 	pluginRegistry string                                  // OCI registry for absent provider images ("" = assume present)
 	podID          string                                  // pod id; names the shared workspace volume both hosts mount
 	imageFor       func(workspace.PluginDescriptor) string // provider descriptor -> image ref
@@ -125,9 +125,9 @@ var _ plugin.Host = (*containerHost)(nil)
 // NewContainerHost wraps base so that Provider() runs the provider as a container
 // in engineHost's network namespace (via pod) and attaches to it. engineHost is
 // the engine container's name; peers reach its loopback by sharing its netns.
-// programImage is the program's image; workspace-coupled providers (command,
-// docker-build, ...) run from it — rooted in the program's filesystem — rather
-// than from their own image. It may be empty when no such provider is used.
+// programImage is the program's image; run-from-program-image providers (just
+// `command`) run from it — rooted in the program's filesystem — rather than from
+// their own image. It may be empty when no such provider is used.
 // pluginRegistry, if non-empty, is an OCI registry from which absent provider
 // images are pulled (and retagged to the bare convention) before use — the
 // container-model "install" step. Empty preserves the prior behaviour: an absent
@@ -157,7 +157,7 @@ func NewContainerHost(
 // PULUMI_POD_ADVERTISE_HOST (else the process hostname) names the engine
 // container whose netns providers join, PULUMI_POD_ID labels the pod so its
 // containers can be cleaned up as a group, and PULUMI_POD_PROGRAM_IMAGE is the
-// program image that workspace-coupled providers run from.
+// program image that run-from-program-image providers run from.
 func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 	engineHost := os.Getenv("PULUMI_POD_ADVERTISE_HOST")
 	if engineHost == "" {
@@ -177,7 +177,7 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 	return NewContainerHost(base, NewDockerPodManager(podID), engineHost, programImage, pluginRegistry, podID), nil
 }
 
-// programImageRef resolves the program image that workspace-coupled (`command`) and
+// programImageRef resolves the program image that run-from-program-image (`command`) and
 // dynamic providers run from. It prefers the ref captured from
 // PULUMI_POD_PROGRAM_IMAGE at construction (a prebuilt tag, known up front); when the
 // image is built on `up` that env is empty, so it falls back to the pod-scoped state
@@ -236,7 +236,7 @@ const (
 	pluginVolumePrfx = "plugin-"
 )
 
-// workspaceCoupled reports whether a provider must run from the *program* image —
+// runsFromProgramImage reports whether a provider must run from the *program* image —
 // rooted in the program's filesystem for its *ambient toolchain* — rather than from
 // its own image. Only `command` qualifies: it execs arbitrary shell (`make`, ...)
 // that needs the binaries on the program's PATH, which the shared workspace mount
@@ -245,7 +245,13 @@ const (
 // (embedded buildkit) and docker (which carries its own CLI in its own image), both of
 // which need the workspace *files*, not the program's toolchain. This is the
 // prototype's convention table; pre-start image labels are the generalizing layer.
-func workspaceCoupled(name string) bool {
+//
+// Named for what it does, not why. The workspace cannot be what names this set — every
+// provider mounts it. The toolchain is what sets `command` apart, but whether a given
+// provider's toolchain is really the *program's* is a judgement call (the classic
+// `docker` provider's CLI is arguably its own — see #56), and a name shouldn't bake in
+// a call that is still open.
+func runsFromProgramImage(name string) bool {
 	return name == "command"
 }
 
@@ -400,7 +406,7 @@ func (h *containerHost) trackPlugin(ctx *plugin.Context, c Container, signalCanc
 
 // Provider starts the provider as a container sharing the engine's network
 // namespace and attaches to it, rather than spawning a plugin binary. Stateless
-// providers run from their own image; workspace-coupled providers run from the
+// providers run from their own image; run-from-program-image providers run from the
 // program image with their binary injected (see providerContainer).
 func (h *containerHost) Provider(
 	ctx *plugin.Context, descriptor workspace.PluginDescriptor, _ env.Env,
@@ -439,7 +445,7 @@ func (h *containerHost) Provider(
 
 // providerContainer builds the spec for a provider container, on the engine's
 // netns so the provider binds 127.0.0.1 and the engine reaches it over the shared
-// loopback. A stateless provider runs from its own image. A workspace-coupled
+// loopback. A stateless provider runs from its own image. A run-from-program-image
 // provider instead runs from the *program* image — rooted in the program's
 // filesystem so it sees the workspace and toolchain — with its binary injected
 // from the provider image via an ephemeral, pod-scoped volume. See the design
@@ -471,7 +477,7 @@ func (h *containerHost) providerContainer(
 	// Dynamic providers are native to the program image: the SDK's dynamic-provider
 	// entrypoint already ships in it, and the serialized CRUD closure resolves
 	// against the program's own dependency closure — baked into that image. So,
-	// unlike a workspace-coupled provider, there is nothing to inject: no separate
+	// unlike `command`, there is nothing to inject: no separate
 	// provider image, no binary copy, no ensure step. Run a fresh container from the
 	// program image and let its bootstrap shim boot the dynamic-provider entrypoint,
 	// selected by roleEnvVar.
@@ -503,14 +509,14 @@ func (h *containerHost) providerContainer(
 
 	// Resolve the provider image and ensure it is present — pulling it from the
 	// configured registry if absent (the container-model install step). Both
-	// archetypes need it: a stateless provider runs it directly; a workspace-coupled
+	// archetypes need it: a stateless provider runs it directly; a run-from-program-image
 	// provider copies its binary out of it.
 	providerImage := h.imageFor(descriptor)
 	if err := h.ensureImage(ctx, descriptor.Name, providerImage); err != nil {
 		return ContainerConfig{}, err
 	}
 
-	if workspaceCoupled(descriptor.Name) {
+	if runsFromProgramImage(descriptor.Name) {
 		programImage := h.programImageRef()
 		if programImage == "" {
 			return ContainerConfig{}, fmt.Errorf(
@@ -529,7 +535,7 @@ func (h *containerHost) providerContainer(
 			return ContainerConfig{}, fmt.Errorf("oci: injecting %s provider binary: %w", descriptor.Name, err)
 		}
 		fmt.Fprintf(os.Stderr,
-			"oci: provider %s is workspace-coupled — running from program image %s with injected binary\n",
+			"oci: provider %s needs the program's toolchain — running from program image %s with injected binary\n",
 			descriptor.Name, programImage)
 		cfg.Image = programImage
 		cfg.Volumes = append(cfg.Volumes, VolumeMount{Source: vol.Name, Target: injectedBinDir})

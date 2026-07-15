@@ -17,7 +17,7 @@
 // OCI distribution API; on a manifest request for pulumi-provider-<name>:v<version>
 // it downloads the released plugin binary from get.pulumi.com and synthesizes a
 // minimal image — the binary at /plugin/provider with that as the entrypoint, the
-// exact format the container host already runs (and that workspace-coupled
+// exact format the container host already runs (and that run-from-program-image
 // providers extract via CopyFromImage). Nothing is pushed to it; it conjures the
 // image from the binary the moment the daemon pulls.
 //
@@ -57,7 +57,7 @@ import (
 
 // wrapSpec parameterizes how a provider binary becomes an image. Today every
 // provider takes the default — a scratch image carrying just the binary — which is
-// correct for stateless providers (run directly) and for workspace-coupled ones
+// correct for stateless providers (run directly) and for run-from-program-image ones
 // (the host extracts /plugin and runs the binary from the *program* image, so the
 // provider's own rootfs is never used). The fields are the seam for the exception:
 // a provider whose own rootfs needs an ambient toolchain (the docker provider's
@@ -286,7 +286,7 @@ func (p *proxy) buildImage(provider, version string, spec wrapSpec) (v1.Image, e
 		}
 	}
 	// The binary lives at /plugin/provider — a directory — so one image serves both
-	// archetypes: stateless providers run it as the entrypoint; workspace-coupled
+	// archetypes: stateless providers run it as the entrypoint; run-from-program-image
 	// ones have the host CopyFromImage /plugin into a volume and run it from the
 	// program image. Mirrors smoketest/Dockerfile.provider.
 	if err := writeTarFile(tw, "plugin/provider", bin, 0o755); err != nil {

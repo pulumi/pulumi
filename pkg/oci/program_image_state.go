@@ -31,7 +31,7 @@ import (
 // host builds it — after the container host already read the (empty) environment.
 //
 // So the language host records the built ref to a pod-scoped temp file that the
-// container host reads lazily, the first time a workspace-coupled (`command`) or dynamic
+// container host reads lazily, the first time a run-from-program-image (`command`) or dynamic
 // provider needs the program image. The two processes share the engine container's
 // filesystem and agree on the pod id (PULUMI_POD_ID), so this is a minimal, ephemeral
 // IPC: the language host writes the file before it starts the program container, hence
@@ -40,7 +40,7 @@ import (
 // The file is deliberately EPHEMERAL (pod-scoped, not persisted across invocations): the
 // ref exists only when the program has RUN. That is always true on `up`. It is NOT true
 // on `destroy`, which does not run the program by default — so a program that uses a
-// workspace-coupled or dynamic provider must be destroyed with `--run-program`, which
+// run-from-program-image or dynamic provider must be destroyed with `--run-program`, which
 // re-runs the program (rebuilding the image and re-writing this ref). The alternative,
 // persisting the ref across pods, was rejected: it is invisible cross-stack global state
 // (one stack's destroy could read another's last-built ref). Requiring `--run-program` is
@@ -54,14 +54,14 @@ func programImageStatePath(podID string) string {
 }
 
 // WriteProgramImageState records the built program image ref for the pod so the
-// container host can run workspace-coupled and dynamic providers from it. The
+// container host can run run-from-program-image and dynamic providers from it. The
 // language host calls this after it builds (or resolves) the program image.
 func WriteProgramImageState(podID, ref string) error {
 	return os.WriteFile(programImageStatePath(podID), []byte(ref), 0o600)
 }
 
 // readProgramImageState returns the recorded program image ref for the pod, or the
-// empty string when none was written — e.g. a program that uses no workspace-coupled
+// empty string when none was written — e.g. a program that uses no run-from-program-image
 // or dynamic provider, or a prebuilt-image run where PULUMI_POD_PROGRAM_IMAGE already
 // carried the ref.
 func readProgramImageState(podID string) string {
