@@ -892,13 +892,6 @@ type PolicyPackProject struct {
 	// Main is an optional override for the program's main entry-point location.
 	Main string `json:"main,omitempty" yaml:"main,omitempty"`
 
-	// Binary maps a platform ("linux-amd64", ...) to the pack-relative path of a
-	// pre-built analyzer binary for that platform. When the current platform has an
-	// entry, the binary is executed directly instead of running the pack through its
-	// language runtime, and `pulumi policy publish` publishes the binaries alongside
-	// the source archive.
-	Binary map[string]string `json:"binary,omitempty" yaml:"binary,omitempty"`
-
 	// Description is an optional informational description.
 	Description *string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Author is an optional author that created this project.
@@ -921,7 +914,7 @@ func (proj *PolicyPackProject) Validate() error {
 		return errors.New("project is missing a 'runtime' attribute")
 	}
 
-	return validatePolicyBinaries(proj.Binary)
+	return nil
 }
 
 // Save writes a project definition to a file.

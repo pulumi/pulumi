@@ -20,7 +20,6 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"io"
 	"maps"
 	"os"
 	"path"
@@ -34,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -41,50 +41,73 @@ import (
 // policy evaluation runs on linux-amd64.
 const platformLinuxAmd64 = "linux-amd64"
 
+// discoverPolicyBinaries finds pre-built analyzer binaries in binaryDir by convention.
+// Binaries are named "pulumi-analyzer-<name>-<os>-<arch>" (with a ".exe" suffix on
+// Windows); the platform is read from the filename. It returns a platform -> absolute
+// path map, empty when the directory has none.
+func discoverPolicyBinaries(binaryDir string) (map[string]string, error) {
+	matches, err := filepath.Glob(filepath.Join(binaryDir, workspace.AnalyzerBinaryPrefix+"*"))
+	if err != nil {
+		return nil, err
+	}
+	slices.Sort(matches)
+
+	found := map[string]string{}
+	for _, m := range matches {
+		info, err := os.Stat(m)
+		if err != nil || info.IsDir() {
+			continue
+		}
+		base := filepath.Base(m)
+		stem := strings.TrimSuffix(base, ".exe")
+		hasExe := base != stem
+		for platform := range workspace.ValidPolicyBinaryPlatforms {
+			if !strings.HasSuffix(stem, "-"+platform) {
+				continue
+			}
+			// Windows binaries carry the ".exe" suffix; others must not.
+			if strings.HasPrefix(platform, "windows-") != hasExe {
+				continue
+			}
+			if existing, ok := found[platform]; ok {
+				return nil, fmt.Errorf("found multiple analyzer binaries for %s: %s and %s",
+					platform, filepath.Base(existing), base)
+			}
+			found[platform] = m
+			break
+		}
+	}
+	return found, nil
+}
+
 // validateBinaryMatrix enforces the publish-time platform requirements for a policy
-// pack declaring binaries: linux-amd64 is mandatory (server-side policy evaluation
-// runs there), every declared binary must exist, and the publishing host's platform
+// pack publishing binaries: linux-amd64 is mandatory (server-side policy evaluation
+// runs there), every discovered binary must exist, and the publishing host's platform
 // must be present so conformance checks can boot it.
-func validateBinaryMatrix(packDir string, binaries map[string]string) error {
+func validateBinaryMatrix(binaries map[string]string) error {
 	if _, ok := binaries[platformLinuxAmd64]; !ok {
 		return fmt.Errorf(
 			"policy packs published with binaries must include a %s binary: "+
-				"server-side policy evaluation runs on %s; "+
-				"remove the 'binary' option from PulumiPolicy.yaml to publish source only",
-			platformLinuxAmd64, platformLinuxAmd64)
+				"server-side policy evaluation runs on %s", platformLinuxAmd64, platformLinuxAmd64)
 	}
 	for _, platform := range slices.Sorted(maps.Keys(binaries)) {
-		rel := binaries[platform]
-		if _, err := os.Stat(filepath.Join(packDir, filepath.FromSlash(rel))); err != nil {
-			return fmt.Errorf("the binary for %s was not found at %s: %w", platform, rel, err)
+		if _, err := os.Stat(binaries[platform]); err != nil {
+			return fmt.Errorf("the binary for %s was not found at %s: %w", platform, binaries[platform], err)
 		}
 	}
 	hostPlatform := workspace.CurrentPlatform()
 	if _, ok := binaries[hostPlatform]; !ok {
 		return fmt.Errorf(
-			"cannot publish from %s: no %s binary is declared in PulumiPolicy.yaml, "+
-				"which is required to run publish-time conformance checks; "+
-				"remove the 'binary' option to publish source only",
-			hostPlatform, hostPlatform)
+			"cannot publish from %s: no %s binary was found, which is required to run "+
+				"publish-time conformance checks", hostPlatform, hostPlatform)
 	}
 	return nil
 }
 
-func canonicalBinaryName(analyzerName, platform string) string {
-	name := "pulumi-analyzer-" + analyzerName
-	if strings.HasPrefix(platform, "windows-") {
-		name += ".exe"
-	}
-	return name
-}
-
-// stageBinaryArtifact lays out one platform's artifact in a temp directory: the binary
-// under its canonical name, plus a generated manifest that declares it for the
-// platform (so consumers dispatch to the binary without any language toolchain). The
-// caller removes the directory.
-func stageBinaryArtifact(
-	packDir, binaryRelPath, analyzerName, platform string, runtime workspace.ProjectRuntimeInfo,
-) (string, error) {
+// stageBinaryArtifact lays out one platform's artifact in a temp directory: just the
+// binary under its canonical name, no manifest — consumers dispatch to it by convention,
+// exactly like a provider plugin. The caller removes the directory.
+func stageBinaryArtifact(binaryPath, analyzerName, platform string) (string, error) {
 	stage, err := os.MkdirTemp("", "pulumi-policy-artifact-")
 	if err != nil {
 		return "", err
@@ -96,30 +119,23 @@ func stageBinaryArtifact(
 		}
 	}()
 
-	binName := canonicalBinaryName(analyzerName, platform)
-	proj := &workspace.PolicyPackProject{
-		Runtime: runtime,
-		Binary:  map[string]string{platform: binName},
-	}
-	if err := proj.Save(filepath.Join(stage, "PulumiPolicy.yaml")); err != nil {
+	dst := filepath.Join(stage, workspace.AnalyzerBinaryName(analyzerName, platform))
+	if err := fsutil.CopyFile(dst, binaryPath, nil); err != nil {
 		return "", err
 	}
-	if err := copyFile(
-		filepath.Join(packDir, filepath.FromSlash(binaryRelPath)),
-		filepath.Join(stage, binName), 0o755); err != nil {
+	// Guarantee the staged binary is executable regardless of the source file's mode:
+	// the conformance boot execs it directly.
+	if err := os.Chmod(dst, 0o755); err != nil {
 		return "", err
 	}
 	keep = true
 	return stage, nil
 }
 
-// buildBinaryArtifact builds the published artifact for one platform: a gzipped
-// tarball of the generated manifest and the canonically named binary, nested under the
-// standard "package" directory.
-func buildBinaryArtifact(
-	packDir, binaryRelPath, analyzerName, platform string, runtime workspace.ProjectRuntimeInfo,
-) ([]byte, error) {
-	stage, err := stageBinaryArtifact(packDir, binaryRelPath, analyzerName, platform, runtime)
+// buildBinaryArtifact builds the published artifact for one platform: a gzipped tarball
+// of the canonically named binary, nested under the standard "package" directory.
+func buildBinaryArtifact(binaryPath, analyzerName, platform string) ([]byte, error) {
+	stage, err := stageBinaryArtifact(binaryPath, analyzerName, platform)
 	if err != nil {
 		return nil, err
 	}
@@ -127,47 +143,23 @@ func buildBinaryArtifact(
 	return archive.TGZ(stage, packageDir, false /*useDefaultExcludes*/)
 }
 
-func copyFile(src, dst string, perm os.FileMode) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
-		return err
-	}
-	return out.Close()
-}
-
-// buildBinaryArtifacts conformance-checks the host platform's declared binary and
-// builds the artifact to publish for each platform the pack's manifest declares. It
-// returns the analyzer metadata reported by the conformance run.
+// buildBinaryArtifacts conformance-checks the host platform's binary and builds the
+// artifact to publish for each discovered platform. It returns the analyzer metadata
+// reported by the conformance run — the binary self-describes, like a provider's schema.
 func buildBinaryArtifacts(
-	ctx context.Context, op backend.PublishOperation,
+	ctx context.Context, op backend.PublishOperation, binaries map[string]string,
 ) (plugin.AnalyzerInfo, map[string][]byte, error) {
-	binaries := op.PolicyPack.Binary
-	runtime := op.PolicyPack.Runtime
-
-	packDir, err := filepath.Abs(op.PlugCtx.Pwd)
-	if err != nil {
-		return plugin.AnalyzerInfo{}, nil, err
-	}
-	if err := validateBinaryMatrix(packDir, binaries); err != nil {
+	if err := validateBinaryMatrix(binaries); err != nil {
 		return plugin.AnalyzerInfo{}, nil, err
 	}
 
 	fmt.Println("Running conformance checks against the host platform binary")
 
-	// Boot the exact shape consumers will install: manifest + canonical binary in an
-	// otherwise empty directory. Booting the author's pack dir instead would let
-	// build residue (node_modules, package.json) mask a non-self-contained binary.
+	// Boot the exact shape consumers will install: the canonical binary in an otherwise
+	// empty directory. Booting the author's pack dir instead would let build residue
+	// (node_modules, package.json) mask a non-self-contained binary.
 	hostPlatform := workspace.CurrentPlatform()
-	stage, err := stageBinaryArtifact(packDir, binaries[hostPlatform], "conformance", hostPlatform, runtime)
+	stage, err := stageBinaryArtifact(binaries[hostPlatform], "conformance", hostPlatform)
 	if err != nil {
 		return plugin.AnalyzerInfo{}, nil, err
 	}
@@ -201,8 +193,8 @@ func buildBinaryArtifacts(
 	fmt.Println("Building per-platform artifacts")
 
 	archives := make(map[string][]byte, len(binaries))
-	for platform, rel := range binaries {
-		tarball, err := buildBinaryArtifact(packDir, rel, analyzerInfo.Name, platform, runtime)
+	for platform, binPath := range binaries {
+		tarball, err := buildBinaryArtifact(binPath, analyzerInfo.Name, platform)
 		if err != nil {
 			return plugin.AnalyzerInfo{}, nil, fmt.Errorf("building artifact for %s: %w", platform, err)
 		}
@@ -212,16 +204,11 @@ func buildBinaryArtifacts(
 	return analyzerInfo, archives, nil
 }
 
-// sourceTarballBinaries lists the declared binary paths that are present under the
-// source tarball's "package/" root. It never returns an error: a tarball it can't
-// parse is reported as having no detected binaries, since this feeds a best-effort
+// sourceTarballBinaries lists which of the declared pack-relative paths are present
+// under the source tarball's "package/" root. It never returns an error: a tarball it
+// can't parse is reported as having no detected binaries, since this feeds a best-effort
 // warning, not a gate.
-func sourceTarballBinaries(sourceTarball []byte, binaries map[string]string) []string {
-	declared := make(map[string]bool, len(binaries))
-	for _, rel := range binaries {
-		declared[path.Clean(filepath.ToSlash(rel))] = true
-	}
-
+func sourceTarballBinaries(sourceTarball []byte, declared map[string]bool) []string {
 	gz, err := gzip.NewReader(bytes.NewReader(sourceTarball))
 	if err != nil {
 		return nil
@@ -248,13 +235,22 @@ func sourceTarballBinaries(sourceTarball []byte, binaries map[string]string) []s
 }
 
 // warnIfSourceTarballContainsBinaries prints a loud warning if the source archive
-// dual-published alongside the platform binaries also contains one of the declared
-// analyzer binaries. buildSourceTarball reuses npm pack / gitignore-based archiving,
-// so a pack author who doesn't exclude bin/ can end up shipping an
-// un-conformance-checked binary inside the source fallback, bloating downloads for
-// CLIs too old to use the binary artifacts.
-func warnIfSourceTarballContainsBinaries(sourceTarball []byte, binaries map[string]string) {
-	found := sourceTarballBinaries(sourceTarball, binaries)
+// dual-published alongside the platform binaries also contains one of the discovered
+// analyzer binaries. buildSourceTarball reuses npm pack / gitignore-based archiving, so
+// a pack author who doesn't exclude bin/ can end up shipping an un-conformance-checked
+// binary inside the source fallback, bloating downloads for CLIs too old to use the
+// binary artifacts. Binaries outside the pack directory can't be in the source archive
+// and are ignored.
+func warnIfSourceTarballContainsBinaries(sourceTarball []byte, packDir string, binaries map[string]string) {
+	declared := map[string]bool{}
+	for _, binPath := range binaries {
+		rel, err := filepath.Rel(packDir, binPath)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			continue
+		}
+		declared[path.Clean(filepath.ToSlash(rel))] = true
+	}
+	found := sourceTarballBinaries(sourceTarball, declared)
 	if len(found) == 0 {
 		return
 	}

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -53,6 +54,10 @@ func newPolicyPublishCmd() *cobra.Command {
 		},
 	}
 
+	cmd.PersistentFlags().StringVar(&policyPublishCmd.binaryDir, "binary-dir", "",
+		"Directory of pre-built per-platform analyzer binaries (pulumi-analyzer-<name>-<os>-<arch>[.exe]) "+
+			"to publish alongside the source archive; defaults to the pack's 'bin' directory")
+
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
 			{Name: "org-name"},
@@ -65,6 +70,8 @@ func newPolicyPublishCmd() *cobra.Command {
 
 type policyPublishCmd struct {
 	getwd func() (string, error)
+
+	binaryDir string
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
@@ -117,6 +124,14 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	if err != nil {
 		return err
 	}
+	invocationDir := pwd
+
+	// Resolve a relative --binary-dir against the invocation directory before the pack's
+	// working directory is substituted below.
+	binaryDir := cmd.binaryDir
+	if binaryDir != "" && !filepath.IsAbs(binaryDir) {
+		binaryDir = filepath.Join(invocationDir, binaryDir)
+	}
 
 	proj, _, root, err := ReadPolicyProject(pwd)
 	if err != nil {
@@ -158,6 +173,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		PlugCtx:    plugctx,
 		PolicyPack: proj,
 		Scopes:     backend.CancellationScopes,
+		BinaryDir:  binaryDir,
 		Metadata:   m,
 	})
 	if err != nil {

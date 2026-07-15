@@ -430,13 +430,31 @@ func (pack *cloudPolicyPack) Publish(
 	var analyzerInfo plugin.AnalyzerInfo
 	var platformArchives map[string][]byte
 
-	if len(op.PolicyPack.Binary) > 0 {
+	// Discover pre-built per-platform analyzer binaries by convention: files named
+	// "pulumi-analyzer-<name>-<os>-<arch>[.exe]" in the binary directory (--binary-dir,
+	// or the conventional "bin" under the pack). An explicit --binary-dir with no
+	// binaries is an error; the conventional default simply falls back to a source-only
+	// publish.
+	binaryDir := op.BinaryDir
+	if binaryDir == "" {
+		binaryDir = filepath.Join(op.PlugCtx.Pwd, "bin")
+	}
+	binaries, err := discoverPolicyBinaries(binaryDir)
+	if err != nil {
+		return err
+	}
+	if op.BinaryDir != "" && len(binaries) == 0 {
+		return fmt.Errorf(
+			"no analyzer binaries (pulumi-analyzer-<name>-<os>-<arch>) were found in %q", binaryDir)
+	}
+
+	if len(binaries) > 0 {
 		//
-		// The pack declares pre-built per-platform binaries in its manifest:
-		// conformance-check the host platform's binary and build one artifact per
-		// declared platform, published alongside the source archive.
+		// The pack ships pre-built per-platform binaries: conformance-check the host
+		// platform's binary and build one bare-exe artifact per platform, published
+		// alongside the source archive.
 		//
-		info, archives, err := buildBinaryArtifacts(ctx, op)
+		info, archives, err := buildBinaryArtifacts(ctx, op, binaries)
 		if err != nil {
 			return err
 		}
@@ -474,7 +492,7 @@ func (pack *cloudPolicyPack) Publish(
 		return err
 	}
 	if len(platformArchives) > 0 {
-		warnIfSourceTarballContainsBinaries(packTarball, op.PolicyPack.Binary)
+		warnIfSourceTarballContainsBinaries(packTarball, op.PlugCtx.Pwd, binaries)
 	}
 
 	//
@@ -594,20 +612,21 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("moving plugin: %w", err)
 	}
 
-	projPath := filepath.Join(finalDir, "PulumiPolicy.yaml")
-	proj, err := workspace.LoadPolicyPack(projPath)
-	if err != nil {
-		return fmt.Errorf("failed to load policy project at %s: %w", finalDir, err)
-	}
-
-	// Binary packs need no language toolchain: mark the binary executable and stop here.
-	if rel, ok := proj.Binary[workspace.CurrentPlatform()]; ok {
+	// Binary packs ship a bare analyzer executable and need no manifest or language
+	// toolchain: mark it runnable and stop before any manifest load or dependency install.
+	if binPath, ok := workspace.FindAnalyzerBinary(finalDir); ok {
 		if goruntime.GOOS != "windows" {
-			if err := os.Chmod(filepath.Join(finalDir, filepath.FromSlash(rel)), 0o755); err != nil {
+			if err := os.Chmod(binPath, 0o755); err != nil {
 				return fmt.Errorf("marking policy pack binary executable: %w", err)
 			}
 		}
 		return nil
+	}
+
+	projPath := filepath.Join(finalDir, "PulumiPolicy.yaml")
+	proj, err := workspace.LoadPolicyPack(projPath)
+	if err != nil {
+		return fmt.Errorf("failed to load policy project at %s: %w", finalDir, err)
 	}
 
 	// Workaround for python, some policy packs don't specify a venv but we want to use one

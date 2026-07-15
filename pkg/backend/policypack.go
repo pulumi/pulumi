@@ -29,6 +29,12 @@ type PublishOperation struct {
 	PolicyPack *workspace.PolicyPackProject
 	Scopes     CancellationScopeSource
 
+	// BinaryDir is the directory to discover pre-built per-platform analyzer binaries in.
+	// Empty means the conventional "bin" directory under the pack. Binaries are named
+	// "pulumi-analyzer-<name>-<os>-<arch>[.exe]"; when any are found they are published
+	// alongside the source archive.
+	BinaryDir string
+
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
 	Metadata map[string]string

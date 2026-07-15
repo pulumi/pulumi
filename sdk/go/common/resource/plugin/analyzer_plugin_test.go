@@ -15,11 +15,8 @@
 package plugin
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
 
@@ -76,44 +73,4 @@ func TestConstructEnvWithoutAdditionalEnv(t *testing.T) {
 	// Node.js-specific vars should not be set for python runtime.
 	_, found = result.GetStore().Raw("PULUMI_NODEJS_ORGANIZATION")
 	require.False(t, found)
-}
-
-func TestPolicyPackBinaryPath(t *testing.T) {
-	t.Parallel()
-
-	platform := workspace.CurrentPlatform()
-
-	t.Run("declared and present", func(t *testing.T) {
-		t.Parallel()
-		dir := t.TempDir()
-		require.NoError(t, os.MkdirAll(filepath.Join(dir, "bin"), 0o755))
-		rel := "bin/pulumi-analyzer-mypack-" + platform
-		require.NoError(t, os.WriteFile(filepath.Join(dir, filepath.FromSlash(rel)), []byte("#!"), 0o755)) //nolint:gosec
-
-		bin, ok := policyPackBinaryPath(dir, &workspace.PolicyPackProject{
-			Binary: map[string]string{platform: rel},
-		})
-		require.True(t, ok)
-		require.Equal(t, filepath.Join(dir, filepath.FromSlash(rel)), bin)
-	})
-
-	t.Run("not declared for this platform", func(t *testing.T) {
-		t.Parallel()
-		other := "linux-amd64"
-		if platform == other {
-			other = "darwin-arm64"
-		}
-		_, ok := policyPackBinaryPath(t.TempDir(), &workspace.PolicyPackProject{
-			Binary: map[string]string{other: "bin/b"},
-		})
-		require.False(t, ok)
-	})
-
-	t.Run("declared but not built", func(t *testing.T) {
-		t.Parallel()
-		_, ok := policyPackBinaryPath(t.TempDir(), &workspace.PolicyPackProject{
-			Binary: map[string]string{platform: "bin/missing"},
-		})
-		require.False(t, ok)
-	})
 }

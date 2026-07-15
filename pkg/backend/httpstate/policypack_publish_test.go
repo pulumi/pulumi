@@ -17,7 +17,6 @@ package httpstate
 import (
 	"encoding/json"
 	"io"
-	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -49,36 +48,33 @@ func buildAnalyzerBinaryFixture(t *testing.T, dst string) {
 	require.NoError(t, err, string(out))
 }
 
-// buildBinaryPublishPack lays out a pack whose manifest declares a binary for the host
-// platform (built from the analyzer-binary fixture). validateBinaryMatrix also
-// requires a linux-amd64 binary regardless of host platform, so one is declared too —
-// as a placeholder file, since conformance only boots the host platform's binary.
-func buildBinaryPublishPack(t *testing.T) (string, *workspace.PolicyPackProject) {
+// buildBinaryPublishPack lays out a pack with a source manifest plus pre-built analyzer
+// binaries in the conventional bin/ directory: the host platform's binary (built from
+// the analyzer-binary fixture) and — since validateBinaryMatrix requires linux-amd64
+// regardless of host — a linux-amd64 placeholder (conformance only boots the host
+// binary). It returns the pack dir, the source project, and the discovered platforms.
+func buildBinaryPublishPack(t *testing.T) (string, *workspace.PolicyPackProject, []string) {
 	t.Helper()
 	packDir := t.TempDir()
 
-	hostPlatform := workspace.CurrentPlatform()
-	binName := "pulumi-analyzer-mypack-" + hostPlatform
-	if goruntime.GOOS == "windows" {
-		binName += ".exe"
-	}
-	hostRel := "bin/" + binName
-	buildAnalyzerBinaryFixture(t, filepath.Join(packDir, filepath.FromSlash(hostRel)))
-
-	binaries := map[string]string{hostPlatform: hostRel}
-	if hostPlatform != platformLinuxAmd64 {
-		linuxRel := "bin/pulumi-analyzer-mypack-linux-amd64"
-		require.NoError(t, os.WriteFile( //nolint:gosec // deliberately executable
-			filepath.Join(packDir, filepath.FromSlash(linuxRel)), []byte("placeholder"), 0o755))
-		binaries[platformLinuxAmd64] = linuxRel
-	}
-
-	proj := &workspace.PolicyPackProject{
-		Runtime: workspace.NewProjectRuntimeInfo("python", nil),
-		Binary:  binaries,
-	}
+	proj := &workspace.PolicyPackProject{Runtime: workspace.NewProjectRuntimeInfo("python", nil)}
 	require.NoError(t, proj.Save(filepath.Join(packDir, "PulumiPolicy.yaml")))
-	return packDir, proj
+
+	hostPlatform := workspace.CurrentPlatform()
+	hostBin := "pulumi-analyzer-mypack-" + hostPlatform
+	if goruntime.GOOS == "windows" {
+		hostBin += ".exe"
+	}
+	buildAnalyzerBinaryFixture(t, filepath.Join(packDir, "bin", hostBin))
+
+	platforms := []string{hostPlatform}
+	if hostPlatform != platformLinuxAmd64 {
+		require.NoError(t, os.WriteFile( //nolint:gosec // deliberately executable
+			filepath.Join(packDir, "bin", "pulumi-analyzer-mypack-linux-amd64"), []byte("placeholder"), 0o755))
+		platforms = append(platforms, platformLinuxAmd64)
+	}
+	slices.Sort(platforms)
+	return packDir, proj, platforms
 }
 
 func newPublishTestPlugCtx(t *testing.T, pwd string) *plugin.Context {
@@ -155,10 +151,9 @@ func newPublishTestPack(cl *client.Client) *cloudPolicyPack {
 func TestPublishWithDeclaredBinariesUploadsBinaries(t *testing.T) {
 	t.Parallel()
 
-	packDir, proj := buildBinaryPublishPack(t)
-	platform := workspace.CurrentPlatform()
-	expectedPlatforms := slices.Sorted(maps.Keys(proj.Binary))
-	mock := newPublishMockService(t, "binary-test-pack", expectedPlatforms)
+	packDir, proj, platforms := buildBinaryPublishPack(t)
+	hostPlatform := workspace.CurrentPlatform()
+	mock := newPublishMockService(t, "binary-test-pack", platforms)
 
 	pack := newPublishTestPack(client.NewClient(mock.server.URL, "test-token", true, nil))
 	op := backend.PublishOperation{
@@ -169,13 +164,15 @@ func TestPublishWithDeclaredBinariesUploadsBinaries(t *testing.T) {
 	err := pack.Publish(t.Context(), op)
 	require.NoError(t, err)
 
-	assert.Equal(t, expectedPlatforms, mock.createReq.Platforms)
+	assert.Equal(t, platforms, mock.createReq.Platforms)
 	assert.Equal(t, "python", mock.createReq.Runtime)
 	assert.True(t, mock.completeCalled)
 	require.Contains(t, mock.uploads, "source")
-	require.Contains(t, mock.uploads, platform)
-	entries := tarEntries(t, mock.uploads[platform])
+	require.Contains(t, mock.uploads, hostPlatform)
+	// The per-platform artifact is a bare exe — no manifest.
+	entries := tarEntries(t, mock.uploads[hostPlatform])
 	assert.Contains(t, entries, "package/pulumi-analyzer-binary-test-pack")
+	assert.NotContains(t, entries, "package/PulumiPolicy.yaml")
 }
 
 // TestPublishWithoutBinariesTakesSingleArchivePath publishes a pack whose manifest

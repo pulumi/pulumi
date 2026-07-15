@@ -15,7 +15,6 @@
 package host
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
 
@@ -99,16 +97,16 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func buildBinaryTestPack(t *testing.T, binRel string) string {
+// buildBinaryAnalyzerPack builds the analyzer-binary fixture to binRel inside a fresh
+// pack directory. It writes no manifest, so dispatch must find and exec the binary
+// purely by the pulumi-analyzer-* naming convention.
+func buildBinaryAnalyzerPack(t *testing.T, binRel string) string {
 	packDir := t.TempDir()
 	binPath := filepath.Join(packDir, filepath.FromSlash(binRel))
 	require.NoError(t, os.MkdirAll(filepath.Dir(binPath), 0o755))
 	cmd := exec.Command("go", "build", "-o", binPath, "./testdata/analyzer-binary")
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
-	// The manifest still names a language runtime; the declared binary must win dispatch.
-	manifest := fmt.Sprintf("runtime: nodejs\nbinary:\n  %s: %s\n", workspace.CurrentPlatform(), binRel)
-	require.NoError(t, os.WriteFile(filepath.Join(packDir, "PulumiPolicy.yaml"), []byte(manifest), 0o600))
 	return packDir
 }
 
@@ -123,7 +121,8 @@ func newAnalyzerTestContext(t *testing.T) *plugin.Context {
 }
 
 // TestAnalyzerSpawnBinaryAtRoot spawns a pack laid out like an installed binary
-// artifact: the binary at the pack root under its canonical name.
+// artifact: a bare "pulumi-analyzer-<name>" executable at the pack root and no manifest.
+// Dispatch must find and exec it purely by convention, like a provider plugin.
 func TestAnalyzerSpawnBinaryAtRoot(t *testing.T) {
 	t.Parallel()
 
@@ -131,7 +130,7 @@ func TestAnalyzerSpawnBinaryAtRoot(t *testing.T) {
 	if goruntime.GOOS == "windows" {
 		binName += ".exe"
 	}
-	packDir := buildBinaryTestPack(t, binName)
+	packDir := buildBinaryAnalyzerPack(t, binName)
 	ctx := newAnalyzerTestContext(t)
 
 	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", packDir, nil, nil)
@@ -143,25 +142,21 @@ func TestAnalyzerSpawnBinaryAtRoot(t *testing.T) {
 	require.Equal(t, "binary-test-pack", info.Name)
 }
 
-// TestAnalyzerSpawnBinaryInBin spawns a pack laid out like a local build: the binary
-// under bin/, declared in the manifest.
-func TestAnalyzerSpawnBinaryInBin(t *testing.T) {
+// TestAnalyzerSpawnBinaryInBinNotDiscovered asserts a binary under bin/ is not
+// auto-dispatched: convention only discovers a binary at the pack root, so a pack with
+// no root binary and no manifest fails to load rather than execing the bin/ binary.
+func TestAnalyzerSpawnBinaryInBinNotDiscovered(t *testing.T) {
 	t.Parallel()
 
-	binName := "pulumi-analyzer-binary-test-pack-" + workspace.CurrentPlatform()
+	binName := "pulumi-analyzer-binary-test-pack"
 	if goruntime.GOOS == "windows" {
 		binName += ".exe"
 	}
-	packDir := buildBinaryTestPack(t, "bin/"+binName)
+	packDir := buildBinaryAnalyzerPack(t, "bin/"+binName)
 	ctx := newAnalyzerTestContext(t)
 
-	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", packDir, nil, nil)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, analyzer.Close()) }()
-
-	info, err := analyzer.GetAnalyzerInfo(t.Context())
-	require.NoError(t, err)
-	require.Equal(t, "binary-test-pack", info.Name)
+	_, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", packDir, nil, nil)
+	require.ErrorContains(t, err, "failed to load Pulumi policy project")
 }
 
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {

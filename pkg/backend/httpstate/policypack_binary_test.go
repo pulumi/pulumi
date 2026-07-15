@@ -18,11 +18,12 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -32,41 +33,53 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testRuntime = workspace.NewProjectRuntimeInfo("nodejs", nil)
-
-// writeTestPack lays out a pack dir whose manifest declares the given platform-to-path
-// binary mapping (slash-separated paths), with placeholder files for each binary.
-func writeTestPack(t *testing.T, binaries map[string]string) string {
+// writeBinaryDir creates a directory of pre-built analyzer binaries named
+// pulumi-analyzer-<name>-<platform>[.exe], one per given platform, and returns the dir.
+func writeBinaryDir(t *testing.T, name string, platforms ...string) string {
 	t.Helper()
 	dir := t.TempDir()
-
-	var manifest strings.Builder
-	manifest.WriteString("runtime: nodejs\n")
-	if len(binaries) > 0 {
-		manifest.WriteString("binary:\n")
-		for platform, rel := range binaries {
-			fmt.Fprintf(&manifest, "  %s: %s\n", platform, rel)
+	for _, platform := range platforms {
+		binName := "pulumi-analyzer-" + name + "-" + platform
+		if strings.HasPrefix(platform, "windows-") {
+			binName += ".exe"
 		}
-	}
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "PulumiPolicy.yaml"),
-		[]byte(manifest.String()), 0o600))
-
-	for _, rel := range binaries {
-		p := filepath.Join(dir, filepath.FromSlash(rel))
-		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
-		require.NoError(t, os.WriteFile(p, []byte("bin"), 0o755)) //nolint:gosec
+		require.NoError(t, os.WriteFile(filepath.Join(dir, binName), []byte("bin"), 0o755)) //nolint:gosec
 	}
 	return dir
+}
+
+func TestDiscoverPolicyBinaries(t *testing.T) {
+	t.Parallel()
+
+	dir := writeBinaryDir(t, "mypack", "linux-amd64", "darwin-arm64", "windows-amd64")
+	// Non-analyzer files and subdirectories must be ignored.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte("x"), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "pulumi-analyzer-notabinary"), 0o755))
+
+	binaries, err := discoverPolicyBinaries(dir)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"darwin-arm64", "linux-amd64", "windows-amd64"},
+		slices.Sorted(maps.Keys(binaries)))
+	assert.Equal(t, filepath.Join(dir, "pulumi-analyzer-mypack-linux-amd64"), binaries["linux-amd64"])
+	assert.Equal(t, filepath.Join(dir, "pulumi-analyzer-mypack-windows-amd64.exe"), binaries["windows-amd64"])
+}
+
+func TestDiscoverPolicyBinariesEmpty(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "index.js"), []byte("//"), 0o600))
+	binaries, err := discoverPolicyBinaries(dir)
+	require.NoError(t, err)
+	assert.Empty(t, binaries)
 }
 
 func TestValidateBinaryMatrixRequiresLinuxAmd64(t *testing.T) {
 	t.Parallel()
 
-	binaries := map[string]string{"darwin-arm64": "bin/b"}
-	dir := writeTestPack(t, binaries)
-	err := validateBinaryMatrix(dir, binaries)
-	require.ErrorContains(t, err, platformLinuxAmd64)
-	require.ErrorContains(t, err, "'binary'")
+	binaries, err := discoverPolicyBinaries(writeBinaryDir(t, "mypack", "darwin-arm64"))
+	require.NoError(t, err)
+	require.ErrorContains(t, validateBinaryMatrix(binaries), platformLinuxAmd64)
 }
 
 func TestValidateBinaryMatrixRequiresHostPlatform(t *testing.T) {
@@ -75,24 +88,19 @@ func TestValidateBinaryMatrixRequiresHostPlatform(t *testing.T) {
 	if workspace.CurrentPlatform() == platformLinuxAmd64 {
 		t.Skip("host platform is linux-amd64; the mandatory-platform check subsumes this")
 	}
-	binaries := map[string]string{platformLinuxAmd64: "bin/b"}
-	dir := writeTestPack(t, binaries)
-	err := validateBinaryMatrix(dir, binaries)
-	require.ErrorContains(t, err, workspace.CurrentPlatform())
-	require.ErrorContains(t, err, "'binary'")
+	binaries, err := discoverPolicyBinaries(writeBinaryDir(t, "mypack", platformLinuxAmd64))
+	require.NoError(t, err)
+	require.ErrorContains(t, validateBinaryMatrix(binaries), workspace.CurrentPlatform())
 }
 
 func TestValidateBinaryMatrixMissingFile(t *testing.T) {
 	t.Parallel()
 
 	binaries := map[string]string{
-		platformLinuxAmd64:          "bin/b",
-		workspace.CurrentPlatform(): "bin/host",
+		platformLinuxAmd64:          filepath.Join(t.TempDir(), "missing-linux"),
+		workspace.CurrentPlatform(): filepath.Join(t.TempDir(), "missing-host"),
 	}
-	dir := writeTestPack(t, binaries)
-	require.NoError(t, os.Remove(filepath.Join(dir, "bin", "b")))
-	err := validateBinaryMatrix(dir, binaries)
-	require.ErrorContains(t, err, "bin/b")
+	require.ErrorContains(t, validateBinaryMatrix(binaries), "was not found")
 }
 
 func tarEntries(t *testing.T, tgz []byte) map[string][]byte {
@@ -119,30 +127,27 @@ func tarEntries(t *testing.T, tgz []byte) map[string][]byte {
 func TestBuildBinaryArtifact(t *testing.T) {
 	t.Parallel()
 
-	rel := "bin/pulumi-analyzer-mypack-linux-amd64"
-	dir := writeTestPack(t, map[string]string{"linux-amd64": rel})
+	dir := writeBinaryDir(t, "mypack", "linux-amd64")
+	binPath := filepath.Join(dir, "pulumi-analyzer-mypack-linux-amd64")
 
-	tgz, err := buildBinaryArtifact(dir, rel, "mypack", "linux-amd64", testRuntime)
+	tgz, err := buildBinaryArtifact(binPath, "mypack", "linux-amd64")
 	require.NoError(t, err)
 
 	entries := tarEntries(t, tgz)
-	require.Len(t, entries, 2)
+	// The artifact is a bare exe — just the canonically named binary, no manifest, so
+	// consumers dispatch to it by convention like a provider plugin.
+	require.Len(t, entries, 1)
 	assert.Contains(t, entries, "package/pulumi-analyzer-mypack")
-
-	// The generated manifest must declare the canonical binary for the platform so
-	// consumers dispatch to it without a language toolchain.
-	manifest := string(entries["package/PulumiPolicy.yaml"])
-	assert.Contains(t, manifest, "binary:")
-	assert.Contains(t, manifest, "linux-amd64: pulumi-analyzer-mypack")
+	assert.NotContains(t, entries, "package/PulumiPolicy.yaml")
 }
 
 func TestBuildBinaryArtifactWindowsSuffix(t *testing.T) {
 	t.Parallel()
 
-	rel := "bin/pulumi-analyzer-mypack-windows-amd64.exe"
-	dir := writeTestPack(t, map[string]string{"windows-amd64": rel})
+	dir := writeBinaryDir(t, "mypack", "windows-amd64")
+	binPath := filepath.Join(dir, "pulumi-analyzer-mypack-windows-amd64.exe")
 
-	tgz, err := buildBinaryArtifact(dir, rel, "mypack", "windows-amd64", testRuntime)
+	tgz, err := buildBinaryArtifact(binPath, "mypack", "windows-amd64")
 	require.NoError(t, err)
 
 	entries := tarEntries(t, tgz)
@@ -171,10 +176,10 @@ func buildTGZ(t *testing.T, files map[string]string) []byte {
 func TestSourceTarballBinariesDetectsDeclaredPaths(t *testing.T) {
 	t.Parallel()
 
-	binaries := map[string]string{
-		"linux-amd64":   "bin/pulumi-analyzer-mypack-linux-amd64",
-		"windows-amd64": "bin/pulumi-analyzer-mypack-windows-amd64.exe",
-		"darwin-arm64":  "bin/pulumi-analyzer-mypack-darwin-arm64",
+	declared := map[string]bool{
+		"bin/pulumi-analyzer-mypack-linux-amd64":       true,
+		"bin/pulumi-analyzer-mypack-windows-amd64.exe": true,
+		"bin/pulumi-analyzer-mypack-darwin-arm64":      true,
 	}
 	tgz := buildTGZ(t, map[string]string{
 		"package/PulumiPolicy.yaml":                            "runtime: nodejs\n",
@@ -183,7 +188,7 @@ func TestSourceTarballBinariesDetectsDeclaredPaths(t *testing.T) {
 		"package/index.js":                                     "// not a binary",
 	})
 
-	found := sourceTarballBinaries(tgz, binaries)
+	found := sourceTarballBinaries(tgz, declared)
 	assert.Equal(t, []string{
 		"bin/pulumi-analyzer-mypack-linux-amd64",
 		"bin/pulumi-analyzer-mypack-windows-amd64.exe",
@@ -193,13 +198,13 @@ func TestSourceTarballBinariesDetectsDeclaredPaths(t *testing.T) {
 func TestSourceTarballBinariesNoneFound(t *testing.T) {
 	t.Parallel()
 
-	binaries := map[string]string{"linux-amd64": "bin/pulumi-analyzer-mypack-linux-amd64"}
+	declared := map[string]bool{"bin/pulumi-analyzer-mypack-linux-amd64": true}
 	tgz := buildTGZ(t, map[string]string{
 		"package/PulumiPolicy.yaml": "runtime: nodejs\n",
 		"package/index.js":          "// not a binary",
 	})
 
-	assert.Empty(t, sourceTarballBinaries(tgz, binaries))
+	assert.Empty(t, sourceTarballBinaries(tgz, declared))
 }
 
 func TestPackLocationSelection(t *testing.T) {
@@ -265,9 +270,13 @@ func TestPackLocationSelection(t *testing.T) {
 func TestInstallRequiredPolicySkipsDependenciesForBinaryPack(t *testing.T) {
 	t.Parallel()
 
-	rel := "bin/pulumi-analyzer-mypack-" + workspace.CurrentPlatform()
-	packDir := writeTestPack(t, map[string]string{workspace.CurrentPlatform(): rel})
-	tgz, err := buildBinaryArtifact(packDir, rel, "mypack", workspace.CurrentPlatform(), testRuntime)
+	platform := workspace.CurrentPlatform()
+	binName := "pulumi-analyzer-mypack-" + platform
+	if goruntime.GOOS == "windows" {
+		binName += ".exe"
+	}
+	dir := writeBinaryDir(t, "mypack", platform)
+	tgz, err := buildBinaryArtifact(filepath.Join(dir, binName), "mypack", platform)
 	require.NoError(t, err)
 
 	finalDir := filepath.Join(t.TempDir(), "installed")
@@ -276,12 +285,11 @@ func TestInstallRequiredPolicySkipsDependenciesForBinaryPack(t *testing.T) {
 	err = installRequiredPolicy(nil, finalDir, io.NopCloser(bytes.NewReader(tgz)), io.Discard, io.Discard)
 	require.NoError(t, err)
 
-	proj, err := workspace.LoadPolicyPack(filepath.Join(finalDir, "PulumiPolicy.yaml"))
-	require.NoError(t, err)
-	binName := canonicalBinaryName("mypack", workspace.CurrentPlatform())
-	require.Equal(t, map[string]string{workspace.CurrentPlatform(): binName}, proj.Binary)
+	// The installed artifact is a bare exe — no manifest is written or needed.
+	_, err = os.Stat(filepath.Join(finalDir, "PulumiPolicy.yaml"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 
-	info, err := os.Stat(filepath.Join(finalDir, binName))
+	info, err := os.Stat(filepath.Join(finalDir, workspace.AnalyzerBinaryName("mypack", platform)))
 	require.NoError(t, err)
 	if goruntime.GOOS != "windows" {
 		assert.NotZero(t, info.Mode()&0o111)

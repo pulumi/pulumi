@@ -17,65 +17,53 @@ package workspace
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidatePolicyBinaries(t *testing.T) {
+func TestFindAnalyzerBinary(t *testing.T) {
 	t.Parallel()
 
-	require.NoError(t, validatePolicyBinaries(nil))
-	require.NoError(t, validatePolicyBinaries(map[string]string{
-		"linux-amd64":   "bin/pulumi-analyzer-mypack-linux-amd64",
-		"windows-amd64": "bin/pulumi-analyzer-mypack-windows-amd64.exe",
-	}))
+	binName := "pulumi-analyzer-mypack"
+	if strings.HasPrefix(CurrentPlatform(), "windows-") {
+		binName += ".exe"
+	}
 
-	err := validatePolicyBinaries(map[string]string{"freebsd-riscv": "bin/a"})
-	require.ErrorContains(t, err, "freebsd-riscv")
+	t.Run("binary at root is found", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		bin := filepath.Join(dir, binName)
+		require.NoError(t, os.WriteFile(bin, []byte("bin"), 0o755)) //nolint:gosec
+		got, ok := FindAnalyzerBinary(dir)
+		require.True(t, ok)
+		assert.Equal(t, bin, got)
+	})
 
-	err = validatePolicyBinaries(map[string]string{"linux-amd64": ""})
-	require.ErrorContains(t, err, "missing a path")
+	t.Run("no binary", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "index.js"), []byte("//"), 0o600))
+		_, ok := FindAnalyzerBinary(dir)
+		require.False(t, ok)
+	})
 
-	err = validatePolicyBinaries(map[string]string{"linux-amd64": "/abs/path"})
-	require.ErrorContains(t, err, "relative")
+	t.Run("binary in subdir is not discovered", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "bin"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "bin", binName), []byte("bin"), 0o755)) //nolint:gosec
+		_, ok := FindAnalyzerBinary(dir)
+		require.False(t, ok)
+	})
 
-	err = validatePolicyBinaries(map[string]string{"linux-amd64": `C:\abs\path`})
-	require.ErrorContains(t, err, "relative")
-
-	err = validatePolicyBinaries(map[string]string{"linux-amd64": `\abs\path`})
-	require.ErrorContains(t, err, "relative")
-}
-
-func TestPolicyPackProjectBinaryRoundTrip(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "PulumiPolicy.yaml")
-	require.NoError(t, os.WriteFile(path, []byte(
-		"runtime: nodejs\nbinary:\n  linux-amd64: bin/pulumi-analyzer-mypack-linux-amd64\n"), 0o600))
-
-	proj, err := LoadPolicyPack(path)
-	require.NoError(t, err)
-	assert.Equal(t, map[string]string{
-		"linux-amd64": "bin/pulumi-analyzer-mypack-linux-amd64",
-	}, proj.Binary)
-
-	require.NoError(t, proj.Save(path))
-	reloaded, err := LoadPolicyPack(path)
-	require.NoError(t, err)
-	assert.Equal(t, proj.Binary, reloaded.Binary)
-}
-
-func TestPolicyPackProjectBinaryValidation(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "PulumiPolicy.yaml")
-	require.NoError(t, os.WriteFile(path, []byte(
-		"runtime: nodejs\nbinary:\n  freebsd-riscv: bin/a\n"), 0o600))
-
-	_, err := LoadPolicyPack(path)
-	require.ErrorContains(t, err, "freebsd-riscv")
+	t.Run("directory named like the binary is skipped", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "pulumi-analyzer-notabinary"), 0o755))
+		_, ok := FindAnalyzerBinary(dir)
+		require.False(t, ok)
+	})
 }

@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -107,12 +106,6 @@ func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
 	hasPlugin func(workspace.PluginDescriptor) bool,
 ) (Analyzer, error) {
-	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
-	proj, err := workspace.LoadPolicyPack(projPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", policyPackPath, err)
-	}
-
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*pulumirpc.AnalyzerHandshakeResponse, error) {
@@ -143,27 +136,30 @@ func NewPolicyAnalyzer(
 	}
 
 	var plug *Plugin
-	if binPath, ok := policyPackBinaryPath(policyPackPath, proj); ok {
-		// The pack declares a pre-built analyzer binary for this platform: exec it
-		// directly, exactly as a provider plugin would be, with no language host involved.
+	var proj *workspace.PolicyPackProject
+	var err error
+	if binPath, ok := workspace.FindAnalyzerBinary(policyPackPath); ok {
+		// Binary packs ship a bare analyzer executable and need no manifest or language
+		// host: exec it directly, exactly as a provider plugin would be.
 		plug, _, err = newPlugin(ctx, policyPackPath, binPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr(), "."}, analyzerPluginEnv(opts),
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
+	} else if proj, err = workspace.LoadPolicyPack(
+		filepath.Join(policyPackPath, "PulumiPolicy.yaml")); err != nil {
+		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", policyPackPath, err)
 	} else if languagePluginFound(ctx, proj, hasPlugin) {
-		// We have a language plugin, so just use RunPlugin to invoke the policy pack.
+		// Source pack with a language plugin: use RunPlugin to invoke the policy pack.
 		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, analyzerPluginEnv(opts),
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	} else {
-		// Back compatibility for the old way of running analyzer plugins, where we would look
-		// for a plugin called "pulumi-analyzer-policy-<runtime>" and invoke that plugin with
-		// two arguments, the engine address and the policy pack path. We don't do this for
-		// actual "languages" (i.e. things with language plugins), but have to leave this in to
-		// ensure things like https://github.com/pulumi/pulumi-policy-opa continue to work
-		// (although in time they could probably be moved to just be language runtimes like the
-		// rest).
+		// Source pack, back-compat path: run the legacy "pulumi-analyzer-policy-<runtime>"
+		// bootstrap plugin. We don't do this for actual "languages" (i.e. things with
+		// language plugins), but have to leave this in to ensure things like
+		// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time
+		// they could probably be moved to just be language runtimes like the rest).
 		plug, err = newBootstrapAnalyzerPlugin(host, ctx, name, policyPackPath, proj, opts, handshake)
 	}
 
@@ -221,36 +217,23 @@ func NewPolicyAnalyzer(
 		logging.V(7).Infof("StackConfigure: success [%v]", name)
 	}
 
-	var description string
-	if proj.Description != nil {
-		description = *proj.Description
+	// Source packs carry version/description in the manifest; binary packs self-report
+	// them via GetAnalyzerInfo, so these stay empty when there is no manifest.
+	var version, description string
+	if proj != nil {
+		version = proj.Version
+		if proj.Description != nil {
+			description = *proj.Description
+		}
 	}
 
 	return &analyzer{
 		name:        name,
 		plug:        plug,
 		client:      client,
-		version:     proj.Version,
+		version:     version,
 		description: description,
 	}, nil
-}
-
-// policyPackBinaryPath returns the pre-built analyzer binary the pack's manifest
-// declares for the current platform, if any. A declared binary that doesn't exist on
-// disk (e.g. a source checkout where binaries haven't been built) falls back to
-// running the pack through its language runtime.
-func policyPackBinaryPath(policyPackPath string, proj *workspace.PolicyPackProject) (string, bool) {
-	rel, ok := proj.Binary[workspace.CurrentPlatform()]
-	if !ok {
-		return "", false
-	}
-	binPath := filepath.Join(policyPackPath, filepath.FromSlash(rel))
-	if _, err := os.Stat(binPath); err != nil {
-		logging.V(7).Infof("policy pack %s declares a binary for %s at %s, but it does not exist; "+
-			"falling back to the language runtime", policyPackPath, workspace.CurrentPlatform(), binPath)
-		return "", false
-	}
-	return binPath, true
 }
 
 // analyzerPluginEnv is the environment an analyzer plugin is started with: the process
