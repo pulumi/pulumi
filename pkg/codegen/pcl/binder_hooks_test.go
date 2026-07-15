@@ -47,6 +47,55 @@ hook resource "foo" {
 	require.Len(t, hooks, 1)
 }
 
+// Test that error hooks can use the args they receive, but not newOutputs: error hooks
+// fire after an operation fails, so there are no new outputs.
+func TestErrorHookBinding(t *testing.T) {
+	t.Parallel()
+
+	source := `
+hook error "foo" {
+	command = ["test", args.urn, args.id, args.name, args.type, args.newInputs.first,
+		args.oldInputs.second, args.oldOutputs.third]
+}
+`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+
+	require.NoError(t, err)
+	require.Empty(t, diags)
+
+	hooks := program.Hooks()
+	require.Len(t, hooks, 1)
+
+	source = `
+hook error "foo" {
+	command = ["test", args.newOutputs.first]
+}
+`
+
+	_, diags, err = ParseAndBindProgram(t, source, "program.pp")
+
+	require.Error(t, err)
+	require.Len(t, diags, 1)
+	assert.Equal(t, &hcl.Diagnostic{
+		Severity: hcl.DiagError,
+		Summary:  "unknown property 'newOutputs' among [id name newInputs oldInputs oldOutputs type urn]",
+		Subject: &hcl.Range{
+			Filename: "program.pp",
+			Start: hcl.Pos{
+				Line:   2,
+				Column: 25,
+				Byte:   44,
+			},
+			End: hcl.Pos{
+				Line:   2,
+				Column: 36,
+				Byte:   55,
+			},
+		},
+	}, diags[0])
+}
+
 // Test that hooks type check to command args being strings
 func TestHookConversionSafe(t *testing.T) {
 	t.Parallel()

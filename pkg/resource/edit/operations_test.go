@@ -15,6 +15,8 @@
 package edit
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -633,7 +635,8 @@ func TestRenameStack(t *testing.T) {
 	// Rename just the stack.
 	//nolint:paralleltest // uses shared stack
 	t.Run("JustTheStack", func(t *testing.T) {
-		err := RenameStack(deployment, tokens.MustParseStackName("new-stack"), tokens.PackageName(""))
+		err := RenameStack(deployment, tokens.MustParseStackName("new-stack"), tokens.PackageName(""),
+			RenameStackOptions{OldName: tokens.MustParseStackName("test"), OldProject: "test"})
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
@@ -653,7 +656,8 @@ func TestRenameStack(t *testing.T) {
 	// Rename the stack and project.
 	//nolint:paralleltest // uses shared stack
 	t.Run("StackAndProject", func(t *testing.T) {
-		err := RenameStack(deployment, tokens.MustParseStackName("new-stack2"), tokens.PackageName("new-project"))
+		err := RenameStack(deployment, tokens.MustParseStackName("new-stack2"), tokens.PackageName("new-project"),
+			RenameStackOptions{OldName: tokens.MustParseStackName("new-stack"), OldProject: "test"})
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
@@ -666,4 +670,248 @@ func TestRenameStack(t *testing.T) {
 			baselineResourceURN.Name())
 		require.Len(t, locateResource(deployment, updatedResourceURN), 1)
 	})
+}
+
+func TestRenameStack_RewritesProviderReferenceAndAuxiliaryFields(t *testing.T) {
+	t.Parallel()
+
+	providerType := providers.MakeProviderType(tokens.Package("pkg"))
+	providerURN := resource.NewURN("test", "test", "", providerType, "default")
+	providerRef, err := providers.NewReference(providerURN, "provider-id")
+	require.NoError(t, err)
+
+	resType := tokens.Type("pkg:index:Mine")
+	depURN := resource.NewURN("test", "test", "", tokens.Type("pkg:index:Dep"), "dep")
+	propDepURN := resource.NewURN("test", "test", "", tokens.Type("pkg:index:PropDep"), "prop-dep")
+	deletedWithURN := resource.NewURN("test", "test", "", tokens.Type("pkg:index:DeletedWith"), "deleted-with")
+	replaceURN := resource.NewURN("test", "test", "", tokens.Type("pkg:index:Replacement"), "replacement")
+	aliasURN := resource.NewURN("test", "test", "", resType, "old-name")
+	viewURN := resource.NewURN("test", "test", "", tokens.Type("pkg:index:View"), "view")
+	refURN := resource.NewURN("test", "test", "", tokens.Type("pkg:index:Ref"), "ref")
+	foreignURN := resource.NewURN("test", "foreign", "", tokens.Type("pkg:index:Foreign"), "foreign")
+
+	serializedRef := func(urn resource.URN) map[string]any {
+		return map[string]any{
+			resource.SigKey: resource.ResourceReferenceSig,
+			"urn":           string(urn),
+		}
+	}
+	secretPlaintext, err := json.Marshal(serializedRef(refURN))
+	require.NoError(t, err)
+
+	deployment := &apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{URN: providerURN, Type: providerType, ID: "provider-id"},
+			{
+				URN:                  resource.NewURN("test", "test", "", resType, "mine"),
+				Type:                 resType,
+				Provider:             providerRef.String(),
+				Dependencies:         []resource.URN{depURN, foreignURN},
+				PropertyDependencies: map[resource.PropertyKey][]resource.URN{"prop": {propDepURN, foreignURN}},
+				DeletedWith:          deletedWithURN,
+				ReplaceWith:          []resource.URN{replaceURN},
+				Aliases:              []resource.URN{aliasURN, foreignURN},
+				ViewOf:               viewURN,
+				Inputs: map[string]any{
+					"ref": serializedRef(refURN),
+					"secretRef": map[string]any{
+						resource.SigKey: resource.SecretSig,
+						"plaintext":     string(secretPlaintext),
+					},
+					"structSecretRef": &apitype.SecretV1{
+						Sig:       resource.SecretSig,
+						Plaintext: string(secretPlaintext),
+					},
+				},
+				Outputs: map[string]any{
+					"outputRef": map[string]any{
+						resource.SigKey: resource.OutputValueSig,
+						"value":         serializedRef(refURN),
+						"dependencies":  []any{string(refURN), string(foreignURN)},
+					},
+				},
+				ReplacementTrigger: serializedRef(refURN),
+			},
+		},
+	}
+
+	err = RenameStack(deployment, tokens.MustParseStackName("renamed"), "renamed-proj", RenameStackOptions{
+		OldName:    tokens.MustParseStackName("test"),
+		OldProject: "test",
+	})
+	require.NoError(t, err)
+
+	renamedProviderURN := resource.NewURN("renamed", "renamed-proj", "", providerType, "default")
+	gotProvider, err := providers.ParseReference(deployment.Resources[1].Provider)
+	require.NoError(t, err)
+	assert.Equal(t, renamedProviderURN, gotProvider.URN())
+	assert.Equal(t, resource.ID("provider-id"), gotProvider.ID())
+
+	renamedRefURN := resource.NewURN("renamed", "renamed-proj", "", tokens.Type("pkg:index:Ref"), "ref")
+	res := deployment.Resources[1]
+	assert.Equal(t, resource.NewURN("renamed", "renamed-proj", "", resType, "mine"), res.URN)
+	assert.Equal(t, []resource.URN{
+		resource.NewURN("renamed", "renamed-proj", "", tokens.Type("pkg:index:Dep"), "dep"),
+		foreignURN,
+	}, res.Dependencies)
+	assert.Equal(t, []resource.URN{
+		resource.NewURN("renamed", "renamed-proj", "", tokens.Type("pkg:index:PropDep"), "prop-dep"),
+		foreignURN,
+	}, res.PropertyDependencies["prop"])
+	assert.Equal(t,
+		resource.NewURN("renamed", "renamed-proj", "", tokens.Type("pkg:index:DeletedWith"), "deleted-with"),
+		res.DeletedWith)
+	assert.Equal(t, []resource.URN{
+		resource.NewURN("renamed", "renamed-proj", "", tokens.Type("pkg:index:Replacement"), "replacement"),
+	}, res.ReplaceWith)
+	assert.Equal(t, []resource.URN{
+		resource.NewURN("renamed", "renamed-proj", "", resType, "old-name"), foreignURN,
+	}, res.Aliases)
+	assert.Equal(t, resource.NewURN("renamed", "renamed-proj", "", tokens.Type("pkg:index:View"), "view"), res.ViewOf)
+	assert.Equal(t, string(renamedRefURN), res.Inputs["ref"].(map[string]any)["urn"])
+	var secretRef map[string]any
+	require.NoError(t, json.Unmarshal([]byte(res.Inputs["secretRef"].(map[string]any)["plaintext"].(string)), &secretRef))
+	assert.Equal(t, string(renamedRefURN), secretRef["urn"])
+	var structSecretRef map[string]any
+	structSecret := res.Inputs["structSecretRef"].(*apitype.SecretV1)
+	require.NoError(t, json.Unmarshal([]byte(structSecret.Plaintext), &structSecretRef))
+	assert.Equal(t, string(renamedRefURN), structSecretRef["urn"])
+	outputRef := res.Outputs["outputRef"].(map[string]any)
+	assert.Equal(t, string(renamedRefURN), outputRef["value"].(map[string]any)["urn"])
+	assert.Equal(t, []any{string(renamedRefURN), string(foreignURN)}, outputRef["dependencies"])
+	assert.Equal(t, string(renamedRefURN), res.ReplacementTrigger.(map[string]any)["urn"])
+}
+
+func TestRenameStack_RewritesRootPendingParentAndNestedValues(t *testing.T) {
+	t.Parallel()
+
+	rootURN := resource.NewURN("test", "test", "", resource.RootStackType, "test-test")
+	parentURN := resource.NewURN("test", "test", "", tokens.Type("pkg:index:Parent"), "parent")
+	childURN := resource.NewURN("test", "test", tokens.Type("pkg:index:Parent"), tokens.Type("pkg:index:Child"), "child")
+	refURN := resource.NewURN("test", "test", "", tokens.Type("pkg:index:Ref"), "ref")
+	otherStackURN := resource.NewURN("other", "test", "", tokens.Type("pkg:index:Other"), "other")
+	serializedRef := func(urn resource.URN) map[string]any {
+		return map[string]any{resource.SigKey: resource.ResourceReferenceSig, "urn": string(urn)}
+	}
+
+	deployment := &apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{URN: rootURN, Type: resource.RootStackType},
+			{
+				URN:    childURN,
+				Type:   tokens.Type("pkg:index:Child"),
+				Parent: parentURN,
+				Inputs: map[string]any{
+					"array":  []any{serializedRef(refURN), string(otherStackURN)},
+					"nested": map[string]any{"ref": serializedRef(refURN)},
+					"badSecret": map[string]any{
+						resource.SigKey: resource.SecretSig,
+						"plaintext":     "not-json",
+					},
+				},
+			},
+		},
+		PendingOperations: []apitype.OperationV2{
+			{
+				Type: apitype.OperationTypeCreating,
+				Resource: apitype.ResourceV3{
+					URN:  refURN,
+					Type: tokens.Type("pkg:index:Ref"),
+				},
+			},
+		},
+	}
+
+	require.NoError(t, RenameStack(deployment, tokens.MustParseStackName("renamed"), "renamed-proj", RenameStackOptions{
+		OldName:    tokens.MustParseStackName("test"),
+		OldProject: "test",
+	}))
+
+	renamedRootURN := resource.NewURN("renamed", "renamed-proj", "", resource.RootStackType, "renamed-proj-renamed")
+	renamedParentURN := resource.NewURN("renamed", "renamed-proj", "", tokens.Type("pkg:index:Parent"), "parent")
+	renamedRefURN := resource.NewURN("renamed", "renamed-proj", "", tokens.Type("pkg:index:Ref"), "ref")
+	assert.Equal(t, renamedRootURN, deployment.Resources[0].URN)
+	assert.Equal(t, renamedParentURN, deployment.Resources[1].Parent)
+	array := deployment.Resources[1].Inputs["array"].([]any)
+	assert.Equal(t, string(renamedRefURN), array[0].(map[string]any)["urn"])
+	assert.Equal(t, string(otherStackURN), array[1])
+	nested := deployment.Resources[1].Inputs["nested"].(map[string]any)
+	assert.Equal(t, string(renamedRefURN), nested["ref"].(map[string]any)["urn"])
+	badSecret := deployment.Resources[1].Inputs["badSecret"].(map[string]any)
+	assert.Equal(t, "not-json", badSecret["plaintext"])
+	assert.Equal(t, renamedRefURN, deployment.PendingOperations[0].Resource.URN)
+}
+
+func TestRenameStack_ForcePreservesInvalidProviderReference(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("test", "test", "", tokens.Type("pkg:index:Mine"), "mine")
+	deployment := &apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{{
+			URN:      urn,
+			Type:     tokens.Type("pkg:index:Mine"),
+			Provider: "not-a-provider-reference",
+		}},
+	}
+
+	require.NoError(t, RenameStack(deployment, tokens.MustParseStackName("renamed"), "", RenameStackOptions{
+		OldName: tokens.MustParseStackName("test"),
+		Force:   true,
+	}))
+	assert.Equal(t, "not-a-provider-reference", deployment.Resources[0].Provider)
+}
+
+func TestRenameStack_PreservesUnchangedProviderReferenceBytes(t *testing.T) {
+	t.Parallel()
+
+	foreignProviderURN := resource.NewURN("dev", "foreign", "", "pulumi:providers:pkg", "default")
+	deployment := &apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:      resource.NewURN("dev", "proj", "", tokens.Type("pkg:index:Mine"), "mine"),
+				Type:     tokens.Type("pkg:index:Mine"),
+				Provider: string(foreignProviderURN) + "::",
+			},
+		},
+	}
+
+	err := RenameStack(deployment, tokens.MustParseStackName("dev-renamed"), "", RenameStackOptions{
+		OldName:    tokens.MustParseStackName("dev"),
+		OldProject: "proj",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, string(foreignProviderURN)+"::", deployment.Resources[0].Provider)
+}
+
+func TestRenameStack_InvalidProviderReference(t *testing.T) {
+	t.Parallel()
+
+	newDeployment := func() *apitype.DeploymentV3 {
+		return &apitype.DeploymentV3{
+			Resources: []apitype.ResourceV3{
+				{
+					URN:      resource.NewURN("test", "test", "", tokens.Type("pkg:index:Mine"), "mine"),
+					Type:     tokens.Type("pkg:index:Mine"),
+					Provider: "not-a-provider-reference",
+				},
+			},
+		}
+	}
+
+	err := RenameStack(newDeployment(), tokens.MustParseStackName("renamed"), "",
+		RenameStackOptions{OldName: tokens.MustParseStackName("test"), OldProject: "test"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "parsing provider reference")
+
+	var warnings strings.Builder
+	deployment := newDeployment()
+	err = RenameStack(deployment, tokens.MustParseStackName("renamed"), "", RenameStackOptions{
+		OldName:       tokens.MustParseStackName("test"),
+		OldProject:    "test",
+		Force:         true,
+		WarningWriter: &warnings,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "not-a-provider-reference", deployment.Resources[0].Provider)
+	assert.Contains(t, warnings.String(), "Warning: parsing provider reference")
 }

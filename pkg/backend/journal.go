@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
@@ -287,10 +288,14 @@ func rebuildDependencies(resources []apitype.ResourceV3) {
 				}
 			}
 		}
-		for i, r := range resources[i].ReplaceWith {
-			if !referenceable[r] {
-				resources[i].ReplaceWith = append(resources[i].ReplaceWith, "")
+		newReplaceWith := []resource.URN{}
+		for _, r := range resources[i].ReplaceWith {
+			if referenceable[r] {
+				newReplaceWith = append(newReplaceWith, r)
 			}
+		}
+		if len(resources[i].ReplaceWith) > 0 {
+			resources[i].ReplaceWith = newReplaceWith
 		}
 		if !referenceable[resources[i].DeletedWith] {
 			resources[i].DeletedWith = ""
@@ -634,7 +639,7 @@ func NewSnapshotJournaler(
 			Manifest:          baseSnap.Manifest,
 			SecretsManager:    baseSnap.SecretsManager,
 			Resources:         make([]*resource.State, 0),
-			PendingOperations: make([]resource.Operation, 0),
+			PendingOperations: make([]pkgresource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
 			Snippets:          baseSnap.Snippets,
 		}
@@ -783,7 +788,7 @@ func NewJournaler(
 			Manifest:          baseSnap.Manifest,
 			SecretsManager:    baseSnap.SecretsManager,
 			Resources:         make([]*resource.State, 0),
-			PendingOperations: make([]resource.Operation, 0),
+			PendingOperations: make([]pkgresource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
 		}
 		// Copy the resources from the base snapshot to the new snapshot.

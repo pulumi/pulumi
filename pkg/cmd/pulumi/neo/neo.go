@@ -65,6 +65,14 @@ var (
 	userMessageRetryMaxBackoff     = 30 * time.Second
 )
 
+// neoTaskCreator is the slice of the cloud client that creates Neo tasks.
+// *client.Client satisfies it; tests fake it.
+type neoTaskCreator interface {
+	CreateNeoTask(
+		ctx context.Context, orgName, content, stackName, projectName string, opts client.CreateNeoTaskOptions,
+	) (*client.NeoTaskResponse, error)
+}
+
 // createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
 // attached stack with "invalid entities" (typically a permissions issue) it retries
 // once without the stack so the task is still created. onEntityDropped, if non-nil,
@@ -72,7 +80,7 @@ var (
 // surface a warning.
 func createNeoTaskWithEntityRetry(
 	ctx context.Context,
-	pc *client.Client,
+	pc neoTaskCreator,
 	orgName, prompt, stackName, projectName string,
 	opts client.CreateNeoTaskOptions,
 	onEntityDropped func(error),
@@ -85,6 +93,17 @@ func createNeoTaskWithEntityRetry(
 		return pc.CreateNeoTask(ctx, orgName, prompt, "", "", opts)
 	}
 	return resp, err
+}
+
+// entityDroppedWarning renders the user-facing warning for
+// createNeoTaskWithEntityRetry's stack-dropped fallback. The TUI and the ACP
+// adapter both surface it, so the wording lives here rather than at each call
+// site.
+func entityDroppedWarning(orgName, projectName, stackRefName string, err error) string {
+	return fmt.Sprintf(
+		"could not attach stack %s/%s/%s to Neo task: %s; creating task without stack context",
+		orgName, projectName, stackRefName, err,
+	)
 }
 
 // isInvalidEntitiesError reports whether err is the Neo backend's "invalid entities"
@@ -360,7 +379,7 @@ func prepareNeoRuntime(ctx context.Context, stderr io.Writer, cwdFlag string) (*
 		return nil, result.FprintBailf(stderr, "%s", msg)
 	}
 
-	handlers, pu, err := newNeoToolHandlers(cwdFlag, ws)
+	lt, err := buildLocalToolHandlers(cwdFlag, ws)
 	if err != nil {
 		return nil, err
 	}
@@ -371,8 +390,8 @@ func prepareNeoRuntime(ctx context.Context, stderr io.Writer, cwdFlag string) (*
 		project:  project,
 		cloudBe:  cloudBe,
 		pc:       pc,
-		handlers: handlers,
-		pu:       pu,
+		handlers: lt.handlers,
+		pu:       lt.pu,
 	}, nil
 }
 
@@ -515,11 +534,9 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 						PlanMode:            planMode,
 						EnabledIntegrations: enabledIntegrations,
 					}, func(originalErr error) {
-						sendUI(uiCh, UIWarning{Message: fmt.Sprintf(
-							"could not attach stack %s/%s/%s to Neo task: %s; "+
-								"creating task without stack context",
-							orgName, projectName, stackRefName, originalErr,
-						)})
+						sendUI(uiCh, UIWarning{
+							Message: entityDroppedWarning(orgName, projectName, stackRefName, originalErr),
+						})
 					})
 				if err != nil {
 					sendUI(uiCh, UIError{Message: "failed to create Neo task: " + err.Error()})
@@ -850,34 +867,6 @@ func historyUIEventsFromUserInput(
 	}
 }
 
-func newNeoToolHandlers(
-	cwdFlag string,
-	ws pkgWorkspace.Context,
-) (map[string]ToolHandler, *tools.Pulumi, error) {
-	// Allow tools to read/write under temp directories in addition to cwd: the agent
-	// stages scratch files there (downloads, intermediate state) and the CLI sandbox
-	// would otherwise reject those paths. See pulumi/pulumi-service#42027.
-	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
-	fs, err := tools.NewFilesystem(cwdFlag, extraRoots...)
-	if err != nil {
-		return nil, nil, err
-	}
-	sh, err := tools.NewShell(cwdFlag, extraRoots...)
-	if err != nil {
-		return nil, nil, err
-	}
-	pu, err := tools.NewPulumi(cwdFlag, ws, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	handlers := map[string]ToolHandler{
-		"filesystem": fs,
-		"shell":      sh,
-		"pulumi":     pu,
-	}
-	return handlers, pu, nil
-}
-
 // runWithTUI runs the bubbletea program alongside caller-registered worker
 // goroutines under a shared errgroup. When runTUI returns the shared context
 // is cancelled, so any worker watching gctx.Done can unblock and return.
@@ -1174,6 +1163,49 @@ func resolveTaskTarget(
 		return taskTarget{}, errors.New("could not determine an organization for the Neo task; pass --org")
 	}
 	return t, nil
+}
+
+// localTools are the CLI-local tool handlers shared by every Neo entrypoint. The
+// concrete fs/sh/pu handles are exposed alongside the assembled handler map so
+// callers can layer on extras without re-deriving the shared construction or the
+// temp-root policy: the interactive path sets pu.Sink, and the ACP adapter routes
+// fs/sh through the editor. handlers already contains fs/sh/pu under their tool
+// names.
+type localTools struct {
+	fs       *tools.Filesystem
+	sh       *tools.Shell
+	pu       *tools.Pulumi
+	handlers map[string]ToolHandler
+}
+
+// buildLocalToolHandlers constructs the CLI-local tool handlers shared by every
+// Neo entrypoint (interactive TUI, non-interactive, ACP): the filesystem, shell,
+// and pulumi tools rooted at cwd. The filesystem and shell additionally allow
+// tools to read/write under temp directories in addition to cwd: the agent
+// stages scratch files there (downloads, intermediate state) and the CLI sandbox
+// would otherwise reject those paths (see pulumi/pulumi-service#42027).
+func buildLocalToolHandlers(cwd string, ws pkgWorkspace.Context) (localTools, error) {
+	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
+	fs, err := tools.NewFilesystem(cwd, extraRoots...)
+	if err != nil {
+		return localTools{}, err
+	}
+	sh, err := tools.NewShell(cwd, extraRoots...)
+	if err != nil {
+		return localTools{}, err
+	}
+	pu, err := tools.NewPulumi(cwd, ws, nil)
+	if err != nil {
+		return localTools{}, err
+	}
+	return localTools{
+		fs: fs, sh: sh, pu: pu,
+		handlers: map[string]ToolHandler{
+			"filesystem": fs,
+			"shell":      sh,
+			"pulumi":     pu,
+		},
+	}, nil
 }
 
 // dedupeExistingRoots returns candidates with duplicates removed by canonical path,

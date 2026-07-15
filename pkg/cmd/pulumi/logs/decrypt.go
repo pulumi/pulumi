@@ -80,7 +80,7 @@ func newDecryptCmd(ws pkgWorkspace.Context) *cobra.Command {
 					}
 					fmt.Fprintf(cmd.ErrOrStderr(), "Decrypting %s\n", filename)
 				} else {
-					filename, err = chooseLog(stackName)
+					filename, err = chooseLog(stackName, "Select a log file to decrypt:")
 					if err != nil {
 						return err
 					}
@@ -114,7 +114,7 @@ func newDecryptCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 			defer gz.Close()
 
-			return formatLogRecords(gz, out)
+			return formatLogRecords(gz, out, false)
 		},
 	}
 
@@ -161,7 +161,7 @@ func decryptPLOG(
 		return fmt.Errorf("decrypting log: %w", err)
 	}
 
-	return formatLogRecords(reader, out)
+	return formatLogRecords(reader, out, false)
 }
 
 // stackNameFromFilename extracts the stack name from a log filename.
@@ -248,8 +248,8 @@ func findLatestLog(stackName string) (string, error) {
 
 // chooseLog prompts the user to pick a log file from ~/.pulumi/logs/.
 // If stackName is non-empty, the list is filtered to logs for that
-// stack.
-func chooseLog(stackName string) (string, error) {
+// stack. The prompt parameter is used as the survey message.
+func chooseLog(stackName, prompt string) (string, error) {
 	logsDir, err := workspace.GetPulumiPath("logs")
 	if err != nil {
 		return "", fmt.Errorf("getting log directory: %w", err)
@@ -287,7 +287,7 @@ func chooseLog(stackName string) (string, error) {
 
 	var choice string
 	if err := survey.AskOne(&survey.Select{
-		Message:  "Select a log file to decrypt:",
+		Message:  prompt,
 		Options:  options,
 		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
 	}, &choice, ui.SurveyIcons(cmdutil.GetGlobalColorization())); err != nil {
@@ -359,7 +359,7 @@ func parseLogTimestamp(name string) (time.Time, bool) {
 // formatLogRecords reads JSON log lines from r, reconstructs formatted
 // messages from pulumi.log.arg* fields, removes those fields, and
 // writes the resulting JSON to w.
-func formatLogRecords(r io.Reader, w io.Writer) error {
+func formatLogRecords(r io.Reader, w io.Writer, redactSecrets bool) error {
 	scanner := bufio.NewScanner(r)
 	enc := json.NewEncoder(w)
 	for scanner.Scan() {
@@ -387,12 +387,20 @@ func formatLogRecords(r io.Reader, w io.Writer) error {
 			sort.Strings(argKeys)
 			args := make([]any, len(argKeys))
 			for i, k := range argKeys {
-				args[i] = decodePropertyArg(rec[k])
+				v := decodePropertyArg(rec[k])
+				if redactSecrets {
+					redactSecretsInValue(v)
+				}
+				args[i] = v
 				delete(rec, k)
 			}
 			if msg, ok := rec["msg"].(string); ok {
 				rec["msg"] = fmt.Sprintf(msg, args...)
 			}
+		}
+
+		if redactSecrets {
+			redactSecretsInValue(rec)
 		}
 
 		if err := enc.Encode(rec); err != nil {

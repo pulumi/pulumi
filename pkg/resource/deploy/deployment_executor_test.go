@@ -127,6 +127,23 @@ func TestRebuildBaseStateDeletedWith(t *testing.T) {
 	}, ex.deployment.olds)
 }
 
+func TestRebuildBaseStateReplaceWith(t *testing.T) {
+	t.Parallel()
+
+	steps, ex := makeStepsAndExecutor(
+		&resource.State{URN: "A"},
+		// "B" is missing.
+		&resource.State{URN: "C", ReplaceWith: []resource.URN{"A", "B"}},
+	)
+
+	ex.rebuildBaseState(steps)
+
+	assert.EqualValues(t, map[resource.URN]*resource.State{
+		"A": {URN: "A"},
+		"C": {URN: "C", ReplaceWith: []resource.URN{"A"}},
+	}, ex.deployment.olds)
+}
+
 func TestRebuildBaseStatePropertyDependencies(t *testing.T) {
 	t.Parallel()
 

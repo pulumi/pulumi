@@ -64,6 +64,8 @@ func (c *testConverterClient) ConvertState(
 					Version: "4.5.6",
 					Value:   []byte("test:extValue"),
 				},
+				Parent:     "test:parent",
+				Properties: []string{"prop1", "prop2"},
 			},
 		},
 		Diagnostics: c.diagnostics,
@@ -154,6 +156,8 @@ func TestConverterPlugin_State(t *testing.T) {
 	assert.Equal(t, "test:extension", res.Extension.Name)
 	assert.Equal(t, "4.5.6", res.Extension.Version)
 	assert.Equal(t, []byte("test:extValue"), res.Extension.Value)
+	assert.Equal(t, "test:parent", res.Parent)
+	assert.Equal(t, []string{"prop1", "prop2"}, res.Properties)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, hcl.DiagError, diag.Severity)

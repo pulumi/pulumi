@@ -29,6 +29,11 @@ const (
 	// OutputValueSig is the unique output value signature.
 	OutputValue = "d0e6a833031e9bbcd3f4e8bde6ca49a4"
 
+	// ByteString is the unique signature for string values that contain bytes which are not
+	// valid UTF-8. Such strings cannot be transported as protobuf string fields, so they are
+	// encoded as an object carrying the base64 encoding of the string's bytes.
+	ByteString = "803fd3297a5875dc03ca845dda5d2a98"
+
 	// a randomly assigned type hash for assets.
 	AssetSig = "c44067f5952c0a294b673a41bacd8c17"
 

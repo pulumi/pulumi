@@ -17,6 +17,7 @@ package engine
 import (
 	"errors"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -50,7 +51,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	isRefresh := false
-	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
+	ops, doneOps := []pkgresource.Operation{}, make(map[*resource.State]bool)
 	// Collect extension blobs from ExtensionParameterizeStep entries seen during this plan.
 	liveExtensions := map[apitype.ExtensionRef]apitype.Extension{}
 	for _, e := range entries {
@@ -74,15 +75,15 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		case TestJournalEntryBegin:
 			switch e.Step.Op() {
 			case deploy.OpCreate, deploy.OpCreateReplacement:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeCreating))
+				ops = append(ops, pkgresource.NewOperation(e.Step.New(), pkgresource.OperationTypeCreating))
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
-				ops = append(ops, resource.NewOperation(e.Step.Old(), resource.OperationTypeDeleting))
+				ops = append(ops, pkgresource.NewOperation(e.Step.Old(), pkgresource.OperationTypeDeleting))
 			case deploy.OpRead, deploy.OpReadReplacement:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeReading))
+				ops = append(ops, pkgresource.NewOperation(e.Step.New(), pkgresource.OperationTypeReading))
 			case deploy.OpUpdate:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeUpdating))
+				ops = append(ops, pkgresource.NewOperation(e.Step.New(), pkgresource.OperationTypeUpdating))
 			case deploy.OpImport, deploy.OpImportReplacement:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeImporting))
+				ops = append(ops, pkgresource.NewOperation(e.Step.New(), pkgresource.OperationTypeImporting))
 			}
 		case TestJournalEntryFailure, TestJournalEntrySuccess:
 			switch e.Step.Op() {
@@ -170,7 +171,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	}
 
 	// Append any pending operations.
-	var operations []resource.Operation
+	var operations []pkgresource.Operation
 	for _, op := range ops {
 		if !doneOps[op.Resource] {
 			operations = append(operations, op)
@@ -182,7 +183,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
 		// because these must require user intervention to be cleared or resolved.
 		for _, pendingOperation := range base.PendingOperations {
-			if pendingOperation.Type == resource.OperationTypeCreating {
+			if pendingOperation.Type == pkgresource.OperationTypeCreating {
 				operations = append(operations, pendingOperation)
 			}
 		}
