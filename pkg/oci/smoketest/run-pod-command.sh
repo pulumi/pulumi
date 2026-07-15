@@ -10,24 +10,25 @@
 # the engine's environment onto the provider container, and the program reads the
 # credential back — the path a real cloud provider's credentials would take.
 #
-# The program uses command.local.Command to `cat /workspace/marker` — a file baked
-# into the PROGRAM image. The engine (in pod mode) sees `command` runs from the
+# The program uses command.local.Command to run `jq` — a binary baked onto the PROGRAM
+# image's PATH and present in no provider image. That is the control for placement: the
+# shared workspace mount carries files, not a toolchain, so only a provider running from
+# the program image can find jq. The engine (in pod mode) sees `command` runs from the
 # program image, copies the stock command binary out of its provider image into an
-# ephemeral volume, and runs it from the program image (PULUMI_POD_PROGRAM_IMAGE)
-# on the engine's netns, then attaches.
+# ephemeral volume, and runs it from the program image (PULUMI_POD_PROGRAM_IMAGE) on the
+# engine's netns, then attaches.
 #
-# Note the marker read is not a control for that placement — /workspace is the
-# shared volume the program image seeds, so any provider would read it (see
-# Dockerfile.command). Exercising the toolchain is what would isolate it.
+# It also reads /workspace/marker, but that is only a workspace check — every provider
+# mounts the volume the program image seeds, so any of them would read it too.
 #
 # Pipeline:
 #   1. cross-compile this branch's pulumi + pulumi-language-oci; build the engine
 #      image (Dockerfile.cli) and the demo program image (Dockerfile.command,
-#      which bakes /workspace/marker)
+#      which bakes jq onto PATH and a marker into /workspace)
 #   2. download + wrap the stock command provider binary into an image
 #   3. create a pod network, run `pulumi up` in the engine container
-#   4. the engine runs the command provider FROM the program image and it reads
-#      the baked marker
+#   4. the engine runs the command provider FROM the program image; it finds jq on
+#      the program's PATH and reads the baked marker
 #
 # Usage: run-pod-command.sh
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).
@@ -58,6 +59,7 @@ ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-command:latest"
 PROVIDER_IMAGE="pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 STACK="dev"
+EXPECTED_TOOLCHAIN="toolchain-from-the-program-image"
 EXPECTED_MARKER="hello-from-the-program-workspace"
 EXPECTED_CRED="fake-cloud-credential-9f3a"
 
@@ -84,7 +86,7 @@ echo "==> cross-compiling demo program (linux/$GOARCH)"
 ( cd "$PROGRAM_DIR" && GOWORK=off GOOS=linux GOARCH="$GOARCH" CGO_ENABLED=0 \
     go build -o "$SMOKE_DIR/program-linux" . )
 
-echo "==> building program image $PROGRAM_IMAGE (bakes /workspace/marker)"
+echo "==> building program image $PROGRAM_IMAGE (bakes jq onto PATH + /workspace/marker)"
 docker buildx build --builder "$BUILDER" --load \
   -t "$PROGRAM_IMAGE" -f "$SMOKE_DIR/Dockerfile.command" "$SMOKE_DIR"
 
@@ -116,19 +118,31 @@ export OCI_SMOKE_FAKE_CRED="$EXPECTED_CRED"
 echo "==> pulumi-pod: stack init + up + output (engine runs command FROM the program image)"
 "$WRAPPER" stack init "$STACK"
 "$WRAPPER" up --yes --skip-preview 2>&1 | tee "$WORK/up.log"
+TOOLCHAIN="$("$WRAPPER" stack output toolchain)"
 MARKER="$("$WRAPPER" stack output marker)"
 
-echo "==> asserting the command provider ran from the program image and read the workspace"
+echo "==> asserting the command provider ran from the program image"
 if ! grep -q "oci: provider command needs the program's toolchain" "$WORK/up.log"; then
   echo "!! the engine did not run command from the program image"
   exit 1
 fi
+# The discriminating control: jq is on the program image's PATH and in no provider
+# image, and the shared mount carries files, not a toolchain. Empty/absent here means
+# the provider ran from its own image (the command would have failed "jq: not found").
+if [ "$TOOLCHAIN" != "$EXPECTED_TOOLCHAIN" ]; then
+  echo "!! toolchain mismatch: got '${TOOLCHAIN:-<empty>}', want '$EXPECTED_TOOLCHAIN'"
+  echo "   (the command provider did not get the program image's PATH — jq not found?)"
+  exit 1
+fi
+echo "    toolchain = $TOOLCHAIN (jq ran from the program image's PATH)"
+
+echo "==> asserting the command provider read the program's workspace"
 if [ "$MARKER" != "$EXPECTED_MARKER" ]; then
   echo "!! marker mismatch: got '${MARKER:-<empty>}', want '$EXPECTED_MARKER'"
   echo "   (the command provider did not read the program image's baked workspace)"
   exit 1
 fi
-echo "    marker = $MARKER"
+echo "    marker = $MARKER (via the shared mount — any provider would see this)"
 
 CRED="$("$WRAPPER" stack output cred)"
 echo "==> asserting the engine's environment was projected onto the provider container"
@@ -138,4 +152,4 @@ if [ "$CRED" != "$EXPECTED_CRED" ]; then
   exit 1
 fi
 echo "    cred = $CRED (projected from the engine env onto the provider container)"
-echo "==> run-from-program-image provider smoke test PASS — workspace + projected-env (credentials)"
+echo "==> run-from-program-image provider smoke test PASS — toolchain + workspace + projected-env (credentials)"

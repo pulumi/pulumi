@@ -13,17 +13,23 @@
 // limitations under the License.
 
 // A Pulumi program for the run-from-program-image provider smoke test. It uses the
-// `command` provider — which shells out to the local toolchain — to exercise two
-// things a provider container gets in the OCI pod model:
+// `command` provider — which shells out to the local toolchain — to exercise three
+// things a provider container gets in the OCI pod model, split so a failure
+// localizes to one of them:
 //
-//  1. The program's own *filesystem*: it reads a file baked into the program
-//     image's workspace (/workspace/marker). Note this shows only that the
-//     provider sees the program's workspace, not that it ran rooted in the
-//     program's filesystem — /workspace is the shared volume the program image
-//     seeds, so a provider running from its own image reads it too. The program's
-//     ambient toolchain is what run-from-program-image actually supplies, and this
-//     test does not yet isolate it (see Dockerfile.command).
-//  2. The engine's projected *environment*: it reads a credential-like variable
+//  1. The program's ambient *toolchain*: it runs jq, a binary baked onto the
+//     program image's PATH and present in no provider image. This is what
+//     run-from-program-image supplies and what the shared workspace mount cannot —
+//     a mount carries files, not a toolchain — so a provider running from its own
+//     image would fail here with "jq: not found". This is the control that pins
+//     where the provider ran.
+//
+//  2. The program's *workspace*: it reads a file baked at /workspace/marker. This
+//     shows the provider sees the program's workspace, but does NOT discriminate
+//     where it ran — /workspace is the shared volume the program image seeds, so
+//     any provider mounting it reads the marker too (see Dockerfile.command).
+//
+//  3. The engine's projected *environment*: it reads a credential-like variable
 //     (OCI_SMOKE_FAKE_CRED) that the engine has but the program image does not.
 //     The only way it reaches the provider is the container host projecting the
 //     engine's environment onto the provider container — the mechanism by which a
@@ -37,13 +43,24 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+		// Run a binary that exists only on the program image's PATH. -n takes no input,
+		// so the output is exactly the constant — deterministic enough to assert on.
+		// "jq: not found" here means the provider did not run from the program image.
+		tool, err := local.NewCommand(ctx, "run-toolchain", &local.CommandArgs{
+			Create: pulumi.String(`jq -rn '"toolchain-from-the-program-image"'`),
+		})
+		if err != nil {
+			return err
+		}
+		ctx.Log.Info("oci smoke-test ran a command provider rooted in the program image", nil)
+		ctx.Export("toolchain", tool.Stdout)
+
 		read, err := local.NewCommand(ctx, "read-marker", &local.CommandArgs{
 			Create: pulumi.String("cat /workspace/marker"),
 		})
 		if err != nil {
 			return err
 		}
-		ctx.Log.Info("oci smoke-test ran a command provider rooted in the program image", nil)
 		ctx.Export("marker", read.Stdout)
 
 		// Read a credential projected from the engine's environment. printf (no
