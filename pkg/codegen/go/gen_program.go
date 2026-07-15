@@ -1245,6 +1245,36 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 		cmdExprs = tuple.Expressions
 	}
 
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		g.Fgenf(w, "%s%s, err := ctx.RegisterErrorHook(%q, func(args *pulumi.ErrorHookArgs) (bool, error) {\n",
+			g.Indent, varName, hookName)
+		g.Indented(func() {
+			if len(cmdExprs) > 0 {
+				g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
+				for _, arg := range cmdExprs[1:] {
+					g.Fgenf(w, ", %v", arg)
+				}
+				g.Fgenf(w, ").Run() == nil, nil\n")
+			} else {
+				g.Fgenf(w, "%sreturn false, nil\n", g.Indent)
+			}
+		})
+		g.Fgenf(w, "%s})\n", g.Indent)
+		g.Fgenf(w, "%sif err != nil {\n", g.Indent)
+		g.Indented(func() {
+			if g.isComponent {
+				g.Fgenf(w, "%sreturn nil, err\n", g.Indent)
+			} else {
+				g.Fgenf(w, "%sreturn err\n", g.Indent)
+			}
+		})
+		g.Fgenf(w, "%s}\n", g.Indent)
+		g.isErrAssigned = true
+		return
+	}
+
 	g.Fgenf(w, "%s%s, err := ctx.RegisterResourceHook(%q, func(args *pulumi.ResourceHookArgs) error {\n",
 		g.Indent, varName, hookName)
 	g.Indented(func() {
@@ -1533,7 +1563,11 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 				g.Fgenf(w, ", pulumi.ResourceHooks(&pulumi.ResourceHookBinding{")
 				for _, hookType := range hookTypes {
 					vars := hookVars[hookType]
-					g.Fgenf(w, "%s: []*pulumi.ResourceHook{%s}, ", Title(hookType), strings.Join(vars, ", "))
+					hookGoType := "ResourceHook"
+					if hookType == "onError" {
+						hookGoType = "ErrorHook"
+					}
+					g.Fgenf(w, "%s: []*pulumi.%s{%s}, ", Title(hookType), hookGoType, strings.Join(vars, ", "))
 				}
 				g.Fgenf(w, "})")
 			}
