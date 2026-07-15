@@ -283,19 +283,30 @@ func (m *dockerPodManager) CreateVolume(ctx context.Context, name string) (Volum
 	return vol, nil
 }
 
-func (m *dockerPodManager) CopyFromImage(ctx context.Context, image, srcPath string, vol Volume, dstPath string) error {
-	// Run a throwaway container from `image` with the named volume mounted at
-	// dstPath and copy srcPath's contents into it. This is the reliable way to
-	// populate a *named* volume from an image's rootfs — `docker cp` only moves
-	// data between a container and the host, not into a named volume.
+// CopyFromImage's last argument is the caller's later mount point for the seeded
+// volume; it is not needed to populate the volume, so it is unused here (see below).
+func (m *dockerPodManager) CopyFromImage(ctx context.Context, image, srcPath string, vol Volume, _ string) error {
+	// Populate the named volume with the contents of the image's srcPath by CREATING
+	// (never starting) a throwaway container with the volume mounted THERE. Docker seeds
+	// an empty named volume from the image's content at the mount path when the container
+	// is created, so this needs no shell or `cp` in the image — it works with scratch
+	// provider images (the registry proxy's default, and any minimal provider image),
+	// unlike `sh -c cp`, which a bare image cannot run. The caller mounts the seeded
+	// volume at its dstPath in the provider container; the volume's root holds srcPath's
+	// contents, so they land there.
 	src := strings.TrimRight(srcPath, "/")
-	script := fmt.Sprintf("cp -a %s/. %s/", shellQuote(src), shellQuote(dstPath))
-	_, err := m.docker(ctx, "run", "--rm",
+	cid, err := m.docker(ctx, "create",
 		"--label", m.label(),
-		"-v", vol.Name+":"+dstPath,
-		"--entrypoint", "sh",
-		image, "-c", script)
-	return err
+		"-v", vol.Name+":"+src,
+		image)
+	if err != nil {
+		return err
+	}
+	// The container exists only to seed the volume; remove it, keeping the volume.
+	if _, err := m.docker(ctx, "rm", "-f", cid); err != nil {
+		return fmt.Errorf("removing seed container %s: %w", cid, err)
+	}
+	return nil
 }
 
 func (m *dockerPodManager) ReadImageFile(ctx context.Context, image, path string) ([]byte, error) {
@@ -430,10 +441,4 @@ func sortedKeys(m map[string]string) []string {
 // as success when removing resources.
 func isNotFound(err error) bool {
 	return err != nil && strings.Contains(strings.ToLower(err.Error()), "no such")
-}
-
-// shellQuote single-quotes a string for safe interpolation into the `sh -c`
-// script used by CopyFromImage.
-func shellQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }

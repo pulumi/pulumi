@@ -79,7 +79,7 @@ type proxy struct {
 	mu                sync.Mutex
 	manifests         map[string]*synthesized // keyed by "<name>:<tag>"
 	manifestsByDigest map[string]*synthesized // keyed by manifest digest
-	blobs             map[string][]byte        // keyed by blob digest ("sha256:...")
+	blobs             map[string][]byte       // keyed by blob digest ("sha256:...")
 }
 
 type synthesized struct {
@@ -265,6 +265,25 @@ func (p *proxy) buildImage(provider, version string, spec wrapSpec) (v1.Image, e
 	tw := tar.NewWriter(&tarBuf)
 	if err := tw.WriteHeader(&tar.Header{Name: "plugin/", Typeflag: tar.TypeDir, Mode: 0o755}); err != nil {
 		return nil, err
+	}
+	// A scratch image has none of the standard writable scratch dirs that tools assume
+	// exist. Most providers don't care, but a provider with an embedded builder — notably
+	// docker-build's buildkit client — fails to boot ("stat /tmp: no such file or
+	// directory") without one. Bake empty /tmp and /var/tmp (sticky, world-writable, like
+	// a real filesystem), disk-backed via the container's writable layer so a large build
+	// has room — unlike a RAM tmpfs.
+	scratchDirs := []struct {
+		name string
+		mode int64
+	}{
+		{"tmp/", 0o1777},
+		{"var/", 0o755},
+		{"var/tmp/", 0o1777},
+	}
+	for _, d := range scratchDirs {
+		if err := tw.WriteHeader(&tar.Header{Name: d.name, Typeflag: tar.TypeDir, Mode: d.mode}); err != nil {
+			return nil, err
+		}
 	}
 	// The binary lives at /plugin/provider — a directory — so one image serves both
 	// archetypes: stateless providers run it as the entrypoint; workspace-coupled

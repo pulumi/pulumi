@@ -170,18 +170,21 @@ func TestCreateVolumeArgs(t *testing.T) {
 
 func TestCopyFromImageArgs(t *testing.T) {
 	t.Parallel()
-	fake := &fakeRunner{}
+	// Seed a named volume from an image's srcPath by CREATING (not starting) a
+	// throwaway container with the volume mounted there, then removing it — no shell
+	// or `cp` in the image required, so it works with scratch provider images.
+	fake := &fakeRunner{respond: func([]string) (string, string, error) { return "seedcid", "", nil }}
 	pm := NewDockerPodManager("p1", withRunner(fake.run))
 
-	err := pm.CopyFromImage(t.Context(), "img:1", "/app/", Volume{Name: "pulumi-pod-p1-vol-workspace"}, "/workspace")
+	err := pm.CopyFromImage(t.Context(), "img:1", "/plugin/", Volume{Name: "pulumi-pod-p1-vol-plugin-x"}, "/plugins")
 	require.NoError(t, err)
 	assert.Equal(t, []string{
-		"run", "--rm",
+		"create",
 		"--label", "com.pulumi.pod=p1",
-		"-v", "pulumi-pod-p1-vol-workspace:/workspace",
-		"--entrypoint", "sh",
-		"img:1", "-c", `cp -a '/app'/. '/workspace'/`,
+		"-v", "pulumi-pod-p1-vol-plugin-x:/plugin",
+		"img:1",
 	}, fake.calls[0])
+	assert.Equal(t, []string{"rm", "-f", "seedcid"}, fake.calls[1])
 }
 
 func TestWaitContainer(t *testing.T) {

@@ -300,6 +300,18 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 	}
 	pod := oci.NewDockerPodManager(podID)
 
+	// Record the built program image ref so the container host — a separate process in
+	// this engine container that starts providers — can run workspace-coupled (`command`)
+	// and dynamic providers from it. When the image is a prebuilt tag the container host
+	// reads it from PULUMI_POD_PROGRAM_IMAGE; when it is built on `up`, the ref is not
+	// known until now, so we hand it over through the pod-scoped state file. This runs
+	// before the program container starts — hence before any provider is registered — so
+	// the ref is present by the time a provider needs it. See oci.WriteProgramImageState.
+	if err := oci.WriteProgramImageState(podID, image); err != nil {
+		//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
+		fmt.Fprintf(os.Stderr, "oci: recording program image for providers: %v\n", err)
+	}
+
 	// Surface the program's declared required packages (baked into the image at build
 	// time by the template's manifest step). Best-effort and log-only for now: a
 	// missing or unreadable manifest is not an error, and lazy discovery at

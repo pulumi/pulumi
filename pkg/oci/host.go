@@ -177,6 +177,20 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 	return NewContainerHost(base, NewDockerPodManager(podID), engineHost, programImage, pluginRegistry, podID), nil
 }
 
+// programImageRef resolves the program image that workspace-coupled (`command`) and
+// dynamic providers run from. It prefers the ref captured from
+// PULUMI_POD_PROGRAM_IMAGE at construction (a prebuilt tag, known up front); when the
+// image is built on `up` that env is empty, so it falls back to the pod-scoped state
+// file the language host wrote after building (see program_image_state.go). It returns
+// "" only when neither is set — surfaced as an actionable error at the provider call
+// site.
+func (h *containerHost) programImageRef() string {
+	if h.programImage != "" {
+		return h.programImage
+	}
+	return readProgramImageState(h.podID)
+}
+
 // ProviderImageRef returns the OCI image reference for a provider plugin, by
 // convention. When registry is non-empty the ref is *qualified* with it
 // (<registry>/pulumi-provider-<name>:v<version>) so that resolution, pull, and a
@@ -471,15 +485,16 @@ func (h *containerHost) providerContainer(
 	// hatch or the procfs/exec-into-live fallback (see the design doc), not by making
 	// dynamic the odd one out here.
 	if isDynamicProvider(descriptor.Name) {
-		if h.programImage == "" {
+		programImage := h.programImageRef()
+		if programImage == "" {
 			return ContainerConfig{}, fmt.Errorf(
 				"oci: dynamic provider %s needs the program image, but PULUMI_POD_PROGRAM_IMAGE is unset",
 				descriptor.Name)
 		}
 		fmt.Fprintf(os.Stderr,
 			"oci: provider %s is a dynamic provider — running from program image %s (SDK entrypoint, nothing injected)\n",
-			descriptor.Name, h.programImage)
-		cfg.Image = h.programImage
+			descriptor.Name, programImage)
+		cfg.Image = programImage
 		cfg.Env[roleEnvVar] = roleDynamicProvider
 		return cfg, nil
 	}
@@ -494,7 +509,8 @@ func (h *containerHost) providerContainer(
 	}
 
 	if workspaceCoupled(descriptor.Name) {
-		if h.programImage == "" {
+		programImage := h.programImageRef()
+		if programImage == "" {
 			return ContainerConfig{}, fmt.Errorf(
 				"oci: provider %s needs the program filesystem, but PULUMI_POD_PROGRAM_IMAGE is unset",
 				descriptor.Name)
@@ -510,8 +526,8 @@ func (h *containerHost) providerContainer(
 		}
 		fmt.Fprintf(os.Stderr,
 			"oci: provider %s is workspace-coupled — running from program image %s with injected binary\n",
-			descriptor.Name, h.programImage)
-		cfg.Image = h.programImage
+			descriptor.Name, programImage)
+		cfg.Image = programImage
 		cfg.Volumes = append(cfg.Volumes, VolumeMount{Source: vol.Name, Target: injectedBinDir})
 		cfg.Entrypoint = []string{injectedBinPath}
 	} else {
