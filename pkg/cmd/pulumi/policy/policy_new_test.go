@@ -15,12 +15,28 @@
 package policy
 
 import (
+	"bytes"
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestPolicyPackNextStepsShowsPublishForOpa(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	proj := &workspace.PolicyPackProject{
+		Runtime: workspace.NewProjectRuntimeInfo("opa", nil),
+	}
+	printPolicyPackNextSteps(&buf, proj, ".", false /*generateOnly*/, display.Options{Color: colors.Never})
+
+	assert.Contains(t, buf.String(), "pulumi policy publish")
+}
 
 //nolint:paralleltest // changes directory for process
 func TestCreatingPolicyPackWithPromptedName(t *testing.T) {

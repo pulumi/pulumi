@@ -21,7 +21,6 @@ import (
 	"io"
 	"os"
 	"sort"
-	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
@@ -243,12 +242,11 @@ func printPolicyPackNextSteps(
 
 	usageCommandPreambles := []string{
 		"run the Policy Pack against a Pulumi program, in the directory of the Pulumi program run",
+		"publish the Policy Pack, run",
 	}
-	usageCommands := []string{"pulumi up --policy-pack " + root}
-
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") || strings.EqualFold(proj.Runtime.Name(), "python") {
-		usageCommandPreambles = append(usageCommandPreambles, "publish the Policy Pack, run")
-		usageCommands = append(usageCommands, "pulumi policy publish [org-name]")
+	usageCommands := []string{
+		"pulumi up --policy-pack " + root,
+		"pulumi policy publish [org-name]",
 	}
 
 	contract.Assertf(len(usageCommandPreambles) == len(usageCommands),
