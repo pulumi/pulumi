@@ -15,18 +15,23 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -972,4 +977,134 @@ func TestDiffVersions(t *testing.T) {
 			require.Equal(t, c.minorDiff, minorDiff)
 		})
 	}
+}
+
+// TestParseRootPersistentFlags guards against a --help / -h token causing pflag to drop the root
+// flags that follow it (e.g. --otel-traces), which left tracing silently disabled for `pulumi do`.
+func TestParseRootPersistentFlags(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		args      []string
+		wantOtel  string
+		wantColor string
+	}{
+		{
+			name:     "otel flag, no help",
+			args:     []string{"random:index:RandomString", "create", "--otel-traces", "grpc://localhost:4317"},
+			wantOtel: "grpc://localhost:4317",
+		},
+		{
+			name:     "help before otel flag",
+			args:     []string{"random:index:RandomString", "create", "--help", "--otel-traces", "grpc://localhost:4317"},
+			wantOtel: "grpc://localhost:4317",
+		},
+		{
+			name:     "short help before otel flag",
+			args:     []string{"random:index:RandomString", "create", "-h", "--otel-traces", "grpc://localhost:4317"},
+			wantOtel: "grpc://localhost:4317",
+		},
+		{
+			name: "help between two root flags, with unknown provider flags",
+			args: []string{
+				"random:index:RandomString", "create", "--length", "8",
+				"--help", "--otel-traces", "file:///tmp/t.json", "--color", "never",
+			},
+			wantOtel:  "file:///tmp/t.json",
+			wantColor: "never",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			var otelTraces, color string
+			root := pflag.NewFlagSet("pulumi", pflag.ContinueOnError)
+			root.StringVar(&otelTraces, "otel-traces", "", "")
+			root.StringVar(&color, "color", "", "")
+
+			parseRootPersistentFlags(root, c.args)
+
+			assert.Equal(t, c.wantOtel, otelTraces)
+			assert.Equal(t, c.wantColor, color)
+		})
+	}
+}
+
+// Group commands (commands with subcommands but no run function) must fail with a
+// non-zero exit code when given an unknown subcommand, rather than printing help
+// and exiting 0. See https://github.com/spf13/cobra's execute(): non-runnable
+// commands return flag.ErrHelp before args are ever validated.
+//
+//nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
+func TestGroupCommandsRejectUnknownSubcommands(t *testing.T) {
+	cases := []struct {
+		args    []string
+		wantErr string
+	}{
+		{args: []string{"env", "bogus"}, wantErr: `unknown command "bogus" for "pulumi env"`},
+		{args: []string{"esc", "bogus"}, wantErr: `unknown command "bogus" for "pulumi env"`},
+		{args: []string{"env", "provider", "bogus"}, wantErr: "unknown command"},
+		{args: []string{"stack", "tag", "bogus"}, wantErr: `unknown command "bogus" for "pulumi stack tag"`},
+		{args: []string{"plugin", "bogus"}, wantErr: `unknown command "bogus" for "pulumi plugin"`},
+	}
+
+	for _, c := range cases {
+		t.Run(strings.Join(c.args, " "), func(t *testing.T) {
+			pulumiCmd, cleanup := NewPulumiCmd()
+			defer cleanup()
+
+			var stdout, stderr bytes.Buffer
+			pulumiCmd.SetOut(&stdout)
+			pulumiCmd.SetErr(&stderr)
+			pulumiCmd.SetArgs(c.args)
+
+			err := pulumiCmd.Execute()
+			require.Error(t, err)
+			assert.ErrorContains(t, err, c.wantErr)
+			assert.Equal(t, cmd.ExitCodeError, cmd.ExitCodeFor(err))
+		})
+	}
+}
+
+// A bare group command such as `pulumi env` should still print help, but exit
+// non-zero since it did not do anything.
+func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
+	// A bare group invocation is runnable and so executes the root
+	// PersistentPreRunE, which would otherwise fire a background network
+	// update check. t.Setenv also rules out t.Parallel here.
+	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
+
+	pulumiCmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	var stdout, stderr bytes.Buffer
+	pulumiCmd.SetOut(&stdout)
+	pulumiCmd.SetErr(&stderr)
+	pulumiCmd.SetArgs([]string{"env"})
+
+	err := pulumiCmd.Execute()
+	require.Error(t, err)
+	assert.True(t, result.IsBail(err), "expected a bail error so no message is printed after the help text")
+	assert.Equal(t, cmd.ExitCodeError, cmd.ExitCodeFor(err))
+	assert.Contains(t, stdout.String(), "Usage:", "help text should still be printed")
+}
+
+// Requesting help explicitly must keep exiting 0.
+//
+//nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
+func TestGroupCommandsHelpFlagSucceeds(t *testing.T) {
+	pulumiCmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	var stdout, stderr bytes.Buffer
+	pulumiCmd.SetOut(&stdout)
+	pulumiCmd.SetErr(&stderr)
+	pulumiCmd.SetArgs([]string{"env", "--help"})
+
+	err := pulumiCmd.Execute()
+	require.NoError(t, err)
+	assert.Contains(t, stdout.String(), "Usage:")
 }

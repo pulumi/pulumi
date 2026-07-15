@@ -44,9 +44,6 @@ type deploymentSettingsEditClient interface {
 	GetStackDeploymentSettings(
 		ctx context.Context, stack client.StackIdentifier,
 	) (*apitype.DeploymentSettings, error)
-	EncryptStackDeploymentSettingsSecret(
-		ctx context.Context, stack client.StackIdentifier, secret string,
-	) (*apitype.SecretValue, error)
 }
 
 type deploymentSettingsEditClientFactory func(
@@ -163,9 +160,10 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	args.outputFormat = defaultDeploymentSettingsGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:   "edit",
-		Short: "[EXPERIMENTAL] Create or update deployment settings for a stack",
-		Long:  "[EXPERIMENTAL] Create or update deployment settings for a stack.",
+		Use:     "edit",
+		Aliases: []string{"update", "modify"},
+		Short:   "[EXPERIMENTAL] Create or update deployment settings for a stack",
+		Long:    "[EXPERIMENTAL] Create or update deployment settings for a stack.",
 		Example: "  # Switch the deployment source branch.\n" +
 			"  pulumi deployment settings edit --branch feature-x\n\n" +
 			"  # Configure a GitHub source.\n" +
@@ -334,10 +332,8 @@ func runDeploymentSettingsEdit(
 		return err
 	}
 
-	secretValues, err := encryptSecretEnvVars(ctx, c, stackID, args.secretEnvVars)
-	if err != nil {
-		return fmt.Errorf("encrypting secret environment variables: %w", err)
-	}
+	// Secret env vars are sent in plaintext-secret wire form; the server encrypts them on PATCH.
+	secretValues := buildSecretEnvVars(args.secretEnvVars)
 
 	patch := buildEditFlagPatch(args, secretValues)
 	raw, err := marshalAndValidatePatch(patch)

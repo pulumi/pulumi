@@ -24,12 +24,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -446,7 +446,9 @@ func TestStackEnvConfig(t *testing.T) {
 	assert.Nil(t, cfg.Config)
 	cfg.Config = config.Map{}
 
-	err = workspace.ApplyProjectConfig(ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter)
+	err = workspace.ApplyProjectConfig(
+		ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter, config.NopDecrypter,
+	)
 	require.NoError(t, err)
 
 	assert.Equal(t, config.Map{
@@ -728,7 +730,7 @@ func TestParseConfigKey(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "test-project",
 			}, "/test/path", nil

@@ -22,9 +22,9 @@ import (
 
 	"github.com/blang/semver"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +37,7 @@ func initLoader(b testing.TB, options pluginLoaderCacheOptions) ReferenceLoader 
 	sink := diagtest.LogSink(b)
 	//nolint:usetesting // plugin.NewContext manages gRPC providers; b.Context cancels too early
 	pluginHost, err := pkghost.New(context.WithoutCancel(b.Context()), sink, sink, nil, nil,
-		NewLoaderServerFromContext, nil)
+		NewLoaderServerFromContext, nil, nil)
 	require.NoError(b, err)
 	b.Cleanup(func() { require.NoError(b, pluginHost.Close()) })
 	ctx, err := plugin.NewContext(

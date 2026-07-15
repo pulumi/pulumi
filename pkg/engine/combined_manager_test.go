@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,6 +28,7 @@ var _ = SnapshotManager(&MockSnapshotManager{})
 type MockSnapshotManager struct {
 	WriteF                   func(base *deploy.Snapshot) error
 	RebuiltBaseStateF        func() error
+	SetSnippetsF             func(snippets []resource.Snippet) error
 	BeginMutationF           func(step deploy.Step) (SnapshotMutation, error)
 	RegisterResourceOutputsF func(step deploy.Step) error
 	CloseF                   func() error
@@ -46,6 +48,13 @@ func (m *MockSnapshotManager) Write(base *deploy.Snapshot) error {
 func (m *MockSnapshotManager) RebuiltBaseState() error {
 	if m.RebuiltBaseStateF != nil {
 		return m.RebuiltBaseStateF()
+	}
+	return nil
+}
+
+func (m *MockSnapshotManager) SetSnippets(snippets []resource.Snippet) error {
+	if m.SetSnippetsF != nil {
+		return m.SetSnippetsF(snippets)
 	}
 	return nil
 }

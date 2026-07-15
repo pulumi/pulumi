@@ -100,10 +100,9 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l1-expand-final":                    "Node.js program generation does not support `...` argument expansion",
 	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
-	"l3-range-map-ref":                   "Property 'k1' does not exist on type 'Target[]'",
-	"l3-range-bool-ref":                  "Type 'Output<string> | undefined' is not assignable to type 'Input<string>'",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
+	"l3-range-invoke-output-traversal":   "pulumi#12507: range loop variable captured by reference; indexed output resolves with the wrong index", //nolint:lll
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").

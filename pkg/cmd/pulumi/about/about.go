@@ -34,18 +34,21 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	cmdEnv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -96,9 +99,11 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"The name of the stack to get info on. Defaults to the current stack")
+		"The name of the stack to get info on. Defaults to the current stack",
+	)
 	cmd.PersistentFlags().BoolVarP(
-		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
+		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies",
+	)
 
 	return cmd
 }
@@ -146,19 +151,29 @@ func getSummaryAbout(
 		result.Host = &host
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		addError(err, "Failed to get current working directory")
+		return result
+	}
+
 	var proj *workspace.Project
 	var pwd string
-	if proj, pwd, err = ws.ReadProject(); err != nil {
+	if proj, pwd, err = ws.ReadProject(cwd); err != nil {
 		addError(err, "Failed to read project")
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
+		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), cmdEnv.Global())
 		pluginHost, hostErr := pkghost.New(
 			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServer(reg),
+		)
 		if hostErr != nil {
 			addError(hostErr, "Failed to create plugin host")
 		} else if pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil); err != nil {
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+		); err != nil {
 			addError(err, "Failed to create plugin context")
 			contract.IgnoreClose(pluginHost)
 		} else {
@@ -422,7 +437,10 @@ func getCurrentStackAbout(
 
 	name := s.Ref().String()
 	var snapshot *deploy.Snapshot
-	snapshot, err = s.Snapshot(ctx, secrets.DefaultProvider)
+	// `about` only reports resource types and URNs, never secret values, so deserialize with the blinding
+	// provider. This avoids prompting for a passphrase (or other secrets-provider credentials) just to list the
+	// resources in the current stack.
+	snapshot, err = s.Snapshot(ctx, secrets.BlindingProvider)
 	if err != nil {
 		return currentStackAbout{}, err
 	} else if snapshot == nil {

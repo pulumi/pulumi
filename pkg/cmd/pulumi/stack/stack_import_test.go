@@ -94,7 +94,7 @@ func TestStackImport_ChangeServiceSecrets(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return w, nil
 		},
 	}
@@ -221,10 +221,10 @@ func TestStackImport_ServiceSecrets_DefaultSecretManagerMutatesProjectStack(t *t
 	}
 
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return w, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
 		},
 	}

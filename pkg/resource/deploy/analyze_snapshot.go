@@ -22,11 +22,11 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // analyzeResource runs all analyzers against a single resource in parallel, emitting
@@ -95,6 +95,38 @@ func analyzeResource(
 	return invalidAtomic.Load(), sawErrorAtomic.Load(), nil
 }
 
+// snapshotRootStackURN returns the URN that stack-level policy violations are attributed
+// to: the snapshot's root stack resource, or a default synthesized from another resource.
+// Invalid URNs are skipped; a resourceless snapshot yields the empty URN.
+func snapshotRootStackURN(snap *Snapshot) resource.URN {
+	var fallback resource.URN
+	for _, res := range snap.Resources {
+		if !res.URN.IsValid() {
+			continue
+		}
+		if res.Type == resource.RootStackType && res.Parent == "" {
+			return res.URN
+		}
+		if fallback == "" {
+			fallback = resource.DefaultRootStackURN(res.URN.Stack(), res.URN.Project())
+		}
+	}
+	return fallback
+}
+
+// resolveStackPolicyViolationURN attributes a stack-level policy diagnostic to its own URN
+// when that names a resource in the stack, otherwise to the root stack URN. Shared with the
+// deployment path (step_generator.go) to keep attribution consistent.
+func resolveStackPolicyViolationURN(
+	diagURN, rootStackURN resource.URN,
+	inStack func(resource.URN) bool,
+) resource.URN {
+	if inStack(diagURN) {
+		return diagURN
+	}
+	return rootStackURN
+}
+
 // buildSnapshotProviderMap builds a map of provider URN -> provider state from a snapshot.
 func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*resource.State {
 	providers := make(map[resource.URN]*resource.State)
@@ -119,7 +151,7 @@ func stateToAnalyzerResource(
 		URN:        res.URN,
 		Type:       res.Type,
 		Name:       res.URN.Name(),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Options: plugin.AnalyzerResourceOptions{
 			Protect:                 res.Protect,
 			IgnoreChanges:           res.IgnoreChanges,
@@ -136,7 +168,7 @@ func stateToAnalyzerResource(
 					URN:        provRes.URN,
 					Type:       provRes.Type,
 					Name:       provRes.URN.Name(),
-					Properties: provRes.Inputs,
+					Properties: resource.FromResourcePropertyMap(provRes.Inputs),
 				}
 			}
 		}
@@ -197,9 +229,10 @@ func AnalyzeSnapshot(
 						EnforcementLevel:  apitype.Advisory,
 						URN:               res.URN,
 					})
-				} else if tresult.Properties != nil {
+				} else {
 					// Report what would be remediated without applying it.
-					events.OnPolicyRemediation(res.URN, tresult, analyzerRes.Properties, tresult.Properties)
+					events.OnPolicyRemediation(res.URN, tresult,
+						analyzerRes.Properties, tresult.Properties)
 				}
 				// A remediation might not set diagnostic or properties, we just ignore them.
 			}
@@ -234,6 +267,17 @@ func AnalyzeSnapshot(
 		})
 	}
 
+	// Only non-deleted resources are valid violation targets; anything else (including a
+	// stack-level violation's empty URN) attributes to the root stack.
+	rootStackURN := snapshotRootStackURN(snap)
+	snapshotURNs := make(map[resource.URN]struct{}, len(snap.Resources))
+	for _, res := range snap.Resources {
+		if res.Delete {
+			continue
+		}
+		snapshotURNs[res.URN] = struct{}{}
+	}
+
 	var sawStackError atomic.Bool
 	var g errgroup.Group
 	if parallelism := env.ParallelAnalyze.Value(); parallelism > 0 {
@@ -260,7 +304,9 @@ func AnalyzeSnapshot(
 				if d.EnforcementLevel == apitype.Mandatory {
 					sawStackError.Store(true)
 				}
-				events.OnPolicyViolation(d.URN, d)
+				urn := resolveStackPolicyViolationURN(d.URN, rootStackURN,
+					func(u resource.URN) bool { _, ok := snapshotURNs[u]; return ok })
+				events.OnPolicyViolation(urn, d)
 			}
 
 			summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)

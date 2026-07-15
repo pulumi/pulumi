@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -47,6 +48,10 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, skipToJSONWhenRewritingApplies)
 	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
+	// Guard dereferences of conditionally-created resources after applies and
+	// conversions are rewritten, so the guard wraps the (converted) apply rather
+	// than being hoisted inside it, and the `null` fallback is left untouched.
+	expr = pcl.RewriteOptionalResourceGuards(expr)
 	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
 
 	diags = diags.Extend(lowerProxyDiags)
@@ -108,6 +113,23 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	g.Fgenf(w, ": %.v", expr.Body)
 }
 
+// isNoneLiteral reports whether expr is the `null`/`None` literal, so equality
+// comparisons against it can be rendered with Python's identity operators
+// (`is`/`is not`), which read idiomatically and let type checkers narrow.
+func isNoneLiteral(expr model.Expression) bool {
+	switch expr := expr.(type) {
+	case *model.LiteralValueExpression:
+		return expr.Value.IsNull()
+	case *model.ScopeTraversalExpression:
+		if len(expr.Parts) == 1 {
+			if c, ok := expr.Parts[0].(*model.Constant); ok {
+				return c.ConstantValue.IsNull()
+			}
+		}
+	}
+	return false
+}
+
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
 	var opstr string
 	precedence := g.GetPrecedence(expr)
@@ -118,6 +140,9 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 		opstr = "/"
 	case hclsyntax.OpEqual:
 		opstr = "=="
+		if isNoneLiteral(expr.RightOperand) || isNoneLiteral(expr.LeftOperand) {
+			opstr = "is"
+		}
 	case hclsyntax.OpGreaterThan:
 		opstr = ">"
 	case hclsyntax.OpGreaterThanOrEqual:
@@ -136,6 +161,9 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 		opstr = "*"
 	case hclsyntax.OpNotEqual:
 		opstr = "!="
+		if isNoneLiteral(expr.RightOperand) || isNoneLiteral(expr.LeftOperand) {
+			opstr = "is not"
+		}
 	case hclsyntax.OpSubtract:
 		opstr = "-"
 	default:
@@ -245,7 +273,28 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 		module = ""
 	}
 	module = moduleToPythonModule(module, nil)
-	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), title(member), diagnostics
+	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), cgstrings.UppercaseFirst(member), diagnostics
+}
+
+// functionPackage resolves the package that defines the function token. For
+// extensions the token lives in the base namespace but the owner is the
+// extension. Returns nil if no loaded package defines the token.
+func (g *generator) functionPackage(tokenArg model.Expression) *schema.Package {
+	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+	pkg, _, _, _ := pcl.DecomposeToken(token, tokenArg.SyntaxNode().Range())
+	for _, ref := range g.program.PackageReferences() {
+		def, err := ref.Definition()
+		if err != nil {
+			continue
+		}
+		if ref.Name() == pkg {
+			return def
+		}
+		if _, ok := def.GetFunction(token); ok {
+			return def
+		}
+	}
+	return nil
 }
 
 var functionImports = map[string][]string{
@@ -396,6 +445,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
+	case "recover":
+		g.Fgenf(w, "%.16v.recover(lambda __error: (lambda error: %.v)(str(__error)))", expr.Args[0], expr.Args[1])
 	case "element":
 		g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
@@ -468,7 +519,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if module != "" {
 			module = "." + module
 		}
-		name := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, PyName(fn))
+		schemaPkg := pkg
+		if def := g.functionPackage(expr.Args[0]); def != nil {
+			schemaPkg = def.Name
+		}
+		name := fmt.Sprintf("%s%s.%s", g.packageAlias(schemaPkg), module, PyName(fn))
 
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		if isOut {
@@ -922,6 +977,9 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	}
 
 	rootName := g.nodeName(expr.RootName)
+	if expr.RootName == "range" && g.rangeVariable != "" {
+		rootName = g.rangeVariable
+	}
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
 		for _, configVar := range g.program.ConfigVariables() {

@@ -27,11 +27,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -40,15 +40,16 @@ func newPackageDeleteCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "Delete a package version from the registry",
+		Use:     "remove",
+		Aliases: []string{"rm", "delete"},
+		Short:   "Delete a package version from the registry",
 		Long: `Delete a package version from the Pulumi Registry.
 
 The package version must be specified in the format:
   [[<source>/]<publisher>/]<name>[@<version>]
 
 Example:
-  pulumi package delete private/myorg/my-package@1.0.0
+  pulumi package remove private/myorg/my-package@1.0.0
 
 Warning: If this is the only version of the package, the entire package
 will be removed. This action cannot be undone.
@@ -69,7 +70,7 @@ You must have publish permissions for the package to delete it.`,
 				return backenderr.ErrNonInteractiveRequiresYes
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return fmt.Errorf("failed to determine current project: %w", err)
 			}

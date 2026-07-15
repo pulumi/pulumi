@@ -35,7 +35,7 @@ jobs:
     name: version bump
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           # `inputs.ref` is the release tag, which points at a commit created
           # before the freeze PR landed. Branch off master so we pick up the
@@ -45,9 +45,11 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: sdk/go.mod
-      - uses: miniscruff/changie-action@v2
+      - uses: ./.github/actions/retry
         with:
-          version: v1.21.0
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
       - name: Create PR
         env:
           PULUMI_VERSION: ${{ inputs.version }}

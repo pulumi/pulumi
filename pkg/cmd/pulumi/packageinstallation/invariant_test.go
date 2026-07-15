@@ -32,8 +32,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -286,11 +286,11 @@ func (w invariantWorkspace) DownloadPlugin(
 	return p, func(success bool) {}, nil
 }
 
-func (w invariantWorkspace) New() (pkgWorkspace.W, error) {
+func (w invariantWorkspace) New(string) (pkgWorkspace.W, error) {
 	return nil, assert.AnError
 }
 
-func (w invariantWorkspace) ReadProject() (*workspace.Project, string, error) {
+func (w invariantWorkspace) ReadProject(string) (*workspace.Project, string, error) {
 	return nil, "", assert.AnError
 }
 

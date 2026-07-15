@@ -52,7 +52,8 @@ func newPolicyNewCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:        "new",
-		SuggestFor: []string{"init", "create"},
+		Aliases:    []string{"create", "setup"},
+		SuggestFor: []string{"init"},
 		Short:      "Create a new Pulumi Policy Pack",
 		Long: "Create a new Pulumi Policy Pack from a template.\n" +
 			"\n" +

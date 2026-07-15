@@ -415,6 +415,20 @@ func TestModel_Update_KeyCtrlC_TwoPressesQuit(t *testing.T) {
 	assert.True(t, ok, "second consecutive Ctrl+C must produce a tea.QuitMsg")
 }
 
+func TestModel_Update_KeyCtrlC_WithDraftClearsInput(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.textInput.SetValue("half typed")
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	um := updated.(Model)
+
+	assert.Empty(t, um.textInput.Value(), "Ctrl+C with a draft must clear the textarea")
+	assert.False(t, um.ctrlCArmed, "clearing a draft must not arm the exit prompt")
+	assert.Nil(t, cmd, "clearing a draft must not quit")
+}
+
 func TestModel_Update_KeyCtrlC_FirstPressCancelsWhenBusy(t *testing.T) {
 	t.Parallel()
 
@@ -470,6 +484,96 @@ func TestModel_Update_KeyCtrlC_OtherKeyDisarms(t *testing.T) {
 	}
 }
 
+func TestModel_Update_CtrlAWithDraftMovesCursorStart(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+	m.textInput.SetValue("hello")
+	m.textInput.MoveToEnd()
+	require.Equal(t, 5, m.textInput.Column(), "precondition: cursor starts at the end")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
+	um := updated.(Model)
+
+	assert.Equal(t, 0, um.textInput.Column(), "Ctrl+A with a draft must move to line start")
+	assert.Equal(t, client.NeoApprovalModeManual, um.approvalMode,
+		"Ctrl+A with a draft must not toggle approval mode")
+}
+
+func TestModel_Update_CtrlEWithDraftMovesCursorEnd(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.textInput.SetValue("hello")
+	m.textInput.CursorStart()
+	require.Equal(t, 0, m.textInput.Column(), "precondition: cursor starts at the beginning")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'e', Mod: tea.ModCtrl})
+	um := updated.(Model)
+
+	assert.Equal(t, 5, um.textInput.Column(), "Ctrl+E must move to line end")
+}
+
+func TestModel_Update_DraftEditingKeysUseTextareaKeymap(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ctrl+d deletes forward instead of arming quit", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("abc")
+		m.textInput.CursorStart()
+
+		updated, cmd := m.Update(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
+		um := updated.(Model)
+
+		assert.Equal(t, "bc", um.textInput.Value())
+		assert.False(t, um.ctrlCArmed)
+		assert.Nil(t, cmd)
+	})
+
+	t.Run("meta+f moves forward one word", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("hello world")
+		m.textInput.CursorStart()
+
+		updated, _ := m.Update(tea.KeyPressMsg{Code: 'f', Mod: tea.ModMeta})
+		um := updated.(Model)
+
+		assert.Equal(t, 5, um.textInput.Column())
+	})
+
+	t.Run("meta+b moves backward one word", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("hello world")
+		m.textInput.MoveToEnd()
+
+		updated, _ := m.Update(tea.KeyPressMsg{Code: 'b', Mod: tea.ModMeta})
+		um := updated.(Model)
+
+		assert.Equal(t, 6, um.textInput.Column())
+	})
+
+	t.Run("cmd+backspace deletes backward one word", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("hello world")
+		m.textInput.MoveToEnd()
+
+		updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace, Mod: tea.ModSuper})
+		um := updated.(Model)
+
+		assert.Equal(t, "hello ", um.textInput.Value())
+	})
+}
+
 func TestModel_Update_KeyCtrlC_TimeoutDisarms(t *testing.T) {
 	t.Parallel()
 
@@ -504,6 +608,11 @@ func TestModel_Update_KeyCtrlC_StaleDisarmIgnored(t *testing.T) {
 	updated, _ = um.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	um = updated.(Model)
 	require.False(t, um.ctrlCArmed)
+
+	updated, _ = um.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	um = updated.(Model)
+	require.False(t, um.ctrlCArmed, "Ctrl+C with a draft must clear before re-arming")
+	require.Empty(t, um.textInput.Value())
 
 	updated, _ = um.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	um = updated.(Model)
@@ -556,7 +665,7 @@ func TestModel_CommittedScrollback(t *testing.T) {
 	}
 
 	got := m.committedScrollback()
-	want := []string{m.welcome.View(), "user one", "assistant one"}
+	want := m.welcome.View() + "\n\nuser one\n\nassistant one"
 	assert.Equal(t, want, got,
 		"welcome leads, committed blocks follow in order, live and empty blocks dropped")
 }
@@ -579,9 +688,9 @@ func TestModel_Update_Resume_ReprintsTranscript(t *testing.T) {
 	require.NotNil(t, cmd)
 
 	printed := collectPrintln(cmd)
-	want := []string{m.welcome.View(), "\nuser one", "\nassistant one"}
+	want := []string{m.welcome.View() + "\n\nuser one\n\nassistant one"}
 	assert.Equal(t, want, printed,
-		"resume must reprint welcome + committed blocks, first without a leading blank")
+		"resume must reprint welcome + committed blocks as one atomic print, without a leading blank")
 }
 
 func TestModel_Update_KeyCtrlD_BehavesLikeCtrlC(t *testing.T) {
@@ -1387,6 +1496,12 @@ func TestNewModel_InitialPromptRendersUserBlock(t *testing.T) {
 	// The busy block still sits at the bottom so the spinner is visible
 	// while the agent starts its first turn.
 	assert.Equal(t, blockBusy, m.blocks[len(m.blocks)-1].kind)
+
+	// Nothing has actually been printed yet, so the latch that adds a leading
+	// blank line before each subsequent print must still be unset — otherwise
+	// the welcome banner opens with a stray empty line.
+	assert.False(t, m.hasEmittedScrollback,
+		"seeding the initial prompt must not flip hasEmittedScrollback before anything is printed")
 }
 
 func TestModel_View_ShowsHintBasedOnBusy(t *testing.T) {
@@ -2352,6 +2467,32 @@ func TestModel_Update_FirstWindowSize_EmitsWelcomeAndInitialPromptToScrollback(t
 		assert.NotContains(t, line, "Pulumi Neo", "second resize must not re-emit the welcome banner")
 		assert.NotContains(t, line, "deploy prod", "second resize must not re-emit the initial-prompt block")
 	}
+}
+
+func TestModel_Update_FirstFlush_EmitsWelcomeBeforeInitialPrompt(t *testing.T) {
+	t.Parallel()
+
+	// Update returns its cmds via tea.Batch, which runs them concurrently
+	// with no ordering guarantee — emitted as separate tea.Println cmds, the
+	// pre-seeded initial-prompt block would race the welcome banner and could
+	// land above it in scrollback. The flush must therefore be a single
+	// atomic Println with the banner ahead of the prompt inside it.
+	m := NewModel(ModelConfig{InitialPrompt: "deploy prod"})
+	updated, sizeCmd := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	um := updated.(Model)
+
+	_, cmd := um.Update(runFirstFlushTick(t, sizeCmd))
+	require.NotNil(t, cmd)
+
+	printed := collectPrintln(cmd)
+	require.Len(t, printed, 1, "flush must be a single atomic print; got: %v", printed)
+	banner := strings.Index(printed[0], "Pulumi Neo")
+	prompt := strings.Index(printed[0], "deploy prod")
+	require.NotEqual(t, -1, banner, "flush must contain the welcome banner")
+	require.NotEqual(t, -1, prompt, "flush must contain the initial-prompt block")
+	assert.Less(t, banner, prompt, "welcome banner must precede the initial-prompt block")
+	assert.False(t, strings.HasPrefix(printed[0], "\n"),
+		"the flush is the first thing printed and must not open with a blank line")
 }
 
 func TestModel_Update_UIPulumiEnd_CommitsRenderedToScrollback(t *testing.T) {

@@ -78,6 +78,7 @@ func TestTypeNameCodegen(
 	pkg, err := schema.ImportSpec(
 		pkgSpec,
 		map[string]schema.Language{"test": typeTestImporter(0)},
+		schema.NewNullLoader(),
 		schema.ValidationOptions{
 			AllowDanglingReferences: true,
 		},

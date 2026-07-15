@@ -20,21 +20,22 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -43,7 +44,7 @@ import (
 // RPC server parents its tracing interceptors on the span carried by ctx, if any.
 func New(
 	ctx context.Context, d, statusD diag.Sink, debugging plugin.DebugContext, installLang plugin.LanguageInstaller,
-	newLoader plugin.NewLoaderFunc, newMapper plugin.NewMapperFunc,
+	newLoader plugin.NewLoaderFunc, newMapper plugin.NewMapperFunc, newResolver plugin.NewResolverFunc,
 ) (plugin.Host, error) {
 	// d and statusD may be nil; default them to a discarding sink so that logging through the host
 	// (e.g. from a plugin download-progress callback) never dereferences a nil sink.
@@ -71,6 +72,7 @@ func New(
 		installLang:             installLang,
 		newLoader:               newLoader,
 		newMapper:               newMapper,
+		newResolver:             newResolver,
 		contextServers:          map[*plugin.Context][]*plugin.GrpcServer{},
 	}
 
@@ -130,12 +132,13 @@ type defaultHost struct {
 
 	installLang plugin.LanguageInstaller // installs unbundled language runtimes on demand; may be nil.
 
-	// newLoader and newMapper build the schema loader and conversion mapper services bound to a
-	// given context's workspace view. They live on the host so callers no longer thread them
-	// through every context constructor; each is workspace-independent and may be nil, in which
-	// case the host serves no loader / no mapper.
-	newLoader plugin.NewLoaderFunc
-	newMapper plugin.NewMapperFunc
+	// newLoader, newMapper, and newResolver build the schema loader, conversion mapper, and package
+	// resolver services bound to a given context's workspace view. They live on the host so callers
+	// no longer thread them through every context constructor; each is workspace-independent and may
+	// be nil, in which case the host serves no loader / no mapper / no resolver.
+	newLoader   plugin.NewLoaderFunc
+	newMapper   plugin.NewMapperFunc
+	newResolver plugin.NewResolverFunc
 
 	// contextServers holds the loader and mapper gRPC servers the host hosts on behalf of a
 	// context. The host creates them in Loader/Mapper and shuts them down in ReleaseContext --
@@ -151,28 +154,32 @@ var _ plugin.Host = (*defaultHost)(nil)
 // factory the host was constructed with. It returns nil if the host has no loader factory. The
 // server is hosted by the host and shut down when ctx is released.
 func (host *defaultHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) {
-	if host.newLoader == nil {
-		return nil, nil
-	}
-	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
-		codegenrpc.RegisterLoaderServer(srv, host.newLoader(ctx))
-	})
-	if err != nil {
-		return nil, err
-	}
-	host.trackContextServer(ctx, srv)
-	return srv, nil
+	return hostedService(host, ctx, host.newLoader, codegenrpc.RegisterLoaderServer)
 }
 
 // Mapper returns a conversion mapper service bound to ctx's workspace view, built from the
 // mapper factory the host was constructed with. It returns nil if the host has no mapper
 // factory. The server is hosted by the host and shut down when ctx is released.
 func (host *defaultHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
-	if host.newMapper == nil {
+	return hostedService(host, ctx, host.newMapper, codegenrpc.RegisterMapperServer)
+}
+
+// Resolver returns a package resolver service bound to ctx's workspace view, built from the
+// resolver factory the host was constructed with. It returns nil if the host has no resolver
+// factory. The server is hosted by the host and shut down when ctx is released.
+func (host *defaultHost) Resolver(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	return hostedService(host, ctx, host.newResolver, pulumirpc.RegisterPackageResolverServer)
+}
+
+func hostedService[T any](
+	host *defaultHost, ctx *plugin.Context,
+	mk func(*plugin.Context) T, register func(s grpc.ServiceRegistrar, srv T),
+) (*plugin.GrpcServer, error) {
+	if mk == nil {
 		return nil, nil
 	}
 	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
-		codegenrpc.RegisterMapperServer(srv, host.newMapper(ctx))
+		register(srv, mk(ctx))
 	})
 	if err != nil {
 		return nil, err
@@ -181,8 +188,6 @@ func (host *defaultHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error)
 	return srv, nil
 }
 
-// trackContextServer records a gRPC server the host hosts on behalf of ctx, so that releasing or
-// closing the context (or the host) shuts it down.
 func (host *defaultHost) trackContextServer(ctx *plugin.Context, srv *plugin.GrpcServer) {
 	host.contextServersMu.Lock()
 	defer host.contextServersMu.Unlock()
@@ -674,7 +679,8 @@ func (host *defaultHost) Close() (err error) {
 			wg.Go(func() {
 				contract.IgnoreError(plug.Plugin.SignalCancellation(cancelCtx))
 				if err := plug.Plugin.Close(); err != nil {
-					logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Name, err)
+					slog.InfoContext(cancelCtx, "Error closing plugin during shutdown; ignoring",
+						"kind", "resource", "name", plug.Name, "err", err)
 				}
 			})
 		}
@@ -682,7 +688,8 @@ func (host *defaultHost) Close() (err error) {
 			wg.Go(func() {
 				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
 				if err := plug.Plugin.Close(); err != nil {
-					logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Name, err)
+					slog.InfoContext(cancelCtx, "Error closing plugin during shutdown; ignoring",
+						"kind", "analyzer", "name", plug.Name, "err", err)
 				}
 			})
 		}
@@ -692,7 +699,8 @@ func (host *defaultHost) Close() (err error) {
 			wg.Go(func() {
 				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
 				if err := plug.Plugin.Close(); err != nil {
-					logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Name, err)
+					slog.InfoContext(cancelCtx, "Error closing plugin during shutdown; ignoring",
+						"kind", "language", "name", plug.Name, "err", err)
 				}
 			})
 		}

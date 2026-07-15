@@ -26,7 +26,9 @@ import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 
-import * as opentelemetry from "@opentelemetry/api";
+// Loaded with require() instead of a typed import because the OpenTelemetry type declarations
+// use syntax that requires TypeScript >= 4.5, while this SDK is compiled with TypeScript 3.8.
+const opentelemetry = require("@opentelemetry/api");
 
 /*
   Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
@@ -777,6 +779,8 @@ export interface RegisterPackageArgs {
     packageName: string;
     packageVersion: string;
     base64Parameter: string;
+    /** When true, register an extension parameterization rather than a replacement. */
+    extension?: boolean;
 }
 
 /**
@@ -793,6 +797,7 @@ export function registerPackage(args: RegisterPackageArgs): Promise<string> {
         args.packageName,
         args.packageVersion,
         args.base64Parameter,
+        String(args.extension ?? false),
     ].join("\0");
 
     const cache = getPackageRefs();
@@ -812,7 +817,11 @@ export function registerPackage(args: RegisterPackageArgs): Promise<string> {
     req.setName(args.baseProviderName);
     req.setVersion(args.baseProviderVersion);
     req.setDownloadUrl(args.baseProviderDownloadUrl);
-    req.setParameterization(params);
+    if (args.extension) {
+        req.setExtension$(params);
+    } else {
+        req.setParameterization(params);
+    }
 
     const mon = getMonitor();
     if (mon === undefined) {

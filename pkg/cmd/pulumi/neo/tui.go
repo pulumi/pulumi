@@ -69,9 +69,13 @@ type permissionDebounceTickMsg struct {
 // tea.Println until after bubbletea v2's first renderer flush. Calling
 // Println inside the WindowSizeMsg handler runs while cellbuf is still
 // sized to the terminal, so insertAbove would scroll a screenful of blank
-// lines above the prompt.
+// lines above the prompt. rendered is the whole flush pre-joined into one
+// string so it can be emitted as a single, atomic Println — Update returns
+// its cmds via tea.Batch, which runs them concurrently, so per-block
+// Printlns would race each other (and any event-driven print) for
+// scrollback order.
 type firstFlushReadyMsg struct {
-	rendered []string
+	rendered string
 }
 
 // blockKind identifies the type of rendered block in the output log.
@@ -408,6 +412,38 @@ func (m *Model) recallInput(s string) {
 	m.textInput.MoveToEnd()
 }
 
+func addKeyAliases(binding *key.Binding, aliases ...string) {
+	binding.SetKeys(append(binding.Keys(), aliases...)...)
+}
+
+func (m Model) draftEditingKey(msg tea.KeyPressMsg) bool {
+	if m.textInput.Value() == "" {
+		return false
+	}
+
+	km := m.textInput.KeyMap
+	return key.Matches(msg,
+		km.CharacterBackward,
+		km.CharacterForward,
+		km.DeleteAfterCursor,
+		km.DeleteBeforeCursor,
+		km.DeleteCharacterBackward,
+		km.DeleteCharacterForward,
+		km.DeleteWordBackward,
+		km.DeleteWordForward,
+		km.LineEnd,
+		km.LineStart,
+		km.InputBegin,
+		km.InputEnd,
+		km.WordBackward,
+		km.WordForward,
+		km.CapitalizeWordForward,
+		km.LowercaseWordForward,
+		km.UppercaseWordForward,
+		km.TransposeCharacterBackward,
+	)
+}
+
 // historyPrev steps to an older prompt. It returns true when it handled the
 // key (so the caller swallows it). The first step out of the live draft
 // stashes that draft in historyDraft so a later Down can restore it.
@@ -494,6 +530,9 @@ func NewModel(cfg ModelConfig) Model {
 		key.WithKeys("shift+enter", "alt+enter", "ctrl+j"),
 		key.WithHelp("shift+enter / alt+enter / ctrl+j", "newline"),
 	)
+	addKeyAliases(&ti.KeyMap.WordForward, "meta+f")
+	addKeyAliases(&ti.KeyMap.WordBackward, "meta+b")
+	addKeyAliases(&ti.KeyMap.DeleteWordBackward, "meta+backspace", "super+backspace")
 	ti.Focus()
 
 	sp := spinner.New(
@@ -527,8 +566,13 @@ func NewModel(cfg ModelConfig) Model {
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
 		// findBlockKind. The actual scrollback emission happens on the first
-		// WindowSizeMsg, when we have the real terminal width.
-		m.appendUserMessageBlock(cfg.InitialPrompt)
+		// WindowSizeMsg, when we have the real terminal width. Seed the block
+		// directly rather than via commitBlock: its printlnBlock side effect
+		// would flip hasEmittedScrollback before anything is actually printed,
+		// giving the welcome banner a stray leading blank line.
+		b := block{kind: blockUserMessage, raw: cfg.InitialPrompt}
+		m.renderBlock(&b)
+		m.appendBlock(b)
 		m.pendingUserEchoes = append(m.pendingUserEchoes, cfg.InitialPrompt)
 	}
 	if cfg.Busy {
@@ -587,26 +631,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case firstFlushReadyMsg:
-		for _, r := range msg.rendered {
-			cmds = append(cmds, m.printlnBlock(r))
-		}
+		cmds = append(cmds, m.printlnBlock(msg.rendered))
 
 	case tea.ResumeMsg:
 		// Resuming from a Ctrl+Z suspend (via `fg`): bubbletea repaints only the
 		// live frame, but the committed transcript was emitted to scrollback via
 		// tea.Println and isn't redrawn. Clear the viewport and re-emit the
-		// committed blocks so the session reads continuously after `fg`. Reset
-		// hasEmittedScrollback so the first re-emitted block skips its leading
-		// blank line, matching the initial flush. Sequence keeps the clear ahead
-		// of the prints and the prints in transcript order.
+		// committed transcript so the session reads continuously after `fg`.
+		// Reset hasEmittedScrollback so the re-emit skips its leading blank
+		// line, matching the initial flush. Sequence keeps the clear ahead of
+		// the print.
 		m.hasEmittedScrollback = false
-		scrollback := m.committedScrollback()
-		seq := make([]tea.Cmd, 0, 1+len(scrollback))
-		seq = append(seq, tea.ClearScreen)
-		for _, r := range scrollback {
-			seq = append(seq, m.printlnBlock(r))
-		}
-		return m, tea.Sequence(seq...)
+		return m, tea.Sequence(tea.ClearScreen, m.printlnBlock(m.committedScrollback()))
 
 	case ctrlCDisarmMsg:
 		// Stale tick: the user already pressed another key (gen still
@@ -659,9 +695,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		}
-		// Ctrl+D mirrors Ctrl+C: same arm/quit gate, same cancel-when-busy
-		// semantics. Two bindings is friendlier than picking one and forcing
-		// users to discover it.
+		// Ctrl+C clears an in-progress draft first, matching the normal line
+		// editing behavior users expect from agent CLIs. With an empty draft,
+		// it falls through to the quit/cancel gate below.
+		if keyStr == "ctrl+c" && m.textInput.Value() != "" {
+			m.textInput.Reset()
+			return m, nil
+		}
+
+		// When the user is editing a draft, let textarea keep ownership of its
+		// line-editing keymap before app-level shortcuts see the same key.
+		if m.draftEditingKey(msg) {
+			var tiCmd tea.Cmd
+			m.textInput, tiCmd = m.textInput.Update(msg)
+			return m, tiCmd
+		}
+
+		// Ctrl+D mirrors Ctrl+C when the draft is empty: same arm/quit gate,
+		// same cancel-when-busy semantics. Two bindings is friendlier than
+		// picking one and forcing users to discover it.
 		if keyStr == "ctrl+c" || keyStr == "ctrl+d" {
 			if m.ctrlCArmed {
 				return m, tea.Quit
@@ -1325,17 +1377,19 @@ func (m *Model) commitBlock(b block) tea.Cmd {
 }
 
 // committedScrollback returns the welcome banner followed by every committed
-// block's rendered text, in transcript order — i.e. everything that belongs in
-// terminal scrollback. Used for the initial flush and to re-emit the transcript
-// after a suspend/resume.
-func (m Model) committedScrollback() []string {
+// block's rendered text, in transcript order, joined with the same blank-line
+// separator printlnBlock puts between incremental prints — i.e. everything
+// that belongs in terminal scrollback, as one string ready for a single
+// atomic tea.Println. Used for the initial flush and to re-emit the
+// transcript after a suspend/resume.
+func (m Model) committedScrollback() string {
 	out := []string{m.welcome.View()}
 	for _, b := range m.blocks {
 		if isCommittedKind(b) && b.rendered != "" {
 			out = append(out, b.rendered)
 		}
 	}
-	return out
+	return strings.Join(out, "\n\n")
 }
 
 // printlnBlock emits rendered to scrollback, prepending a blank line so each

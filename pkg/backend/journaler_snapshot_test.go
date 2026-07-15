@@ -26,13 +26,13 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -1180,7 +1180,7 @@ func TestJournalEncryptionFailureNotSilent(t *testing.T) {
 	baseSnap := deploy.NewSnapshot(deploy.Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
-	}, sm, nil, nil, deploy.SnapshotMetadata{}, nil)
+	}, sm, nil, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	sp := &MockStackPersister{}
 	j, err := NewSnapshotJournaler(t.Context(), sp, sm, stack.Base64SecretsProvider{}, baseSnap)

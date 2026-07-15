@@ -64,6 +64,44 @@ message ResourceImport {
     bool is_component = 7;
     // true if this is a remote resource. Ignored if is_component is false.
     bool is_remote = 8;
+
+    // the replacement parameterization to use for the resource's provider, if any. Set when the resource
+    // should be imported under a parameterized (e.g. dynamically bridged) provider rather than a plain one.
+    ResourceParameterization parameterization = 9;
+
+    // the extension parameterization to apply to the resource's provider, if any. Unlike a replacement
+    // parameterization, the resource's own type is in the base provider's package; the extension is a blob
+    // applied on top of that provider. Mutually exclusive with parameterization.
+    ResourceExtension extension = 10;
+
+    // the name of the resource's parent, if any. Must reference the name of another resource in the same
+    // response; resources without a parent are parented to the stack root.
+    string parent = 11;
+
+    // the input properties to include when generating code for the resource. Defaults to the resource's
+    // required properties.
+    repeated string properties = 12;
+}
+
+// A ResourceParameterization describes the base plugin that a resource's parameterized provider is built
+// from. The parameterized package name and version are taken from the resource's own type and version.
+message ResourceParameterization {
+    // the name of the base plugin to parameterize (e.g. "terraform-provider").
+    string plugin_name = 1;
+    // the version of the base plugin to parameterize.
+    string plugin_version = 2;
+    // the parameter value to apply to the base plugin.
+    bytes value = 3;
+}
+
+// A ResourceExtension describes an extension parameterization to apply to a resource's (base) provider.
+message ResourceExtension {
+    // the name of the extension package.
+    string name = 1;
+    // the version of the extension package.
+    string version = 2;
+    // the parameter value for the extension.
+    bytes value = 3;
 }
 
 message ConvertStateResponse {

@@ -682,7 +682,7 @@ func TestPythonResourceArgs(t *testing.T) {
 	require.NoError(t, err)
 	var spec schema.PackageSpec
 	require.NoError(t, json.Unmarshal(schemaBytes, &spec))
-	pkg, err := schema.ImportSpec(spec, nil, schema.ValidationOptions{
+	pkg, err := schema.ImportSpec(spec, nil, schema.NewNullLoader(), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
@@ -772,18 +772,18 @@ func TestConstructSlowPython(t *testing.T) {
 	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-	// module to run `yarn install && yarn link @pulumi/pulumi` in the Python program's directory, allowing
+	// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+	// module to install the locally-built @pulumi/pulumi into the Python program's directory, allowing
 	// the Node.js dynamic provider plugin to load.
 	// When the underlying issue has been fixed, the use of this environment variable inside the integration
 	// test module should be removed.
-	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+	const testLinkPulumiEnv = "PULUMI_TEST_LINK_PULUMI=true"
 
 	testDir := "construct_component_slow"
 	integration.RunComponentSetup(t, testDir)
 
 	opts := &integration.ProgramTestOptions{
-		Env: []string{testYarnLinkPulumiEnv},
+		Env: []string{testLinkPulumiEnv},
 		Dir: filepath.Join(testDir, "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
@@ -819,12 +819,12 @@ func TestConstructPlainPython(t *testing.T) {
 			componentDir:          "testcomponent",
 			expectedResourceCount: 9,
 			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+			// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+			// module to install the locally-built @pulumi/pulumi into the Go program's directory, allowing
 			// the Node.js dynamic provider plugin to load.
 			// When the underlying issue has been fixed, the use of this environment variable inside the integration
 			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
+			env: []string{"PULUMI_TEST_LINK_PULUMI=true"},
 		},
 		{
 			componentDir:          "testcomponent-python",
@@ -1461,6 +1461,29 @@ func TestParameterizedPython(t *testing.T) {
 			return nil
 		},
 	})
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/21950: when an inline program runs more than once in the
+// same Python process, each run must register the parameterized package against its own engine.
+func TestStaleParameterizedPackageRefPython(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("python", "stale-parameterized-packageref"))
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	ptesting.InstallDependencies(t, e.CWD)
+	e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "1.1.1")
+	e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random", "3.8.1")
+
+	venvBin := filepath.Join(e.CWD, ".venv", "bin")
+	if runtime.GOOS == "windows" {
+		venvBin = filepath.Join(e.CWD, ".venv", "Scripts")
+	}
+	stdout, _ := e.RunCommand(filepath.Join(venvBin, "python"), "__main__.py")
+
+	assert.Contains(t, stdout, "First preview succeeded")
+	assert.Contains(t, stdout, "Second preview succeeded")
 }
 
 //nolint:paralleltest // mutates environment

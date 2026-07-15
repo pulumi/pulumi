@@ -22,14 +22,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/esc"
-	"github.com/pulumi/esc/cmd/esc/cli"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -74,7 +74,8 @@ func GetStackConfigurationOrLatest(
 			}
 			return nil, err
 		},
-		configFile)
+		configFile,
+	)
 }
 
 func getStackConfigurationWithFallback(
@@ -95,7 +96,8 @@ func getStackConfigurationWithFallback(
 		cfg, err := fallbackGetConfig(err)
 		if err != nil {
 			return backend.StackConfiguration{}, nil, fmt.Errorf(
-				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)
+				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err,
+			)
 		}
 		workspaceStack = &workspace.ProjectStack{
 			Config: cfg,
@@ -235,7 +237,7 @@ func openStackEnv(
 
 	envs, ok := stack.Backend().(backend.EnvironmentsBackend)
 	if !ok {
-		return nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
+		return nil, nil, errBackendNoEnvironments(stack.Backend())
 	}
 	orgNamer, ok := stack.(interface{ OrgName() string })
 	if !ok {
@@ -351,7 +353,12 @@ func ParseConfigKey(ws pkgWorkspace.Context, key string, path bool) (config.Key,
 	// As a convenience, we'll treat any key with no delimiter as if:
 	// <program-name>:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
-		proj, _, err := ws.ReadProject()
+		cwd, err := os.Getwd()
+		if err != nil {
+			return config.Key{}, fmt.Errorf("getting current working directory: %w", err)
+		}
+
+		proj, _, err := ws.ReadProject(cwd)
 		if err != nil {
 			return config.Key{}, err
 		}

@@ -28,8 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,7 +99,7 @@ resource "app" "scaleway:iam/application:Application" {}
 			},
 		}, "", "", nil)
 	require.NoError(t, err)
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(pctx))
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewPluginLoader(pctx))
 	if err != nil || diags.HasErrors() {
 		for _, d := range diags {
 			t.Logf("%s: %s", d.Summary, d.Detail)
@@ -137,8 +137,7 @@ func parseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewContext(testdataPath)))
-	return pcl.BindProgram(parser.Files, options...)
+	return pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
 }
 
 func bindProgramWithParameterizedDependencies(t *testing.T) *pcl.Program {

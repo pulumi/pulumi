@@ -102,6 +102,7 @@
         "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",
+        "tests/runtime/codePaths.spec.ts",
         "tests/runtime/dependsOn.spec.ts",
         "tests/runtime/findWorkspaceRoot.spec.ts",
         "tests/runtime/manifest.spec.ts",
@@ -131,7 +132,7 @@
         "tests_with_mocks/mocks.spec.ts",
         "npm/testdata/nested/project/index.ts",
         "types/arborist.d.ts",
-        "types/fdir.d.ts"
+        "types/fs-glob.d.ts"
     ],
     "ts-node": {
         "files": true

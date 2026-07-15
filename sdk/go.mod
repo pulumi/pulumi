@@ -25,6 +25,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/texttheater/golang-levenshtein v1.0.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
+	go.opentelemetry.io/otel/bridge/opentracing v1.33.0
 	golang.org/x/crypto v0.52.0
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.55.0
@@ -42,7 +43,6 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/git-pkgs/manifests v0.4.1
 	github.com/go-git/go-git/v6 v6.0.0-alpha.4
-	github.com/go-test/deep v1.1.1
 	github.com/golang/glog v1.2.5
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.22.0
@@ -50,9 +50,9 @@ require (
 	github.com/iwdgo/sigintwindows v0.2.2
 	github.com/klauspost/compress v1.18.0
 	github.com/pgavlin/fx v0.1.6
+	github.com/pgavlin/fx/v2 v2.0.12
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
-	github.com/pulumi/esc v0.24.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	go.opentelemetry.io/collector/pdata v1.53.0
 	go.opentelemetry.io/contrib/bridges/otelslog v0.18.0
@@ -63,6 +63,7 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.19.0
 	go.opentelemetry.io/otel/trace v1.43.0
 	go.opentelemetry.io/proto/otlp v1.10.0
+	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
 	golang.org/x/sync v0.20.0
 	golang.org/x/term v0.43.0
 	lukechampine.com/frand v1.4.2
@@ -102,6 +103,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
@@ -110,7 +112,6 @@ require (
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
-	github.com/pgavlin/fx/v2 v2.0.12 // indirect
 	github.com/pjbgf/sha1cd v0.6.0 // indirect
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
@@ -121,7 +122,6 @@ require (
 	go.opentelemetry.io/otel/log v0.19.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
@@ -142,7 +142,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/text v0.37.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 )

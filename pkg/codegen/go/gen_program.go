@@ -550,6 +550,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 
 		componentFilename := filepath.Base(componentDir)
 		componentName := component.DeclarationName()
+		pcl.MapProvidersAsResources(component.Program)
 		componentGenerator, err := newGenerator(component.Program, opts)
 		componentGenerator.isComponent = true
 		for _, n := range component.Program.Nodes {
@@ -910,6 +911,10 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 			} else {
 				mod = g.resolveModule(token)
 			}
+			// Extension resources import the extension's SDK package, not the base.
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				pkg = r.Schema.PackageReference.Name()
+			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
 				if r.Schema != nil {
@@ -926,6 +931,9 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 				continue
 			}
 			mod := g.resolveModule(token)
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				pkg = r.Schema.PackageReference.Name()
+			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
 				if r.Schema != nil {
@@ -957,6 +965,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 					contract.Assertf(len(diagnostics) == 0, "Expected no diagnostics, got %d", len(diagnostics))
 
+					pkg = g.functionPackage(token)
 					vPath, err := g.getVersionPath(program, pkg)
 					if err != nil {
 						panic(err)
@@ -1234,6 +1243,36 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	var cmdExprs []model.Expression
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
 		cmdExprs = tuple.Expressions
+	}
+
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		g.Fgenf(w, "%s%s, err := ctx.RegisterErrorHook(%q, func(args *pulumi.ErrorHookArgs) (bool, error) {\n",
+			g.Indent, varName, hookName)
+		g.Indented(func() {
+			if len(cmdExprs) > 0 {
+				g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
+				for _, arg := range cmdExprs[1:] {
+					g.Fgenf(w, ", %v", arg)
+				}
+				g.Fgenf(w, ").Run() == nil, nil\n")
+			} else {
+				g.Fgenf(w, "%sreturn false, nil\n", g.Indent)
+			}
+		})
+		g.Fgenf(w, "%s})\n", g.Indent)
+		g.Fgenf(w, "%sif err != nil {\n", g.Indent)
+		g.Indented(func() {
+			if g.isComponent {
+				g.Fgenf(w, "%sreturn nil, err\n", g.Indent)
+			} else {
+				g.Fgenf(w, "%sreturn err\n", g.Indent)
+			}
+		})
+		g.Fgenf(w, "%s}\n", g.Indent)
+		g.isErrAssigned = true
+		return
 	}
 
 	g.Fgenf(w, "%s%s, err := ctx.RegisterResourceHook(%q, func(args *pulumi.ResourceHookArgs) error {\n",
@@ -1524,7 +1563,11 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 				g.Fgenf(w, ", pulumi.ResourceHooks(&pulumi.ResourceHookBinding{")
 				for _, hookType := range hookTypes {
 					vars := hookVars[hookType]
-					g.Fgenf(w, "%s: []*pulumi.ResourceHook{%s}, ", Title(hookType), strings.Join(vars, ", "))
+					hookGoType := "ResourceHook"
+					if hookType == "onError" {
+						hookGoType = "ErrorHook"
+					}
+					g.Fgenf(w, "%s: []*pulumi.%s{%s}, ", Title(hookType), hookGoType, strings.Join(vars, ", "))
 				}
 				g.Fgenf(w, "})")
 			}
@@ -1550,6 +1593,10 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	}
 	if pkg == "pulumi" && mod == "pulumi" {
 		mod = ""
+	}
+	// Extension resources are emitted from the extension's SDK package, not the base.
+	if r.Schema != nil && r.Schema.PackageReference != nil {
+		pkg = r.Schema.PackageReference.Name()
 	}
 	if mod == "" || strings.HasPrefix(mod, "/") || mod == IndexToken {
 		originalMod = mod

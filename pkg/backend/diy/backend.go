@@ -49,6 +49,7 @@ import (
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -60,7 +61,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -1316,7 +1316,7 @@ func (b *diyBackend) apply(
 	}
 
 	if op.Opts.Engine.HostFactory == nil {
-		op.Opts.Engine.HostFactory = backend.DefaultHostFactory
+		op.Opts.Engine.HostFactory = backend.DefaultHostFactory(b.GetReadOnlyCloudRegistry())
 	}
 
 	// Perform the update
@@ -1594,20 +1594,6 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 	}
 
 	return nil
-}
-
-func (b *diyBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
-	stack backend.Stack, secret string,
-) (*apitype.SecretValue, error) {
-	// The local backend does not support managing deployments.
-	return nil, errors.New("stack deployments not supported with diy backends")
-}
-
-func (b *diyBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
-	deployment apitype.DeploymentSettings,
-) error {
-	// The local backend does not support managing deployments.
-	return errors.New("stack deployments not supported with diy backends")
 }
 
 func (b *diyBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {

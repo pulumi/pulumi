@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
@@ -44,8 +45,13 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current working directory: %w", err)
+			}
+
 			// Try to read the current project
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject(cwd)
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -108,7 +114,8 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "", "The name of the stack to view")
+		&stackName, "stack", "s", "", "The name of the stack to view",
+	)
 	return cmd
 }
 

@@ -36,13 +36,14 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -51,6 +52,7 @@ import (
 
 func NewRefreshCmd() *cobra.Command {
 	var runProgram bool
+	var skipConfigValidation bool
 	var debug bool
 	var expectNop bool
 	var message string
@@ -244,16 +246,30 @@ func NewRefreshCmd() *cobra.Command {
 			encrypter := sm.Encrypter()
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
-				ctx,
-				stackName,
-				proj,
-				cfg.Environment,
-				cfg.Config,
-				encrypter,
-				decrypter)
-			if configErr != nil {
-				return fmt.Errorf("validating stack config: %w", configErr)
+			// Skip config validation when the program is not being run (the default for refresh),
+			// or when explicitly requested via --skip-config-validation. This allows stacks with
+			// missing or invalid config to be refreshed in scenarios such as ephemeral PR environments
+			// where config may diverge between branches.
+			if runProgram && !skipConfigValidation {
+				// Running the program: validate the stack config (and apply project defaults).
+				configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+					ctx,
+					stackName,
+					proj,
+					cfg.Environment,
+					cfg.Config,
+					encrypter,
+					decrypter)
+				if configErr != nil {
+					return fmt.Errorf("validating stack config: %w", configErr)
+				}
+			} else {
+				// The program isn't run, or validation was explicitly skipped: still apply
+				// project config defaults onto the stack config, but skip validation.
+				if configErr := workspace.ApplyProjectConfig(
+					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+					return fmt.Errorf("applying stack config: %w", configErr)
+				}
 			}
 
 			if skipPendingCreates && clearPendingCreates {
@@ -296,7 +312,7 @@ func NewRefreshCmd() *cobra.Command {
 			// We remove remaining pending creates
 			if clearPendingCreates && hasPendingCreates(snap) {
 				// Remove all pending creates.
-				removePendingCreates := func(op resource.Operation) (*resource.Operation, error) {
+				removePendingCreates := func(op pkgresource.Operation) (*pkgresource.Operation, error) {
 					return nil, nil
 				}
 				err := filterMapPendingCreates(ctx, s, opts.Display, yes, removePendingCreates)
@@ -366,6 +382,10 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to refresh resources")
+	cmd.PersistentFlags().BoolVar(
+		&skipConfigValidation, "skip-config-validation", false,
+		"Skip validation of stack config values against the project config schema. "+
+			"Config validation is skipped automatically when --run-program is not set.")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
@@ -504,7 +524,7 @@ func NewRefreshCmd() *cobra.Command {
 	return cmd
 }
 
-type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
+type editPendingOp = func(op pkgresource.Operation) (*pkgresource.Operation, error)
 
 // filterMapPendingCreates applies f to each pending create. If f returns nil, then the op
 // is deleted. Otherwise is replaced by the returned op.
@@ -512,12 +532,12 @@ func filterMapPendingCreates(
 	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
 ) error {
 	return state.TotalStateEdit(ctx, s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
-		var pending []resource.Operation
+		var pending []pkgresource.Operation
 		for _, op := range snap.PendingOperations {
 			if op.Resource == nil {
 				return errors.New("found operation without resource")
 			}
-			if op.Type != resource.OperationTypeCreating {
+			if op.Type != pkgresource.OperationTypeCreating {
 				pending = append(pending, op)
 				continue
 			}
@@ -548,10 +568,10 @@ func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opt
 	for i := 0; i < len(importToCreates); i += 2 {
 		alteredOps[importToCreates[i]] = importToCreates[i+1]
 	}
-	err := filterMapPendingCreates(ctx, s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
+	err := filterMapPendingCreates(ctx, s, opts, yes, func(op pkgresource.Operation) (*pkgresource.Operation, error) {
 		if id, ok := alteredOps[string(op.Resource.URN)]; ok {
 			op.Resource.ID = resource.ID(id)
-			op.Type = resource.OperationTypeImporting
+			op.Type = pkgresource.OperationTypeImporting
 			delete(alteredOps, string(op.Resource.URN))
 			return &op, nil
 		}
@@ -569,14 +589,14 @@ func hasPendingCreates(snap *deploy.Snapshot) bool {
 		return false
 	}
 	for _, op := range snap.PendingOperations {
-		if op.Type == resource.OperationTypeCreating {
+		if op.Type == pkgresource.OperationTypeCreating {
 			return true
 		}
 	}
 	return false
 }
 
-func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, error) {
+func interactiveFixPendingCreate(op pkgresource.Operation) (*pkgresource.Operation, error) {
 	for {
 		option := ""
 		options := []string{
@@ -604,7 +624,7 @@ func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, er
 			}, &id, nil)
 			if err == nil {
 				op.Resource.ID = resource.ID(id)
-				op.Type = resource.OperationTypeImporting
+				op.Type = pkgresource.OperationTypeImporting
 				return &op, nil
 			}
 		default:

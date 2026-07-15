@@ -27,12 +27,15 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+type policyGroupsRenderFunc func(w io.Writer, policyGroups []apitype.PolicyGroupSummary) error
 
 func newPolicyGroupCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -51,7 +54,10 @@ func newPolicyGroupCmd() *cobra.Command {
 }
 
 func newPolicyGroupListCmd() *cobra.Command {
-	var jsonOut bool
+	output := outputflag.OutputFlag[policyGroupsRenderFunc]{
+		RenderForTerminal: formatPolicyGroupsConsole,
+		RenderJSON:        formatPolicyGroupsJSON,
+	}
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
@@ -62,7 +68,7 @@ func newPolicyGroupListCmd() *cobra.Command {
 
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -105,10 +111,7 @@ func newPolicyGroupListCmd() *cobra.Command {
 				inContToken = outContToken
 			}
 
-			if jsonOut {
-				return formatPolicyGroupsJSON(cmd.OutOrStdout(), allPolicyGroups)
-			}
-			return formatPolicyGroupsConsole(cmd.OutOrStdout(), allPolicyGroups)
+			return output.Get()(cmd.OutOrStdout(), allPolicyGroups)
 		},
 	}
 
@@ -119,8 +122,7 @@ func newPolicyGroupListCmd() *cobra.Command {
 		Required: 0,
 	})
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 	return cmd
 }
 

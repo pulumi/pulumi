@@ -31,6 +31,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestArgumentConstruction(t *testing.T) {
@@ -94,6 +95,29 @@ func TestArgumentConstruction(t *testing.T) {
 		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.Contains(t, args, "foobar")
 	})
+}
+
+func TestTemplateWritesPnpmWorkspace(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	opts, err := structpb.NewStruct(map[string]any{"packagemanager": "pnpm"})
+	require.NoError(t, err)
+	indo := &pulumirpc.ProgramInfo{
+		RootDirectory:    dir,
+		ProgramDirectory: dir,
+		EntryPoint:       ".",
+		Options:          opts,
+	}
+	host := &nodeLanguageHost{}
+
+	_, err = host.Template(t.Context(),
+		&pulumirpc.TemplateRequest{Info: indo, ProjectName: "p"})
+
+	require.NoError(t, err)
+	b, err := os.ReadFile(filepath.Join(dir, "pnpm-workspace.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(b), "allowBuilds:")
+	assert.Contains(t, string(b), "protobufjs: false")
 }
 
 func TestConfig(t *testing.T) {
@@ -392,6 +416,56 @@ func setupFiles(t *testing.T, files []filePathAndContents) string {
 	return dir
 }
 
+func TestAbout(t *testing.T) {
+	t.Parallel()
+
+	t.Run("With typescript installed", func(t *testing.T) {
+		t.Parallel()
+
+		testDir := setupFiles(t, []filePathAndContents{
+			{
+				path:    "package.json",
+				content: `{ "name": "test", "dependencies": { "typescript": "^5.4.5" } }`,
+			},
+			{
+				path:    filepath.Join("node_modules", "typescript", "package.json"),
+				content: `{ "name": "typescript", "version": "5.4.5", "main": "./lib/typescript.js" }`,
+			},
+		})
+		host := &nodeLanguageHost{runtime: "nodejs"}
+		resp, err := host.About(t.Context(), &pulumirpc.AboutRequest{
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    testDir,
+				ProgramDirectory: testDir,
+				EntryPoint:       ".",
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, "5.4.5", resp.Metadata["typescriptVersion"])
+	})
+
+	t.Run("Without typescript installed", func(t *testing.T) {
+		t.Parallel()
+
+		testDir := setupFiles(t, []filePathAndContents{
+			{
+				path:    "package.json",
+				content: `{ "name": "test" }`,
+			},
+		})
+		host := &nodeLanguageHost{runtime: "nodejs"}
+		resp, err := host.About(t.Context(), &pulumirpc.AboutRequest{
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    testDir,
+				ProgramDirectory: testDir,
+				EntryPoint:       ".",
+			},
+		})
+		require.NoError(t, err)
+		require.NotContains(t, resp.Metadata, "typescriptVersion")
+	})
+}
+
 func TestGetProgramDependencies(t *testing.T) {
 	t.Parallel()
 
@@ -688,6 +762,21 @@ func TestParseOptions(t *testing.T) {
 		"packagemanager": "poetry",
 	}, "nodejs")
 	require.ErrorContains(t, err, "packagemanager option must be one of")
+
+	opts, err = parseOptions(nil, "nodejs")
+	require.NoError(t, err)
+	require.False(t, opts.production)
+
+	opts, err = parseOptions(map[string]any{
+		"production": true,
+	}, "nodejs")
+	require.NoError(t, err)
+	require.True(t, opts.production)
+
+	_, err = parseOptions(map[string]any{
+		"production": "yes",
+	}, "nodejs")
+	require.ErrorContains(t, err, "production option must be a boolean")
 
 	for _, tt := range []struct {
 		input    string

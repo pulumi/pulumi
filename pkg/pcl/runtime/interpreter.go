@@ -37,9 +37,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -80,13 +80,21 @@ type Interpreter struct {
 	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
 	namePrefix string
 
-	// packageRefs are package references returned by RegisterPackage keyed by package name.
+	// packageRefs maps a fully-qualified token (resource, function, or
+	// pulumi:providers:<pkg>) to the package reference RegisterPackage returned.
+	// Keying on the exact token, not package name, keeps extensions that share the
+	// base provider's namespace distinct. A miss resolves to the empty ref, and so
+	// to the default provider.
 	packageRefs map[string]string
 
 	// callbacks is the server that handles resource hook callbacks.
 	callbacks     *pclCallbackServer
 	callbacksOnce sync.Once
 	callbacksErr  error
+
+	// snippetID is the UUID of the snippet driving this interpreter, if any. When set, it is
+	// propagated onto every RegisterResourceRequest emitted by the interpreter.
+	snippetID string
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
@@ -217,6 +225,132 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 	}
 
 	workingDir := i.info.WorkingDir
+
+	unmarshal := func(ctx context.Context, s *structpb.Struct) (cty.Value, error) {
+		if s == nil {
+			return cty.EmptyObjectVal, nil
+		}
+		mopts := plugin.MarshalOptions{
+			KeepSecrets: true,
+		}
+		props, err := plugin.UnmarshalProperties(s, mopts)
+		if err != nil {
+			return cty.EmptyObjectVal, err
+		}
+		val, err := propertyValueToCty(ctx, i.getResource, resource.NewProperty(props))
+		if err != nil {
+			return cty.EmptyObjectVal, err
+		}
+		return val, nil
+	}
+
+	// hookArgs builds the `args` object for a hook invocation from the request's resource
+	// identity and property structs.
+	hookArgs := func(ctx context.Context, req interface {
+		GetUrn() string
+		GetId() string
+		GetName() string
+		GetType() string
+	}, props map[string]*structpb.Struct,
+	) (map[string]cty.Value, error) {
+		args := map[string]cty.Value{
+			"urn":  cty.StringVal(req.GetUrn()),
+			"id":   cty.StringVal(req.GetId()),
+			"name": cty.StringVal(req.GetName()),
+			"type": cty.StringVal(req.GetType()),
+		}
+		for key, val := range props {
+			val, err := unmarshal(ctx, val)
+			if err != nil {
+				return nil, fmt.Errorf("hook %s: failed to unmarshal %s: %w", hookName, key, err)
+			}
+			args[key] = val
+		}
+		return args, nil
+	}
+
+	// runCommand evaluates the hook's command with the given `args` and runs it. The first
+	// return value is the error from running the command, if any; the second is an error
+	// evaluating the command expression itself.
+	runCommand := func(ctx context.Context, args map[string]cty.Value) (error, error) {
+		evalCtx := i.evalContext.NewChild()
+		evalCtx.SetVariable("args", cty.ObjectVal(args))
+
+		cmdVal, _, evalDiags := evalCtx.Evaluate(cmdExpr)
+		if evalDiags.HasErrors() {
+			return nil, fmt.Errorf("hook %s: evaluating command: %v", hookName, evalDiags)
+		}
+		if !cmdVal.IsArray() {
+			return nil, fmt.Errorf("hook %s: command must be a list of strings", hookName)
+		}
+		var cmdArgs []string
+		for _, arg := range cmdVal.ArrayValue() {
+			arg, _ = unwrapOutputs(arg)
+			if !arg.IsString() {
+				return nil, fmt.Errorf("hook %s: command elements must be strings was %v", hookName, arg)
+			}
+			cmdArgs = append(cmdArgs, arg.StringValue())
+		}
+		if len(cmdArgs) == 0 {
+			return nil, fmt.Errorf("hook %s: command must not be empty", hookName)
+		}
+
+		//nolint:gosec // G204: command is provided by user PCL program
+		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
+		cmd.Dir = workingDir
+		if out, runErr := cmd.CombinedOutput(); runErr != nil {
+			return fmt.Errorf("hook command %v failed: %s\n%s", cmdArgs, runErr, out), nil
+		}
+		return nil, nil
+	}
+
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		cb, err := srv.RegisterCallback(func(ctx context.Context, reqBytes []byte) (proto.Message, error) {
+			var req pulumirpc.ErrorHookRequest
+			if len(reqBytes) > 0 {
+				if err := proto.Unmarshal(reqBytes, &req); err != nil {
+					return &pulumirpc.ErrorHookResponse{
+						Error: fmt.Sprintf("hook %s: failed to unmarshal request: %v", hookName, err),
+					}, nil
+				}
+			}
+
+			// Error hooks do not receive new outputs: they fire after an operation
+			// fails, so there are none.
+			args, err := hookArgs(ctx, &req, map[string]*structpb.Struct{
+				"newInputs":  req.GetNewInputs(),
+				"oldInputs":  req.GetOldInputs(),
+				"oldOutputs": req.GetOldOutputs(),
+			})
+			if err != nil {
+				return &pulumirpc.ErrorHookResponse{Error: err.Error()}, nil
+			}
+
+			runErr, evalErr := runCommand(ctx, args)
+			if evalErr != nil {
+				return &pulumirpc.ErrorHookResponse{Error: evalErr.Error()}, nil
+			}
+			return &pulumirpc.ErrorHookResponse{Retry: runErr == nil}, nil
+		})
+		if err != nil {
+			return fmt.Errorf("allocating error hook callback %s: %w", hookName, err)
+		}
+
+		_, err = i.monitor.RegisterErrorHook(ctx, &pulumirpc.RegisterErrorHookRequest{
+			Name:     hookName,
+			Callback: cb,
+		})
+		if err != nil {
+			return fmt.Errorf("registering error hook %s: %w", hookName, err)
+		}
+
+		// Store the hook's registered name as a string so it can be referenced in hooks options.
+		i.evalContext.SetVariable(h.Name(), cty.StringVal(hookName))
+		return nil
+	}
+
 	cb, err := srv.RegisterCallback(func(ctx context.Context, reqBytes []byte) (proto.Message, error) {
 		var req pulumirpc.ResourceHookRequest
 		if len(reqBytes) > 0 {
@@ -227,85 +361,22 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			}
 		}
 
-		// Build a child eval context with `args` populated from the hook request.
-		evalCtx := i.evalContext.NewChild()
-
-		unmarshal := func(s *structpb.Struct) (cty.Value, error) {
-			if s == nil {
-				return cty.EmptyObjectVal, nil
-			}
-			mopts := plugin.MarshalOptions{
-				KeepSecrets: true,
-			}
-			props, err := plugin.UnmarshalProperties(s, mopts)
-			if err != nil {
-				return cty.EmptyObjectVal, err
-			}
-			val, err := propertyValueToCty(ctx, i.getResource, resource.NewProperty(props))
-			if err != nil {
-				return cty.EmptyObjectVal, err
-			}
-			return val, nil
-		}
-
-		args := map[string]cty.Value{
-			"urn":  cty.StringVal(req.GetUrn()),
-			"id":   cty.StringVal(req.GetId()),
-			"name": cty.StringVal(req.GetName()),
-			"type": cty.StringVal(req.GetType()),
-		}
-
-		for key, val := range map[string]*structpb.Struct{
+		args, err := hookArgs(ctx, &req, map[string]*structpb.Struct{
 			"newInputs":  req.GetNewInputs(),
 			"oldInputs":  req.GetOldInputs(),
 			"newOutputs": req.GetNewOutputs(),
 			"oldOutputs": req.GetOldOutputs(),
-		} {
-			args[key], err = unmarshal(val)
-			if err != nil {
-				return &pulumirpc.ResourceHookResponse{
-					Error: fmt.Sprintf("hook %s: failed to unmarshal %s: %v", hookName, key, err),
-				}, nil
-			}
+		})
+		if err != nil {
+			return &pulumirpc.ResourceHookResponse{Error: err.Error()}, nil
 		}
 
-		evalCtx.SetVariable("args", cty.ObjectVal(args))
-
-		// Evaluate the command expression with the args context.
-		cmdVal, _, evalDiags := evalCtx.Evaluate(cmdExpr)
-		if evalDiags.HasErrors() {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook %s: evaluating command: %v", hookName, evalDiags),
-			}, nil
+		runErr, evalErr := runCommand(ctx, args)
+		if evalErr != nil {
+			return &pulumirpc.ResourceHookResponse{Error: evalErr.Error()}, nil
 		}
-		if !cmdVal.IsArray() {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook %s: command must be a list of strings", hookName),
-			}, nil
-		}
-		var cmdArgs []string
-		for _, arg := range cmdVal.ArrayValue() {
-			arg, _ = unwrapOutputs(arg)
-			if !arg.IsString() {
-				return &pulumirpc.ResourceHookResponse{
-					Error: fmt.Sprintf("hook %s: command elements must be strings was %v", hookName, arg),
-				}, nil
-			}
-			cmdArgs = append(cmdArgs, arg.StringValue())
-		}
-		if len(cmdArgs) == 0 {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook %s: command must not be empty", hookName),
-			}, nil
-		}
-
-		//nolint:gosec // G204: command is provided by user PCL program
-		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
-		cmd.Dir = workingDir
-		if out, runErr := cmd.CombinedOutput(); runErr != nil {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook command %v failed: %s\n%s", cmdArgs, runErr, out),
-			}, nil
+		if runErr != nil {
+			return &pulumirpc.ResourceHookResponse{Error: runErr.Error()}, nil
 		}
 		return &pulumirpc.ResourceHookResponse{}, nil
 	})
@@ -492,9 +563,11 @@ func (i *Interpreter) RunEmbedded(
 	monitor pulumirpc.ResourceMonitorClient,
 	loader schema.ReferenceLoader,
 	scopeVars map[string]resource.PropertyValue,
+	snippetID string,
 ) error {
 	i.monitor = monitor
 	i.loader = loader
+	i.snippetID = snippetID
 
 	i.evalContext = NewEvalContext(
 		i.info.WorkingDir,
@@ -645,23 +718,28 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		pkgName = typ
 	}
 
-	descriptor := i.lookupPackageDescriptor(pkgName)
-	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-	if err != nil {
-		return nil, fmt.Errorf("load package for token %s: %w", token, err)
+	var loadErr error
+	for _, descriptor := range i.lookupPackageDescriptors(pkgName) {
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
+			continue
+		}
+		if pkg == "pulumi" && mod == "providers" {
+			return pkgref.Provider()
+		}
+		schemaResource, ok, err := pkgref.Resources().Get(token)
+		if err != nil {
+			return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
+		}
+		if ok {
+			return schemaResource, nil
+		}
 	}
-	if pkg == "pulumi" && mod == "providers" {
-		return pkgref.Provider()
+	if loadErr != nil {
+		return nil, loadErr
 	}
-	resources := pkgref.Resources()
-	schemaResource, ok, err := resources.Get(token)
-	if err != nil {
-		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
-	}
-	if !ok {
-		return nil, fmt.Errorf("get resource from package for token %s", token)
-	}
-	return schemaResource, nil
+	return nil, fmt.Errorf("get resource from package for token %s", token)
 }
 
 func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema.Function, error) {
@@ -670,27 +748,42 @@ func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema
 
 	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 
-	descriptor := i.lookupPackageDescriptor(pkg)
-	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-	if err != nil {
-		return nil, fmt.Errorf("load package for token %s: %w", token, err)
+	var loadErr error
+	for _, descriptor := range i.lookupPackageDescriptors(pkg) {
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
+			continue
+		}
+		schemaFunction, ok, err := pkgref.Functions().Get(token)
+		if err != nil {
+			return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
+		}
+		if ok {
+			return schemaFunction, nil
+		}
 	}
-	functions := pkgref.Functions()
-	schemaFunction, ok, err := functions.Get(token)
-	if err != nil {
-		return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
+	if loadErr != nil {
+		return nil, loadErr
 	}
-	if !ok {
-		return nil, fmt.Errorf("get function from package for token %s", token)
-	}
-	return schemaFunction, nil
+	return nil, fmt.Errorf("get function from package for token %s", token)
 }
 
-func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDescriptor {
+// lookupPackageDescriptors returns the packages a pkgName-namespaced token could
+// resolve to: pkgName itself plus every extension layered on it.
+func (i *Interpreter) lookupPackageDescriptors(pkgName string) []*schema.PackageDescriptor {
+	var candidates []*schema.PackageDescriptor
 	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
-		return descriptor
+		candidates = append(candidates, descriptor)
+	} else {
+		candidates = append(candidates, &schema.PackageDescriptor{Name: pkgName})
 	}
-	return &schema.PackageDescriptor{Name: pkgName}
+	for _, descriptor := range i.info.PackageDescriptors {
+		if descriptor != nil && descriptor.Parameterization != nil && descriptor.Name == pkgName {
+			candidates = append(candidates, descriptor)
+		}
+	}
+	return candidates
 }
 
 func PackageNameFromToken(token string) (string, error) {
@@ -708,11 +801,7 @@ func PackageNameFromToken(token string) (string, error) {
 }
 
 func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
-	pkgName, err := PackageNameFromToken(token)
-	if err != nil {
-		return "", err
-	}
-	return i.packageRefs[pkgName], nil
+	return i.packageRefs[token], nil
 }
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {
@@ -742,10 +831,24 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 		if descriptor.Version != nil {
 			request.Version = descriptor.Version.String()
 		}
-		request.Parameterization = &pulumirpc.Parameterization{
+		param := &pulumirpc.Parameterization{
 			Name:    descriptor.Parameterization.Name,
 			Version: descriptor.Parameterization.Version.String(),
 			Value:   descriptor.Parameterization.Value,
+		}
+		// Route to the wire field matching the schema's parameterization flavor.
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			return fmt.Errorf("load package %q for register: %w", key, err)
+		}
+		def, err := pkgref.Definition()
+		if err != nil {
+			return fmt.Errorf("load definition for package %q: %w", key, err)
+		}
+		if def.ExtensionParameterization != nil {
+			request.Extension = param
+		} else {
+			request.Parameterization = param
 		}
 
 		resp, err := i.monitor.RegisterPackage(ctx, request)
@@ -756,8 +859,15 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 			return fmt.Errorf("register package %q returned empty reference", key)
 		}
 
-		i.packageRefs[key] = resp.GetRef()
-		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
+		// Index every token the package defines, plus its provider ref (see packageRefs).
+		ref := resp.GetRef()
+		i.packageRefs["pulumi:providers:"+descriptor.PackageName()] = ref
+		for _, r := range def.Resources {
+			i.packageRefs[r.Token] = ref
+		}
+		for _, f := range def.Functions {
+			i.packageRefs[f.Token] = ref
+		}
 	}
 
 	return nil
@@ -1252,6 +1362,7 @@ func (i *Interpreter) registerResourceWith(
 		AcceptSecrets:           true,
 		AcceptResources:         true,
 		SupportsResultReporting: true,
+		SnippetId:               i.snippetID,
 	}
 	packageRef, err := i.getPackageRefFromToken(token)
 	if err != nil {
@@ -1808,13 +1919,16 @@ func (i *Interpreter) registerResourceWith(
 						binding.BeforeDelete = append(binding.BeforeDelete, hookNames...)
 					case "afterDelete":
 						binding.AfterDelete = append(binding.AfterDelete, hookNames...)
+					case "onError":
+						binding.OnError = append(binding.OnError, hookNames...)
 					default:
 						return cty.NilVal, fmt.Errorf("invalid hook type: %s", hookType)
 					}
 				}
 				if len(binding.BeforeCreate)+len(binding.AfterCreate)+
 					len(binding.BeforeUpdate)+len(binding.AfterUpdate)+
-					len(binding.BeforeDelete)+len(binding.AfterDelete) > 0 {
+					len(binding.BeforeDelete)+len(binding.AfterDelete)+
+					len(binding.OnError) > 0 {
 					request.Hooks = binding
 				}
 			}
@@ -1929,6 +2043,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		AcceptSecrets:        true,
 		AcceptResources:      true,
 		Parent:               i.stackURN,
+		SnippetId:            i.snippetID,
 	}
 	if component.Options != nil && component.Options.Parent != nil {
 		parent, poison, diags := i.evalContext.Evaluate(component.Options.Parent)

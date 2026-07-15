@@ -28,11 +28,11 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -385,21 +385,21 @@ func TestResourceRemediation(t *testing.T) {
 							PolicyPackName:    "analyzerA",
 							PolicyPackVersion: "1.0.0",
 							Description:       "a remediation that gets ignored because it runs first",
-							Properties: resource.PropertyMap{
-								"a":   resource.NewProperty("nope"),
-								"ggg": resource.NewProperty(true),
-							},
+							Properties: property.NewMap(map[string]property.Value{
+								"a":   property.New("nope"),
+								"ggg": property.New(true),
+							}),
 						},
 						{
 							PolicyName:        "real-deal",
 							PolicyPackName:    "analyzerA",
 							PolicyPackVersion: "1.0.0",
 							Description:       "a remediation that actually gets applied because it runs last",
-							Properties: resource.PropertyMap{
-								"a":   resource.NewProperty("foo"),
-								"fff": resource.NewProperty(true),
-								"z":   resource.NewProperty("bar"),
-							},
+							Properties: property.NewMap(map[string]property.Value{
+								"a":   property.New("foo"),
+								"fff": property.New(true),
+								"z":   property.New("bar"),
+							}),
 						},
 					}}, nil
 				},
@@ -449,11 +449,11 @@ func TestResourceRemediation(t *testing.T) {
 		assert.Equal(t, "ignored", remediationPayload0.PolicyName)
 		assert.Equal(t, "analyzerA", remediationPayload0.PolicyPackName)
 		assert.Equal(t, "1.0.0", remediationPayload0.PolicyPackVersion)
-		assert.Equal(t, resource.PropertyMap{}, remediationPayload0.Before)
-		assert.Equal(t, resource.PropertyMap{
-			"a":   resource.NewProperty("nope"),
-			"ggg": resource.NewProperty(true),
-		}, remediationPayload0.After)
+		assert.Equal(t, property.Map{}, remediationPayload0.Before)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"a":   property.New("nope"),
+			"ggg": property.New(true),
+		}), remediationPayload0.After)
 
 		require.IsType(t, PolicyRemediationEventPayload{}, remediationEvents[1].Payload())
 		remediationPayload1 := remediationEvents[1].Payload().(PolicyRemediationEventPayload)
@@ -461,15 +461,15 @@ func TestResourceRemediation(t *testing.T) {
 		assert.Equal(t, "real-deal", remediationPayload1.PolicyName)
 		assert.Equal(t, "analyzerA", remediationPayload1.PolicyPackName)
 		assert.Equal(t, "1.0.0", remediationPayload1.PolicyPackVersion)
-		assert.Equal(t, resource.PropertyMap{
-			"a":   resource.NewProperty("nope"),
-			"ggg": resource.NewProperty(true),
-		}, remediationPayload1.Before)
-		assert.Equal(t, resource.PropertyMap{
-			"a":   resource.NewProperty("foo"),
-			"fff": resource.NewProperty(true),
-			"z":   resource.NewProperty("bar"),
-		}, remediationPayload1.After)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"a":   property.New("nope"),
+			"ggg": property.New(true),
+		}), remediationPayload1.Before)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"a":   property.New("foo"),
+			"fff": property.New(true),
+			"z":   property.New("bar"),
+		}), remediationPayload1.After)
 
 		require.Len(t, summaryEvents, 2)
 

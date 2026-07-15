@@ -174,3 +174,100 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		return property.Value{}
 	}
 }
+
+func FromResourcePropertyPath(v PropertyPath) property.Path {
+	str, err := v.MarshalText()
+	contract.AssertNoErrorf(err, "Failed to marshal PropertyPath %v", v)
+	var p property.Path
+	if err := p.UnmarshalText(str); err != nil {
+		contract.Failf("Failed to unmarshal property.Path %v: %v", v, err)
+	}
+	return p
+}
+
+func ToResourcePropertyPath(v property.Path) PropertyPath {
+	str, err := v.MarshalText()
+	contract.AssertNoErrorf(err, "Failed to marshal property.Path %v", v)
+	var p PropertyPath
+	if err := p.UnmarshalText(str); err != nil {
+		contract.Failf("Failed to unmarshal PropertyPath %v: %v", v, err)
+	}
+	return p
+}
+
+func toResourceArrayDiff(v *property.ArrayDiff) *ArrayDiff {
+	if v == nil {
+		return nil
+	}
+
+	adds := make(map[int]PropertyValue, len(v.Adds))
+	for k, v := range v.Adds {
+		adds[k] = ToResourcePropertyValue(v)
+	}
+
+	deletes := make(map[int]PropertyValue, len(v.Deletes))
+	for k, v := range v.Deletes {
+		deletes[k] = ToResourcePropertyValue(v)
+	}
+
+	sames := make(map[int]PropertyValue, len(v.Sames))
+	for k, v := range v.Sames {
+		sames[k] = ToResourcePropertyValue(v)
+	}
+
+	updates := make(map[int]ValueDiff, len(v.Updates))
+	for k, v := range v.Updates {
+		updates[k] = ValueDiff{
+			Old:    ToResourcePropertyValue(v.Old),
+			New:    ToResourcePropertyValue(v.New),
+			Array:  toResourceArrayDiff(v.Array),
+			Object: ToResourceObjectDiff(v.Object),
+		}
+	}
+
+	return &ArrayDiff{
+		Adds:    adds,
+		Deletes: deletes,
+		Sames:   sames,
+		Updates: updates,
+	}
+}
+
+// Translates a [property.ObjectDiff] into an [ObjectDiff].
+func ToResourceObjectDiff(v *property.ObjectDiff) *ObjectDiff {
+	if v == nil {
+		return nil
+	}
+
+	adds := make(map[PropertyKey]PropertyValue, len(v.Adds))
+	for k, v := range v.Adds {
+		adds[PropertyKey(k)] = ToResourcePropertyValue(v)
+	}
+
+	deletes := make(map[PropertyKey]PropertyValue, len(v.Deletes))
+	for k, v := range v.Deletes {
+		deletes[PropertyKey(k)] = ToResourcePropertyValue(v)
+	}
+
+	sames := make(map[PropertyKey]PropertyValue, len(v.Sames))
+	for k, v := range v.Sames {
+		sames[PropertyKey(k)] = ToResourcePropertyValue(v)
+	}
+
+	updates := make(map[PropertyKey]ValueDiff, len(v.Updates))
+	for k, v := range v.Updates {
+		updates[PropertyKey(k)] = ValueDiff{
+			Old:    ToResourcePropertyValue(v.Old),
+			New:    ToResourcePropertyValue(v.New),
+			Array:  toResourceArrayDiff(v.Array),
+			Object: ToResourceObjectDiff(v.Object),
+		}
+	}
+
+	return &ObjectDiff{
+		Adds:    adds,
+		Deletes: deletes,
+		Sames:   sames,
+		Updates: updates,
+	}
+}

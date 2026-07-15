@@ -74,7 +74,7 @@ func TestStateDeleteMultipleURNs(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -143,7 +143,7 @@ func TestStateDeleteMultipleURNsResolvesDependencyOrder(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -208,7 +208,7 @@ func TestStateDeleteParentAndChild(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -261,7 +261,7 @@ func TestStateDeleteInvalidURN(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{Name: "proj"}, "/testing/project", nil
 		},
 	}
@@ -280,6 +280,54 @@ func TestStateDeleteInvalidURN(t *testing.T) {
 	cmd.SetArgs([]string{"--stack=stk", "not-a-valid-urn"})
 	err := cmd.ExecuteContext(t.Context())
 	assert.ErrorContains(t, err, "is not a valid resource URN")
+}
+
+func TestStateDeleteURNNotFound(t *testing.T) {
+	t.Parallel()
+
+	var mockStack *backend.MockStack
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "stk", ref.String())
+			return mockStack, nil
+		},
+	}
+	mockStack = &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{
+				Resources: []*resource.State{
+					{URN: "urn:pulumi:proj::stk::pkg:index:typ::my-bucket"},
+				},
+			}, nil
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "/testing/project", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+		) (backend.Backend, error) {
+			assert.Equal(t, "", url)
+			assert.Equal(t, tokens.PackageName("proj"), project.Name)
+			return mockBackend, nil
+		},
+	}
+
+	cmd := newStateDeleteCommand(ws, lm)
+	cmd.SetArgs([]string{"--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::my-bukcet"})
+	err := cmd.ExecuteContext(t.Context())
+	assert.ErrorContains(t, err, "No such resource")
+	assert.ErrorContains(t, err, "Did you mean:")
+	assert.ErrorContains(t, err, "urn:pulumi:proj::stk::pkg:index:typ::my-bucket")
+	assert.ErrorContains(t, err, "pulumi stack --show-urns")
+	assert.ErrorContains(t, err, "pulumi stack export")
 }
 
 func TestStateDeleteAllAndURN(t *testing.T) {
@@ -344,7 +392,7 @@ func TestStateDeleteURN(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -398,7 +446,7 @@ func TestStateDeleteDependency(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -457,7 +505,7 @@ func TestStateDeleteProtected(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -530,7 +578,7 @@ func TestStateDeleteAll(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil

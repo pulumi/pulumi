@@ -19,14 +19,18 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -64,15 +68,18 @@ func NewPluginCmd() *cobra.Command {
 
 // getProjectPlugins fetches a list of plugins used by this project.
 func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error) {
-	proj, root, err := pkgWorkspace.Instance.ReadProject()
+	proj, root, err := pkgWorkspace.Instance.ReadProject("")
 	if err != nil {
 		return nil, err
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	reg := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(reg))
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +107,7 @@ func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error
 }
 
 func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) ([]workspace.PluginInfo, error) {
-	proj, root, err := pkgWorkspace.Instance.ReadProject()
+	proj, root, err := pkgWorkspace.Instance.ReadProject("")
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +115,10 @@ func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) (
 	d := cmdutil.Diag()
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, d, env.Global())
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), d, d, nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(reg))
 	if err != nil {
 		return nil, err
 	}

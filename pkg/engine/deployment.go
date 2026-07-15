@@ -27,12 +27,12 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -264,6 +264,12 @@ func newDeployment(
 		contract.IgnoreClose(plugctx)
 		return nil, err
 	}
+	if len(opts.Snippets) > 0 && !opts.DryRun {
+		if err := persistValidatedSnippets(baseCtx, ctx.SnapshotManager, target.Snapshot.Snippets, plugctx); err != nil {
+			contract.IgnoreClose(plugctx)
+			return nil, err
+		}
+	}
 
 	deplOpts := &deploy.Options{
 		ParallelDiff:              opts.ParallelDiff,
@@ -275,6 +281,7 @@ func newDeployment(
 		DestroyProgram:            opts.DestroyProgram,
 		ReplaceTargets:            opts.ReplaceTargets,
 		Targets:                   opts.Targets,
+		TargetSnippets:            opts.TargetSnippets,
 		Excludes:                  opts.Excludes,
 		TargetDependents:          opts.TargetDependents,
 		ExcludeDependents:         opts.ExcludeDependents,

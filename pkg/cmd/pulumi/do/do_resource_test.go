@@ -17,6 +17,8 @@ package do
 import (
 	"bytes"
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -24,10 +26,12 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -108,21 +112,21 @@ func TestDoCmdResourceHelpListsOperations(t *testing.T) {
 A test resource.
 
 Inputs:
-  enabled (boolean, optional)
-  name (string, required) - The resource name.
-  size (integer, optional)
+ - enabled (boolean)
+ - name (string*): The resource name.
+ - size (integer)
+Inputs marked with '*' are required
 
 Outputs:
-  enabled (boolean)
-  extra (string)
-  name (string)
-  size (integer)
+ - enabled (boolean)
+ - extra (string)
+ - name (string)
+ - size (integer)
 
 List Inputs:
-  prefix (string, optional)
+ - prefix (string)
 
 Usage:
-  do azure:index:myResource [flags]
   do azure:index:myResource [command]
 
 Available Commands:
@@ -135,7 +139,8 @@ Available Commands:
 Flags:
       --dry-run                Run the operation in preview mode
   -h, --help                   help for do
-      --input string           Format of the provider configuration file (default "pcl")
+      --input string           Format of the provider configuration file (default "yaml")
+      --output string          Output format for resource operation results (supported: default, json)
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
@@ -161,18 +166,18 @@ func TestDoCmdResourceHelpOmitsListWithoutListInputs(t *testing.T) {
 A test resource.
 
 Inputs:
-  enabled (boolean, optional)
-  name (string, required) - The resource name.
-  size (integer, optional)
+ - enabled (boolean)
+ - name (string*): The resource name.
+ - size (integer)
+Inputs marked with '*' are required
 
 Outputs:
-  enabled (boolean)
-  extra (string)
-  name (string)
-  size (integer)
+ - enabled (boolean)
+ - extra (string)
+ - name (string)
+ - size (integer)
 
 Usage:
-  do azure:index:myResource [flags]
   do azure:index:myResource [command]
 
 Available Commands:
@@ -184,7 +189,8 @@ Available Commands:
 Flags:
       --dry-run                Run the operation in preview mode
   -h, --help                   help for do
-      --input string           Format of the provider configuration file (default "pcl")
+      --input string           Format of the provider configuration file (default "yaml")
+      --output string          Output format for resource operation results (supported: default, json)
       --package string         The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
@@ -200,7 +206,7 @@ func TestDoCmdResourceCreate(t *testing.T) {
 	t.Parallel()
 
 	var calls []string
-	cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+	cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
 		spec: doResourceSpec(false),
 		MockProvider: plugin.MockProvider{
 			CheckF: func(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
@@ -229,7 +235,10 @@ func TestDoCmdResourceCreate(t *testing.T) {
 name = "example"
 size = 2
 `)
-	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "--yes", "--input-file", inputFile})
+	cmd.SetArgs([]string{
+		"--stateless", "azure:index:myResource", "create", "--yes",
+		"--input", "pcl", "--input-file", inputFile, "--output", "json",
+	})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -240,6 +249,11 @@ size = 2
   "size": 2,
   "extra": "hidden"
 }`, stdout.String())
+	assert.Contains(t, stderr.String(), "+ 1 to create")
+	assert.Contains(t, stderr.String(), `name: "example"`)
+	assert.NotContains(t, stderr.String(), "creating")
+	assert.NotContains(t, stderr.String(), "Outputs:")
+	assert.NotContains(t, stderr.String(), "+ 1 created")
 }
 
 func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
@@ -292,6 +306,8 @@ func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
 		"--stateless",
 		"azure:index:myResource", "create",
 		"--yes",
+		"--output", "json",
+		"--input", "pcl",
 		"--input-file", inputFile,
 		"--int-value", "42",
 		"--already-kebab-case", "kebab",
@@ -331,7 +347,7 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 			},
 		})
-		cmd.SetArgs([]string{"azure:index:myResource", "read", "res-1"})
+		cmd.SetArgs([]string{"azure:index:myResource", "read", "res-1", "--output", "json"})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"id":"res-1","name":"read","size":3}`, stdout.String())
@@ -343,11 +359,20 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{"name": resource.NewProperty("in")},
+							Outputs: resource.PropertyMap{"name": resource.NewProperty("out")},
+						},
+					}, nil
+				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-					deleted = true
 					assert.Equal(t, resource.ID("res-1"), req.ID)
-					assert.Empty(t, req.Inputs)
-					assert.Empty(t, req.Outputs)
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
+					deleted = true
 					return plugin.DeleteResponse{}, nil
 				},
 			},
@@ -418,7 +443,10 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 name = "new"
 enabled = true
 `)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "patch", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile, "--output", "json",
+		})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.Equal(t, []string{"read", "check", "diff", "update"}, calls)
@@ -467,7 +495,10 @@ enabled = true
 		})
 
 		inputFile := writeHCLFile(t, "patch.pcl", `enabled = true`)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "patch", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile, "--output", "json",
+		})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"id":"res-1","name":"existing","enabled":true}`, stdout.String())
@@ -491,7 +522,7 @@ func TestDoCmdResourceList(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "list.pcl", `prefix = "prod"`)
-		cmd.SetArgs([]string{"azure:index:myResource", "list", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myResource", "list", "--input", "pcl", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		require.Len(t, calls, 1)
@@ -599,6 +630,77 @@ func TestDoCmdResourceNonInteractiveRequiresYes(t *testing.T) {
 	}
 }
 
+// TestDoCmdResourceDeleteDryRun asserts that delete --dry-run prints what would be deleted and never
+// calls the provider. Delete has no provider-side preview mode, so the summary is the whole dry run;
+// crucially --dry-run must not act like --yes (the confirmation prompt is skipped on dry runs).
+func TestDoCmdResourceDeleteDryRun(t *testing.T) {
+	t.Parallel()
+
+	cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
+		spec: doResourceSpec(false),
+		MockProvider: plugin.MockProvider{
+			ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{
+					ReadResult: plugin.ReadResult{
+						ID:      req.ID,
+						Inputs:  resource.PropertyMap{"name": resource.NewProperty("read")},
+						Outputs: resource.PropertyMap{"name": resource.NewProperty("read")},
+					},
+				}, nil
+			},
+			DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+				require.Fail(t, "Delete should not be called with --dry-run")
+				return plugin.DeleteResponse{}, nil
+			},
+		},
+	})
+	cmd.SetArgs([]string{"--dry-run", "--stateless", "azure:index:myResource", "delete", "res-1"})
+	require.NoError(t, cmd.Execute())
+	assert.Contains(t, stderr.String(), `This would delete azure:index:myResource "res-1"`)
+	assert.Empty(t, stdout.String())
+}
+
+// TestDoCmdResourceDryRunIgnoredForReadOnlyOps asserts that read and list ignore --dry-run: they never
+// mutate anything, so there is nothing to preview and they behave as if the flag wasn't passed.
+func TestDoCmdResourceDryRunIgnoredForReadOnlyOps(t *testing.T) {
+	t.Parallel()
+
+	t.Run("read", func(t *testing.T) {
+		t.Parallel()
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Outputs: resource.PropertyMap{"name": resource.NewProperty("read")},
+						},
+					}, nil
+				},
+			},
+		})
+		cmd.SetArgs([]string{"--dry-run", "azure:index:myResource", "read", "res-1", "--output=json"})
+		require.NoError(t, cmd.Execute())
+		assert.JSONEq(t, `{"id":"res-1","name":"read"}`, stdout.String())
+	})
+
+	t.Run("list", func(t *testing.T) {
+		t.Parallel()
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(true),
+			MockProvider: plugin.MockProvider{
+				ListF: func(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
+					return plugin.NewListStream([]plugin.ListResult{{ID: "1", Name: "one"}}, ""), nil
+				},
+			},
+		})
+		cmd.SetArgs([]string{"--dry-run", "azure:index:myResource", "list"})
+		require.NoError(t, cmd.Execute())
+		assert.JSONEq(t, `[{"id":"1","name":"one"}]`, stdout.String())
+	})
+}
+
 // TestDoCmdResourceConfirmationSummary asserts the operation summary lands on stderr (so stdout stays a clean
 // JSON channel for piping) and that the patch summary surfaces the Diff response.
 func TestDoCmdResourceConfirmationSummary(t *testing.T) {
@@ -618,10 +720,93 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "inputs.pcl", `name = "example"`)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "create", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
 		require.NoError(t, cmd.Execute())
-		assert.Contains(t, stderr.String(), "This will create azure:index:myResource")
-		assert.NotContains(t, stdout.String(), "This will create")
+		assert.Contains(t, stderr.String(), "+ azure:index:myResource: (create)")
+		assert.Contains(t, stderr.String(), `name: "example"`)
+		assert.Contains(t, stderr.String(), "+ 1 to create")
+		assert.Contains(t, stderr.String(), "azure:index:myResource myResource creating")
+		assert.Contains(t, stderr.String(), "azure:index:myResource myResource created")
+		assert.Contains(t, stderr.String(), "+ 1 created")
+		assert.NotContains(t, stderr.String(), "pulumi:pulumi:Stack")
+		assert.Contains(t, stderr.String(), "Outputs:")
+		assert.Contains(t, stderr.String(), `"example"`)
+		assert.Contains(t, stderr.String(), `"res-1"`)
+		assert.Empty(t, stdout.String())
+	})
+
+	t.Run("create failure", func(t *testing.T) {
+		t.Parallel()
+		cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				CheckF: func(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					return plugin.CheckResponse{Properties: req.News}, nil
+				},
+				CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("quota exceeded")
+				},
+			},
+		})
+		inputFile := writeHCLFile(t, "inputs.pcl", `name = "example"`)
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "create", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
+		err := cmd.Execute()
+		assert.ErrorContains(t, err, "quota exceeded")
+		assert.Contains(t, stderr.String(), "azure:index:myResource myResource creating")
+		assert.Contains(t, stderr.String(), "failed")
+		assert.NotContains(t, stdout.String(), "creating")
+		assert.NotContains(t, stdout.String(), "failed")
+	})
+
+	t.Run("read", func(t *testing.T) {
+		t.Parallel()
+		cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+						ID:      "res-1",
+						Inputs:  resource.PropertyMap{"name": resource.NewProperty("read")},
+						Outputs: resource.PropertyMap{"name": resource.NewProperty("read")},
+					}}, nil
+				},
+			},
+		})
+		cmd.SetArgs([]string{"azure:index:myResource", "read", "res-1"})
+		require.NoError(t, cmd.Execute())
+		assert.Contains(t, stderr.String(), "azure:index:myResource myResource read")
+		assert.Contains(t, stderr.String(), "Outputs:")
+		assert.Contains(t, stderr.String(), `"read"`)
+		assert.Contains(t, stderr.String(), `"res-1"`)
+		assert.NotContains(t, stderr.String(), "pulumi:pulumi:Stack")
+		assert.NotContains(t, stderr.String(), "Resources:")
+		assert.Empty(t, stdout.String())
+	})
+
+	t.Run("read masks secrets", func(t *testing.T) {
+		t.Parallel()
+		cmd, _, stderr := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+						ID:      "res-1",
+						Inputs:  resource.PropertyMap{},
+						Outputs: resource.PropertyMap{"name": resource.MakeSecret(resource.NewProperty("hunter2"))},
+					}}, nil
+				},
+			},
+		})
+		cmd.SetArgs([]string{"azure:index:myResource", "read", "res-1"})
+		require.NoError(t, cmd.Execute())
+		assert.Contains(t, stderr.String(), "[secret]")
+		assert.NotContains(t, stderr.String(), "hunter2")
 	})
 
 	t.Run("patch surfaces diff", func(t *testing.T) {
@@ -653,10 +838,24 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "patch.pcl", `name = "new"`)
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "patch", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile,
+		})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), "This will update azure:index:myResource")
 		assert.Contains(t, stderr.String(), "~ name")
+		assert.Contains(t, stderr.String(), "azure:index:myResource myResource updating")
+		assert.Contains(t, stderr.String(), "azure:index:myResource myResource updated")
+		assert.Contains(t, stderr.String(), "[diff: ~name]")
+		assert.Contains(t, stderr.String(), "~ 1 updated")
+		changesIdx := strings.Index(stderr.String(), "Changes:")
+		outputsIdx := strings.Index(stderr.String(), "Outputs:")
+		require.GreaterOrEqual(t, changesIdx, 0)
+		require.Greater(t, outputsIdx, changesIdx)
+		changes := stderr.String()[changesIdx:outputsIdx]
+		assert.Contains(t, changes, `~ name: "old" => "new"`)
+		assert.Contains(t, stderr.String()[outputsIdx:], `"res-1"`)
 		assert.NotContains(t, stdout.String(), "This will update")
 	})
 
@@ -665,7 +864,18 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 		cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{"name": resource.NewProperty("in")},
+							Outputs: resource.PropertyMap{"name": resource.NewProperty("out")},
+						},
+					}, nil
+				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
 					return plugin.DeleteResponse{}, nil
 				},
 			},
@@ -673,6 +883,9 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes"})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), `This will delete azure:index:myResource "res-1"`)
+		assert.Contains(t, stderr.String(), "azure:index:myResource myResource deleting")
+		assert.Contains(t, stderr.String(), "azure:index:myResource myResource deleted")
+		assert.Contains(t, stderr.String(), "- 1 deleted")
 		assert.Empty(t, stdout.String())
 	})
 }
@@ -699,8 +912,7 @@ func TestDoCmdResourceProviderFlagOutsideStackContext(t *testing.T) {
 // configureProvider's RequireStack → CurrentBackend → CurrentStack chain finds a stack whose
 // snapshot is exactly `snapshot`. Returns the cmd plus output buffers. The fully-qualified stack
 // name avoids tripping getStackNameWithLegacyOrgNameIfNeeded, which would otherwise call into the
-// MockBackend trying to look up a default org. Tests using this helper must not run in parallel
-// because cmdBackend.BackendInstance is process-global.
+// MockBackend trying to look up a default org.
 func providerFlagStackContext(
 	t *testing.T, provider *testProvider, snapshot *deploy.Snapshot,
 ) (*cobra.Command, *bytes.Buffer, *bytes.Buffer) {
@@ -713,13 +925,13 @@ func providerFlagStackContext(
 
 	proj := &workspace.Project{Name: tokens.PackageName("proj")}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return proj, t.TempDir(), nil
 		},
-		// `do` populates evalContext.Stack from ws.New().Settings().Stack via currentStackIdentity;
+		// `do` populates evalContext.Stack from ws.New("").Settings().Stack via currentStackIdentity;
 		// that determines whether configureProvider considers us "in a stack context". PULUMI_STACK
 		// above only feeds the parallel path used by state.CurrentStack — both have to agree.
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "myorg/proj/dev"}
@@ -745,10 +957,20 @@ func providerFlagStackContext(
 			return mockStack, nil
 		},
 	}
-	cmdBackend.BackendInstance = mockBackend
-	t.Cleanup(func() { cmdBackend.BackendInstance = nil })
-
-	mlm := &cmdBackend.MockLoginManager{}
+	mlm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		return provider, nil

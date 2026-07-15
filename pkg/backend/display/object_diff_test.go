@@ -163,6 +163,15 @@ func Test_PrintObject(t *testing.T) {
 <{%reset%}>`,
 			true,
 		},
+		{
+			"byte_string",
+			resource.NewPropertyMapFromMap(map[string]any{
+				"bytes": resource.NewProperty("\x00hello \x80\xfe\xff world\xf0\x28"),
+			}),
+			`<{%reset%}>bytes: <{%reset%}><{%reset%}>b"AGhlbGxvIID+/yB3b3JsZPAo"<{%reset%}><{%reset%}>
+<{%reset%}>`,
+			false,
+		},
 	}
 
 	for _, c := range cases {

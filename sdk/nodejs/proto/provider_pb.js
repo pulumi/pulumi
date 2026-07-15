@@ -1145,7 +1145,9 @@ configureWithUrn: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
 supportsViews: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
 supportsRefreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
 invokeWithPreview: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
-mapperTarget: (f = jspb.Message.getField(msg, 8)) == null ? undefined : f
+mapperTarget: (f = jspb.Message.getField(msg, 8)) == null ? undefined : f,
+loaderTarget: (f = jspb.Message.getField(msg, 9)) == null ? undefined : f,
+resolverTarget: (f = jspb.Message.getField(msg, 10)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -1213,6 +1215,14 @@ proto.pulumirpc.ProviderHandshakeRequest.deserializeBinaryFromReader = function(
     case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.setMapperTarget(value);
+      break;
+    case 9:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLoaderTarget(value);
+      break;
+    case 10:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setResolverTarget(value);
       break;
     default:
       reader.skipField();
@@ -1296,6 +1306,20 @@ proto.pulumirpc.ProviderHandshakeRequest.serializeBinaryToWriter = function(mess
   if (f != null) {
     writer.writeString(
       8,
+      f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 9));
+  if (f != null) {
+    writer.writeString(
+      9,
+      f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 10));
+  if (f != null) {
+    writer.writeString(
+      10,
       f
     );
   }
@@ -1497,6 +1521,78 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.clearMapperTarget = function(
  */
 proto.pulumirpc.ProviderHandshakeRequest.prototype.hasMapperTarget = function() {
   return jspb.Message.getField(this, 8) != null;
+};
+
+
+/**
+ * optional string loader_target = 9;
+ * @return {string}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.getLoaderTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.setLoaderTarget = function(value) {
+  return jspb.Message.setField(this, 9, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.clearLoaderTarget = function() {
+  return jspb.Message.setField(this, 9, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.hasLoaderTarget = function() {
+  return jspb.Message.getField(this, 9) != null;
+};
+
+
+/**
+ * optional string resolver_target = 10;
+ * @return {string}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.getResolverTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 10, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.setResolverTarget = function(value) {
+  return jspb.Message.setField(this, 10, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.clearResolverTarget = function() {
+  return jspb.Message.setField(this, 10, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.hasResolverTarget = function() {
+  return jspb.Message.getField(this, 10) != null;
 };
 
 

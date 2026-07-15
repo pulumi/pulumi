@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -62,7 +63,7 @@ func (loggingSecretsManager) Decrypter() config.Decrypter { return loggingCrypte
 func TestUpgradeToEncryptedDoesNotDeadlock(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
-	l, err := StartLogging(t.Context(), nil)
+	l, err := StartLogging(t.Context(), nil, "")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = l.Close() })
 
@@ -123,6 +124,73 @@ func TestUpgradeToEncryptedDoesNotDeadlock(t *testing.T) {
 		"decrypted log should contain data written before the upgrade")
 }
 
+// TestRenameToleratesClosedLogFile asserts that automatic update logging is
+// best-effort: a failure while renaming the log file must never surface to its
+// caller.
+//
+// The backend calls RenameCurrentLogger right after acquiring the update lock
+// (pkg/backend/httpstate/backend.go). If an earlier UpgradeCurrentLogger left the
+// log handle closed, the rename closes the already-closed handle and returns
+// "closing log file: file already closed". The backend treats that error as fatal
+// and aborts the update with the lock still held, so the following Destroy and
+// RemoveStack fail with "[409] Conflict: ... update is currently in progress".
+//
+// RenameCurrentLogger must therefore return nil even when the log file is already
+// closed.
+func TestStartLoggingFileNameIncludesCommand(t *testing.T) {
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	l, err := StartLogging(t.Context(), nil, "stack ls")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = l.Close() })
+
+	base := filepath.Base(l.FilePath())
+	require.True(t, strings.HasPrefix(base, "pulumi-"), "unexpected log file name %q", base)
+	require.True(t, strings.HasSuffix(base, "-stack_ls.log"), "unexpected log file name %q", base)
+}
+
+func TestRenameToleratesClosedLogFile(t *testing.T) {
+	if runtime.GOOS != "windows" && os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions, so the rename failure cannot be simulated")
+	}
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	l, err := StartLogging(t.Context(), nil, "")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = l.Close() })
+
+	// Make the rename inside the upgrade fail so it leaves the log file handle
+	// closed, exactly as a transient sharing violation does on Windows. The
+	// upgrade error is expected and (as in production) ignored. restore undoes the
+	// injection so the rename below is blocked only by the closed handle.
+	restore := failNextLogRename(t, l.FilePath())
+	_ = UpgradeCurrentLogger(t.Context(), "test-org/test-proj/test-stack", "", loggingSecretsManager{})
+	restore()
+
+	require.NoError(t, RenameCurrentLogger("test-org/test-proj/test-stack", "update-id"),
+		"a best-effort logging failure must never abort the update and leak its lock")
+}
+
+// failNextLogRename makes the next rename of the log file fail, leaving its
+// handle closed — the state a transient sharing violation produces on Windows.
+// The returned func undoes the injection.
+func failNextLogRename(t *testing.T, path string) (restore func()) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		// os.Open opens without FILE_SHARE_DELETE on Windows, so holding this
+		// handle makes any rename of the file fail — the real mechanism behind the
+		// CI flake (an AV/indexer transiently holding the just-closed log file).
+		f, err := os.Open(path)
+		require.NoError(t, err)
+		return func() { _ = f.Close() }
+	}
+	// Elsewhere, an open handle doesn't block renames, so make the directory
+	// read-only instead.
+	dir := filepath.Dir(path)
+	require.NoError(t, os.Chmod(dir, 0o500))
+	return func() { require.NoError(t, os.Chmod(dir, 0o700)) }
+}
+
 // TestRenameWhileWriting exercises renaming the live log file while concurrent
 // writes are in flight, both before and after the upgrade to encrypted mode.
 // On Windows a file open by the process cannot be renamed, so the rename must
@@ -130,7 +198,7 @@ func TestUpgradeToEncryptedDoesNotDeadlock(t *testing.T) {
 func TestRenameWhileWriting(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
-	l, err := StartLogging(t.Context(), nil)
+	l, err := StartLogging(t.Context(), nil, "")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = l.Close() })
 

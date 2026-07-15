@@ -27,19 +27,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest // This test uses the global backendInstance variable
+//nolint:paralleltest // This test uses the global login manager
 func TestPackagePublishCmd_Run(t *testing.T) {
 	tests := []struct {
 		name                  string
@@ -361,7 +360,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				},
 			}
 
-			testutil.MockBackendInstance(t, &backend.MockBackend{
+			mockCurrentBackend(t, &backend.MockBackend{
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					return mockCloudRegistry, nil
 				},
@@ -395,9 +394,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // This test uses the global backendInstance variable
+//nolint:paralleltest // This test uses the global login manager
 func TestPackagePublishCmd_IOErrors(t *testing.T) {
-	t.Parallel()
 	validSchema := &schema.PackageSpec{
 		Name:      "testpkg",
 		Publisher: "testpublisher",
@@ -455,7 +453,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 			}
 
 			// Mock the backend
-			testutil.MockBackendInstance(t, &backend.MockBackend{
+			mockCurrentBackend(t, &backend.MockBackend{
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					return &backend.MockCloudRegistry{
 						PublishPackageF: func(ctx context.Context, op apitype.PackagePublishOp) error {
@@ -486,7 +484,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // This test uses the global backendInstance variable
+//nolint:paralleltest // This test uses the global login manager
 func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 	validSchema := &schema.PackageSpec{
 		Name:      "testpkg",
@@ -502,7 +500,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 		{
 			name: "error getting package registry",
 			setupBackend: func(t *testing.T) {
-				testutil.MockBackendInstance(t, &backend.MockBackend{
+				mockCurrentBackend(t, &backend.MockBackend{
 					GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 						return nil, errors.New("failed to get package registry")
 					},
@@ -553,8 +551,8 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 
 func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
 	return &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) { return nil, readProjectErr },
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) { return nil, readProjectErr },
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return nil, "", readProjectErr
 		},
 	}

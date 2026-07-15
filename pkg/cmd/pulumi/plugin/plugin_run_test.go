@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +36,7 @@ func testSetup(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServ
 
 	ctx := t.Context()
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), nil, nil, nil, nil,
-		schema.NewLoaderServerFromContext, nil)
+		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { pluginHost.Close() })
 	pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil)
@@ -78,7 +78,7 @@ func TestNewInstallPluginFunc_DisabledAcquisition(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
 	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), nil, nil, nil, nil,
-		schema.NewLoaderServerFromContext, nil)
+		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	defer pluginHost.Close()
 	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil)
@@ -98,7 +98,7 @@ func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), nil, nil, nil, nil,
-		schema.NewLoaderServerFromContext, nil)
+		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	defer pluginHost.Close()
 	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil)

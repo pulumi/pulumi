@@ -244,7 +244,7 @@ func (cmd *stackMigrateCmd) Run(
 		return err
 	}
 
-	project, root, err := ws.ReadProject()
+	project, root, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}

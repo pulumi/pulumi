@@ -30,13 +30,13 @@ import (
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	resource_testing "github.com/pulumi/pulumi/pkg/v3/resource/testing"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	resource_testing "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -121,6 +121,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			resource.BeforeCreate: {"hook1"},
 			resource.AfterDelete:  {"hook2"},
 		},
+		SnippetID: "",
 	}.Make()
 	dep, err := SerializeResource(t.Context(), res, config.NopEncrypter, false /* showSecrets */)
 	require.NoError(t, err)
@@ -305,6 +306,17 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 			expectedVersion:  4,
 			expectedFeatures: []string{"taint"},
 		},
+		{
+			name: "v4 deployment with extension parameterization",
+			resources: []*resource.State{
+				{
+					URN:          "urn1",
+					ExtensionRef: "ref-1",
+				},
+			},
+			expectedVersion:  4,
+			expectedFeatures: []string{"extensionParameterization"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -431,6 +443,43 @@ func TestSnippetRoundTrip(t *testing.T) {
 	roundTripped, err := DeserializeUntypedDeployment(ctx, untyped, b64.Base64SecretsProvider)
 	require.NoError(t, err)
 	require.Equal(t, snap.Snippets, roundTripped.Snippets)
+}
+
+// TestResourceSnippetIDRoundTrip verifies that a resource carrying a SnippetID round-trips through
+// an untyped deployment, passes schema validation, and triggers the "snippets" feature flag even
+// when the snapshot has no Snippets attached (the resource is orphaned from a deleted snippet).
+func TestResourceSnippetIDRoundTrip(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	const snippetID = "89ed2ff3-1139-54c2-b53b-c3d9fb860da6"
+	res := &resource.State{
+		Type:      tokens.Type("pkgA:index:res"),
+		URN:       resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
+		Custom:    true,
+		Inputs:    resource.PropertyMap{"propA": resource.NewProperty(true)},
+		Outputs:   resource.PropertyMap{},
+		SnippetID: snippetID,
+	}
+
+	snap := &deploy.Snapshot{Resources: []*resource.State{res}}
+
+	untyped, err := SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+	require.Equal(t, DeploymentSchemaVersionLatest, untyped.Version,
+		"presence of SnippetID on a resource should trigger the latest schema version")
+	require.Equal(t, []string{snippetsFeature}, untyped.Features,
+		"presence of SnippetID on a resource should advertise the snippets feature")
+	require.NoError(t, ValidateUntypedDeployment(untyped),
+		"resource carrying snippetID must pass schema validation")
+
+	// Make sure the serialized JSON actually contains the field — guards against silent omission.
+	require.Contains(t, string(untyped.Deployment), `"snippetID":"`+snippetID+`"`)
+
+	roundTripped, err := DeserializeUntypedDeployment(ctx, untyped, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	require.Len(t, roundTripped.Resources, 1)
+	require.Equal(t, snippetID, roundTripped.Resources[0].SnippetID)
 }
 
 // TestDeserializeUntypedDeploymentFeatures tests that the deserializer does not error for features that are supported.

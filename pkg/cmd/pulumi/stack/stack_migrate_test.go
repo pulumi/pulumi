@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,9 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -50,51 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-// fakeHTTPStateBackend is a minimal stub that satisfies httpstate.Backend so the
-// `targetBE.(httpstate.Backend)` assertion in shouldForceTargetSecretsRewrite resolves true.
-// Methods that aren't called by the gating logic panic if invoked; tests using this stub
-// should only exercise paths that don't reach them.
-type fakeHTTPStateBackend struct {
-	*backend.MockBackend
-}
-
-func (b *fakeHTTPStateBackend) CloudURL() string { return "https://api.pulumi.com" }
-
-func (b *fakeHTTPStateBackend) StackConsoleURL(_ backend.StackReference) (string, error) {
-	return "", nil
-}
-
-func (b *fakeHTTPStateBackend) Client() *client.Client { return nil }
-
-func (b *fakeHTTPStateBackend) Capabilities(_ context.Context) apitype.Capabilities {
-	return apitype.Capabilities{}
-}
-
-func (b *fakeHTTPStateBackend) RunDeployment(
-	_ context.Context, _ backend.StackReference, _ apitype.CreateDeploymentRequest,
-	_ display.Options, _ string, _ bool,
-) error {
-	panic("RunDeployment: not implemented in fakeHTTPStateBackend")
-}
-
-func (b *fakeHTTPStateBackend) Search(
-	_ context.Context, _ string, _ *apitype.PulumiQueryRequest,
-) (*apitype.ResourceSearchResponse, error) {
-	panic("Search: not implemented in fakeHTTPStateBackend")
-}
-
-func (b *fakeHTTPStateBackend) NaturalLanguageSearch(
-	_ context.Context, _ string, _ string,
-) (*apitype.ResourceSearchResponse, error) {
-	panic("NaturalLanguageSearch: not implemented in fakeHTTPStateBackend")
-}
-
-func (b *fakeHTTPStateBackend) PromptAI(
-	_ context.Context, _ httpstate.AIPromptRequestBody,
-) (*http.Response, error) {
-	panic("PromptAI: not implemented in fakeHTTPStateBackend")
-}
 
 // prefixCrypter is a test crypter that wraps plaintexts with a fixed tag so a test can assert
 // which crypter produced which ciphertext.
@@ -328,13 +280,100 @@ func runMigrateWithOutput(
 	return stdout.String(), err
 }
 
+type migrationLoginManager struct {
+	cmdBackend.LoginManager
+	sourceURL string
+	targetURL string
+	targetBE  backend.Backend
+}
+
+func withMigrationTarget(
+	sourceURL string, sourceLM cmdBackend.LoginManager, targetBE backend.Backend,
+) cmdBackend.LoginManager {
+	return &migrationLoginManager{
+		LoginManager: sourceLM,
+		sourceURL:    sourceURL,
+		targetURL:    targetBE.URL(),
+		targetBE:     targetBE,
+	}
+}
+
+func migrationProject(name tokens.PackageName) *workspace.Project {
+	return &workspace.Project{
+		Name:    name,
+		Backend: &workspace.ProjectBackend{URL: "https://api.pulumi.com"},
+	}
+}
+
+func (lm *migrationLoginManager) Login(
+	ctx context.Context,
+	ws pkgWorkspace.Context,
+	sink diag.Sink,
+	url string,
+	project *workspace.Project,
+	setCurrent bool,
+	insecure bool,
+	color colors.Colorization,
+) (backend.Backend, error) {
+	if url == lm.sourceURL {
+		return lm.LoginManager.Login(ctx, ws, sink, url, project, setCurrent, insecure, color)
+	}
+	if url == lm.targetURL {
+		return lm.targetBE, nil
+	}
+	return nil, fmt.Errorf(
+		"unexpected backend URL %q for migration login (source %q, target %q)",
+		url, lm.sourceURL, lm.targetURL,
+	)
+}
+
+func TestMigrationLoginManagerRoutesExactURLs(t *testing.T) {
+	t.Parallel()
+	sourceURL := "file:///tmp/source"
+	sourceBE := &backend.MockBackend{}
+	targetBE := &backend.MockBackend{URLF: func() string { return "https://api.pulumi.com" }}
+	var sourceCalls int
+	sourceLM := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project,
+			bool, bool, colors.Colorization,
+		) (backend.Backend, error) {
+			sourceCalls++
+			return sourceBE, nil
+		},
+	}
+	login := func(lm cmdBackend.LoginManager, url string) (backend.Backend, error) {
+		return lm.Login(t.Context(), &pkgWorkspace.MockContext{}, nil, url, nil, false, false, colors.Never)
+	}
+	lm := withMigrationTarget(sourceURL, sourceLM, targetBE)
+
+	got, err := login(lm, sourceURL)
+	require.NoError(t, err)
+	assert.Same(t, sourceBE, got)
+	got, err = login(lm, targetBE.URL())
+	require.NoError(t, err)
+	assert.Same(t, targetBE, got)
+	got, err = login(lm, "https://unexpected.example.com")
+	require.Error(t, err)
+	assert.Nil(t, got)
+	assert.Contains(t, err.Error(), "unexpected backend URL")
+	assert.Equal(t, 1, sourceCalls)
+
+	sameURLTarget := &backend.MockBackend{URLF: func() string { return sourceURL }}
+	sameURLLM := withMigrationTarget(sourceURL, sourceLM, sameURLTarget)
+	got, err = login(sameURLLM, sourceURL)
+	require.NoError(t, err)
+	assert.Same(t, sourceBE, got)
+	assert.Equal(t, 2, sourceCalls)
+}
+
 // shouldForceTargetSecretsRewrite gates the call to CreateSecretsManagerForExistingStack.
 // Cloud + default-provider must trigger; everything else must skip (otherwise non-cloud /
 // non-default flows re-prompt for passphrase).
 func TestShouldForceTargetSecretsRewrite(t *testing.T) {
 	t.Parallel()
 
-	cloud := &fakeHTTPStateBackend{MockBackend: &backend.MockBackend{}}
+	cloud := &httpstate.MockHTTPBackend{}
 	diy := &backend.MockBackend{}
 
 	tests := []struct {
@@ -402,7 +441,7 @@ func TestStackMigrate_RequiresURLArg(t *testing.T) {
 	t.Parallel()
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return nil, "", workspace.ErrProjectNotFound
 		},
 	}
@@ -417,7 +456,7 @@ func TestStackMigrate_RejectsInvalidSecretsProvider(t *testing.T) {
 	t.Parallel()
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return nil, "", workspace.ErrProjectNotFound
 		},
 	}
@@ -434,7 +473,7 @@ func TestStackMigrate_RejectsInvalidSecretsProvider(t *testing.T) {
 
 func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 	sourceURL := "file:///tmp/source"
-	project := &workspace.Project{Name: "proj"}
+	project := migrationProject("proj")
 
 	newSourceBackend := func() *backend.MockBackend {
 		return &backend.MockBackend{
@@ -478,7 +517,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 	}{
 		{
 			name: "read project error",
-			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
 				return nil, "", errors.New("read boom")
 			}},
 			lm:         &cmdBackend.MockLoginManager{},
@@ -487,7 +526,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 		},
 		{
 			name: "source login error",
-			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
 				return nil, "", workspace.ErrProjectNotFound
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -500,7 +539,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 		},
 		{
 			name: "source parse error",
-			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
 				return project, "Pulumi.yaml", nil
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -517,7 +556,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 		},
 		{
 			name: "source lookup error",
-			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
 				return project, "Pulumi.yaml", nil
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -534,7 +573,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 		},
 		{
 			name: "source missing",
-			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
 				return project, "Pulumi.yaml", nil
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -551,7 +590,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 		},
 		{
 			name: "target validate error",
-			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
 				return project, "Pulumi.yaml", nil
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -568,7 +607,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 		},
 		{
 			name: "target parse error",
-			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
 				return project, "Pulumi.yaml", nil
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -587,7 +626,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 		},
 		{
 			name: "target lookup error",
-			ws: &pkgWorkspace.MockContext{ReadProjectF: func() (*workspace.Project, string, error) {
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
 				return project, "Pulumi.yaml", nil
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
@@ -606,12 +645,9 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 		},
 	}
 
-	oldBE := cmdBackend.BackendInstance
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-	for _, tt := range tests { //nolint:paralleltest // subtests mutate cmdBackend.BackendInstance.
+	for _, tt := range tests { //nolint:paralleltest // subtests share the test's workspace setup.
 		t.Run(tt.name, func(t *testing.T) {
-			cmdBackend.BackendInstance = tt.targetBE
-			err := runMigrate(t, tt.ws, tt.lm, []string{sourceURL, "dev"})
+			err := runMigrate(t, tt.ws, withMigrationTarget(sourceURL, tt.lm, tt.targetBE), []string{sourceURL, "dev"})
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantSubstr)
 		})
@@ -659,12 +695,11 @@ func TestStackMigrate_PromptsAndCancelsSameNameMigration(t *testing.T) { //nolin
 		},
 		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) { return nil, nil },
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj", Runtime: workspace.NewProjectRuntimeInfo("mock", nil)}, wd, nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			project := migrationProject("proj")
+			project.Runtime = workspace.NewProjectRuntimeInfo("mock", nil)
+			return project, wd, nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -675,7 +710,7 @@ func TestStackMigrate_PromptsAndCancelsSameNameMigration(t *testing.T) { //nolin
 		},
 	}
 
-	cmd := newStackMigrateCmd(ws, lm)
+	cmd := newStackMigrateCmd(ws, withMigrationTarget("file:///tmp/source", lm, targetBE))
 	cmd.SetArgs([]string{"file:///tmp/source", "dev"})
 	cmd.SetIn(strings.NewReader("no\n"))
 	var stdout strings.Builder
@@ -689,7 +724,6 @@ func TestStackMigrate_PromptsAndCancelsSameNameMigration(t *testing.T) { //nolin
 	assert.Contains(t, stdout.String(), "Migration cancelled")
 }
 
-// Mutates cmdBackend.BackendInstance, so cannot be parallel.
 func TestStackMigrate_RejectsSameBackend(t *testing.T) { //nolint: paralleltest
 	url := "file:///var/state"
 
@@ -697,13 +731,12 @@ func TestStackMigrate_RejectsSameBackend(t *testing.T) { //nolint: paralleltest
 		URLF:  func() string { return url },
 		NameF: func() string { return "diy" },
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return nil, "", workspace.ErrProjectNotFound
+		},
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{Current: url}, nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -717,7 +750,7 @@ func TestStackMigrate_RejectsSameBackend(t *testing.T) { //nolint: paralleltest
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{url, "some-stack"})
+	err := runMigrate(t, ws, withMigrationTarget(url, lm, be), []string{url, "some-stack"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "source and target backends are the same")
 }
@@ -772,20 +805,16 @@ func TestStackMigrate_RejectsExistingTargetStack(t *testing.T) { //nolint: paral
 			}, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -796,7 +825,12 @@ func TestStackMigrate_RejectsExistingTargetStack(t *testing.T) { //nolint: paral
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
+	err := runMigrate(
+		t,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev", "--yes"},
+	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already exists")
 }
@@ -909,20 +943,16 @@ func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralle
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -936,7 +966,12 @@ func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralle
 	srcConfigBefore, err := os.ReadFile("Pulumi.dev.yaml")
 	require.NoError(t, err)
 
-	err = runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
+	err = runMigrate(
+		t,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev", "--yes"},
+	)
 	require.Error(t, err)
 	assert.True(t, tgtCreated, "target stack should have been created before the failure")
 	assert.True(t, tgtRemoved, "rollback should have removed the partially-created target stack")
@@ -1051,20 +1086,16 @@ func TestStackMigrate_RollsBackTargetConfigOnImportFailure(t *testing.T) { //nol
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -1075,7 +1106,7 @@ func TestStackMigrate_RollsBackTargetConfigOnImportFailure(t *testing.T) { //nol
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{
+	err := runMigrate(t, ws, withMigrationTarget("file:///tmp/source", lm, targetBE), []string{
 		"file:///tmp/source", "dev",
 		"--target", "dev-tgt",
 		"--yes",
@@ -1177,20 +1208,16 @@ func TestStackMigrate_DoesNotRollbackOnAlreadyExistsRace(t *testing.T) { //nolin
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -1201,7 +1228,12 @@ func TestStackMigrate_DoesNotRollbackOnAlreadyExistsRace(t *testing.T) { //nolin
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
+	err := runMigrate(
+		t,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev", "--yes"},
+	)
 	require.Error(t, err)
 	assert.False(t, removeCalled,
 		"RemoveStack must not be called when CreateStack reports StackAlreadyExistsError")
@@ -1273,7 +1305,7 @@ func TestStackMigrate_ReencryptsConfigSecret(t *testing.T) { //nolint: parallelt
 		},
 	}
 
-	var targetBE *backend.MockBackend
+	var targetBE *httpstate.MockHTTPBackend
 	tgtStack := &backend.MockStack{
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
@@ -1289,48 +1321,46 @@ func TestStackMigrate_ReencryptsConfigSecret(t *testing.T) { //nolint: parallelt
 	}
 
 	var imported *apitype.UntypedDeployment
-	targetBE = &backend.MockBackend{
-		URLF:               func() string { return "https://api.pulumi.com" },
-		NameF:              func() string { return "pulumi.com" },
-		ValidateStackNameF: func(s string) error { return nil },
-		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
-			return nil, nil
-		},
-		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
-			return &backend.MockStackReference{
-				StringV:             s,
-				NameV:               tokens.MustParseStackName(s),
-				FullyQualifiedNameV: tokens.QName(s),
-			}, nil
-		},
-		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
-			return nil, nil
-		},
-		CreateStackF: func(
-			ctx context.Context, ref backend.StackReference, root string,
-			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
-		) (backend.Stack, error) {
-			return tgtStack, nil
-		},
-		ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
-			imported = deployment
-			return nil
+	targetBE = &httpstate.MockHTTPBackend{
+		MockBackend: backend.MockBackend{
+			URLF:               func() string { return "https://api.pulumi.com" },
+			NameF:              func() string { return "pulumi.com" },
+			ValidateStackNameF: func(s string) error { return nil },
+			DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+				return nil, nil
+			},
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				return &backend.MockStackReference{
+					StringV:             s,
+					NameV:               tokens.MustParseStackName(s),
+					FullyQualifiedNameV: tokens.QName(s),
+				}, nil
+			},
+			GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+				return nil, nil
+			},
+			CreateStackF: func(
+				ctx context.Context, ref backend.StackReference, root string,
+				initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+			) (backend.Stack, error) {
+				return tgtStack, nil
+			},
+			ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
+				imported = deployment
+				return nil
+			},
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -1341,7 +1371,12 @@ func TestStackMigrate_ReencryptsConfigSecret(t *testing.T) { //nolint: parallelt
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
+	err := runMigrate(
+		t,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev", "--yes"},
+	)
 	require.NoError(t, err)
 
 	// Pulumi.dev.yaml (shared file in same-name migration) should now contain the secret
@@ -1462,7 +1497,7 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 		},
 	}
 
-	var targetBE *backend.MockBackend
+	var targetBE *httpstate.MockHTTPBackend
 	tgtStack := &backend.MockStack{
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
@@ -1478,48 +1513,46 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 	}
 
 	var imported *apitype.UntypedDeployment
-	targetBE = &backend.MockBackend{
-		URLF:               func() string { return "https://api.pulumi.com" },
-		NameF:              func() string { return "pulumi.com" },
-		ValidateStackNameF: func(s string) error { return nil },
-		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
-			return nil, nil
-		},
-		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
-			return &backend.MockStackReference{
-				StringV:             s,
-				NameV:               tokens.MustParseStackName(s),
-				FullyQualifiedNameV: tokens.QName(s),
-			}, nil
-		},
-		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
-			return nil, nil
-		},
-		CreateStackF: func(
-			ctx context.Context, ref backend.StackReference, root string,
-			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
-		) (backend.Stack, error) {
-			return tgtStack, nil
-		},
-		ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
-			imported = deployment
-			return nil
+	targetBE = &httpstate.MockHTTPBackend{
+		MockBackend: backend.MockBackend{
+			URLF:               func() string { return "https://api.pulumi.com" },
+			NameF:              func() string { return "pulumi.com" },
+			ValidateStackNameF: func(s string) error { return nil },
+			DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+				return nil, nil
+			},
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				return &backend.MockStackReference{
+					StringV:             s,
+					NameV:               tokens.MustParseStackName(s),
+					FullyQualifiedNameV: tokens.QName(s),
+				}, nil
+			},
+			GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+				return nil, nil
+			},
+			CreateStackF: func(
+				ctx context.Context, ref backend.StackReference, root string,
+				initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+			) (backend.Stack, error) {
+				return tgtStack, nil
+			},
+			ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
+				imported = deployment
+				return nil
+			},
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -1542,7 +1575,12 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 	cobraCmd.SetOut(io.Discard)
 	cobraCmd.SetErr(io.Discard)
 
-	err = smcmd.Run(cobraCmd, ws, lm, []string{"file:///tmp/source", "dev"})
+	err = smcmd.Run(
+		cobraCmd,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev"},
+	)
 	require.NoError(t, err)
 
 	require.NotNil(t, imported, "ImportDeployment should have been called")
@@ -1652,20 +1690,16 @@ func TestStackMigrate_BacksUpSameNameConfigFile(t *testing.T) { //nolint: parall
 			return nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -1676,7 +1710,12 @@ func TestStackMigrate_BacksUpSameNameConfigFile(t *testing.T) { //nolint: parall
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
+	err := runMigrate(
+		t,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev", "--yes"},
+	)
 	require.NoError(t, err)
 
 	matches, err := filepath.Glob("Pulumi.dev.yaml.bak.*")
@@ -1777,20 +1816,16 @@ func TestStackMigrate_BackupAvoidsClobberingExistingBak(t *testing.T) { //nolint
 			return nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -1801,7 +1836,12 @@ func TestStackMigrate_BackupAvoidsClobberingExistingBak(t *testing.T) { //nolint
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
+	err := runMigrate(
+		t,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev", "--yes"},
+	)
 	require.NoError(t, err)
 
 	// Original .bak preserved.
@@ -1933,20 +1973,16 @@ func TestStackMigrate_RewritesURNsOnRename(t *testing.T) { //nolint: paralleltes
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -1970,7 +2006,12 @@ func TestStackMigrate_RewritesURNsOnRename(t *testing.T) { //nolint: paralleltes
 	cobraCmd.SetOut(io.Discard)
 	cobraCmd.SetErr(io.Discard)
 
-	err = smcmd.Run(cobraCmd, ws, lm, []string{"file:///tmp/source", "dev"})
+	err = smcmd.Run(
+		cobraCmd,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev"},
+	)
 	require.NoError(t, err)
 	require.NotNil(t, imported)
 	importedJSON := string(imported.Deployment)
@@ -2140,20 +2181,16 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -2178,7 +2215,12 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 	cobraCmd.SetOut(io.Discard)
 	cobraCmd.SetErr(io.Discard)
 
-	err = smcmd.Run(cobraCmd, ws, lm, []string{"file:///tmp/source", "dev"})
+	err = smcmd.Run(
+		cobraCmd,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev"},
+	)
 	require.NoError(t, err)
 	require.NotNil(t, imported)
 	got := string(imported.Deployment)
@@ -2326,20 +2368,16 @@ func TestStackMigrate_RewritesProjectOnTargetWithNewProject(t *testing.T) { //no
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -2362,7 +2400,12 @@ func TestStackMigrate_RewritesProjectOnTargetWithNewProject(t *testing.T) { //no
 	cobraCmd.SetOut(io.Discard)
 	cobraCmd.SetErr(io.Discard)
 
-	err = smcmd.Run(cobraCmd, ws, lm, []string{"file:///tmp/source", "dev"})
+	err = smcmd.Run(
+		cobraCmd,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev"},
+	)
 	require.NoError(t, err)
 	require.NotNil(t, imported)
 	got := string(imported.Deployment)
@@ -2474,20 +2517,16 @@ func TestStackMigrate_RollsBackOnSaveStackConfigError(t *testing.T) { //nolint: 
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -2498,7 +2537,7 @@ func TestStackMigrate_RollsBackOnSaveStackConfigError(t *testing.T) { //nolint: 
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{
+	err := runMigrate(t, ws, withMigrationTarget("file:///tmp/source", lm, targetBE), []string{
 		"file:///tmp/source", "dev",
 		"--secrets-provider", "passphrase",
 		"--yes",
@@ -2597,20 +2636,16 @@ func TestStackMigrate_WarnsWhenSaveStackConfigCleanupProbeFails(t *testing.T) { 
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -2621,7 +2656,7 @@ func TestStackMigrate_WarnsWhenSaveStackConfigCleanupProbeFails(t *testing.T) { 
 		},
 	}
 
-	stdout, err := runMigrateWithOutput(t, ws, lm, []string{
+	stdout, err := runMigrateWithOutput(t, ws, withMigrationTarget("file:///tmp/source", lm, targetBE), []string{
 		"file:///tmp/source", "dev",
 		"--secrets-provider", "passphrase",
 		"--yes",
@@ -2751,20 +2786,16 @@ func TestStackMigrate_RenameLegacyRefFallsBackToLocalProject(t *testing.T) { //n
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -2787,7 +2818,12 @@ func TestStackMigrate_RenameLegacyRefFallsBackToLocalProject(t *testing.T) { //n
 	cobraCmd.SetOut(io.Discard)
 	cobraCmd.SetErr(io.Discard)
 
-	err = smcmd.Run(cobraCmd, ws, lm, []string{"file:///tmp/source", "dev"})
+	err = smcmd.Run(
+		cobraCmd,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev"},
+	)
 	require.NoError(t, err)
 	require.NotNil(t, imported)
 	got := string(imported.Deployment)
@@ -2889,13 +2925,12 @@ func TestStackMigrate_RefusesLegacyRenameWithoutProject(t *testing.T) { //nolint
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return nil, "", workspace.ErrProjectNotFound
+		},
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{Current: "https://api.pulumi.com"}, nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -2906,7 +2941,12 @@ func TestStackMigrate_RefusesLegacyRenameWithoutProject(t *testing.T) { //nolint
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--target", "dev-renamed", "--yes"})
+	err := runMigrate(
+		t,
+		ws,
+		withMigrationTarget("file:///tmp/source", lm, targetBE),
+		[]string{"file:///tmp/source", "dev", "--target", "dev-renamed", "--yes"},
+	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires a source project name")
 	assert.Contains(t, err.Error(), "Run this command from a directory containing the source project's Pulumi.yaml")
@@ -3011,20 +3051,16 @@ func TestStackMigrate_ReplacesPreExistingTargetConfig(t *testing.T) { //nolint: 
 			return false, nil
 		},
 	}
-	oldBE := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = targetBE
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
-
 	ws := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "dev"}
 				},
 			}, nil
 		},
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return migrationProject("proj"), "Pulumi.yaml", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -3035,7 +3071,7 @@ func TestStackMigrate_ReplacesPreExistingTargetConfig(t *testing.T) { //nolint: 
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{
+	err := runMigrate(t, ws, withMigrationTarget("file:///tmp/source", lm, targetBE), []string{
 		"file:///tmp/source", "dev", "--target", "dev-tgt", "--yes",
 	})
 	require.NoError(t, err)

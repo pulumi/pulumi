@@ -497,7 +497,9 @@ const file_pulumi_plugin_proto_rawDesc = "" +
 	"\x06server\x18\x05 \x01(\tR\x06server\x1a<\n" +
 	"\x0eChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x012[\n" +
+	"\x0fPackageResolver\x12H\n" +
+	"\x0eResolvePackage\x12\x16.pulumirpc.PackageSpec\x1a\x1c.pulumirpc.PackageDependency\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
 	file_pulumi_plugin_proto_rawDescOnce sync.Once
@@ -529,8 +531,10 @@ var file_pulumi_plugin_proto_depIdxs = []int32{
 	3, // 2: pulumirpc.PackageDependency.parameterization:type_name -> pulumirpc.PackageParameterization
 	3, // 3: pulumirpc.PackageDependency.extension:type_name -> pulumirpc.PackageParameterization
 	8, // 4: pulumirpc.PackageSpec.checksums:type_name -> pulumirpc.PackageSpec.ChecksumsEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
+	5, // 5: pulumirpc.PackageResolver.ResolvePackage:input_type -> pulumirpc.PackageSpec
+	4, // 6: pulumirpc.PackageResolver.ResolvePackage:output_type -> pulumirpc.PackageDependency
+	6, // [6:7] is the sub-list for method output_type
+	5, // [5:6] is the sub-list for method input_type
 	5, // [5:5] is the sub-list for extension type_name
 	5, // [5:5] is the sub-list for extension extendee
 	0, // [0:5] is the sub-list for field type_name
@@ -549,7 +553,7 @@ func file_pulumi_plugin_proto_init() {
 			NumEnums:      0,
 			NumMessages:   9,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_pulumi_plugin_proto_goTypes,
 		DependencyIndexes: file_pulumi_plugin_proto_depIdxs,

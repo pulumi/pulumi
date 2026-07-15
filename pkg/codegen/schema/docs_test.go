@@ -16,8 +16,8 @@ package schema
 
 import (
 	"encoding/json"
+	"io/fs"
 	"net/url"
-	"os"
 	"path"
 	"path/filepath"
 	"testing"
@@ -142,7 +142,8 @@ func getDocsForPackage(pkg *Package) []doc {
 func TestParseAndRenderDocs(t *testing.T) {
 	t.Parallel()
 
-	files, err := os.ReadDir(testdataPath)
+	schemaFS := utils.SchemaFS()
+	files, err := fs.ReadDir(schemaFS, ".")
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
@@ -157,10 +158,9 @@ func TestParseAndRenderDocs(t *testing.T) {
 		t.Run(f.Name(), func(t *testing.T) {
 			t.Parallel()
 
-			path := filepath.Join(testdataPath, f.Name())
-			contents, err := os.ReadFile(path)
+			contents, err := fs.ReadFile(schemaFS, f.Name())
 			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
+				t.Fatalf("could not read %v: %v", f.Name(), err)
 			}
 
 			var spec PackageSpec

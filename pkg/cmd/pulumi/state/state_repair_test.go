@@ -304,12 +304,12 @@ func newStateRepairCmdFixture(
 		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			sm := b64.NewBase64SecretsManager()
-			return deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil), nil
+			return deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, nil), nil
 		},
 	}
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{Backend: &workspace.ProjectBackend{URL: "file://url"}}, "", nil
 		},
 	}

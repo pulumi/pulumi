@@ -40,8 +40,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -2505,7 +2505,7 @@ func (pkg *pkgContext) genResource(
 	assignment := ":="
 	packageRef := ""
 	packageArg := ""
-	if def.Parameterization != nil {
+	if def.Parameterization != nil || def.ExtensionParameterization != nil {
 		assignment = "="
 		packageRef = "Package"
 		packageArg = "ref, "
@@ -2546,7 +2546,7 @@ func (pkg *pkgContext) genResource(
 		assignment := ":="
 		packageRef := ""
 		packageArg := ""
-		if def.Parameterization != nil {
+		if def.Parameterization != nil || def.ExtensionParameterization != nil {
 			assignment = "="
 			packageRef = "Package"
 			packageArg = "ref, "
@@ -2727,7 +2727,7 @@ func (pkg *pkgContext) genResource(
 		}
 		packageRef := ""
 		packageArg := ""
-		if def.Parameterization != nil {
+		if def.Parameterization != nil || def.ExtensionParameterization != nil {
 			packageRef = "Package"
 			packageArg = ", ref"
 			callOutput := outputsType
@@ -3138,7 +3138,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 		assignment := ":="
 		packageRef := ""
 		packageArg := ""
-		if def.Parameterization != nil {
+		if def.Parameterization != nil || def.ExtensionParameterization != nil {
 			assignment = "="
 			packageRef = "Package"
 			packageArg = "ref, "
@@ -3449,7 +3449,7 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		fmt.Fprintf(w, "			args := v.(%s)\n", pkg.functionArgsTypeName(f))
 		fmt.Fprintf(w, "			options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
 
-		if def.Parameterization != nil {
+		if def.Parameterization != nil || def.ExtensionParameterization != nil {
 			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
 			if err != nil {
 				return err
@@ -3482,7 +3482,7 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		fmt.Fprintf(w, "	return pulumi.ToOutput(0).ApplyT(func(int) (%s, error) {\n", resultTypeName)
 		fmt.Fprintf(w, "		options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
 
-		if def.Parameterization != nil {
+		if def.Parameterization != nil || def.ExtensionParameterization != nil {
 			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
 			if err != nil {
 				return err
@@ -4751,7 +4751,10 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 		}
 	}
 
-	scanResource(def.Provider)
+	// Extension-parameterized packages don't get their own Provider class.
+	if def.ExtensionParameterization == nil {
+		scanResource(def.Provider)
+	}
 	for _, r := range def.Resources {
 		scanResource(r)
 	}
@@ -5076,16 +5079,24 @@ func GeneratePackage(tool string,
 		pulumiPlugin.Version = pkg.Version.String()
 	}
 
-	if pkg.Parameterization != nil {
-		// For a parameterized package the plugin name/version is from the base provider information, not the
-		// top-level package name/version.
+	// For both replacement and extension parameterization the plugin name/version
+	// in pulumi-plugin.json is from the base provider, not the top-level package.
+	if param := pkg.Parameterization; param != nil {
 		pulumiPlugin.Parameterization = &plugin.PulumiParameterizationJSON{
 			Name:    pulumiPlugin.Name,
 			Version: pulumiPlugin.Version,
-			Value:   pkg.Parameterization.Parameter,
+			Value:   param.Parameter,
 		}
-		pulumiPlugin.Name = pkg.Parameterization.BasePlugin.Name
-		pulumiPlugin.Version = pkg.Parameterization.BasePlugin.Version.String()
+		pulumiPlugin.Name = param.BasePlugin.Name
+		pulumiPlugin.Version = param.BasePlugin.Version.String()
+	} else if param := pkg.ExtensionParameterization; param != nil {
+		pulumiPlugin.ExtensionParameterization = &plugin.PulumiParameterizationJSON{
+			Name:    pulumiPlugin.Name,
+			Version: pulumiPlugin.Version,
+			Value:   param.Parameter,
+		}
+		pulumiPlugin.Name = param.BaseProvider.Name
+		pulumiPlugin.Version = param.BaseProvider.Version.String()
 	}
 
 	pulumiPluginJSON, err := pulumiPlugin.JSON()
@@ -5395,7 +5406,7 @@ func GeneratePackage(tool string,
 			if err != nil {
 				return nil, err
 			}
-			if def.Parameterization != nil {
+			if def.Parameterization != nil || def.ExtensionParameterization != nil {
 				imports = append(imports, "encoding/base64")
 				importsAndAliases["github.com/pulumi/pulumi/sdk/v3/proto/go"] = "pulumirpc"
 			}
@@ -5450,6 +5461,9 @@ func GeneratePackage(tool string,
 				modulePath = path.Dir(goInfo.ImportBasePath)
 			}
 		}
+		if pkg.ExtensionParameterization != nil {
+			modulePath = pkg.Name
+		}
 
 		var gomod modfile.File
 		err = gomod.AddModuleStmt(modulePath)
@@ -5458,7 +5472,7 @@ func GeneratePackage(tool string,
 		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
 		pulumiVersion := "v3.30.0"
-		if pkg.Parameterization != nil {
+		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 			pulumiVersion = "v3.228.0"
 		}
 		err = gomod.AddRequire(pulumiPackagePath, pulumiVersion)
@@ -5615,12 +5629,16 @@ func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 		versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
 	}
 	// Parameterized schemas _always_ respect schema version.
-	if p.Parameterization != nil {
+	if p.Parameterization != nil || p.ExtensionParameterization != nil {
 		if p.Version == nil {
 			return errors.New("package version is required")
 		}
 		versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
 
+		// The template emits a PkgGetPackageRef function that, on first call per
+		// pulumi.Context, registers the package and caches the returned ref. The
+		// only difference between replacement and extension parameterization is
+		// which proto field carries the blob, hence the %s injection point.
 		const packageRefTemplate string = `
 // PkgGetPackageRef returns the package reference for the current package.
 // The reference is cached per pulumi.Context so that concurrent inline
@@ -5636,7 +5654,7 @@ func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
 			Name: %q,
 			Version: %q,
 			DownloadUrl: %q,
-			Parameterization: &pulumirpc.Parameterization{
+			%s: &pulumirpc.Parameterization{
 				Name: %q,
 				Version: %q,
 				Value: parameter,
@@ -5646,12 +5664,26 @@ func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
 }
 `
 
-		value := base64.StdEncoding.EncodeToString(p.Parameterization.Parameter)
+		var baseProvider schema.BaseProvider
+		var parameter []byte
+		var protoField string
+		switch {
+		case p.Parameterization != nil:
+			baseProvider = schema.BaseProvider{Name: p.Parameterization.BasePlugin.Name, Version: p.Parameterization.BasePlugin.Version}
+			parameter = p.Parameterization.Parameter
+			protoField = "Parameterization"
+		case p.ExtensionParameterization != nil:
+			baseProvider = p.ExtensionParameterization.BaseProvider
+			parameter = p.ExtensionParameterization.Parameter
+			protoField = "Extension"
+		}
+		value := base64.StdEncoding.EncodeToString(parameter)
 		key := fmt.Sprintf("%s:%s", p.Name, p.Version.String())
 		_, err = fmt.Fprintf(w, packageRefTemplate,
 			key,
 			value,
-			p.Parameterization.BasePlugin.Name, p.Parameterization.BasePlugin.Version.String(), p.PluginDownloadURL,
+			baseProvider.Name, baseProvider.Version.String(), p.PluginDownloadURL,
+			protoField,
 			p.Name, p.Version.String(),
 		)
 		if err != nil {

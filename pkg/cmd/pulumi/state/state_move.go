@@ -65,8 +65,9 @@ func newStateMoveCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use:   "move",
-		Short: "Move resources from one stack to another",
+		Use:     "move",
+		Aliases: []string{"mv"},
+		Short:   "Move resources from one stack to another",
 		Long: `Move resources from one stack to another
 
 This command can be used to move resources from one stack to another. This can be useful when
@@ -251,7 +252,8 @@ func (cmd *stateMoveCmd) Run(
 	}
 
 	if len(resourcesToMove) == 0 {
-		return errors.New("no resources found to move")
+		return fmt.Errorf("no resources found to move\n%s",
+			listURNsHint(string(source.Ref().FullyQualifiedName())))
 	}
 
 	sourceDepGraph := graph.NewDependencyGraph(sourceSnapshot.Resources)

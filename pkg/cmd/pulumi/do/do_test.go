@@ -28,10 +28,10 @@ import (
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -878,7 +878,7 @@ func TestCurrentStackIdentity(t *testing.T) {
 
 	mockWS := func(stack string, newErr error) *pkgWorkspace.MockContext {
 		return &pkgWorkspace.MockContext{
-			NewF: func() (pkgWorkspace.W, error) {
+			NewF: func(_ string) (pkgWorkspace.W, error) {
 				if newErr != nil {
 					return nil, newErr
 				}
@@ -926,13 +926,13 @@ func TestDoCmdFunctionInvokeWithStackContext(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name:    tokens.PackageName("my-project"),
 				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
 			}, root, nil
 		},
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "acme/my-project/dev"}
@@ -987,7 +987,7 @@ stack = stack()
 	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	require.NoError(t, cmd.Execute())
 }
 
@@ -1002,7 +1002,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name:    tokens.PackageName("my-project"),
 				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
@@ -1057,7 +1057,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
-		cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 		require.NoError(t, cmd.Execute())
 	})
 
@@ -1075,8 +1075,215 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
-		cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.ErrorContains(t, err, "organization is not supported")
 	})
+}
+
+func TestCleanComment(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "empty",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "no markup",
+			input:    "Function entry point in your code.",
+			expected: "Function entry point in your code.",
+		},
+		{
+			name: "language-choice span renders the canonical camelCase choice",
+			input: "Required if <span pulumi-lang-nodejs=\"`packageType`\" " +
+				"pulumi-lang-python=\"`package_type`\">`packageType`</span> is `Zip`.",
+			expected: "Required if `packageType` is `Zip`.",
+		},
+		{
+			name: "multiple spans on one line are handled independently",
+			input: "Conflicts with <span pulumi-lang-go=\"`imageUri`\">`imageUri`</span> " +
+				"and <span pulumi-lang-go=\"`s3Bucket`\">`s3Bucket`</span>.",
+			expected: "Conflicts with `imageUri` and `s3Bucket`.",
+		},
+		{
+			name:     "span nested in backticks",
+			input:    "Valid values are `[<span pulumi-lang-python=\"x86_64\">\"x8664\"</span>]` and `[\"arm64\"]`.",
+			expected: "Valid values are `[\"x8664\"]` and `[\"arm64\"]`.",
+		},
+		{
+			name:     "literal angle-bracket placeholders are left untouched",
+			input:    "Use the form arn:aws:s3:::<bucket>/<key>.",
+			expected: "Use the form arn:aws:s3:::<bucket>/<key>.",
+		},
+		{
+			name: "a paired env var collapses to the uppercase name",
+			input: "Can also be set using the `HTTP_PROXY` or " +
+				"<span pulumi-lang-nodejs=\"`httpProxy`\" " +
+				"pulumi-lang-python=\"`http_proxy`\">`httpProxy`</span> environment variables.",
+			expected: "Can also be set using the `HTTP_PROXY` environment variable.",
+		},
+		{
+			name:     "a lone env var is left untouched",
+			input:    "Can also be configured using the `AWS_RETRY_MODE` environment variable.",
+			expected: "Can also be configured using the `AWS_RETRY_MODE` environment variable.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expected, cleanComment(tt.input))
+		})
+	}
+}
+
+func TestFlagUsage(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name: "spans are resolved to canonical text and backticks stripped",
+			input: "Conflicts with <span pulumi-lang-nodejs=\"`imageUri`\">`imageUri`</span> " +
+				"and <span pulumi-lang-go=\"`s3Bucket`\">`s3Bucket`</span>.",
+			expected: "Conflicts with imageUri and s3Bucket.",
+		},
+		{
+			name: "span for a literal value keeps the inner text",
+			input: "Defaults to <span pulumi-lang-nodejs=\"`false`\" " +
+				"pulumi-lang-dotnet=\"`False`\">`false`</span>.",
+			expected: "Defaults to false.",
+		},
+		{
+			name: "a paired env var collapses to the uppercase name",
+			input: "Can also be set using the `HTTP_PROXY` or " +
+				"<span pulumi-lang-nodejs=\"`httpProxy`\" " +
+				"pulumi-lang-python=\"`http_proxy`\">`httpProxy`</span> environment variables.",
+			expected: "Can also be set using the HTTP_PROXY environment variable.",
+		},
+		{
+			name:     "inline-code backticks are stripped so pflag does not hijack the placeholder",
+			input:    "...using the `AWS_CA_BUNDLE` environment variable.",
+			expected: "...using the AWS_CA_BUNDLE environment variable.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := flagUsage(tt.input)
+			assert.Equal(t, tt.expected, got)
+			assert.NotContains(t, got, "`", "usage strings must not contain backticks")
+		})
+	}
+}
+
+func TestMergeAttributeLiteralsIntoPCL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		source string
+		attrs  map[string]string
+		want   string
+	}{
+		{
+			name:   "empty file adds attribute",
+			source: "",
+			attrs: map[string]string{
+				"name": `"example"`,
+			},
+			want: `name = "example"
+`,
+		},
+		{
+			name:   "single line without trailing newline adds attribute",
+			source: `name = "example"`,
+			attrs: map[string]string{
+				"size": "3",
+			},
+			want: `name = "example"
+size = 3
+`,
+		},
+		{
+			name:   "overwrites existing attribute",
+			source: `name = "old"` + "\n",
+			attrs: map[string]string{
+				"name": `"new"`,
+			},
+			want: `name = "new"
+`,
+		},
+		{
+			name: "adds new attribute alongside existing attributes",
+			source: `name = "example"
+enabled = true
+`,
+			attrs: map[string]string{
+				"size": "3",
+			},
+			want: `name    = "example"
+enabled = true
+size    = 3
+`,
+		},
+		{
+			name: "overwrites one attribute and adds another",
+			source: `name = "old"
+size = 1
+`,
+			attrs: map[string]string{
+				"name":    `"new"`,
+				"enabled": "false",
+			},
+			want: `name    = "new"
+size    = 1
+enabled = false
+`,
+		},
+		{
+			name: "preserves blocks and comments",
+			source: `# keep this
+name = "old"
+options {
+    protect = true
+}
+`,
+			attrs: map[string]string{
+				"name": `"new"`,
+			},
+			want: `# keep this
+name = "new"
+options {
+  protect = true
+}
+`,
+		},
+		{
+			name:   "nil attrs leaves source unchanged",
+			source: `name = "example"` + "\n",
+			attrs:  nil,
+			want:   `name = "example"` + "\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := mergeAttributeLiteralsIntoPCL([]byte(tt.source), "inputs.pcl", "input", tt.attrs)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(got))
+		})
+	}
 }

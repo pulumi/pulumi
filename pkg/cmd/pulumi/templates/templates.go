@@ -21,14 +21,15 @@ package templates
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -194,11 +195,11 @@ func isTemplatePath(query string) bool {
 	if errors.Is(err, fs.ErrNotExist) {
 		if looksLikePath(query) {
 			const msg = "%q looks like a file path, but no file exists. Assuming to be a template name"
-			logging.Warningf(msg, query)
+			slog.Warn(fmt.Sprintf(msg, query))
 		}
 		return false
 	} else if err != nil {
-		logging.Warningf("unable to stat %q: %s", query, err.Error())
+		slog.Warn("unable to stat", "query", query, "err", err.Error())
 		return false
 	}
 
@@ -206,7 +207,7 @@ func isTemplatePath(query string) bool {
 
 	if !looksLikePath(query) {
 		const msg = `Assuming %[1]q is a file path, use "./%[1]s" to be unambiguous`
-		logging.Warningf(msg, query)
+		slog.Warn(fmt.Sprintf(msg, query))
 	}
 	return err == nil
 }

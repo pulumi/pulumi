@@ -40,22 +40,22 @@ class ExampleComponent(pulumi.ComponentResource):
             opts = pulumi.ResourceOptions(parent=self))
 
         # Example of iterating a list of objects
-        server_passwords: list[Any] = []
-        for range in [{"value": i} for i in range(0, len(args["servers"]))]:
-            server_passwords.append(random.RandomPassword(f"{name}-serverPasswords-{range['value']}",
+        server_passwords: list[random.RandomPassword] = []
+        for server_passwords_range in [{"value": i} for i in range(0, len(args["servers"]))]:
+            server_passwords.append(random.RandomPassword(f"{name}-serverPasswords-{server_passwords_range['value']}",
                 length=16,
                 special=True,
-                override_special=args["servers"][range["value"]]["name"],
+                override_special=args["servers"][server_passwords_range["value"]]["name"],
                 opts = pulumi.ResourceOptions(parent=self)))
 
         # Example of iterating a map of objects
-        zone_passwords: list[Any] = []
-        for range in [{"key": k, "value": v} for [k, v] in sorted((args["deploymentZones"]).items())]:
-            zone_passwords.append(random.RandomPassword(f"{name}-zonePasswords-{range['key']}",
+        zone_passwords: dict[str, random.RandomPassword] = {}
+        for zone_passwords_range in [{"key": k, "value": v} for [k, v] in sorted((args["deploymentZones"]).items())]:
+            zone_passwords[zone_passwords_range['key']] = random.RandomPassword(f"{name}-zonePasswords-{zone_passwords_range['key']}",
                 length=16,
                 special=True,
-                override_special=range["value"]["zone"],
-                opts = pulumi.ResourceOptions(parent=self)))
+                override_special=zone_passwords_range["value"]["zone"],
+                opts = pulumi.ResourceOptions(parent=self))
 
         simple_component = SimpleComponent(f"{name}-simpleComponent", opts = pulumi.ResourceOptions(parent=self))
 

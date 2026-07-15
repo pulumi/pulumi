@@ -28,9 +28,12 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -249,12 +252,24 @@ runtime: nodejs
 				},
 			}
 
-			testutil.MockBackendInstance(t, &backend.MockBackend{
+			mockBackend := &backend.MockBackend{
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					return mockCloudRegistry, nil
 				},
 				GetDefaultOrgF: func(ctx context.Context) (string, error) {
 					return tt.mockOrg, tt.mockOrgErr
+				},
+			}
+			testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+				CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+					url string, project *workspace.Project, setCurrent bool,
+				) (backend.Backend, error) {
+					return mockBackend, nil
+				},
+				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+					url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+				) (backend.Backend, error) {
+					return mockBackend, nil
 				},
 			})
 
@@ -282,9 +297,22 @@ func TestTemplatePublishCmd_BackendErrors(t *testing.T) {
 		{
 			name: "error getting cloud registry",
 			setupBackend: func(t *testing.T) {
-				testutil.MockBackendInstance(t, &backend.MockBackend{
+				mockBackend := &backend.MockBackend{
 					GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 						return nil, errors.New("failed to get cloud registry")
+					},
+				}
+
+				testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+					CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+						url string, project *workspace.Project, setCurrent bool,
+					) (backend.Backend, error) {
+						return mockBackend, nil
+					},
+					LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+						url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+					) (backend.Backend, error) {
+						return mockBackend, nil
 					},
 				})
 			},
@@ -319,8 +347,8 @@ runtime: nodejs
 
 func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
 	return &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) { return nil, readProjectErr },
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		NewF: func(string) (pkgWorkspace.W, error) { return nil, readProjectErr },
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return nil, "", readProjectErr
 		},
 	}
@@ -389,9 +417,22 @@ func TestTemplatePublishCmd_RelativePathBug(t *testing.T) {
 		},
 	}
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		GetCloudRegistryF: func() (backend.CloudRegistry, error) { return mockCloudRegistry, nil },
 		GetDefaultOrgF:    func(ctx context.Context) (string, error) { return "org", nil },
+	}
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
 	})
 
 	cmd := &templatePublishCmd{}
@@ -514,12 +555,25 @@ dist/
 				},
 			}
 
-			testutil.MockBackendInstance(t, &backend.MockBackend{
+			mockBackend := &backend.MockBackend{
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					return mockCloudRegistry, nil
 				},
 				GetDefaultOrgF: func(ctx context.Context) (string, error) {
 					return "default-org", nil
+				},
+			}
+
+			testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+				CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+					url string, project *workspace.Project, setCurrent bool,
+				) (backend.Backend, error) {
+					return mockBackend, nil
+				},
+				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+					url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+				) (backend.Backend, error) {
+					return mockBackend, nil
 				},
 			})
 

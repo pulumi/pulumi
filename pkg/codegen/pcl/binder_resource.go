@@ -76,19 +76,16 @@ func (b *binder) resolveSchemaResourceForBind(
 		pkg, isProvider = name, true
 	}
 
-	var pkgSchema *packageSchema
-	var err error
 	// It is important that we call `loadPackageSchema`/`loadPackageSchemaFromDescriptor`
 	// instead of `getPackageSchema` here  because the version may be wrong. When the version should not be empty,
 	// `loadPackageSchema` will load the default version while `getPackageSchema` will
 	// simply fail. We can't give a populated version field since we have not processed
 	// the body, and thus the version yet.
-	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
-		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
-	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
-	}
-	if err != nil {
+	// The token's package portion may be a plain package or a base provider whose
+	// resources are supplied by one or more extensions layered on it; the resource
+	// is defined by whichever candidate schema contains the token.
+	candidates, err := b.candidateSchemasForToken(ctx, pkg)
+	if len(candidates) == 0 {
 		e := unknownPackage(pkg, tokenRange)
 		e.Detail = err.Error()
 
@@ -102,7 +99,7 @@ func (b *binder) resolveSchemaResourceForBind(
 
 	var res *schema.Resource
 	if isProvider {
-		r, err := pkgSchema.schema.Provider()
+		provider, err := candidates[0].schema.Provider()
 		if err != nil {
 			if b.options.skipResourceTypecheck {
 				makeResourceDynamic()
@@ -110,32 +107,41 @@ func (b *binder) resolveSchemaResourceForBind(
 			}
 			return nil, token, hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
 		}
-		res = r
+		res = provider
 	} else {
-		r, tk, ok, err := pkgSchema.LookupResource(token)
-		if err != nil {
-			if b.options.skipResourceTypecheck {
-				makeResourceDynamic()
-				return nil, token, diagnostics
-			}
+		for _, candidate := range candidates {
+			resource, canonicalToken, found, err := candidate.LookupResource(token)
+			if err != nil {
+				if b.options.skipResourceTypecheck {
+					makeResourceDynamic()
+					return nil, token, diagnostics
+				}
 
-			return nil, token, hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
-		} else if !ok {
+				return nil, token, hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+			}
+			if found {
+				res = resource
+				if _, ok := b.referencedPackages[candidate.schema.Name()]; !ok {
+					b.referencedPackages[candidate.schema.Name()] = candidate.schema
+				}
+				// For pulumi built-in resources (e.g. pulumi:pulumi:StackReference), canonicalizeToken
+				// strips the module to produce "pulumi::StackReference" because TokenToModule returns ""
+				// for the pulumi:pulumi module. Reconstruct the full token from the decomposed parts.
+				if pkg == pulumiPackage {
+					token = fmt.Sprintf("%s:%s:%s", pkg, module, name)
+				} else {
+					token = canonicalToken
+				}
+				break
+			}
+		}
+		if res == nil {
 			if b.options.skipResourceTypecheck {
 				makeResourceDynamic()
 				return nil, token, diagnostics
 			}
 
 			return nil, token, hcl.Diagnostics{unknownResourceType(token, tokenRange)}
-		}
-		res = r
-		// For pulumi built-in resources (e.g. pulumi:pulumi:StackReference), canonicalizeToken
-		// strips the module to produce "pulumi::StackReference" because TokenToModule returns ""
-		// for the pulumi:pulumi module. Reconstruct the full token from the decomposed parts.
-		if pkg == pulumiPackage {
-			token = fmt.Sprintf("%s:%s:%s", pkg, module, name)
-		} else {
-			token = tk
 		}
 	}
 
@@ -811,6 +817,7 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 					"beforeCreate", "afterCreate",
 					"beforeUpdate", "afterUpdate",
 					"beforeDelete", "afterDelete",
+					"onError",
 				}
 				obj, isObj := item.Value.(*model.ObjectConsExpression)
 				if !isObj {
@@ -834,12 +841,38 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 							Subject:  kv.Key.SyntaxNode().Range().Ptr(),
 						})
 					}
-					if _, isList := kv.Value.(*model.TupleConsExpression); !isList {
+					list, isList := kv.Value.(*model.TupleConsExpression)
+					if !isList {
 						diagnostics = append(diagnostics, &hcl.Diagnostic{
 							Severity: hcl.DiagError,
 							Summary:  invalidHooksMsg,
 							Subject:  kv.Value.SyntaxNode().Range().Ptr(),
 						})
+						continue
+					}
+					// The kind of each referenced hook must match the binding: `onError` takes
+					// error hooks, the lifecycle bindings take resource hooks.
+					for _, expr := range list.Expressions {
+						trav, isTrav := expr.(*model.ScopeTraversalExpression)
+						if !isTrav || len(trav.Parts) == 0 {
+							continue
+						}
+						hook, isHook := trav.Parts[0].(*Hook)
+						if !isHook {
+							continue
+						}
+						wantKind := HookKindResource
+						if hookType == "onError" {
+							wantKind = HookKindError
+						}
+						if hook.Kind != wantKind {
+							diagnostics = append(diagnostics, &hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary: fmt.Sprintf("cannot bind %s hook '%s' to '%s'",
+									hook.Kind, hook.Name(), hookType),
+								Subject: expr.SyntaxNode().Range().Ptr(),
+							})
+						}
 					}
 				}
 				continue // skip generic type check; structural validation is done above

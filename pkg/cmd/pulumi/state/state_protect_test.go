@@ -54,7 +54,7 @@ func TestProtectResourceWithDeleteTrue(t *testing.T) {
 			Delete:  false, // This is the replacement resource
 			Protect: false,
 		},
-	}, nil, deploy.SnapshotMetadata{}, nil)
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to protect the resource
 	urns := []string{string(resourceURN)}
@@ -102,7 +102,7 @@ func TestProtectAllResourcesWithDeleteTrue(t *testing.T) {
 			Delete:  false,
 			Protect: false,
 		},
-	}, nil, deploy.SnapshotMetadata{}, nil)
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to protect all resources
 	urns := []string{
@@ -144,16 +144,18 @@ func TestProtectOnlyDeletedResource(t *testing.T) {
 			Delete:  true, // Resource is marked for deletion
 			Protect: false,
 		},
-	}, nil, deploy.SnapshotMetadata{}, nil)
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to protect the deleted resource
 	urns := []string{string(deletedURN)}
 	resourceCount, errs := protectResourcesInSnapshot(snap, urns)
 
-	// Should not protect the deleted resource and report it as not found
+	// Should not protect the deleted resource and report it as not found. The pending-delete resource is not
+	// eligible for the operation, so its own URN must not come back as a "Did you mean" suggestion.
 	assert.Equal(t, 0, resourceCount)
 	require.Len(t, errs, 1)
 	assert.Contains(t, errs[0].Error(), "No such resource")
+	assert.NotContains(t, errs[0].Error(), "Did you mean")
 	require.Len(t, snap.Resources, 2)
 	assert.False(t, snap.Resources[1].Protect) // Resource should remain unprotected
 }
@@ -195,7 +197,7 @@ func TestProtectMultipleResourcesWithSameURNAndDelete(t *testing.T) {
 			Delete:  false, // The current active resource
 			Protect: false,
 		},
-	}, nil, deploy.SnapshotMetadata{}, nil)
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to protect the resource
 	urns := []string{string(sharedURN)}

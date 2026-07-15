@@ -22,7 +22,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -44,7 +44,9 @@ type contextMapper struct {
 	err    error
 }
 
-func (m *contextMapper) GetMapping(ctx context.Context, provider string, hint *MapperPackageHint) ([]byte, error) {
+func (m *contextMapper) GetMapping(
+	ctx context.Context, provider string, hint *MapperPackageHint, ecosystem string,
+) ([]byte, error) {
 	m.once.Do(func() {
 		base, err := NewBasePluginMapper(
 			pluginstorage.Instance,
@@ -62,7 +64,7 @@ func (m *contextMapper) GetMapping(ctx context.Context, provider string, hint *M
 	if m.err != nil {
 		return nil, m.err
 	}
-	return m.mapper.GetMapping(ctx, provider, hint)
+	return m.mapper.GetMapping(ctx, provider, hint, ecosystem)
 }
 
 type mapperServer struct {
@@ -79,7 +81,8 @@ func (m *mapperServer) GetMapping(ctx context.Context,
 	req *codegenrpc.GetMappingRequest,
 ) (*codegenrpc.GetMappingResponse, error) {
 	label := "GetMapping"
-	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s", label, req.Provider, req.PulumiProvider)
+	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s, ecosystem=%s",
+		label, req.Provider, req.PulumiProvider, req.Ecosystem)
 
 	var hint *MapperPackageHint
 	if len(req.PulumiProvider) > 0 {
@@ -99,7 +102,7 @@ func (m *mapperServer) GetMapping(ctx context.Context,
 		}
 	}
 
-	data, err := m.mapper.GetMapping(ctx, req.Provider, hint)
+	data, err := m.mapper.GetMapping(ctx, req.Provider, hint, req.Ecosystem)
 	if err != nil {
 		logging.V(7).Infof("%s failed: %v", label, err)
 		return nil, err

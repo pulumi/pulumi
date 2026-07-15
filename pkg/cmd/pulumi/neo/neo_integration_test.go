@@ -35,6 +35,8 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -217,7 +219,7 @@ func (s *neoFakeServer) sawStreamConnect() bool {
 // kept gctx alive, Session.Run blocked on `<-ctx.Done` forever, and g.Wait
 // hung — this test would time out instead of completing.
 //
-//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, newTeaProgram, isInteractive)
+//nolint:paralleltest,lll // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, newTeaProgram, isInteractive)
 func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	isolateWorkspace(t) // PULUMI_STACK="", PULUMI_HOME=t.TempDir()
 
@@ -227,8 +229,7 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	// constructor; it reads no global state and performs no I/O at construction.
 	pc := client.NewClient(srv.server.URL, "", false, nil)
 
-	// Fake backend wired with the real client. CurrentBackend short-circuits
-	// to BackendInstance when set, bypassing all login / cloud-URL resolution.
+	// Fake backend wired with the real client.
 	be := newFakeBackend()
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
@@ -236,9 +237,24 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 		return "test-user", []string{"test-org"}, nil, nil
 	}
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -307,8 +323,7 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	// rather than relying on `go test -timeout` to catch a hang.
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", t.TempDir())
 	}()
 
 	select {
@@ -340,6 +355,18 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 		"SSE stream was never opened — test did not exercise Session.Run")
 }
 
+// runNeoTest invokes runNeo with the option defaults shared by these integration tests; tests
+// vary only the prompt and working directory.
+func runNeoTest(ctx context.Context, prompt, cwd string) error {
+	return runNeo(ctx, io.Discard, io.Discard, neoRunOptions{
+		prompt:         prompt,
+		orgFlag:        "test-org",
+		cwdFlag:        cwd,
+		approvalMode:   client.NeoApprovalModeManual,
+		permissionMode: client.NeoPermissionModeDefault,
+	})
+}
+
 // installNeoTestEnv wires the fake backend and workspace globals for an
 // integration test and registers cleanup to restore the originals. The
 // `interactive` flag selects which branch of runNeo the test exercises;
@@ -354,9 +381,24 @@ func installNeoTestEnv(t *testing.T, srv *neoFakeServer, interactive bool) {
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -374,7 +416,7 @@ func installNeoTestEnv(t *testing.T, srv *neoFakeServer, interactive bool) {
 // CreateNeoTask, console URL print, Session construction, session.Run) had no
 // coverage.
 //
-//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, isInteractive)
+//nolint:paralleltest // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, isInteractive)
 func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 	isolateWorkspace(t)
 	srv := newNeoFakeServer(t)
@@ -393,8 +435,7 @@ func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", t.TempDir())
 	}()
 
 	select {
@@ -421,8 +462,7 @@ func TestRunNeoIntegration_NonInteractiveRequiresPrompt(t *testing.T) {
 	srv := newNeoFakeServer(t)
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "" /*prompt*/, "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "" /*prompt*/, t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt argument is required")
 
@@ -439,16 +479,32 @@ func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
 	isolateWorkspace(t)
 
 	// A bare MockBackend deliberately doesn't implement httpstate.Backend.
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = &backend.MockBackend{}
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	be := &backend.MockBackend{}
+
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string,
+			*workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
 	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Pulumi Cloud backend",
 		"non-cloud backends must surface a clear error rather than panic on the type assertion")
@@ -478,8 +534,7 @@ func TestRunNeoIntegration_ResolvesCwdWhenEmpty(t *testing.T) {
 		// cwdFlag empty → runNeo calls os.Getwd. The test's own working
 		// directory is always a real, readable path, so the tools constructors
 		// accept it and runNeo proceeds.
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", "", /*cwd*/
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", "" /*cwd*/)
 	}()
 
 	select {
@@ -502,8 +557,7 @@ func TestRunNeoIntegration_RejectsNonexistentCwd(t *testing.T) {
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
 	missing := t.TempDir() + "/does-not-exist"
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", missing,
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", missing)
 	require.Error(t, err)
 	// The exact wrapping is internal to tools.NewFilesystem, but the missing
 	// path should be referenced so the user can see what went wrong.
@@ -526,13 +580,12 @@ func TestRunNeoIntegration_PropagatesReadProjectError(t *testing.T) {
 
 	// Override the workspace to surface a non-NotFound error from ReadProject.
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return nil, "", errors.New("synthetic ReadProject failure")
 		},
 	}
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "synthetic ReadProject failure")
 	assert.Empty(t, srv.recordedPosts(),
@@ -564,9 +617,24 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -576,8 +644,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	isInteractive = func() bool { return false }
 	t.Cleanup(func() { isInteractive = prevInteractive })
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "creating Neo task")
 }
@@ -596,7 +663,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 // goroutine, p.Run would block until the test deadline even though createTask
 // had already errored.
 //
-//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, newTeaProgram, isInteractive)
+//nolint:paralleltest,lll // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, newTeaProgram, isInteractive)
 func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 	isolateWorkspace(t)
 
@@ -617,9 +684,24 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -649,8 +731,7 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", t.TempDir())
 	}()
 
 	select {

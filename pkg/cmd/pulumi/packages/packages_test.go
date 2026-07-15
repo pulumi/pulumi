@@ -24,9 +24,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -70,12 +70,12 @@ func (mockInstallContext) GetPlugins(context.Context) ([]workspace.PluginInfo, e
 	return nil, nil
 }
 
-func (m mockInstallContext) New() (pkgWorkspace.W, error) {
+func (m mockInstallContext) New(string) (pkgWorkspace.W, error) {
 	m.t.Error("New should not be called")
 	return nil, assert.AnError
 }
 
-func (m mockInstallContext) ReadProject() (*workspace.Project, string, error) {
+func (m mockInstallContext) ReadProject(string) (*workspace.Project, string, error) {
 	m.t.Error("ReadProject should not be called")
 	return nil, "", assert.AnError
 }
@@ -174,17 +174,19 @@ func TestProviderFromSource(t *testing.T) {
 		installCtx.t = t
 
 		pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), nil, nil, nil, nil,
-			schema.NewLoaderServerFromContext, nil)
+			schema.NewLoaderServerFromContext, nil, nil)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, pluginHost.Close()) }()
 		pctx, err := plugin.NewContext(
-			t.Context(), nil, nil, pluginHost, nil, t.TempDir(), nil, false, nil)
+			t.Context(), nil, nil, pluginHost, nil, t.TempDir(), nil, false, nil,
+		)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, pctx.Close()) }()
 
 		provider, spec, err := providerFromSource(
 			pctx, inputSource, nil,
-			env.NewEnv(env.MapStore{"PULUMI_EXPERIMENTAL": "true"}), 0, installCtx)
+			env.NewEnv(env.MapStore{"PULUMI_EXPERIMENTAL": "true"}), 0, installCtx,
+		)
 		require.NoError(t, err)
 		return provider, spec
 	}

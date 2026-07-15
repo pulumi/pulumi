@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"strings"
 	"testing"
 
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
@@ -26,6 +27,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -109,7 +111,7 @@ func TestLoginURLResolution(t *testing.T) {
 		{
 			name: "project backend URL used when no env var",
 			ws: &pkgWorkspace.MockContext{
-				ReadProjectF: func() (*workspace.Project, string, error) {
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
 					return &workspace.Project{
 						Backend: &workspace.ProjectBackend{URL: "https://project-backend.example.com"},
 					}, "", nil
@@ -229,7 +231,8 @@ func TestLoginURLResolution(t *testing.T) {
 				},
 			}
 
-			cmd := NewLoginCmd(tt.ws, mockLoginManager)
+			store := env.NewEnv(env.MapStore(tt.envVars))
+			cmd := NewLoginCmd(tt.ws, mockLoginManager, store)
 			cmd.SetOut(io.Discard)
 			cmd.SetErr(io.Discard)
 			cmd.SetContext(t.Context())
@@ -430,7 +433,8 @@ func TestExtractOIDCDefaults(t *testing.T) {
 			t.Parallel()
 
 			gotOrg, gotTeam, gotUser, err := extractOIDCDefaults(
-				tt.organization, tt.team, tt.user, tt.token)
+				tt.organization, tt.team, tt.user, tt.token,
+			)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -446,4 +450,49 @@ func TestExtractOIDCDefaults(t *testing.T) {
 			assert.Equal(t, tt.wantUser, gotUser, "user mismatch")
 		})
 	}
+}
+
+// TestLoginEnvConflict tests that we warn the user if they login with a cloud URL that conflicts with the
+// PULUMI_BACKEND_URL environment variable.
+func TestLoginEnvConflict(t *testing.T) {
+	t.Parallel()
+
+	ws := &pkgWorkspace.MockContext{}
+	lm := &backend.MockLoginManager{
+		LoginF: func(
+			ctx context.Context,
+			ws pkgWorkspace.Context,
+			sink diag.Sink,
+			url string,
+			project *workspace.Project,
+			setCurrent bool,
+			insecure bool,
+			color colors.Colorization,
+		) (pkgBackend.Backend, error) {
+			return &pkgBackend.MockBackend{
+				URLF:  func() string { return url },
+				NameF: func() string { return "test-backend" },
+				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+					return "test-user", nil, nil, nil
+				},
+			}, nil
+		},
+	}
+	store := env.NewEnv(env.MapStore{
+		"PULUMI_BACKEND_URL": "https://env-backend.example.com",
+	})
+	cmd := NewLoginCmd(ws, lm, store)
+
+	stderr := &strings.Builder{}
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(stderr)
+	cmd.SetContext(t.Context())
+	cmd.SetArgs([]string{"https://example.com"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+	require.Contains(t,
+		stderr.String(),
+		"Warning: The PULUMI_BACKEND_URL environment variable is set to "+
+			"'https://env-backend.example.com', which conflicts with the login URL "+
+			"'https://example.com'.")
 }

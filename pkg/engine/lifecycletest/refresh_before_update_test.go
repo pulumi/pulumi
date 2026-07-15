@@ -24,8 +24,8 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -281,10 +281,17 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		require.NoError(t, err)
 
-		resp, err := monitor.RegisterResource("pkgA:m:typA", "res0", true, deploytest.ResourceOptions{})
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "res0", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"input": resource.NewProperty("value"),
+			},
+		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"input": resp.Outputs["result"],
+			},
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{
 				"input": {resp.URN},
 			},

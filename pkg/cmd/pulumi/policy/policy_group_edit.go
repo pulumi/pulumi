@@ -90,8 +90,9 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 	args.outputFormat = defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:   "edit <name>",
-		Short: "[EXPERIMENTAL] Update a Policy Group's configuration",
+		Use:     "edit <name>",
+		Aliases: []string{"update", "modify"},
+		Short:   "[EXPERIMENTAL] Update a Policy Group's configuration",
 		Long: "[EXPERIMENTAL] Update a Policy Group's configuration.\n" +
 			"\n" +
 			"Renames a Policy Group, adds or removes stacks, applies or detaches\n" +

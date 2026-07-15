@@ -139,6 +139,10 @@ type resourceRowData struct {
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
 	hideRowIfUnnecessary bool
+
+	// True for the placeholder stack row synthesized by ensureHeaderAndStackRows before any
+	// stack event arrives.
+	syntheticStackRow bool
 }
 
 func (data *resourceRowData) DisplayOrderIndex() int {
@@ -372,23 +376,6 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	columns[statusColumn] = data.display.getStepStatus(step, done, failed, interrupted)
 	columns[infoColumn] = data.getInfoColumn()
 	return columns
-}
-
-// addRetainStatusFlag adds a "[retain]" suffix to the input string if the resource is marked as
-// RetainOnDelete and the step will discard the resource.
-func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
-	if step.Old == nil || !step.Old.RetainOnDelete {
-		return status
-	}
-
-	switch step.Op {
-	// Deletes and Replacements should indicate retain on delete behavior as they can leave
-	// untracked resources in the environment.
-	case deploy.OpDelete, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
-		status += "[retain]"
-	}
-
-	return status
 }
 
 func (data *resourceRowData) getInfoColumn() string {

@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -56,6 +57,14 @@ const nonInteractivePromptPreamble = "<details><summary>non-interactive mode</su
 	"explicit and return a complete final answer.\n\n" +
 	"</details>"
 
+// neoTaskCreator is the slice of the cloud client that creates Neo tasks.
+// *client.Client satisfies it; tests fake it.
+type neoTaskCreator interface {
+	CreateNeoTask(
+		ctx context.Context, orgName, content, stackName, projectName string, opts client.CreateNeoTaskOptions,
+	) (*client.NeoTaskResponse, error)
+}
+
 // createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
 // attached stack with "invalid entities" (typically a permissions issue) it retries
 // once without the stack so the task is still created. onEntityDropped, if non-nil,
@@ -63,7 +72,7 @@ const nonInteractivePromptPreamble = "<details><summary>non-interactive mode</su
 // surface a warning.
 func createNeoTaskWithEntityRetry(
 	ctx context.Context,
-	pc *client.Client,
+	pc neoTaskCreator,
 	orgName, prompt, stackName, projectName string,
 	opts client.CreateNeoTaskOptions,
 	onEntityDropped func(error),
@@ -76,6 +85,17 @@ func createNeoTaskWithEntityRetry(
 		return pc.CreateNeoTask(ctx, orgName, prompt, "", "", opts)
 	}
 	return resp, err
+}
+
+// entityDroppedWarning renders the user-facing warning for
+// createNeoTaskWithEntityRetry's stack-dropped fallback. The TUI and the ACP
+// adapter both surface it, so the wording lives here rather than at each call
+// site.
+func entityDroppedWarning(orgName, projectName, stackRefName string, err error) string {
+	return fmt.Sprintf(
+		"could not attach stack %s/%s/%s to Neo task: %s; creating task without stack context",
+		orgName, projectName, stackRefName, err,
+	)
 }
 
 // isInvalidEntitiesError reports whether err is the Neo backend's "invalid entities"
@@ -131,6 +151,8 @@ func NewNeoCmd() *cobra.Command {
 		approvalModeFlag    string
 		permissionModeFlag  string
 		printMode           bool
+		debugUpdateFlag     string
+		debugPreviewFlag    string
 		disableIntegrations bool
 	)
 
@@ -167,10 +189,29 @@ func NewNeoCmd() *cobra.Command {
 					approvalMode = client.NeoApprovalModeAuto
 				}
 			}
-			return runNeo(
-				ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(),
-				prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode, printMode,
-				disableIntegrations)
+			// --debug-update/--debug-preview seed Neo to investigate a failed operation. A bare
+			// flag infers the latest of that kind; =<id> targets a specific run. They are mutually
+			// exclusive, so at most one is ever Changed.
+			var debugKind debugKind
+			var debugID string
+			switch {
+			case cmd.Flags().Changed("debug-update"):
+				debugKind, debugID = debugUpdate, valueOrEmpty(debugUpdateFlag)
+			case cmd.Flags().Changed("debug-preview"):
+				debugKind, debugID = debugPreview, valueOrEmpty(debugPreviewFlag)
+			}
+			return runNeo(ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), neoRunOptions{
+				prompt:              prompt,
+				stackName:           stackName,
+				orgFlag:             orgFlag,
+				cwdFlag:             cwdFlag,
+				approvalMode:        approvalMode,
+				permissionMode:      permissionMode,
+				printMode:           printMode,
+				debugKind:           debugKind,
+				debugID:             debugID,
+				disableIntegrations: disableIntegrations,
+			})
 		},
 	}
 
@@ -192,8 +233,32 @@ func NewNeoCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&disableIntegrations, "disable-integrations", false,
 		"Run the Neo task with no integration credentials, ignoring any org-enabled "+
 			"integrations.")
+	cmd.Flags().StringVar(&debugUpdateFlag, "debug-update", "",
+		"Debug a failed update. With no value, targets the stack's latest update; "+
+			"pass =<version> (e.g. --debug-update=42) to target a specific one")
+	cmd.Flags().StringVar(&debugPreviewFlag, "debug-preview", "",
+		"Debug a failed preview. With no value, targets the stack's latest preview; "+
+			"pass =<preview-id> to target a specific one")
+	// A non-empty NoOptDefVal makes the flag's value optional: a bare flag records the sentinel
+	// ("infer latest"), while =<id> records the explicit id.
+	cmd.Flags().Lookup("debug-update").NoOptDefVal = debugLatestSentinel
+	cmd.Flags().Lookup("debug-preview").NoOptDefVal = debugLatestSentinel
+	cmd.MarkFlagsMutuallyExclusive("debug-update", "debug-preview")
 
 	return cmd
+}
+
+// debugLatestSentinel is the NoOptDefVal for --debug-update/--debug-preview: pflag requires a
+// non-empty NoOptDefVal to make a flag's value optional, so a bare flag records this sentinel
+// ("infer the latest"). It is untypeable as a real id so it can't collide with a user-passed value.
+const debugLatestSentinel = "\x00latest"
+
+// valueOrEmpty maps the bare-flag sentinel back to "" so callers see an explicit id or nothing.
+func valueOrEmpty(v string) string {
+	if v == debugLatestSentinel {
+		return ""
+	}
+	return v
 }
 
 // parseApprovalMode validates the --approval-mode flag value against the
@@ -219,38 +284,47 @@ func parsePermissionMode(s string) (client.NeoPermissionMode, error) {
 	return "", fmt.Errorf("invalid --permission-mode %q: expected one of default, read-only", s)
 }
 
-func runNeo(
-	ctx context.Context,
-	stdout, stderr io.Writer,
-	prompt, stackName, orgFlag, cwdFlag string,
-	approvalMode client.NeoApprovalMode,
-	permissionMode client.NeoPermissionMode,
-	printMode bool,
-	disableIntegrations bool,
-) error {
+// neoRunOptions carries everything runNeo needs to start a Neo session.
+type neoRunOptions struct {
+	prompt         string
+	stackName      string
+	orgFlag        string
+	cwdFlag        string
+	approvalMode   client.NeoApprovalMode
+	permissionMode client.NeoPermissionMode
+	printMode      bool
+	// debugKind/debugID make this a debug session: runNeo seeds a prompt targeting a failed
+	// operation of that kind and appends the stack context. debugKind is debugNone for a normal
+	// session; debugID is "" to infer the latest of debugKind.
+	debugKind           debugKind
+	debugID             string
+	disableIntegrations bool
+}
+
+func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) error {
 	// nil lets the server inherit the org's enabled integrations; the empty slice opts out.
 	var enabledIntegrations *[]string
-	if disableIntegrations {
+	if opts.disableIntegrations {
 		enabledIntegrations = &[]string{}
 	}
 
-	if cwdFlag == "" {
+	if opts.cwdFlag == "" {
 		var err error
-		cwdFlag, err = os.Getwd()
+		opts.cwdFlag, err = os.Getwd()
 		if err != nil {
 			return fmt.Errorf("resolving working directory: %w", err)
 		}
 	}
 
 	ws := pkgWorkspace.Instance
-	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
 	if err != nil {
 		return err
 	}
@@ -264,52 +338,42 @@ func runNeo(
 		return result.FprintBailf(stderr, "%s", msg)
 	}
 
-	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)
+	target, err := resolveTaskTarget(ctx, ws, cloudBe, project, opts.stackName, opts.orgFlag)
 	if err != nil {
 		return err
+	}
+	orgName, projectName, stackRefName := target.org, target.project, target.stackName()
+
+	// In a debug session, replace the prompt with the seed that points Neo at the failed
+	// operation, folding any positional prompt in as extra guidance.
+	if opts.debugKind != debugNone {
+		opts.prompt = buildDebugPrompt(ctx, cloudBe, target, opts.debugKind, opts.debugID, opts.prompt)
 	}
 
-	// Allow tools to read/write under temp directories in addition to cwd: the agent
-	// stages scratch files there (downloads, intermediate state) and the CLI sandbox
-	// would otherwise reject those paths. See pulumi/pulumi-service#42027.
-	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
-	fs, err := tools.NewFilesystem(cwdFlag, extraRoots...)
+	// pu's sink stays nil here so live events are dropped in non-interactive mode;
+	// the interactive path below sets pu.Sink to push UIEvents onto uiCh.
+	lt, err := buildLocalToolHandlers(opts.cwdFlag, ws)
 	if err != nil {
 		return err
 	}
-	sh, err := tools.NewShell(cwdFlag, extraRoots...)
-	if err != nil {
-		return err
-	}
-	handlers := map[string]ToolHandler{
-		"filesystem": fs,
-		"shell":      sh,
-	}
+	pu, handlers := lt.pu, lt.handlers
 
-	// In non-interactive mode the sink stays nil and live events are dropped; the
-	// interactive path below sets pu.Sink to push UIEvents onto uiCh.
-	pu, err := tools.NewPulumi(cwdFlag, ws, nil)
-	if err != nil {
-		return err
-	}
-	handlers["pulumi"] = pu
-
-	if printMode || !isInteractive() {
-		if prompt == "" {
+	if opts.printMode || !isInteractive() {
+		if opts.prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
-		taskPrompt := nonInteractivePromptPreamble + "\n\n" + prompt
+		taskPrompt := nonInteractivePromptPreamble + "\n\n" + opts.prompt
 		resp, err := createNeoTaskWithEntityRetry(
 			ctx, pc, orgName, taskPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 				ToolExecutionMode:   "cli",
-				ApprovalMode:        approvalMode,
-				PermissionMode:      permissionMode,
+				ApprovalMode:        opts.approvalMode,
+				PermissionMode:      opts.permissionMode,
 				EnabledIntegrations: enabledIntegrations,
 			}, nil)
 		if err != nil {
 			return err
 		}
-		if !printMode {
+		if !opts.printMode {
 			consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
 			if consoleURL != "" {
 				fmt.Fprintln(stderr, consoleURL)
@@ -324,7 +388,7 @@ func runNeo(
 			TaskID:   resp.TaskID,
 			Log:      stderr,
 		}
-		if printMode {
+		if opts.printMode {
 			session.Output = stdout
 		}
 		return session.Run(ctx)
@@ -349,15 +413,15 @@ func runNeo(
 
 	model := NewModel(ModelConfig{
 		Org:                   orgName,
-		WorkDir:               cwdFlag,
+		WorkDir:               opts.cwdFlag,
 		Username:              username,
 		Version:               version.Version,
 		EventCh:               uiCh,
 		OutCh:                 outCh,
-		Busy:                  prompt != "",
-		InitialPrompt:         prompt,
-		InitialApprovalMode:   approvalMode,
-		InitialPermissionMode: permissionMode,
+		Busy:                  opts.prompt != "",
+		InitialPrompt:         opts.prompt,
+		InitialApprovalMode:   opts.approvalMode,
+		InitialPermissionMode: opts.permissionMode,
 		HasDarkBackground:     hasDarkBackground,
 	})
 
@@ -398,11 +462,9 @@ func runNeo(
 						PlanMode:            planMode,
 						EnabledIntegrations: enabledIntegrations,
 					}, func(originalErr error) {
-						sendUI(uiCh, UIWarning{Message: fmt.Sprintf(
-							"could not attach stack %s/%s/%s to Neo task: %s; "+
-								"creating task without stack context",
-							orgName, projectName, stackRefName, originalErr,
-						)})
+						sendUI(uiCh, UIWarning{
+							Message: entityDroppedWarning(orgName, projectName, stackRefName, originalErr),
+						})
 					})
 				if err != nil {
 					sendUI(uiCh, UIError{Message: "failed to create Neo task: " + err.Error()})
@@ -428,12 +490,12 @@ func runNeo(
 				return session.Run(gctx)
 			}
 
-			if prompt != "" {
+			if opts.prompt != "" {
 				// The command-line prompt path always passes false for planMode and
 				// uses the modes parsed from the CLI flags (which the TUI also seeds
 				// into its model). A subsequent toggle still routes through the TUI.
 				g.Go(func() error {
-					return createTask(prompt, approvalMode, permissionMode, false)
+					return createTask(opts.prompt, opts.approvalMode, opts.permissionMode, false)
 				})
 			}
 
@@ -455,7 +517,7 @@ func runNeo(
 			g.Go(func() error {
 				return dispatchUserEvents(
 					gctx, outCh, uiCh,
-					prompt != "",
+					opts.prompt != "",
 					func() string {
 						ts.mu.Lock()
 						defer ts.mu.Unlock()
@@ -587,9 +649,25 @@ type stackRefWithOrg interface {
 	Organization() (string, bool)
 }
 
-// resolveTaskTarget figures out the org, project, and stack name to attach to the new Neo
-// task. The stack flag is optional — if it's empty we try the currently selected stack and
-// fall back to a project-only attachment if there isn't one.
+// taskTarget is the resolved org, project, and stack a Neo task attaches to. The stack name comes
+// from ref; ref is nil when no stack could be resolved, so the task runs without stack context.
+type taskTarget struct {
+	org     string
+	project string
+	ref     backend.StackReference
+}
+
+// stackName returns the resolved stack's name, or "" when no stack was resolved.
+func (t taskTarget) stackName() string {
+	if t.ref == nil {
+		return ""
+	}
+	return t.ref.Name().String()
+}
+
+// resolveTaskTarget figures out the org, project, and stack to attach to the new Neo task. The
+// stack flag is optional — if it's empty we try the currently selected stack and fall back to a
+// project-only attachment if there isn't one.
 //
 // Org resolution: --org wins if provided; otherwise we use the owner carried
 // by the stack reference (so a workspace-selected `otherorg/proj/dev` keeps
@@ -602,18 +680,19 @@ func resolveTaskTarget(
 	be httpstate.Backend,
 	project *workspace.Project,
 	stackName, orgFlag string,
-) (org, projectName, stack string, err error) {
+) (taskTarget, error) {
+	var t taskTarget
 	if project != nil {
-		projectName = string(project.Name)
+		t.project = string(project.Name)
 	}
 
 	var stackOwner string
 	if stackName != "" {
 		ref, err := be.ParseStackReference(stackName)
 		if err != nil {
-			return "", "", "", err
+			return taskTarget{}, err
 		}
-		stack = ref.Name().String()
+		t.ref = ref
 		if owned, ok := ref.(stackRefWithOrg); ok {
 			if o, has := owned.Organization(); has {
 				stackOwner = o
@@ -622,7 +701,7 @@ func resolveTaskTarget(
 	} else {
 		s, err := state.CurrentStack(ctx, ws, be)
 		if err == nil && s != nil {
-			stack = s.Ref().Name().String()
+			t.ref = s.Ref()
 			if owned, ok := s.Ref().(stackRefWithOrg); ok {
 				if o, has := owned.Organization(); has {
 					stackOwner = o
@@ -633,19 +712,63 @@ func resolveTaskTarget(
 
 	switch {
 	case orgFlag != "":
-		org = orgFlag
+		t.org = orgFlag
 	case stackOwner != "":
-		org = stackOwner
+		t.org = stackOwner
 	default:
-		org, err = be.GetDefaultOrg(ctx)
+		org, err := be.GetDefaultOrg(ctx)
 		if err != nil {
-			return "", "", "", fmt.Errorf("determining default organization: %w", err)
+			return taskTarget{}, fmt.Errorf("determining default organization: %w", err)
 		}
+		t.org = org
 	}
-	if org == "" {
-		return "", "", "", errors.New("could not determine an organization for the Neo task; pass --org")
+	if t.org == "" {
+		return taskTarget{}, errors.New("could not determine an organization for the Neo task; pass --org")
 	}
-	return org, projectName, stack, nil
+	return t, nil
+}
+
+// localTools are the CLI-local tool handlers shared by every Neo entrypoint. The
+// concrete fs/sh/pu handles are exposed alongside the assembled handler map so
+// callers can layer on extras without re-deriving the shared construction or the
+// temp-root policy: the interactive path sets pu.Sink, and the ACP adapter routes
+// fs/sh through the editor. handlers already contains fs/sh/pu under their tool
+// names.
+type localTools struct {
+	fs       *tools.Filesystem
+	sh       *tools.Shell
+	pu       *tools.Pulumi
+	handlers map[string]ToolHandler
+}
+
+// buildLocalToolHandlers constructs the CLI-local tool handlers shared by every
+// Neo entrypoint (interactive TUI, non-interactive, ACP): the filesystem, shell,
+// and pulumi tools rooted at cwd. The filesystem and shell additionally allow
+// tools to read/write under temp directories in addition to cwd: the agent
+// stages scratch files there (downloads, intermediate state) and the CLI sandbox
+// would otherwise reject those paths (see pulumi/pulumi-service#42027).
+func buildLocalToolHandlers(cwd string, ws pkgWorkspace.Context) (localTools, error) {
+	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
+	fs, err := tools.NewFilesystem(cwd, extraRoots...)
+	if err != nil {
+		return localTools{}, err
+	}
+	sh, err := tools.NewShell(cwd, extraRoots...)
+	if err != nil {
+		return localTools{}, err
+	}
+	pu, err := tools.NewPulumi(cwd, ws, nil)
+	if err != nil {
+		return localTools{}, err
+	}
+	return localTools{
+		fs: fs, sh: sh, pu: pu,
+		handlers: map[string]ToolHandler{
+			"filesystem": fs,
+			"shell":      sh,
+			"pulumi":     pu,
+		},
+	}, nil
 }
 
 // dedupeExistingRoots returns candidates with duplicates removed by canonical path,

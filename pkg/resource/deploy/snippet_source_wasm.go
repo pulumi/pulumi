@@ -37,6 +37,11 @@ func NewSnippetSource(
 	return unsupportedWasmSource("snippet sources are not supported in wasm builds")
 }
 
+// ValidateSnippet is unavailable in wasm builds.
+func ValidateSnippet(resource.Snippet, schema.ReferenceLoader) error {
+	return errors.New("snippet validation is not supported in wasm builds")
+}
+
 // NewMuxSource is unavailable in wasm display builds when secondary sources are present.
 func NewMuxSource(
 	_ context.Context,

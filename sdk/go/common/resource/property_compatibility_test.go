@@ -38,8 +38,9 @@ import (
 func TestRoundTripConvert(t *testing.T) {
 	t.Parallel()
 
+	value := pTest.Value(10)
 	rapid.Check(t, func(t *rapid.T) {
-		source := pTest.Value(10).Draw(t, "round-trip value")
+		source := value.Draw(t, "round-trip value")
 		propertyValue := resource.ToResourcePropertyValue(source)
 		roundTripped := resource.FromResourcePropertyValue(propertyValue)
 
@@ -81,8 +82,9 @@ func testRoundTripThroughGRPC(t require.TestingT, v property.Value) {
 func TestConversionThroughGRPCRapid(t *testing.T) {
 	t.Parallel()
 
+	value := pTest.Value(10)
 	rapid.Check(t, func(t *rapid.T) {
-		source := pTest.Value(10).Draw(t, "round-trip value")
+		source := value.Draw(t, "round-trip value")
 		testRoundTripThroughGRPC(t, source)
 	})
 }
@@ -106,4 +108,17 @@ func TestConversionThroughGRPC(t *testing.T) {
 			testRoundTripThroughGRPC(t, tt.value)
 		})
 	}
+}
+
+func TestDiffCompatibility(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		a := pTest.Map(10).Draw(t, "round-trip value a")
+		b := pTest.Map(10).Draw(t, "round-trip value b")
+
+		assert.Equal(t,
+			resource.ToResourceObjectDiff(a.Diff(b)),
+			resource.ToResourcePropertyMap(a).Diff(resource.ToResourcePropertyMap(b)))
+	})
 }

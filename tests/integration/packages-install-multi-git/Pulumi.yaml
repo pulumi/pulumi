@@ -6,4 +6,4 @@ packages:
 runtime:
   name: nodejs
   options:
-    packagemanager: yarn
+    packagemanager: npm

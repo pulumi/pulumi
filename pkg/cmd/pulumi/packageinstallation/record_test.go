@@ -32,8 +32,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -159,16 +159,16 @@ func (w *recordingWorkspace) DownloadPlugin(
 	}, err
 }
 
-func (w *recordingWorkspace) New() (pkgWorkspace.W, error) {
-	w.start("New")
-	result, err := w.w.New()
+func (w *recordingWorkspace) New(dir string) (pkgWorkspace.W, error) {
+	w.start("New", dir)
+	result, err := w.w.New(dir)
 	w.finish(result, err)
 	return result, err
 }
 
-func (w *recordingWorkspace) ReadProject() (*workspace.Project, string, error) {
-	w.start("ReadProject")
-	project, path, err := w.w.ReadProject()
+func (w *recordingWorkspace) ReadProject(dir string) (*workspace.Project, string, error) {
+	w.start("ReadProject", dir)
+	project, path, err := w.w.ReadProject(dir)
 	w.finish(project, path, err)
 	return project, path, err
 }

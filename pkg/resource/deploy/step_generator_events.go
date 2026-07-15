@@ -15,8 +15,8 @@
 package deploy
 
 import (
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // ContinueResourceDiffEvent is a step that asks the engine to continue provisioning a resource after completing its
@@ -214,4 +214,35 @@ func (g *continueResourceImportEvent) RandomSeed() []byte {
 
 func (g *continueResourceImportEvent) IsImported() bool {
 	return g.isImported
+}
+
+// ContinueExtensionEvent asks the engine to continue handling a resource registration after its
+// extension parameterization has completed.
+type ContinueExtensionEvent interface {
+	RegisterResourceEvent
+
+	URN() resource.URN
+	Invalid() bool
+	Error() error
+}
+
+type continueExtensionEvent struct {
+	RegisterResourceEvent
+	urn     resource.URN // the URN of the resource that is part of an extension parameterization.
+	invalid bool         // whether the resource is invalid.
+	err     error        // any error that occurred during extension
+}
+
+var _ ContinueExtensionEvent = (*continueExtensionEvent)(nil)
+
+func (g *continueExtensionEvent) URN() resource.URN {
+	return g.urn
+}
+
+func (g *continueExtensionEvent) Invalid() bool {
+	return g.invalid
+}
+
+func (g *continueExtensionEvent) Error() error {
+	return g.err
 }

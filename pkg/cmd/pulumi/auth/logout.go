@@ -17,6 +17,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -68,8 +69,13 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 				fmt.Fprintln(cmd.OutOrStdout(), "Logged out of everything")
 			} else {
 				if cloudURL == "" {
+					cwd, err := os.Getwd()
+					if err != nil {
+						return fmt.Errorf("getting current working directory: %w", err)
+					}
+
 					// Try to read the current project
-					project, _, err := ws.ReadProject()
+					project, _, err := ws.ReadProject(cwd)
 					if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 						return err
 					}

@@ -14,17 +14,27 @@
 "use strict";
 
 import * as packageJson from "../../package.json";
-import * as opentelemetry from "@opentelemetry/api";
-import { Resource } from "@opentelemetry/resources";
-import { BatchSpanProcessor, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
-import { ZipkinExporter } from "@opentelemetry/exporter-zipkin";
-import { GrpcInstrumentation } from "@opentelemetry/instrumentation-grpc";
-import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
-import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import * as log from "../../log";
 
-let exporter: ZipkinExporter;
-let rootSpan: opentelemetry.Span;
+// Loaded with require() instead of a typed import because the OpenTelemetry type declarations
+// use syntax that requires TypeScript >= 4.5, while this SDK is compiled with TypeScript 3.8.
+const opentelemetry = require("@opentelemetry/api");
+const { defaultResource, resourceFromAttributes } = require("@opentelemetry/resources");
+const { SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+const { ZipkinExporter } = require("@opentelemetry/exporter-zipkin");
+const { GrpcInstrumentation } = require("@opentelemetry/instrumentation-grpc");
+const { NodeTracerProvider } = require("@opentelemetry/sdk-trace-node");
+const { registerInstrumentations } = require("@opentelemetry/instrumentation");
+
+/**
+ * Stand-in for `Span` from `@opentelemetry/api`, which is loaded untyped (see above).
+ *
+ * @internal
+ */
+export type Span = any;
+
+let exporter: any;
+let rootSpan: Span;
 
 // serviceName is the name of this service in the Pulumi
 // distributed system, and the name of the tracer we're using.
@@ -65,8 +75,8 @@ export function start(destinationUrl: string) {
     });
 
     // Tag traces from this program with metadata about their source.
-    const resource = Resource.default().merge(
-        new Resource({
+    const resource = defaultResource().merge(
+        resourceFromAttributes({
             [ATTR_SERVICE_NAME]: serviceName,
             [ATTR_SERVICE_VERSION]: packageJson.version,
         }),
@@ -84,15 +94,15 @@ export function start(destinationUrl: string) {
      * registered here.
      */
 
-    // Create a new tracer provider, acting as a factory for tracers.
-    const provider = new NodeTracerProvider({
-        resource: resource,
-    });
-
     // Configure span processor to send spans to the exporter
     log.debug(`Registering tracing url: ${destinationUrl}`);
     exporter = new ZipkinExporter({ url: destinationUrl, serviceName });
-    provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+
+    // Create a new tracer provider, acting as a factory for tracers.
+    const provider = new NodeTracerProvider({
+        resource: resource,
+        spanProcessors: [new SimpleSpanProcessor(exporter)],
+    });
 
     provider.register();
     const tracer = opentelemetry.trace.getTracer("nodejs-runtime");
@@ -114,7 +124,7 @@ export function stop() {
 }
 
 /** @internal */
-export function newSpan(name: string): opentelemetry.Span {
+export function newSpan(name: string): Span {
     const tracer = opentelemetry.trace.getTracer(serviceName);
     const parentSpan = opentelemetry.trace.getActiveSpan() ?? rootSpan;
     const activeCtx = opentelemetry.context.active();

@@ -20,15 +20,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAnalyzerSpawn(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
 	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
@@ -75,7 +75,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 
 func TestAnalyzerSpawnNoConfig(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
 	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
@@ -98,7 +98,7 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
 	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)

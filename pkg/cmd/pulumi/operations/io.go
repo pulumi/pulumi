@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -31,7 +32,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -66,7 +66,7 @@ func parseAndSaveConfigArray(
 // client address is present, the returned project will always have the runtime set to "client"
 // with the address option set to the client address.
 func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*workspace.Project, string, error) {
-	proj, root, err := ws.ReadProject()
+	proj, root, err := ws.ReadProject("")
 	if err != nil {
 		oerr := err
 		if errors.Is(err, workspace.ErrProjectNotFound) {
@@ -154,12 +154,12 @@ func configureNeoOptions(neoEnabledFlag bool, cmd *cobra.Command, displayOpts *d
 	} else {
 		showNeoFeatures = env.NeoEnabled.Value()
 	}
-	logging.V(7).Infof("neo flag=%v, PULUMI_NEO=%v, using value=%v",
-		neoEnabledFlag, env.NeoEnabled.Value(), showNeoFeatures)
+	slog.Info("neo flag configuration",
+		"neo-flag", neoEnabledFlag, "PULUMI_NEO", env.NeoEnabled.Value(), "show-neo-features", showNeoFeatures)
 
 	// Do not enable any Neo features if we are using a DIY backend
 	if showNeoFeatures && isDIYBackend {
-		logging.Warningf("Neo features are not available with DIY backends.")
+		slog.Warn("Neo features are not available with DIY backends.")
 		return
 	}
 
@@ -173,7 +173,7 @@ func configureNeoTaskOption(neoTaskOnFailureFlag bool, cmd *cobra.Command, displ
 	isDIYBackend bool,
 ) {
 	if neoTaskOnFailureFlag && isDIYBackend {
-		logging.Warningf("Neo task creation is not available with DIY backends.")
+		slog.Warn("Neo task creation is not available with DIY backends.")
 		return
 	}
 

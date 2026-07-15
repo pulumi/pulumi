@@ -1911,6 +1911,12 @@ func (ctx *Context) registerResource(
 				}
 				deps[key] = resources
 			}
+			// If the engine reported that the resource failed or was skipped, synthesize an
+			// error so downstream outputs fault. This allows Output.Recover to intercept the
+			// failure.
+			if err == nil && resp.Result != pulumirpc.Result_SUCCESS {
+				err = fmt.Errorf("resource %s [%s] failed to register", name, t)
+			}
 		}
 	}()
 

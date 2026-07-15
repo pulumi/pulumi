@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"time"
@@ -43,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -52,12 +54,10 @@ import (
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -306,6 +306,7 @@ func NewPreviewCmd() *cobra.Command {
 	var parallel int32
 	var refresh string
 	var runProgram bool
+	var skipConfigValidation bool
 	var showConfig bool
 	var showPolicyRemediations bool
 	var showReplacementSteps bool
@@ -440,7 +441,7 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
-			logging.V(7).Infof("PULUMI_SUPPRESS_NEO_LINK=%v", env.SuppressNeoLink.Value())
+			slog.InfoContext(ctx, "PULUMI_SUPPRESS_NEO_LINK", "value", env.SuppressNeoLink.Value())
 			displayOpts.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
 			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
@@ -484,16 +485,24 @@ func NewPreviewCmd() *cobra.Command {
 			encrypter := sm.Encrypter()
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
-				ctx,
-				stackName,
-				proj,
-				cfg.Environment,
-				cfg.Config,
-				encrypter,
-				decrypter)
-			if configErr != nil {
-				return fmt.Errorf("validating stack config: %w", configErr)
+			if skipConfigValidation {
+				// Still apply project config defaults onto the stack config, but skip validation.
+				if configErr := workspace.ApplyProjectConfig(
+					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+					return fmt.Errorf("applying stack config: %w", configErr)
+				}
+			} else {
+				configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+					ctx,
+					stackName,
+					proj,
+					cfg.Environment,
+					cfg.Config,
+					encrypter,
+					decrypter)
+				if configErr != nil {
+					return fmt.Errorf("validating stack config: %w", configErr)
+				}
 			}
 
 			targetURNs := slice.Prealloc[string](len(targets))
@@ -561,9 +570,9 @@ func NewPreviewCmd() *cobra.Command {
 
 			start := time.Now()
 			metadata, err := meta.Result(ctx)
-			logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+			slog.InfoContext(ctx, "Waiting for language runtime metadata", "duration", time.Since(start))
 			if err != nil {
-				logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+				slog.InfoContext(ctx, "Could not retrieve language runtime metadata", "err", err)
 			} else {
 				maps.Copy(m.Environment, metadata)
 			}
@@ -733,6 +742,9 @@ func NewPreviewCmd() *cobra.Command {
 		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to refresh resources,"+
 			" this only applies if --refresh is set")
+	cmd.PersistentFlags().BoolVar(
+		&skipConfigValidation, "skip-config-validation", false,
+		"Skip validation of stack config values against the project config schema")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

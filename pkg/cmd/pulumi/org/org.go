@@ -45,7 +45,7 @@ func NewOrgCmd() *cobra.Command {
 
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -115,7 +115,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -166,7 +166,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}

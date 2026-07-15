@@ -26,21 +26,23 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/gofrs/uuid"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // ResolvedPolicyEnvironment holds resolved ESC environment data for a policy pack.
@@ -374,6 +376,9 @@ type UpdateOptions struct {
 	// Specific resources to update during a deployment.
 	Targets deploy.UrnTargets
 
+	// Specific snippet UUIDs to target during a deployment. Applied in addition to Targets.
+	TargetSnippets []string
+
 	// true if we're allowing dependent targets to change, even if not specified in one of the above
 	// XXXTargets lists.
 	TargetDependents bool
@@ -435,6 +440,89 @@ type UpdateOptions struct {
 	// otherwise happens during engine setup. Missing plugins will still be installed lazily by
 	// the provider registry when they are actually requested.
 	SkipPluginPreInstall bool
+
+	// Snippets updates the PCL snippets stored in the stack snapshot as part of this deployment. Keys are snippet
+	// UUIDs. A new UUID adds a snippet, an existing UUID replaces that snippet when the value is non-nil, and an
+	// existing UUID with a nil value deletes that snippet.
+	Snippets map[uuid.UUID]*resource.Snippet
+}
+
+func applySnippetUpdates(base []resource.Snippet, updates map[uuid.UUID]*resource.Snippet) ([]resource.Snippet, error) {
+	if len(updates) == 0 {
+		return base, nil
+	}
+
+	byUUID := make(map[uuid.UUID]int, len(base))
+	result := make([]resource.Snippet, 0, len(base)+len(updates))
+	for i, snippet := range base {
+		id, err := uuid.FromString(snippet.UUID)
+		if err != nil {
+			return nil, fmt.Errorf("snippet at index %d has invalid uuid %q", i, snippet.UUID)
+		}
+		if other, ok := byUUID[id]; ok {
+			return nil, fmt.Errorf("duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i)
+		}
+		byUUID[id] = len(result)
+		result = append(result, snippet)
+	}
+
+	keys := make([]uuid.UUID, 0, len(updates))
+	for id := range updates {
+		if id == uuid.Nil {
+			return nil, errors.New("snippet update contains nil uuid")
+		}
+		keys = append(keys, id)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].String() < keys[j].String()
+	})
+
+	for _, id := range keys {
+		snippet := updates[id]
+		existing, exists := byUUID[id]
+		if snippet == nil {
+			if !exists {
+				return nil, fmt.Errorf("cannot delete snippet %q: no such snippet in snapshot", id)
+			}
+			result = append(result[:existing], result[existing+1:]...)
+			delete(byUUID, id)
+			for i := existing; i < len(result); i++ {
+				parsed, err := uuid.FromString(result[i].UUID)
+				contract.AssertNoErrorf(err, "validated snippet UUID changed")
+				byUUID[parsed] = i
+			}
+			continue
+		}
+
+		updated := *snippet
+		if updated.UUID != "" && updated.UUID != id.String() {
+			return nil, fmt.Errorf("snippet %q has mismatched uuid %q", id, updated.UUID)
+		}
+		updated.UUID = id.String()
+		if exists {
+			result[existing] = updated
+		} else {
+			byUUID[id] = len(result)
+			result = append(result, updated)
+		}
+	}
+
+	return result, nil
+}
+
+func targetWithSnippets(target *deploy.Target, snippets []resource.Snippet) *deploy.Target {
+	if target == nil {
+		return nil
+	}
+	next := *target
+	if next.Snapshot == nil {
+		next.Snapshot = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, snippets, nil)
+		return &next
+	}
+	snapshot := *next.Snapshot
+	snapshot.Snippets = snippets
+	next.Snapshot = &snapshot
+	return &next
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -456,6 +544,18 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 ) {
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 	defer func() { ctx.Events <- NewCancelEvent() }()
+
+	var baseSnippets []resource.Snippet
+	if u.Target != nil && u.Target.Snapshot != nil {
+		baseSnippets = u.Target.Snapshot.Snippets
+	}
+	effectiveSnippets, err := applySnippetUpdates(baseSnippets, opts.Snippets)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(opts.Snippets) > 0 {
+		u.Target = targetWithSnippets(u.Target, effectiveSnippets)
+	}
 
 	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "update", ctx.ParentSpan)
 	if err != nil {
@@ -483,6 +583,27 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 		DryRun:        dryRun,
 		pluginManager: ctx.PluginManager,
 	})
+}
+
+func persistValidatedSnippets(
+	ctx context.Context,
+	manager SnapshotManager,
+	snippets []resource.Snippet,
+	plugctx *plugin.Context,
+) error {
+	if manager == nil {
+		return nil
+	}
+	loader := schema.NewPluginLoader(plugctx)
+	for _, snippet := range snippets {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := deploy.ValidateSnippet(snippet, loader); err != nil {
+			return err
+		}
+	}
+	return manager.SetSnippets(snippets)
 }
 
 func installPlugins(
@@ -1131,10 +1252,10 @@ func (acts *updateActions) OnResourceStepPost(
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		// Deletions emit the resourceOutputEvent so the display knows when to stop the time elapsed counter.
 		// Additionally, emit the event for views with outputs.
-		if step.Res().Custom ||
+		if res := step.Res(); res != nil && (res.Custom ||
 			acts.Opts.Refresh && step.Op() == deploy.OpRefresh ||
 			step.Op() == deploy.OpDelete ||
-			step.Res().ViewOf != "" {
+			res.ViewOf != "") {
 			acts.Opts.Events.resourceOutputsEvent(
 				op,
 				step,
@@ -1202,7 +1323,7 @@ func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeD
 }
 
 func (acts *updateActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
-	before resource.PropertyMap, after resource.PropertyMap,
+	before property.Map, after property.Map,
 ) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }
@@ -1236,7 +1357,9 @@ type previewActions struct {
 }
 
 func isInternalStep(step deploy.Step) bool {
-	if step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step) {
+	if step.Op() == deploy.OpRemovePendingReplace ||
+		step.Op() == deploy.OpExtendParameterize ||
+		isDefaultProviderStep(step) {
 		return true
 	}
 	refreshStep, ok := step.(*deploy.RefreshStep)
@@ -1367,7 +1490,7 @@ func (acts *previewActions) OnPolicyViolation(urn resource.URN, d plugin.Analyze
 }
 
 func (acts *previewActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
-	before resource.PropertyMap, after resource.PropertyMap,
+	before property.Map, after property.Map,
 ) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }

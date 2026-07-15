@@ -26,11 +26,14 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
+
+type stackTagsRenderFunc func(w io.Writer, tags map[apitype.StackTagName]string) error
 
 func newStackTagCmd() *cobra.Command {
 	var stack string
@@ -107,7 +110,15 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 }
 
 func newStackTagListCmd(stack *string) *cobra.Command {
-	var jsonOut bool
+	output := outputflag.OutputFlag[stackTagsRenderFunc]{
+		RenderForTerminal: func(w io.Writer, tags map[apitype.StackTagName]string) error {
+			printStackTags(w, tags)
+			return nil
+		},
+		RenderJSON: func(w io.Writer, tags map[apitype.StackTagName]string) error {
+			return ui.FprintJSON(w, tags)
+		},
+	}
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
@@ -136,19 +147,13 @@ func newStackTagListCmd(stack *string) *cobra.Command {
 
 			tags := s.Tags()
 
-			if jsonOut {
-				return ui.FprintJSON(cmd.OutOrStdout(), tags)
-			}
-
-			printStackTags(cmd.OutOrStdout(), tags)
-			return nil
+			return output.Get()(cmd.OutOrStdout(), tags)
 		},
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 
 	return cmd
 }
@@ -174,7 +179,7 @@ func printStackTags(w io.Writer, tags map[apitype.StackTagName]string) {
 func newStackTagRemoveCmd(stack *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "remove",
-		Aliases: []string{"rm"},
+		Aliases: []string{"rm", "delete"},
 		Short:   "Remove a stack tag",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

@@ -893,8 +893,14 @@ func (g *generator) genObjectConsExpression(
 
 	// Track plain object context for nested rendering. If we enter a
 	// non-plain (input) context, clear the flag so nested objects get &.
+	// However, if inPlainObjectField was already set (by the caller
+	// detecting a plain schema property), preserve it — plain properties
+	// use value semantics even when the model type contains OutputType.
 	savedPlain := g.inPlainObjectField
-	if isInput {
+	if g.inPlainObjectField {
+		// Plain properties use Go native types, not Pulumi input types.
+		isInput = false
+	} else if isInput {
 		g.inPlainObjectField = false
 	}
 	defer func() { g.inPlainObjectField = savedPlain }()
@@ -962,6 +968,19 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 			g.Fgenf(w, "%.v", item.Key)
 		}
 
+		// Check if this property is marked as plain in the schema.
+		// Plain properties use value types in the Go SDK (no pointer,
+		// concrete map/array types) regardless of whether the parent
+		// object is plain or not.
+		savedPlain := g.inPlainObjectField
+		if !isMap {
+			if lit, ok := g.literalKey(item.Key); ok {
+				if isSchemaPropertyPlain(destType, lit) {
+					g.inPlainObjectField = true
+				}
+			}
+		}
+
 		// When rendering a plain struct field, collection-typed properties
 		// (maps, arrays) need explicit type info from the parent struct's
 		// model type. Without this, ObjectConsExpression renders as
@@ -970,12 +989,19 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		if g.inPlainObjectField && !isMap {
 			if lit, ok := g.literalKey(item.Key); ok {
 				if propType := g.plainPropertyType(destType, lit); propType != nil {
-					switch v := item.Value.(type) {
+					// Unwrap the value from any __convert intrinsic to
+					// get at the underlying expression type.
+					innerValue := item.Value
+					if fce, ok := innerValue.(*model.FunctionCallExpression); ok && fce.Name == pcl.IntrinsicConvert {
+						innerValue = fce.Args[0]
+					}
+					switch v := innerValue.(type) {
 					case *model.ObjectConsExpression:
 						if _, ok := propType.(*model.MapType); ok {
 							g.Fgenf(w, ": ")
 							g.genObjectConsExpression(w, v, propType, false)
 							g.Fgenf(w, ",\n")
+							g.inPlainObjectField = savedPlain
 							continue
 						}
 					case *model.TupleConsExpression:
@@ -983,6 +1009,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 							g.Fgenf(w, ": ")
 							g.genTupleConsExpression(w, v, propType)
 							g.Fgenf(w, ",\n")
+							g.inPlainObjectField = savedPlain
 							continue
 						}
 					}
@@ -991,6 +1018,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		}
 
 		g.Fgenf(w, ": %.v,\n", item.Value)
+		g.inPlainObjectField = savedPlain
 	}
 
 	g.Fgenf(w, "}")
@@ -998,11 +1026,50 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 
 // plainPropertyType returns the model type for a property of a plain struct.
 // It looks up the property by name in the model ObjectType's properties map.
+// When destType is a union (as created by InputType), it searches each element
+// for an ObjectType with the named property.
 func (g *generator) plainPropertyType(destType model.Type, key string) model.Type {
-	if obj, ok := destType.(*model.ObjectType); ok {
-		return obj.Properties[key]
+	switch dt := destType.(type) {
+	case *model.ObjectType:
+		return dt.Properties[key]
+	case *model.UnionType:
+		for _, et := range dt.ElementTypes {
+			if obj, ok := et.(*model.ObjectType); ok {
+				if pt, ok := obj.Properties[key]; ok {
+					return pt
+				}
+			}
+		}
 	}
 	return nil
+}
+
+// isSchemaPropertyPlain checks whether the named property is marked as Plain
+// in the schema ObjectType backing destType. This is used to detect plain
+// properties nested inside non-plain parents, where the Go SDK still expects
+// value types (no pointer, concrete map/array types).
+func isSchemaPropertyPlain(destType model.Type, propName string) bool {
+	schemaType, ok := pcl.GetSchemaForType(destType)
+	if !ok {
+		return false
+	}
+	objType, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType)
+	if !ok {
+		return false
+	}
+	for _, prop := range objType.Properties {
+		if prop.Name == propName {
+			// A property is plain when its type is NOT wrapped in
+			// schema.InputType, meaning it uses value semantics in
+			// the Go SDK.
+			_, isInput := prop.Type.(*schema.InputType)
+			if optType, isOpt := prop.Type.(*schema.OptionalType); isOpt {
+				_, isInput = optType.ElementType.(*schema.InputType)
+			}
+			return !isInput
+		}
+	}
+	return false
 }
 
 func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) {
@@ -1324,10 +1391,17 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 	}
 
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
-		return (&pkgContext{
-			pkg:              (&schema.Package{Name: "main"}).Reference(),
-			externalPackages: g.externalCache,
-		}).argsType(schemaType)
+		// When the model type is a union (e.g. from schema.InputType) and
+		// GetSchemaForType synthesizes a schema.UnionType from the element
+		// types, argsType returns "interface{}" because it doesn't handle
+		// schema unions. Skip the schema path in that case and let the union
+		// handler below resolve element types individually.
+		if _, isSchemaUnion := schemaType.(*schema.UnionType); !isSchemaUnion {
+			return (&pkgContext{
+				pkg:              (&schema.Package{Name: "main"}).Reference(),
+				externalPackages: g.externalCache,
+			}).argsType(schemaType)
+		}
 	}
 
 	switch destType {
@@ -1469,6 +1543,10 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			case *model.MapType:
 				return g.argumentTypeName(ut, isInput)
 			case *model.ListType:
+				return g.argumentTypeName(ut, isInput)
+			case *model.ObjectType:
+				return g.argumentTypeName(ut, isInput)
+			case *model.OutputType:
 				return g.argumentTypeName(ut, isInput)
 			}
 		}
@@ -1831,13 +1909,32 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 	return strKey, true
 }
 
+// functionPackage resolves the package that defines the function token. For
+// extensions the token lives in the base namespace but the owner is the
+// extension; fall back to the token prefix.
+func (g *generator) functionPackage(token string) string {
+	pkg, _, _, _ := pcl.DecomposeToken(token, hcl.Range{})
+	if _, ok := g.packages[pkg]; ok {
+		return pkg
+	}
+	for name, p := range g.packages {
+		if _, ok := p.GetFunction(token); ok {
+			return name
+		}
+	}
+	return pkg
+}
+
 // functionName computes the go package, module, and name for the given function token.
 func (g *generator) functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
 
-	// Compute the resource type from the Pulumi type token.
-	pkg, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	// Compute the resource type from the Pulumi type token. The package that
+	// defines the function may differ from the token's namespace (e.g. an invoke
+	// that resolves through an extension), so prefer functionPackage.
+	_, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkg := g.functionPackage(token)
 	module := g.resolveModule(token)
 	if strings.HasPrefix(member, "get") {
 		if g.useLookupInvokeForm(token) {

@@ -16,9 +16,11 @@ package display
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
+	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -32,10 +34,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
+// byteStringDisplay renders a string containing bytes that are not valid UTF-8 as b"<base64>",
+// since such strings cannot be represented in JSON or terminal output directly.
+func byteStringDisplay(s string) string {
+	return `b"` + base64.StdEncoding.EncodeToString([]byte(s)) + `"`
+}
+
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
-// not true any secret values are replaced with "[secret]".
+// not true any secret values are replaced with "[secret]". Strings containing bytes that are not valid UTF-8 are
+// replaced with their b"<base64>" rendering.
 func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.PropertyValue {
 	switch {
+	case v.IsString() && !utf8.ValidString(v.StringValue()):
+		return resource.NewProperty(byteStringDisplay(v.StringValue()))
 	case v.IsArray():
 		new := make([]resource.PropertyValue, len(v.ArrayValue()))
 		for i, e := range v.ArrayValue() {
@@ -118,6 +129,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           s.ResourceHooks,
+		SnippetID:               s.SnippetID,
 	}.Make()
 }
 

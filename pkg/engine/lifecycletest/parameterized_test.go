@@ -27,11 +27,11 @@ import (
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -67,9 +67,9 @@ func TestPackageRef(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkg1Ref, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil)
+		pkg1Ref, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, nil)
 		require.NoError(t, err)
-		pkg2Ref, err := monitor.RegisterPackage("pkgA", "2.0.0", "", nil, nil)
+		pkg2Ref, err := monitor.RegisterPackage("pkgA", "2.0.0", "", nil, nil, nil)
 		require.NoError(t, err)
 
 		// If we register the "same" provider in parallel, we should get the same ref.
@@ -78,7 +78,7 @@ func TestPackageRef(t *testing.T) {
 			var pcs promise.CompletionSource[string]
 			promises = append(promises, pcs.Promise())
 			go func() {
-				ref, err := monitor.RegisterPackage("pkgB", "1.0.0", "downloadUrl", nil, nil)
+				ref, err := monitor.RegisterPackage("pkgB", "1.0.0", "downloadUrl", nil, nil, nil)
 				require.NoError(t, err)
 				pcs.MustFulfill(ref)
 			}()
@@ -230,7 +230,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil)
+		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, nil)
 		require.NoError(t, err)
 
 		// Register a resource using that base provider
@@ -258,7 +258,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			Name:    "pkgExt",
 			Version: "0.5.0",
 			Value:   []byte("replacement"),
-		})
+		}, nil)
 		require.NoError(t, err)
 
 		// Test registering a resource with the replacement provider
@@ -447,7 +447,7 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "http://example.com", nil, nil)
+		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "http://example.com", nil, nil, nil)
 		require.NoError(t, err)
 
 		// Register a resource using that base provider
@@ -461,7 +461,7 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 			Name:    "pkgExt",
 			Version: "0.5.0",
 			Value:   []byte("replacement"),
-		})
+		}, nil)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resB", true, deploytest.ResourceOptions{
@@ -565,7 +565,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil)
+		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, nil)
 		require.NoError(t, err)
 
 		// Import a resource using that base provider
@@ -583,7 +583,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 			Name:    "pkgExt",
 			Version: "0.5.0",
 			Value:   []byte("replacement"),
-		})
+		}, nil)
 		require.NoError(t, err)
 
 		// Test importing a resource with the replacement provider

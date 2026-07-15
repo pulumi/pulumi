@@ -22,9 +22,6 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/acarl005/stripansi"
-	"github.com/pulumi/esc"
-	"github.com/pulumi/esc/eval"
-	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -36,6 +33,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -99,7 +99,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		},
 
 		ws: &pkgWorkspace.MockContext{
-			ReadProjectF: func() (*workspace.Project, string, error) {
+			ReadProjectF: func(string) (*workspace.Project, string, error) {
 				p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
 				if err != nil {
 					return nil, "", err
@@ -229,7 +229,9 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, err
 			}
-			_, checkDiags := eval.CheckEnvironment(ctx, name, decl, nil, nil, envs, &esc.ExecContext{}, false)
+			_, checkDiags := eval.CheckEnvironment(
+				ctx, name, decl, nil, nil, envs, &esc.ExecContext{}, false, eval.EvalOptions{},
+			)
 			diags.Extend(checkDiags...)
 			if len(diags) != 0 {
 				return mapEvalDiags(diags), nil
@@ -246,7 +248,9 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, nil, err
 			}
-			env, checkDiags := eval.CheckEnvironment(ctx, "<yaml>", decl, nil, nil, envs, &esc.ExecContext{}, false)
+			env, checkDiags := eval.CheckEnvironment(
+				ctx, "<yaml>", decl, nil, nil, envs, &esc.ExecContext{}, false, eval.EvalOptions{},
+			)
 			diags.Extend(checkDiags...)
 			return env, mapEvalDiags(diags), nil
 		},

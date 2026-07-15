@@ -1,0 +1,8 @@
+"null-value": !tag null
+boolean-value: !tag true
+integer-value: !tag 42
+number-value: !tag 3.14
+string-value: !tag hello, world
+array-value: !tag [0, 1]
+object-value: !tag { a: b }
+

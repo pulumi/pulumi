@@ -230,7 +230,10 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 	}
 
 	for _, info := range infos {
-		fullName := filepath.Join(dir, info.Name())
+		// Precompose the entry name to NFC on filesystems that decompose Unicode
+		// (macOS), mirroring git's core.precomposeunicode, so NFC-authored ignore
+		// patterns match files the filesystem hands back in decomposed form.
+		fullName := filepath.Join(dir, precomposeUnicode(info.Name()))
 
 		if !info.IsDir() && ignores.IsIgnored(fullName) {
 			logging.V(9).Infof("skip archiving of %v due to ignore file", fullName)

@@ -127,7 +127,7 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 	}
 
 	// Try to read the current project
-	project, root, err := ws.ReadProject()
+	project, root, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func requireCurrentStack(
 	lm cmdBackend.LoginManager, lopt LoadOption, opts display.Options, configFile string,
 ) (backend.Stack, error) {
 	// Try to read the current project
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		return nil, errors.New(chooseStackErr)
 	}
 
-	proj, root, err := ws.ReadProject()
+	proj, root, err := ws.ReadProject("")
 	if err != nil {
 		return nil, err
 	}

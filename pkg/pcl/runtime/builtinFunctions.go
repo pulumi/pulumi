@@ -30,10 +30,10 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/customdecode"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -96,6 +96,52 @@ func tryExpressions(
 	}
 	buf.WriteString("\nAt least one expression must produce a successful result")
 	return cty.NilVal, errors.New(buf.String())
+}
+
+func recoverExpression(
+	args []cty.Value,
+	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
+) (cty.Value, error) {
+	if len(args) != 2 {
+		return cty.NilVal, errors.New("recover requires a value and recovery expression")
+	}
+
+	valueClosure := customdecode.ExpressionClosureFromVal(args[0])
+	value, diags := valueClosure.Value()
+	if diags.HasErrors() {
+		return cty.NilVal, errors.New(diags.Error())
+	}
+
+	pv, err := ctyToPropertyValue(value)
+	if err == nil {
+		return propertyValueToCty(context.TODO(), getResource, pv)
+	}
+
+	var poison *poisonError
+	if !errors.As(err, &poison) {
+		return cty.NilVal, err
+	}
+
+	recoveryClosure := customdecode.ExpressionClosureFromVal(args[1])
+	childContext := recoveryClosure.EvalContext.NewChild()
+	childContext.Variables = map[string]cty.Value{
+		"error": cty.StringVal(poison.Error()),
+	}
+	recoveryClosure = &customdecode.ExpressionClosure{
+		Expression:  recoveryClosure.Expression,
+		EvalContext: childContext,
+	}
+
+	recoveredValue, diags := recoveryClosure.Value()
+	if diags.HasErrors() {
+		return cty.NilVal, errors.New(diags.Error())
+	}
+
+	recoveredPV, err := ctyToPropertyValue(recoveredValue)
+	if err != nil {
+		return cty.NilVal, err
+	}
+	return propertyValueToCty(context.TODO(), getResource, recoveredPV)
 }
 
 func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
@@ -173,6 +219,23 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			return tryExpressions(args, ectx.getResource)
+		},
+	})
+
+	recoverFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "value",
+				Type: customdecode.ExpressionClosureType,
+			},
+			{
+				Name: "recovery",
+				Type: customdecode.ExpressionClosureType,
+			},
+		},
+		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			return recoverExpression(args, ectx.getResource)
 		},
 	})
 
@@ -1031,6 +1094,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		"secret":             secretFn,
 		"unsecret":           unsecretFn,
 		"try":                tryFn,
+		"recover":            recoverFn,
 		"can":                canFn,
 		"getOutput":          getOutputFn,
 		"invoke":             invokeFn,

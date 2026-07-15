@@ -54,8 +54,9 @@ func newStackWebhookRemoveCmdWith(factory stackWebhookRemoveClientFactory) *cobr
 	)
 
 	cmd := &cobra.Command{
-		Use:   "remove",
-		Short: "[EXPERIMENTAL] Delete a stack webhook",
+		Use:     "remove",
+		Aliases: []string{"rm", "delete"},
+		Short:   "[EXPERIMENTAL] Delete a stack webhook",
 		Long: "[EXPERIMENTAL] Delete a stack webhook.\n" +
 			"\n" +
 			"Permanently removes the specified webhook from the stack. This cannot\n" +
