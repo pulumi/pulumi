@@ -27,7 +27,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -205,66 +204,6 @@ func TestSourceTarballBinariesNoneFound(t *testing.T) {
 	})
 
 	assert.Empty(t, sourceTarballBinaries(tgz, declared))
-}
-
-func TestPackLocationSelection(t *testing.T) {
-	t.Parallel()
-
-	platform := workspace.CurrentPlatform()
-
-	t.Run("binary for this platform", func(t *testing.T) {
-		t.Parallel()
-		rp := cloudRequiredPolicy{RequiredPolicy: apitype.RequiredPolicy{
-			Name:          "p",
-			PackLocation:  "source-key",
-			PackLocations: map[string]string{platform: "bin-key"},
-		}}
-		loc, err := rp.packLocation()
-		require.NoError(t, err)
-		assert.Equal(t, "bin-key", loc)
-	})
-
-	t.Run("platform gap falls back to source", func(t *testing.T) {
-		t.Parallel()
-		other := "linux-amd64"
-		if platform == other {
-			other = "darwin-arm64"
-		}
-		rp := cloudRequiredPolicy{RequiredPolicy: apitype.RequiredPolicy{
-			Name:          "p",
-			PackLocation:  "source-key",
-			PackLocations: map[string]string{other: "bin-key"},
-		}}
-		loc, err := rp.packLocation()
-		require.NoError(t, err)
-		assert.Equal(t, "source-key", loc)
-	})
-
-	t.Run("legacy pack", func(t *testing.T) {
-		t.Parallel()
-		rp := cloudRequiredPolicy{RequiredPolicy: apitype.RequiredPolicy{
-			Name:         "p",
-			PackLocation: "source-key",
-		}}
-		loc, err := rp.packLocation()
-		require.NoError(t, err)
-		assert.Equal(t, "source-key", loc)
-	})
-
-	t.Run("binary only, platform missing", func(t *testing.T) {
-		t.Parallel()
-		other := "linux-amd64"
-		if platform == other {
-			other = "darwin-arm64"
-		}
-		rp := cloudRequiredPolicy{RequiredPolicy: apitype.RequiredPolicy{
-			Name:          "p",
-			PackLocations: map[string]string{other: "bin-key"},
-		}}
-		_, err := rp.packLocation()
-		require.ErrorContains(t, err, platform)
-		require.ErrorContains(t, err, other)
-	})
 }
 
 func TestInstallRequiredPolicySkipsDependenciesForBinaryPack(t *testing.T) {

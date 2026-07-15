@@ -88,32 +88,6 @@ func (rp *cloudRequiredPolicy) policyPath() (string, bool, error) {
 		version)
 }
 
-// packLocation picks the artifact to download: this platform's binary when the pack
-// published one, otherwise the source archive. A pack that published binaries but
-// not for this platform falls back to source with a warning — never silently.
-func (rp *cloudRequiredPolicy) packLocation() (string, error) {
-	if len(rp.PackLocations) == 0 {
-		return rp.PackLocation, nil
-	}
-	platform := workspace.CurrentPlatform()
-	if loc, ok := rp.PackLocations[platform]; ok {
-		return loc, nil
-	}
-	if rp.PackLocation != "" {
-		fmt.Fprintf(os.Stderr,
-			"warning: policy pack %q has no binary for %s (available: %s); "+
-				"falling back to the source archive, which requires the pack's language toolchain\n",
-			rp.RequiredPolicy.Name, platform,
-			strings.Join(slices.Sorted(maps.Keys(rp.PackLocations)), ", "))
-		return rp.PackLocation, nil
-	}
-	return "", fmt.Errorf(
-		"policy pack %q does not provide an artifact for %s; it supports: %s. "+
-			"The pack must be republished with a %s binary to run on this machine",
-		rp.RequiredPolicy.Name, platform,
-		strings.Join(slices.Sorted(maps.Keys(rp.PackLocations)), ", "), platform)
-}
-
 // Installed returns true if the PolicyPack is already installed locally.
 func (rp *cloudRequiredPolicy) Installed() bool {
 	_, installed, err := rp.policyPath()
@@ -132,11 +106,7 @@ func (rp *cloudRequiredPolicy) Download(
 	ctx context.Context,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
 ) (io.ReadCloser, int64, error) {
-	location, err := rp.packLocation()
-	if err != nil {
-		return nil, 0, err
-	}
-	tarball, size, err := rp.client.DownloadPolicyPack(ctx, location)
+	tarball, size, err := rp.client.DownloadPolicyPack(ctx, rp.PackLocation)
 	if err != nil {
 		return nil, 0, err
 	}
