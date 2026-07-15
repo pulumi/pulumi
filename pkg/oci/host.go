@@ -128,10 +128,11 @@ var _ plugin.Host = (*containerHost)(nil)
 // programImage is the program's image; run-from-program-image providers (just
 // `command`) run from it — rooted in the program's filesystem — rather than from
 // their own image. It may be empty when no such provider is used.
-// pluginRegistry, if non-empty, is an OCI registry from which absent provider
-// images are pulled (and retagged to the bare convention) before use — the
-// container-model "install" step. Empty preserves the prior behaviour: an absent
-// image is assumed prebuilt/loaded and surfaces at run time if it is not.
+// pluginRegistry, if non-empty, is an OCI registry that qualifies every provider
+// ref (see ProviderImageRef) — absent images are pulled and run under that same
+// fully-qualified name, the container-model "install" step (see ensureImage).
+// Empty preserves the prior behaviour: an absent image is assumed prebuilt/loaded
+// and surfaces at run time if it is not.
 func NewContainerHost(
 	base plugin.Host, pod PodManager, engineHost, programImage, pluginRegistry, podID string,
 ) plugin.Host {
