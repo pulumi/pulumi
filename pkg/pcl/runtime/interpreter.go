@@ -244,6 +244,31 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 		return val, nil
 	}
 
+	// hookArgs builds the `args` object for a hook invocation from the request's resource
+	// identity and property structs.
+	hookArgs := func(ctx context.Context, req interface {
+		GetUrn() string
+		GetId() string
+		GetName() string
+		GetType() string
+	}, props map[string]*structpb.Struct,
+	) (map[string]cty.Value, error) {
+		args := map[string]cty.Value{
+			"urn":  cty.StringVal(req.GetUrn()),
+			"id":   cty.StringVal(req.GetId()),
+			"name": cty.StringVal(req.GetName()),
+			"type": cty.StringVal(req.GetType()),
+		}
+		for key, val := range props {
+			val, err := unmarshal(ctx, val)
+			if err != nil {
+				return nil, fmt.Errorf("hook %s: failed to unmarshal %s: %w", hookName, key, err)
+			}
+			args[key] = val
+		}
+		return args, nil
+	}
+
 	// runCommand evaluates the hook's command with the given `args` and runs it. The first
 	// return value is the error from running the command, if any; the second is an error
 	// evaluating the command expression itself.
@@ -292,28 +317,15 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 				}
 			}
 
-			args := map[string]cty.Value{
-				"urn":  cty.StringVal(req.GetUrn()),
-				"id":   cty.StringVal(req.GetId()),
-				"name": cty.StringVal(req.GetName()),
-				"type": cty.StringVal(req.GetType()),
-			}
-
-			for key, val := range map[string]*structpb.Struct{
-				"newInputs": req.GetNewInputs(),
-				"oldInputs": req.GetOldInputs(),
-				// Error hooks do not receive new outputs; keep the key so that
-				// `args.newOutputs` references still evaluate.
-				"newOutputs": nil,
+			// Error hooks do not receive new outputs: they fire after an operation
+			// fails, so there are none.
+			args, err := hookArgs(ctx, &req, map[string]*structpb.Struct{
+				"newInputs":  req.GetNewInputs(),
+				"oldInputs":  req.GetOldInputs(),
 				"oldOutputs": req.GetOldOutputs(),
-			} {
-				val, err := unmarshal(ctx, val)
-				if err != nil {
-					return &pulumirpc.ErrorHookResponse{
-						Error: fmt.Sprintf("hook %s: failed to unmarshal %s: %v", hookName, key, err),
-					}, nil
-				}
-				args[key] = val
+			})
+			if err != nil {
+				return &pulumirpc.ErrorHookResponse{Error: err.Error()}, nil
 			}
 
 			runErr, evalErr := runCommand(ctx, args)
@@ -349,26 +361,14 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			}
 		}
 
-		args := map[string]cty.Value{
-			"urn":  cty.StringVal(req.GetUrn()),
-			"id":   cty.StringVal(req.GetId()),
-			"name": cty.StringVal(req.GetName()),
-			"type": cty.StringVal(req.GetType()),
-		}
-
-		for key, val := range map[string]*structpb.Struct{
+		args, err := hookArgs(ctx, &req, map[string]*structpb.Struct{
 			"newInputs":  req.GetNewInputs(),
 			"oldInputs":  req.GetOldInputs(),
 			"newOutputs": req.GetNewOutputs(),
 			"oldOutputs": req.GetOldOutputs(),
-		} {
-			val, err := unmarshal(ctx, val)
-			if err != nil {
-				return &pulumirpc.ResourceHookResponse{
-					Error: fmt.Sprintf("hook %s: failed to unmarshal %s: %v", hookName, key, err),
-				}, nil
-			}
-			args[key] = val
+		})
+		if err != nil {
+			return &pulumirpc.ResourceHookResponse{Error: err.Error()}, nil
 		}
 
 		runErr, evalErr := runCommand(ctx, args)
