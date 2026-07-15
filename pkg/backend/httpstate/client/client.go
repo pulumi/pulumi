@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -2075,7 +2076,14 @@ func (pc *Client) GetStackPolicyPacks(ctx context.Context,
 	stackID StackIdentifier,
 ) (apitype.GetStackPolicyPacksResponse, error) {
 	var resp apitype.GetStackPolicyPacksResponse
-	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "policypacks"), nil, nil, &resp); err != nil {
+	queryObj := struct {
+		OS   string `url:"os,omitempty"`
+		Arch string `url:"arch,omitempty"`
+	}{
+		OS:   goruntime.GOOS,
+		Arch: goruntime.GOARCH,
+	}
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "policypacks"), queryObj, nil, &resp); err != nil {
 		return apitype.GetStackPolicyPacksResponse{}, err
 	}
 	return resp, nil

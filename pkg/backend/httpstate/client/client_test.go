@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	goruntime "runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -41,6 +42,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGetStackPolicyPacksSendsPlatform(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		gotQuery = req.URL.RawQuery
+		require.NoError(t, json.NewEncoder(rw).Encode(apitype.GetStackPolicyPacksResponse{}))
+	}))
+	defer server.Close()
+
+	client := newMockClient(server)
+	_, err := client.GetStackPolicyPacks(t.Context(),
+		StackIdentifier{Owner: "acme", Project: "p", Stack: tokens.MustParseStackName("s")})
+	require.NoError(t, err)
+	assert.Contains(t, gotQuery, "os="+goruntime.GOOS)
+	assert.Contains(t, gotQuery, "arch="+goruntime.GOARCH)
+}
 
 func newMockServer(statusCode int, message string) *httptest.Server {
 	return httptest.NewServer(
