@@ -249,25 +249,13 @@ func printPolicyPackNextSteps(
 		"pulumi policy publish [org-name]",
 	}
 
-	contract.Assertf(len(usageCommandPreambles) == len(usageCommands),
-		"Number of command preambles (%d) must match number of commands (%d)",
-		len(usageCommandPreambles), len(usageCommands))
-
-	if len(usageCommands) == 1 {
-		usageMsg := fmt.Sprintf("Once you're done editing your Policy Pack, to %s `%s`", usageCommandPreambles[0],
-			usageCommands[0])
-		usageMsg = colors.Highlight(usageMsg, usageCommands[0], colors.BrightBlue+colors.Bold)
-		fmt.Fprintln(w, opts.Color.Colorize(usageMsg))
-		fmt.Fprintln(w)
-	} else {
-		fmt.Fprintln(w, "Once you're done editing your Policy Pack:")
-		fmt.Fprintln(w)
-		for i, cmd := range usageCommands {
-			cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
-			fmt.Fprintf(w, "   * To %s `%s`\n", usageCommandPreambles[i], opts.Color.Colorize(cmdColors))
-		}
-		fmt.Fprintln(w)
+	fmt.Fprintln(w, "Once you're done editing your Policy Pack:")
+	fmt.Fprintln(w)
+	for i, cmd := range usageCommands {
+		cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
+		fmt.Fprintf(w, "   * To %s `%s`\n", usageCommandPreambles[i], opts.Color.Colorize(cmdColors))
 	}
+	fmt.Fprintln(w)
 }
 
 // choosePolicyPackTemplate will prompt the user to choose amongst the available templates.
