@@ -288,10 +288,14 @@ func rebuildDependencies(resources []apitype.ResourceV3) {
 				}
 			}
 		}
-		for i, r := range resources[i].ReplaceWith {
-			if !referenceable[r] {
-				resources[i].ReplaceWith = append(resources[i].ReplaceWith, "")
+		newReplaceWith := []resource.URN{}
+		for _, r := range resources[i].ReplaceWith {
+			if referenceable[r] {
+				newReplaceWith = append(newReplaceWith, r)
 			}
+		}
+		if len(resources[i].ReplaceWith) > 0 {
+			resources[i].ReplaceWith = newReplaceWith
 		}
 		if !referenceable[resources[i].DeletedWith] {
 			resources[i].DeletedWith = ""

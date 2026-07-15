@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,4 +73,55 @@ func TestJournalReplayerSeedsExtensionsFromBase(t *testing.T) {
 	require.Contains(t, deployment.Deployment.Extensions, ref,
 		"extensions from base must survive replay even with no extension journal entries")
 	assert.Equal(t, ext, deployment.Deployment.Extensions[ref])
+}
+
+// TestJournalReplayerRefreshPrunesReplaceWith tests that a targeted refresh which deletes a resource prunes
+// dangling ReplaceWith references to it from resources that were not themselves refreshed, while keeping
+// references that are still valid.
+func TestJournalReplayerRefreshPrunesReplaceWith(t *testing.T) {
+	t.Parallel()
+
+	res := func(name string) apitype.ResourceV3 {
+		return apitype.ResourceV3{
+			URN:    resource.URN("urn:pulumi:test::test::pkgA:m:typA::" + name),
+			Type:   "pkgA:m:typA",
+			Custom: true,
+			ID:     resource.ID("id-" + name),
+		}
+	}
+	a, b := res("a"), res("b")
+	unrelated, dependent := res("unrelated"), res("dependent")
+	dependent.ReplaceWith = []resource.URN{a.URN, b.URN}
+	base := &apitype.DeploymentV3{Resources: []apitype.ResourceV3{a, b, unrelated, dependent}}
+
+	replayer := NewJournalReplayer(base)
+
+	// Model a targeted refresh of only "b" (index 1 of the base snapshot), where the provider reports that
+	// "b" no longer exists. "dependent" is not refreshed, so replay must repair the ReplaceWith list from its
+	// old state in the base snapshot.
+	removeOld := int64(1)
+	require.NoError(t, replayer.Add(apitype.JournalEntry{
+		Kind:        apitype.JournalEntryKindRefreshSuccess,
+		OperationID: 1,
+		RemoveOld:   &removeOld,
+	}))
+
+	deployment, err := replayer.GenerateDeployment()
+	require.NoError(t, err)
+
+	byURN := make(map[resource.URN]apitype.ResourceV3, len(deployment.Deployment.Resources))
+	for _, r := range deployment.Deployment.Resources {
+		byURN[r.URN] = r
+	}
+	require.NotContains(t, byURN, b.URN)
+	require.Contains(t, byURN, dependent.URN)
+
+	// The reference to the deleted "b" is pruned and the reference to the surviving "a" is kept.
+	assert.Equal(t, []resource.URN{a.URN}, byURN[dependent.URN].ReplaceWith)
+	// The old implementation shadowed the current resource index and could append an empty URN to an unrelated
+	// resource instead of repairing the dependent resource.
+	assert.Empty(t, byURN[unrelated.URN].ReplaceWith)
+	for _, r := range deployment.Deployment.Resources {
+		assert.NotContains(t, r.ReplaceWith, resource.URN(""), "resource %s", r.URN)
+	}
 }

@@ -919,6 +919,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		newDeps := []resource.URN{}
 		newPropDeps := map[resource.PropertyKey][]resource.URN{}
+		newReplaceWith := []resource.URN{}
 
 		_, allDeps := new.GetAllDependencies()
 		for _, dep := range allDeps {
@@ -940,14 +941,14 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 					new.DeletedWith = ""
 				}
 			case resource.ResourceReplaceWith:
-				if !referenceable[dep.URN] {
-					new.ReplaceWith = nil
+				if referenceable[dep.URN] {
+					newReplaceWith = append(newReplaceWith, dep.URN)
 				}
 			}
 		}
 
-		// Since we can only have shrunk the sets of dependencies and property
-		// dependencies, we'll only update them if they were non empty to begin
+		// Since we can only have shrunk the sets of dependencies, property dependencies,
+		// and replace-with dependencies, we'll only update them if they were non empty to begin
 		// with. This is to avoid e.g. replacing a nil input with an non-nil but
 		// empty output, which while equivalent in many cases is not the same and
 		// could result in subtly different behaviour in some parts of the engine.
@@ -956,6 +957,9 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 		if len(new.PropertyDependencies) > 0 {
 			new.PropertyDependencies = newPropDeps
+		}
+		if len(new.ReplaceWith) > 0 {
+			new.ReplaceWith = newReplaceWith
 		}
 
 		// Add this resource to the resource list and mark it as referenceable.
