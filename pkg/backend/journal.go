@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -37,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
@@ -429,7 +429,7 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	return apitype.TypedDeployment{
 		Deployment: deployment,
 		Version:    version,
-		Features:   maputil.SortedKeys(features),
+		Features:   slices.Sorted(maps.Keys(features)),
 	}, nil
 }
 
