@@ -2,3 +2,5 @@ component: cli
 kind: improvement
 body: Add a `--summary` flag to `pulumi stack history events` that reduces an update's engine events to a single resource-centric summary document
 time: 2026-07-16T14:57:22.639431+02:00
+custom:
+  PR: "23960"
