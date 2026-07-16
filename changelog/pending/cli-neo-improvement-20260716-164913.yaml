@@ -1,4 +1,6 @@
 component: cli/neo
 kind: improvement
 body: Populate the console URL and deployment ID for in-process `pulumi neo` pulumi_preview/pulumi_up tool results
+custom:
+  PR: 23966
 time: 2026-07-16T16:49:13.289828+02:00
