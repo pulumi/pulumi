@@ -124,10 +124,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Resource args with same named resource and type",
 	},
 	{
-		Directory:   "simple-enum-schema",
-		Description: "Simple schema with enum types",
-	},
-	{
 		Directory:   "simple-plain-schema-with-root-package",
 		Description: "Simple schema with root package set",
 	},
@@ -513,7 +509,7 @@ type SDKCodegenOptions struct {
 // directory that contains that information:
 //
 //	testdata/
-//	    my-simple-schema/   # i.e. `simple-enum-schema`
+//	    my-simple-schema/   # i.e. `simple-resource-schema`
 //	        schema.(json|yaml)
 //	        go/
 //	        python/
