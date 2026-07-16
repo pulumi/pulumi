@@ -250,6 +250,7 @@ func TestRunTurnFirstPromptCreatesTaskAndCompletes(t *testing.T) {
 		stackRefName:   "dev",
 		client:         fc,
 		handlers:       map[string]ToolHandler{},
+		baseCtx:        t.Context(),
 		permissionMode: client.NeoPermissionModeReadOnly,
 		planMode:       true,
 	}
@@ -261,7 +262,7 @@ func TestRunTurnFirstPromptCreatesTaskAndCompletes(t *testing.T) {
 		IsFinal: true,
 	})}
 
-	res, err := s.runTurn(t.Context(), t.Context(), "build it")
+	res, err := s.runTurn(t.Context(), "build it")
 	require.NoError(t, err)
 	assert.Equal(t, acp.StopEndTurn, res.StopReason)
 
@@ -298,9 +299,9 @@ func TestStartDefaultsModes(t *testing.T) {
 	t.Parallel()
 
 	fp := &fakeTaskAPI{}
-	s := &acpSession{acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{}}
+	s := &acpSession{acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{}, baseCtx: t.Context()}
 
-	require.NoError(t, s.start(t.Context(), "hello"))
+	require.NoError(t, s.start("hello"))
 
 	fp.mu.Lock()
 	defer fp.mu.Unlock()
@@ -316,9 +317,9 @@ func TestRunTurnCreateErrorReleasesTurn(t *testing.T) {
 	t.Parallel()
 
 	fp := &fakeTaskAPI{createErr: errors.New("task quota exceeded")}
-	s := &acpSession{acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{}}
+	s := &acpSession{acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{}, baseCtx: t.Context()}
 
-	_, err := s.runTurn(t.Context(), t.Context(), "hello")
+	_, err := s.runTurn(t.Context(), "hello")
 	require.ErrorContains(t, err, "task quota exceeded")
 
 	s.mu.Lock()
@@ -339,7 +340,7 @@ func TestRunTurnPostErrorReleasesTurn(t *testing.T) {
 		started: true, taskID: "task_9",
 	}
 
-	_, err := s.runTurn(t.Context(), t.Context(), "again")
+	_, err := s.runTurn(t.Context(), "again")
 	require.ErrorContains(t, err, "backend rejected the message")
 
 	s.mu.Lock()
@@ -356,13 +357,13 @@ func TestRunTurnSurvivesEventLoopPanic(t *testing.T) {
 	t.Parallel()
 
 	fp := &fakeTaskAPI{streamPanic: true}
-	s := &acpSession{acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{}}
+	s := &acpSession{acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{}, baseCtx: t.Context()}
 
-	_, err := s.runTurn(t.Context(), t.Context(), "hello")
+	_, err := s.runTurn(t.Context(), "hello")
 	require.ErrorContains(t, err, "panic in Neo session event loop")
 	require.ErrorContains(t, err, "stream exploded")
 
-	_, err = s.runTurn(t.Context(), t.Context(), "again")
+	_, err = s.runTurn(t.Context(), "again")
 	require.ErrorContains(t, err, "panic in Neo session event loop")
 }
 
@@ -381,7 +382,7 @@ func TestRunTurnConcurrentPromptsExactlyOneWins(t *testing.T) {
 	errs := make(chan error, 2)
 	for range 2 {
 		go func() {
-			_, err := s.runTurn(t.Context(), t.Context(), "hi")
+			_, err := s.runTurn(t.Context(), "hi")
 			errs <- err
 		}()
 	}
@@ -421,10 +422,10 @@ func TestStartEntityDroppedWarningReachesEditor(t *testing.T) {
 	fc := &fakeACPClient{}
 	s := &acpSession{
 		acpID: "sess_x", api: fp, orgName: "acme", projectName: "proj", stackRefName: "dev",
-		client: fc, handlers: map[string]ToolHandler{},
+		client: fc, handlers: map[string]ToolHandler{}, baseCtx: t.Context(),
 	}
 
-	require.NoError(t, s.start(t.Context(), "hello"))
+	require.NoError(t, s.start("hello"))
 
 	// The task was still created, just without the stack attached.
 	fp.mu.Lock()
@@ -465,7 +466,7 @@ func TestRunTurnLaterPromptPostsUserMessage(t *testing.T) {
 	var err error
 	go func() {
 		defer close(turnDone)
-		res, err = s.runTurn(t.Context(), t.Context(), "again")
+		res, err = s.runTurn(t.Context(), "again")
 	}()
 
 	// Wait for the post, then resolve the turn the way the pump would.

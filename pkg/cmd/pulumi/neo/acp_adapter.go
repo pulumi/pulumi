@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -27,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
@@ -116,10 +114,10 @@ func newNeoACPCmd() *cobra.Command {
 // acp_session.go.
 type acpDelegate struct {
 	ws pkgWorkspace.Context
-	// baseCtx is the connection-lifetime context (cmd.Context()). Per-session
-	// background work (the Neo Session event loop) derives from it so it
-	// outlives the request that started it and is torn down when the connection
-	// closes.
+	// baseCtx is the connection-lifetime context (cmd.Context()), stashed on
+	// each session at creation so its background work (the Neo Session event
+	// loop) outlives the request that started it and is torn down when the
+	// connection closes.
 	baseCtx context.Context //nolint:containedctx // session loops outlive requests; see comment
 
 	mu       sync.Mutex
@@ -136,8 +134,8 @@ type acpDelegate struct {
 func (d *acpDelegate) currentBackend(
 	ctx context.Context, dir string,
 ) (backend.Backend, *workspace.Project, error) {
-	project, _, err := d.ws.ReadProject(dir)
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+	project, err := readNeoProject(d.ws, dir)
+	if err != nil {
 		return nil, nil, err
 	}
 	// NonInteractiveCurrentBackend uses the stored CLI credentials and never
@@ -181,15 +179,12 @@ func (d *acpDelegate) NewSession(
 	if err != nil {
 		return acp.NewSessionResult{}, err
 	}
-	cloudBe, ok := be.(httpstate.Backend)
-	if !ok {
-		return acp.NewSessionResult{}, errors.New("`pulumi neo` requires the Pulumi Cloud backend")
-	}
-	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
-		return acp.NewSessionResult{}, errors.New(msg)
+	cloudBe, err := resolveNeoCloudBackend(ctx, be)
+	if err != nil {
+		return acp.NewSessionResult{}, err
 	}
 
-	target, err := resolveTaskTarget(ctx, d.ws, cloudBe, project, "", "", cwd)
+	target, err := resolveTaskTarget(ctx, d.ws, cloudBe, project, taskTargetOpts{dir: cwd})
 	if err != nil {
 		return acp.NewSessionResult{}, err
 	}
@@ -213,6 +208,7 @@ func (d *acpDelegate) NewSession(
 		cwd:          cwd,
 		handlers:     handlers,
 		client:       client,
+		baseCtx:      d.baseCtx,
 	}
 	d.mu.Lock()
 	d.sessions[sessionID] = sess
@@ -234,7 +230,7 @@ func (d *acpDelegate) Prompt(ctx context.Context, params acp.PromptParams) (acp.
 	if !ok {
 		return acp.PromptResult{}, fmt.Errorf("unknown session %q", params.SessionID)
 	}
-	return s.runTurn(ctx, d.baseCtx, promptText(params.Prompt))
+	return s.runTurn(ctx, promptText(params.Prompt))
 }
 
 // Cancel posts a cancel user event for the session's task, if one is running.

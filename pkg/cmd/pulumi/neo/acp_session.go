@@ -38,6 +38,10 @@ type acpSession struct {
 	cwd          string
 	handlers     map[string]ToolHandler
 	client       acp.Client
+	// baseCtx is the connection-lifetime context the session's background work
+	// (the Neo Session event loop and the pump) derives from, so it outlives the
+	// prompt request that starts it and is torn down when the connection closes.
+	baseCtx context.Context //nolint:containedctx // fixed at session creation; see comment
 
 	// startMu serializes task creation (start) with config-option changes
 	// (setConfigOption), spanning their network calls. Without it a mode change
@@ -77,9 +81,9 @@ type neoSessionAPI interface {
 
 // start creates the Neo task with the first prompt as the initial message and
 // launches the long-lived Session event loop plus the translation pump. Both run
-// on a context derived from the connection lifetime so they survive past the
-// prompt request that started them.
-func (s *acpSession) start(baseCtx context.Context, prompt string) error {
+// on a context derived from the connection lifetime (baseCtx) so they survive
+// past the prompt request that started them.
+func (s *acpSession) start(prompt string) error {
 	// Hold startMu across the whole creation window so a concurrent
 	// setConfigOption either happens-before (its values are read below) or
 	// happens-after (it sees started and PATCHes the live task).
@@ -98,7 +102,7 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 	// fallback), collect the warning here — uiCh doesn't exist yet — and queue
 	// it below so it reaches the editor, mirroring the TUI.
 	var warnings []string
-	resp, err := createNeoTaskWithEntityRetry(baseCtx, s.api, s.orgName, prompt, s.stackRefName, s.projectName,
+	resp, err := createNeoTaskWithEntityRetry(s.baseCtx, s.api, s.orgName, prompt, s.stackRefName, s.projectName,
 		client.CreateNeoTaskOptions{
 			ToolExecutionMode: "cli",
 			// Manual approval routes every gated tool call to the editor as an ACP
@@ -117,7 +121,7 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 		return err
 	}
 
-	sessCtx, cancel := context.WithCancel(baseCtx)
+	sessCtx, cancel := context.WithCancel(s.baseCtx)
 	uiCh := make(chan UIEvent, 64)
 	// Queue creation-time warnings ahead of any stream events so the pump
 	// forwards them to the editor first.
@@ -165,10 +169,9 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 // runTurn runs one prompt turn: on the first prompt it creates the Neo task and
 // starts the event loop (start); on later prompts it posts the user's message.
 // Either way it blocks until the turn ends (a final assistant message,
-// cancellation, or a fatal error) and reports the stop reason. baseCtx is the
-// connection-lifetime context the session's background loops run on; ctx is the
+// cancellation, or a fatal error) and reports the stop reason. ctx is the
 // prompt request's own context.
-func (s *acpSession) runTurn(ctx, baseCtx context.Context, text string) (acp.PromptResult, error) {
+func (s *acpSession) runTurn(ctx context.Context, text string) (acp.PromptResult, error) {
 	// Register this turn before any work so the pump can signal it the moment
 	// the turn ends, even for a very fast turn. ACP drives one prompt at a time
 	// per session; reject an overlapping prompt rather than overwrite activeTurn,
@@ -192,7 +195,7 @@ func (s *acpSession) runTurn(ctx, baseCtx context.Context, text string) (acp.Pro
 
 	var startErr error
 	if needStart {
-		startErr = s.start(baseCtx, text)
+		startErr = s.start(text)
 	} else {
 		startErr = s.api.PostNeoTaskUserEvent(ctx, s.orgName, taskID,
 			apitype.AgentUserEventUserMessage{Type: "user_message", Content: text})
@@ -204,6 +207,11 @@ func (s *acpSession) runTurn(ctx, baseCtx context.Context, text string) (acp.Pro
 		return acp.PromptResult{}, startErr
 	}
 
+	// On ctx.Done we deliberately leave activeTurn registered: the backend turn
+	// is still in flight, and clearing the slot early would let a new prompt
+	// register a waiter that the old turn's boundary event then resolves. The
+	// slot clears on the next turn-boundary event (or the pump's teardown)
+	// instead — until then, new prompts are rejected as overlapping.
 	select {
 	case <-ctx.Done():
 		return acp.PromptResult{}, ctx.Err()
