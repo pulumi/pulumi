@@ -318,7 +318,7 @@ func NewUpCmd() *cobra.Command {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
 			templateNameOrURL, cmdTemplates.ScopeAll,
-			workspace.TemplateKindPulumiProject, env.Global())
+			cmdTemplates.TemplateKindPulumiProject, env.Global())
 		defer contract.IgnoreClose(templateSource)
 
 		// List the templates from the repo.
@@ -327,7 +327,7 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		var template workspace.Template
+		var template cmdTemplates.ProjectTemplate
 		if len(templates) == 0 {
 			return errors.New("no template found")
 		} else if len(templates) == 1 {
@@ -403,7 +403,7 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		// Copy the template files from the repo to the temporary "virtual workspace" directory.
-		if err = workspace.CopyTemplateFiles(template.Dir, temp, true, name, description); err != nil {
+		if err = cmdTemplates.CopyTemplateFiles(template.Dir, temp, true, name, description); err != nil {
 			return err
 		}
 
