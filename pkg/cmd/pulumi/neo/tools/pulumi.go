@@ -163,9 +163,7 @@ func (e envVal) Value() string {
 
 // pulumiResult matches pulumi-service's PulumiOperationResult so tool consumers on the
 // agent side don't care whether the call ran locally or in a Deployment.
-// DeploymentID is reserved for Deployments-API runs and stays empty on the
-// in-process path; UpdateID and Version identify the in-process operation
-// instead (see backend.UpdateOptions.OnPermalink).
+// DeploymentID is reserved for Deployments-API runs; empty for in-process runs.
 type pulumiResult struct {
 	DeploymentID  string `json:"deployment_id"`
 	ConsoleURL    string `json:"console_url"`
@@ -176,11 +174,9 @@ type pulumiResult struct {
 	StackName     string `json:"stack_name"`
 	UpdateSummary string `json:"update_summary,omitempty"`
 	EventsFile    string `json:"events_file,omitempty"`
-	// UpdateID is the operation's UpdateID (a UUID string), set for both
-	// previews and updates when running against the cloud backend.
+	// UpdateID identifies the operation; set when running against the cloud backend.
 	UpdateID string `json:"update_id,omitempty"`
-	// Version is the stack's update version counter, only meaningful for
-	// non-preview updates.
+	// Version is the stack's update version; only meaningful for non-preview updates.
 	Version int `json:"version,omitempty"`
 }
 
@@ -298,12 +294,8 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("gathering metadata: %w", err))
 	}
 
-	// consoleURL, updateID, and version are populated by opts.OnPermalink once the
-	// cloud backend computes the operation's permalink, so they thread through to
-	// newPulumiResult below. OnPermalink runs synchronously on this goroutine (inside the
-	// PreviewStack/UpdateStack call below), not on the drain goroutine, so no
-	// synchronization is needed. All remain zero for non-cloud backends, which never
-	// call OnPermalink.
+	// Populated by opts.OnPermalink when the cloud backend computes the permalink.
+	// The callback runs synchronously on this goroutine, so no locking is needed.
 	var consoleURL, updateID string
 	var version int
 
@@ -673,10 +665,8 @@ func silenceStd() func() {
 // the LLM passes an FQSN — a phrasing the CLI itself encourages via some of
 // its own error messages.
 //
-// consoleURL, updateID, and version come from backend.UpdateOptions.OnPermalink
-// (see run); all are zero when running against a non-cloud backend, which never
-// calls it. DeploymentID is deliberately left empty — it is reserved for
-// Deployments-API runs, which don't go through this path.
+// consoleURL, updateID, and version come from OnPermalink and are zero for
+// non-cloud backends. DeploymentID stays empty (Deployments-API runs only).
 func newPulumiResult(
 	proj *workspace.Project, stackRef backend.StackReference,
 	eventsPath, consoleURL, updateID string, version int,
