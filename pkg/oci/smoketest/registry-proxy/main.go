@@ -12,14 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Command registry-proxy is a pull-through OCI registry that wraps stock Pulumi
-// provider binaries as container images on demand. It serves the read path of the
-// OCI distribution API; on a manifest request for pulumi-provider-<name>:v<version>
-// it downloads the released plugin binary from get.pulumi.com and synthesizes a
-// minimal image — the binary at /plugin/provider with that as the entrypoint, the
-// exact format the container host already runs (and that run-from-program-image
-// providers extract via CopyFromImage). Nothing is pushed to it; it conjures the
-// image from the binary the moment the daemon pulls.
+// Command registry-proxy is the pod's bootstrap registry: one localhost endpoint
+// that pretends the "everything is a published image" end state already exists. It
+// is a pull-through *router*, dispatching by repository namespace:
+//
+//   - pulumi-provider-<name> and pulumi/pulumi-provider-<name> — the provider
+//     namespace, read-only, synthesized on demand: a manifest request downloads the
+//     released plugin binary from get.pulumi.com and wraps it as a minimal image —
+//     the binary at /plugin/provider with that as the entrypoint, the exact format
+//     the container host already runs (and that run-from-program-image providers
+//     extract via CopyFromImage). Nothing is ever pushed here; the proxy conjures
+//     the image the moment the daemon pulls. The bare form is the ref the engine
+//     computes today; the pulumi/-prefixed form is the same namespace under the
+//     org-qualified convention from the publishing design, accepted now so the
+//     engine can move to org-qualified refs without a proxy change.
+//
+//   - every other repository (e.g. <org>/pulumi-provider-<name>) — the local
+//     publish target. `docker push localhost:5005/myorg/pulumi-provider-greeting:
+//     v0.1.0` lands here and the engine's pull resolves from here, so a
+//     publish→consume loop runs hermetically on one machine before any real
+//     registry exists. Two backends: by default an embedded, in-memory registry
+//     (ggcr's pkg/registry — zero setup, ephemeral); or, with PROXY_UPSTREAM set
+//     (e.g. http://registry:5000), a straight reverse proxy to a real registry
+//     sidecar, which then owns storage and any persistence.
+//
+// The proxy is a bootstrap/testing helper, deliberately NOT real infra: no auth, no
+// TLS (localhost only), and in embedded mode the store lives and dies with the
+// proxy container (the wrapper replaces that container whenever it would run a
+// different image, so locally published packages must be re-pushed after — or run a
+// sidecar and point PROXY_UPSTREAM at it). The hypothetical end state is providers
+// and components published to real registries; the proxy exists so everything
+// downstream can act as if that were already true.
 //
 // This is the "wrap-on-demand belongs in a pull-through proxy, not the CLI" call
 // from the design notes, realized: it drops in where the smoke tests stood up a
@@ -32,7 +55,8 @@
 // from pkg/): ggcr assembles the image and keeps the two digests straight (the
 // manifest references layers by their *compressed* digest while the config's
 // diff_ids are the *uncompressed* tar digests) — the classic footgun of
-// hand-rolling a registry.
+// hand-rolling a registry — and its pkg/registry supplies the embedded store's
+// entire distribution-API surface.
 package main
 
 import (
@@ -43,12 +67,15 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 
+	"github.com/google/go-containerregistry/pkg/registry"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -76,8 +103,15 @@ type wrapSpec struct {
 type proxy struct {
 	arch string
 
+	// backend serves every repository outside the provider namespace — the local
+	// publish target. By default it is an embedded in-memory registry (ggcr's
+	// pkg/registry), as ephemeral as the proxy's container; with PROXY_UPSTREAM
+	// set it is a straight reverse proxy to a real registry sidecar, which then
+	// owns storage (and persistence, if it mounts a volume).
+	backend http.Handler
+
 	mu                sync.Mutex
-	manifests         map[string]*synthesized // keyed by "<name>:<tag>"
+	manifests         map[string]*synthesized // keyed by "<repo>:<tag>"
 	manifestsByDigest map[string]*synthesized // keyed by manifest digest
 	blobs             map[string][]byte       // keyed by blob digest ("sha256:...")
 }
@@ -91,20 +125,72 @@ type synthesized struct {
 var (
 	manifestRe = regexp.MustCompile(`^/v2/(.+)/manifests/(.+)$`)
 	blobRe     = regexp.MustCompile(`^/v2/(.+)/blobs/(sha256:[0-9a-f]+)$`)
-	// A pulled repository is pulumi-provider-<name>; the tag is v<version>.
+	uploadRe   = regexp.MustCompile(`^/v2/(.+)/blobs/uploads(/.*)?$`)
+	// A synthesized repository is pulumi-provider-<name>; the tag is v<version>.
 	repoRe = regexp.MustCompile(`^pulumi-provider-(.+)$`)
 )
 
-func main() {
-	addr := envOr("PROXY_ADDR", ":5000")
-	arch := envOr("PROXY_TARGET_ARCH", runtime.GOARCH)
-	p := &proxy{
+// providerRepo reports whether repo belongs to the synthesized provider namespace,
+// and if so which released provider it names. Both the bare form the engine
+// computes today (pulumi-provider-<name>) and the org-qualified convention form
+// (pulumi/pulumi-provider-<name>) land here; any other org's repositories do not.
+func providerRepo(repo string) (provider string, ok bool) {
+	bare := strings.TrimPrefix(repo, "pulumi/")
+	if m := repoRe.FindStringSubmatch(bare); m != nil {
+		return m[1], true
+	}
+	return "", false
+}
+
+func newProxy(arch string, backend http.Handler) *proxy {
+	return &proxy{
 		arch:              arch,
+		backend:           backend,
 		manifests:         map[string]*synthesized{},
 		manifestsByDigest: map[string]*synthesized{},
 		blobs:             map[string][]byte{},
 	}
-	log.Printf("registry-proxy: serving on %s, synthesizing linux/%s provider images from get.pulumi.com", addr, arch)
+}
+
+// upstreamBackend builds the reverse proxy for PROXY_UPSTREAM mode: every
+// non-provider request is forwarded verbatim to the sidecar registry at upstream
+// (e.g. http://registry:5000). The proxy stores nothing in this mode.
+//
+// The client's original Host header is deliberately preserved (NOT rewritten to
+// the upstream's): registry:2 mints absolute blob-upload Location URLs from the
+// Host it sees, and those URLs must route the client back through this proxy —
+// rewriting Host sends the docker daemon chasing the sidecar's container-network
+// name, which only the proxy can resolve. (Found the hard way: the ggcr test
+// registry uses relative Locations and masked this; a real daemon against
+// registry:2 did not.)
+func upstreamBackend(upstream string) (http.Handler, error) {
+	u, err := url.Parse(upstream)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return nil, fmt.Errorf("PROXY_UPSTREAM %q is not a URL like http://registry:5000 (%v)", upstream, err)
+	}
+	return httputil.NewSingleHostReverseProxy(u), nil
+}
+
+func main() {
+	addr := envOr("PROXY_ADDR", ":5000")
+	arch := envOr("PROXY_TARGET_ARCH", runtime.GOARCH)
+	backendDesc := "embedded in-memory registry"
+	var backend http.Handler
+	if upstream := os.Getenv("PROXY_UPSTREAM"); upstream != "" {
+		b, err := upstreamBackend(upstream)
+		if err != nil {
+			log.Fatalf("registry-proxy: %v", err)
+		}
+		backend = b
+		backendDesc = "reverse proxy to " + upstream
+	} else {
+		backend = registry.New(registry.Logger(log.Default()))
+	}
+	p := newProxy(arch, backend)
+	log.Printf(
+		"registry-proxy: serving on %s — synthesizing linux/%s provider images from get.pulumi.com "+
+			"(pulumi-provider-*, pulumi/pulumi-provider-*); %s for everything else",
+		addr, arch, backendDesc)
 	if err := http.ListenAndServe(addr, p); err != nil { //nolint:gosec // dev tool, no timeouts needed
 		log.Fatalf("registry-proxy: %v", err)
 	}
@@ -113,21 +199,48 @@ func main() {
 func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/v2/" || r.URL.Path == "/v2":
-		// The distribution API version check.
+		// The distribution API version check, answered here for both namespaces.
 		w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
 		w.WriteHeader(http.StatusOK)
+	case uploadRe.MatchString(r.URL.Path):
+		// Blob uploads exist only in the embedded store. Reject pushes into the
+		// provider namespace up front (before any blob lands), so a `docker push`
+		// of a synthesized name fails at its first request rather than after
+		// uploading layers that the manifest PUT would then orphan.
+		m := uploadRe.FindStringSubmatch(r.URL.Path)
+		if _, ok := providerRepo(m[1]); ok {
+			http.Error(w, "the provider namespace is read-only (images are synthesized from released binaries)",
+				http.StatusMethodNotAllowed)
+			return
+		}
+		p.backend.ServeHTTP(w, r)
 	case manifestRe.MatchString(r.URL.Path):
 		m := manifestRe.FindStringSubmatch(r.URL.Path)
-		p.serveManifest(w, r, m[1], m[2])
+		if provider, ok := providerRepo(m[1]); ok {
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				http.Error(w, "the provider namespace is read-only (images are synthesized from released binaries)",
+					http.StatusMethodNotAllowed)
+				return
+			}
+			p.serveManifest(w, r, m[1], provider, m[2])
+			return
+		}
+		p.backend.ServeHTTP(w, r)
 	case blobRe.MatchString(r.URL.Path):
 		m := blobRe.FindStringSubmatch(r.URL.Path)
-		p.serveBlob(w, r, m[2])
+		if _, ok := providerRepo(m[1]); ok {
+			p.serveBlob(w, r, m[2])
+			return
+		}
+		p.backend.ServeHTTP(w, r)
 	default:
-		http.NotFound(w, r)
+		// Everything else — tag lists, catalog, referrers — belongs to the
+		// embedded registry.
+		p.backend.ServeHTTP(w, r)
 	}
 }
 
-func (p *proxy) serveManifest(w http.ResponseWriter, r *http.Request, name, ref string) {
+func (p *proxy) serveManifest(w http.ResponseWriter, r *http.Request, repo, provider, ref string) {
 	var s *synthesized
 	if strings.HasPrefix(ref, "sha256:") {
 		// A by-digest re-fetch: the daemon learned this digest from the tag
@@ -142,9 +255,9 @@ func (p *proxy) serveManifest(w http.ResponseWriter, r *http.Request, name, ref 
 		}
 	} else {
 		var err error
-		s, err = p.synthesize(name, ref)
+		s, err = p.synthesize(repo, provider, ref)
 		if err != nil {
-			log.Printf("registry-proxy: synthesize %s:%s failed: %v", name, ref, err)
+			log.Printf("registry-proxy: synthesize %s:%s failed: %v", repo, ref, err)
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
@@ -179,9 +292,12 @@ func (p *proxy) serveBlob(w http.ResponseWriter, r *http.Request, digest string)
 
 // synthesize builds (and caches) the image for one provider reference, registering
 // its config and layer blobs by digest so a subsequent /blobs/<digest> request is
-// served the exact bytes the manifest points at.
-func (p *proxy) synthesize(name, ref string) (*synthesized, error) {
-	key := name + ":" + ref
+// served the exact bytes the manifest points at. The cache is keyed by the repo as
+// requested, so the bare and pulumi/-qualified spellings of one provider cache
+// separately — harmless, since the build is deterministic and both yield the same
+// digests.
+func (p *proxy) synthesize(repo, provider, ref string) (*synthesized, error) {
+	key := repo + ":" + ref
 	p.mu.Lock()
 	if s, ok := p.manifests[key]; ok {
 		p.mu.Unlock()
@@ -189,14 +305,9 @@ func (p *proxy) synthesize(name, ref string) (*synthesized, error) {
 	}
 	p.mu.Unlock()
 
-	rm := repoRe.FindStringSubmatch(name)
-	if rm == nil {
-		return nil, fmt.Errorf("repository %q is not a pulumi-provider-<name>", name)
-	}
-	provider := rm[1]
 	version := strings.TrimPrefix(ref, "v")
 
-	log.Printf("registry-proxy: synthesizing %s:%s (provider=%s version=%s arch=%s)", name, ref, provider, version, p.arch)
+	log.Printf("registry-proxy: synthesizing %s:%s (provider=%s version=%s arch=%s)", repo, ref, provider, version, p.arch)
 	img, err := p.buildImage(provider, version, wrapSpec{})
 	if err != nil {
 		return nil, err

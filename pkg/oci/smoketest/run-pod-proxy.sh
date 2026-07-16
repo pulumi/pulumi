@@ -175,3 +175,35 @@ if ! docker image inspect "$REGISTRY_REF" >/dev/null 2>&1; then
 fi
 echo "    $REGISTRY_REF present ($(docker image inspect -f '{{.Id}}' "$REGISTRY_REF"))"
 echo "==> registry-proxy smoke test PASS — a provider was installed as an image with NOTHING pre-built; the proxy wrapped the released binary on pull"
+
+# --- pull-through router: the proxy's second namespace ------------------------------
+# Everything above exercised the synthesized provider namespace. The proxy is also a
+# router: repositories outside pulumi-provider-*/pulumi/pulumi-provider-* land in its
+# backend (embedded in-memory registry by default; a registry sidecar with
+# PROXY_UPSTREAM) — the local publish target of the publishing design. Prove the
+# round trip with the daemon itself, using the program image as the payload, and that
+# the provider namespace stays read-only.
+
+ORG_REF="$REGISTRY_HOST/smokeorg/pulumi-provider-echo:v0.0.1"
+echo "==> publishing an org-namespaced image through the proxy ($ORG_REF)"
+docker tag "$PROGRAM_IMAGE" "$ORG_REF"
+docker push -q "$ORG_REF" >/dev/null
+docker rmi "$ORG_REF" >/dev/null
+echo "==> consuming it back (pull after local removal — the bytes come from the proxy backend)"
+if ! docker pull -q "$ORG_REF" >/dev/null; then
+  echo "!! pull of $ORG_REF failed — the router's publish target did not serve it back"
+  exit 1
+fi
+docker rmi "$ORG_REF" >/dev/null
+echo "    publish->consume round trip through the router OK"
+
+echo "==> asserting the provider namespace is read-only (synthesized, never pushed)"
+RO_REF="$REGISTRY_HOST/pulumi-provider-echo:v0.0.1"
+docker tag "$PROGRAM_IMAGE" "$RO_REF"
+if docker push -q "$RO_REF" >/dev/null 2>&1; then
+  echo "!! a push into the provider namespace succeeded — it must be rejected"
+  exit 1
+fi
+docker rmi "$RO_REF" >/dev/null
+echo "    push into pulumi-provider-* rejected (405) as designed"
+echo "==> router smoke test PASS — org namespaces publish and consume through the proxy; the provider namespace stays synthesized"
