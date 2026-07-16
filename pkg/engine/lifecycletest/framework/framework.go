@@ -32,6 +32,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
@@ -233,7 +235,7 @@ func (op TestOp) runWithContext(
 		originalBase = &deploy.Snapshot{
 			Manifest:          target.Snapshot.Manifest,
 			SecretsManager:    target.Snapshot.SecretsManager,
-			Resources:         slice.Map(target.Snapshot.Resources, (*resource.State).Copy),
+			Resources:         slice.Map(target.Snapshot.Resources, (*pkgresource.State).Copy),
 			PendingOperations: target.Snapshot.PendingOperations,
 			Metadata:          target.Snapshot.Metadata,
 		}

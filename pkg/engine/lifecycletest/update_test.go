@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
@@ -149,13 +151,13 @@ func TestUpdateWithTargetedParentChildMarkedAsDelete(t *testing.T) {
 	snap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type: "pkgA:m:typA",
 			URN:  p.NewURN("pkgA:m:typA", "resA", ""),
 		}
 		s.Resources = append(s.Resources, resA)
 
-		justAChild := &resource.State{
+		justAChild := &pkgresource.State{
 			Type:   "pkgA:m:typA",
 			URN:    "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::childA",
 			Custom: true,
@@ -229,7 +231,7 @@ func TestUpdateWithTargetedResourceChangingParent(t *testing.T) {
 	initialSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    p.NewProviderURN("pkgA", "prov", ""),
 			Custom: true,
@@ -240,14 +242,14 @@ func TestUpdateWithTargetedResourceChangingParent(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		parent := &resource.State{
+		parent := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      p.NewURN("pkgA:m:typA", "parent", ""),
 			Provider: provRef.String(),
 		}
 		s.Resources = append(s.Resources, parent)
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:               "pkgA:m:typA",
 			URN:                p.NewURN("pkgA:m:typA", "resA", parent.URN),
 			Custom:             true,
@@ -318,7 +320,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		provA := &resource.State{
+		provA := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
 			Custom: true,
@@ -329,7 +331,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 		provRef, err := providers.NewReference(provA.URN, provA.ID)
 		require.NoError(t, err)
 
-		parent := &resource.State{
+		parent := &pkgresource.State{
 			Type:     "pkgA:index:Component",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Component::parent",
 			Custom:   false,
@@ -337,7 +339,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, parent)
 
-		child := &resource.State{
+		child := &pkgresource.State{
 			Type:     "pkgA:index:Res",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Component$pkgA:index:Res::child",
 			Custom:   true,
@@ -347,7 +349,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, child)
 
-		provB := &resource.State{
+		provB := &pkgresource.State{
 			Type:   "pulumi:providers:pkgB",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::provB",
 			Custom: true,
@@ -431,7 +433,7 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 	snap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		provA := &resource.State{
+		provA := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    p.NewProviderURN("pkgA", "provA", ""),
 			Custom: true,
@@ -442,7 +444,7 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 		provRefA, err := providers.NewReference(provA.URN, provA.ID)
 		require.NoError(t, err)
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      p.NewURN("pkgA:m:typA", "resA", ""),
 			Custom:   false,
@@ -451,7 +453,7 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA)
 
-		provB := &resource.State{
+		provB := &pkgresource.State{
 			Type:        "pulumi:providers:pkgB",
 			URN:         p.NewProviderURN("pkgB", "provB", ""),
 			Custom:      true,
@@ -507,7 +509,7 @@ func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		provA := &resource.State{
+		provA := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
 			Custom: true,
@@ -518,7 +520,7 @@ func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
 		provRef, err := providers.NewReference(provA.URN, provA.ID)
 		require.NoError(t, err)
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:               "pkgA:m:typA",
 			URN:                "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:             true,
@@ -651,7 +653,7 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 	snap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		comp := &resource.State{
+		comp := &pkgresource.State{
 			Type:   "pkgA:index:Component",
 			URN:    "urn:pulumi:test-stack::test-project::pkgA:index:Component::comp",
 			Custom: false,
@@ -659,7 +661,7 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 		s.Resources = append(s.Resources, comp)
 
 		// Child provider parented under the component.
-		childProv := &resource.State{
+		childProv := &pkgresource.State{
 			Type:   "pulumi:providers:pkgB",
 			URN:    "urn:pulumi:test-stack::test-project::pkgA:index:Component$pulumi:providers:pkgB::childProv",
 			Custom: true,
@@ -674,7 +676,7 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 		// Resource using child provider, parented under the component.
 		resAURN := "urn:pulumi:test-stack::test-project::" +
 			"pkgA:index:Component$pkgB:index:ResA::resA"
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:     "pkgB:index:ResA",
 			URN:      resource.URN(resAURN),
 			Custom:   false,
@@ -759,7 +761,7 @@ func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
 	snap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
 			Custom: true,
@@ -771,7 +773,7 @@ func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
 		require.NoError(t, err)
 
 		// A top-level custom resource that the target component is parented under.
-		parentA := &resource.State{
+		parentA := &pkgresource.State{
 			Type:           "pkgA:m:TypeA",
 			URN:            "urn:pulumi:test-stack::test-project::pkgA:m:TypeA::res-shared",
 			Custom:         true,
@@ -782,7 +784,7 @@ func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
 		s.Resources = append(s.Resources, parentA)
 
 		// The targeted component resource, parented under parentA.
-		target := &resource.State{
+		target := &pkgresource.State{
 			Type:           "pkgA:m:TypeB",
 			URN:            "urn:pulumi:test-stack::test-project::pkgA:m:TypeA$pkgA:m:TypeB::res-target",
 			Custom:         false,
@@ -794,7 +796,7 @@ func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
 
 		// A separate, top-level component resource marked for deletion. This
 		// shares a name with the target but has a different URN.
-		deletedParent := &resource.State{
+		deletedParent := &pkgresource.State{
 			Type:           "pkgA:m:TypeB",
 			URN:            "urn:pulumi:test-stack::test-project::pkgA:m:TypeB::res-target",
 			Custom:         false,
@@ -806,7 +808,7 @@ func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
 
 		// A child of the deleted parent that is also marked for deletion. This
 		// shares a name with parentA but has a different URN.
-		deletedChild := &resource.State{
+		deletedChild := &pkgresource.State{
 			Type:     "pkgA:m:TypeA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:TypeB$pkgA:m:TypeA::res-shared",
 			Custom:   true,

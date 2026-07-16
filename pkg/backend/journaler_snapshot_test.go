@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -57,7 +59,7 @@ func TestIdenticalSamesJournaling(t *testing.T) {
 	t.Parallel()
 
 	sameState := NewResource(aUniqueUrn)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		sameState,
 	})
 
@@ -94,7 +96,7 @@ func TestSamesWithEmptyDependenciesJournaling(t *testing.T) {
 	t.Parallel()
 
 	res := NewResourceWithDeps(aUniqueUrnResourceA, nil)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		res,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -116,7 +118,7 @@ func TestSamesWithEmptyArraysInInputsJournaling(t *testing.T) {
 	require.NoError(t, err)
 
 	res := NewResourceWithInputs(aUniqueUrnResourceA, inputs)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		res,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -151,7 +153,7 @@ func TestSamesWithDependencyChangesJournaling(t *testing.T) {
 	// The setup: the snapshot contains two resources, A and B, where
 	// B depends on A. We're going to begin a mutation in which B no longer
 	// depends on A and appears first in program order.
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 		resourceB,
 	})
@@ -218,7 +220,7 @@ func TestWriteCheckpointOnceUnsafeJournaling(t *testing.T) {
 	resourceP := NewResource("a-unique-urn-resource-p")
 	resourceA := NewResource("a-unique-urn-resource-a")
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		provider,
 		resourceP,
 		resourceA,
@@ -276,7 +278,7 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 	resourceP := NewResource(aUniqueUrnResourceP)
 	resourceA := NewResource(aUniqueUrnResourceA)
 
-	changes := slice.Prealloc[*resource.State](4)
+	changes := slice.Prealloc[*pkgresource.State](4)
 
 	// Change the "custom" bit.
 	changes = append(changes, NewResource(resourceA.URN))
@@ -298,7 +300,7 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 	changes = append(changes, NewResource(resourceA.URN))
 	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		provider,
 		resourceP,
 		resourceA,
@@ -384,13 +386,13 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 	resourceA.ID = "id"
 	resourceA.Provider = "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
 
-	snap = NewSnapshot([]*resource.State{
+	snap = NewSnapshot([]*pkgresource.State{
 		provider,
 		provider2,
 		resourceA,
 	})
 
-	changes = []*resource.State{NewResource(resourceA.URN)}
+	changes = []*pkgresource.State{NewResource(resourceA.URN)}
 	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2::id2"
 
 	for _, c := range changes {
@@ -474,7 +476,7 @@ func TestVexingDeploymentJournaling(t *testing.T) {
 	c := NewResource("c", a.URN, b.URN)
 	d := NewResource("d", c.URN)
 	e := NewResource("e", c.URN)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		a,
 		b,
 		c,
@@ -586,7 +588,7 @@ func TestDeletionJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -608,7 +610,7 @@ func TestFailedDeleteJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -691,7 +693,7 @@ func TestRecordingUpdateSuccessJournaling(t *testing.T) {
 	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("a")
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -728,7 +730,7 @@ func TestRecordingUpdateFailureJournaling(t *testing.T) {
 	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("a")
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -762,7 +764,7 @@ func TestRecordingDeleteSuccessJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -790,7 +792,7 @@ func TestRecordingDeleteFailureJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -858,7 +860,7 @@ func TestRecordingReadSuccessPreviousResourceJournaling(t *testing.T) {
 	resourceANew.Custom = true
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -929,7 +931,7 @@ func TestRecordingReadFailurePreviousResourceJournaling(t *testing.T) {
 	resourceANew.Custom = true
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -963,7 +965,7 @@ func TestRegisterOutputsJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -1008,7 +1010,7 @@ func TestRecordingSameFailureJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -1035,7 +1037,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsJournaling(t 
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a", "b")
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
@@ -1056,7 +1058,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsJournaling(t *t
 
 	r := NewResource("a")
 
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
@@ -1083,7 +1085,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a", "b")
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
@@ -1107,7 +1109,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJ
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a")
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
@@ -1190,7 +1192,7 @@ func TestJournalEncryptionFailureNotSilent(t *testing.T) {
 	// Mirror the issue's repro: a resource whose outputs contain a secret value, like an
 	// aws.ssm.Parameter's `value` / `valueWo`.
 	urn := resource.NewURN("test-stack", "test-project", "", "aws:ssm/parameter:Parameter", "p")
-	state := &resource.State{
+	state := &pkgresource.State{
 		Type:   tokens.Type("aws:ssm/parameter:Parameter"),
 		URN:    urn,
 		Custom: true,

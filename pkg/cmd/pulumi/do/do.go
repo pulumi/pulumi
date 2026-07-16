@@ -82,7 +82,8 @@ func NewDoCmd(
 			return pkghost.New(
 				context.WithoutCancel(ctx), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled,
 				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-				packageworkspace.NewResolverServer(reg))
+				packageworkspace.NewResolverServer(reg),
+			)
 		}
 	}
 	if loadConverterPlugin == nil {
@@ -138,9 +139,11 @@ func NewDoCmd(
 		if err != nil {
 			return nil, nil, fmt.Errorf("get working directory: %w", err)
 		}
-		sink := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
+		base := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
 			Color: cmdutil.GetGlobalColorization(),
 		})
+		diagFwd := &forwardingSink{base: base}
+		statusFwd := &forwardingSink{base: base}
 
 		proj, root, err := ws.ReadProject("")
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
@@ -164,14 +167,15 @@ func NewDoCmd(
 		loading := startSpinner(fmt.Sprintf("Loading provider '%s'", pkgargs[0]))
 		defer loading()
 
-		host, err := newHost(ctx, sink, sink)
+		host, err := newHost(ctx, diagFwd, statusFwd)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
 		}
 
 		pctx, err := plugin.NewContext(
-			ctx, sink, sink, host, nil, wd, nil, false,
-			nil)
+			ctx, diagFwd, statusFwd, host, nil, wd, nil, false,
+			nil,
+		)
 		if err != nil {
 			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
@@ -285,7 +289,8 @@ func NewDoCmd(
 			root:              root,
 			ws:                ws,
 			lm:                lm,
-			sink:              sink,
+			diagFwd:           diagFwd,
+			statusFwd:         statusFwd,
 			runStatefulUpdate: runStatefulUpdate,
 		}).newCommand()
 		if err != nil {
@@ -461,7 +466,8 @@ to use another format.`,
 			"a path to a plugin binary or folder. If the package supports "+
 			"parameterization, additional space-separated parameters can be "+
 			"included after the package name, e.g. --package \"name@version "+
-			"param1 \\\"multi word param\\\"\"")
+			"param1 \\\"multi word param\\\"\"",
+	)
 
 	return cmd
 }
@@ -521,9 +527,10 @@ type packageCommand struct {
 
 	// ws / lm let configureProvider open the current stack's backend when --provider is set so it
 	// can read the referenced provider resource's Inputs. Plumbed from NewDoCmd.
-	ws   pkgWorkspace.Context
-	lm   cmdBackend.LoginManager
-	sink diag.Sink
+	ws        pkgWorkspace.Context
+	lm        cmdBackend.LoginManager
+	diagFwd   *forwardingSink
+	statusFwd *forwardingSink
 
 	// runStatefulUpdate drives `backend.UpdateStack` for stateful subcommands (currently `upsert`).
 	// Nil in stateless mode or when the caller (tests, prod bootstrap) hasn't provided an
@@ -742,7 +749,8 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 
 	longhelp = fmt.Sprintf(
 		"%s\n\nRun 'pulumi do%s <module/resource/function> --help' for more details on usage.",
-		longhelp, flag)
+		longhelp, flag,
+	)
 
 	resTokens, fnTokens := pc.memberTokens()
 	modules := map[string]struct{}{}
@@ -821,7 +829,8 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 
 	longhelp = fmt.Sprintf(
 		"%s\n\nRun 'pulumi do%s <module/resource/function> --help' for more details on usage.",
-		longhelp, flag)
+		longhelp, flag,
+	)
 
 	resTokens, fnTokens := pc.memberTokens()
 	modules := map[string]struct{}{}

@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
 
@@ -119,7 +121,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 			ctx := cmd.Context()
 			urn := resourceURN(res)
 			var checked resource.PropertyMap
-			prepare := func() (*resource.State, error) {
+			prepare := func() (*pkgresource.State, error) {
 				if err := pc.configureProvider(cmd, ctx); err != nil {
 					return nil, err
 				}
@@ -136,7 +138,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 				}
 				return operationState(urn, "", checked, nil), nil
 			}
-			create := func() (*resource.State, error) {
+			create := func() (*pkgresource.State, error) {
 				response, err := pc.provider.Create(ctx, plugin.CreateRequest{
 					URN:        urn,
 					Name:       urn.Name(),
@@ -157,7 +159,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 				return pc.runDisplayedStep(cmd, displayedStep{
 					Op:  deploy.OpCreate,
 					New: operationState(urn, "", nil, nil),
-				}, func() (*resource.State, error) {
+				}, func() (*pkgresource.State, error) {
 					if _, err := prepare(); err != nil {
 						return nil, err
 					}
@@ -202,7 +204,7 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 			return pc.runDisplayedStep(cmd, displayedStep{
 				Op:  deploy.OpRead,
 				New: operationState(urn, id, nil, nil),
-			}, func() (*resource.State, error) {
+			}, func() (*pkgresource.State, error) {
 				response, err := pc.provider.Read(ctx, plugin.ReadRequest{
 					URN:    urn,
 					Name:   urn.Name(),
@@ -305,7 +307,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 				New:          operationState(urn, id, checked, nil),
 				Diffs:        diff.ChangedKeys,
 				DetailedDiff: diff.DetailedDiff,
-			}, func() (*resource.State, error) {
+			}, func() (*pkgresource.State, error) {
 				response, err := pc.provider.Update(ctx, plugin.UpdateRequest{
 					URN:        urn,
 					Name:       urn.Name(),
@@ -383,7 +385,7 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			return pc.runDisplayedStep(cmd, displayedStep{
 				Op:  deploy.OpDelete,
 				Old: operationState(urn, id, nil, nil),
-			}, func() (*resource.State, error) {
+			}, func() (*pkgresource.State, error) {
 				_, err := pc.provider.Delete(ctx, plugin.DeleteRequest{
 					URN:     urn,
 					Name:    urn.Name(),
@@ -539,11 +541,11 @@ func resultOutputs(id resource.ID, outputs resource.PropertyMap, res *schema.Res
 
 func resultState(
 	urn resource.URN, id resource.ID, inputs, outputs resource.PropertyMap, res *schema.Resource,
-) *resource.State {
+) *pkgresource.State {
 	return operationState(urn, id, inputs, resultOutputs(id, outputs, res))
 }
 
-func (pc *packageCommand) printResourceResult(cmd *cobra.Command, state *resource.State) error {
+func (pc *packageCommand) printResourceResult(cmd *cobra.Command, state *pkgresource.State) error {
 	output, err := jsonifyProperty(resource.NewProperty(state.Outputs), pc.showSecrets)
 	if err != nil {
 		return fmt.Errorf("failed to convert outputs to JSON: %w", err)

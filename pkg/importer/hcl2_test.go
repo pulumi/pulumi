@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -230,7 +232,7 @@ func renderFunctionCall(t require.TestingT, x *model.FunctionCallExpression) pro
 	}
 }
 
-func renderResource(t require.TestingT, r *pcl.Resource) *resource.State {
+func renderResource(t require.TestingT, r *pcl.Resource) *pkgresource.State {
 	inputs := map[string]property.Value{}
 	for _, attr := range r.Inputs {
 		inputs[attr.Name] = renderExpr(t, attr.Value)
@@ -286,7 +288,7 @@ func renderResource(t require.TestingT, r *pcl.Resource) *resource.State {
 	if parent != "" {
 		parentType = parent.QualifiedType()
 	}
-	return &resource.State{
+	return &pkgresource.State{
 		Type:          token,
 		URN:           resource.NewURN("stack", "project", parentType, token, r.LogicalName()),
 		Custom:        true,
@@ -330,7 +332,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			state, err := stack.DeserializeResource(s, config.NopDecrypter)
 			require.NoError(t, err)
 
-			snapshot := []*resource.State{
+			snapshot := []*pkgresource.State{
 				{
 					ID:             "123",
 					ImportID:       "abc",
@@ -435,7 +437,7 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 	// Arrange
 	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
-	state := &resource.State{
+	state := &pkgresource.State{
 		ID:       "someProvider",
 		Type:     "pulumi:providers:importer",
 		Provider: "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
@@ -447,7 +449,7 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 
 	importState := ImportState{
 		Names: nil,
-		Snapshot: []*resource.State{
+		Snapshot: []*pkgresource.State{
 			{
 				ID:       "123",
 				ImportID: "abc",
@@ -502,7 +504,7 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	require.NoError(t, err)
 	schemaLoader := schema.NewPluginLoader(pctx)
 
-	state := &resource.State{
+	state := &pkgresource.State{
 		Type:     "importer:cloudformation/stack:Stack",
 		URN:      "urn:pulumi:stack::project::importer:cloudformation/stack:Stack::Stack",
 		Custom:   true,
@@ -515,7 +517,7 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 
 	importState := ImportState{
 		Names: nil,
-		Snapshot: []*resource.State{
+		Snapshot: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:importer",
 				ID:     "123",
@@ -539,7 +541,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
-	snapshot := []*resource.State{
+	snapshot := []*pkgresource.State{
 		{
 			ID:     "123",
 			Custom: true,
@@ -570,7 +572,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 		},
 	}
 
-	states := slice.Prealloc[*resource.State](len(resources))
+	states := slice.Prealloc[*pkgresource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -615,7 +617,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGenerated
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
-	snapshot := []*resource.State{
+	snapshot := []*pkgresource.State{
 		{
 			ID:     "123",
 			Custom: true,
@@ -652,7 +654,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGenerated
 		},
 	}
 
-	states := slice.Prealloc[*resource.State](len(resources))
+	states := slice.Prealloc[*pkgresource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -695,7 +697,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
-	snapshot := []*resource.State{
+	snapshot := []*pkgresource.State{
 		{
 			ID:     "123",
 			Custom: true,
@@ -742,7 +744,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 		},
 	}
 
-	states := slice.Prealloc[*resource.State](len(resources))
+	states := slice.Prealloc[*pkgresource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -790,7 +792,7 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
-	snapshot := []*resource.State{
+	snapshot := []*pkgresource.State{
 		{
 			ID:     "123",
 			Custom: true,
@@ -829,7 +831,7 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 		},
 	}
 
-	states := slice.Prealloc[*resource.State](len(resources))
+	states := slice.Prealloc[*pkgresource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -875,7 +877,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
-	snapshot := []*resource.State{
+	snapshot := []*pkgresource.State{
 		{
 			ID:     "123",
 			Custom: true,
@@ -899,7 +901,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 		},
 	}
 
-	states := slice.Prealloc[*resource.State](len(resources))
+	states := slice.Prealloc[*pkgresource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)

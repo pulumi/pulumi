@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gocloud.dev/blob"
@@ -239,7 +241,7 @@ func makeUntypedDeploymentTimestamp(
 		return nil, err
 	}
 
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", name),
 			Type: "a:b:c",
@@ -611,7 +613,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, stk)
 
-	rBase := &resource.State{
+	rBase := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "base"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -619,7 +621,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		},
 	}
 
-	rDependency := &resource.State{
+	rDependency := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "dependency"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -628,7 +630,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		Dependencies: []resource.URN{rBase.URN},
 	}
 
-	rPropertyDependency := &resource.State{
+	rPropertyDependency := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "property-dependency"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -639,7 +641,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		},
 	}
 
-	rDeletedWith := &resource.State{
+	rDeletedWith := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "deleted-with"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -648,7 +650,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		DeletedWith: rBase.URN,
 	}
 
-	rParent := &resource.State{
+	rParent := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -657,7 +659,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		Parent: rBase.URN,
 	}
 
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		rBase,
 		rDependency,
 		rPropertyDependency,
@@ -776,7 +778,7 @@ func TestHtmlEscaping(t *testing.T) {
 	t.Parallel()
 
 	sm := b64.NewBase64SecretsManager()
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
 			Type: "a:b:c",

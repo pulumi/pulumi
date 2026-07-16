@@ -265,6 +265,8 @@ func (v Value) diff(other Value, opts diffOptions, path Path) *ValueDiff {
 		return &ValueDiff{Old: v, New: other}
 	}
 
+	opaque := v.Secret() || len(v.Dependencies()) > 0
+
 	if v.IsArray() && other.IsArray() {
 		old := v.AsArray()
 		new := other.AsArray()
@@ -293,6 +295,9 @@ func (v Value) diff(other Value, opts diffOptions, path Path) *ValueDiff {
 		if len(adds) == 0 && len(deletes) == 0 && len(updates) == 0 {
 			return nil
 		}
+		if opaque {
+			return &ValueDiff{Old: v, New: other}
+		}
 		return &ValueDiff{
 			Old: v,
 			New: other,
@@ -308,6 +313,9 @@ func (v Value) diff(other Value, opts diffOptions, path Path) *ValueDiff {
 		old := v.AsMap()
 		new := other.AsMap()
 		if diff := old.diff(new, opts, path); diff != nil {
+			if opaque {
+				return &ValueDiff{Old: v, New: other}
+			}
 			return &ValueDiff{
 				Old:    v,
 				New:    other,

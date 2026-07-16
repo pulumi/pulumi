@@ -60,6 +60,12 @@ export class ResourceImport extends jspb.Message {
     clearExtension$(): void;
     getExtension$(): ResourceExtension | undefined;
     setExtension$(value?: ResourceExtension): ResourceImport;
+    getParent(): string;
+    setParent(value: string): ResourceImport;
+    clearPropertiesList(): void;
+    getPropertiesList(): Array<string>;
+    setPropertiesList(value: Array<string>): ResourceImport;
+    addProperties(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceImport.AsObject;
@@ -83,6 +89,8 @@ export namespace ResourceImport {
         isRemote: boolean,
         parameterization?: ResourceParameterization.AsObject,
         extension?: ResourceExtension.AsObject,
+        parent: string,
+        propertiesList: Array<string>,
     }
 }
 

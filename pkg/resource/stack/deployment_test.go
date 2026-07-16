@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +46,7 @@ import (
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
 func TestDeploymentSerialization(t *testing.T) {
 	t.Parallel()
-	res := resource.NewState{
+	res := pkgresource.NewState{
 		Type: tokens.Type("Test"),
 		URN: resource.NewURN(
 			tokens.QName("test"),
@@ -223,14 +225,14 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		resources        []*resource.State
+		resources        []*pkgresource.State
 		snippets         []resource.Snippet
 		expectedVersion  int
 		expectedFeatures []string
 	}{
 		{
 			name: "v3 deployment with no features",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 				},
@@ -240,7 +242,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with snippets",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 				},
@@ -258,7 +260,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with refreshBeforeUpdate",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN:                 "urn1",
 					RefreshBeforeUpdate: true,
@@ -269,7 +271,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with views",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 				},
@@ -284,7 +286,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with hooks",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 					ResourceHooks: map[resource.HookType][]string{
@@ -297,7 +299,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with taint",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN:   "urn1",
 					Taint: true,
@@ -308,7 +310,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with extension parameterization",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN:          "urn1",
 					ExtensionRef: "ref-1",
@@ -453,7 +455,7 @@ func TestResourceSnippetIDRoundTrip(t *testing.T) {
 	ctx := t.Context()
 
 	const snippetID = "89ed2ff3-1139-54c2-b53b-c3d9fb860da6"
-	res := &resource.State{
+	res := &pkgresource.State{
 		Type:      tokens.Type("pkgA:index:res"),
 		URN:       resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
 		Custom:    true,
@@ -462,7 +464,7 @@ func TestResourceSnippetIDRoundTrip(t *testing.T) {
 		SnippetID: snippetID,
 	}
 
-	snap := &deploy.Snapshot{Resources: []*resource.State{res}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{res}}
 
 	untyped, err := SerializeUntypedDeployment(ctx, snap, nil)
 	require.NoError(t, err)
@@ -818,7 +820,7 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 			Plugins: nil,
 		},
 		SecretsManager: nil,
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:         "pkg:index:type",
 				URN:          resource.URN(urn),
@@ -1122,7 +1124,7 @@ func TestSecretInputRoundTrip(t *testing.T) {
 
 	ctx := t.Context()
 
-	res := &resource.State{
+	res := &pkgresource.State{
 		URN:  "urn:pulumi:stack::project::pkg:index:type::name",
 		Type: "pkg:index:type",
 		Inputs: resource.NewPropertyMapFromMap(map[string]any{

@@ -73,6 +73,14 @@ message ResourceImport {
     // parameterization, the resource's own type is in the base provider's package; the extension is a blob
     // applied on top of that provider. Mutually exclusive with parameterization.
     ResourceExtension extension = 10;
+
+    // the name of the resource's parent, if any. Must reference the name of another resource in the same
+    // response; resources without a parent are parented to the stack root.
+    string parent = 11;
+
+    // the input properties to include when generating code for the resource. Defaults to the resource's
+    // required properties.
+    repeated string properties = 12;
 }
 
 // A ResourceParameterization describes the base plugin that a resource's parameterized provider is built

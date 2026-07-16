@@ -17,6 +17,8 @@ package state
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -98,7 +100,7 @@ func TestSnapshotURNs(t *testing.T) {
 		t.Parallel()
 
 		snap := &deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{URN: "urn:pulumi:stk::proj::pkg:index:typ::res"},
 				{URN: "urn:pulumi:stk::proj::pkg:index:typ::res", Delete: true},
 				{URN: "urn:pulumi:stk::proj::pkg:index:typ::other"},

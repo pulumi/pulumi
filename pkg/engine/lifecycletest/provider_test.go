@@ -21,6 +21,8 @@ import (
 	"sync"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
@@ -129,7 +131,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 
 	// Create an old snapshot with an existing copy of the single resource and no providers.
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{{
+		Resources: []*pkgresource.State{{
 			Type:    resURN.Type(),
 			URN:     resURN,
 			Custom:  true,
@@ -1500,14 +1502,14 @@ func TestProviderVersionAssignment(t *testing.T) {
 		name     string
 		packages []workspace.PackageDescriptor
 		snapshot *deploy.Snapshot
-		validate func(t *testing.T, r *resource.State)
+		validate func(t *testing.T, r *pkgresource.State)
 		versions []string
 		prog     deploytest.ProgramFunc
 	}{
 		{
 			name:     "empty",
 			versions: []string{"1.0.0"},
-			validate: func(*testing.T, *resource.State) {},
+			validate: func(*testing.T, *pkgresource.State) {},
 			prog:     prog(),
 		},
 		{
@@ -1523,7 +1525,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 					},
 				},
 			},
-			validate: func(t *testing.T, r *resource.State) {
+			validate: func(t *testing.T, r *pkgresource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
 					assert.Equal(t, r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue(), "example.com/default")
@@ -1541,7 +1543,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 				},
 			}},
-			validate: func(t *testing.T, r *resource.State) {
+			validate: func(t *testing.T, r *pkgresource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					_, hasVersion := r.Inputs["version"]
 					assert.False(t, hasVersion)
@@ -1562,7 +1564,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 				},
 			}},
 			snapshot: &deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						Type: "providers:pulumi:pkgA",
 						URN:  "this:is:a:urn::ofaei",
@@ -1572,7 +1574,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 					},
 				},
 			},
-			validate: func(t *testing.T, r *resource.State) {
+			validate: func(t *testing.T, r *pkgresource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
 				}
@@ -1961,7 +1963,7 @@ func TestProvidersOptionInheritanceRemote(t *testing.T) {
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
 
-				providerResources := map[string]*resource.State{}
+				providerResources := map[string]*pkgresource.State{}
 				for _, res := range snap.Resources {
 					if providers.IsProviderType(res.Type) {
 						providerResources[string(res.Type.Name())] = res
@@ -2108,7 +2110,7 @@ func TestRefreshLegacyState(t *testing.T) {
 	}
 
 	snapshot := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type: "providers:pulumi:pkgA",
 				URN:  p.NewURN("providers:pulumi:pkgA", "prov", ""),

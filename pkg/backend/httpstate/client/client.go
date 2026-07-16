@@ -184,6 +184,14 @@ type NeoTaskResponse struct {
 	TaskID string `json:"taskId"`
 }
 
+// NeoTask represents the fields from an existing Neo task that the CLI needs
+// when reattaching to it.
+type NeoTask struct {
+	TaskID         string            `json:"taskId"`
+	ApprovalMode   NeoApprovalMode   `json:"approvalMode,omitempty"`
+	PermissionMode NeoPermissionMode `json:"permissionMode,omitempty"`
+}
+
 // TemplatePublishOperationID uniquely identifies a template publish operation.
 type TemplatePublishOperationID string
 
@@ -2812,6 +2820,19 @@ func (pc *Client) UpdateNeoTask(
 	return nil
 }
 
+// GetNeoTask fetches task metadata for an existing Neo task.
+func (pc *Client) GetNeoTask(ctx context.Context, orgName, taskID string) (*NeoTask, error) {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
+	var resp NeoTask
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, fmt.Errorf("getting Neo task: %w", err)
+	}
+	return &resp, nil
+}
+
 // NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly
 // one of Data or Err is populated: Data carries an event payload, Err carries a terminal
 // stream error (after which no further values are sent before the channel closes). ID
@@ -2821,6 +2842,46 @@ type NeoStreamEvent struct {
 	Data []byte
 	ID   string
 	Err  error
+}
+
+type neoTaskEventsResponse struct {
+	Events            []apitype.AgentConsoleEvent `json:"events"`
+	ContinuationToken *string                     `json:"continuationToken,omitempty"`
+}
+
+// GetNeoTaskEvents returns all currently recorded events for a Neo task and the
+// newest event ID. Callers can pass the returned ID to StreamNeoTaskEvents as
+// Last-Event-ID to attach from the live tail without replaying historical events.
+func (pc *Client) GetNeoTaskEvents(
+	ctx context.Context, orgName, taskID string,
+) ([]apitype.AgentConsoleEvent, string, error) {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	var events []apitype.AgentConsoleEvent
+	var lastEventID string
+	var continuationToken string
+	for {
+		path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events?pageSize=1000", orgName, taskID)
+		if continuationToken != "" {
+			path += "&continuationToken=" + url.QueryEscape(continuationToken)
+		}
+
+		var resp neoTaskEventsResponse
+		if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+			return nil, "", fmt.Errorf("getting Neo task events: %w", err)
+		}
+		for _, event := range resp.Events {
+			if event.ID != "" {
+				lastEventID = event.ID
+			}
+		}
+		events = append(events, resp.Events...)
+		if resp.ContinuationToken == nil || *resp.ContinuationToken == "" {
+			return events, lastEventID, nil
+		}
+		continuationToken = *resp.ContinuationToken
+	}
 }
 
 // StreamNeoTaskEvents opens a Server-Sent Events (SSE) connection to the Neo task event
@@ -3662,4 +3723,18 @@ func (pc *Client) GetInsightsScanLogs(
 		return apitype.InsightsScanLogs{}, err
 	}
 	return resp, nil
+}
+
+// CreateLogEncryptionSession creates a new log encryption session via the
+// Pulumi Cloud API. The service generates a session key and returns it
+// along with a session ID that can be used to identify the key later.
+func (pc *Client) CreateLogEncryptionSession(
+	ctx context.Context,
+	req apitype.LogEncryptionSessionInitRequest,
+) (*apitype.LogEncryptionSessionInitResponse, error) {
+	var resp apitype.LogEncryptionSessionInitResponse
+	if err := pc.restCall(ctx, http.MethodPost, "/api/log-encryption-session/init", nil, req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }

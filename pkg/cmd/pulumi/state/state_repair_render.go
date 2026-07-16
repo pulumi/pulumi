@@ -17,6 +17,8 @@ package state
 import (
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -52,15 +54,15 @@ import (
 //
 // and so we see that 4 is indeed the sole reordered element.
 func computeStateRepairReorderings(
-	before []*resource.State,
-	after []*resource.State,
-) []*resource.State {
-	prevs := map[resource.URN]*resource.State{}
-	nexts := map[resource.URN]*resource.State{}
+	before []*pkgresource.State,
+	after []*pkgresource.State,
+) []*pkgresource.State {
+	prevs := map[resource.URN]*pkgresource.State{}
+	nexts := map[resource.URN]*pkgresource.State{}
 
 	// First run through the list before reordering took place, recording for each state the ones that preceded and
 	// succeeded it.
-	var prev *resource.State
+	var prev *pkgresource.State
 	for _, state := range before {
 		prevs[state.URN] = prev
 		if prev != nil {
@@ -72,11 +74,11 @@ func computeStateRepairReorderings(
 
 	// Now run through the list after reordering. For each element, if *both* its preceding and succeeding states changed,
 	// add it to the list of reorderings.
-	var reorderings []*resource.State
+	var reorderings []*pkgresource.State
 	prev = nil
 	for i, state := range after {
 		if prev != prevs[state.URN] {
-			var next *resource.State
+			var next *pkgresource.State
 			if i < len(after)-1 {
 				next = after[i+1]
 			}
@@ -95,7 +97,7 @@ func computeStateRepairReorderings(
 // Renders a set of state repair operations as a human-readable string.
 func renderStateRepairOperations(
 	colorization colors.Colorization,
-	reorderings []*resource.State,
+	reorderings []*pkgresource.State,
 	pruneResults []deploy.PruneResult,
 ) string {
 	var b strings.Builder
@@ -141,15 +143,15 @@ func renderStateRepairOperations(
 				b.WriteString(string(d.URN))
 				b.WriteRune(' ')
 				switch d.Type {
-				case resource.ResourceParent:
+				case pkgresource.ResourceParent:
 					b.WriteString("[parent]")
-				case resource.ResourceDependency:
+				case pkgresource.ResourceDependency:
 					b.WriteString("[dependency]")
-				case resource.ResourcePropertyDependency:
+				case pkgresource.ResourcePropertyDependency:
 					b.WriteString("[property dependency: " + string(d.Key) + "]")
-				case resource.ResourceDeletedWith:
+				case pkgresource.ResourceDeletedWith:
 					b.WriteString("[deleted with]")
-				case resource.ResourceReplaceWith:
+				case pkgresource.ResourceReplaceWith:
 					b.WriteString("[replace with]")
 				}
 				b.WriteString("\n")

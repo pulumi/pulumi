@@ -695,9 +695,7 @@ type OperationStatus struct {
 	Started int64      `json:"started"`
 }
 
-// ExtensionRef aliases [resource.ExtensionRef]. The canonical type lives in the
-// resource package so resource.State can use it without an import cycle.
-type ExtensionRef = resource.ExtensionRef
+type ExtensionRef string
 
 type Extension struct {
 	Name    string `json:"name"`

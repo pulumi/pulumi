@@ -21,6 +21,8 @@ import (
 	"os"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -90,7 +92,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 	// backend.
 	snapshot := &deploy.Snapshot{
 		SecretsManager: b64.NewBase64SecretsManager(),
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:     resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
 				Type:    resource.RootStackType,
@@ -199,7 +201,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 	secretsManager := b64.NewBase64SecretsManager()
 	snapshot := &deploy.Snapshot{
 		SecretsManager: secretsManager,
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:  resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
 				Type: resource.RootStackType,

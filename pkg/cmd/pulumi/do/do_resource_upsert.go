@@ -121,7 +121,7 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 			// doesn't re-load.
 			displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
 			stack, err := cmdStack.RequireStack(
-				ctx, pc.sink, pc.ws, pc.lm,
+				ctx, pc.diagFwd, pc.ws, pc.lm,
 				"",                                 /*stackName — use currently selected*/
 				cmdStack.LoadOnly, displayOpts, "", /*configFile*/
 			)
@@ -156,7 +156,7 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 				ShowSecrets: pc.showSecrets,
 				Proj:        pc.proj,
 				Root:        pc.root,
-				Sink:        pc.sink,
+				Sink:        pc.diagFwd,
 			})
 			if err != nil {
 				return err

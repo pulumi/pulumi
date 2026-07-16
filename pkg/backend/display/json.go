@@ -22,6 +22,8 @@ import (
 	"os"
 	"unicode/utf8"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -82,7 +84,7 @@ func MassageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyM
 
 // stateForJSONOutput prepares some resource's state for JSON output. This includes filtering the output based
 // on the supplied options, in addition to massaging secret fields.
-func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
+func stateForJSONOutput(s *pkgresource.State, opts Options) *pkgresource.State {
 	var inputs resource.PropertyMap
 	var outputs resource.PropertyMap
 	if !isRootURN(s.URN) || !opts.SuppressOutputs {
@@ -94,7 +96,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		inputs = resource.PropertyMap{}
 		outputs = resource.PropertyMap{}
 	}
-	return resource.NewState{
+	return pkgresource.NewState{
 		Type:                    s.Type,
 		URN:                     s.URN,
 		Custom:                  s.Custom,

@@ -15,19 +15,20 @@
 package deploy
 
 import (
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// stateBuilder offers a fluent API for making edits to a resource.State object in a way that avoids mutation and
+// stateBuilder offers a fluent API for making edits to a pkgresource.State object in a way that avoids mutation and
 // allocation where possible.
 type stateBuilder struct {
-	state    resource.State
-	original *resource.State
+	state    pkgresource.State
+	original *pkgresource.State
 	edited   bool
 }
 
 // newStateBuilder creates a new builder atop the given state.
-func newStateBuilder(state *resource.State) *stateBuilder {
+func newStateBuilder(state *pkgresource.State) *stateBuilder {
 	return &stateBuilder{
 		state:    *(state.Copy()),
 		original: state,
@@ -47,7 +48,7 @@ func (sb *stateBuilder) withUpdatedURN(update func(resource.URN) resource.URN) *
 func (sb *stateBuilder) withAllUpdatedDependencies(
 	updateProviderRef func(string) string,
 	updateURN func(resource.URN) resource.URN,
-	include func(dep resource.StateDependency) bool,
+	include func(dep pkgresource.StateDependency) bool,
 ) *stateBuilder {
 	provider, allDeps := sb.state.GetAllDependencies()
 	if provider != "" {
@@ -66,25 +67,25 @@ func (sb *stateBuilder) withAllUpdatedDependencies(
 		}
 
 		switch dep.Type {
-		case resource.ResourceParent:
+		case pkgresource.ResourceParent:
 			sb.setURN(&sb.state.Parent, updateURN(sb.state.Parent))
-		case resource.ResourceDependency:
+		case pkgresource.ResourceDependency:
 			newURN := updateURN(dep.URN)
 			newDeps = append(newDeps, newURN)
 
 			if newURN != dep.URN {
 				editedDeps = true
 			}
-		case resource.ResourcePropertyDependency:
+		case pkgresource.ResourcePropertyDependency:
 			newURN := updateURN(dep.URN)
 			newPropDeps[dep.Key] = append(newPropDeps[dep.Key], newURN)
 
 			if newURN != dep.URN {
 				editedPropDeps = true
 			}
-		case resource.ResourceDeletedWith:
+		case pkgresource.ResourceDeletedWith:
 			sb.setURN(&sb.state.DeletedWith, updateURN(sb.state.DeletedWith))
-		case resource.ResourceReplaceWith:
+		case pkgresource.ResourceReplaceWith:
 			for i, replaceWith := range sb.state.ReplaceWith {
 				sb.state.ReplaceWith[i] = updateURN(replaceWith)
 			}
@@ -115,7 +116,7 @@ func (sb *stateBuilder) withUpdatedAliases() *stateBuilder {
 
 // build returns the resulting state object. If no visible changes have been made, build will return the original object
 // unmodified.
-func (sb *stateBuilder) build() *resource.State {
+func (sb *stateBuilder) build() *pkgresource.State {
 	if !sb.edited {
 		return sb.original
 	}
