@@ -21,6 +21,8 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
+	case "enum:index:Deluxe":
+		r = &Deluxe{}
 	case "enum:index:Res":
 		r = &Res{}
 	default:
