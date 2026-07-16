@@ -550,7 +550,17 @@ func TestPulumi_Run_PopulatesConsoleURLAndUpdateIdentifiers(t *testing.T) {
 					return &workspace.Project{Name: "p"}, dir, nil
 				},
 			}
-			p := &Pulumi{Cwd: dir, Workspace: ws}
+			type permalinkCall struct {
+				url, updateID string
+				version       int
+				preview       bool
+			}
+			var sinkCalls []permalinkCall
+			p := &Pulumi{Cwd: dir, Workspace: ws, Sink: &PulumiSink{
+				OnPermalink: func(url, updateID string, version int, preview bool) {
+					sinkCalls = append(sinkCalls, permalinkCall{url, updateID, version, preview})
+				},
+			}}
 
 			args, err := json.Marshal(map[string]any{
 				"project_name":     "p",
@@ -569,6 +579,8 @@ func TestPulumi_Run_PopulatesConsoleURLAndUpdateIdentifiers(t *testing.T) {
 			assert.Equal(t, tc.wantVersion, res.Version)
 			assert.Empty(t, res.DeploymentID,
 				"DeploymentID is reserved for Deployments-API runs and must stay empty in-process")
+			assert.Equal(t, []permalinkCall{{wantURL, wantUpdateID, tc.wantVersion, tc.wantPreview}}, sinkCalls,
+				"Sink.OnPermalink must receive exactly the callback the backend fired")
 		})
 	}
 }
