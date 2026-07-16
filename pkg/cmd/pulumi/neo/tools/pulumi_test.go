@@ -34,6 +34,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -493,6 +495,115 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 	}
 }
 
+// TestPulumi_Run_PopulatesConsoleURLAndDeploymentID proves run() wires
+// backendDisplay.Options.OnPermalink through to pulumiResult.ConsoleURL /
+// DeploymentID for both preview and up, using the same identifier convention
+// as the Pulumi Console: the preview's UpdateID (a UUID) for previews, and
+// the update's decimal version number for updates. The fake backend's
+// PreviewF/UpdateF invoke OnPermalink itself, mirroring what
+// cloudBackend.apply does in the real httpstate backend.
+//
+//nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager
+func TestPulumi_Run_PopulatesConsoleURLAndDeploymentID(t *testing.T) {
+	tests := []struct {
+		method       string
+		wantPreview  bool
+		wantDeployID string
+	}{
+		{method: "pulumi_preview", wantPreview: true, wantDeployID: "11111111-2222-3333-4444-555555555555"},
+		{method: "pulumi_up", wantPreview: false, wantDeployID: "42"},
+	}
+
+	for _, tc := range tests {
+		//nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager
+		t.Run(tc.method, func(t *testing.T) {
+			dir := newProjectDir(t)
+
+			const wantURL = "https://app.pulumi.com/o/proj/dev/updates/42"
+			fireOnPermalink := func(op backend.UpdateOperation) {
+				if op.Opts.Display.OnPermalink == nil {
+					return
+				}
+				if tc.wantPreview {
+					op.Opts.Display.OnPermalink(wantURL, tc.wantDeployID, 0, true)
+				} else {
+					op.Opts.Display.OnPermalink(wantURL, "11111111-2222-3333-4444-555555555555", 42, false)
+				}
+			}
+
+			stackRef := &backend.MockStackReference{
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: tokens.QName("organization/p/dev"),
+			}
+
+			var stk backend.Stack
+			be := &backend.MockBackend{
+				ParseStackReferenceF: func(name string) (backend.StackReference, error) {
+					return stackRef, nil
+				},
+				GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return stk, nil
+				},
+				PreviewF: func(_ context.Context, _ backend.Stack, op backend.UpdateOperation,
+				) (*deploy.Plan, display.ResourceChanges, error) {
+					fireOnPermalink(op)
+					return nil, display.ResourceChanges{}, nil
+				},
+				UpdateF: func(_ context.Context, _ backend.Stack, op backend.UpdateOperation,
+				) (display.ResourceChanges, error) {
+					fireOnPermalink(op)
+					return display.ResourceChanges{}, nil
+				},
+			}
+			stk = &backend.MockStack{
+				RefF:     func() backend.StackReference { return stackRef },
+				BackendF: func() backend.Backend { return be },
+				DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+					return b64.NewBase64SecretsManager(), nil
+				},
+			}
+
+			prev := cmdBackend.DefaultLoginManager
+			cmdBackend.DefaultLoginManager = &cmdBackend.MockLoginManager{
+				CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+					url string, project *workspace.Project, setCurrent bool,
+				) (backend.Backend, error) {
+					return be, nil
+				},
+				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+					url string, project *workspace.Project, setCurrent bool,
+					insecure bool, color colors.Colorization,
+				) (backend.Backend, error) {
+					return be, nil
+				},
+			}
+			t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
+
+			ws := &pkgWorkspace.MockContext{
+				ReadProjectF: func(_ string) (*workspace.Project, string, error) {
+					return &workspace.Project{Name: "p"}, dir, nil
+				},
+			}
+			p := &Pulumi{Cwd: dir, Workspace: ws}
+
+			args, err := json.Marshal(map[string]any{
+				"project_name":     "p",
+				"stack_name":       "dev",
+				"local_pulumi_dir": dir,
+			})
+			require.NoError(t, err)
+
+			value, err := p.Invoke(t.Context(), tc.method, args)
+			require.NoError(t, err)
+			res, ok := value.(pulumiResult)
+			require.True(t, ok, "expected pulumiResult, got %T", value)
+			assert.Equal(t, "succeeded", res.Status)
+			assert.Equal(t, wantURL, res.ConsoleURL)
+			assert.Equal(t, tc.wantDeployID, res.DeploymentID)
+		})
+	}
+}
+
 // recorder collects invocations into the PulumiSink so tests can assert which
 // callbacks fired and with what arguments. It's a struct of slices rather than
 // counters so the test can inspect the exact event order.
@@ -867,11 +978,13 @@ func TestNewPulumiResultUsesParsedNames(t *testing.T) {
 	proj := &workspace.Project{Name: tokens.PackageName("real-proj")}
 	stackRef := &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
 
-	res := newPulumiResult(proj, stackRef, "/tmp/events.ndjson")
+	res := newPulumiResult(proj, stackRef, "/tmp/events.ndjson", "https://app.pulumi.com/o/p/s/updates/3", "3")
 
 	assert.Equal(t, "real-proj", res.ProjectName)
 	assert.Equal(t, "dev", res.StackName)
 	assert.Equal(t, "/tmp/events.ndjson", res.EventsFile)
+	assert.Equal(t, "https://app.pulumi.com/o/p/s/updates/3", res.ConsoleURL)
+	assert.Equal(t, "3", res.DeploymentID)
 }
 
 func TestAutonamingStackContextFor_NonHTTPStateStack(t *testing.T) {

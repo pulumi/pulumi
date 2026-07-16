@@ -71,6 +71,15 @@ type Options struct {
 	NeoSummaryModel  string // the Neo summary model to use (default: "gpt-4o-mini").
 	NeoSummaryMaxLen int    // the maximum length of the Neo summary. (default 80 characters).
 
+	// OnPermalink, when set, is invoked once a cloud-backend operation's permalink to the
+	// Pulumi Console is known, immediately after it is computed and before the engine action
+	// runs. url is the full console URL; updateID is the operation's UpdateIdentifier.UpdateID
+	// (a UUID string, stable across preview and update); version is the stack's update version
+	// counter, only meaningful when preview is false. preview reports whether this is a preview
+	// (dry-run) or an update. Callers that don't run against a cloud backend (e.g. DIY backends)
+	// may never invoke this callback.
+	OnPermalink func(url string, updateID string, version int, preview bool)
+
 	// Low level options
 	term                terminal.Terminal
 	DeterministicOutput bool // true to disable timing-based rendering

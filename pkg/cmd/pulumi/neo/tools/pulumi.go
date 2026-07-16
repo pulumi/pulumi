@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -289,6 +290,14 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("gathering metadata: %w", err))
 	}
 
+	// consoleURL and updateIdentifier are populated by opts.Display.OnPermalink once the
+	// cloud backend computes the operation's permalink, so they thread through to
+	// newPulumiResult below. OnPermalink runs synchronously on this goroutine (inside the
+	// PreviewStack/UpdateStack call below), not on the drain goroutine, so no
+	// synchronization is needed. Both remain empty for non-cloud backends, which never
+	// call OnPermalink.
+	var consoleURL, updateIdentifier string
+
 	opts := backend.UpdateOptions{
 		AutoApprove: true, // Upstream approval already gates pulumi_up before dispatch.
 		Engine: engine.UpdateOptions{
@@ -306,6 +315,14 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 			Type:             backendDisplay.DisplayProgress,
 			Stdout:           io.Discard,
 			Stderr:           io.Discard,
+			OnPermalink: func(url string, updateID string, version int, preview bool) {
+				consoleURL = url
+				if preview {
+					updateIdentifier = updateID
+				} else {
+					updateIdentifier = strconv.Itoa(version)
+				}
+			},
 		},
 	}
 
@@ -371,7 +388,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	close(eventsCh)
 	<-drainDone
 
-	res := newPulumiResult(proj, s.Ref(), eventsPath)
+	res := newPulumiResult(proj, s.Ref(), eventsPath, consoleURL, updateIdentifier)
 
 	switch {
 	case runErr != nil && errors.Is(ctx.Err(), context.Canceled):
@@ -651,11 +668,21 @@ func silenceStd() func() {
 // would cause the agent to construct entities with malformed names whenever
 // the LLM passes an FQSN — a phrasing the CLI itself encourages via some of
 // its own error messages.
-func newPulumiResult(proj *workspace.Project, stackRef backend.StackReference, eventsPath string) pulumiResult {
+//
+// consoleURL and deploymentID come from backendDisplay.Options.OnPermalink (see run);
+// they are empty when running against a non-cloud backend, which never calls it.
+// deploymentID is the preview's UpdateID (a UUID) for previews, or the update's decimal
+// version number for updates — matching how the Pulumi Console routes /previews/<id> vs
+// /updates/<version>.
+func newPulumiResult(
+	proj *workspace.Project, stackRef backend.StackReference, eventsPath, consoleURL, deploymentID string,
+) pulumiResult {
 	return pulumiResult{
-		ProjectName: proj.Name.String(),
-		StackName:   stackRef.Name().String(),
-		EventsFile:  eventsPath,
+		ProjectName:  proj.Name.String(),
+		StackName:    stackRef.Name().String(),
+		EventsFile:   eventsPath,
+		ConsoleURL:   consoleURL,
+		DeploymentID: deploymentID,
 	}
 }
 
