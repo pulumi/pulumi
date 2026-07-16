@@ -24,15 +24,14 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
-	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -42,11 +41,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPackageInfoCmd(nCtx needle.Spindle) *cobra.Command {
+func newPackageInfoCmd(nCtx adder.Spindle) *cobra.Command {
 	var module string
 	var resource string
 	var function string
-	var registry registry.Registry
 	cmd := &cobra.Command{
 		Use:   "info",
 		Short: "Show information about a package",
@@ -61,10 +59,11 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			if err != nil {
 				return err
 			}
+			reg := nCtx.Registry(cmd)
 			sink := cmdutil.Diag()
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-				packageworkspace.NewResolverServer(registry))
+				packageworkspace.NewResolverServer(reg))
 			if err != nil {
 				return err
 			}
@@ -87,7 +86,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 
 			loadPartial := func() (*schema.PartialPackage, error) {
 				return packages.PartialPackageFromSchemaSource(cmd.Context(), nCtx.WS, pctx, args[0],
-					parameters, registry, nCtx.Env, 0 /* unbounded concurrency */)
+					parameters, reg, nCtx.Env, 0 /* unbounded concurrency */)
 			}
 
 			if function != "" {
@@ -105,7 +104,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 
 			spec, _, err := packages.SchemaFromSchemaSource(nCtx.WS, pctx, args[0], parameters,
-				registry, nCtx.Env, 0 /* unbounded concurrency */)
+				reg, nCtx.Env, 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}
@@ -115,8 +114,6 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			return showProviderInfo(spec, loadPartial, args, stdout, color)
 		},
 	}
-
-	needle.Thread(cmd, nCtx, needle.RequireRegistry(&registry))
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{

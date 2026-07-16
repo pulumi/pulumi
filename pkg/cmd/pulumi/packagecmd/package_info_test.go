@@ -16,38 +16,23 @@ package packagecmd
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
 
-// testNeedleContext resolves NeedRegistry to the unauthenticated registry without
-// touching the network: the workspace has no project and the login manager reports
-// no current backend. These tests load schemas from a file path, so the registry is
-// never actually queried.
-func testNeedleContext() needle.Spindle {
-	return needle.Spindle{
-		WS: &pkgWorkspace.MockContext{},
-		LM: &cmdBackend.MockLoginManager{
-			CurrentF: func(
-				context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
-			) (backend.Backend, error) {
-				return nil, nil
-			},
-		},
-	}
+// testSpindle needs no login manager: these tests load schemas from a file
+// path, so the lazy registry — the only thing that would resolve a backend —
+// is never queried.
+func testSpindle() adder.Spindle {
+	return adder.Spindle{WS: &pkgWorkspace.MockContext{}}
 }
 
 func generateSchema(t *testing.T) []byte {
@@ -206,7 +191,8 @@ func TestPackageInfo(t *testing.T) {
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
 
-	cmd := newPackageInfoCmd(testNeedleContext())
+	cmd := newPackageInfoCmd(testSpindle())
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{schemaPath})
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -237,7 +223,8 @@ func TestModuleInfo(t *testing.T) {
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
 
-	cmd := newPackageInfoCmd(testNeedleContext())
+	cmd := newPackageInfoCmd(testSpindle())
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--module", "index", schemaPath})
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -267,7 +254,8 @@ func TestResourceInfo(t *testing.T) {
 
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
-	cmd := newPackageInfoCmd(testNeedleContext())
+	cmd := newPackageInfoCmd(testSpindle())
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--module", "index", "--resource", "Test", schemaPath})
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -315,7 +303,8 @@ func TestFunctionInfo(t *testing.T) {
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
 
-	cmd := newPackageInfoCmd(testNeedleContext())
+	cmd := newPackageInfoCmd(testSpindle())
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--module", "funs", "--function", "TestFunction", schemaPath})
 	var output bytes.Buffer
 	cmd.SetOut(&output)

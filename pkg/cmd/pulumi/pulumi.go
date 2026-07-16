@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -67,7 +68,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
@@ -382,6 +382,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			ctx = httpstate.ContextWithAgentCredentialUse(ctx)
+			ctx = adder.WithBag(ctx)
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
@@ -476,7 +477,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	cmd.PersistentFlags().StringVar(
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
-	nCtx := needle.Spindle{
+	nCtx := adder.Spindle{
 		WS:  pkgWorkspace.Instance,
 		Env: env.Global(),
 		LM:  cmdBackend.DefaultLoginManager,

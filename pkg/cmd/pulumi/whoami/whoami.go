@@ -20,17 +20,16 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
-func NewWhoAmICmd(ctx needle.Spindle) *cobra.Command {
+func NewWhoAmICmd(ctx adder.Spindle) *cobra.Command {
 	var verbose bool
-	var b backend.Backend
 
 	output := outputflag.OutputFlag[whoAmIRenderFunc]{
 		RenderForTerminal: func(
@@ -63,6 +62,11 @@ func NewWhoAmICmd(ctx needle.Spindle) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			stdout := cmd.OutOrStdout()
 
+			b, err := ctx.Backend(cmd)
+			if err != nil {
+				return err
+			}
+
 			name, orgs, tokenInfo, err := b.CurrentUser()
 			if err != nil {
 				return err
@@ -71,8 +75,6 @@ func NewWhoAmICmd(ctx needle.Spindle) *cobra.Command {
 			return output.Get()(stdout, b, name, orgs, tokenInfo)
 		},
 	}
-
-	needle.Thread(cmd, ctx, needle.RequireBackend(&b))
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 

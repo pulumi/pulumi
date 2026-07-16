@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package needle
+package adder
 
 import (
 	"errors"
@@ -22,18 +22,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var optionProject = &value{
-	get: func(_ *cobra.Command, state *state, _ any) error {
+type projectInfo struct {
+	project *workspace.Project
+	root    string
+}
+
+// Project resolves the project in the current working directory. It returns a
+// nil project (and no error) when there isn't one.
+func (s Spindle) Project(cmd *cobra.Command) (*workspace.Project, string, error) {
+	p, err := bagFrom(cmd).project.get(func() (projectInfo, error) {
+		s := s.defaults(cmd)
 		cwd, err := os.Getwd()
 		if err != nil {
-			return err
+			return projectInfo{}, err
 		}
-		p, root, err := state.WS.ReadProject(cwd)
+		project, root, err := s.WS.ReadProject(cwd)
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-			return err
+			return projectInfo{}, err
 		}
-		state.project = p
-		state.projectRoot = root
-		return nil
-	},
+		return projectInfo{project: project, root: root}, nil
+	})
+	return p.project, p.root, err
 }

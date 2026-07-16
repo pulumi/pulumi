@@ -15,12 +15,12 @@
 package packagecmd
 
 import (
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/needle"
 	"github.com/spf13/cobra"
 )
 
-func NewPackageCmd(nCtx needle.Spindle) *cobra.Command {
+func NewPackageCmd(nCtx adder.Spindle) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package",
 		Short: "Work with Pulumi packages",
