@@ -465,23 +465,23 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 	}
 }
 
-// TestPulumi_Run_PopulatesConsoleURLAndDeploymentID proves run() wires
+// TestPulumi_Run_PopulatesConsoleURLAndUpdateIdentifiers proves run() wires
 // backend.UpdateOptions.OnPermalink through to pulumiResult.ConsoleURL /
-// DeploymentID for both preview and up, using the same identifier convention
-// as the Pulumi Console: the preview's UpdateID (a UUID) for previews, and
-// the update's decimal version number for updates. The fake backend's
-// PreviewF/UpdateF invoke OnPermalink itself, mirroring what
+// UpdateID / Version for both preview and up. DeploymentID must stay empty on
+// this in-process path — it is reserved for Deployments-API runs. The fake
+// backend's PreviewF/UpdateF invoke OnPermalink itself, mirroring what
 // cloudBackend.apply does in the real httpstate backend.
 //
 //nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager
-func TestPulumi_Run_PopulatesConsoleURLAndDeploymentID(t *testing.T) {
+func TestPulumi_Run_PopulatesConsoleURLAndUpdateIdentifiers(t *testing.T) {
+	const wantUpdateID = "11111111-2222-3333-4444-555555555555"
 	tests := []struct {
-		method       string
-		wantPreview  bool
-		wantDeployID string
+		method      string
+		wantPreview bool
+		wantVersion int
 	}{
-		{method: "pulumi_preview", wantPreview: true, wantDeployID: "11111111-2222-3333-4444-555555555555"},
-		{method: "pulumi_up", wantPreview: false, wantDeployID: "42"},
+		{method: "pulumi_preview", wantPreview: true, wantVersion: 0},
+		{method: "pulumi_up", wantPreview: false, wantVersion: 42},
 	}
 
 	for _, tc := range tests {
@@ -494,11 +494,7 @@ func TestPulumi_Run_PopulatesConsoleURLAndDeploymentID(t *testing.T) {
 				if op.Opts.OnPermalink == nil {
 					return
 				}
-				if tc.wantPreview {
-					op.Opts.OnPermalink(wantURL, tc.wantDeployID, 0, true)
-				} else {
-					op.Opts.OnPermalink(wantURL, "11111111-2222-3333-4444-555555555555", 42, false)
-				}
+				op.Opts.OnPermalink(wantURL, wantUpdateID, tc.wantVersion, tc.wantPreview)
 			}
 
 			stackRef := &backend.MockStackReference{
@@ -569,7 +565,10 @@ func TestPulumi_Run_PopulatesConsoleURLAndDeploymentID(t *testing.T) {
 			require.True(t, ok, "expected pulumiResult, got %T", value)
 			assert.Equal(t, "succeeded", res.Status)
 			assert.Equal(t, wantURL, res.ConsoleURL)
-			assert.Equal(t, tc.wantDeployID, res.DeploymentID)
+			assert.Equal(t, wantUpdateID, res.UpdateID)
+			assert.Equal(t, tc.wantVersion, res.Version)
+			assert.Empty(t, res.DeploymentID,
+				"DeploymentID is reserved for Deployments-API runs and must stay empty in-process")
 		})
 	}
 }
@@ -948,13 +947,16 @@ func TestNewPulumiResultUsesParsedNames(t *testing.T) {
 	proj := &workspace.Project{Name: tokens.PackageName("real-proj")}
 	stackRef := &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
 
-	res := newPulumiResult(proj, stackRef, "/tmp/events.ndjson", "https://app.pulumi.com/o/p/s/updates/3", "3")
+	res := newPulumiResult(proj, stackRef, "/tmp/events.ndjson",
+		"https://app.pulumi.com/o/p/s/updates/3", "11111111-2222-3333-4444-555555555555", 3)
 
 	assert.Equal(t, "real-proj", res.ProjectName)
 	assert.Equal(t, "dev", res.StackName)
 	assert.Equal(t, "/tmp/events.ndjson", res.EventsFile)
 	assert.Equal(t, "https://app.pulumi.com/o/p/s/updates/3", res.ConsoleURL)
-	assert.Equal(t, "3", res.DeploymentID)
+	assert.Equal(t, "11111111-2222-3333-4444-555555555555", res.UpdateID)
+	assert.Equal(t, 3, res.Version)
+	assert.Empty(t, res.DeploymentID, "DeploymentID is reserved for Deployments-API runs")
 }
 
 func TestAutonamingStackContextFor_NonHTTPStateStack(t *testing.T) {
