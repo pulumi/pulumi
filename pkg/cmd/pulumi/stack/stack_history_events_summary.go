@@ -15,7 +15,6 @@
 package stack
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"iter"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -273,9 +273,7 @@ func buildUpdateSummary(
 type summaryRender func(w io.Writer, s *updateSummary) error
 
 func renderUpdateSummaryJSON(w io.Writer, s *updateSummary) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(s)
+	return ui.FprintJSON(w, s)
 }
 
 func renderUpdateSummaryText(w io.Writer, s *updateSummary) error {
