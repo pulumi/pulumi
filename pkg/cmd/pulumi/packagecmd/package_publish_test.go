@@ -15,6 +15,7 @@
 package packagecmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -732,4 +733,104 @@ func installResourcePluginFromFiles(t *testing.T, spec workspace.PluginDescripto
 	err := pkgWorkspace.InstallPluginContent(t.Context(), spec, pluginstorage.DirPlugin(dir),
 		true, schema.NewLoaderServerFromContext)
 	require.NoError(t, err)
+}
+
+//nolint:paralleltest // This test uses the global backendInstance variable
+func TestPackagePublishCmd_OCIRegistry(t *testing.T) {
+	tests := []struct {
+		name          string
+		args          publishPackageArgs
+		packageSource string
+		mockSchema    *schema.PackageSpec
+		mockOrg       string
+		wantSrc       string
+		wantDest      string
+		wantOut       string
+		expectedErr   string
+	}{
+		{
+			name:          "publisher from flag",
+			args:          publishPackageArgs{registry: "oci://reg.example:5000", publisher: "spikeorg"},
+			packageSource: "oci://greeting-dev:latest",
+			mockSchema:    &schema.PackageSpec{Name: "greeting", Version: "0.1.0"},
+			wantSrc:       "greeting-dev:latest",
+			wantDest:      "reg.example:5000/spikeorg/pulumi-provider-greeting:v0.1.0",
+			wantOut:       "Published spikeorg/greeting@0.1.0 to oci://reg.example:5000/spikeorg/pulumi-provider-greeting:v0.1.0",
+		},
+		{
+			name:          "publisher from schema",
+			args:          publishPackageArgs{registry: "oci://reg.example:5000"},
+			packageSource: "oci://greeting-dev:latest",
+			mockSchema:    &schema.PackageSpec{Name: "greeting", Version: "0.1.0", Publisher: "acme"},
+			wantDest:      "reg.example:5000/acme/pulumi-provider-greeting:v0.1.0",
+		},
+		{
+			name:          "publisher from default org",
+			args:          publishPackageArgs{registry: "oci://reg.example:5000"},
+			packageSource: "oci://greeting-dev:latest",
+			mockSchema:    &schema.PackageSpec{Name: "greeting", Version: "0.1.0"},
+			mockOrg:       "defaultorg",
+			wantDest:      "reg.example:5000/defaultorg/pulumi-provider-greeting:v0.1.0",
+		},
+		{
+			// A non-oci source never booted the candidate image, so nothing was
+			// verified and there is nothing local to push.
+			name:          "non-image source rejected",
+			args:          publishPackageArgs{registry: "oci://reg.example:5000", publisher: "spikeorg"},
+			packageSource: "testpackage",
+			mockSchema:    &schema.PackageSpec{Name: "greeting", Version: "0.1.0"},
+			expectedErr:   "takes a locally-present image",
+		},
+		{
+			name:          "non-oci registry rejected",
+			args:          publishPackageArgs{registry: "https://reg.example"},
+			packageSource: "oci://greeting-dev:latest",
+			mockSchema:    &schema.PackageSpec{Name: "greeting", Version: "0.1.0"},
+			expectedErr:   "only oci:// destinations",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testutil.MockBackendInstance(t, &backend.MockBackend{
+				GetReadOnlyCloudRegistryF: func() registry.Registry { return &backend.MockCloudRegistry{} },
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
+					return tt.mockOrg, nil
+				},
+			})
+
+			var gotSrc, gotDest string
+			var stdout bytes.Buffer
+			cmd := &packagePublishCmd{
+				stdout: &stdout,
+				extractSchema: func(
+					ws pkgWorkspace.Context,
+					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
+					registry registry.Registry, _ env.Env, _ int,
+				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+					return tt.mockSchema, nil, nil
+				},
+				publishImage: func(_ context.Context, srcRef, destRef string) error {
+					gotSrc, gotDest = srcRef, destRef
+					return nil
+				},
+			}
+
+			err := cmd.Run(t.Context(), tt.args, tt.packageSource, &plugin.ParameterizeArgs{})
+			if tt.expectedErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErr)
+				assert.Empty(t, gotDest, "nothing may be pushed on a rejected publish")
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantSrc != "" {
+				assert.Equal(t, tt.wantSrc, gotSrc)
+			}
+			assert.Equal(t, tt.wantDest, gotDest)
+			if tt.wantOut != "" {
+				assert.Contains(t, stdout.String(), tt.wantOut)
+			}
+		})
+	}
 }

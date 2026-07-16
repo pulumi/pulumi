@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/oci"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -60,6 +61,7 @@ type publishPackageArgs struct {
 	publisher       string
 	readmePath      string
 	installDocsPath string
+	registry        string
 }
 
 type packagePublishCmd struct {
@@ -69,6 +71,10 @@ type packagePublishCmd struct {
 		ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 		registry registry.Registry, e env.Env, concurrency int,
 	) (*schema.PackageSpec, *workspace.PackageSpec, error)
+
+	// publishImage tags and pushes a local package image (nil means
+	// oci.PublishPackageImage); injectable for tests.
+	publishImage func(ctx context.Context, srcRef, destRef string) error
 }
 
 func newPackagePublishCmd() *cobra.Command {
@@ -133,6 +139,12 @@ func newPackagePublishCmd() *cobra.Command {
 			"schema or the default organization in your pulumi config.")
 
 	cmd.Flags().StringVar(
+		&args.registry, "registry", "",
+		"Publish to an OCI registry (oci://<host>) instead of the Private Registry. The package source "+
+			"must be an oci:// image ref present in the local daemon; it is verified by running it, tagged "+
+			"<host>/<publisher>/pulumi-provider-<name>:v<version>, and pushed.")
+
+	cmd.Flags().StringVar(
 		&args.readmePath, "readme", "",
 		"Path to the package readme/index markdown file")
 	cmd.Flags().StringVar(
@@ -186,17 +198,26 @@ func (cmd *packagePublishCmd) Run(
 		return fmt.Errorf("failed to get schema: %w", err)
 	}
 
-	// If no readme path is provided, check if there's a readme in the package source or plugin directory we can slurp up.
-	if args.readmePath == "" {
-		readmePath, err := cmd.findReadme(ctx, packageSrc)
-		if err != nil {
-			return fmt.Errorf("failed to find readme: %w", err)
-		}
-		args.readmePath = readmePath
+	ociHost, publishToOCI := strings.CutPrefix(args.registry, "oci://")
+	if args.registry != "" && !publishToOCI {
+		return fmt.Errorf("unsupported --registry %q: only oci:// destinations are supported", args.registry)
 	}
-	if args.readmePath == "" {
-		return errors.New("no README found. Please add one named README.md to the package, " +
-			"or use --readme to specify the path")
+
+	// An OCI publish is a registry op on the image itself — there is no readme
+	// upload, so none is required.
+	if !publishToOCI {
+		// If no readme path is provided, check if there's a readme in the package source or plugin directory we can slurp up.
+		if args.readmePath == "" {
+			readmePath, err := cmd.findReadme(ctx, packageSrc)
+			if err != nil {
+				return fmt.Errorf("failed to find readme: %w", err)
+			}
+			args.readmePath = readmePath
+		}
+		if args.readmePath == "" {
+			return errors.New("no README found. Please add one named README.md to the package, " +
+				"or use --readme to specify the path")
+		}
 	}
 
 	var publisher string
@@ -228,6 +249,10 @@ func (cmd *packagePublishCmd) Run(
 		}
 	} else {
 		return errors.New("no version specified, please set a version in the package schema")
+	}
+
+	if publishToOCI {
+		return cmd.runOCIPublish(ctx, ociHost, publisher, name, version, packageSrc)
 	}
 
 	jsonData, err := json.Marshal(pkg)
@@ -290,6 +315,34 @@ func (cmd *packagePublishCmd) Run(
 
 	fmt.Fprintf(cmd.stdout, "Successfully published package %s/%s@%s\n", publisher, name, version)
 
+	return nil
+}
+
+// runOCIPublish is the OCI-destination half of publish. The schema extraction
+// that already ran IS the conformance check: an oci:// package source boots the
+// candidate image and asks it to serve its schema — the package is verified by
+// running it, and the identity it reports (name, version) is the identity it is
+// published under. The publisher org enters the ref here, at publish time; the
+// package itself carries a bare name (see the identity & publishing design in
+// oci-design/package-identity-and-publishing.md). What remains is a registry op:
+// tag the local image with the identity-derived ref and push.
+func (cmd *packagePublishCmd) runOCIPublish(
+	ctx context.Context, registryHost, publisher, name string, version semver.Version, packageSrc string,
+) error {
+	srcRef, ok := strings.CutPrefix(packageSrc, "oci://")
+	if !ok {
+		return errors.New("publishing to an OCI registry takes a locally-present image as the package " +
+			"source (oci://<image-ref>); build one with `pulumi install` or `pulumi package build`")
+	}
+	destRef := oci.ProviderImageRefInOrg(registryHost, publisher, name, version.String())
+	publish := cmd.publishImage
+	if publish == nil {
+		publish = oci.PublishPackageImage
+	}
+	if err := publish(ctx, srcRef, destRef); err != nil {
+		return err
+	}
+	fmt.Fprintf(cmd.stdout, "Published %s/%s@%s to oci://%s\n", publisher, name, version, destRef)
 	return nil
 }
 

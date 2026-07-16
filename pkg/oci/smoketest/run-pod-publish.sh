@@ -15,9 +15,12 @@
 #   2. start router #1: org namespaces are a read-write publish target (embedded
 #      registry); pulumi/pulumi-provider-* is read-only, synthesized from released
 #      binaries on pull
-#   3. build the greeting component image, push it to router #1's ORG namespace
-#      (localhost:5064/spikeorg/pulumi-provider-greeting:v0.1.0), remove all local
-#      tags — consumption must be honest
+#   3. build the greeting component image under a working tag, then
+#      `pulumi package publish oci://<tag> --registry oci://<router#1> --publisher
+#      spikeorg`: the schema read boots the candidate image (verify by running),
+#      the org enters the ref at publish, and the image is pushed to the ORG
+#      namespace (localhost:5064/spikeorg/pulumi-provider-greeting:v0.1.0).
+#      All local tags are then removed — consumption must be honest
 #   4. `pulumi package add oci://<org ref>` in a fresh Go consumer project: assert
 #      the pin lands in Pulumi.yaml AND in the generated SDK's PluginDownloadURL
 #   5. `pulumi up` with the registry knob as the ONLY registry config: greeting
@@ -73,6 +76,9 @@ REG2="localhost:$REG2_PORT"
 PROXY1_NAME="proto-publish-proxy-1"
 PROXY2_NAME="proto-publish-proxy-2"
 
+# The working tag the component image is built under; `package publish` derives
+# the real name from the identity the running image reports.
+SRC_TAG="oci-publish-src-greeting:dev"
 # The ORG-namespaced ref the component is published under — the pin under test.
 ORG_REF="$REG1/$ORG/pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION"
 OCI_SOURCE="oci://$ORG_REF"
@@ -94,7 +100,7 @@ mkdir -p "$WORK/cli" "$WORK/project" "$WORK/state" "$WORK/consumer"
 
 cleanup() {
   local leftovers
-  for phase in "$POD_BASE" "$POD_BASE-add" "$POD_BASE-up" "$POD_BASE-zc" "$POD_BASE-mig" "$POD_BASE-off" "$POD_BASE-dst"; do
+  for phase in "$POD_BASE" "$POD_BASE-pub" "$POD_BASE-add" "$POD_BASE-up" "$POD_BASE-zc" "$POD_BASE-mig" "$POD_BASE-off" "$POD_BASE-dst"; do
     leftovers="$(docker ps -aq --filter "label=com.pulumi.pod=$phase" 2>/dev/null || true)"
     [ -n "$leftovers" ] && docker rm -f $leftovers >/dev/null 2>&1 || true
     docker volume rm "pulumi-pod-$phase-vol-workspace" >/dev/null 2>&1 || true
@@ -104,7 +110,7 @@ cleanup() {
   # Only refs this run owns (5064/5065-qualified, this run's program image, and the
   # host-unqualified random tag the zero-config probe creates).
   docker image rm -f "$ORG_REF" "$ORG_REF2" "$RANDOM_REF1" "$RANDOM_REF2" "$RANDOM_LOCAL" \
-    "$GREETING_DEFAULTED_REF1" "$GREETING_DEFAULTED_REF2" "$PROGRAM_IMAGE" >/dev/null 2>&1 || true
+    "$GREETING_DEFAULTED_REF1" "$GREETING_DEFAULTED_REF2" "$PROGRAM_IMAGE" "$SRC_TAG" >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -139,18 +145,8 @@ echo "==> starting router #1 ($PROXY1_NAME on $REG1: org publish target + synthe
 start_proxy "$PROXY1_NAME" "$REG1_PORT"
 echo "    router #1 up"
 
-echo "==> building the greeting component image and publishing it to the ORG namespace ($ORG_REF)"
-docker buildx build --builder "$BUILDER" --load -t "$ORG_REF" "$COMPONENT_DIR"
-docker push -q "$ORG_REF" >/dev/null
-echo "==> removing local greeting/random image tags so consumption is honest"
-docker image rm -f "$ORG_REF" "$GREETING_DEFAULTED_REF1" "$RANDOM_REF1" >/dev/null 2>&1 || true
-for ref in "$ORG_REF" "$GREETING_DEFAULTED_REF1" "$RANDOM_REF1"; do
-  if docker image inspect "$ref" >/dev/null 2>&1; then
-    echo "!! $ref still present locally — the consumption test would not be honest"
-    exit 1
-  fi
-done
-echo "    published to router #1's backend; nothing greeting/random remains local under $REG1 refs"
+echo "==> building the greeting component image under its working tag ($SRC_TAG)"
+docker buildx build --builder "$BUILDER" --load -t "$SRC_TAG" "$COMPONENT_DIR"
 
 echo "==> creating pod network $NET"
 docker network create "$NET" >/dev/null
@@ -183,6 +179,29 @@ engine_run() {
     "$ENGINE_IMAGE" \
     -c "$1"
 }
+
+###############################################################################
+# publish: verify-by-running + identity-derived ref + push — the CLI owns it all.
+###############################################################################
+POD_ID="$POD_BASE-pub"
+KNOB="$REG1"
+echo "==> pulumi package publish oci://$SRC_TAG --registry oci://$REG1 --publisher $ORG"
+engine_run "pulumi package publish 'oci://$SRC_TAG' --registry 'oci://$REG1' --publisher '$ORG'" 2>&1 | tee "$WORK/publish.log"
+if ! grep -q "Published $ORG/$COMPONENT_PKG@$COMPONENT_VERSION to oci://$ORG_REF" "$WORK/publish.log"; then
+  echo "!! publish did not derive the org ref from the identity the running image reported"
+  exit 1
+fi
+echo "    publish verified the artifact by running it and pushed $ORG_REF"
+
+echo "==> removing local greeting/random image tags so consumption is honest"
+docker image rm -f "$SRC_TAG" "$ORG_REF" "$GREETING_DEFAULTED_REF1" "$RANDOM_REF1" >/dev/null 2>&1 || true
+for ref in "$SRC_TAG" "$ORG_REF" "$GREETING_DEFAULTED_REF1" "$RANDOM_REF1"; do
+  if docker image inspect "$ref" >/dev/null 2>&1; then
+    echo "!! $ref still present locally — the consumption test would not be honest"
+    exit 1
+  fi
+done
+echo "    published to router #1's backend; nothing greeting/random remains local"
 
 ###############################################################################
 # package add: the pin is written and baked into the generated SDK.
