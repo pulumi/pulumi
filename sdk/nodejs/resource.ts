@@ -1348,6 +1348,20 @@ export interface ComponentResourceOptions extends ResourceOptions {
      */
     providers?: Record<string, ProviderResource> | ProviderResource[];
 
+    /**
+     * When true, send this component's constructor args to the engine as
+     * component inputs. This enables component inputs to be recorded in state.
+     * 
+     * Default: `false` for local components. Remote components always send
+     * their inputs regardless of this setting.
+     * 
+     * Note: Enabling this for components whose args contain many Output values
+     * from other resources may cause performance issues or promise leaks.
+     * See https://github.com/pulumi/pulumi/issues/23953
+     */
+
+    sendComponentInputs?: boolean;
+
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
 }
@@ -1569,10 +1583,12 @@ export class ComponentResource<TData = any> extends Resource {
             type,
             name,
             /*custom:*/ false,
-            // If the PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable is set, we skip sending the
-            // inputs to the engine. Unless this is a remote component, in which case we always send the
-            // inputs.
-            process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS && !remote ? {} : args,
+            // For local (non-remote) component resources, don't send inputs to the engine by
+            // default. Local component args often contain Output references from other resources,
+            // and serializing large args objects causes promise leaks (#23953). This matches the
+            // Go SDK's RegisterComponentResource which passes nil for props.
+            // Remore components and URN-based rehydration always send inputs.
+            remote || opts?.urn  || opts?.sendComponentInputs ? args : {},
             opts,
             remote,
             false,
