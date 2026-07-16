@@ -9,7 +9,7 @@
 # The mechanism: the program declares the greeting component as local in its
 # runtime options (a `components:` block). The language host's InstallDependencies
 # builds each declared component, tagging it by the provider convention
-# (pulumi-provider-<name>:v<version>). The built image lands in the shared docker
+# (pulumi/pulumi-provider-<name>:v<version>). The built image lands in the shared docker
 # daemon, so the container host (a *different* process — engine vs. pre-install
 # host) finds it by tag at Construct time. The daemon is the shared artifact store
 # that crosses the process split; no in-process ref handoff is needed.
@@ -39,8 +39,8 @@ COMPONENT_PKG="greeting"
 COMPONENT_VERSION="0.1.0"
 
 # The component registers a random.RandomPet child, which drives a recursive start
-# of the stock `random` provider (proven by run-pod-mlc.sh). Wrapped as an image
-# here so it is present when the child is created.
+# of the stock `random` provider (proven by run-pod-mlc.sh) — pulled through the
+# wrapper's shared registry proxy, which synthesizes it from the released binary.
 RANDOM_PKG="random"
 RANDOM_VERSION="4.21.0"
 
@@ -48,14 +48,17 @@ WRAPPER="$SMOKE_DIR/pulumi-pod"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 BUILDER_IMAGE="oci-smoke-builder:latest" # discriminating builder for the component build
 PROGRAM_IMAGE="oci-smoke-mlc:latest"
-COMPONENT_IMAGE="pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION" # built in-pod, not prebuilt
-RANDOM_IMAGE="pulumi-provider-$RANDOM_PKG:v$RANDOM_VERSION"
+# The wrapper points the engine at its shared registry proxy, so the in-pod build
+# tags the component registry-qualified (and org-namespaced) — the same ref the
+# engine resolves at Construct time.
+PROXY_HOST="localhost:${PULUMI_POD_PROXY_PORT:-5005}"
+COMPONENT_IMAGE="$PROXY_HOST/pulumi/pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION" # built in-pod, not prebuilt
 STACK="dev"
 EXPECTED_FRAGMENT="from a Node multi-language component"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
-mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/project"
+mkdir -p "$WORK/cli" "$WORK/project"
 
 cleanup() {
   # The wrapper reclaims each pod itself; this clears the in-pod-built component
@@ -92,13 +95,9 @@ docker buildx build --builder "$BUILDER" --load \
 # NOTE: the greeting component image is deliberately NOT built here — the language
 # host builds it during InstallDependencies from the mounted source.
 
-echo "==> downloading stock $RANDOM_PKG provider v$RANDOM_VERSION (linux/$GOARCH) and wrapping it"
-RANDOM_URL="https://get.pulumi.com/releases/plugins/pulumi-resource-$RANDOM_PKG-v$RANDOM_VERSION-linux-$GOARCH.tar.gz"
-curl -fsSL "$RANDOM_URL" -o "$WORK/random.tar.gz"
-tar -xzf "$WORK/random.tar.gz" -C "$WORK/provctx" "pulumi-resource-$RANDOM_PKG"
-mv "$WORK/provctx/pulumi-resource-$RANDOM_PKG" "$WORK/provctx/provider-bin"
-docker buildx build --builder "$BUILDER" --load \
-  -t "$RANDOM_IMAGE" -f "$SMOKE_DIR/Dockerfile.provider" "$WORK/provctx"
+# NOTE: the random provider image is deliberately NOT built here either — the
+# wrapper's shared registry proxy synthesizes it from the released binary when the
+# recursive child creation pulls it.
 
 # Assemble the mounted dir: the program's Pulumi.yaml (declaring the local
 # component) plus the component's source under the declared `path`, so

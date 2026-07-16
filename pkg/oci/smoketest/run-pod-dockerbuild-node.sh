@@ -48,7 +48,7 @@ GOARCH="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')"
 # Provider version kept in lockstep with the SDK the program depends on
 # (program-docker-build-node/package.json requires @pulumi/docker-build 0.0.20,
 # which pins plugin docker-build 0.0.20). The engine's container host resolves the
-# image by the same convention: pulumi-provider-<name>:v<version>.
+# image by the same convention: pulumi/pulumi-provider-<name>:v<version>.
 PROVIDER_PKG="docker-build"
 PROVIDER_VERSION="0.0.20"
 
@@ -57,7 +57,7 @@ NET="pulumi-pod-$POD_ID"
 ENGINE_NAME="$NET-engine"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-docker-build-node:latest"
-PROVIDER_IMAGE="pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
+PROVIDER_IMAGE="pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 BUILT_IMAGE="oci-pod-buildx-built:latest" # what the in-pod provider builds + loads
 POD_LABEL="com.pulumi.pod=$POD_ID"
 STACK="dev"

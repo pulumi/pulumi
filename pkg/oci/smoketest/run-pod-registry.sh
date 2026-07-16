@@ -13,7 +13,7 @@
 #
 # Pipeline:
 #   1. build the engine + program images (as usual)
-#   2. wrap the stock random provider into pulumi-provider-random:v4.21.0
+#   2. wrap the stock random provider into pulumi/pulumi-provider-random:v4.21.0
 #   3. stand up a local registry, push the image to it, then DELETE it from the
 #      local daemon — so it exists only in the registry
 #   4. run `pulumi up` with PULUMI_POD_PLUGIN_REGISTRY set; the engine pulls the
@@ -41,7 +41,7 @@ NET="pulumi-pod-$POD_ID"
 ENGINE_NAME="$NET-engine"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-random:latest"
-PROVIDER_IMAGE="pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION" # the bare convention ref
+PROVIDER_IMAGE="pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION" # the convention ref (default org)
 POD_LABEL="com.pulumi.pod=$POD_ID"
 STACK="dev"
 
@@ -51,7 +51,7 @@ STACK="dev"
 REGISTRY_PORT=5005
 REGISTRY_HOST="localhost:$REGISTRY_PORT"
 REGISTRY_NAME="$NET-registry"
-REGISTRY_REF="$REGISTRY_HOST/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
+REGISTRY_REF="$REGISTRY_HOST/pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"

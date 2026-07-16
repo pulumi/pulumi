@@ -93,11 +93,28 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Pull the pod image up front, with visible progress. Otherwise its first pull happens
-# silently inside the detached, output-suppressed proxy start below and looks like a hang.
-if ! docker image inspect "$ENGINE_IMAGE" >/dev/null 2>&1; then
+# Pull the pod image on EVERY run, not only when it is absent. The prototype is in flux and
+# `latest` moves under people: a stale local copy fails in ways that read like bugs in your
+# project rather than an out-of-date engine (an engine predating the program-image work
+# reports "PULUMI_POD_PROGRAM_IMAGE is unset" from the command example). Re-pulling costs a
+# manifest check when already current, which is worth it to keep that class of report from
+# existing.
+#
+# A failed pull is not fatal when the image is already here: a local dev build
+# (PULUMI_POD_ENGINE_IMAGE=pulumi-pod-dev:latest) exists in no registry, and an offline run
+# should still work from the local copy. It IS fatal when there is nothing to fall back on.
+if docker image inspect "$ENGINE_IMAGE" >/dev/null 2>&1; then
+  # Announce it: the refresh is quiet, but a moved `latest` downloads layers, and an
+  # unexplained pause is exactly the hang this line exists to prevent.
+  echo "pulumi-pod: refreshing ${ENGINE_IMAGE}…" >&2
+  docker pull -q "$ENGINE_IMAGE" >/dev/null 2>&1 ||
+    echo "pulumi-pod: refresh failed; using the local copy (expected for a local build, or offline)" >&2
+else
   echo "pulumi-pod: pulling $ENGINE_IMAGE (first run — this can take a minute)…" >&2
-  docker pull "$ENGINE_IMAGE" >&2 || true
+  if ! docker pull "$ENGINE_IMAGE" >&2; then
+    echo "pulumi-pod: cannot pull $ENGINE_IMAGE, and no local copy exists" >&2
+    exit 1
+  fi
 fi
 
 # Provider images come from an OCI registry the engine pulls from
@@ -117,10 +134,16 @@ PROXY_NAME="pulumi-pod-registry-proxy"
 PROXY_PORT="${PULUMI_POD_PROXY_PORT:-5005}"
 
 ensure_registry_proxy() {
-  # Reuse a running proxy; otherwise clear any stale one and start fresh. Running the
-  # multi-arch proxy image natively, it synthesizes for its own (== the host's) arch,
-  # so provider images match the local daemon with no configuration.
-  if [ -n "$(docker ps -q --filter "name=^/${PROXY_NAME}$" --filter status=running 2>/dev/null)" ]; then
+  # Reuse a running proxy only if it is running the image we would start now; otherwise
+  # clear it and start fresh. The proxy is long-lived and shared, so without the image
+  # check it would outlive the refresh above — a freshly pulled engine would talk to a
+  # proxy still running last week's build, which is the same staleness footgun one layer
+  # down. Running the multi-arch proxy image natively, it synthesizes for its own (== the
+  # host's) arch, so provider images match the local daemon with no configuration.
+  proxy_running_image="$(docker inspect -f '{{.Image}}' "$PROXY_NAME" 2>/dev/null || true)"
+  proxy_wanted_image="$(docker image inspect -f '{{.Id}}' "$PROXY_IMAGE" 2>/dev/null || true)"
+  if [ -n "$(docker ps -q --filter "name=^/${PROXY_NAME}$" --filter status=running 2>/dev/null)" ] &&
+    [ -n "$proxy_running_image" ] && [ "$proxy_running_image" = "$proxy_wanted_image" ]; then
     return 0
   fi
   docker rm -f "$PROXY_NAME" >/dev/null 2>&1 || true
@@ -186,8 +209,19 @@ fi
 # Run the command in the engine container (its ENTRYPOINT is `pulumi`). Capture the
 # exit code rather than exec'ing, so the EXIT trap still reclaims the pod. The lone
 # bind is the workspace; PULUMI_HOME (and the file backend) sit inside it.
+#
+# Allocate a TTY only when the wrapper is itself attached to one, so the pod's pulumi
+# is interactive (preview + confirmation prompt) exactly like a bare `pulumi up`.
+# Without it the container looks non-interactive and up/destroy fail unless the caller
+# passes --yes. In a pipe or CI (no host TTY) we omit -t, keeping the same
+# non-interactive contract as stock pulumi (and avoiding docker's "input device is not
+# a TTY" error).
+tty_flag=()
+if [ -t 0 ] && [ -t 1 ]; then
+  tty_flag=(-t)
+fi
 status=0
-docker run --rm -i \
+docker run --rm -i ${tty_flag[@]+"${tty_flag[@]}"} \
   --privileged \
   --network "$NET" \
   --name "$ENGINE_NAME" \

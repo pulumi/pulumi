@@ -5,7 +5,7 @@
 # into images). A package describes itself in PulumiPlugin.yaml (runtime: oci +
 # options.{name, version, build}); `package build` runs the build in a builder container
 # whose image supplies the toolchain, tagging the result by the provider convention
-# (pulumi-provider-<name>:v<version>) and leaving it in the local store. This is the
+# (pulumi/pulumi-provider-<name>:v<version>) and leaving it in the local store. This is the
 # principled home for "where does the build run?" — the same builder-container mechanism
 # the language host already uses for local components, now reachable as a command.
 #
@@ -41,7 +41,7 @@ ENGINE_IMAGE="pulumi-cli-oci:latest"
 BUILDER_IMAGE="oci-smoke-builder:latest" # discriminating builder (carries /only-in-builder)
 POD_LABEL="com.pulumi.pod=$POD_ID"
 # The convention ref `package build` must produce (no registry configured -> bare ref).
-COMPONENT_IMAGE="pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION"
+COMPONENT_IMAGE="pulumi/pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION"
 
 WORK="$(mktemp -d)"
 mkdir -p "$WORK/cli" "$WORK/project"

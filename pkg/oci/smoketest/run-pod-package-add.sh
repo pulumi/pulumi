@@ -6,7 +6,7 @@
 # localizes to one of three first-time integrations rather than a single opaque red:
 #
 #   Phase 1 — schema-from-image (no codegen, no delegate, no loader):
-#     `pulumi package get-schema oci://<proxy>/pulumi-provider-random:vX` runs the
+#     `pulumi package get-schema oci://<proxy>/pulumi/pulumi-provider-random:vX` runs the
 #     provider image as a one-shot pod container, attaches over the shared engine netns,
 #     and reads GetSchema. The proxy synthesizes the image from the released binary on
 #     pull. This isolates the novel pod/attach wiring (oci.ProviderFromImage).
@@ -61,7 +61,7 @@ POD_LABEL="com.pulumi.pod=$POD_ID"
 REGISTRY_PORT=5005
 REGISTRY_HOST="localhost:$REGISTRY_PORT"
 PROXY_NAME="$NET-registry"
-IMAGE_REF="$REGISTRY_HOST/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
+IMAGE_REF="$REGISTRY_HOST/pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 OCI_SOURCE="oci://$IMAGE_REF"
 
 WORK="$(mktemp -d)"
@@ -157,12 +157,12 @@ echo "==> PHASE 1: pulumi package get-schema $OCI_SOURCE (run the image, read it
 engine_run "pulumi package get-schema '$OCI_SOURCE'" 2>&1 | tee "$WORK/get-schema.log"
 
 echo "==> asserting the proxy synthesized the provider image on demand (nothing pre-built)"
-if ! docker logs "$PROXY_NAME" 2>&1 | grep -q "synthesizing pulumi-provider-$PROVIDER_PKG"; then
+if ! docker logs "$PROXY_NAME" 2>&1 | grep -q "synthesizing pulumi/pulumi-provider-$PROVIDER_PKG"; then
   echo "!! the proxy did not synthesize the provider image — schema fetch did not pull through it"
   docker logs "$PROXY_NAME" 2>&1 | tail -20
   exit 1
 fi
-echo "    proxy synthesized pulumi-provider-$PROVIDER_PKG from the released binary"
+echo "    proxy synthesized pulumi/pulumi-provider-$PROVIDER_PKG from the released binary"
 
 echo "==> asserting the schema is the random provider's (read from the running image)"
 if ! grep -q '"name": "random"' "$WORK/get-schema.log"; then

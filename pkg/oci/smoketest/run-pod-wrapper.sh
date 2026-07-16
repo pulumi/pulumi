@@ -29,7 +29,7 @@ PROVIDER_PKG="random"
 PROVIDER_VERSION="4.21.0"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-random:latest"
-PROVIDER_IMAGE="pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
+PROVIDER_IMAGE="pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 STACK="dev"
 
 WORK="$(mktemp -d)"

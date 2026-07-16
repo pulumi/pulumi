@@ -50,14 +50,14 @@ GOARCH="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')"
 # The stock provider version is kept in lockstep with the SDK the program builds
 # against (program-command/go.mod requires pulumi-command/sdk v1.1.0). The engine's
 # container host resolves the image by the same convention:
-# pulumi-provider-<name>:v<version>.
+# pulumi/pulumi-provider-<name>:v<version>.
 PROVIDER_PKG="command"
 PROVIDER_VERSION="1.1.0"
 
 WRAPPER="$SMOKE_DIR/pulumi-pod"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-command:latest"
-PROVIDER_IMAGE="pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
+PROVIDER_IMAGE="pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 STACK="dev"
 EXPECTED_TOOLCHAIN="toolchain-from-the-program-image"
 EXPECTED_MARKER="hello-from-the-program-workspace"

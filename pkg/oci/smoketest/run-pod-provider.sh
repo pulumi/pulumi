@@ -41,7 +41,7 @@ GOARCH="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')"
 # The stock provider version is kept in lockstep with the SDK the program builds
 # against (program-random/go.mod requires pulumi-random/sdk/v4 v4.21.0). The
 # engine's container host resolves the image by the same convention:
-# pulumi-provider-<name>:v<version>.
+# pulumi/pulumi-provider-<name>:v<version>.
 PROVIDER_PKG="random"
 PROVIDER_VERSION="4.21.0"
 
@@ -50,7 +50,7 @@ NET="pulumi-pod-$POD_ID"
 ENGINE_NAME="$NET-engine"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-random:latest"
-PROVIDER_IMAGE="pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
+PROVIDER_IMAGE="pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 POD_LABEL="com.pulumi.pod=$POD_ID"
 STACK="dev"
 

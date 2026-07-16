@@ -34,7 +34,7 @@ BUILDER="${OCI_BUILDER:-desktop-linux}"
 GOARCH="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')"
 
 # The component's package + version. The consuming program pins this version, so
-# the container host resolves the image by the pulumi-provider-<name>:v<version>
+# the container host resolves the image by the pulumi/pulumi-provider-<name>:v<version>
 # convention.
 COMPONENT_PKG="greeting"
 COMPONENT_VERSION="0.1.0"
@@ -43,7 +43,7 @@ COMPONENT_VERSION="0.1.0"
 # start the stock `random` provider as another pod container *during Construct* —
 # the recursive provider-start this test exists to prove. Its version is pinned to
 # the @pulumi/random the component's package.json depends on, so the container
-# host resolves pulumi-provider-random:v<version> by the same convention.
+# host resolves pulumi/pulumi-provider-random:v<version> by the same convention.
 RANDOM_PKG="random"
 RANDOM_VERSION="4.21.0"
 
@@ -52,8 +52,8 @@ NET="pulumi-pod-$POD_ID"
 ENGINE_NAME="$NET-engine"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-mlc:latest"
-COMPONENT_IMAGE="pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION"
-RANDOM_IMAGE="pulumi-provider-$RANDOM_PKG:v$RANDOM_VERSION"
+COMPONENT_IMAGE="pulumi/pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION"
+RANDOM_IMAGE="pulumi/pulumi-provider-$RANDOM_PKG:v$RANDOM_VERSION"
 POD_LABEL="com.pulumi.pod=$POD_ID"
 STACK="dev"
 EXPECTED_FRAGMENT="from a Node multi-language component"

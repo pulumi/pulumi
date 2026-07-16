@@ -21,7 +21,7 @@
 #   1. build the engine + program images (the pod infra — still this branch's CLI)
 #   2. cross-compile the registry-proxy and run it as the pod's registry on :5005
 #   3. run `pulumi up` with PULUMI_POD_PLUGIN_REGISTRY set; the engine pulls
-#      pulumi-provider-random:v4.21.0 from the proxy, which synthesizes it from the
+#      pulumi/pulumi-provider-random:v4.21.0 from the proxy, which synthesizes it from the
 #      released binary; the engine runs it and creates the resource
 #   4. assert install-by-pull happened, the proxy synthesized the image, and the
 #      resource was created
@@ -58,7 +58,7 @@ STACK="dev"
 REGISTRY_PORT=5005
 REGISTRY_HOST="localhost:$REGISTRY_PORT"
 PROXY_NAME="$NET-registry"
-REGISTRY_REF="$REGISTRY_HOST/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
+REGISTRY_REF="$REGISTRY_HOST/pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
@@ -154,12 +154,12 @@ if ! grep -q "oci: installed plugin $REGISTRY_REF by pulling its image" "$WORK/e
 fi
 
 echo "==> asserting the proxy synthesized the provider image on demand (nothing was pre-built)"
-if ! docker logs "$PROXY_NAME" 2>&1 | grep -q "synthesizing pulumi-provider-$PROVIDER_PKG"; then
+if ! docker logs "$PROXY_NAME" 2>&1 | grep -q "synthesizing pulumi/pulumi-provider-$PROVIDER_PKG"; then
   echo "!! the proxy did not synthesize the provider image — install did not go through it"
   docker logs "$PROXY_NAME" 2>&1 | tail -20
   exit 1
 fi
-echo "    proxy synthesized pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION from the released binary"
+echo "    proxy synthesized pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION from the released binary"
 
 PET="$(sed -n 's/.*SMOKE petName=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
 if [ -z "$PET" ]; then

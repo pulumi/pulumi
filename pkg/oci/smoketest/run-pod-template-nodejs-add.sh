@@ -9,7 +9,7 @@
 #   1. build the engine image + bake in pulumi-language-nodejs (the codegen delegate)
 #   2. start the registry-proxy (synthesizes the random provider image on pull)
 #   3. `pulumi new oci-nodejs` to scaffold a project
-#   4. `pulumi package add oci://<proxy>/pulumi-provider-random:vX` — the OCI host delegates
+#   4. `pulumi package add oci://<proxy>/pulumi/pulumi-provider-random:vX` — the OCI host delegates
 #      SDK generation to pulumi-language-nodejs (a TS SDK lands in sdks/random), then runs the
 #      template's DECLARE-ONLY link command (npm pkg set a file: dep) in link.image (node)
 #   5. assert the SDK was generated AND package.json now declares it as a file: dependency
@@ -52,7 +52,7 @@ PROJECT_NAME="oci-add-smoke"
 REGISTRY_PORT=5005
 REGISTRY_HOST="localhost:$REGISTRY_PORT"
 PROXY_NAME="$NET-registry"
-IMAGE_REF="$REGISTRY_HOST/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
+IMAGE_REF="$REGISTRY_HOST/pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 OCI_SOURCE="oci://$IMAGE_REF"
 
 WORK="$(mktemp -d)"
