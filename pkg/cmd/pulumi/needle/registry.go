@@ -16,7 +16,7 @@ package needle
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/spf13/cobra"
 )
 

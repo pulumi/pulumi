@@ -16,6 +16,7 @@ package needle
 
 import (
 	"errors"
+	"os"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -23,7 +24,11 @@ import (
 
 var optionProject = &value{
 	get: func(_ *cobra.Command, state *state, _ any) error {
-		p, root, err := state.WS.ReadProject()
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		p, root, err := state.WS.ReadProject(cwd)
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return err
 		}
