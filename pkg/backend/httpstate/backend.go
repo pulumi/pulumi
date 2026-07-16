@@ -2021,7 +2021,11 @@ func (b *cloudBackend) apply(
 	// Display messages from the backend if present.
 	displayBackendMessages(updateMeta.messages)
 
-	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, b.getPermalink(update, updateMeta.version, opts.DryRun))
+	updatePermalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
+	if op.Opts.Display.OnPermalink != nil {
+		op.Opts.Display.OnPermalink(updatePermalink, update.UpdateID, updateMeta.version, opts.DryRun)
+	}
+	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, updatePermalink)
 	op.Opts.Display.PermalinkLabel = permalinkLabel
 	return b.runEngineAction(
 		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
