@@ -53,7 +53,7 @@ func NewWhoAmICmd(ctx needle.Spindle) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "whoami",
 		Short: "Display the current logged-in user",
-		Long: "Display the currenqt logged-in user\n" +
+		Long: "Display the current logged-in user\n" +
 			"\n" +
 			"Displays the username of the currently logged in user.\n" +
 			"\n" +

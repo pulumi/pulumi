@@ -18,8 +18,8 @@
 //
 // By convention, each [Stitch] function should start with Require or Option.
 //
-// The main entry point to the package is [Thread]. It should be called once before the
-// and passed all desired requests.
+// The main entry point to the package is [Thread]. It should be called once per
+// command, during command construction, and passed all desired stitches.
 package needle
 
 // Maintainers note:
@@ -30,6 +30,7 @@ package needle
 import (
 	"context"
 	"iter"
+	"reflect"
 	"slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -178,14 +179,24 @@ func orderRequests(ctx context.Context, requests []Stitch) []requestOrValue {
 	}
 
 	// Ensure that all requests will be seen, so any request specific args are visible.
+	//
+	// Duplicate requests for the same value share a node, so only the first request's
+	// payload is used; a conflicting payload would be silently ignored, so reject it.
+	payloads := make(map[*value]any, len(requests))
 	for _, req := range requests {
 		insert(requestOrValue{request: req})
+		if prev, ok := payloads[req.self()]; ok {
+			contract.Assertf(reflect.DeepEqual(prev, req.getPayload()),
+				"needle: conflicting duplicate requests with payloads %v and %v", prev, req.getPayload())
+		} else {
+			payloads[req.self()] = req.getPayload()
+		}
 	}
 	// Now add dependencies so we will resolve in edge order.
 	for _, req := range requests {
 		for dep := range req.dependencies() {
 			err := order.NewEdge(insert(requestOrValue{value: dep}), nodes[req.self()])
-			contract.AssertNoErrorf(err, "needle: dependency cycle found: %s", err)
+			contract.AssertNoErrorf(err, "needle: invalid dependency graph")
 		}
 	}
 
