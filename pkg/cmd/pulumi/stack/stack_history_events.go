@@ -55,6 +55,14 @@ type historyEventsRender func(
 	w io.Writer, events iter.Seq2[apitype.EngineEvent, error],
 ) error
 
+// historyEventsRenderers pairs the renderer for the raw event stream with the
+// one for the --summary document, so a single --output flag can select the
+// format for both modes.
+type historyEventsRenderers struct {
+	events  historyEventsRender
+	summary summaryRender
+}
+
 type stackHistoryEventsArgs struct {
 	updateID            string
 	eventTypes          []string
@@ -62,7 +70,8 @@ type stackHistoryEventsArgs struct {
 	includeNonActivated bool
 	count               int
 	all                 bool
-	render              historyEventsRender
+	summary             bool
+	render              historyEventsRenderers
 }
 
 func newStackHistoryEventsCmd(
@@ -74,9 +83,15 @@ func newStackHistoryEventsCmd(
 		args  = stackHistoryEventsArgs{}
 	)
 
-	outputFormat := outputflag.OutputFlag[historyEventsRender]{
-		RenderForTerminal: renderHistoryEventsTable,
-		RenderJSON:        renderHistoryEventsJSON,
+	outputFormat := outputflag.OutputFlag[historyEventsRenderers]{
+		RenderForTerminal: historyEventsRenderers{
+			events:  renderHistoryEventsTable,
+			summary: renderUpdateSummaryText,
+		},
+		RenderJSON: historyEventsRenderers{
+			events:  renderHistoryEventsJSON,
+			summary: renderUpdateSummaryJSON,
+		},
 	}
 
 	cmd := &cobra.Command{
@@ -88,6 +103,10 @@ func newStackHistoryEventsCmd(
 			"messages produced during an update. By default a single page of\n" +
 			"events is returned.\n" +
 			"\n" +
+			"Pass --summary to reduce the update's full event stream to a single\n" +
+			"resource-centric document describing what changed, what failed and\n" +
+			"why — useful for diagnosing an update after the fact.\n" +
+			"\n" +
 			"This command requires the Pulumi Cloud backend.",
 		Example: "  # Show the first page of events in a human-readable table.\n" +
 			"  pulumi stack history events <update-id>\n\n" +
@@ -97,6 +116,8 @@ func newStackHistoryEventsCmd(
 			"  pulumi stack history events <update-id> --all\n\n" +
 			"  # Emit the raw event stream as JSON for scripting.\n" +
 			"  pulumi stack history events <update-id> --all --output json\n\n" +
+			"  # Summarize the update as a single structured JSON document.\n" +
+			"  pulumi stack history events <update-id> --summary --output json\n\n" +
 			"  # Filter to a specific resource URN.\n" +
 			"  pulumi stack history events <update-id> \\\n" +
 			"      --urn urn:pulumi:dev::proj::aws:s3/bucket:Bucket::my-bucket",
@@ -128,7 +149,12 @@ func newStackHistoryEventsCmd(
 		"Return at least this many events, fetching additional pages as needed")
 	cmd.Flags().BoolVar(&args.all, "all", false,
 		"Return every event for the update")
+	cmd.Flags().BoolVar(&args.summary, "summary", false,
+		"Reduce the update's events to a single resource-centric summary document; implies --all")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
+	cmd.MarkFlagsMutuallyExclusive("summary", "count")
+	cmd.MarkFlagsMutuallyExclusive("summary", "event-type")
+	cmd.MarkFlagsMutuallyExclusive("summary", "urn")
 	outputflag.Var(cmd.Flags(), &outputFormat)
 
 	return cmd
@@ -160,8 +186,15 @@ func runStackHistoryEvents(
 		IncludeNonActivated: args.includeNonActivated,
 	}
 
-	events := iterateEngineEvents(ctx, c, update, opts, args.all, args.count)
-	return args.render(w, events)
+	events := iterateEngineEvents(ctx, c, update, opts, args.all || args.summary, args.count)
+	if args.summary {
+		summary, err := buildUpdateSummary(stackID.String(), events)
+		if err != nil {
+			return err
+		}
+		return args.render.summary(w, summary)
+	}
+	return args.render.events(w, events)
 }
 
 // iterateEngineEvents returns an iterator over engine events. The pagination
