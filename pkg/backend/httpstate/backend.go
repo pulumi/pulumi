@@ -1997,8 +1997,8 @@ func (b *cloudBackend) apply(
 	displayBackendMessages(updateMeta.messages)
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	if op.Opts.Display.OnPermalink != nil {
-		op.Opts.Display.OnPermalink(permalink, update.UpdateID, updateMeta.version, opts.DryRun)
+	if op.Opts.OnPermalink != nil {
+		op.Opts.OnPermalink(permalink, update.UpdateID, updateMeta.version, opts.DryRun)
 	}
 	return b.runEngineAction(
 		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,

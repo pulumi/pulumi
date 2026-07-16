@@ -290,7 +290,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("gathering metadata: %w", err))
 	}
 
-	// consoleURL and updateIdentifier are populated by opts.Display.OnPermalink once the
+	// consoleURL and updateIdentifier are populated by opts.OnPermalink once the
 	// cloud backend computes the operation's permalink, so they thread through to
 	// newPulumiResult below. OnPermalink runs synchronously on this goroutine (inside the
 	// PreviewStack/UpdateStack call below), not on the drain goroutine, so no
@@ -315,14 +315,14 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 			Type:             backendDisplay.DisplayProgress,
 			Stdout:           io.Discard,
 			Stderr:           io.Discard,
-			OnPermalink: func(url string, updateID string, version int, preview bool) {
-				consoleURL = url
-				if preview {
-					updateIdentifier = updateID
-				} else {
-					updateIdentifier = strconv.Itoa(version)
-				}
-			},
+		},
+		OnPermalink: func(url string, updateID string, version int, preview bool) {
+			consoleURL = url
+			if preview {
+				updateIdentifier = updateID
+			} else {
+				updateIdentifier = strconv.Itoa(version)
+			}
 		},
 	}
 
@@ -669,7 +669,7 @@ func silenceStd() func() {
 // the LLM passes an FQSN — a phrasing the CLI itself encourages via some of
 // its own error messages.
 //
-// consoleURL and deploymentID come from backendDisplay.Options.OnPermalink (see run);
+// consoleURL and deploymentID come from backend.UpdateOptions.OnPermalink (see run);
 // they are empty when running against a non-cloud backend, which never calls it.
 // deploymentID is the preview's UpdateID (a UUID) for previews, or the update's decimal
 // version number for updates — matching how the Pulumi Console routes /previews/<id> vs
