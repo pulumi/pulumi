@@ -99,6 +99,10 @@ type PulumiSink struct {
 	// wrapped engine error string. counts is the typed ResourceChanges map
 	// from the engine.
 	OnEnd func(toolName, err string, counts display.ResourceChanges, elapsed string)
+	// OnPermalink reports the operation's identifiers when the cloud backend
+	// computes the permalink at operation start; it never fires for non-cloud
+	// backends. Mirrors backend.UpdateOptions.OnPermalink.
+	OnPermalink func(url string, updateID string, version int, preview bool)
 }
 
 // NewPulumi creates a Pulumi handler sandboxed under cwd. The workspace is captured
@@ -317,8 +321,11 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 			Stdout:           io.Discard,
 			Stderr:           io.Discard,
 		},
-		OnPermalink: func(url string, id string, v int, _ bool) {
+		OnPermalink: func(url string, id string, v int, preview bool) {
 			consoleURL, updateID, version = url, id, v
+			if p.Sink != nil && p.Sink.OnPermalink != nil {
+				p.Sink.OnPermalink(url, id, v, preview)
+			}
 		},
 	}
 
