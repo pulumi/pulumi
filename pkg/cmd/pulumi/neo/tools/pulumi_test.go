@@ -16,6 +16,7 @@ package tools
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -38,6 +39,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -546,7 +548,7 @@ func TestPulumi_Run_PopulatesConsoleURLAndUpdateIdentifiers(t *testing.T) {
 			t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
 
 			ws := &pkgWorkspace.MockContext{
-				ReadProjectF: func(_ string) (*workspace.Project, string, error) {
+				ReadProjectF: func() (*workspace.Project, string, error) {
 					return &workspace.Project{Name: "p"}, dir, nil
 				},
 			}
