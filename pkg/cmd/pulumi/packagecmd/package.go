@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewPackageCmd(nCtx adder.Spindle) *cobra.Command {
+func NewPackageCmd(nCtx adder.Environment) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package",
 		Short: "Work with Pulumi packages",

@@ -23,10 +23,10 @@ import (
 // Registry returns the package registry. Resolution — including the backend
 // lookup behind it — is deferred until the registry is first used, so commands
 // that never query it never touch credentials.
-func (s Spindle) Registry(cmd *cobra.Command) registry.Registry {
+func (e Environment) Registry(cmd *cobra.Command) registry.Registry {
 	return registry.NewOnDemandRegistry(func() (registry.Registry, error) {
 		return bagFrom(cmd).registry.get(func() (registry.Registry, error) {
-			b, err := s.CurrentBackend(cmd)
+			b, err := e.CurrentBackend(cmd)
 			if err != nil {
 				return nil, err
 			}
@@ -35,8 +35,8 @@ func (s Spindle) Registry(cmd *cobra.Command) registry.Registry {
 			}
 			// Not logged in: fall back to the unauthenticated registry, which
 			// can still resolve public packages.
-			s := s.defaults(cmd)
-			return unauthenticatedregistry.New(s.DiagSink, s.Env), nil
+			e := e.defaults(cmd)
+			return unauthenticatedregistry.New(e.DiagSink, e.Env), nil
 		})
 	})
 }

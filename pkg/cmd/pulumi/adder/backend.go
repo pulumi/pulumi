@@ -27,42 +27,42 @@ import (
 )
 
 // Backend resolves the current backend, logging the user in if necessary.
-func (s Spindle) Backend(cmd *cobra.Command) (backend.Backend, error) {
+func (e Environment) Backend(cmd *cobra.Command) (backend.Backend, error) {
 	return bagFrom(cmd).loginBackend.get(func() (backend.Backend, error) {
-		s := s.defaults(cmd)
-		project, _, err := s.Project(cmd)
+		e := e.defaults(cmd)
+		project, _, err := e.Project(cmd)
 		if err != nil {
 			return nil, err
 		}
-		url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(s.WS, s.Env, project)
+		url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(e.WS, e.Env, project)
 		if err != nil {
 			return nil, fmt.Errorf("could not get cloud url: %w", err)
 		}
 		slog.Info("Current cloud URL", slog.String("url", url))
-		insecure := pkgWorkspace.GetCloudInsecure(s.WS, url)
+		insecure := pkgWorkspace.GetCloudInsecure(e.WS, url)
 
 		// Only set current if we don't currently have a cloud URL set.
-		return s.LM.Login(
-			cmd.Context(), s.WS, s.DiagSink, url, project, url == "", insecure, s.Color)
+		return e.LM.Login(
+			cmd.Context(), e.WS, e.DiagSink, url, project, url == "", insecure, e.Color)
 	})
 }
 
 // CurrentBackend resolves the backend the user is currently logged in to. It
 // returns a nil backend (and no error) when the user isn't logged in.
-func (s Spindle) CurrentBackend(cmd *cobra.Command) (backend.Backend, error) {
+func (e Environment) CurrentBackend(cmd *cobra.Command) (backend.Backend, error) {
 	return bagFrom(cmd).currentBackend.get(func() (backend.Backend, error) {
-		s := s.defaults(cmd)
-		project, _, err := s.Project(cmd)
+		e := e.defaults(cmd)
+		project, _, err := e.Project(cmd)
 		if err != nil {
 			return nil, err
 		}
-		url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(s.WS, s.Env, project)
+		url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(e.WS, e.Env, project)
 		if err != nil {
 			return nil, fmt.Errorf("could not get cloud url: %w", err)
 		}
 		slog.Info("Current cloud URL", slog.String("url", url))
 
-		b, err := s.LM.Current(cmd.Context(), s.WS, s.DiagSink, url, project, url == "")
+		b, err := e.LM.Current(cmd.Context(), e.WS, e.DiagSink, url, project, url == "")
 		if errors.Is(err, backenderr.ErrLoginRequired) {
 			return nil, nil
 		}

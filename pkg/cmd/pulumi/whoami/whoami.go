@@ -28,7 +28,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewWhoAmICmd(ctx adder.Spindle) *cobra.Command {
+func NewWhoAmICmd(ctx adder.Environment) *cobra.Command {
 	var verbose bool
 
 	output := outputflag.OutputFlag[whoAmIRenderFunc]{

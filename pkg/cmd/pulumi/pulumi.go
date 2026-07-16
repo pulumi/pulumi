@@ -477,7 +477,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	cmd.PersistentFlags().StringVar(
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
-	nCtx := adder.Spindle{
+	nCtx := adder.Environment{
 		WS:  pkgWorkspace.Instance,
 		Env: env.Global(),
 		LM:  cmdBackend.DefaultLoginManager,

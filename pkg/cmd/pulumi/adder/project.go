@@ -29,14 +29,14 @@ type projectInfo struct {
 
 // Project resolves the project in the current working directory. It returns a
 // nil project (and no error) when there isn't one.
-func (s Spindle) Project(cmd *cobra.Command) (*workspace.Project, string, error) {
+func (e Environment) Project(cmd *cobra.Command) (*workspace.Project, string, error) {
 	p, err := bagFrom(cmd).project.get(func() (projectInfo, error) {
-		s := s.defaults(cmd)
+		e := e.defaults(cmd)
 		cwd, err := os.Getwd()
 		if err != nil {
 			return projectInfo{}, err
 		}
-		project, root, err := s.WS.ReadProject(cwd)
+		project, root, err := e.WS.ReadProject(cwd)
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return projectInfo{}, err
 		}

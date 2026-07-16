@@ -16,7 +16,7 @@
 // commands commonly need — the current project, backend, stack, and registry —
 // so commands don't re-implement the resolution boilerplate.
 //
-// Values are resolved by calling methods on [Spindle] (e.g. [Spindle.Backend])
+// Values are resolved by calling methods on [Environment] (e.g. [Environment.Backend])
 // from a command's RunE. Resolution is lazy — nothing is computed until a code
 // path asks — and memoized per CLI execution, so every ask after the first
 // shares the same answer. Dependencies between values are ordinary function
@@ -48,12 +48,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Spindle carries the seams commands resolve values through.
+// Environment carries the seams commands resolve values through.
 //
-// This is where testing fixtures are injected. WS must always be set; every
-// other field defaults at resolution time (after flags are parsed, so
-// flag-dependent defaults like colorization are correct).
-type Spindle struct {
+// adder is pure given an Environment: resolvers touch the outside world —
+// the workspace, credentials, the network, diagnostics — only through these
+// fields, never through package-level state, so substituting an Environment
+// substitutes every effect of resolution. This is where testing fixtures are
+// injected.
+//
+// WS must always be set; every other field defaults at resolution time (after
+// flags are parsed, so flag-dependent defaults like colorization are correct).
+// The defaults are the one sanctioned impurity: a field left unset falls back
+// to the process-global implementation.
+type Environment struct {
 	Env      env.Env
 	WS       pkgWorkspace.Context // No default; must be set.
 	Color    colors.Colorization
@@ -61,24 +68,24 @@ type Spindle struct {
 	LM       cmdBackend.LoginManager
 }
 
-// defaults returns a copy of s with unset fields filled in.
-func (s Spindle) defaults(cmd *cobra.Command) Spindle {
-	contract.Assertf(s.WS != nil, "adder: Spindle.WS must be set")
-	if s.Env == nil {
-		s.Env = env.NewEnv(env.Global)
+// defaults returns a copy of e with unset fields filled in.
+func (e Environment) defaults(cmd *cobra.Command) Environment {
+	contract.Assertf(e.WS != nil, "adder: Environment.WS must be set")
+	if e.Env == nil {
+		e.Env = env.NewEnv(env.Global)
 	}
-	if s.Color == "" {
-		s.Color = cmdutil.GetGlobalColorization()
+	if e.Color == "" {
+		e.Color = cmdutil.GetGlobalColorization()
 	}
-	if s.DiagSink == nil {
-		s.DiagSink = diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
-			Color: s.Color,
+	if e.DiagSink == nil {
+		e.DiagSink = diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
+			Color: e.Color,
 		})
 	}
-	if s.LM == nil {
-		s.LM = cmdBackend.DefaultLoginManager
+	if e.LM == nil {
+		e.LM = cmdBackend.DefaultLoginManager
 	}
-	return s
+	return e
 }
 
 type bagKey struct{}

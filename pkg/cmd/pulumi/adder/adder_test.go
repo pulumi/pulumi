@@ -36,7 +36,7 @@ func TestBackendMemoized(t *testing.T) {
 
 	logins := 0
 	be := &backend.MockBackend{}
-	s := Spindle{
+	s := Environment{
 		WS: &pkgWorkspace.MockContext{},
 		LM: &cmdBackend.MockLoginManager{
 			LoginF: func(

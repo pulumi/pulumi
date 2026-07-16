@@ -41,7 +41,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPackageInfoCmd(nCtx adder.Spindle) *cobra.Command {
+func newPackageInfoCmd(nCtx adder.Environment) *cobra.Command {
 	var module string
 	var resource string
 	var function string

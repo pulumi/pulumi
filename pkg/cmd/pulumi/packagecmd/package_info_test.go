@@ -28,11 +28,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// testSpindle needs no login manager: these tests load schemas from a file
+// testEnvironment needs no login manager: these tests load schemas from a file
 // path, so the lazy registry — the only thing that would resolve a backend —
 // is never queried.
-func testSpindle() adder.Spindle {
-	return adder.Spindle{WS: &pkgWorkspace.MockContext{}}
+func testEnvironment() adder.Environment {
+	return adder.Environment{WS: &pkgWorkspace.MockContext{}}
 }
 
 func generateSchema(t *testing.T) []byte {
@@ -191,7 +191,7 @@ func TestPackageInfo(t *testing.T) {
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
 
-	cmd := newPackageInfoCmd(testSpindle())
+	cmd := newPackageInfoCmd(testEnvironment())
 	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{schemaPath})
 	var output bytes.Buffer
@@ -223,7 +223,7 @@ func TestModuleInfo(t *testing.T) {
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
 
-	cmd := newPackageInfoCmd(testSpindle())
+	cmd := newPackageInfoCmd(testEnvironment())
 	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--module", "index", schemaPath})
 	var output bytes.Buffer
@@ -254,7 +254,7 @@ func TestResourceInfo(t *testing.T) {
 
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
-	cmd := newPackageInfoCmd(testSpindle())
+	cmd := newPackageInfoCmd(testEnvironment())
 	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--module", "index", "--resource", "Test", schemaPath})
 	var output bytes.Buffer
@@ -303,7 +303,7 @@ func TestFunctionInfo(t *testing.T) {
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
 
-	cmd := newPackageInfoCmd(testSpindle())
+	cmd := newPackageInfoCmd(testEnvironment())
 	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--module", "funs", "--function", "TestFunction", schemaPath})
 	var output bytes.Buffer

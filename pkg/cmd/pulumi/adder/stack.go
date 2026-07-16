@@ -51,21 +51,21 @@ type StackRef struct{}
 
 // Resolve the --stack flag to an existing stack, prompting for a selection
 // when the flag is unset and there is no current stack.
-func (r *StackRef) Resolve(cmd *cobra.Command, s Spindle) (backend.Stack, error) {
+func (r *StackRef) Resolve(cmd *cobra.Command, e Environment) (backend.Stack, error) {
 	return bagFrom(cmd).stack.get(func() (backend.Stack, error) {
-		s := s.defaults(cmd)
+		e := e.defaults(cmd)
 		name, err := cmd.Flags().GetString("stack")
 		if err != nil {
 			return nil, err
 		}
 		return cmdStack.RequireStack(
 			cmd.Context(),
-			s.DiagSink,
-			s.WS,
-			s.LM,
+			e.DiagSink,
+			e.WS,
+			e.LM,
 			name,
 			cmdStack.LoadOnly,
-			display.Options{Color: s.Color},
+			display.Options{Color: e.Color},
 			"",
 		)
 	})

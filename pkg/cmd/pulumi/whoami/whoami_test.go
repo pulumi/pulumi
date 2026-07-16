@@ -48,7 +48,7 @@ func TestWhoAmICmd_default(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(adder.Spindle{WS: ws, LM: lm})
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
 	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetOut(&buff)
 	err := cmd.Execute()
@@ -78,7 +78,7 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(adder.Spindle{WS: ws, LM: lm})
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
 	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--verbose"})
 	cmd.SetOut(&buff)
@@ -113,7 +113,7 @@ func TestWhoAmICmd_json(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(adder.Spindle{WS: ws, LM: lm})
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
 	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--json"})
 	cmd.SetOut(&buff)
@@ -151,7 +151,7 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(adder.Spindle{WS: ws, LM: lm})
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
 	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--verbose"})
 	cmd.SetOut(&buff)
@@ -190,7 +190,7 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(adder.Spindle{WS: ws, LM: lm})
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
 	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--json"})
 	cmd.SetOut(&buff)
@@ -228,7 +228,7 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(adder.Spindle{WS: ws, LM: lm})
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
 	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--verbose"})
 	cmd.SetOut(&buff)
