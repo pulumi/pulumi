@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"io"
 	"iter"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -236,13 +236,9 @@ func buildUpdateSummary(
 		}
 	}
 
-	hasErrorDiag := false
-	for _, d := range s.Diagnostics {
-		if d.Severity == "error" {
-			hasErrorDiag = true
-			break
-		}
-	}
+	hasErrorDiag := slices.ContainsFunc(s.Diagnostics, func(d diagnosticSummary) bool {
+		return d.Severity == "error"
+	})
 	switch {
 	case summaryEvent != nil && summaryEvent.Result != "":
 		s.Status = string(summaryEvent.Result)
@@ -292,13 +288,8 @@ func renderUpdateSummaryText(w io.Writer, s *updateSummary) error {
 		fmt.Fprintf(w, "Duration: %s\n", time.Duration(s.DurationMs)*time.Millisecond)
 	}
 
-	changes := make([]string, 0, len(s.Summary))
-	for change := range s.Summary {
-		changes = append(changes, change)
-	}
-	sort.Strings(changes)
-	parts := make([]string, 0, len(changes))
-	for _, change := range changes {
+	parts := make([]string, 0, len(s.Summary))
+	for _, change := range slices.Sorted(maps.Keys(s.Summary)) {
 		parts = append(parts, fmt.Sprintf("%d %s", s.Summary[change], change))
 	}
 	if len(parts) > 0 {
@@ -312,19 +303,12 @@ func renderUpdateSummaryText(w io.Writer, s *updateSummary) error {
 		t.SetStyle(table.StyleLight)
 		t.AppendHeader(table.Row{"RESOURCE", "TYPE", "CHANGE", "PROPERTIES"})
 		for _, r := range s.Resources {
-			props := make([]string, 0, len(r.PropertyChanges))
-			for path := range r.PropertyChanges {
-				props = append(props, path)
-			}
-			sort.Strings(props)
+			props := slices.Sorted(maps.Keys(r.PropertyChanges))
 			for i, path := range props {
 				props[i] = fmt.Sprintf("%s (%s)", path, r.PropertyChanges[path].Kind)
 			}
 			t.AppendRow(table.Row{r.Name, r.Type, r.Change, strings.Join(props, ", ")})
 		}
-		t.SetColumnConfigs([]table.ColumnConfig{
-			{Name: "PROPERTIES", WidthMax: 40, WidthMaxEnforcer: text.WrapText},
-		})
 		t.Render()
 	}
 
