@@ -313,8 +313,9 @@ func evaluatePCL(
 
 // evaluateFile reads an input file in the given format and evaluates it. For non-PCL formats the source is routed
 // through the named converter plugin's ConvertSnippet RPC and the resulting PCL is fed into the same bind pipeline.
-// An empty path is treated as "no input provided" and always goes through the PCL path so the bind step's
-// missing-required check still fires.
+// An empty path with no input flags is treated as "no input provided"; converter-backed formats still run for
+// resource/function input flags so those flags are interpreted by the selected converter before the bind step's
+// missing-required check runs.
 func evaluateFile(
 	ctx context.Context,
 	path, fileType, inputFormat, token string,
@@ -325,21 +326,26 @@ func evaluateFile(
 	evalContext functionEvalContext,
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
+	contract.Requiref(inputFormat != "", "inputFormat", "inputFormat must be non-empty")
+	filename := path
+
 	var pcl []byte
-	var filename string
-	var literals map[string]string
-	if path == "" || inputFormat == "" || inputFormat == "pcl" {
+	if path == "" {
+		// Bind still runs against an empty file so the schema's required-input check fires.
+		filename = fmt.Sprintf("<no %s file>", fileType)
+	} else {
 		var err error
-		filename = path
-		if path == "" {
-			// Bind still runs against an empty file so the schema's required-input check fires.
-			filename = fmt.Sprintf("<no %s file>", fileType)
-		} else {
-			pcl, err = os.ReadFile(path)
-			if err != nil {
-				return nil, fmt.Errorf("open %s file: %w", fileType, err)
-			}
+		pcl, err = os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("open %s file: %w", fileType, err)
 		}
+	}
+
+	var literals map[string]string
+	if len(pcl) == 0 && len(inputFlags) == 0 {
+		// No input provided; pcl and literals are empty
+	} else if inputFormat == "pcl" {
+		var err error
 		literals, err = inputFlagLiterals(inputFlags)
 		if err != nil {
 			return nil, err
@@ -351,13 +357,9 @@ func evaluateFile(
 		}
 		defer contract.IgnoreClose(converter)
 
-		source, err := os.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("read %s file: %w", fileType, err)
-		}
 		resp, err := converter.ConvertSnippet(ctx, &plugin.ConvertSnippetRequest{
-			Filename:     path,
-			Source:       source,
+			Filename:     filename,
+			Source:       pcl,
 			TargetLoader: loaderTarget,
 			Package:      packageDescriptor,
 			Token:        token,
@@ -376,6 +378,9 @@ func evaluateFile(
 		}
 		pcl = resp.Source
 		filename = resp.Filename
+		if filename == "" {
+			filename = fmt.Sprintf("<converted %s>", fileType)
+		}
 		literals = resp.Attributes
 	}
 
