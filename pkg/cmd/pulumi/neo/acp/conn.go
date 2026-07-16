@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"runtime/debug"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -38,7 +40,7 @@ func Serve(ctx context.Context, a *Agent, in io.Reader, out io.Writer) error {
 	// prompt handler and could never deliver them, deadlocking on the first such
 	// call. Async handling also lets a session/cancel be processed while its
 	// session/prompt is still in flight.
-	handler := jsonrpc2.AsyncHandler(jsonrpc2.HandlerWithError(a.handle))
+	handler := jsonrpc2.AsyncHandler(jsonrpc2.HandlerWithError(a.handleWithRecover))
 	conn := jsonrpc2.NewConn(ctx, stream, handler)
 
 	select {
@@ -48,6 +50,38 @@ func Serve(ctx context.Context, a *Agent, in io.Reader, out io.Writer) error {
 	case <-conn.DisconnectNotify():
 		return nil
 	}
+}
+
+// PanicError logs a recovered panic value and its stack to stderr — stdout
+// carries the JSON-RPC protocol and must stay clean — and returns an error
+// describing the panic (without the stack, which stays out of responses).
+// Shared by the per-request recovery below and the adapter's session
+// goroutines.
+func PanicError(where string, r any) error {
+	err := fmt.Errorf("panic in %s: %v", where, r)
+	//nolint:forbidigo // panics surface on goroutines with no cobra command in
+	// scope, and stderr is the ACP log channel (stdout carries the protocol).
+	fmt.Fprintf(os.Stderr, "%v\n%s", err, debug.Stack())
+	return err
+}
+
+// handleWithRecover wraps handle so a panic while serving one request becomes
+// an internal-error response for that request instead of crashing the process:
+// jsonrpc2's AsyncHandler gives each request its own goroutine and nothing
+// above us recovers on it. For notifications HandlerWithError logs the error
+// instead, which is the right degradation.
+func (a *Agent) handleWithRecover(
+	ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request,
+) (result any, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			result, err = nil, &jsonrpc2.Error{
+				Code:    jsonrpc2.CodeInternalError,
+				Message: PanicError("handling "+req.Method, r).Error(),
+			}
+		}
+	}()
+	return a.handle(ctx, conn, req)
 }
 
 // handle dispatches a single client→agent request by method name. It is wrapped

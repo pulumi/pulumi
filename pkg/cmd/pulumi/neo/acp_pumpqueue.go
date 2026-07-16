@@ -27,8 +27,8 @@ import (
 // after the updates that preceded it have been written — while letting the pump
 // drain UIEvents without blocking on the editor.
 type pumpAction struct {
-	notify   acp.SessionUpdate  //nolint:unused // consumed by the ACP adapter, next in this stack
-	approval *UIApprovalRequest //nolint:unused // consumed by the ACP adapter, next in this stack
+	notify   acp.SessionUpdate
+	approval *UIApprovalRequest
 	finish   *turnResult
 }
 
@@ -36,7 +36,7 @@ type pumpAction struct {
 // current turn ended: with a stop reason, or a fatal error.
 type turnResult struct {
 	reason acp.StopReason
-	err    error //nolint:unused // consumed by the ACP adapter, next in this stack
+	err    error
 }
 
 // pumpQueue is an unbounded, ordered, single-consumer queue of pumpActions. The
