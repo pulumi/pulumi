@@ -2022,8 +2022,8 @@ func (b *cloudBackend) apply(
 	displayBackendMessages(updateMeta.messages)
 
 	updatePermalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	if op.Opts.Display.OnPermalink != nil {
-		op.Opts.Display.OnPermalink(updatePermalink, update.UpdateID, updateMeta.version, opts.DryRun)
+	if op.Opts.OnPermalink != nil {
+		op.Opts.OnPermalink(updatePermalink, update.UpdateID, updateMeta.version, opts.DryRun)
 	}
 	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, updatePermalink)
 	op.Opts.Display.PermalinkLabel = permalinkLabel
