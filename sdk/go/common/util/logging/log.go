@@ -94,7 +94,10 @@ type logRedactable interface {
 }
 
 func redactAttr(a slog.Attr) slog.Attr {
-	if LogSecrets || a.Value.Kind() != slog.KindAny {
+	if LogSecrets {
+		return a
+	}
+	if k := a.Value.Kind(); k != slog.KindAny && k != slog.KindLogValuer {
 		return a
 	}
 	switch v := a.Value.Any().(type) {
@@ -278,10 +281,6 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	} else if f := flag.CommandLine.Lookup("v"); f != nil {
 		fmt.Sscan(f.Value.String(), &Verbose) //nolint:errcheck
 	}
-	if os.Getenv("PULUMI_LOG_SECRETS") == "true" {
-		LogSecrets = true
-	}
-
 	initExportHandler(filepath.Base(os.Args[0]))
 
 	handlerMu.Lock()

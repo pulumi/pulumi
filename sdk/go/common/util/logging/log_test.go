@@ -27,6 +27,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 )
@@ -425,20 +426,41 @@ func TestLogSecretsDisablesRedaction(t *testing.T) {
 	assert.NotContains(t, string(out), "[secret]")
 }
 
-func TestInitLoggingReadsLogSecretsEnv(t *testing.T) { //nolint:paralleltest // mutates global logging state
-	t.Setenv("PULUMI_LOG_SECRETS", "true")
-	prevLog, prevV, prevFlow, prevSecrets := LogToStderr, Verbose, LogFlow, LogSecrets
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestPropertyValueAttrsRedacted(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
 	t.Cleanup(func() {
 		handlerMu.Lock()
 		primary = discardHandler{}
 		rebuildLogger()
 		handlerMu.Unlock()
-		LogToStderr, Verbose, LogFlow, LogSecrets = prevLog, prevV, prevFlow, prevSecrets
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
 	})
 
-	LogSecrets = false
-	InitLogging(false, 0, false)
-	assert.True(t, LogSecrets)
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	sv, err := structpb.NewValue(map[string]any{
+		"name": "web",
+		"password": map[string]any{
+			sig.Key:     sig.Secret,
+			"plaintext": "hunter2",
+		},
+	})
+	require.NoError(t, err)
+	slog.Info("checking inputs", "inputs", PropertyValue{Key: "inputs", Value: sv})
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "[secret]")
+	assert.Contains(t, string(out), "web")
+	assert.NotContains(t, string(out), "hunter2")
 }
 
 //nolint:paralleltest // mutates global logging state and os.Stderr

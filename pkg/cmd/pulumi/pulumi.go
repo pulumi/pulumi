@@ -322,14 +322,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 
 			logging.InitLogging(logToStderr, verbose, logFlow)
-			if logSecrets {
-				logging.LogSecrets = true
-				if logFlow {
-					if err := os.Setenv("PULUMI_LOG_SECRETS", "true"); err != nil {
-						return err
-					}
-				}
-			}
+			logging.LogSecrets = logSecrets
 
 			// Start automatic logging. At this point we don't have a stack
 			// or secrets manager, so logs will be gzip-compressed (not
