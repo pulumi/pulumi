@@ -145,6 +145,22 @@ func NewContainerHost(
 		podID:          podID,
 		started:        map[*plugin.Context][]podPlugin{},
 		imageFor: func(spec workspace.PluginDescriptor) string {
+			// Resolution is layered (see oci-design's package-identity-and-publishing):
+			// a pin — the oci:// ref recorded by `package add`, carried back to us
+			// through the generated SDK and resource registration — is self-locating
+			// identity. The registry knob, when set, overrides the pin's host while
+			// keeping its identity, so moving registries is one knob change; with no
+			// knob the pin's own host is the default route, so consuming a published
+			// package needs no configuration. A pin that isn't convention-shaped
+			// carries no identity and is used verbatim (valid, not relocatable).
+			// Unpinned packages (released providers) resolve by convention under
+			// DefaultPackageOrg, mirroring the registry's bare-name resolution.
+			if ref, ok := pinnedImageRef(spec); ok {
+				if id, ok := ParseProviderImageRef(ref); ok && pluginRegistry != "" {
+					return ProviderImageRefInOrg(pluginRegistry, id.Org, id.Name, id.Version)
+				}
+				return ref
+			}
 			return providerImageRef(pluginRegistry, spec)
 		},
 	}
@@ -192,37 +208,55 @@ func (h *containerHost) programImageRef() string {
 	return readProgramImageState(h.podID)
 }
 
-// ProviderImageRef returns the OCI image reference for a provider plugin, by
-// convention. When registry is non-empty the ref is *qualified* with it
-// (<registry>/pulumi-provider-<name>:v<version>) so that resolution, pull, and a
-// future publish-by-push all share one fully-qualified name; an empty registry
-// yields the bare ref (unchanged prior behaviour). Docker tags cannot contain
-// '+', so semver build metadata (e.g. a dev build's 0.1.0-alpha.0+dev) is mapped
-// to a tag-safe '_'.
+// ProviderImageRef returns the OCI image reference for a provider plugin with
+// no pin, by convention: it resolves under DefaultPackageOrg, exactly as the
+// registry resolves a bare package name through its source/publisher defaults.
 //
 // This is the single source of truth for the convention: the container host uses
 // it to resolve provider images, and the OCI language host uses it to tag the
 // local component images it builds, so the two cannot drift.
 func ProviderImageRef(registry, name, version string) string {
+	return ProviderImageRefInOrg(registry, DefaultPackageOrg, name, version)
+}
+
+// ProviderImageRefInOrg renders the convention ref
+// <registry>/<org>/pulumi-provider-<name>:v<version>. Refs are always
+// org-namespaced — org must be non-empty (an unpinned package resolves under
+// DefaultPackageOrg; see ProviderImageRef). The kind prefix lives in the leaf
+// segment because Docker Hub caps repositories at two path segments. When
+// registry is empty the ref is host-unqualified (a locally built/loaded image)
+// but still namespaced. Docker tags cannot contain '+', so semver build
+// metadata (e.g. a dev build's 0.1.0-alpha.0+dev) is mapped to a tag-safe '_'.
+func ProviderImageRefInOrg(registry, org, name, version string) string {
 	tag := ""
 	if version != "" {
 		tag = "v" + strings.ReplaceAll(version, "+", "_")
 	}
-	ref := fmt.Sprintf("pulumi-provider-%s:%s", name, tag)
+	ref := fmt.Sprintf("%s/pulumi-provider-%s:%s", org, name, tag)
 	if registry != "" {
 		ref = registry + "/" + ref
 	}
 	return ref
 }
 
-// providerImageRef resolves a plugin descriptor to its image ref via the
-// convention above, qualified with registry when one is configured.
+// providerImageRef resolves an unpinned plugin descriptor to its image ref via
+// the convention above, qualified with registry when one is configured.
 func providerImageRef(registry string, spec workspace.PluginDescriptor) string {
 	version := ""
 	if spec.Version != nil {
 		version = spec.Version.String()
 	}
 	return ProviderImageRef(registry, spec.Name, version)
+}
+
+// pinnedImageRef returns the image ref carried by a descriptor's oci:// plugin
+// download URL, if any. `package add oci://<ref>` records the ref as the package's
+// PluginDownloadURL in the generated SDK, which passes it back at resource
+// registration; the engine threads it into the plugin descriptor (the same channel
+// custom plugin download servers use). The pin is the package's self-locating
+// identity — see imageFor for how it resolves.
+func pinnedImageRef(spec workspace.PluginDescriptor) (string, bool) {
+	return strings.CutPrefix(spec.PluginDownloadURL, "oci://")
 }
 
 // providerBinDir is the directory in which a (prototype) provider image lays its
@@ -511,9 +545,16 @@ func (h *containerHost) providerContainer(
 	// Resolve the provider image and ensure it is present — pulling it from the
 	// configured registry if absent (the container-model install step). Both
 	// archetypes need it: a stateless provider runs it directly; a run-from-program-image
-	// provider copies its binary out of it.
+	// provider copies its binary out of it. A pinned descriptor (an oci:// plugin
+	// download URL, recorded by `package add oci://<ref>`) may be pulled even with no
+	// registry knob configured — the pin names its own registry.
 	providerImage := h.imageFor(descriptor)
-	if err := h.ensureImage(ctx, descriptor.Name, providerImage); err != nil {
+	_, pinned := pinnedImageRef(descriptor)
+	if pinned {
+		fmt.Fprintf(os.Stderr, "oci: provider %s resolved by its oci:// pin: %s\n",
+			descriptor.Name, providerImage)
+	}
+	if err := h.ensureImage(ctx, descriptor.Name, providerImage, pinned); err != nil {
 		return ContainerConfig{}, err
 	}
 
@@ -574,16 +615,20 @@ func (h *containerHost) providerContainer(
 // is already registry-qualified by providerImageRef, so it is pulled and run
 // under the same fully-qualified name — no retag.
 //
-// With no registry configured and the image absent, it cannot be installed, so we
-// bail out here with an actionable message rather than letting the downstream
-// `docker run`/CopyFromImage fail with a cryptic "Unable to find image / pull
-// access denied" — the error a user hits when they forget `pulumi install` for a
-// local component, or have not set a registry for a published one.
+// pinned marks a ref that arrived as an oci:// pin (a fully-qualified ref naming
+// its own registry), which can be pulled whether or not the registry knob is set —
+// the knob exists to qualify *convention* refs, and a pin needs no qualifying.
+//
+// With no registry configured, no pin, and the image absent, it cannot be
+// installed, so we bail out here with an actionable message rather than letting
+// the downstream `docker run`/CopyFromImage fail with a cryptic "Unable to find
+// image / pull access denied" — the error a user hits when they forget `pulumi
+// install` for a local component, or have not set a registry for a published one.
 //
 // This runs in Provider() (acquire-on-use), which is provably reached for every
 // provider. prefetch is the pre-flight companion: it warms the same images earlier,
 // in the background, sharing pullImage's dedup so no image is pulled twice.
-func (h *containerHost) ensureImage(ctx context.Context, name, ref string) error {
+func (h *containerHost) ensureImage(ctx context.Context, name, ref string, pinned bool) error {
 	has, err := h.pod.ImageExists(ctx, ref)
 	if err != nil {
 		return fmt.Errorf("oci: checking for plugin image %s: %w", ref, err)
@@ -591,7 +636,7 @@ func (h *containerHost) ensureImage(ctx context.Context, name, ref string) error
 	if has {
 		return nil
 	}
-	if h.pluginRegistry == "" {
+	if h.pluginRegistry == "" && !pinned {
 		return fmt.Errorf(
 			"oci: provider %q has no image: %s is not present locally and no plugin registry "+
 				"is configured to install it from. Run `pulumi install` if it is a local "+
@@ -705,7 +750,7 @@ func (h *containerHost) PolicyAnalyzer(
 		return h.Host.PolicyAnalyzer(ctx, name, path, opts)
 	}
 
-	if err := h.ensureImage(ctx.Base(), string(name), image); err != nil {
+	if err := h.ensureImage(ctx.Base(), string(name), image, false /*pinned*/); err != nil {
 		return nil, err
 	}
 

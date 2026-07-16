@@ -1,0 +1,14 @@
+name: oci-publish
+description: Publish->consume for the identity & publishing design — the oci:// pin recorded by `package add` is self-locating identity, resolved through the registry knob when one is set
+runtime:
+  name: oci
+  options:
+    # Prebuilt program image (the consumer program is cross-compiled on the host and
+    # baked in by the smoke script). Uniquely tagged: a concurrent experiment shares
+    # the docker daemon.
+    image: oci-smoke-publish:proto
+    # The dev-language axis: `package add` delegates SDK generation to
+    # pulumi-language-go. No link block: the smoke script assembles the consumer
+    # program's go.mod itself (the program is compiled on the host), so linking has
+    # nothing to declare here and the OCI host's no-op link path is exercised.
+    language: go

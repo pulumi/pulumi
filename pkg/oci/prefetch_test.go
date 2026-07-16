@@ -58,8 +58,8 @@ func TestPrefetchNowPullsVersionedImagesSkipsVersionless(t *testing.T) {
 	h.prefetchNow(t.Context())
 
 	assert.ElementsMatch(t, []string{
-		"reg.example/pulumi-provider-random:v4.16.0",
-		"reg.example/pulumi-provider-tls:v5.0.0",
+		"reg.example/pulumi/pulumi-provider-random:v4.16.0",
+		"reg.example/pulumi/pulumi-provider-tls:v5.0.0",
 	}, pod.pulled, "versioned entries are warmed; a versionless entry has no resolvable ref and is skipped")
 }
 

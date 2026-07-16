@@ -60,7 +60,10 @@ func ProviderFromImage(ctx *plugin.Context, ref string) (plugin.Provider, func()
 func (h *containerHost) providerFromImage(
 	ctx *plugin.Context, ref string,
 ) (plugin.Provider, func() error, error) {
-	if err := h.ensureImage(ctx.Base(), ref, ref); err != nil {
+	// An oci:// source is by definition a fully-qualified, self-locating ref, so it
+	// is pull-eligible like a pinned descriptor: the registry knob qualifies
+	// convention refs and has nothing to add here.
+	if err := h.ensureImage(ctx.Base(), ref, ref, true /*pinned*/); err != nil {
 		return nil, nil, err
 	}
 

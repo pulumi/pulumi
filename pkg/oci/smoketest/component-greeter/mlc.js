@@ -47,8 +47,33 @@ class Greeter extends pulumi.ComponentResource {
     }
 }
 
+// The component's package schema, served over GetSchema so `pulumi package add
+// oci://<ref>` can extract it from the running image and generate a typed SDK.
+// Greeter is marked isComponent so generated SDKs register it remotely (Construct).
+const schema = {
+    name: "greeting",
+    version: "0.1.0",
+    resources: {
+        "greeting:index:Greeter": {
+            isComponent: true,
+            inputProperties: {
+                who: { type: "string", description: "Who to greet." },
+            },
+            requiredInputs: ["who"],
+            properties: {
+                message: {
+                    type: "string",
+                    description: "The greeting, including the child RandomPet's name.",
+                },
+            },
+            required: ["message"],
+        },
+    },
+};
+
 const greetingProvider = {
     version: "0.1.0",
+    schema: JSON.stringify(schema),
     construct(name, type, inputs, options) {
         if (type !== "greeting:index:Greeter") {
             throw new Error(`unknown resource type ${type}`);

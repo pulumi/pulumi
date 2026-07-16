@@ -91,7 +91,7 @@ func noSignal(context.Context) error { return nil }
 func TestEnsureImageBailsActionablyWhenAbsentAndNoRegistry(t *testing.T) {
 	t.Parallel()
 	h := &containerHost{pod: fakePod{imageExists: false}}
-	err := h.ensureImage(t.Context(), "random", "pulumi-provider-random:v4.21.0")
+	err := h.ensureImage(t.Context(), "random", "pulumi-provider-random:v4.21.0", false)
 	require.Error(t, err)
 	// Names the provider and the missing ref, and points at both fixes.
 	require.Contains(t, err.Error(), `provider "random"`)
@@ -104,7 +104,69 @@ func TestEnsureImageBailsActionablyWhenAbsentAndNoRegistry(t *testing.T) {
 func TestEnsureImageNoopWhenPresent(t *testing.T) {
 	t.Parallel()
 	h := &containerHost{pod: fakePod{imageExists: true}}
-	require.NoError(t, h.ensureImage(t.Context(), "random", "anything:v1"))
+	require.NoError(t, h.ensureImage(t.Context(), "random", "anything:v1", false))
+}
+
+// pullingPod records PullImage calls, for asserting a pinned ref is pulled even with
+// no registry knob configured.
+type pullingPod struct {
+	fakePod
+	pulled *[]string
+}
+
+func (p pullingPod) PullImage(_ context.Context, ref string) error {
+	*p.pulled = append(*p.pulled, ref)
+	return nil
+}
+
+// A pinned ref (an oci:// plugin download URL) is fully qualified — it names its own
+// registry — so an absent image is pulled even when no plugin registry knob is set.
+// The knob exists to qualify convention refs; a pin needs no qualifying.
+func TestEnsureImagePullsPinnedRefWithoutRegistry(t *testing.T) {
+	t.Parallel()
+	var pulled []string
+	h := &containerHost{pod: pullingPod{fakePod: fakePod{imageExists: false}, pulled: &pulled}}
+	require.NoError(t, h.ensureImage(
+		t.Context(), "greeting", "example.com/spikeorg/pulumi-provider-greeting:v0.1.0", true))
+	require.Equal(t, []string{"example.com/spikeorg/pulumi-provider-greeting:v0.1.0"}, pulled)
+}
+
+// imageFor implements the layered resolution of the identity & publishing design:
+// the registry knob, when set, overrides a convention-shaped pin's host while
+// keeping its identity; without a knob the pin resolves verbatim; a pin that
+// carries no identity (not convention-shaped) is verbatim regardless; and an
+// unpinned package resolves by convention under the default org.
+func TestImageForLayeredResolution(t *testing.T) {
+	t.Parallel()
+	pinned := workspace.PluginDescriptor{
+		Name:              "greeting",
+		PluginDownloadURL: "oci://ghcr.io/spikeorg/pulumi-provider-greeting:v0.1.0",
+	}
+	opaquePin := workspace.PluginDescriptor{
+		Name: "custom",
+		// No org segment: carries no identity, so the knob cannot relocate it.
+		PluginDownloadURL: "oci://internal.example.com/custom-image:v2.0.0",
+	}
+	unpinned := workspace.PluginDescriptor{Name: "random"}
+	// A non-oci download URL (a classic plugin download server) is NOT a pin: the
+	// convention computation stands.
+	server := workspace.PluginDescriptor{
+		Name:              "random",
+		PluginDownloadURL: "https://get.example.com/releases",
+	}
+
+	// Knob set: identity from the pin, location from the knob.
+	withKnob := NewContainerHost(nil, fakePod{}, "engine", "", "reg.example.com", "pod").(*containerHost)
+	require.Equal(t, "reg.example.com/spikeorg/pulumi-provider-greeting:v0.1.0", withKnob.imageFor(pinned))
+	require.Equal(t, "internal.example.com/custom-image:v2.0.0", withKnob.imageFor(opaquePin))
+	require.Equal(t, "reg.example.com/pulumi/pulumi-provider-random:", withKnob.imageFor(unpinned))
+	require.Equal(t, "reg.example.com/pulumi/pulumi-provider-random:", withKnob.imageFor(server))
+
+	// Knob unset: the pin's own host is the default route — zero-config consumption.
+	noKnob := NewContainerHost(nil, fakePod{}, "engine", "", "", "pod").(*containerHost)
+	require.Equal(t, "ghcr.io/spikeorg/pulumi-provider-greeting:v0.1.0", noKnob.imageFor(pinned))
+	require.Equal(t, "internal.example.com/custom-image:v2.0.0", noKnob.imageFor(opaquePin))
+	require.Equal(t, "pulumi/pulumi-provider-random:", noKnob.imageFor(unpinned))
 }
 
 // A dynamic provider runs from the program image with the SDK's own entrypoint,

@@ -492,6 +492,14 @@ func schemaFromImage(
 	if err := json.Unmarshal(schemaResp.Schema, &spec); err != nil {
 		return nil, nil, err
 	}
+	// The oci:// ref is not just where the schema came from — it is where the package
+	// LIVES. Record it as the schema's plugin download URL so codegen bakes it into the
+	// generated SDK, which passes it back at resource registration; the engine threads
+	// it into the plugin descriptor, and the container host resolves the descriptor to
+	// this ref — verbatim, or relocated through the registry knob when one is set (see
+	// oci.pinnedImageRef and the imageFor resolver). This is what makes the pin
+	// self-locating: consumption needs no registry knob pointing at the publisher.
+	spec.PluginDownloadURL = source
 	return &spec, &workspace.PackageSpec{Source: source}, nil
 }
 
