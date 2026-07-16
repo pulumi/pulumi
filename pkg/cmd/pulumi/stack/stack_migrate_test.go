@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -1444,7 +1445,7 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 	// srcSM. The resulting JSON contains `src:\"state-plaintext\"` inside the secret's `ciphertext`.
 	snap := &deploy.Snapshot{
 		SecretsManager: srcSM,
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:  resource.NewURN("dev", "proj", "", resource.RootStackType, "dev"),
 				Type: resource.RootStackType,
@@ -1886,7 +1887,7 @@ func TestStackMigrate_RewritesURNsOnRename(t *testing.T) { //nolint: paralleltes
 	childURN := resource.NewURN("dev", "proj", resource.RootStackType, "random:index/randomPet:RandomPet", "pet")
 	snap := &deploy.Snapshot{
 		SecretsManager: srcSM,
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{URN: rootURN, Type: resource.RootStackType},
 			{URN: childURN, Type: "random:index/randomPet:RandomPet", Parent: rootURN},
 		},
@@ -2078,7 +2079,7 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 
 	snap := &deploy.Snapshot{
 		SecretsManager: srcSM,
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{URN: rootURN, Type: resource.RootStackType},
 			// Provider resource referenced by parent.Provider so the snapshot integrity check
 			// resolves the reference to a known provider.
@@ -2274,7 +2275,7 @@ func TestStackMigrate_RewritesProjectOnTargetWithNewProject(t *testing.T) { //no
 	childURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Child", "c")
 	snap := &deploy.Snapshot{
 		SecretsManager: srcSM,
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{URN: rootURN, Type: resource.RootStackType},
 			{URN: childURN, Type: "pkg:Child", Parent: rootURN},
 		},
@@ -2704,7 +2705,7 @@ func TestStackMigrate_RenameLegacyRefFallsBackToLocalProject(t *testing.T) { //n
 	foreignURN := resource.NewURN("dev", "foreign", resource.RootStackType, "pkg:Foreign", "f")
 	snap := &deploy.Snapshot{
 		SecretsManager: srcSM,
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{URN: rootURN, Type: resource.RootStackType},
 			{URN: ourURN, Type: "pkg:Mine", Parent: rootURN},
 			{URN: foreignURN, Type: "pkg:Foreign", Parent: rootURN},

@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -33,7 +35,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func NewResource(name string, provider *resource.State, deps ...resource.URN) *resource.State {
+func NewResource(name string, provider *pkgresource.State, deps ...resource.URN) *pkgresource.State {
 	prov := ""
 	if provider != nil {
 		p, err := providers.NewReference(provider.URN, provider.ID)
@@ -44,7 +46,7 @@ func NewResource(name string, provider *resource.State, deps ...resource.URN) *r
 	}
 
 	t := tokens.Type("a:b:c")
-	return &resource.State{
+	return &pkgresource.State{
 		Type:         t,
 		URN:          resource.NewURN("test", "test", "", t, name),
 		Inputs:       resource.PropertyMap{},
@@ -54,9 +56,9 @@ func NewResource(name string, provider *resource.State, deps ...resource.URN) *r
 	}
 }
 
-func NewProviderResource(pkg, name, id string, deps ...resource.URN) *resource.State {
+func NewProviderResource(pkg, name, id string, deps ...resource.URN) *pkgresource.State {
 	t := providers.MakeProviderType(tokens.Package(pkg))
-	return &resource.State{
+	return &pkgresource.State{
 		Type:         t,
 		URN:          resource.NewURN("test", "test", "", t, name),
 		ID:           resource.ID(id),
@@ -66,7 +68,7 @@ func NewProviderResource(pkg, name, id string, deps ...resource.URN) *resource.S
 	}
 }
 
-func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
+func NewSnapshot(resources []*pkgresource.State) *deploy.Snapshot {
 	return deploy.NewSnapshot(deploy.Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
@@ -81,7 +83,7 @@ func TestDeletion(t *testing.T) {
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
 	c := NewResource("c", pA)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		pA,
 		a,
 		b,
@@ -91,7 +93,7 @@ func TestDeletion(t *testing.T) {
 	err := DeleteResource(snap, b, nil, false)
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 3)
-	assert.Equal(t, []*resource.State{pA, a, c}, snap.Resources)
+	assert.Equal(t, []*pkgresource.State{pA, a, c}, snap.Resources)
 }
 
 func TestDeletingDuplicateURNs(t *testing.T) {
@@ -119,14 +121,14 @@ func TestDeletingDuplicateURNs(t *testing.T) {
 	// state as it's ambiguous since another URN can satisfy the dependency.
 	t.Run("do-target-dependents", func(t *testing.T) {
 		t.Parallel()
-		snap := NewSnapshot([]*resource.State{
+		snap := NewSnapshot([]*pkgresource.State{
 			pA, a, b1, b2, b3, c,
 		})
 
 		err := DeleteResource(snap, b1, nil, true /* targetDependents */)
 		require.NoError(t, err)
 
-		assert.Equal(t, []*resource.State{
+		assert.Equal(t, []*pkgresource.State{
 			pA, a, b2, b3, c,
 		}, snap.Resources)
 
@@ -140,14 +142,14 @@ func TestDeletingDuplicateURNs(t *testing.T) {
 	// dependency checks should not block the resource from being deleted from state.
 	t.Run("do-not-target-dependents", func(t *testing.T) {
 		t.Parallel()
-		snap := NewSnapshot([]*resource.State{
+		snap := NewSnapshot([]*pkgresource.State{
 			pA, a, b1, b2, b3, c,
 		})
 
 		err := DeleteResource(snap, b1, nil, false /* targetDependents */)
 		require.NoError(t, err)
 
-		assert.Equal(t, []*resource.State{
+		assert.Equal(t, []*pkgresource.State{
 			pA, a, b2, b3, c,
 		}, snap.Resources)
 
@@ -174,21 +176,21 @@ func TestDeletingDuplicateProviderURN(t *testing.T) {
 
 	t.Run("do-target-dependents", func(t *testing.T) {
 		t.Parallel()
-		snap := NewSnapshot([]*resource.State{
+		snap := NewSnapshot([]*pkgresource.State{
 			pA0, pA1, b0, b1, c,
 		})
 
 		err := DeleteResource(snap, pA0, nil, true /* targetDependents */)
 		require.NoError(t, err)
 
-		assert.Equal(t, []*resource.State{
+		assert.Equal(t, []*pkgresource.State{
 			pA1, b1, c,
 		}, snap.Resources)
 	})
 
 	t.Run("do-not-target-dependents", func(t *testing.T) {
 		t.Parallel()
-		snap := NewSnapshot([]*resource.State{
+		snap := NewSnapshot([]*pkgresource.State{
 			pA0, pA1, b0, b1, c,
 		})
 
@@ -199,20 +201,20 @@ func TestDeletingDuplicateProviderURN(t *testing.T) {
 
 	t.Run("do-target-dependents-one-intermediate", func(t *testing.T) {
 		t.Parallel()
-		snap := NewSnapshot([]*resource.State{
+		snap := NewSnapshot([]*pkgresource.State{
 			pA0, pA1, b0, c,
 		})
 
 		err := DeleteResource(snap, pA0, nil, true /* targetDependents */)
 		require.NoError(t, err)
-		assert.Equal(t, []*resource.State{
+		assert.Equal(t, []*pkgresource.State{
 			pA1,
 		}, snap.Resources)
 	})
 
 	t.Run("do-target-dependents-one-intermediate", func(t *testing.T) {
 		t.Parallel()
-		snap := NewSnapshot([]*resource.State{
+		snap := NewSnapshot([]*pkgresource.State{
 			pA0, pA1, b0, c,
 		})
 
@@ -240,21 +242,21 @@ func TestDeletingDuplicateProviderURNWithDependents(t *testing.T) {
 
 	t.Run("do-target-dependents", func(t *testing.T) {
 		t.Parallel()
-		snap := NewSnapshot([]*resource.State{
+		snap := NewSnapshot([]*pkgresource.State{
 			pA0, pA1, b0, c0, c1, d0, d1,
 		})
 
 		err := DeleteResource(snap, pA0, nil, true /* targetDependents */)
 		require.NoError(t, err)
 
-		assert.Equal(t, []*resource.State{
+		assert.Equal(t, []*pkgresource.State{
 			pA1, c1, d1,
 		}, snap.Resources)
 	})
 
 	t.Run("do-not-target-dependents", func(t *testing.T) {
 		t.Parallel()
-		snap := NewSnapshot([]*resource.State{
+		snap := NewSnapshot([]*pkgresource.State{
 			pA0, pA1, b0, c0, c1, d0, d1,
 		})
 
@@ -272,14 +274,14 @@ func TestDeletingDependencies(t *testing.T) {
 	b := NewResource("b", pA)
 	c := NewResource("c", pA, a.URN)
 	d := NewResource("d", pA, c.URN)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		pA, a, b, c, d,
 	})
 
 	err := DeleteResource(snap, a, nil, true)
 	require.NoError(t, err)
 
-	assert.Equal(t, snap.Resources, []*resource.State{pA, b})
+	assert.Equal(t, snap.Resources, []*pkgresource.State{pA, b})
 }
 
 func TestFailedDeletionProviderDependency(t *testing.T) {
@@ -289,7 +291,7 @@ func TestFailedDeletionProviderDependency(t *testing.T) {
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
 	c := NewResource("c", pA)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		pA,
 		a,
 		b,
@@ -307,7 +309,7 @@ func TestFailedDeletionProviderDependency(t *testing.T) {
 	assert.Contains(t, depErr.Dependencies, b)
 	assert.Contains(t, depErr.Dependencies, c)
 	require.Len(t, snap.Resources, 4)
-	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
+	assert.Equal(t, []*pkgresource.State{pA, a, b, c}, snap.Resources)
 }
 
 func TestFailedDeletionRegularDependency(t *testing.T) {
@@ -317,7 +319,7 @@ func TestFailedDeletionRegularDependency(t *testing.T) {
 	a := NewResource("a", pA)
 	b := NewResource("b", pA, a.URN)
 	c := NewResource("c", pA)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		pA,
 		a,
 		b,
@@ -336,7 +338,7 @@ func TestFailedDeletionRegularDependency(t *testing.T) {
 	assert.Contains(t, depErr.Dependencies, b)
 	assert.NotContains(t, depErr.Dependencies, c)
 	require.Len(t, snap.Resources, 4)
-	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
+	assert.Equal(t, []*pkgresource.State{pA, a, b, c}, snap.Resources)
 }
 
 func TestFailedDeletionProtected(t *testing.T) {
@@ -345,7 +347,7 @@ func TestFailedDeletionProtected(t *testing.T) {
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	a.Protect = true
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		pA,
 		a,
 	})
@@ -361,31 +363,31 @@ func TestDeleteProtected(t *testing.T) {
 
 	tests := []struct {
 		name string
-		test func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot)
+		test func(t *testing.T, pA, a, b, c *pkgresource.State, snap *deploy.Snapshot)
 	}{
 		{
 			"root-protected",
-			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+			func(t *testing.T, pA, a, b, c *pkgresource.State, snap *deploy.Snapshot) {
 				a.Protect = true
 				protectedCount := 0
-				err := DeleteResource(snap, a, func(s *resource.State) error {
+				err := DeleteResource(snap, a, func(s *pkgresource.State) error {
 					s.Protect = false
 					protectedCount++
 					return nil
 				}, false)
 				require.NoError(t, err)
 				assert.Equal(t, protectedCount, 1)
-				assert.Equal(t, snap.Resources, []*resource.State{pA, b, c})
+				assert.Equal(t, snap.Resources, []*pkgresource.State{pA, b, c})
 			},
 		},
 		{
 			"root-and-branch",
-			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+			func(t *testing.T, pA, a, b, c *pkgresource.State, snap *deploy.Snapshot) {
 				a.Protect = true
 				b.Protect = true
 				c.Protect = true
 				protectedCount := 0
-				err := DeleteResource(snap, b, func(s *resource.State) error {
+				err := DeleteResource(snap, b, func(s *pkgresource.State) error {
 					s.Protect = false
 					protectedCount++
 					return nil
@@ -394,28 +396,28 @@ func TestDeleteProtected(t *testing.T) {
 				// 2 because we only plan to delete b and c. a is protected but not
 				// scheduled for deletion, so we don't call the onProtect handler.
 				assert.Equal(t, protectedCount, 2)
-				assert.Equal(t, snap.Resources, []*resource.State{pA, a})
+				assert.Equal(t, snap.Resources, []*pkgresource.State{pA, a})
 			},
 		},
 		{
 			"branch",
-			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+			func(t *testing.T, pA, a, b, c *pkgresource.State, snap *deploy.Snapshot) {
 				b.Protect = true
 				c.Protect = true
 				protectedCount := 0
-				err := DeleteResource(snap, c, func(s *resource.State) error {
+				err := DeleteResource(snap, c, func(s *pkgresource.State) error {
 					s.Protect = false
 					protectedCount++
 					return nil
 				}, false)
 				require.NoError(t, err)
 				assert.Equal(t, protectedCount, 1)
-				assert.Equal(t, snap.Resources, []*resource.State{pA, a, b})
+				assert.Equal(t, snap.Resources, []*pkgresource.State{pA, a, b})
 			},
 		},
 		{
 			"no-permission-root",
-			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+			func(t *testing.T, pA, a, b, c *pkgresource.State, snap *deploy.Snapshot) {
 				c.Protect = true
 				err := DeleteResource(snap, c, nil, false).(ResourceProtectedError)
 				assert.Equal(t, ResourceProtectedError{
@@ -425,7 +427,7 @@ func TestDeleteProtected(t *testing.T) {
 		},
 		{
 			"no-permission-branch",
-			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+			func(t *testing.T, pA, a, b, c *pkgresource.State, snap *deploy.Snapshot) {
 				c.Protect = true
 				err := DeleteResource(snap, b, nil, true).(ResourceProtectedError)
 				assert.Equal(t, ResourceProtectedError{
@@ -441,7 +443,7 @@ func TestDeleteProtected(t *testing.T) {
 			a := NewResource("a", pA)
 			b := NewResource("b", pA)
 			c := NewResource("c", pA, b.URN)
-			snap := NewSnapshot([]*resource.State{
+			snap := NewSnapshot([]*pkgresource.State{
 				pA,
 				a,
 				b,
@@ -462,7 +464,7 @@ func TestFailedDeletionParentDependency(t *testing.T) {
 	b.Parent = a.URN
 	c := NewResource("c", pA)
 	c.Parent = a.URN
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		pA,
 		a,
 		b,
@@ -481,7 +483,7 @@ func TestFailedDeletionParentDependency(t *testing.T) {
 	assert.Contains(t, depErr.Dependencies, b)
 	assert.Contains(t, depErr.Dependencies, c)
 	require.Len(t, snap.Resources, 4)
-	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
+	assert.Equal(t, []*pkgresource.State{pA, a, b, c}, snap.Resources)
 }
 
 func TestLocateResourceNotFound(t *testing.T) {
@@ -491,7 +493,7 @@ func TestLocateResourceNotFound(t *testing.T) {
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
 	c := NewResource("c", pA)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		pA,
 		a,
 		b,
@@ -512,7 +514,7 @@ func TestLocateResourceAmbiguous(t *testing.T) {
 	b := NewResource("b", pA)
 	aPending := NewResource("a", pA)
 	aPending.Delete = true
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		pA,
 		a,
 		b,
@@ -534,7 +536,7 @@ func TestLocateResourceExact(t *testing.T) {
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
 	c := NewResource("c", pA)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		pA,
 		a,
 		b,

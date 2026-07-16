@@ -22,6 +22,8 @@ import (
 	"runtime"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -312,7 +314,7 @@ func TestPostgresBackend(t *testing.T) {
 	t.Log("Testing snapshot operations with actual resource states")
 	testURN := resource.NewURN("test-stack", projectName, "", "test:index:Resource", "test-resource")
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, b64.NewBase64SecretsManager(), []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, b64.NewBase64SecretsManager(), []*pkgresource.State{
 		{
 			Type:    resource.RootStackType,
 			URN:     resource.CreateURN("test-stack", string(resource.RootStackType), "", string(projectName), "test-stack"),

@@ -19,6 +19,8 @@ import (
 	"errors"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -120,10 +122,10 @@ func TestSameStep(t *testing.T) {
 						DryRun: true,
 					},
 				},
-				old: &resource.State{
+				old: &pkgresource.State{
 					URN: "urn:pulumi:stack::project::type::foo",
 				},
-				new: &resource.State{
+				new: &pkgresource.State{
 					URN:  "urn:pulumi:stack::project::type::foo",
 					Type: "pulumi:providers:some-provider",
 				},
@@ -148,7 +150,7 @@ func TestCreateStep(t *testing.T) {
 							DryRun: true,
 						},
 					},
-					new: &resource.State{
+					new: &pkgresource.State{
 						URN:    "urn:pulumi:stack::project::some-type::some-urn",
 						Custom: true,
 						// Use denydefaultprovider ID to ensure failure.
@@ -164,7 +166,7 @@ func TestCreateStep(t *testing.T) {
 				expectedErr := errors.New("expected error")
 				var createCalled bool
 				s := &CreateStep{
-					new: &resource.State{
+					new: &pkgresource.State{
 						URN:    "urn:pulumi:stack::project::some-type::some-urn",
 						Custom: true,
 					},
@@ -188,7 +190,7 @@ func TestCreateStep(t *testing.T) {
 			t.Run("handle InitError", func(t *testing.T) {
 				t.Parallel()
 				s := &CreateStep{
-					new: &resource.State{
+					new: &pkgresource.State{
 						URN:    "urn:pulumi:stack::project::some-type::some-urn",
 						Custom: true,
 					},
@@ -217,7 +219,7 @@ func TestCreateStep(t *testing.T) {
 			t.Run("error create no ID", func(t *testing.T) {
 				t.Parallel()
 				s := &CreateStep{
-					new: &resource.State{
+					new: &pkgresource.State{
 						URN:    "urn:pulumi:stack::project::some-type::some-urn",
 						Custom: true,
 					},
@@ -263,7 +265,7 @@ func TestDeleteStep(t *testing.T) {
 							DryRun: false,
 						},
 					},
-					old: &resource.State{
+					old: &pkgresource.State{
 						URN:    "urn:pulumi:stack::project::some-type::some-urn",
 						Custom: true,
 						// Use denydefaultprovider ID to ensure failure.
@@ -291,7 +293,7 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 		t.Run("panics if not old.PendingReplacement", func(t *testing.T) {
 			t.Parallel()
 			assert.Panics(t, func() {
-				NewRemovePendingReplaceStep(nil, &resource.State{
+				NewRemovePendingReplaceStep(nil, &pkgresource.State{
 					PendingReplacement: false,
 				})
 			})
@@ -299,7 +301,7 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 	})
 	t.Run("Op", func(t *testing.T) {
 		t.Parallel()
-		s := NewRemovePendingReplaceStep(nil, &resource.State{
+		s := NewRemovePendingReplaceStep(nil, &pkgresource.State{
 			PendingReplacement: true,
 		})
 		assert.Equal(t, OpRemovePendingReplace, s.Op())
@@ -307,7 +309,7 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 	t.Run("Deployment", func(t *testing.T) {
 		t.Parallel()
 		d := &Deployment{}
-		s := NewRemovePendingReplaceStep(d, &resource.State{
+		s := NewRemovePendingReplaceStep(d, &pkgresource.State{
 			Type:               "expected-value",
 			PendingReplacement: true,
 		})
@@ -315,7 +317,7 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 	})
 	t.Run("Type", func(t *testing.T) {
 		t.Parallel()
-		s := NewRemovePendingReplaceStep(nil, &resource.State{
+		s := NewRemovePendingReplaceStep(nil, &pkgresource.State{
 			Type:               "expected-value",
 			PendingReplacement: true,
 		})
@@ -323,7 +325,7 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 	})
 	t.Run("Provider", func(t *testing.T) {
 		t.Parallel()
-		s := NewRemovePendingReplaceStep(nil, &resource.State{
+		s := NewRemovePendingReplaceStep(nil, &pkgresource.State{
 			Provider:           "expected-value",
 			PendingReplacement: true,
 		})
@@ -331,7 +333,7 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 	})
 	t.Run("URN", func(t *testing.T) {
 		t.Parallel()
-		s := NewRemovePendingReplaceStep(nil, &resource.State{
+		s := NewRemovePendingReplaceStep(nil, &pkgresource.State{
 			URN:                "expected-value",
 			PendingReplacement: true,
 		})
@@ -339,7 +341,7 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 	})
 	t.Run("Old", func(t *testing.T) {
 		t.Parallel()
-		old := &resource.State{
+		old := &pkgresource.State{
 			URN:                "expected-value",
 			PendingReplacement: true,
 		}
@@ -348,14 +350,14 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 	})
 	t.Run("New", func(t *testing.T) {
 		t.Parallel()
-		s := NewRemovePendingReplaceStep(nil, &resource.State{
+		s := NewRemovePendingReplaceStep(nil, &pkgresource.State{
 			PendingReplacement: true,
 		})
-		assert.Equal(t, (*resource.State)(nil), s.New())
+		assert.Equal(t, (*pkgresource.State)(nil), s.New())
 	})
 	t.Run("Res", func(t *testing.T) {
 		t.Parallel()
-		old := &resource.State{
+		old := &pkgresource.State{
 			PendingReplacement: true,
 		}
 		s := NewRemovePendingReplaceStep(nil, old)
@@ -363,7 +365,7 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 	})
 	t.Run("Logical", func(t *testing.T) {
 		t.Parallel()
-		s := NewRemovePendingReplaceStep(nil, &resource.State{
+		s := NewRemovePendingReplaceStep(nil, &pkgresource.State{
 			PendingReplacement: true,
 		})
 		assert.False(t, s.Logical())
@@ -376,7 +378,7 @@ func TestRemovePendingReplaceStep(t *testing.T) {
 			},
 		}
 
-		s := NewRemovePendingReplaceStep(d, &resource.State{
+		s := NewRemovePendingReplaceStep(d, &pkgresource.State{
 			PendingReplacement: true,
 		})
 		status, _, err := s.Apply()
@@ -397,8 +399,8 @@ func TestUpdateStep(t *testing.T) {
 						DryRun: true,
 					},
 				},
-				old: &resource.State{},
-				new: &resource.State{
+				old: &pkgresource.State{},
+				new: &pkgresource.State{
 					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					Custom: true,
 					// Use denydefaultprovider ID to ensure failure.
@@ -413,8 +415,8 @@ func TestUpdateStep(t *testing.T) {
 			t.Parallel()
 			expectedErr := errors.New("expected error")
 			s := &UpdateStep{
-				old: &resource.State{},
-				new: &resource.State{
+				old: &pkgresource.State{},
+				new: &pkgresource.State{
 					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					Custom: true,
 					// Use denydefaultprovider ID to ensure failure.
@@ -438,8 +440,8 @@ func TestUpdateStep(t *testing.T) {
 		t.Run("partial failure in provider", func(t *testing.T) {
 			t.Parallel()
 			s := &UpdateStep{
-				old: &resource.State{},
-				new: &resource.State{
+				old: &pkgresource.State{},
+				new: &pkgresource.State{
 					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					Custom: true,
 					// Use denydefaultprovider ID to ensure failure.
@@ -500,8 +502,8 @@ func TestReadStep(t *testing.T) {
 						DryRun: true,
 					},
 				},
-				old: &resource.State{},
-				new: &resource.State{
+				old: &pkgresource.State{},
+				new: &pkgresource.State{
 					Custom: true,
 					// Use denydefaultprovider ID to ensure failure.
 					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
@@ -515,8 +517,8 @@ func TestReadStep(t *testing.T) {
 			t.Parallel()
 			expectedErr := errors.New("expected error")
 			s := &ReadStep{
-				old: &resource.State{},
-				new: &resource.State{
+				old: &pkgresource.State{},
+				new: &pkgresource.State{
 					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					ID:     "some-id",
 					Custom: true,
@@ -541,8 +543,8 @@ func TestReadStep(t *testing.T) {
 		t.Run("partial failure in provider", func(t *testing.T) {
 			t.Parallel()
 			s := &ReadStep{
-				old: &resource.State{},
-				new: &resource.State{
+				old: &pkgresource.State{},
+				new: &pkgresource.State{
 					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					ID:     "some-id",
 					Custom: true,
@@ -595,7 +597,7 @@ func TestReadStep(t *testing.T) {
 						DryRun: true,
 					},
 				},
-				new: &resource.State{
+				new: &pkgresource.State{
 					ID: plugin.UnknownStringValue,
 				},
 				provider: &deploytest.Provider{
@@ -806,7 +808,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		state := &resource.State{
+		state := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::some-type::some-urn",
 			ID:       "some-id",
 			Type:     "some-type",
@@ -853,7 +855,7 @@ func TestRefreshStep(t *testing.T) {
 		t.Parallel()
 		t.Run("error getting provider", func(t *testing.T) {
 			t.Parallel()
-			state := &resource.State{
+			state := &pkgresource.State{
 				Custom: true,
 				// Use denydefaultprovider ID to ensure failure.
 				Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
@@ -870,7 +872,7 @@ func TestRefreshStep(t *testing.T) {
 		t.Run("failure in provider", func(t *testing.T) {
 			t.Parallel()
 			expectedErr := errors.New("expected error")
-			state := &resource.State{
+			state := &pkgresource.State{
 				URN:    "urn:pulumi:stack::project::some-type::some-urn",
 				ID:     "some-id",
 				Custom: true,
@@ -895,7 +897,7 @@ func TestRefreshStep(t *testing.T) {
 		})
 		t.Run("partial failure in provider", func(t *testing.T) {
 			t.Parallel()
-			state := &resource.State{
+			state := &pkgresource.State{
 				URN:    "urn:pulumi:stack::project::some-type::some-urn",
 				ID:     "some-id",
 				Type:   "some-type",
@@ -951,15 +953,15 @@ func TestImportStep(t *testing.T) {
 			t.Parallel()
 			s := &ImportStep{
 				planned: true,
-				new: &resource.State{
+				new: &pkgresource.State{
 					Parent: "urn:pulumi:stack::project::foo:bar:Bar::name",
 				},
 				deployment: &Deployment{
 					opts: &Options{
 						DryRun: true,
 					},
-					olds: map[resource.URN]*resource.State{},
-					news: &gsync.Map[urn.URN, *resource.State]{},
+					olds: map[resource.URN]*pkgresource.State{},
+					news: &gsync.Map[urn.URN, *pkgresource.State]{},
 				},
 			}
 			status, _, err := s.Apply()
@@ -973,10 +975,10 @@ func TestImportStep(t *testing.T) {
 					opts: &Options{
 						DryRun: true,
 					},
-					olds: map[resource.URN]*resource.State{},
-					news: &gsync.Map[urn.URN, *resource.State]{},
+					olds: map[resource.URN]*pkgresource.State{},
+					news: &gsync.Map[urn.URN, *pkgresource.State]{},
 				},
-				new: &resource.State{
+				new: &pkgresource.State{
 					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
 					ID:     "some-id",
 					Custom: true,
@@ -996,10 +998,10 @@ func TestImportStep(t *testing.T) {
 						opts: &Options{
 							DryRun: true,
 						},
-						olds: map[resource.URN]*resource.State{},
-						news: &gsync.Map[urn.URN, *resource.State]{},
+						olds: map[resource.URN]*pkgresource.State{},
+						news: &gsync.Map[urn.URN, *pkgresource.State]{},
 					},
-					new: &resource.State{
+					new: &pkgresource.State{
 						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
 						ImportID: "some-id",
 						Custom:   true,
@@ -1021,10 +1023,10 @@ func TestImportStep(t *testing.T) {
 						opts: &Options{
 							DryRun: true,
 						},
-						olds: map[resource.URN]*resource.State{},
-						news: &gsync.Map[urn.URN, *resource.State]{},
+						olds: map[resource.URN]*pkgresource.State{},
+						news: &gsync.Map[urn.URN, *pkgresource.State]{},
 					},
-					new: &resource.State{
+					new: &pkgresource.State{
 						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
 						ImportID: "some-id",
 						Custom:   true,
@@ -1051,10 +1053,10 @@ func TestImportStep(t *testing.T) {
 						opts: &Options{
 							DryRun: true,
 						},
-						olds: map[resource.URN]*resource.State{},
-						news: &gsync.Map[urn.URN, *resource.State]{},
+						olds: map[resource.URN]*pkgresource.State{},
+						news: &gsync.Map[urn.URN, *pkgresource.State]{},
 					},
-					new: &resource.State{
+					new: &pkgresource.State{
 						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
 						ImportID: "some-id",
 						Custom:   true,
@@ -1076,10 +1078,10 @@ func TestImportStep(t *testing.T) {
 						opts: &Options{
 							DryRun: true,
 						},
-						olds: map[resource.URN]*resource.State{},
-						news: &gsync.Map[urn.URN, *resource.State]{},
+						olds: map[resource.URN]*pkgresource.State{},
+						news: &gsync.Map[urn.URN, *pkgresource.State]{},
 					},
-					new: &resource.State{
+					new: &pkgresource.State{
 						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
 						ImportID: "some-id",
 						Custom:   true,
@@ -1108,7 +1110,7 @@ func TestGetProvider(t *testing.T) {
 	t.Run("ensure default is not selected", func(t *testing.T) {
 		t.Parallel()
 		s := &CreateStep{
-			new: &resource.State{
+			new: &pkgresource.State{
 				Provider: "invalid-provider",
 			},
 		}
@@ -1121,7 +1123,7 @@ func TestGetProvider(t *testing.T) {
 		expectedProvider := &deploytest.Provider{}
 		s := &CreateStep{
 			provider: expectedProvider,
-			new: &resource.State{
+			new: &pkgresource.State{
 				Provider: "invalid-provider",
 			},
 		}

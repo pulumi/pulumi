@@ -26,6 +26,7 @@ import (
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -785,7 +786,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 // when called from SameStep.Apply after the Check→Diff flow determined the provider hasn't changed.
 // If fromCheck is false (e.g., called from EnsureProvider for dependency diffing), we always load fresh
 // and do not touch the UnconfiguredID entry, which may be in use by a concurrent provider update.
-func (r *Registry) Same(ctx context.Context, res *resource.State, fromCheck bool) error {
+func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck bool) error {
 	urn := res.URN
 	if !providers.IsProviderType(urn.Type()) {
 		return fmt.Errorf("urn %v is not a provider type", urn)

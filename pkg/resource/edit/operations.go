@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -31,7 +32,7 @@ import (
 
 // OperationFunc is the type of functions that edit resources within a snapshot. The edits are made in-place to the
 // given snapshot and pertain to the specific passed-in resource.
-type OperationFunc func(*deploy.Snapshot, *resource.State) error
+type OperationFunc func(*deploy.Snapshot, *pkgresource.State) error
 
 // DeleteResource deletes a given resource from the snapshot, if it is possible to do so.
 //
@@ -43,13 +44,13 @@ type OperationFunc func(*deploy.Snapshot, *resource.State) error
 // If a resource is marked protected after onProtected is called, an error instance of
 // `ResourceHasDependenciesError` will be returned.
 func DeleteResource(
-	snapshot *deploy.Snapshot, condemnedRes *resource.State,
-	onProtected func(*resource.State) error, targetDependents bool,
+	snapshot *deploy.Snapshot, condemnedRes *pkgresource.State,
+	onProtected func(*pkgresource.State) error, targetDependents bool,
 ) error {
 	contract.Requiref(snapshot != nil, "snapshot", "must not be nil")
 	contract.Requiref(condemnedRes != nil, "condemnedRes", "must not be nil")
 
-	handleProtected := func(res *resource.State) error {
+	handleProtected := func(res *pkgresource.State) error {
 		if !res.Protect {
 			return nil
 		}
@@ -76,7 +77,7 @@ func DeleteResource(
 	}
 	isUniqueURN := numSameURN <= 1
 
-	deleteSet := make(map[resource.URN][]*resource.State)
+	deleteSet := make(map[resource.URN][]*pkgresource.State)
 	dg := graph.NewDependencyGraph(snapshot.Resources)
 
 	deps := dg.OnlyDependsOn(condemnedRes)
@@ -94,8 +95,8 @@ func DeleteResource(
 
 	// If there are no resources that depend on condemnedRes, iterate through the snapshot and keep everything that's
 	// not condemnedRes.
-	newSnapshot := slice.Prealloc[*resource.State](len(snapshot.Resources))
-	var children []*resource.State
+	newSnapshot := slice.Prealloc[*pkgresource.State](len(snapshot.Resources))
+	var children []*pkgresource.State
 search:
 	for _, res := range snapshot.Resources {
 		if res == condemnedRes {
@@ -130,13 +131,13 @@ search:
 }
 
 // LocateResource returns all resources in the given snapshot that have the given URN.
-func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
+func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*pkgresource.State {
 	// If there is no snapshot then return no resources
 	if snap == nil {
 		return nil
 	}
 
-	var resources []*resource.State
+	var resources []*pkgresource.State
 	for _, res := range snap.Resources {
 		if res.URN == urn {
 			resources = append(resources, res)

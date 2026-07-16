@@ -18,6 +18,8 @@ import (
 	"errors"
 	"fmt"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -76,7 +78,7 @@ func stateReurnOperation(
 			_, allDeps := existingResource.GetAllDependencies()
 			for _, dep := range allDeps {
 				switch dep.Type {
-				case resource.ResourceParent:
+				case pkgresource.ResourceParent:
 					if dep.URN == oldURN {
 						existingResource.Parent = newURN
 
@@ -91,22 +93,22 @@ func stateReurnOperation(
 							return fmt.Errorf("failed to update %s with new parent %s: %w", oldChildURN, newURN, err)
 						}
 					}
-				case resource.ResourceDependency:
+				case pkgresource.ResourceDependency:
 					if dep.URN == oldURN {
 						dep.URN = newURN
 					}
 					updatedDeps = append(updatedDeps, dep.URN)
-				case resource.ResourcePropertyDependency:
+				case pkgresource.ResourcePropertyDependency:
 					if dep.URN == oldURN {
 						dep.URN = newURN
 					}
 					updatedPropDeps[dep.Key] = append(updatedPropDeps[dep.Key], dep.URN)
-				case resource.ResourceDeletedWith:
+				case pkgresource.ResourceDeletedWith:
 					if dep.URN == oldURN {
 						dep.URN = newURN
 					}
 					existingResource.DeletedWith = dep.URN
-				case resource.ResourceReplaceWith:
+				case pkgresource.ResourceReplaceWith:
 					if dep.URN == oldURN {
 						dep.URN = newURN
 					}

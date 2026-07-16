@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"reflect"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -44,10 +46,10 @@ func RequireStackResource(t TestingT, err error, changes display.ResourceChanges
 	}
 }
 
-func RequireNResources(t TestingT, resources []*resource.State, typ tokens.Type, count int) []*resource.State {
+func RequireNResources(t TestingT, resources []*pkgresource.State, typ tokens.Type, count int) []*pkgresource.State {
 	t.Helper()
 
-	var results []*resource.State
+	var results []*pkgresource.State
 	for _, res := range resources {
 		if res.Type == typ {
 			results = append(results, res)
@@ -58,7 +60,7 @@ func RequireNResources(t TestingT, resources []*resource.State, typ tokens.Type,
 	return results
 }
 
-func RequireSingleResource(t TestingT, resources []*resource.State, typ tokens.Type) *resource.State {
+func RequireSingleResource(t TestingT, resources []*pkgresource.State, typ tokens.Type) *pkgresource.State {
 	t.Helper()
 	return RequireNResources(t, resources, typ, 1)[0]
 }
@@ -67,12 +69,12 @@ func RequireSingleResource(t TestingT, resources []*resource.State, typ tokens.T
 // than one resource has the given name, the test fails. If no resources have the given name, the test fails.
 func RequireSingleNamedResource(
 	t TestingT,
-	resources []*resource.State,
+	resources []*pkgresource.State,
 	name string,
-) *resource.State {
+) *pkgresource.State {
 	t.Helper()
 
-	var result *resource.State
+	var result *pkgresource.State
 	for _, res := range resources {
 		if res.URN.Name() == name {
 			require.Nil(t, result, "expected exactly 1 resource named %q, got multiple", name)
@@ -166,7 +168,7 @@ func (opts *AssertNoSecretLeaksOpts) isIgnored(ty tokens.Type) bool {
 func AssertNoSecretLeaks(l require.TestingT, snap *deploy.Snapshot, opts AssertNoSecretLeaksOpts) {
 	// Remove states for resources with types in opts.IgnoreResourceTypes from the snap to exclude these states from
 	// the secret leak checks.
-	var filteredResourceStates []*resource.State
+	var filteredResourceStates []*pkgresource.State
 	for _, r := range snap.Resources {
 		if !opts.isIgnored(r.Type) {
 			filteredResourceStates = append(filteredResourceStates, r)

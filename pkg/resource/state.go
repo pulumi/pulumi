@@ -19,12 +19,26 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	sdkresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+type (
+	URN            = sdkresource.URN
+	ID             = sdkresource.ID
+	PropertyMap    = sdkresource.PropertyMap
+	PropertyKey    = sdkresource.PropertyKey
+	PropertyValue  = sdkresource.PropertyValue
+	PropertyPath   = sdkresource.PropertyPath
+	Alias          = sdkresource.Alias
+	CustomTimeouts = sdkresource.CustomTimeouts
+	HookType       = sdkresource.HookType
+)
+
 // ExtensionRef identifies an extension parameterization within a deployment.
-type ExtensionRef string
+type ExtensionRef = apitype.ExtensionRef
 
 // State is a structure containing state associated with a resource. This resource may have been serialized and
 // deserialized, or snapshotted from a live graph of resource objects. The value's state is not, however, associated

@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -1024,15 +1026,15 @@ func TestDoCmdResourceProviderFlagURNNotAProvider(t *testing.T) {
 	cases := []struct {
 		name       string
 		urn        resource.URN
-		resources  []*resource.State
+		resources  []*pkgresource.State
 		wantSubstr string
 	}{
 		{
 			name: "not a provider",
 			urn:  bucketURN,
 			//nolint:requiredfield // Only the fields configureProvider's matcher reads matter here.
-			resources: []*resource.State{
-				(&resource.NewState{
+			resources: []*pkgresource.State{
+				(&pkgresource.NewState{
 					Type:   "azure:index:Bucket",
 					URN:    bucketURN,
 					Custom: true,
@@ -1045,8 +1047,8 @@ func TestDoCmdResourceProviderFlagURNNotAProvider(t *testing.T) {
 			name: "provider for a different package",
 			urn:  awsProviderURN,
 			//nolint:requiredfield // Only the fields configureProvider's matcher reads matter here.
-			resources: []*resource.State{
-				(&resource.NewState{
+			resources: []*pkgresource.State{
+				(&pkgresource.NewState{
 					Type:   "pulumi:providers:aws",
 					URN:    awsProviderURN,
 					Custom: true,
@@ -1110,8 +1112,8 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 			},
 		},
 		//nolint:requiredfield // Only the fields configureProvider's matcher reads matter here.
-		&deploy.Snapshot{Resources: []*resource.State{
-			(&resource.NewState{
+		&deploy.Snapshot{Resources: []*pkgresource.State{
+			(&pkgresource.NewState{
 				Type:   "pulumi:providers:azure",
 				URN:    providerURN,
 				Custom: true,

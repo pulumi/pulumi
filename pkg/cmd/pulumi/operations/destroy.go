@@ -21,6 +21,8 @@ import (
 	"log/slog"
 	"os"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/spf13/cobra"
@@ -42,7 +44,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -576,9 +577,9 @@ func NewDestroyCmd() *cobra.Command {
 // We rely on the fact that `resources` is topologically sorted with respect to
 // its dependencies.  This function understands that providers live outside
 // this topological sort.
-func getProtectedExcludes(resources []*resource.State) ([]string, error) {
+func getProtectedExcludes(resources []*pkgresource.State) ([]string, error) {
 	dg := graph.NewDependencyGraph(resources)
-	protected := mapset.NewSet[*resource.State]()
+	protected := mapset.NewSet[*pkgresource.State]()
 
 	for _, resource := range resources {
 		if resource.Protect {

@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -32,26 +34,26 @@ import (
 type Resource struct {
 	Stack    tokens.QName
 	Project  tokens.PackageName
-	State    *resource.State
+	State    *pkgresource.State
 	Parent   *Resource
 	Provider *Resource
 	Children map[resource.URN]*Resource
 }
 
 // NewResourceMap constructs a map of resources with parent/child relations, indexed by URN.
-func NewResourceMap(source []*resource.State) map[resource.URN]*Resource {
+func NewResourceMap(source []*pkgresource.State) map[resource.URN]*Resource {
 	_, resources := makeResourceTreeMap(source)
 	return resources
 }
 
 // NewResourceTree constructs a tree representation of a resource/component hierarchy
-func NewResourceTree(source []*resource.State) *Resource {
+func NewResourceTree(source []*pkgresource.State) *Resource {
 	root, _ := makeResourceTreeMap(source)
 	return root
 }
 
 // makeResourceTreeMap is a helper used by the two above functions to construct a resource hierarchy.
-func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]*Resource) {
+func makeResourceTreeMap(source []*pkgresource.State) (*Resource, map[resource.URN]*Resource) {
 	resources := make(map[resource.URN]*Resource)
 
 	var stack tokens.QName

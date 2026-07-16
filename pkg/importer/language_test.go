@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/require"
 
@@ -50,7 +52,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 			state, err := stack.DeserializeResource(s, config.NopDecrypter)
 			require.NoError(t, err)
 
-			snapshot := []*resource.State{
+			snapshot := []*pkgresource.State{
 				{
 					ID:     "123",
 					Custom: true,
@@ -71,7 +73,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 				},
 			}
 
-			var actualState *resource.State
+			var actualState *pkgresource.State
 			err = GenerateLanguageDefinitions(io.Discard, loader, func(_ io.Writer, p *pcl.Program) error {
 				require.Len(t, p.Nodes, 1)
 
@@ -82,7 +84,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 				actualState = renderResource(t, res)
 				return nil
-			}, []*resource.State{state}, snapshot, maps.Clone(names))
+			}, []*pkgresource.State{state}, snapshot, maps.Clone(names))
 			require.NoError(t, err)
 
 			assert.Equal(t, state.Type, actualState.Type)
@@ -120,7 +122,7 @@ func TestGenerateLanguageDefinitionsReferencesOtherResources(t *testing.T) {
 		return nil
 	}
 
-	snapshot := []*resource.State{
+	snapshot := []*pkgresource.State{
 		{
 			ID:     "123",
 			Custom: true,
@@ -150,7 +152,7 @@ func TestGenerateLanguageDefinitionsReferencesOtherResources(t *testing.T) {
 		},
 	}
 
-	states := slice.Prealloc[*resource.State](len(resources))
+	states := slice.Prealloc[*pkgresource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -194,7 +196,7 @@ func TestGenerateLanguageDefinitionsReferencesOtherResourcesByName(t *testing.T)
 			return nil
 		}
 
-		snapshot := []*resource.State{
+		snapshot := []*pkgresource.State{
 			{
 				ID:     "123",
 				Custom: true,
@@ -224,7 +226,7 @@ func TestGenerateLanguageDefinitionsReferencesOtherResourcesByName(t *testing.T)
 			},
 		}
 
-		states := slice.Prealloc[*resource.State](len(resources))
+		states := slice.Prealloc[*pkgresource.State](len(resources))
 		for _, r := range resources {
 			state, err := stack.DeserializeResource(r, config.NopDecrypter)
 			require.NoError(t, err)
@@ -297,7 +299,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 		return nil
 	}
 
-	snapshot := []*resource.State{
+	snapshot := []*pkgresource.State{
 		{
 			ID:     "123",
 			Custom: true,
@@ -332,7 +334,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 		},
 	}
 
-	states := slice.Prealloc[*resource.State](len(resources))
+	states := slice.Prealloc[*pkgresource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -387,7 +389,7 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 		componentURN: "parentComponent",
 	}
 
-	snapshot := []*resource.State{
+	snapshot := []*pkgresource.State{
 		{
 			ID:     "123",
 			Custom: true,
@@ -406,7 +408,7 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 		},
 	}
 
-	states := slice.Prealloc[*resource.State](len(resources))
+	states := slice.Prealloc[*pkgresource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)

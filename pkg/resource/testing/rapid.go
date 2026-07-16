@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -33,11 +34,11 @@ import (
 type StackContext struct {
 	projectName string
 	stackName   string
-	resources   []*resource.State
+	resources   []*pkgresource.State
 }
 
 // NewStackContext creates a new stack context with the given project name, stack name, and list of resources.
-func NewStackContext(projectName, stackName string, resources ...*resource.State) *StackContext {
+func NewStackContext(projectName, stackName string, resources ...*pkgresource.State) *StackContext {
 	ctx := &StackContext{projectName: projectName, stackName: stackName}
 	return ctx.Append(resources...)
 }
@@ -53,13 +54,13 @@ func (ctx *StackContext) StackName() string {
 }
 
 // Resources returns the context's resources.
-func (ctx *StackContext) Resources() []*resource.State {
+func (ctx *StackContext) Resources() []*pkgresource.State {
 	return ctx.resources
 }
 
 // Append creates a new context that contains the current context's resources and the given list of resources.
-func (ctx *StackContext) Append(r ...*resource.State) *StackContext {
-	rs := make([]*resource.State, len(ctx.resources)+len(r))
+func (ctx *StackContext) Append(r ...*pkgresource.State) *StackContext {
+	rs := make([]*pkgresource.State, len(ctx.resources)+len(r))
 	copy(rs, ctx.resources)
 	copy(rs[len(ctx.resources):], r)
 	return &StackContext{ctx.projectName, ctx.stackName, rs}
@@ -297,16 +298,16 @@ func ResourceReferenceGenerator() *rapid.Generator[resource.ResourceReference] {
 }
 
 func resourceReferenceGenerator(ctx *StackContext) *rapid.Generator[resource.ResourceReference] {
-	var resourceGenerator *rapid.Generator[*resource.State]
+	var resourceGenerator *rapid.Generator[*pkgresource.State]
 	if ctx == nil {
-		resourceGenerator = rapid.Custom(func(t *rapid.T) *resource.State {
+		resourceGenerator = rapid.Custom(func(t *rapid.T) *pkgresource.State {
 			id := resource.ID("")
 			custom := !rapid.Bool().Draw(t, "component")
 			if custom {
 				id = IDGenerator().Draw(t, "resource ID")
 			}
 
-			return &resource.State{
+			return &pkgresource.State{
 				URN:    URNGenerator().Draw(t, "resource URN"),
 				Custom: custom,
 				ID:     id,

@@ -638,7 +638,7 @@ func NewSnapshotJournaler(
 		snapCopy = &deploy.Snapshot{
 			Manifest:          baseSnap.Manifest,
 			SecretsManager:    baseSnap.SecretsManager,
-			Resources:         make([]*resource.State, 0),
+			Resources:         make([]*pkgresource.State, 0),
 			PendingOperations: make([]pkgresource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
 			Snippets:          baseSnap.Snippets,
@@ -787,7 +787,7 @@ func NewJournaler(
 		snapCopy = &deploy.Snapshot{
 			Manifest:          baseSnap.Manifest,
 			SecretsManager:    baseSnap.SecretsManager,
-			Resources:         make([]*resource.State, 0),
+			Resources:         make([]*pkgresource.State, 0),
 			PendingOperations: make([]pkgresource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
 		}

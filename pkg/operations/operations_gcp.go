@@ -22,12 +22,13 @@ import (
 	"strings"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	gcplogging "cloud.google.com/go/logging/apiv2"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	loggingpb "google.golang.org/genproto/googleapis/logging/v2"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -83,7 +84,7 @@ func (ops *gcpOpsProvider) GetLogs(ctx context.Context, query LogQuery) (*[]LogE
 	}
 }
 
-func (ops *gcpOpsProvider) getFunctionLogs(state *resource.State, query LogQuery) (*[]LogEntry, error) {
+func (ops *gcpOpsProvider) getFunctionLogs(state *pkgresource.State, query LogQuery) (*[]LogEntry, error) {
 	name := state.Outputs["name"].StringValue()
 	project := state.Outputs["project"].StringValue()
 	region := state.Outputs["region"].StringValue()

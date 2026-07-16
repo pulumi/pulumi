@@ -76,19 +76,19 @@ type SnapshotManager struct {
 	persister      SnapshotPersister       // The persister responsible for invalidating and persisting the snapshot
 	baseSnapshot   *deploy.Snapshot        // The base snapshot for this plan
 	secretsManager secrets.Manager         // The default secrets manager to use
-	resources      []*resource.State       // The list of resources operated upon by this plan
+	resources      []*pkgresource.State    // The list of resources operated upon by this plan
 	operations     []pkgresource.Operation // The set of operations known to be outstanding in this plan
 	snippets       []resource.Snippet      // The snippet list to persist with the next snapshot
 	hasSnippets    bool                    // Whether snippets has been set by the engine
 
 	// The set of resources that have been operated upon already by this plan. These resources could also have
 	// been added to `resources` by other operations but need to be filtered out before writing the snapshot.
-	dones map[*resource.State]bool
+	dones map[*pkgresource.State]bool
 
-	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
-	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
-	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
-	done             <-chan error             // A channel that sends a single result when the manager has shut down.
+	completeOps      map[*pkgresource.State]bool // The set of resources that have completed their operation
+	mutationRequests chan<- mutationRequest      // The queue of mutation requests, to be retired serially by the manager
+	cancel           chan bool                   // A channel used to request cancellation of any new mutation requests.
+	done             <-chan error                // A channel that sends a single result when the manager has shut down.
 
 	isRefresh bool // Whether or not the snapshot is part of a refresh
 
@@ -658,7 +658,7 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 
 // markDone marks a resource as having been processed. Resources that have been marked
 // in this manner won't be persisted in the snapshot.
-func (sm *SnapshotManager) markDone(state *resource.State) {
+func (sm *SnapshotManager) markDone(state *pkgresource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.dones[state] = true
 	logging.V(9).Infof("Marked old state snapshot as done: %v", state.URN)
@@ -667,21 +667,21 @@ func (sm *SnapshotManager) markDone(state *resource.State) {
 // markNew marks a resource as existing in the new snapshot. This occurs on
 // successful non-deletion operations where the given state is the new state
 // of a resource that will be persisted to the snapshot.
-func (sm *SnapshotManager) markNew(state *resource.State) {
+func (sm *SnapshotManager) markNew(state *pkgresource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.resources = append(sm.resources, state)
 	logging.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
 }
 
 // markOperationPending marks a resource as undergoing an operation that will now be considered pending.
-func (sm *SnapshotManager) markOperationPending(state *resource.State, op pkgresource.OperationType) {
+func (sm *SnapshotManager) markOperationPending(state *pkgresource.State, op pkgresource.OperationType) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.operations = append(sm.operations, pkgresource.NewOperation(state, op))
 	logging.V(9).Infof("SnapshotManager.markPendingOperation(%s, %s)", state.URN, string(op))
 }
 
 // markOperationComplete marks a resource as having completed the operation that it previously was performing.
-func (sm *SnapshotManager) markOperationComplete(state *resource.State) {
+func (sm *SnapshotManager) markOperationComplete(state *pkgresource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.completeOps[state] = true
 	logging.V(9).Infof("SnapshotManager.markOperationComplete(%s)", state.URN)
@@ -720,7 +720,7 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	//           they would have been appended to the list before r.
 
 	// Start with a copy of the resources produced during the evaluation of the current plan.
-	resources := make([]*resource.State, 0, len(sm.resources))
+	resources := make([]*pkgresource.State, 0, len(sm.resources))
 
 	// If any resources are "done", we need to filter them out here. These could be resources that have been later
 	// deleted, or had some other operation performed on them such as an import then an update.
@@ -990,8 +990,8 @@ func NewSnapshotManager(
 		persister:        persister,
 		secretsManager:   secretsManager,
 		baseSnapshot:     baseSnap,
-		dones:            make(map[*resource.State]bool),
-		completeOps:      make(map[*resource.State]bool),
+		dones:            make(map[*pkgresource.State]bool),
+		completeOps:      make(map[*pkgresource.State]bool),
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,

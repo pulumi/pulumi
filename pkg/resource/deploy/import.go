@@ -164,7 +164,7 @@ func NewImportDeployment(
 		source:                          NewErrorSource(projectName),
 		providers:                       reg,
 		newPlans:                        newResourcePlan(target.Config),
-		news:                            &gsync.Map[resource.URN, *resource.State]{},
+		news:                            &gsync.Map[resource.URN, *pkgresource.State]{},
 		extensions:                      map[sdkproviders.Reference][]inFlightExtension{},
 	}, nil
 }
@@ -237,7 +237,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
-	state := resource.NewState{
+	state := pkgresource.NewState{
 		Type:                    typ,
 		URN:                     urn,
 		Custom:                  false,
@@ -401,7 +401,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate provider config: %w", err)
 		}
-		state := resource.NewState{
+		state := pkgresource.NewState{
 			Type:                    typ,
 			URN:                     urn,
 			Custom:                  true,
@@ -491,7 +491,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate explicit provider config for %s: %w", providerURN, err)
 		}
-		state := resource.NewState{
+		state := pkgresource.NewState{
 			Type:                    typ,
 			URN:                     providerURN,
 			Custom:                  true,
@@ -680,7 +680,7 @@ func (i *importer) importResources(ctx context.Context) error {
 		}
 
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
-		new := resource.NewState{
+		new := pkgresource.NewState{
 			Type:                    urn.Type(),
 			URN:                     urn,
 			Custom:                  !imp.Component,
@@ -718,7 +718,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			SnippetID:               "",
 		}.Make()
 		if imp.Extension != nil {
-			new.ExtensionRef = resource.ExtensionRef(hashExtension(*imp.Extension))
+			new.ExtensionRef = pkgresource.ExtensionRef(hashExtension(*imp.Extension))
 		}
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &pkgresource.Goal{})
